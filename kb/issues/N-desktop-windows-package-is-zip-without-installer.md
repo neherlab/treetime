@@ -1,6 +1,6 @@
 # The Windows desktop package is a zip archive without an installer
 
-The Windows package of the desktop app (`treetime-desktop-x86_64-pc-windows-gnu.zip`) is a zip archive of the unpacked app. Users extract it and start `TreeTime.exe`; nothing adds a Start menu entry or an uninstaller. An NSIS installer (electron-builder target `nsis`) would install the app for the current user and register it with Windows.
+The Windows package of the desktop app (`treetime-desktop-x86_64-pc-windows-gnullvm.zip`, `treetime-desktop-aarch64-pc-windows-gnullvm.zip`) is a zip archive of the unpacked app. Users extract it and start `TreeTime.exe`; nothing adds a Start menu entry or an uninstaller. An NSIS installer (electron-builder target `nsis`) would install the app for the current user and register it with Windows.
 
 ## Evidence
 
