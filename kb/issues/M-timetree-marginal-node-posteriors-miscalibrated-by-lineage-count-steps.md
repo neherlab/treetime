@@ -144,10 +144,11 @@ $E[k(k-1)] = \bar k^2 - \bar k + V$, $V = \sum_u w_u^2 S_u (1 - S_u)$, and $M_i 
   by estimated age the mean PIT is 0.47-0.52 throughout.
 - The constant $T_c$ (`opt`) stays about 0.3 high in log against the true $T_c(t)$ of the `exp` and `piecewise`
   schedules, a misspecification; the skyline is now nearly unbiased.
-- The estimated rate at the lowest signal got worse. In one run without temporal signal (`reroot-opt-est`,
-  `piecewise`, rep09, $L = 10^3$, $\mu = 3 \cdot 10^{-4}$, where the other variants stop on a non-positive starting
-  rate) the rate fell to $10^{-5}$ (true $3 \cdot 10^{-4}$) and 46 nodes were written without a date; the run
-  exited 0. Not yet investigated.
+- The estimated rate at the lowest signal got worse; without temporal signal the rate needs an external prior. In one
+  such run the root-to-tip regression after rerooting already collapses the rate to $1.67 \cdot 10^{-5}$ (true
+  $3 \cdot 10^{-4}$) with either prior; the mean-field log marginal likelihood then steps it to $1.03 \cdot 10^{-5}$,
+  where 46 internal nodes get an empty posterior and no date
+  ([H-timetree-empty-distribution-division.md](H-timetree-empty-distribution-division.md)).
 
 ## Related
 
