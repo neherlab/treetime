@@ -2,7 +2,7 @@ use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
-use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
+use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
@@ -46,8 +46,10 @@ pub fn run_optimize(
     gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
     missing_leaves: MissingLeafLimit::Enforced,
   };
-  let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
-  let source = single_source(sources)?.source;
+  let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
+    .into_iter()
+    .map(|source| source.source)
+    .collect();
 
   let resolved = args.resolve_outputs()?;
 
@@ -69,7 +71,7 @@ pub fn run_optimize(
 
   let input = OptimizeInput {
     graph,
-    sources: vec![source],
+    sources,
     branch_lengths,
   };
 

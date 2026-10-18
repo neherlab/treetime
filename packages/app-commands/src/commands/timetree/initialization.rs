@@ -1,6 +1,6 @@
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
-use crate::commands::shared::sequence_inputs::{AlignmentSource, SourceSettings, read_sequence_sources, single_source};
+use crate::commands::shared::sequence_inputs::{AlignmentSource, SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use eyre::{Report, WrapErr};
@@ -31,8 +31,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
       gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
       missing_leaves: MissingLeafLimit::Enforced,
     };
-    let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?;
-    vec![single_source(sources)?]
+    read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
   } else if args.branch_length_mode != BranchLengthMode::Input {
     return make_error!(
       "Alignment required when branch_length_mode is not 'input'. \

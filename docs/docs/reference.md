@@ -111,7 +111,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -442,7 +442,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -690,7 +690,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -858,7 +858,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
@@ -1100,7 +1100,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1126,7 +1126,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--date-format <FORMAT>` — Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
 
   Default value: `%Y-%m-%d`
-* `--sequence-length <SEQUENCE_LENGTH>` — Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided
+* `--sequence-length <SEQUENCE_LENGTH>` — Length of the sequence, used to calculate expected variation in branch length. Required with `--covariation`
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those.
@@ -1335,7 +1335,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 

@@ -112,7 +112,7 @@ pub struct TreetimeClockArgsRaw {
   #[deser(flatten)]
   pub date_column: DateColumnArgs,
 
-  /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
+  /// Length of the sequence, used to calculate expected variation in branch length. Required with `--covariation`.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub sequence_length: Option<usize>,
 

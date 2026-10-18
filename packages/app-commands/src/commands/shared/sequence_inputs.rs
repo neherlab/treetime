@@ -11,7 +11,6 @@ use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
-use treetime::{make_error, make_internal_report};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::fasta_read_file;
@@ -29,17 +28,6 @@ pub(crate) fn read_sequence_sources(
     .iter()
     .map(|path| read_sequence_source(path, settings, graph, names, log))
     .collect()
-}
-
-pub(crate) fn single_source(sources: Vec<AlignmentSource>) -> Result<AlignmentSource, Report> {
-  let n_sources = sources.len();
-  if n_sources > 1 {
-    return make_error!("Several --alignment files are not supported: {n_sources} were given");
-  }
-  sources
-    .into_iter()
-    .next()
-    .ok_or_else(|| make_internal_report!("No --alignment file was read"))
 }
 
 pub(crate) fn read_tree_and_sources(

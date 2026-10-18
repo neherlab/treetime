@@ -348,7 +348,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -2684,7 +2684,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -2935,7 +2935,7 @@
             "SEQUENCE_LENGTH"
           ],
           "conflicts": [],
-          "help": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
+          "help": "Length of the sequence, used to calculate expected variation in branch length. Required with `--covariation`.",
           "more": ""
         },
         {
@@ -4202,7 +4202,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -5597,7 +5597,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -7805,7 +7805,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {
@@ -9040,7 +9040,7 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`, `xz`, `zstd`) files and detects compression by extension. Each file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
           "more": ""
         },
         {

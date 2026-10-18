@@ -2,7 +2,7 @@
 mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources, single_source};
+  use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
   use eyre::Report;
   use helpers::{SourceFacts, facts, read_sources, read_sources_logged};
   use maplit::btreemap;
@@ -102,23 +102,6 @@ mod tests {
       read_sources(&[PathBuf::from("-"), PathBuf::from("-")], MissingLeafLimit::Enforced),
       "Standard input ('-') can be read only once, but --alignment lists it 2 times"
     );
-  }
-
-  #[test]
-  fn test_single_source_rejects_two_files() -> Result<(), Report> {
-    let dir = tempdir()?;
-    let first = dir.path().join("first.fasta");
-    let second = dir.path().join("second.fasta");
-    fs::write(&first, ">A\nAC\n>B\nAC\n>C\nAC\n")?;
-    fs::write(&second, ">A\nGT\n>B\nGT\n>C\nGT\n")?;
-
-    let sources = read_sources(&[first, second], MissingLeafLimit::Enforced)?;
-
-    assert_error!(
-      single_source(sources),
-      "Several --alignment files are not supported: 2 were given"
-    );
-    Ok(())
   }
 
   mod helpers {

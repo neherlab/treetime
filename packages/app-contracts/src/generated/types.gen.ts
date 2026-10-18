@@ -2670,18 +2670,20 @@ export type TopologyOrderTargetSourceArg = 'input' | 'reference-topology' | 'lis
 export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export type TimetreeConfig = {
   /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. Each file is one
-   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+   * input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3313,18 +3315,20 @@ export type ClockRegressionArgs = {
 };
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export type ClockConfig = {
   /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. Each file is one
-   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+   * input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3370,7 +3374,7 @@ export type ClockConfig = {
    */
   date_format?: string;
   /**
-   * Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
+   * Length of the sequence, used to calculate expected variation in branch length. Required with `--covariation`.
    */
   sequence_length?: number;
   /**
@@ -3644,18 +3648,20 @@ export type AncestralOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'ma
 export type SampleMode = 'argmax' | 'root' | 'all';
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export type AncestralConfig = {
   /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. Each file is one
-   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+   * input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -4034,18 +4040,20 @@ export type AncestralConfig = {
 export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'homoplasy-stats' | 'homoplasy-report';
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export type HomoplasyConfig = {
   /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. Each file is one
-   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+   * input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -4665,18 +4673,20 @@ export type BranchOptMethod = 'brent' | 'newton';
 export type OptimizeRerootMethod = 'min-dev';
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export type OptimizeConfig = {
   /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. Each file is one
-   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+   * input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -5015,18 +5025,20 @@ export type OptimizeConfig = {
 export type PruneOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'gtr';
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export type PruneConfig = {
   /**
-   * Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-   * `xz`, `zstd`) files and detects compression by extension. Each file is one
-   * partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+   * input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**

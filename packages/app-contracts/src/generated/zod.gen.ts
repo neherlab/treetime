@@ -1385,11 +1385,12 @@ export const zTopologyOrderTargetSourceArg = z.enum([
 export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1537,11 +1538,12 @@ export const zClockRegressionArgs = z.strictObject({
 });
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export const zClockConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1640,11 +1642,12 @@ export const zSampleMode = z.enum([
 ]);
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1724,11 +1727,12 @@ export const zHomoplasyOutputSelection = z.enum([
 ]);
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export const zHomoplasyConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1897,11 +1901,12 @@ export const zBranchOptMethod = z.union([
 export const zOptimizeRerootMethod = z.enum(['min-dev']);
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1972,11 +1977,12 @@ export const zPruneOutputSelection = z.enum([
 ]);
 
 /**
- * Sequence alignment input shared by all commands that read sequences.
+ * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
- * partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
- * from standard input and may appear at most once.
+ * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+ * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+ * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+ * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
  */
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),

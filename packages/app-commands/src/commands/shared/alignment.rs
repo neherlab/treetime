@@ -18,21 +18,23 @@ use treetime_primitives::Seq;
 use treetime_schema::schema_defaults;
 use treetime_utils::io::file::is_path_stdin;
 
-/// Sequence alignment input shared by all commands that read sequences.
+/// Sequence alignment input shared by all commands that accept an alignment.
 ///
-/// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. Each file is one
-/// partition, numbered by its position in the list (1, 2, ...). The path `-` reads uncompressed FASTA
-/// from standard input and may appear at most once.
+/// One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
+/// `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
+/// position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
+/// alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
-  /// Aligned FASTA input. Accepts multiple plain or compressed (`gz`, `bz2`,
-  /// `xz`, `zstd`) files and detects compression by extension. Each file is one
-  /// partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-  /// uncompressed FASTA from standard input; `-` may appear at most once.
+  /// Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+  /// by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
+  /// partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
+  /// one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
+  /// input; `-` may appear at most once.
   #[cfg_attr(
     feature = "clap",
     clap(
