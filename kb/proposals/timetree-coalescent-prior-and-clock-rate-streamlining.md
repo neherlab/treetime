@@ -251,13 +251,38 @@ The baseline for each phase is the previous one.
 | phase | content | gate |
 | --- | --- | --- |
 | 0a (done) | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
-| 0b | Gaussian message passing at the regression rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | node RMSE, coverage and lineage-curve distance reproduce section 1; `--confidence` coverage on the validation data |
+| 0b (done) | Gaussian message passing at the final rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | analytic tests (joint Gaussian, finite-difference Hessian); `--confidence` coverage on the validation data, see below |
 | 0c | retire the old machinery and flags; outputs, contracts, app (with the engineer) | smoke snapshots re-baselined with the reason recorded; dengue/100 golden master rebuilt |
 | 1 | merge `claude-hard-cell-interp`; seed the expectation and $T_c$ from the Gaussian marginals; one loop, initial round removed | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
 | 2 | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
 | 4 | rate: curvature-scaled probe window; optional log-normal rate prior | rounds to convergence; low-signal rate error with and without a prior |
 | 5 | kb: decisions for the clock replacement, the mean-field prior, the EM fit, the regression-and-Gaussian start; supersede the frozen-lineage-count and root-before-merger notes; close [M-timetree-initial-round-applies-coalescent-prior.md](../issues/M-timetree-initial-round-applies-coalescent-prior.md) | |
+
+## Phase 0b result
+
+`fn gaussian_clock()` ([`gaussian.rs`](../../packages/treetime/src/clock/gaussian.rs)) runs at the final rate of the
+loop and gives `rate_std` for `--confidence` unless `--clock-std-dev` is set; it needs the alignment or
+`--sequence-length`. Its node marginals are computed but not yet consumed (phase 1); the node RMSE and lineage-curve
+evidence of section 1 comes from the Python reference, which the Rust passes match exactly on the analytic tests.
+
+Gate, 240 validation sets, `--coalescent-opt`, estimated rate, `--keep-root`, reported 90% interval with and
+without `--confidence`: coverage 0.887 against 0.885 overall, 0.866 against 0.854 for nodes older than 10 years;
+widths grow by under 1% because most nodes lie within months of their tips. Rate calibration,
+$z = (\hat\mu - \mu)/\sigma_\mu$:
+
+| set | mean $z$ | sd $z$ | $\lvert z\rvert < 1.645$ | median $\sigma_\mu/\hat\mu$ | median $\lvert\hat\mu/\mu - 1\rvert$ |
+| --- | --- | --- | --- | --- | --- |
+| $L=10^4$, $\mu=10^{-2}$ | -0.50 | 1.11 | 0.83 | 0.010 | 0.010 |
+| $L=10^4$, $\mu=10^{-3}$ | -0.19 | 1.48 | 0.77 | 0.024 | 0.022 |
+| $L=10^4$, $\mu=3\cdot10^{-4}$ | -2.01 | 2.01 | 0.37 | 0.031 | 0.060 |
+| $L=10^3$, $\mu=10^{-2}$ | -0.31 | 2.14 | 0.47 | 0.024 | 0.044 |
+| $L=10^3$, $\mu=10^{-3}$ | -7.06 | 7.33 | 0.21 | 0.037 | 0.204 |
+| $L=10^3$, $\mu=3\cdot10^{-4}$ | -21.4 | 16.3 | 0.00 | 0.044 | 0.420 |
+
+With signal the width is right to within a factor 1.5–2; at low signal the rate is biased low far beyond its
+curvature width, which is the weak-signal problem of phase 4, not a variance one. Four runs (`const` rep03 and rep09,
+$L=10^3$) stop on a non-positive regression rate, as before 0a.
 
 ## Open questions
 
@@ -269,8 +294,7 @@ The baseline for each phase is the previous one.
   $\bar k$ in place of integer $k$ does not change its event model beyond the rate.
 - v0 parity: the reported coalescent likelihood, the initial round and the root handling all diverge from v0 and need
   decision files.
-- Issues: 0a done (branch `claude-clock-exact-root`),
-  [M-clock-gaussian-rate-uncertainty-and-node-marginals.md](../issues/M-clock-gaussian-rate-uncertainty-and-node-marginals.md) (0b),
+- Issues: 0a and 0b done (branch `claude-clock-exact-root`),
   [M-clock-retire-covariation-and-split-optimizers.md](../issues/M-clock-retire-covariation-and-split-optimizers.md) (0c),
   [M-timetree-loop-starts-from-gaussian-marginals.md](../issues/M-timetree-loop-starts-from-gaussian-marginals.md) (1),
   [M-coalescent-one-expected-lineage-statistics.md](../issues/M-coalescent-one-expected-lineage-statistics.md) (2),
