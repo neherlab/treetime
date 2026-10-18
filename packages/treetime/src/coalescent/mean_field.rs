@@ -31,6 +31,10 @@ use treetime_utils::make_error;
 
 /// Number of points of the global grid that carries `kbar(t)` and its integrals
 const EXPECTATION_GRID_POINTS: usize = 4001;
+/// Largest number of points kept of one node's survival function
+const SURVIVAL_POINTS: usize = 256;
+/// Survival below this, or above one minus it, counts as 0 or 1 when a survival function is trimmed
+const SURVIVAL_TRIM: f64 = 1e-9;
 
 /// Survival function `S(t) = P(T > t)` of one node on its own grid: 1 before the first time, 0 after the last
 #[derive(Clone, Debug)]
@@ -40,6 +44,32 @@ struct NodeSurvival {
 }
 
 impl NodeSurvival {
+  /// Trimmed to where the survival moves away from 1 and 0, and resampled to at most `SURVIVAL_POINTS` uniform times
+  fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
+    let n = t.len();
+    if n <= 2 {
+      return Self { t, survival };
+    }
+    let first = survival
+      .iter()
+      .position(|&s| s < 1.0 - SURVIVAL_TRIM)
+      .unwrap_or(0)
+      .saturating_sub(1);
+    let last = (survival.iter().rposition(|&s| s > SURVIVAL_TRIM).unwrap_or(n - 1) + 1).min(n - 1);
+    let full = Self {
+      t: t[first..=last].to_vec(),
+      survival: survival[first..=last].to_vec(),
+    };
+    if full.t.len() <= SURVIVAL_POINTS {
+      return full;
+    }
+    let (start, end) = (full.t[0], full.t[full.t.len() - 1]);
+    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
+    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
+    let survival = t.iter().map(|&x| full.at(x)).collect();
+    Self { t, survival }
+  }
+
   fn at(&self, x: f64) -> f64 {
     let n = self.t.len();
     if x < self.t[0] {
@@ -72,7 +102,7 @@ impl LineageExpectation {
     posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
     bad_branches: &BTreeMap<GraphNodeKey, bool>,
   ) -> Result<Arc<Self>, Report> {
-    let mut weighted = Vec::new();
+    let mut weights = BTreeMap::new();
     let mut always_surviving = 0.0;
     let mut nodes = BTreeMap::new();
     for node in graph.get_nodes() {
@@ -89,7 +119,7 @@ impl LineageExpectation {
         None => None,
       };
       let survival = match (survival, entry.and_then(|p| p.time)) {
-        (Some((t, survival)), _) => NodeSurvival { t, survival },
+        (Some((t, survival)), _) => NodeSurvival::compact(t, survival),
         (None, Some(time)) => NodeSurvival {
           t: vec![time],
           survival: vec![0.0],
@@ -99,9 +129,10 @@ impl LineageExpectation {
           continue;
         },
       };
-      weighted.push((weight, survival.clone()));
+      weights.insert(key, weight);
       nodes.insert(key, survival);
     }
+    let weighted: Vec<(f64, &NodeSurvival)> = nodes.iter().map(|(key, survival)| (weights[key], survival)).collect();
     if weighted.is_empty() {
       return make_error!("Cannot build the expected lineage count: no node has a time");
     }
@@ -119,7 +150,7 @@ impl LineageExpectation {
 
     let mut expected = vec![always_surviving; grid.len()];
     let mut surviving_from = vec![0.0; grid.len() + 1];
-    for (weight, survival) in &weighted {
+    for &(weight, survival) in &weighted {
       let first = grid.partition_point(|&g| g < survival.t[0]);
       let last = grid.partition_point(|&g| g < survival.t[survival.t.len() - 1]);
       surviving_from[first] += weight;
@@ -133,6 +164,7 @@ impl LineageExpectation {
       expected[i] += running;
     }
     let expected_before = always_surviving + weighted.iter().map(|(w, _)| w).sum::<f64>();
+    drop(weighted);
 
     Ok(Arc::new(Self {
       grid,
