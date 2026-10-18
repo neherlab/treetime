@@ -18,7 +18,6 @@ roots = [
   "packages/treetime/src/timetree/__tests__/__fixtures__",
   "packages/treetime/src/timetree/inference/__tests__/__fixtures__",
   "packages/treetime/src/timetree/optimization/__tests__/__fixtures__",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__",
   "packages/app-output/src/__tests__/schemas",
   "packages/treetime/proptest-regressions",
 ]
@@ -151,53 +150,6 @@ normalization = "parsed JSON compared with per-assertion float tolerance in the 
 files = [
   "packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_inputs.json",
   "packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_outputs.json",
-]
-
-[[reference]]
-name = "gm_total_lh"
-kind = "golden-master"
-test = "packages/treetime/src/coalescent/__tests__/test_gm_total_lh.rs"
-origin = "TreeTime v0 (Python) merger_model.total_LH()"
-revision = "vendored in-repo reference at packages/legacy/treetime"
-capture = "./dev/docker/python python packages/treetime/src/coalescent/__tests__/__fixtures__/gm_total_lh_capture"
-normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
-files = ["packages/treetime/src/coalescent/__tests__/__fixtures__/gm_total_lh.json"]
-
-[[reference]]
-name = "gm_coalescent"
-kind = "golden-master"
-test = "packages/treetime/src/coalescent/__tests__/test_gm_coalescent.rs"
-origin = "TreeTime v0 (Python) coalescent, per dataset and Tc"
-revision = "vendored in-repo reference at packages/legacy/treetime"
-capture = "./dev/docker/python python packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_capture"
-normalization = "each Tc snapshot is compared as parsed JSON with float tolerance; the tree and dates are read indirectly via tree_path and metadata_path inside each snapshot"
-files = [
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc1.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc10.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tc100.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_tree.nwk",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_dengue_20_dates.tsv",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc0.1.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc1.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tc10.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_tree.nwk",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_ebola_20_dates.tsv",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc0.01.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc0.1.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc1.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tc10.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_tree.nwk",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_flu_h3n2_20_dates.tsv",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc0.1.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc1.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tc10.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_tree.nwk",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_mpox_clade_ii_20_dates.tsv",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc1.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc10.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tc100.0.json",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_tree.nwk",
-  "packages/treetime/src/coalescent/__tests__/__fixtures__/gm_coalescent_rsv_a_20_dates.tsv",
 ]
 
 [[reference]]

@@ -1,18 +1,28 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::__tests__::helpers::tests::{coalescent_node_times, constant_skyline, graph_with_dates};
+  use crate::coalescent::__tests__::helpers::tests::{constant_skyline, expectation, graph_with_dates};
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
-  use crate::coalescent::total_lh::compute_coalescent_total_lh;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use eyre::Report;
   use maplit::btreemap;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_distribution::Distribution;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_utils::assert_error;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
+
+  fn star_tree_dates() -> BTreeMap<String, Option<DateConstraint>> {
+    btreemap! {
+      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
+      "a".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "b".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "c".to_owned() => Some(DateConstraint::exact(2010.0)),
+      "d".to_owned() => Some(DateConstraint::exact(2010.0)),
+    }
+  }
 
   fn small_tree_dates() -> BTreeMap<String, Option<DateConstraint>> {
     scaled_small_tree_dates(1.0)
@@ -37,14 +47,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(
-      &graph,
-      &params,
-      &coalescent_node_times(&graph, &constraints),
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
+    let result = optimize_skyline(&params, &expectation(&graph, &constraints), &NoopProgress)?;
 
     assert_eq!(6, result.segment_boundaries.len());
     assert_eq!(5, result.tc_schedule.values().len());
@@ -74,7 +77,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    assert_error!(optimize_skyline(&graph, &params, &coalescent_node_times(&graph, &constraints), None, &BTreeMap::new(), &NoopProgress), expected);
+    assert_error!(optimize_skyline(&params, &expectation(&graph, &constraints), &NoopProgress), expected);
     Ok(())
   }
 
@@ -86,14 +89,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(
-      &graph,
-      &params,
-      &coalescent_node_times(&graph, &constraints),
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
+    let result = optimize_skyline(&params, &expectation(&graph, &constraints), &NoopProgress)?;
 
     for &tc in result.tc_schedule.values() {
       assert!(
@@ -113,14 +109,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(
-      &graph,
-      &params,
-      &coalescent_node_times(&graph, &constraints),
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
+    let result = optimize_skyline(&params, &expectation(&graph, &constraints), &NoopProgress)?;
 
     let t_min = result.segment_boundaries[0];
     let t_max = result.segment_boundaries[result.segment_boundaries.len() - 1];
@@ -160,14 +149,7 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(
-      &graph,
-      &params,
-      &coalescent_node_times(&graph, &constraints),
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
+    let result = optimize_skyline(&params, &expectation(&graph, &constraints), &NoopProgress)?;
 
     assert_eq!(10, result.tc_schedule.values().len());
     assert!(result.log_likelihood.value().is_finite());
@@ -175,64 +157,44 @@ mod tests {
     Ok(())
   }
 
+  // Four tips at 2010 merge at a root at 2000: four lineages over ten years, so the pair-rate integral is
+  // I = 6 * 10 = 60 and the root holds M = 3 mergers. The constant-Tc estimate is I / M = 20 and the reported expected
+  // log-likelihood -I / Tc - M ln Tc = -3 - 3 ln 20.
   #[test]
-  fn test_skyline_reported_likelihood_matches_model_evaluation() -> Result<(), Report> {
-    let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
-    let node_times = coalescent_node_times(&graph, &constraints);
-    let params = SkylineParams {
-      n_points: 4,
-      ..SkylineParams::default()
-    };
+  fn test_skyline_constant_tc_of_a_star_tree_is_the_kingman_estimate() -> Result<(), Report> {
+    let (graph, constraints) = graph_with_dates("(a:1,b:1,c:1,d:1)root:1;", &star_tree_dates())?;
 
-    let result = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
-    let expected = compute_coalescent_total_lh(
-      &graph,
-      &result.tc_distribution,
-      &node_times,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?
-    .value();
+    let result = constant_skyline(&expectation(&graph, &constraints))?;
 
-    pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
+    approx::assert_relative_eq!(20.0, result.tc_schedule.values()[0], max_relative = 1e-3);
+    approx::assert_relative_eq!(
+      -3.0 - 3.0 * 20.0_f64.ln(),
+      result.log_likelihood.value(),
+      max_relative = 1e-3
+    );
     Ok(())
   }
 
+  // Point times of the star tree: four lineages between the root (2000) and the tips (2010), so the merger rate of a
+  // lineage is (4 - 1) / (2 Tc) there; before the root one lineage is left and the floor 1/2 gives 1 / (4 Tc)
   #[test]
-  fn test_skyline_reported_likelihood_matches_per_edge_cost_for_polytomy() -> Result<(), Report> {
-    const TREE_NWK: &str = "(a:1,b:1,c:1,d:1)root:1;";
-    let dates = btreemap! {
-      "root".to_owned() => Some(DateConstraint::exact(2000.0)),
-      "a".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "b".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "c".to_owned() => Some(DateConstraint::exact(2010.0)),
-      "d".to_owned() => Some(DateConstraint::exact(2010.0)),
-    };
-    let (graph, constraints) = graph_with_dates(TREE_NWK, &dates)?;
-    let node_times = coalescent_node_times(&graph, &constraints);
-    let params = SkylineParams {
-      n_points: 2,
-      ..SkylineParams::default()
-    };
+  fn test_skyline_merger_rate_and_span_of_a_star_tree_follow_the_lineage_count() -> Result<(), Report> {
+    let (graph, constraints) = graph_with_dates("(a:1,b:1,c:1,d:1)root:1;", &star_tree_dates())?;
+    let expectation = expectation(&graph, &constraints);
+    let tc = 2.0;
 
-    let result = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
-    let expected = compute_coalescent_total_lh(
-      &graph,
-      &result.tc_distribution,
-      &node_times,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?
-    .value();
+    let rate = expectation.merger_rate_schedule(&Distribution::constant(tc))?;
 
-    pretty_assert_ulps_eq!(expected, result.log_likelihood.value(), max_ulps = 10);
+    assert_eq!((2000.0, 2010.0), expectation.span());
+    pretty_assert_ulps_eq!(3.0 / (2.0 * tc), rate.eval(2005.0), max_ulps = 4);
+    pretty_assert_ulps_eq!(0.5 / (2.0 * tc), rate.eval(1990.0), max_ulps = 4);
     Ok(())
   }
 
   #[test]
   fn test_skyline_beats_or_matches_constant_tc() -> Result<(), Report> {
     let (graph, constraints) = graph_with_dates(SMALL_TREE_NWK, &small_tree_dates())?;
-    let node_times = coalescent_node_times(&graph, &constraints);
+    let node_times = expectation(&graph, &constraints);
     let params = SkylineParams {
       n_points: 4,
       stiffness: 1e-6,
@@ -240,9 +202,9 @@ mod tests {
       ..SkylineParams::default()
     };
 
-    let result = optimize_skyline(&graph, &params, &node_times, None, &BTreeMap::new(), &NoopProgress)?;
+    let result = optimize_skyline(&params, &node_times, &NoopProgress)?;
 
-    let constant_tc = constant_skyline(&graph, &node_times)?;
+    let constant_tc = constant_skyline(&node_times)?;
     assert!(
       result.log_likelihood.value() >= constant_tc.log_likelihood.value() - 1e-10,
       "skyline LL {} should be >= constant-Tc LL {}",
@@ -266,22 +228,8 @@ mod tests {
 
     let (g1, c1) = graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(1.0))?;
     let (gs, cs) = graph_with_dates(SMALL_TREE_NWK, &scaled_small_tree_dates(s))?;
-    let r1 = optimize_skyline(
-      &g1,
-      &params,
-      &coalescent_node_times(&g1, &c1),
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
-    let rs = optimize_skyline(
-      &gs,
-      &params,
-      &coalescent_node_times(&gs, &cs),
-      None,
-      &BTreeMap::new(),
-      &NoopProgress,
-    )?;
+    let r1 = optimize_skyline(&params, &expectation(&g1, &c1), &NoopProgress)?;
+    let rs = optimize_skyline(&params, &expectation(&gs, &cs), &NoopProgress)?;
 
     for i in 0..params.n_points {
       let expected = s * r1.tc_schedule.values()[i];

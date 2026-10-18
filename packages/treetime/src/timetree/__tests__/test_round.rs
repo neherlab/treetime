@@ -6,8 +6,6 @@ mod tests {
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
   use crate::clock::reroot::RerootParams;
-  use crate::coalescent::coalescent::CoalescentModel;
-  use crate::coalescent::lineage_counts::compute_lineage_counts;
   use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -31,7 +29,7 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use maplit::btreemap;
-  use ndarray::array;
+
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_distribution::Distribution;
@@ -39,7 +37,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::tree_view::TreeView;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
+
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
@@ -413,18 +411,13 @@ mod tests {
       params: &TimetreeParams,
     ) -> Result<(RoundState, RoundOutcome), Report> {
       let pinned_tc = Distribution::constant(ROUND_TEST_TC);
-      let coalescent = CoalescentModel::new(
-        &compute_lineage_counts(&state.graph, &state.time_inference.coalescent_node_times())?,
-        coalescent_tc.unwrap_or(&pinned_tc),
-      )?;
       let expectation = LineageExpectation::from_posterior(
         &state.graph,
         &state.time_inference.posterior,
         &state.time_inference.bad_branches,
       )?;
       let prior = CoalescentPrior::new(&expectation, coalescent_tc.unwrap_or(&pinned_tc))?;
-      let merger_rate =
-        coalescent.branch_merger_rate_schedule(&PiecewiseConstantFn::new(array![], array![ROUND_TEST_TC]))?;
+      let merger_rate = expectation.merger_rate_schedule(&pinned_tc)?;
       let leaf_bad_branches = bad_leaves(&state.graph, &context.date_constraints, &BTreeSet::new());
       let outliers = BTreeSet::new();
       let inputs = RoundInputs {

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use super::super::helpers::tests::{coalescent_node_times, constant_skyline, setup_graph, tc};
+  use super::super::helpers::tests::{constant_skyline, expectation, setup_graph, tc};
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use helpers::{tree3, tree3_analytic_tc};
@@ -8,7 +8,7 @@ mod tests {
   #[test]
   fn test_skyline_constant_returns_positive_finite_optimum() -> Result<(), Report> {
     let (graph, names, constraints) = setup_graph()?;
-    let result = constant_skyline(&graph, &coalescent_node_times(&graph, &constraints))?;
+    let result = constant_skyline(&expectation(&graph, &constraints))?;
 
     assert!(tc(&result) > 0.0, "Optimized Tc should be positive");
     assert!(tc(&result).is_finite(), "Optimized Tc should be finite");
@@ -21,10 +21,10 @@ mod tests {
   #[expect(clippy::float_cmp, reason = "determinism requires bit-identical results")]
   fn test_skyline_constant_is_deterministic() -> Result<(), Report> {
     let (graph, names, constraints) = setup_graph()?;
-    let node_times = coalescent_node_times(&graph, &constraints);
+    let node_times = expectation(&graph, &constraints);
 
-    let a = constant_skyline(&graph, &node_times)?;
-    let b = constant_skyline(&graph, &node_times)?;
+    let a = constant_skyline(&node_times)?;
+    let b = constant_skyline(&node_times)?;
 
     assert_eq!(tc(&a), tc(&b));
     assert_eq!(a.log_likelihood.value(), b.log_likelihood.value());
@@ -36,8 +36,9 @@ mod tests {
   fn test_skyline_constant_equals_analytic_i_over_m() -> Result<(), Report> {
     for &(t_x, t_tip) in &[(2005.0, 2010.0), (2003.0, 2015.0), (2010.0, 2020.0)] {
       let (graph, constraints) = tree3(2000.0, t_x, t_tip)?;
-      let result = constant_skyline(&graph, &coalescent_node_times(&graph, &constraints))?;
-      pretty_assert_ulps_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_ulps = 8);
+      let result = constant_skyline(&expectation(&graph, &constraints))?;
+      // the expected statistics integrate k(t) on a grid of 4001 points, so a step of k costs half a cell
+      approx::assert_relative_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_relative = 1e-4);
     }
 
     Ok(())
@@ -46,7 +47,7 @@ mod tests {
   #[test]
   fn test_skyline_constant_confidence_matches_analytic_curvature() -> Result<(), Report> {
     let (graph, constraints) = tree3(2000.0, 2005.0, 2010.0)?;
-    let result = constant_skyline(&graph, &coalescent_node_times(&graph, &constraints))?;
+    let result = constant_skyline(&expectation(&graph, &constraints))?;
 
     let expected_log_tc_variance: f64 = 0.5;
     let expected_factor = (2.0 * expected_log_tc_variance.sqrt()).exp();
@@ -67,12 +68,9 @@ mod tests {
   #[test]
   fn test_skyline_constant_scale_equivariant() -> Result<(), Report> {
     let (base_graph, base_constraints) = tree3(2000.0, 2005.0, 2010.0)?;
-    let base = constant_skyline(&base_graph, &coalescent_node_times(&base_graph, &base_constraints))?;
+    let base = constant_skyline(&expectation(&base_graph, &base_constraints))?;
     let (scaled_graph, scaled_constraints) = tree3(2000.0, 2010.0, 2020.0)?;
-    let scaled = constant_skyline(
-      &scaled_graph,
-      &coalescent_node_times(&scaled_graph, &scaled_constraints),
-    )?;
+    let scaled = constant_skyline(&expectation(&scaled_graph, &scaled_constraints))?;
 
     pretty_assert_ulps_eq!(2.0 * tc(&base), tc(&scaled), max_ulps = 8);
 
@@ -83,7 +81,7 @@ mod tests {
   fn test_skyline_constant_degenerate_tree_errors() -> Result<(), Report> {
     let (graph, constraints) = tree3(2000.0, 2000.0, 2000.0)?;
     assert!(
-      constant_skyline(&graph, &coalescent_node_times(&graph, &constraints)).is_err(),
+      constant_skyline(&expectation(&graph, &constraints)).is_err(),
       "a zero-span tree must not yield a coalescent Tc"
     );
 

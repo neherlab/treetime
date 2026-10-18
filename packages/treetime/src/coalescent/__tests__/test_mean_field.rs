@@ -128,10 +128,13 @@ mod tests {
     #[case] std: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    let (graph, names, expectation) = helpers::gaussian_cherry(mean, std, &[])?;
-    let root = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
+    let (_, _, expectation) = helpers::gaussian_cherry(mean, std, &[])?;
 
-    pretty_assert_abs_diff_eq!(expected, expectation.median_times()[&root], epsilon = 2e-3 * std);
+    // the root's merger splits in half at its median
+    let (_, mergers) = expectation.segment_statistics(&[expected - 100.0, expected, expected + 100.0]);
+
+    // the truncated density near the median reaches about 5 per year, against a survival grid of 0.012 years
+    pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 2e-3);
     Ok(())
   }
 
@@ -147,21 +150,15 @@ mod tests {
     Ok(())
   }
 
+  // An excluded tip does not bound its ancestors: with B (at 2000) excluded, the root N(2005, 1) is truncated at A
+  // (2010), so its merger falls after 2000; with B included the truncation at 2000 would put it all before
   #[test]
-  fn test_mean_field_gaussian_seed_leaves_out_excluded_and_undated_tips() -> Result<(), Report> {
-    let (graph, names, expectation) = helpers::gaussian_cherry(2000.0, 2.0, &["B"])?;
-    let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+  fn test_mean_field_gaussian_seed_truncates_at_the_earliest_included_tip() -> Result<(), Report> {
+    let (_, _, expectation) = helpers::gaussian_cherry_dated(2005.0, 1.0, [2010.0, 2000.0], &["B"])?;
 
-    let medians = expectation.median_times();
+    let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
 
-    assert_eq!(
-      (true, false, true),
-      (
-        medians.contains_key(&key("A")),
-        medians.contains_key(&key("B")),
-        medians.contains_key(&key("root"))
-      )
-    );
+    pretty_assert_abs_diff_eq!(1.0, mergers[1], epsilon = 1e-4);
     Ok(())
   }
 
@@ -175,12 +172,26 @@ mod tests {
       std: f64,
       excluded: &[&str],
     ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, Arc<LineageExpectation>), Report> {
+      gaussian_cherry_dated(mean, std, [2010.0, 2010.0], excluded)
+    }
+
+    /// Cherry `(A, B)root` with the tips at `dates` and the root marginal N(`mean`, `std`^2)
+    pub(super) fn gaussian_cherry_dated(
+      mean: f64,
+      std: f64,
+      dates: [f64; 2],
+      excluded: &[&str],
+    ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, Arc<LineageExpectation>), Report> {
       let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
       let names = parsed.names();
       let graph = parsed.graph;
       let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
       let marginals = BTreeMap::from([(key("root"), NodeTimeGaussian { mean, std })]);
-      let tip_times = BTreeMap::from([(key("A"), Some(2010.0)), (key("B"), Some(2010.0)), (key("root"), None)]);
+      let tip_times = BTreeMap::from([
+        (key("A"), Some(dates[0])),
+        (key("B"), Some(dates[1])),
+        (key("root"), None),
+      ]);
       let excluded = excluded.iter().map(|name| (key(name), true)).collect();
       let expectation = LineageExpectation::from_gaussian(&graph, &marginals, &tip_times, &excluded)?;
       Ok((graph, names, expectation))
