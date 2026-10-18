@@ -39,8 +39,9 @@ pub(crate) struct NodeTimeGaussian {
 #[derive(Clone, Debug)]
 pub(crate) struct GaussianClock {
   /// Standard deviation of the substitution rate, per site and unit time
-  pub rate_std: f64,
-  pub root_time_std: f64,
+  /// `None` when the information matrix of rate and root time is not positive definite
+  pub rate_std: Option<f64>,
+  pub root_time_std: Option<f64>,
   /// Marginal time of every internal node that has a dated tip below it
   pub node_times: BTreeMap<GraphNodeKey, NodeTimeGaussian>,
 }
@@ -195,7 +196,7 @@ pub(crate) fn gaussian_clock(
   };
   let a = below.values().map(|node| node.a).sum();
   let kappa = tip_branches.to_f64_exact();
-  let (eta_std, root_time_std) = rate_and_root_std(a, kappa, root, eta)?;
+  let stds = rate_and_root_std(a, kappa, root, eta);
 
   let node_times = graph
     .get_nodes()
@@ -213,8 +214,8 @@ pub(crate) fn gaussian_clock(
     .collect();
 
   Ok(GaussianClock {
-    rate_std: eta_std * substitutions / (events * sequence_length),
-    root_time_std,
+    rate_std: stds.map(|(eta_std, _)| eta_std * substitutions / (events * sequence_length)),
+    root_time_std: stds.map(|(_, root_std)| root_std),
     node_times,
   })
 }
@@ -294,13 +295,10 @@ fn forward(
 /// `kappa ln eta - A' eta^2 / 2 + B' eta - C' / 2` with `A' = A + (t_r - S_r)^2 / W_r`, at `t_r = S_r - R_r / eta`:
 ///
 /// `I = [[kappa / eta^2 + A + R_r^2 / (eta^2 W_r), -R_r / W_r], [-R_r / W_r, eta^2 / W_r]]`, `cov = I^-1`.
-fn rate_and_root_std(a: f64, kappa: f64, root: Message, eta: f64) -> Result<(f64, f64), Report> {
+fn rate_and_root_std(a: f64, kappa: f64, root: Message, eta: f64) -> Option<(f64, f64)> {
   let i_rate = kappa / eta.powi(2) + a + root.r.powi(2) / (eta.powi(2) * root.w);
   let i_cross = -root.r / root.w;
   let i_root = eta.powi(2) / root.w;
   let det = i_rate * i_root - i_cross.powi(2);
-  if !(det > 0.0 && i_rate > 0.0) {
-    return make_error!("Gaussian clock information matrix is not positive definite");
-  }
-  Ok(((i_root / det).sqrt(), (i_rate / det).sqrt()))
+  (det > 0.0 && i_rate > 0.0).then(|| ((i_root / det).sqrt(), (i_rate / det).sqrt()))
 }
