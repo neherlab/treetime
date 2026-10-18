@@ -1,8 +1,9 @@
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
+use crate::boundary_behavior::DEFAULT_TAIL_FIT_POINTS;
 use crate::grid::{Grid, from_count};
 use crate::grid_edge::GridEdge;
-use crate::hard_approach_law::Side;
+use crate::hard_approach_law::{HardApproachLaw, Side};
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::max_grid_points::MaxGridPoints;
 use approx::{UlpsEq, ulps_eq};
@@ -187,7 +188,7 @@ impl<T: InterpElem> GridFn<T> {
     }
 
     let idx = self.grid.find_interval_index(xi);
-    Ok(self.interpolate_at(xi, idx))
+    Ok(self.interpolate_at(xi, idx, left_extrap, right_extrap))
   }
 
   fn edge(&self, side: Side) -> GridEdge
@@ -234,10 +235,16 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  fn interpolate_at(&self, q: T, idx: usize) -> T
+  /// Linear interpolation within cell `idx`. A query within rounding of a grid point takes its stored value. A cell
+  /// with one infinite end (zero probability for negative-log values) is a hard boundary inside the grid: it follows
+  /// the power law `y(t) = y_f - b ln(|t - t_b| / |t_f - t_b|)` of `HardApproachLaw`, anchored at the finite end
+  /// `(t_f, y_f)`, with the side's stored law when it ends at that point and a fit to the finite points beyond the
+  /// anchor otherwise. A cell with two infinite ends stays infinite.
+  fn interpolate_at(&self, q: T, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> T
   where
     T: Float,
   {
+    const NODE_ROUNDING: f64 = 1e-9;
     let n = self.grid.n_points();
     if idx >= n - 1 {
       return self.y[n - 1];
@@ -246,7 +253,55 @@ impl<T: InterpElem> GridFn<T> {
     let y0 = self.y[idx];
     let y1 = self.y[idx + 1];
     let t = (q - x0) / self.grid.dx();
-    y0 + t * (y1 - y0)
+    let t_f64: f64 = t.into();
+    if t_f64 <= NODE_ROUNDING {
+      return y0;
+    }
+    if t_f64 >= 1.0 - NODE_ROUNDING {
+      return y1;
+    }
+    match (y0.is_infinite(), y1.is_infinite()) {
+      (false, false) => y0 + t * (y1 - y0),
+      (true, true) => y0.max(y1),
+      (true, false) => self.hard_cell_value(q, idx, idx + 1, left, right),
+      (false, true) => self.hard_cell_value(q, idx + 1, idx, left, right),
+    }
+  }
+
+  fn hard_cell_value(&self, q: T, boundary: usize, anchor: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> T
+  where
+    T: Float,
+  {
+    let n = self.grid.n_points();
+    let t_boundary: f64 = self.grid.x_at(boundary).into();
+    let (side, stored) = if boundary > anchor {
+      (Side::Right, (boundary == n - 1).then_some(right))
+    } else {
+      (Side::Left, (boundary == 0).then_some(left))
+    };
+    let stored_law = match stored {
+      Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => Some(law),
+      _ => None,
+    };
+    let law = stored_law.unwrap_or_else(|| {
+      let points: Vec<(f64, f64)> = (0..DEFAULT_TAIL_FIT_POINTS)
+        .map_while(|k| match side {
+          Side::Right => anchor.checked_sub(k),
+          Side::Left => Some(anchor + k).filter(|&i| i < n),
+        })
+        .map(|i| (self.grid.x_at(i).into(), self.y[i].into()))
+        .take_while(|(_, y): &(f64, f64)| y.is_finite())
+        .collect();
+      HardApproachLaw::from_points(t_boundary, side, &points).unwrap_or(HardApproachLaw {
+        t_hard: t_boundary,
+        b: 0.0,
+      })
+    });
+    let edge = GridEdge {
+      t: self.grid.x_at(anchor).into(),
+      y: self.y[anchor].into(),
+    };
+    <T as From<f64>>::from(law.eval(edge, q.into()))
   }
 
   #[must_use]

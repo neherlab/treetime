@@ -13,14 +13,26 @@ impl HardApproachLaw {
   pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
-    let (xs, ys): (Vec<f64>, Vec<f64>) = (0..n_fit)
+    let points: Vec<(f64, f64)> = (0..n_fit)
       .map(|i| match side {
         Side::Left => i,
         Side::Right => n - 1 - i,
       })
-      .filter_map(|idx| {
-        let y = grid_fn.y()[idx];
-        let dt = (grid_fn.grid().x_at(idx) - t_hard).abs();
+      .map(|idx| (grid_fn.grid().x_at(idx), grid_fn.y()[idx]))
+      .collect();
+    Self::from_points(t_hard, side, &points)
+  }
+
+  /// Fits `y(t) = c - b ln|t - t_hard|` to the finite points `(t, y)` off the boundary, with `b >= 0`
+  ///
+  /// # Errors
+  ///
+  /// Fewer than two finite points off the boundary, or a non-finite exponent.
+  pub fn from_points(t_hard: f64, side: Side, points: &[(f64, f64)]) -> Result<Self, Report> {
+    let (xs, ys): (Vec<f64>, Vec<f64>) = points
+      .iter()
+      .filter_map(|&(t, y)| {
+        let dt = (t - t_hard).abs();
         (y.is_finite() && dt > 0.0).then(|| (dt.ln(), y))
       })
       .collect();
