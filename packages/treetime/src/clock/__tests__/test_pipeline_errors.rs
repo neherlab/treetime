@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::cancel::NoopCancel;
-  use crate::clock::clock_regression::ClockVarianceParams;
-  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+  use crate::clock::find_best_root::params::RerootSpec;
   use crate::clock::pipeline::{self, ClockInput, ClockParams};
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
@@ -34,11 +33,9 @@ mod tests {
       &names,
     );
     let params = ClockParams {
-      clock_params: ClockVarianceParams::default(),
       clock_filter: 3.0,
       keep_root: true,
       allow_negative_rate: false,
-      branch_params: BranchPointOptimizationParams::default(),
       reroot_spec: RerootSpec::default(),
     };
     let input = ClockInput {

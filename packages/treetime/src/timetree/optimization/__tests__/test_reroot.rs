@@ -2,9 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
+  use crate::clock::clock_regression::ClockFit;
   use crate::clock::date_constraints::DateConstraints;
-  use crate::clock::find_best_root::params::{BranchPointOptimizationParams, RerootSpec};
+  use crate::clock::find_best_root::params::RerootSpec;
   use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
@@ -107,8 +107,6 @@ mod tests {
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionSet::Sparse(vec![SparseReconstruction::seeded(partition, gtr, node_states)]);
-
-    let clock_params = ClockVarianceParams::default();
     let branch_model = BranchModel::Marginal(sparse_partition);
 
     let initial_leaf_count = graph.get_leaves().count();
@@ -125,9 +123,7 @@ mod tests {
       &constraints,
       &RerootFitParams {
         outliers: &BTreeSet::new(),
-        clock_params: &clock_params,
         clock_rate: None,
-        branch_params: &BranchPointOptimizationParams::default(),
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
       },
@@ -464,8 +460,6 @@ mod tests {
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
     let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
     let sparse_partition = PartitionSet::Sparse(vec![SparseReconstruction::seeded(partition, gtr, node_states)]);
-
-    let clock_params = ClockVarianceParams::default();
     let branch_model = BranchModel::Marginal(sparse_partition);
 
     let initial_leaf_count = graph.get_leaves().count();
@@ -493,9 +487,7 @@ mod tests {
       &constraints,
       &RerootFitParams {
         outliers: &BTreeSet::new(),
-        clock_params: &clock_params,
         clock_rate: None,
-        branch_params: &BranchPointOptimizationParams::default(),
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
       },
@@ -525,9 +517,7 @@ mod tests {
       &constraints,
       &RerootFitParams {
         outliers: &BTreeSet::new(),
-        clock_params: &clock_params,
         clock_rate: Some(clock_model_1.clock_rate()),
-        branch_params: &BranchPointOptimizationParams::default(),
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
       },

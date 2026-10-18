@@ -4,8 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::cancel::NoopCancel;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_regression::{ClockFit, ClockVarianceParams};
-  use crate::clock::find_best_root::params::BranchPointOptimizationParams;
+  use crate::clock::clock_regression::ClockFit;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::partition::set::PartitionSet;
@@ -68,8 +67,6 @@ mod tests {
       final_sequences: FinalSequences::Skip,
       time_marginal: TimeMarginalMode::Never,
       date_constraints,
-      covariation_clock_params: ClockVarianceParams::default(),
-      branch_params: BranchPointOptimizationParams::default(),
     };
     let params = marginal_timetree_params();
     let inputs = PreLoopInputs {
