@@ -235,6 +235,19 @@ fn prepare_inputs(
     params.branch_length_mode, params.keep_root
   );
 
+  let sequence_length = match alignment_length {
+    Some(length) => length,
+    None if params.branch_length_mode == BranchLengthMode::Marginal => {
+      return Err(OperationError::InvalidInput(make_report!(
+        "Alignment required for marginal reconstruction"
+      )));
+    },
+    None => params.sequence_length.filter(|&length| length > 0).ok_or_else(|| {
+      OperationError::InvalidParams(make_report!(
+        "--sequence-length is required without an alignment: the time inference needs the sequence length"
+      ))
+    })?,
+  };
   let time_marginal = compute_effective_time_marginal(params.time_marginal, params.confidence, log);
 
   let date_constraints = if let Some(dates) = dates {
@@ -257,6 +270,7 @@ fn prepare_inputs(
     final_sequences,
     time_marginal,
     date_constraints,
+    sequence_length,
   })
 }
 
@@ -352,7 +366,7 @@ fn report_coalescent_size(
 /// Rate uncertainty of the Gaussian timetree at the final rate, or `None` when the sequence length is unknown or the
 /// approximation degenerates
 fn gaussian_rate_std(inputs: &RoundInputs<'_>, state: &RoundState, log: &dyn LogSink) -> Result<Option<f64>, Report> {
-  Ok(timetree_gaussian_clock(inputs, state, log)?.map(|clock| clock.rate_std))
+  Ok(timetree_gaussian_clock(inputs, state, log)?.and_then(|clock| clock.rate_std))
 }
 
 fn refine_final_times(
