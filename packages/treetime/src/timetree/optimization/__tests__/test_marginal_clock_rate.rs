@@ -52,12 +52,17 @@ mod tests {
     let (below, at, above) = (curve(-h), curve(0.0), curve(h));
     let target = h * (below - above) / (2.0 * (above + below - 2.0 * at));
     assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-2);
-    assert_abs_diff_eq!(reference * (STEP_FRACTION * target).exp(), step.clock_rate, epsilon = 1e-2);
+    assert_abs_diff_eq!(
+      reference * (STEP_FRACTION * target).exp(),
+      step.clock_rate,
+      epsilon = 1e-2
+    );
     Ok(())
   }
 
   #[test]
-  fn test_marginal_clock_rate_without_a_maximum_steps_toward_the_window_bound_of_the_better_probe() -> Result<(), Report> {
+  fn test_marginal_clock_rate_without_a_maximum_steps_toward_the_window_bound_of_the_better_probe() -> Result<(), Report>
+  {
     // at mu = 1 the curve -ln(mu) - (mu - 3)^2 is convex in ln(mu) over the probes and rises toward faster rates
     let setup = helpers::cherry()?;
     let step = step_marginal_clock_rate(&setup.inputs())?;
