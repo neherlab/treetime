@@ -6,28 +6,18 @@ mod tests {
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::pipeline;
   use crate::cancel::NoopCancel;
+  use crate::error::OperationError;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
 
   use crate::test_utils::RecordingSeqSink;
-  use crate::test_utils::{ancestral_input_for_tree, complete_sequence_source};
+  use crate::test_utils::{TestDataset, ancestral_input_for_tree, complete_sequence_source};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use std::path::PathBuf;
-  use std::sync::LazyLock;
-  use treetime_io::fasta::fasta_read_file;
-  use treetime_io::nwk::nwk_read_file;
-  use treetime_primitives::AlignmentRecord;
-
-  static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(|p| p.parent())
-      .expect("Failed to find project root")
-      .to_path_buf()
-  });
+  use treetime_io::nwk::nwk_read;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_smoke_ancestral_sample_from_profile_root_reproducible() -> Result<(), Report> {
@@ -40,13 +30,8 @@ mod tests {
   #[test]
   fn test_sample_from_profile_rejected_for_parsimony() {
     let alphabet = Alphabet::default();
-    let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk")).unwrap();
-    let sequences: Vec<AlignmentRecord> =
-      fasta_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz"), &alphabet)
-        .unwrap()
-        .into_iter()
-        .map(AlignmentRecord::from)
-        .collect();
+    let parse = nwk_read(TestDataset::Flu20.tree().as_bytes()).unwrap();
+    let sequences = TestDataset::Flu20.alignment().unwrap();
 
     let params = AncestralParams {
       method: MethodAncestral::Parsimony,
@@ -64,12 +49,11 @@ mod tests {
     let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta").unwrap();
     let input = ancestral_input_for_tree(parse, vec![source]);
 
-    let result = pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress);
-    assert!(result.is_err(), "parsimony with posterior sampling must be rejected");
-    let err = result.err().unwrap().to_string();
-    assert!(
-      err.contains("requires --method-anc=marginal"),
-      "expected sampling/method guard error, got: {err}"
+    let result = pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress)
+      .map_err(OperationError::into_report);
+    assert_error!(
+      result,
+      "--sample-from-profile=Root requires --method-anc=marginal. Posterior sampling is only defined for marginal reconstruction; Parsimony has no posterior profile to sample."
     );
   }
 
@@ -89,12 +73,8 @@ mod tests {
 
     pub(super) fn run_sampled(mode: SampleMode, seed: u64) -> Result<BTreeMap<String, String>, Report> {
       let alphabet = Alphabet::default();
-      let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-      let sequences: Vec<AlignmentRecord> =
-        fasta_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz"), &alphabet)?
-          .into_iter()
-          .map(AlignmentRecord::from)
-          .collect();
+      let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
+      let sequences = TestDataset::Flu20.alignment()?;
 
       let params = AncestralParams {
         method: MethodAncestral::Marginal,

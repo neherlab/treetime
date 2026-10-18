@@ -6,7 +6,7 @@ use std::io::BufReader;
 use std::ops::Range;
 use treetime_io::csv::default_name_candidates;
 use treetime_io::dates_csv::{DateConstraint, metadata_read};
-use treetime_io::fasta::fasta_read;
+use treetime_io::fasta::{FastaRecord, fasta_read};
 use treetime_primitives::{AlignmentRecord, Seq};
 use treetime_utils::io::compression::{CompressionType, Decompressor};
 use treetime_utils::make_internal_report;
@@ -17,6 +17,8 @@ pub(crate) enum TestDataset {
   Zika86,
   Ebola20,
   Flu20,
+  RsvA20,
+  Sc2_2844,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -28,11 +30,22 @@ pub(crate) enum Columns {
 struct DatasetFiles {
   tree: &'static str,
   alignment_xz: &'static [u8],
-  metadata: &'static str,
+  metadata: Option<&'static str>,
 }
 
 macro_rules! dataset_files {
   ($dir:literal) => {
+    DatasetFiles {
+      metadata: Some(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../data/",
+        $dir,
+        "/metadata.tsv"
+      ))),
+      ..dataset_files!($dir, without_metadata)
+    }
+  };
+  ($dir:literal, without_metadata) => {
     DatasetFiles {
       tree: include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/", $dir, "/tree.nwk")),
       alignment_xz: include_bytes!(concat!(
@@ -41,12 +54,7 @@ macro_rules! dataset_files {
         $dir,
         "/aln.fasta.xz"
       )),
-      metadata: include_str!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../data/",
-        $dir,
-        "/metadata.tsv"
-      )),
+      metadata: None,
     }
   };
 }
@@ -55,6 +63,13 @@ const ZIKA_20: DatasetFiles = dataset_files!("zika/20");
 const ZIKA_86: DatasetFiles = dataset_files!("zika/86");
 const EBOLA_20: DatasetFiles = dataset_files!("ebola/20");
 const FLU_20: DatasetFiles = dataset_files!("flu/h3n2/20");
+const RSV_A_20: DatasetFiles = dataset_files!("rsv/a/20");
+const SC2_2844: DatasetFiles = dataset_files!("sc2/2844", without_metadata);
+
+pub(crate) const RSV_A_20_TRANSLATION_G_XZ: &[u8] = include_bytes!(concat!(
+  env!("CARGO_MANIFEST_DIR"),
+  "/../../data/rsv/a/20/translations/G.fasta.xz"
+));
 
 impl TestDataset {
   fn files(self) -> &'static DatasetFiles {
@@ -63,6 +78,8 @@ impl TestDataset {
       Self::Zika86 => &ZIKA_86,
       Self::Ebola20 => &EBOLA_20,
       Self::Flu20 => &FLU_20,
+      Self::RsvA20 => &RSV_A_20,
+      Self::Sc2_2844 => &SC2_2844,
     }
   }
 
@@ -71,7 +88,11 @@ impl TestDataset {
   }
 
   pub(crate) fn alignment(self) -> Result<Vec<AlignmentRecord>, Report> {
-    fasta_xz_read(self.files().alignment_xz)
+    fasta_xz_read(self.alignment_xz())
+  }
+
+  pub(crate) fn alignment_xz(self) -> &'static [u8] {
+    self.files().alignment_xz
   }
 
   pub(crate) fn alignment_columns(self, selection: Columns) -> Result<Vec<AlignmentRecord>, Report> {
@@ -86,8 +107,12 @@ impl TestDataset {
   }
 
   pub(crate) fn dates(self) -> Result<BTreeMap<String, Option<DateConstraint>>, Report> {
+    let metadata = self
+      .files()
+      .metadata
+      .ok_or_else(|| make_internal_report!("The test dataset {self:?} has no metadata"))?;
     let table = metadata_read(
-      self.files().metadata.as_bytes(),
+      metadata.as_bytes(),
       None,
       &['\t'],
       &default_name_candidates(),
@@ -99,13 +124,17 @@ impl TestDataset {
 }
 
 pub(crate) fn fasta_xz_read(bytes: &[u8]) -> Result<Vec<AlignmentRecord>, Report> {
-  let decompressor = Decompressor::new(bytes, &CompressionType::Xz)?;
   Ok(
-    fasta_read(BufReader::new(decompressor), &Alphabet::default())?
+    fasta_xz_records(bytes, &Alphabet::default())?
       .into_iter()
       .map(AlignmentRecord::from)
       .collect(),
   )
+}
+
+pub(crate) fn fasta_xz_records(bytes: &[u8], alphabet: &Alphabet) -> Result<Vec<FastaRecord>, Report> {
+  let decompressor = Decompressor::new(bytes, &CompressionType::Xz)?;
+  fasta_read(BufReader::new(decompressor), alphabet)
 }
 
 pub(crate) fn get_common_length(aln: &[AlignmentRecord]) -> Result<usize, Report> {

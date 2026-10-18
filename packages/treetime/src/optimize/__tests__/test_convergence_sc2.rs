@@ -15,28 +15,15 @@ mod tests {
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
-  use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::{TestDataset, leaf_seq_inputs};
   use eyre::Report;
-  use std::path::Path;
-  use treetime_io::fasta::fasta_read_file;
-  use treetime_io::nwk::nwk_read_file;
-  use treetime_primitives::AlignmentRecord;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_convergence_sc2_sparse_converges_on_sc2_2844() -> Result<(), Report> {
-    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(|p| p.parent())
-      .unwrap();
-
     let alphabet = Alphabet::default();
-    let tree_path = workspace_root.join("data/sc2/2844/tree.nwk");
-    let aln_path = workspace_root.join("data/sc2/2844/aln.fasta.xz");
-    let aln: Vec<AlignmentRecord> = fasta_read_file(&aln_path, &alphabet)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let aln = TestDataset::Sc2_2844.alignment()?;
+    let nwk_parsed = nwk_read(TestDataset::Sc2_2844.tree().as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
@@ -90,19 +77,9 @@ mod tests {
 
   #[test]
   fn test_convergence_sc2_flu_h3n2_20_converges() -> Result<(), Report> {
-    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(|p| p.parent())
-      .unwrap();
-
     let alphabet = Alphabet::default();
-    let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
-    let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-    let aln: Vec<AlignmentRecord> = fasta_read_file(&aln_path, &alphabet)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let aln = TestDataset::Flu20.alignment()?;
+    let nwk_parsed = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
     let names = nwk_parsed.names();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;

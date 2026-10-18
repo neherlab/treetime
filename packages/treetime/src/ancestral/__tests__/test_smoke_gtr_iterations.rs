@@ -42,7 +42,7 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::test_utils::{ancestral_input_for_tree, complete_sequence_source};
+    use crate::test_utils::{TestDataset, ancestral_input_for_tree, complete_sequence_source};
 
     use crate::ancestral::params::{AncestralParams, MethodAncestral};
     use crate::cancel::NoopCancel;
@@ -52,28 +52,12 @@ mod tests {
     use crate::partition::result::PartitionResult;
     use crate::progress::NoopProgress;
     use eyre::{OptionExt, Report};
-    use std::path::PathBuf;
-    use std::sync::LazyLock;
-    use treetime_io::fasta::fasta_read_file;
-    use treetime_io::nwk::nwk_read_file;
-    use treetime_primitives::AlignmentRecord;
-
-    static PROJECT_ROOT: LazyLock<PathBuf> = LazyLock::new(|| {
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|p| p.parent())
-        .expect("Failed to find project root")
-        .to_path_buf()
-    });
+    use treetime_io::nwk::nwk_read;
 
     pub(super) fn run_flu_20(dense: Option<bool>, gtr_iterations: usize) -> Result<GTR, Report> {
       let alphabet = Alphabet::default();
-      let parse = nwk_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/tree.nwk"))?;
-      let sequences: Vec<AlignmentRecord> =
-        fasta_read_file(PROJECT_ROOT.join("data/flu/h3n2/20/aln.fasta.xz"), &alphabet)?
-          .into_iter()
-          .map(AlignmentRecord::from)
-          .collect();
+      let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
+      let sequences = TestDataset::Flu20.alignment()?;
 
       let params = AncestralParams {
         method: MethodAncestral::Marginal,

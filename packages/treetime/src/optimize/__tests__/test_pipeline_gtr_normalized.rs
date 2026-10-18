@@ -9,35 +9,20 @@ mod tests {
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::progress::NoopProgress;
-  use crate::test_utils::{leaf_seq_inputs, sequence_source};
+  use crate::test_utils::{TestDataset, leaf_seq_inputs, sequence_source};
   use approx::assert_ulps_eq;
   use eyre::Report;
-  use std::path::Path;
-  use treetime_io::fasta::fasta_read_file;
-  use treetime_io::nwk::nwk_read_file;
-  use treetime_primitives::AlignmentRecord;
+  use treetime_io::nwk::nwk_read;
 
   #[test]
   fn test_optimize_pipeline_infer_gtr_mu_normalized() -> Result<(), Report> {
-    let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR"))
-      .parent()
-      .and_then(Path::parent)
-      .expect("workspace root");
-
     let alphabet = Alphabet::default();
-    let tree_path = workspace_root.join("data/flu/h3n2/20/tree.nwk");
-    let aln_path = workspace_root.join("data/flu/h3n2/20/aln.fasta.xz");
-
-    let nwk_parsed = nwk_read_file(&tree_path)?;
+    let nwk_parsed = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let sequences: Vec<AlignmentRecord> = fasta_read_file(&aln_path, &alphabet)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let sequences = leaf_seq_inputs(&graph, &names, sequences);
+    let sequences = leaf_seq_inputs(&graph, &names, TestDataset::Flu20.alignment()?);
 
     let params = OptimizeParams {
       model: GtrModelName::Infer,

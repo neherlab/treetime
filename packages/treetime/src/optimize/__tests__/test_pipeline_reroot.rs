@@ -167,17 +167,13 @@ mod tests {
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::OptimizeParams;
     use crate::seq::alignment::NodeSeqInput;
-    use crate::test_utils::leaf_seq_inputs;
+    use crate::test_utils::{TestDataset, leaf_seq_inputs};
     use eyre::Report;
     use std::collections::BTreeMap;
-    use std::fs::read_to_string;
-    use std::path::{Path, PathBuf};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_io::fasta::fasta_read_file;
-    use treetime_io::nwk::{NwkParse, nwk_read, nwk_read_file};
-    use treetime_primitives::AlignmentRecord;
+    use treetime_io::nwk::{NwkParse, nwk_read};
 
     pub(super) type Loaded = (
       Graph,
@@ -188,12 +184,11 @@ mod tests {
     );
 
     pub(super) fn load() -> Result<Loaded, Report> {
-      loaded(nwk_read_file(workspace_root().join("data/flu/h3n2/20/tree.nwk"))?)
+      loaded(nwk_read(TestDataset::Flu20.tree().as_bytes())?)
     }
 
     pub(super) fn load_with_unary_root() -> Result<Loaded, Report> {
-      let newick = read_to_string(workspace_root().join("data/flu/h3n2/20/tree.nwk"))?;
-      let subtree = newick.trim_end().trim_end_matches(';');
+      let subtree = TestDataset::Flu20.tree().trim_end().trim_end_matches(';');
       loaded(nwk_read(format!("({subtree}:0.001)UNARYROOT;").as_bytes())?)
     }
 
@@ -242,23 +237,10 @@ mod tests {
         .collect()
     }
 
-    fn workspace_root() -> PathBuf {
-      Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(Path::parent)
-        .expect("workspace root")
-        .to_path_buf()
-    }
-
     fn loaded(nwk_parsed: NwkParse) -> Result<Loaded, Report> {
       let alphabet = Alphabet::default();
       let names = nwk_parsed.names();
-      let aln = workspace_root().join("data/flu/h3n2/20/aln.fasta.xz");
-      let sequences: Vec<AlignmentRecord> = fasta_read_file(&aln, &alphabet)?
-        .into_iter()
-        .map(AlignmentRecord::from)
-        .collect();
-      let sequences = leaf_seq_inputs(&nwk_parsed.graph, &names, sequences);
+      let sequences = leaf_seq_inputs(&nwk_parsed.graph, &names, TestDataset::Flu20.alignment()?);
       Ok((nwk_parsed.graph, names, alphabet, sequences, nwk_parsed.branch_lengths))
     }
   }

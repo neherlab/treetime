@@ -15,26 +15,25 @@ mod tests {
   use crate::test_utils::RecordingSeqSink;
   use crate::test_utils::complete_leaf_sequences;
   use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::{RSV_A_20_TRANSLATION_G_XZ, TestDataset, fasta_xz_records};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
-  use std::path::PathBuf;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::fasta_read;
-  use treetime_io::fasta::fasta_read_file;
-  use treetime_io::nwk::{nwk_read, nwk_read_file};
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{o, vec_of_owned};
 
   #[rstest]
   fn test_derived_subs_equal_engine_subs_for_argmax_reconstruction(
-    #[values("flu/h3n2/20", "ebola/20", "zika/20")] dataset: &str,
+    #[values(TestDataset::Flu20, TestDataset::Ebola20, TestDataset::Zika20)] dataset: TestDataset,
     #[values(
       helpers::fitch(),
       helpers::marginal(Representation::Dense, GtrModelName::Infer),
@@ -46,7 +45,7 @@ mod tests {
   ) -> Result<(), Report> {
     let subs = helpers::engine_and_derived_subs(
       dataset,
-      "aln.fasta.xz",
+      dataset.alignment_xz(),
       Alphabet::default(),
       SeqTrack::Nuc(1),
       plan,
@@ -63,8 +62,8 @@ mod tests {
     #[values(false, true)] impute: bool,
   ) -> Result<(), Report> {
     let subs = helpers::engine_and_derived_subs(
-      "rsv/a/20",
-      "translations/G.fasta.xz",
+      TestDataset::RsvA20,
+      RSV_A_20_TRANSLATION_G_XZ,
       Alphabet::new(AlphabetName::Aa)?,
       SeqTrack::Aa("G"),
       helpers::marginal(representation, GtrModelName::Infer),
@@ -148,24 +147,21 @@ mod tests {
     }
 
     pub(super) fn engine_and_derived_subs(
-      dataset: &str,
-      alignment: &str,
+      dataset: TestDataset,
+      alignment_xz: &[u8],
       alphabet: Alphabet,
       track: SeqTrack<'_>,
       plan: ReconstructionPlan,
       impute: bool,
       include_leaves: bool,
     ) -> Result<EngineAndDerivedSubs, Report> {
-      let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .join(dataset);
-      let parse = nwk_read_file(root.join("tree.nwk"))?;
+      let parse = nwk_read(dataset.tree().as_bytes())?;
       let names = parse.names();
       let read_alphabet = match track {
         SeqTrack::Nuc(_) => alphabet.clone(),
         SeqTrack::Aa(_) => Alphabet::new(AlphabetName::Aa)?,
       };
-      let sequences = fasta_read_file(root.join(alignment), &read_alphabet)?
+      let sequences = fasta_xz_records(alignment_xz, &read_alphabet)?
         .into_iter()
         .map(|mut record| {
           record.seq = sanitize_to_alphabet(&record.seq, &alphabet).0;
