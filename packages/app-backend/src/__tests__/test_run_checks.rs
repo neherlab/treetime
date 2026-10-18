@@ -385,7 +385,8 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::without_rate_uncertainty(AppCommand::Timetree, json!({ "confidence": true }),                              true)]
-  #[case::with_covariation(        AppCommand::Timetree, json!({ "confidence": true, "covariation": true }),         false)]
+  #[case::with_alignment(          AppCommand::Timetree, json!({ "confidence": true, "alignment": ["a.fasta"] }),    false)]
+  #[case::with_sequence_length(    AppCommand::Timetree, json!({ "confidence": true, "sequence_length": 1000 }),     false)]
   #[case::with_clock_std_dev(      AppCommand::Timetree, json!({ "confidence": true, "clock_std_dev": 0.0001 }),     false)]
   #[case::without_confidence(      AppCommand::Timetree, json!({}),                                                  false)]
   #[trace]
@@ -401,12 +402,9 @@ mod tests {
     let expected = warns.then(|| RunCheck {
       id: o!("confidence-without-rate-uncertainty"),
       level: CheckLevel::Warn,
-      text: o!("Date intervals need rate uncertainty: without the covariation-aware regression or a clock rate std. dev., this run writes no intervals."),
-      settings: vec_of_owned!["confidence", "covariation", "clock_std_dev"],
-      fix: Some(CheckFix {
-        label: o!("Use covariation"),
-        patch: vec![SettingPatch { path: vec_of_owned!["covariation"], value: Some(JsonValue(json!(true))) }],
-      }),
+      text: o!("Date intervals need rate uncertainty: without an alignment, a sequence length or a clock rate std. dev., this run writes no intervals."),
+      settings: vec_of_owned!["confidence", "sequence_length", "clock_std_dev"],
+      fix: None,
     });
     assert_eq!(expected.into_iter().collect::<Vec<_>>(), checks(command, Some(&config), None, None));
   }

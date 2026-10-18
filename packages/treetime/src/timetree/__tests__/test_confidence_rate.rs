@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::clock::clock_model::{ClockModel, ClockModelStats, RegressionStats};
+  use crate::clock::clock_model::ClockModel;
   use crate::clock::date_constraints::DateConstraints;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
@@ -21,7 +21,6 @@ mod tests {
   use approx::assert_relative_eq;
   use eyre::Report;
   use indoc::indoc;
-  use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
@@ -74,54 +73,27 @@ mod tests {
   }
 
   #[test]
-  fn test_determine_rate_std_explicit_clock_std_dev() {
-    let clock_model = ClockModel::for_testing(0.003, 0.0);
-    let result = determine_rate_std(Some(0.001), false, &clock_model, &NoopProgress).unwrap();
+  fn test_determine_rate_std_explicit_clock_std_dev_skips_estimate() {
+    let result = determine_rate_std(Some(0.001), || panic!("estimate evaluated")).unwrap();
     assert_relative_eq!(result.unwrap(), 0.001);
   }
 
   #[test]
   fn test_determine_rate_std_rejects_negative() {
-    let clock_model = ClockModel::for_testing(0.003, 0.0);
-    let result = determine_rate_std(Some(-0.001), false, &clock_model, &NoopProgress);
+    let result = determine_rate_std(Some(-0.001), || Ok(None));
     assert_error!(result, "--clock-std-dev must be positive, got -0.001");
   }
 
   #[test]
   fn test_determine_rate_std_rejects_zero() {
-    let clock_model = ClockModel::for_testing(0.003, 0.0);
-    let result = determine_rate_std(Some(0.0), false, &clock_model, &NoopProgress);
+    let result = determine_rate_std(Some(0.0), || Ok(None));
     assert_error!(result, "--clock-std-dev must be positive, got 0");
   }
 
   #[test]
-  fn test_determine_rate_std_none_without_covariation() {
-    let clock_model = ClockModel::for_testing(0.003, 0.0);
-    let result = determine_rate_std(None, false, &clock_model, &NoopProgress).unwrap();
-    assert!(result.is_none());
-  }
-
-  #[test]
-  fn test_determine_rate_std_from_covariance_matrix() {
-    let clock_model = ClockModel::for_testing_with_stats(
-      0.003,
-      0.0,
-      ClockModelStats::Estimated(RegressionStats {
-        chisq: 0.0,
-        r_val: 0.9,
-        hessian: array![[1.0, 0.0], [0.0, 1.0]],
-        cov: array![[1e-6, 0.0], [0.0, 1.0]],
-      }),
-    );
-    let result = determine_rate_std(None, true, &clock_model, &NoopProgress).unwrap();
-    assert_relative_eq!(result.unwrap(), 1e-3, epsilon = 1e-10);
-  }
-
-  #[test]
-  fn test_determine_rate_std_none_for_fixed_clock_with_covariation() {
-    let clock_model = ClockModel::for_testing(0.003, 0.0);
-    let result = determine_rate_std(None, true, &clock_model, &NoopProgress).unwrap();
-    assert!(result.is_none());
+  fn test_determine_rate_std_falls_back_to_estimate() {
+    let result = determine_rate_std(None, || Ok(Some(2e-4))).unwrap();
+    assert_relative_eq!(result.unwrap(), 2e-4);
   }
 
   #[test]
