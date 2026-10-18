@@ -1,5 +1,6 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
+use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::node_time::{CoalescentNodeTime, CoalescentNodeTimes};
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::indel::IndelPolicy;
@@ -124,6 +125,31 @@ pub(crate) fn point_date_constraints(
     })
     .collect();
   DateConstraints { by_node }
+}
+
+/// Mean-field coalescent prior with constant `tc` whose lineage expectation comes from point times of the named nodes
+pub(crate) fn point_coalescent_prior(
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  times: &[(&str, f64)],
+  tc: f64,
+) -> Result<CoalescentPrior, Report> {
+  let posterior = times
+    .iter()
+    .map(|(name, time)| {
+      let key = find_node_key_by_name(graph, names, name).expect("timed node must exist");
+      let entry = NodePosterior {
+        distribution: None,
+        likely_time: Some(*time),
+        time: Some(*time),
+        contradicted: false,
+      };
+      (key, entry)
+    })
+    .collect();
+  let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
+  let expectation = LineageExpectation::from_posterior(graph, &posterior, &bad_branches)?;
+  CoalescentPrior::new(&expectation, &Distribution::constant(tc))
 }
 
 #[derive(Default)]

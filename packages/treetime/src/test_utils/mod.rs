@@ -25,5 +25,5 @@ pub(crate) use mugration::{TraitsByNode, traits_by_node};
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
   RecordingLog, constraint_coalescent_node_times, empty_time_inference, marginal_timetree_params, parent_edge_key,
-  point_date_constraints, unknown_branches,
+  point_coalescent_prior, point_date_constraints, unknown_branches,
 };

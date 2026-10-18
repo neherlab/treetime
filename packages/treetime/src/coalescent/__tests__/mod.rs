@@ -1,10 +1,10 @@
 pub(super) mod helpers;
 mod test_coalescent_model;
 mod test_events;
-mod test_gm_coalescent;
 mod test_gm_total_lh;
 mod test_integration;
 mod test_lineage_dynamics;
+mod test_mean_field;
 mod test_population_size;
 mod test_prop_skyline_confidence;
 mod test_skyline;
