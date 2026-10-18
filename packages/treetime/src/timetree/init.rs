@@ -17,7 +17,6 @@ use crate::timetree::pre_loop::PreLoopState;
 use crate::timetree::round::{RoundInputs, RoundState};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
-use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::assign_node_names::restrict_node_names;
@@ -38,7 +37,7 @@ pub(crate) struct InitialRound {
 /// Starts the timetree from the rooted tree and the clock fit of the pre-loop:
 ///
 /// 1. seed the expected lineage counts `kbar(t)` from the Gaussian node-time marginals at the regression rate, or,
-///    without a sequence length, from a pass of the time inference without a prior;
+///    when the Gaussian timetree degenerates, from a pass of the time inference without a prior;
 /// 2. fit the coalescent time scale to the seed;
 /// 3. infer the node times under the mean-field prior of the seed and that time scale (with the coalescent prior
 ///    disabled, the prior-free pass of step 1 is the result);
@@ -174,26 +173,17 @@ fn gaussian_seed(
   Ok(Some((times, expectation)))
 }
 
-/// Gaussian timetree at the rate of the clock model, or `None` when no sequence length is known (no alignment and no
-/// `--sequence-length`) or the approximation degenerates
+/// Gaussian timetree at the rate of the clock model, or `None` when it degenerates
 pub(crate) fn timetree_gaussian_clock(
   inputs: &RoundInputs<'_>,
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<Option<GaussianClock>, Report> {
-  let sequence_length = match state.branch_model.sequence_length() {
-    0 => inputs.params.sequence_length.unwrap_or(0),
-    length => length,
-  };
-  if sequence_length == 0 {
-    debug!("No sequence length: the Gaussian timetree is not computed");
-    return Ok(None);
-  }
   let tip_dates = given_times(&state.graph, &inputs.context.date_constraints)?;
   match gaussian_clock(
     &state.graph,
     &state.branch_lengths,
-    sequence_length.to_f64_exact(),
+    inputs.context.sequence_length.to_f64_exact(),
     &tip_dates,
     inputs.leaf_bad_branches,
     state.clock_model.clock_rate(),
@@ -201,7 +191,7 @@ pub(crate) fn timetree_gaussian_clock(
     Ok(clock) => {
       progress_info!(
         log,
-        "Gaussian clock: rate std {:.4e}, root time std {:.4e}",
+        "Gaussian clock: rate std {:?}, root time std {:?}",
         clock.rate_std,
         clock.root_time_std
       );
