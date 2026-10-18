@@ -45,7 +45,29 @@ build_one() {
     if [[ -n "${run}" && -z "${lib}" && "${target}" == aarch64-*-linux-* ]]; then
       CROSS_COMPILE="${target}" dev/docker/run env QEMU_PAGESIZE=65536 dev/cross/run "${bin}" "${target}" --help >/dev/null
     fi
+    if [[ -n "${run}" && -z "${lib}" && "${target}" == *-linux-* ]]; then
+      check_old_cpu "${bin}" "${target}"
+    fi
   done
+}
+
+# On a CPU below the build level (Haswell, Armv8.2), the binary must stop with
+# its message instead of crashing on an illegal instruction.
+check_old_cpu() {
+  local bin="${1}"
+  local target="${2}"
+  local cpu
+  case "${target}" in
+  x86_64-*) cpu="Nehalem" ;;
+  aarch64-*) cpu="cortex-a72" ;;
+  *) return 0 ;;
+  esac
+  local output status=0
+  output="$(CROSS_COMPILE="${target}" dev/docker/run env QEMU_CPU="${cpu}" dev/cross/run "${bin}" "${target}" --help 2>&1)" || status=$?
+  if ((status != 1)) || [[ "${output}" != *"TreeTime needs a 64-bit"* ]]; then
+    printf 'ERROR: %s on a %s CPU exited with %s instead of 1 with the CPU message:\n%s\n' "${bin}" "${cpu}" "${status}" "${output}" >&2
+    return 1
+  fi
 }
 
 main() {

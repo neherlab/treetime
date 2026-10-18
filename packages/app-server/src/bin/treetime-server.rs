@@ -18,6 +18,7 @@ use std::path::PathBuf;
 use tokio_util::sync::CancellationToken;
 use treetime_grid::MaxGridPoints;
 use treetime_utils::env::env_var_optional;
+use treetime_utils::init::cpu::require_cpu_features;
 use treetime_utils::init::global::{global_init, setup_logger};
 use treetime_utils::init::thread_pool::{available_jobs, init_thread_pool};
 
@@ -30,6 +31,7 @@ const DEFAULT_PORT: u16 = 3100;
 
 #[ctor(unsafe)]
 fn init() {
+  require_cpu_features();
   global_init();
 }
 

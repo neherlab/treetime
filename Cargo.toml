@@ -169,6 +169,7 @@ intervallum = { version = "=1.4.4", package = "intervallum" }
 itertools = "=0.13.0"
 js-sys = "=0.3.106"
 jsonschema = { version = "=0.48.1", default-features = false }
+libc = "=0.2.189"
 log = "=0.4.34"
 maplit = "=1.0.2"
 miette = { version = "=7.6.0", features = ["fancy"] }

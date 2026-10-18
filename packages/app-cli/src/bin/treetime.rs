@@ -10,10 +10,12 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 use app_cli::run::run_cli;
 use ctor::ctor;
 use eyre::Report;
+use treetime_utils::init::cpu::require_cpu_features;
 use treetime_utils::init::global::global_init;
 
 #[ctor(unsafe)]
 fn init() {
+  require_cpu_features();
   global_init();
 }
 
