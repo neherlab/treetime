@@ -58,7 +58,6 @@ pub(crate) fn run_pre_loop(
   };
   cancel.check()?;
   stages.report("Initial timetree inference", 0.2, "");
-  progress_info!(log, "### TreeTime: initial round");
   if params.keep_root {
     return Ok(state);
   }

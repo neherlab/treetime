@@ -18,14 +18,16 @@
 //! is `(kbar_{-v} - 1) / Tc` and the merger factor `1 / Tc` carries no step, unlike a lineage count frozen at point
 //! times. The expectations come from the node posteriors of an earlier pass.
 
-use crate::timetree::inference::result::NodePosterior;
+use crate::clock::gaussian::NodeTimeGaussian;
+use crate::timetree::inference::result::{NodePosterior, NodeTimes};
 use crate::timetree::max_posterior_region::posterior_survival;
 use eyre::{Report, WrapErr};
+use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
@@ -35,6 +37,8 @@ const EXPECTATION_GRID_POINTS: usize = 4001;
 const SURVIVAL_POINTS: usize = 256;
 /// Survival below this, or above one minus it, counts as 0 or 1 when a survival function is trimmed
 const SURVIVAL_TRIM: f64 = 1e-9;
+/// Standard deviations (or decay lengths of the exponential tail) that a truncated normal survival function spans
+const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 
 /// Survival function `S(t) = P(T > t)` of one node on its own grid: 1 before the first time, 0 after the last
 #[derive(Clone, Debug)]
@@ -80,6 +84,60 @@ impl NodeSurvival {
     }
   }
 
+  /// A node at a known time
+  fn point(time: f64) -> Self {
+    Self {
+      t: vec![time],
+      survival: vec![0.0],
+      weight: 0.0,
+    }
+  }
+
+  /// `S(t) = P(T > t | T < u)` for `T ~ N(m, s^2)`: `(Phi(z_u) - Phi(z_t)) / Phi(z_u)` with `z = (t - m) / s`, on
+  /// `SURVIVAL_POINTS` times over `[min(m, u) - TRUNCATED_NORMAL_SPAN s, min(u, m + TRUNCATED_NORMAL_SPAN s)]`. When
+  /// `u` lies more than `TRUNCATED_NORMAL_SPAN` deviations below the mean, the tail is exponential to leading order,
+  /// `S(t) = 1 - exp(-lambda (u - t))` with `lambda = (m - u) / s^2`, taken over `[u - TRUNCATED_NORMAL_SPAN / lambda, u]`.
+  fn truncated_normal(mean: f64, std: f64, upper: f64) -> Self {
+    let std = std.max(f64::EPSILON * mean.abs().max(1.0));
+    let z_upper = (upper - mean) / std;
+    let normal = Normal::standard();
+    let cdf_upper = normal.cdf(z_upper);
+    let tail_rate = (z_upper <= -TRUNCATED_NORMAL_SPAN).then(|| (mean - upper) / std.powi(2));
+    let (start, end) = match tail_rate {
+      Some(rate) => (upper - TRUNCATED_NORMAL_SPAN / rate, upper),
+      None => (
+        mean.min(upper) - TRUNCATED_NORMAL_SPAN * std,
+        upper.min(mean + TRUNCATED_NORMAL_SPAN * std),
+      ),
+    };
+    let survival = |t: f64| match tail_rate {
+      Some(rate) => 1.0 - (-rate * (upper - t)).exp(),
+      None => ((cdf_upper - normal.cdf((t - mean) / std)) / cdf_upper).clamp(0.0, 1.0),
+    };
+    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
+    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
+    let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
+    survival[0] = 1.0;
+    survival[SURVIVAL_POINTS - 1] = 0.0;
+    Self {
+      t,
+      survival,
+      weight: 0.0,
+    }
+  }
+
+  fn median(&self) -> f64 {
+    let i = self.survival.partition_point(|&s| s > 0.5);
+    if i == 0 {
+      return self.t[0];
+    }
+    if i == self.t.len() {
+      return self.t[self.t.len() - 1];
+    }
+    let (s0, s1) = (self.survival[i - 1], self.survival[i]);
+    self.t[i - 1] + (s0 - 0.5) / (s0 - s1) * (self.t[i] - self.t[i - 1])
+  }
+
   fn at(&self, x: f64) -> f64 {
     let n = self.t.len();
     if x < self.t[0] {
@@ -114,14 +172,9 @@ impl LineageExpectation {
     posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
     bad_branches: &BTreeMap<GraphNodeKey, bool>,
   ) -> Result<Arc<Self>, Report> {
-    let mut always_surviving = 0.0;
-    let mut nodes = BTreeMap::new();
-    for node in graph.get_nodes() {
-      let key = node.key();
-      let weight = 1.0 - node.outbound().len().to_f64_exact();
+    Self::from_survivals(graph, |key| {
       if bad_branches.get(&key).copied().unwrap_or(false) {
-        always_surviving += weight;
-        continue;
+        return Ok(None);
       }
       let entry = posterior.get(&key);
       let survival = match entry.and_then(|p| p.distribution.as_deref()) {
@@ -129,22 +182,81 @@ impl LineageExpectation {
           .wrap_err_with(|| format!("When computing the survival function of node {key}"))?,
         None => None,
       };
-      let survival = match (survival, entry.and_then(|p| p.time)) {
-        (Some((t, survival)), _) => NodeSurvival {
-          weight,
-          ..NodeSurvival::compact(t, survival)
-        },
-        (None, Some(time)) => NodeSurvival {
-          t: vec![time],
-          survival: vec![0.0],
-          weight,
-        },
-        (None, None) => {
-          always_surviving += weight;
-          continue;
-        },
+      Ok(match (survival, entry.and_then(|p| p.time)) {
+        (Some((t, survival)), _) => Some(NodeSurvival::compact(t, survival)),
+        (None, Some(time)) => Some(NodeSurvival::point(time)),
+        (None, None) => None,
+      })
+    })
+  }
+
+  /// From the Gaussian node-time marginals of [`gaussian_clock`](crate::clock::gaussian::gaussian_clock): an internal
+  /// node's time is its marginal truncated at the earliest included tip below it, a tip in `tip_times` that is not
+  /// `excluded` sits at its date, and every other node counts as surviving at all times.
+  pub(crate) fn from_gaussian(
+    graph: &Graph,
+    marginals: &BTreeMap<GraphNodeKey, NodeTimeGaussian>,
+    tip_times: &NodeTimes,
+    excluded: &BTreeMap<GraphNodeKey, bool>,
+  ) -> Result<Arc<Self>, Report> {
+    let tip_time = |key: GraphNodeKey| {
+      tip_times
+        .get(&key)
+        .copied()
+        .flatten()
+        .filter(|_| !excluded.get(&key).copied().unwrap_or(false))
+    };
+    let mut earliest_tip = BTreeMap::new();
+    graph.iter_depth_first_postorder_forward(|node| {
+      let earliest = if node.is_leaf {
+        tip_time(node.key).unwrap_or(f64::INFINITY)
+      } else {
+        node
+          .child_keys
+          .iter()
+          .map(|(child, _)| earliest_tip[child])
+          .fold(f64::INFINITY, f64::min)
       };
-      nodes.insert(key, survival);
+      earliest_tip.insert(node.key, earliest);
+      Ok(())
+    })?;
+    Self::from_survivals(graph, |key| {
+      let is_leaf = graph.get_node(key).is_some_and(Node::is_leaf);
+      Ok(if is_leaf {
+        tip_time(key).map(NodeSurvival::point)
+      } else {
+        marginals
+          .get(&key)
+          .filter(|_| earliest_tip[&key].is_finite())
+          .map(|marginal| NodeSurvival::truncated_normal(marginal.mean, marginal.std, earliest_tip[&key]))
+      })
+    })
+  }
+
+  /// Time at which each node's survival function crosses one half
+  pub(crate) fn median_times(&self) -> BTreeMap<GraphNodeKey, f64> {
+    self
+      .nodes
+      .iter()
+      .map(|(key, survival)| (*key, survival.median()))
+      .collect()
+  }
+
+  /// `survival(key)` is the survival function of a node, or `None` for a node that survives at all times
+  fn from_survivals(
+    graph: &Graph,
+    survival: impl Fn(GraphNodeKey) -> Result<Option<NodeSurvival>, Report>,
+  ) -> Result<Arc<Self>, Report> {
+    let mut always_surviving = 0.0;
+    let mut nodes = BTreeMap::new();
+    for node in graph.get_nodes() {
+      let weight = 1.0 - node.outbound().len().to_f64_exact();
+      match survival(node.key())? {
+        Some(survival) => {
+          nodes.insert(node.key(), NodeSurvival { weight, ..survival });
+        },
+        None => always_surviving += weight,
+      }
     }
     let weighted: Vec<(f64, &NodeSurvival)> = nodes.values().map(|survival| (survival.weight, survival)).collect();
     if weighted.is_empty() {

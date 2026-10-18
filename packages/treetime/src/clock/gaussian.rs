@@ -42,13 +42,6 @@ pub(crate) struct GaussianClock {
   pub rate_std: f64,
   pub root_time_std: f64,
   /// Marginal time of every internal node that has a dated tip below it
-  #[cfg_attr(
-    not(test),
-    expect(
-      dead_code,
-      reason = "seeds the expected lineage counts of the timetree loop: kb/issues/M-timetree-loop-starts-from-gaussian-marginals.md"
-    )
-  )]
   pub node_times: BTreeMap<GraphNodeKey, NodeTimeGaussian>,
 }
 

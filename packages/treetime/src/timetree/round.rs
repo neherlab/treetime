@@ -5,18 +5,12 @@ use crate::clock::clock_regression::{
 };
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::reroot::RerootParams;
-use crate::coalescent::lineage_counts::compute_lineage_counts;
-use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
-use crate::coalescent::skyline::SkylineParams;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::coalescent_timescale::{
-  CoalescentSetup, CoalescentTimescale, coalescent_mode, coalescent_timescale,
-};
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
-use crate::timetree::inference::bad_branches::bad_leaves;
 use crate::timetree::inference::result::{TimeInference, likely_times};
 use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
@@ -30,104 +24,16 @@ use crate::timetree::optimization::polytomy::resolve::{
 };
 use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock, unit_gammas};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
-use crate::timetree::pre_loop::PreLoopState;
 use eyre::{Report, WrapErr};
 use rand::RngCore;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
-use treetime_graph::assign_node_names::{assign_node_names, restrict_node_names};
+use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
-
-pub(crate) fn run_initial_round(
-  params: &TimetreeParams,
-  context: &TimetreeContext,
-  input_names: &BTreeMap<GraphNodeKey, Option<String>>,
-  pre_loop: PreLoopState,
-  log: &dyn LogSink,
-) -> Result<InitialRound, Report> {
-  let PreLoopState {
-    graph,
-    branch_lengths,
-    branch_model,
-    clock_fit: ClockFit {
-      model: clock_model,
-      points: clock_points,
-    },
-    outliers,
-  } = pre_loop;
-
-  let leaf_bad_branches = bad_leaves(&graph, &context.date_constraints, &outliers);
-  let names = restrict_node_names(input_names, &graph);
-  let gammas = unit_gammas(&graph);
-
-  let time_inputs = TimeInferenceInputs {
-    graph: &graph,
-    date_constraints: &context.date_constraints,
-    leaf_bad_branches: &leaf_bad_branches,
-    gammas: &gammas,
-    branch_model: &branch_model,
-    branch_lengths: &branch_lengths,
-    names: &names,
-    clock_model: &clock_model,
-    clock_rate_fixed: params.clock_rate.is_some(),
-    no_indels: params.no_indels,
-    max_grid_points: params.max_grid_points,
-  };
-  let run = |prior: Option<&CoalescentPrior>| run_timetree(&time_inputs, prior, log);
-  let time_inference = run(None)?;
-
-  let (coalescent, timescale) = setup_coalescent(params, &graph, &time_inference, &names, log)?;
-  let (coalescent, time_inference) = if coalescent.prior_wanted() {
-    let prior = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
-    let time_inference = run(Some(&prior))?;
-    // k(t) from the prior-free times seeds the first prior pass; it is rebuilt once from the times inferred under that
-    // prior and then frozen
-    let lineage_counts = compute_lineage_counts(&graph, &time_inference.coalescent_node_times())
-      .wrap_err("Failed to compute coalescent lineage counts")?;
-    let lineage_expectation =
-      LineageExpectation::from_posterior(&graph, &time_inference.posterior, &time_inference.bad_branches)
-        .wrap_err("Failed to compute the expected coalescent lineage counts")?;
-    let coalescent = CoalescentSetup {
-      lineage_counts,
-      lineage_expectation,
-      ..coalescent
-    };
-    (coalescent, time_inference)
-  } else {
-    (coalescent, time_inference)
-  };
-  let state = RoundState {
-    graph,
-    names,
-    branch_model,
-    branch_lengths,
-    clock_model,
-    clock_points,
-    clock_branch_lengths: BTreeMap::new(),
-    gammas,
-    time_inference,
-  };
-
-  Ok(InitialRound {
-    state: state.blend_clock_branch_lengths(CLOCK_BRANCH_LENGTH_UNDAMPED, log),
-    leaf_bad_branches,
-    outliers,
-    coalescent,
-    timescale,
-  })
-}
-
-pub(crate) struct InitialRound {
-  pub state: RoundState,
-  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
-  pub outliers: BTreeSet<GraphNodeKey>,
-  pub coalescent: CoalescentSetup,
-  pub timescale: CoalescentTimescale,
-}
 
 pub(crate) fn refinement_round(
   inputs: &RoundInputs<'_>,
@@ -450,7 +356,7 @@ impl RoundState {
     }
   }
 
-  fn blend_clock_branch_lengths(self, damping: f64, log: &dyn LogSink) -> Self {
+  pub(crate) fn blend_clock_branch_lengths(self, damping: f64, log: &dyn LogSink) -> Self {
     let clock_branch_lengths = blended_clock_branch_lengths(
       &self.graph,
       self.clock_model.clock_rate(),
@@ -478,42 +384,4 @@ pub(crate) struct RoundInputs<'a> {
   pub context: &'a TimetreeContext,
   pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
   pub outliers: &'a BTreeSet<GraphNodeKey>,
-}
-
-fn setup_coalescent(
-  params: &TimetreeParams,
-  graph: &Graph,
-  time_inference: &TimeInference,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
-) -> Result<(CoalescentSetup, CoalescentTimescale), Report> {
-  let skyline_params = SkylineParams {
-    n_points: params.skyline_n_points,
-    stiffness: params.skyline_stiffness,
-    n_std: params.coalescent_confidence,
-    ..SkylineParams::default()
-  };
-  let mode = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
-  let coalescent_node_times = time_inference.coalescent_node_times();
-  let lineage_counts =
-    compute_lineage_counts(graph, &coalescent_node_times).wrap_err("Failed to compute coalescent lineage counts")?;
-  let lineage_expectation =
-    LineageExpectation::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
-      .wrap_err("Failed to compute the expected coalescent lineage counts")?;
-  let timescale = coalescent_timescale(
-    mode,
-    graph,
-    &skyline_params,
-    &coalescent_node_times,
-    Some(&lineage_expectation),
-    names,
-    log,
-  )?;
-  let setup = CoalescentSetup {
-    mode,
-    skyline_params,
-    lineage_counts,
-    lineage_expectation,
-  };
-  Ok((setup, timescale))
 }
