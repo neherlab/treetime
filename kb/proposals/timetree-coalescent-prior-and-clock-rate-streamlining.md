@@ -372,6 +372,9 @@ over seven passes) where the peak run converged, the same slow rate drift as in 
 - Issues: 0a to 3 done (branch `claude-clock-exact-root`, decision
   [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)),
   [M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md) (4).
+- Module layout: the rerooting code spans `clock/reroot.rs`, `clock/find_best_root/` and `reroot/`; where it should
+  live is left for the engineer
+  ([N-reroot-modules-split-between-clock-and-reroot.md](../issues/N-reroot-modules-split-between-clock-and-reroot.md)).
 
 ## Related
 
