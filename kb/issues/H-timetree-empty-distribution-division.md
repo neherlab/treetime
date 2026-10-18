@@ -46,18 +46,23 @@ rate stays at $1.65 \cdot 10^{-5}$ and every node gets a date.
 Traced with temporary diagnostics in the reproducer above; the first of the 46 undated nodes is the only one with a
 non-empty parent posterior, the other 45 inherit an empty parent:
 
-1. The parent's posterior has zero probability (negative log `+inf`) at its last two grid points, at the hard upper
-   bound from its children; the cavity, the posterior divided by the node's upward message, keeps them.
-2. `convolve_across_edge` calls `distribution_convolution_fine`, which resamples both operands to a common `dx`
-   (`resample_dx`, here 2.3236 against the branch's 2.4635). `GridFn::interpolate_at`
-   ([`grid_fn.rs#L237-L250`](../../packages/treetime-grid/src/grid_fn.rs#L237-L250)) computes `y0 + t * (y1 - y0)` on
-   negative log values, which is NaN whenever `y0 = +inf`: 3 of the 416 resampled cavity values are NaN.
+1. The parent's posterior stores negative log `+inf` only at its last grid point, the hard boundary at 2021.2, and its
+   peak (0.0) at the point before, 2018.88: at this rate one grid cell is 2.32 years.
+2. `GridFn::interpolate_at` ([`grid_fn.rs#L237-L250`](../../packages/treetime-grid/src/grid_fn.rs#L237-L250))
+   interpolates negative logs linearly, `y0 + t * (y1 - y0)`: inside a cell whose right end is `+inf` every point is
+   `+inf`, and at a cell whose left end is `+inf` the result is NaN. The division builds the cavity on
+   `linspace` of the same bounds and point count; rounding puts the query at 2018.8764 just inside the last cell, so
+   the posterior's peak reads as `+inf` and the cavity has `+inf` at its last two points. `distribution_convolution_fine`
+   then resamples the cavity to the branch's spacing (`resample_dx`, 2.3236 against 2.4635), and 3 of the 416 values
+   come out NaN.
 3. `to_peak_normalized_plain` takes the peak with `min_or`, whose ndarray-stats `min()` fails on any NaN; the default
    `+inf` makes the operand look massless, and the convolution returns `Empty` through `guarded_empty_result`.
 4. The node's posterior is `Empty`, so its children have no parent posterior: all 45 are left undated in turn.
 
-Fix direction: interpolation in negative log space treats a cell with an infinite end as having zero probability
-(`+inf`) instead of producing NaN; whether `min_or` should also ignore NaN is a separate choice. Whether the aborts on
+The boundary value itself is correct; the defect is linear interpolation in negative log space next to it. Fix
+direction: evaluate a cell with an infinite end by the hard-approach law of that boundary (or interpolate it in
+probability space), and return the stored value for a query within rounding of a grid point; whether `min_or` should
+also ignore NaN is a separate choice. Whether the aborts on
 `data/dengue/500` and `data/lassa/L/200` share this cause is not verified.
 
 ## Related issues
