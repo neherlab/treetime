@@ -115,6 +115,18 @@ files = [
 ]
 
 [[reference]]
+name = "rate_recovery"
+kind = "simulation"
+test = "packages/treetime/src/optimize/__tests__/test_pipeline_partition_rate_recovery.rs"
+origin = "alignments simulated with the TreeTime v0 (Python) sequence simulator treetime.seqgen.SeqGen on data/zika/86/tree.nwk under JC69: 20 replicates (seeds 1 to 20), each with three files of 3000 sites and the relative rates 0.3, 1.0 and 2.0"
+revision = "vendored in-repo reference at packages/legacy/treetime"
+capture = "./dev/docker/python python packages/treetime/src/optimize/__tests__/__fixtures__/rate_recovery_capture"
+normalization = "none; one xz-compressed FASTA record per leaf holding all replicates in seed order and, within a replicate, the three files in rate order; the owning test decompresses it in memory and compares the mean rate estimates with the known simulated rates"
+files = [
+  "packages/treetime/src/optimize/__tests__/__fixtures__/rate_recovery_alignments.fasta.xz",
+]
+
+[[reference]]
 name = "gm_runner"
 kind = "golden-master"
 test = "packages/treetime/src/timetree/inference/__tests__/test_gm_runner/mod.rs"

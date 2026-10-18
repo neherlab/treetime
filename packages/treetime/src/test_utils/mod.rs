@@ -7,7 +7,7 @@ mod mugration;
 mod sparse;
 mod timetree;
 
-pub(crate) use alignment::{TestDataset, get_common_length, split_at_gap_free_column};
+pub(crate) use alignment::{TestDataset, columns, fasta_xz_read, get_common_length, split_at_gap_free_column};
 pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name, node_keys_named};
 pub(crate) use indel::{deletion, insertion};
