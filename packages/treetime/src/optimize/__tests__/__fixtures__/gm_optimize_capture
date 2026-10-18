@@ -6,7 +6,7 @@ Reads inputs from gm_optimize_inputs.json, runs v0 optimize_tree_marginal,
 captures final branch lengths to gm_optimize_outputs.json.
 
 Usage:
-    ./dev/docker/python python packages/treetime/src/commands/optimize/__tests__/__fixtures__/gm_optimize_capture
+    ./dev/docker/python python packages/treetime/src/optimize/__tests__/__fixtures__/gm_optimize_capture
 """
 
 import json

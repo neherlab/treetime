@@ -18,7 +18,7 @@ This capture script matches the canonical v0 mugration behavior from wrappers.py
 It does not reimplement metadata parsing or taxon-name resolution locally.
 
 Usage:
-    ./dev/docker/python python packages/treetime/src/commands/mugration/__tests__/__fixtures__/gm_mugration_capture
+    ./dev/docker/python python packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_capture
 """
 
 import json
@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 from treetime.wrappers import reconstruct_discrete_traits
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parents[7]
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[6]
 FIXTURES_DIR: Path = Path(__file__).parent
 
 SEED = 1010336213

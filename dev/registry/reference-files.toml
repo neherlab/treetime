@@ -146,7 +146,7 @@ kind = "golden-master"
 test = "packages/treetime/src/timetree/optimization/__tests__/test_relaxed_clock.rs"
 origin = "TreeTime v0 (Python) relaxed clock"
 revision = "vendored in-repo reference at packages/legacy/treetime"
-capture = "./dev/docker/python python packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_capture"
+capture = "./dev/docker/python python packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_capture packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_inputs.json packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_outputs.json"
 normalization = "parsed JSON compared with per-assertion float tolerance in the owning test"
 files = [
   "packages/treetime/src/timetree/optimization/__tests__/__fixtures__/gm_relaxed_clock_inputs.json",
