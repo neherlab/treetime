@@ -254,7 +254,7 @@ coverage, so the rate step comes before the coalescent statistics and the root.
 | --- | --- | --- |
 | 0a (done) | OLS regression on two-way sums, exact root search, outliers out of the fit, IQR filter; `clock` and `timetree` on it | identical rate, intercept and root wherever the old search found the optimum (OLS default); differences only where the local split search missed it or outliers leaked in; validation suite rate and root recovery |
 | 0b (done) | Gaussian message passing at the final rate: node marginals, rate and root covariance; replaces `--covariation` for `rate_std` | analytic tests (joint Gaussian, finite-difference Hessian); `--confidence` coverage on the validation data, see below |
-| 0c (done) | retire the old machinery and flags; outputs, contracts, app (with the engineer) | tests and dengue/100 golden master unchanged; smoke snapshots re-baselined by the engineer ([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)) |
+| 0c (done) | retire the old machinery and flags; outputs, contracts, app (with the engineer) | tests and dengue/100 golden master unchanged; smoke matrix updated and every changed smoke case explained |
 | 1 (done) | merge `claude-hard-cell-interp`; init phase: seed the expectation and $T_c$ from the Gaussian marginals, one time pass under that prior, no prior-free pass; Gaussian rate as the start when the regression rate is not positive | tests; dengue/500 completes; calibration and accuracy equal or better than mean field + EM; one time pass fewer |
 | 2 (done) | one statistics object: merger rates, $T_c$ band, reported likelihood, segment layout from the expectation; point counts removed | tests against analytic expected statistics; outputs documented as a v0 divergence |
 | 3 (done: median kept) | root: median versus peak under the mean-field prior | `data/ebola/20` root stable over rounds |
@@ -294,8 +294,7 @@ branch, rerooting reruns the backward pass instead of patching the state, and `o
 search at rate zero, exact instead of Brent. The library tests pass unchanged apart from tightened tolerances, and the
 dengue/100 golden master holds to $10^{-10}$. The clock-model statistics report $\chi^2$, $r$ and the Gaussian
 `rate_std` in place of the unscaled covariance, and a timetree rate from the marginal-likelihood step is reported as
-estimated rather than fixed. Left for the engineer: the smoke matrix
-([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)).
+estimated rather than fixed.
 The root search of the clock pre-filter requires a positive rate, as v0 does, and the final time inference runs at
 the final rate, so the reported dates belong to the reported rate.
 
