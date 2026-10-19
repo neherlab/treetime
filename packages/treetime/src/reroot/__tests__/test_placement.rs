@@ -27,12 +27,7 @@ mod tests {
     #[case] expected: Expected,
   ) -> Result<(), Report> {
     let (graph, edge_key, source_key, target_key) = edge_fixture()?;
-    let expected = match expected {
-      Expected::Source => RootTarget::Node(source_key),
-      Expected::Target => RootTarget::Node(target_key),
-      Expected::Split => RootTarget::Split { edge_key, split },
-      Expected::LeafEndSplit => RootTarget::Split { edge_key, split: 1.0 },
-    };
+    let expected = expected.root_target(edge_key, source_key, target_key, split);
 
     let actual = RootTarget::on_edge(&graph, edge_key, split, split_edge)?;
 
@@ -56,12 +51,7 @@ mod tests {
     #[case] expected: Expected,
   ) -> Result<(), Report> {
     let (graph, edge_key, source_key, target_key) = terminal_edge_fixture()?;
-    let expected = match expected {
-      Expected::Source => RootTarget::Node(source_key),
-      Expected::Target => RootTarget::Node(target_key),
-      Expected::Split => RootTarget::Split { edge_key, split },
-      Expected::LeafEndSplit => RootTarget::Split { edge_key, split: 1.0 },
-    };
+    let expected = expected.root_target(edge_key, source_key, target_key, split);
 
     let actual = RootTarget::on_edge(&graph, edge_key, split, split_edge)?;
 
@@ -141,6 +131,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::reroot::placement::RootTarget;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use treetime_graph::edge::GraphEdgeKey;
@@ -154,6 +145,23 @@ mod tests {
       Target,
       Split,
       LeafEndSplit,
+    }
+
+    impl Expected {
+      pub(super) fn root_target(
+        self,
+        edge_key: GraphEdgeKey,
+        source_key: GraphNodeKey,
+        target_key: GraphNodeKey,
+        split: f64,
+      ) -> RootTarget {
+        match self {
+          Self::Source => RootTarget::Node(source_key),
+          Self::Target => RootTarget::Node(target_key),
+          Self::Split => RootTarget::Split { edge_key, split },
+          Self::LeafEndSplit => RootTarget::Split { edge_key, split: 1.0 },
+        }
+      }
     }
 
     pub(super) fn edge_fixture() -> Result<(Graph, GraphEdgeKey, GraphNodeKey, GraphNodeKey), Report> {

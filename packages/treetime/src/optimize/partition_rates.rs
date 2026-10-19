@@ -10,23 +10,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_utils::cast::ToF64Exact;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum PartitionRates {
-  #[default]
-  Estimate,
-  Equal,
-}
-
-impl PartitionRates {
-  fn estimates(self, partitions: &PartitionSet) -> bool {
-    self == Self::Estimate && partitions.len() > 1
-  }
-
-  fn fixes_equal(self, partitions: &PartitionSet) -> bool {
-    self == Self::Equal && partitions.len() > 1
-  }
-}
-
 pub(crate) fn update_partition_rates(
   graph: &Graph,
   partitions: PartitionSet,
@@ -64,6 +47,23 @@ pub(crate) fn fix_equal_rates(
       .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
       .0,
   )
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum PartitionRates {
+  #[default]
+  Estimate,
+  Equal,
+}
+
+impl PartitionRates {
+  fn estimates(self, partitions: &PartitionSet) -> bool {
+    self == Self::Estimate && partitions.len() > 1
+  }
+
+  fn fixes_equal(self, partitions: &PartitionSet) -> bool {
+    self == Self::Equal && partitions.len() > 1
+  }
 }
 
 pub(crate) fn normalize_partition_rates(
