@@ -50,7 +50,7 @@ mod tests {
     let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
-    assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-4);
+    assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-15);
     Ok(())
   }
 
@@ -60,7 +60,7 @@ mod tests {
     let b = DistributionNegLog::Function(helpers::gaussian(0.5, 0.4)?.with_amplitude(-1.5));
     let product = distribution_multiplication(&a, &b, MaxGridPoints::default())?;
     for t in [-1.0, 0.0, 0.25, 1.0] {
-      assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-3);
+      assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -86,11 +86,15 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
+
+    const GAUSSIAN_DX: f64 = 0.01;
 
     pub(super) fn gaussian(mean: f64, sd: f64) -> Result<DistributionFunction<f64, NegLog>, Report> {
-      let t = Array1::linspace(mean - 10.0 * sd, mean + 10.0 * sd, 1001);
-      let y = t.mapv(|t| (t - mean).powi(2) / (2.0 * sd * sd));
-      DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
+      let n = f64_to_usize_saturating((20.0 * sd / GAUSSIAN_DX).round()) + 1;
+      let start = mean - 10.0 * sd;
+      let y = Array1::from_shape_fn(n, |i| (start + GAUSSIAN_DX * i.to_f64_exact() - mean).powi(2) / (2.0 * sd * sd));
+      DistributionFunction::from_start_dx_values(start, GAUSSIAN_DX, y)?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Hard)
     }
