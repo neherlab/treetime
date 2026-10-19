@@ -297,6 +297,24 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_mean_field_prior_reports_a_tc_that_cannot_be_evaluated_at_the_lineage_grid_edge() -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let flat_root = Distribution::function(Array1::linspace(2000.0, 2004.0, 401), Array1::zeros(401))?;
+    let expectation = helpers::expectation(&graph, &names, &[("A", 2010.0), ("B", 2010.0)], &[("root", flat_root)])?;
+    let tc = Distribution::function(Array1::linspace(2000.001, 2011.0, 11), Array1::from_elem(11, 2.0))?;
+
+    let result = CoalescentPrior::new(&expectation, &tc);
+
+    assert_error!(
+      result,
+      "When evaluating coalescent Tc at calendar time 2.000000e3: GridFn evaluated at 2000.0, below the support boundary 2000.001, but no extrapolation policy is set for that side"
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::clock::gaussian::NodeTimeGaussian;
 

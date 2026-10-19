@@ -33,6 +33,8 @@ pub(crate) struct CoalescentPrior {
   inverse_tc_integral: Vec<f64>,
   expected_integral: Vec<f64>,
   own_integral: BTreeMap<GraphNodeKey, Vec<f64>>,
+  rate_before: f64,
+  rate_after: f64,
 }
 
 impl CoalescentPrior {
@@ -72,12 +74,16 @@ impl CoalescentPrior {
         Ok((*key, integral))
       })
       .collect::<Result<_, Report>>()?;
+    let rate_before = inverse_tc(grid[0])?;
+    let rate_after = inverse_tc(grid[grid.len() - 1])?;
     Ok(Self {
       expectation: Arc::clone(expectation),
       tc: tc.clone(),
       inverse_tc_integral,
       expected_integral,
       own_integral,
+      rate_before,
+      rate_after,
     })
   }
 
@@ -126,16 +132,15 @@ impl CoalescentPrior {
     let pairs = 0.5 * weight * (weight - 1.0);
     let grid = &self.expectation.grid;
     let last = grid.len() - 1;
-    let (rate_before, rate_after) = (self.rate_outside(grid[0]), self.rate_outside(grid[last]));
     let inverse_tc = match piece_slope(grid, &self.inverse_tc_integral, side, edge) {
-      PieceSlope::Before => rate_before,
+      PieceSlope::Before => self.rate_before,
       PieceSlope::Inside(slope) => slope,
-      PieceSlope::After => rate_after,
+      PieceSlope::After => self.rate_after,
     };
     let expected = match piece_slope(grid, &self.expected_integral, side, edge) {
-      PieceSlope::Before => rate_before * self.expectation.expected_before,
+      PieceSlope::Before => self.rate_before * self.expectation.expected_before,
       PieceSlope::Inside(slope) => slope,
-      PieceSlope::After => rate_after * self.expectation.expected[last],
+      PieceSlope::After => self.rate_after * self.expectation.expected[last],
     };
     let own = match (self.expectation.nodes.get(&key), self.own_integral.get(&key)) {
       (Some(node), Some(integral)) => match piece_slope(&node.survival.t, integral, side, edge) {
@@ -148,18 +153,14 @@ impl CoalescentPrior {
     pairs * inverse_tc + weight * expected - weight * own_weight * own
   }
 
-  fn rate_outside(&self, t: f64) -> f64 {
-    self.tc.eval(t).map_or(0.0, |tc| if tc > 0.0 { 1.0 / tc } else { 0.0 })
-  }
-
   fn inverse_tc_integral_at(&self, x: f64) -> f64 {
     let grid = &self.expectation.grid;
     let n = grid.len();
     if x <= grid[0] {
-      return (x - grid[0]) * self.rate_outside(grid[0]);
+      return (x - grid[0]) * self.rate_before;
     }
     if x >= grid[n - 1] {
-      return self.inverse_tc_integral[n - 1] + (x - grid[n - 1]) * self.rate_outside(grid[n - 1]);
+      return self.inverse_tc_integral[n - 1] + (x - grid[n - 1]) * self.rate_after;
     }
     interpolate(grid, &self.inverse_tc_integral, x)
   }
@@ -168,11 +169,10 @@ impl CoalescentPrior {
     let grid = &self.expectation.grid;
     let n = grid.len();
     if x <= grid[0] {
-      return (x - grid[0]) * self.rate_outside(grid[0]) * self.expectation.expected_before;
+      return (x - grid[0]) * self.rate_before * self.expectation.expected_before;
     }
     if x >= grid[n - 1] {
-      return self.expected_integral[n - 1]
-        + (x - grid[n - 1]) * self.rate_outside(grid[n - 1]) * self.expectation.expected[n - 1];
+      return self.expected_integral[n - 1] + (x - grid[n - 1]) * self.rate_after * self.expectation.expected[n - 1];
     }
     interpolate(grid, &self.expected_integral, x)
   }
