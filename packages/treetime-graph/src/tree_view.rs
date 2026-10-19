@@ -57,6 +57,10 @@ impl<'g> TreeView<'g> {
     &self.children[self.child_offsets[index]..self.child_offsets[index + 1]]
   }
 
+  pub fn contains(&self, key: GraphNodeKey) -> bool {
+    key.as_usize() < self.key_capacity() && (key == self.root || self.parent(key).is_some())
+  }
+
   pub fn position_in_parent(&self, key: GraphNodeKey) -> usize {
     self.positions[key.as_usize()]
   }

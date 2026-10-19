@@ -1,15 +1,16 @@
+use crate::edge::GraphEdgeKey;
 use crate::node::GraphNodeKey;
 use crate::tree_view::TreeView;
 use eyre::Report;
 use itertools::Itertools;
 use parking_lot::Mutex;
 use rayon::{Scope, current_num_threads, scope};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::repeat_with;
 use std::marker::PhantomData;
 use std::mem;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock};
 use treetime_utils::make_internal_report;
 
 impl TreeView<'_> {
@@ -17,7 +18,7 @@ impl TreeView<'_> {
     &self,
     inputs: impl IntoIterator<Item = (GraphNodeKey, N)>,
     step: impl Fn(GraphNodeKey, N, Option<M>) -> Result<(Out, M), Report> + Sync,
-  ) -> Result<ScanOutputs<Out>, Report>
+  ) -> Result<ScanOutputs<'_, Out>, Report>
   where
     N: Send,
     M: Clone + Send,
@@ -32,7 +33,7 @@ impl TreeView<'_> {
     &self,
     inputs: impl IntoIterator<Item = (GraphNodeKey, N)>,
     step: impl Fn(GraphNodeKey, N, Vec<M>) -> Result<(Out, M), Report> + Sync,
-  ) -> Result<ScanOutputs<Out>, Report>
+  ) -> Result<ScanOutputs<'_, Out>, Report>
   where
     N: Send,
     M: Send,
@@ -60,16 +61,101 @@ impl TreeView<'_> {
     });
     scan.finish()
   }
+
+  pub fn join_parent_edges<N, E>(
+    &self,
+    nodes: BTreeMap<GraphNodeKey, N>,
+    mut edges: BTreeMap<GraphEdgeKey, E>,
+  ) -> Result<impl Iterator<Item = (GraphNodeKey, (N, Option<E>))>, Report> {
+    for &key in self.preorder() {
+      if !nodes.contains_key(&key) {
+        return Err(make_internal_report!("Scan input is missing node {key}"));
+      }
+      if let Some((_, edge_key)) = self.parent(key)
+        && !edges.contains_key(&edge_key)
+      {
+        return Err(make_internal_report!(
+          "Scan input is missing edge {edge_key} above node {key}"
+        ));
+      }
+    }
+    if let Some(key) = nodes.keys().find(|&&key| !self.contains(key)) {
+      return Err(make_internal_report!(
+        "Scan input names node {key}, which is not in the tree"
+      ));
+    }
+    if edges.len() >= self.preorder().len()
+      && let Some(edge_key) = self.first_edge_outside(edges.keys())
+    {
+      return Err(make_internal_report!(
+        "Scan input names edge {edge_key}, which is not in the tree"
+      ));
+    }
+    Ok(nodes.into_iter().map(move |(key, node)| {
+      let edge = self.parent(key).and_then(|(_, edge_key)| edges.remove(&edge_key));
+      (key, (node, edge))
+    }))
+  }
+
+  fn first_edge_outside<'e>(&self, mut edges: impl Iterator<Item = &'e GraphEdgeKey>) -> Option<GraphEdgeKey> {
+    let tree_edges = self
+      .preorder()
+      .iter()
+      .filter_map(|&key| self.parent(key))
+      .map(|(_, edge_key)| edge_key)
+      .collect::<BTreeSet<_>>();
+    edges.find(|edge_key| !tree_edges.contains(edge_key)).copied()
+  }
 }
 
-pub struct ScanOutputs<Out> {
+pub struct ScanOutputs<'t, Out> {
+  tree: &'t TreeView<'t>,
   outputs: Vec<Option<Out>>,
 }
 
-impl<Out> ScanOutputs<Out> {
+impl<Out> ScanOutputs<'_, Out> {
   pub fn into_map(self) -> BTreeMap<GraphNodeKey, Out> {
-    bulk_map(self.outputs.len(), entries(self.outputs))
+    bulk_map(self.tree.preorder().len(), entries(self.outputs))
   }
+}
+
+impl<N, E> ScanOutputs<'_, (N, Option<E>)> {
+  pub fn split_parent_edges(self) -> Result<NodeEdgeMaps<N, E>, Report> {
+    split_parent_edges(self.tree, entries(self.outputs).map(Ok))
+  }
+}
+
+impl<'t, T> ScanOutputs<'t, Arc<T>> {
+  pub fn unwrap_shared(self) -> SharedOutputs<'t, T> {
+    SharedOutputs {
+      tree: self.tree,
+      outputs: self.outputs,
+    }
+  }
+}
+
+pub struct SharedOutputs<'t, T> {
+  tree: &'t TreeView<'t>,
+  outputs: Vec<Option<Arc<T>>>,
+}
+
+impl<T> SharedOutputs<'_, T> {
+  pub fn into_map(self) -> Result<BTreeMap<GraphNodeKey, T>, Report> {
+    let len = self.tree.preorder().len();
+    unwrapped_entries(self.outputs).process_results(|entries| bulk_map(len, entries))
+  }
+}
+
+impl<N, E> SharedOutputs<'_, (N, Option<E>)> {
+  pub fn split_parent_edges(self) -> Result<NodeEdgeMaps<N, E>, Report> {
+    split_parent_edges(self.tree, unwrapped_entries(self.outputs))
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NodeEdgeMaps<N, E> {
+  pub nodes: BTreeMap<GraphNodeKey, N>,
+  pub edges: BTreeMap<GraphEdgeKey, E>,
 }
 
 fn entries<Out>(outputs: Vec<Option<Out>>) -> impl Iterator<Item = (GraphNodeKey, Out)> {
@@ -77,6 +163,47 @@ fn entries<Out>(outputs: Vec<Option<Out>>) -> impl Iterator<Item = (GraphNodeKey
     .into_iter()
     .enumerate()
     .filter_map(|(index, output)| output.map(|output| (GraphNodeKey(index), output)))
+}
+
+fn unwrapped_entries<T>(outputs: Vec<Option<Arc<T>>>) -> impl Iterator<Item = Result<(GraphNodeKey, T), Report>> {
+  entries(outputs).map(|(key, output)| {
+    Arc::into_inner(output)
+      .map(|output| (key, output))
+      .ok_or_else(|| make_internal_report!("Scan output of node {key} is still shared after the scan"))
+  })
+}
+
+fn split_parent_edges<N, E>(
+  tree: &TreeView<'_>,
+  entries: impl Iterator<Item = Result<(GraphNodeKey, (N, Option<E>)), Report>>,
+) -> Result<NodeEdgeMaps<N, E>, Report> {
+  let len = tree.preorder().len();
+  let mut nodes = Vec::with_capacity(len);
+  let mut edges = Vec::with_capacity(len.saturating_sub(1));
+  for entry in entries {
+    let (key, (node, edge)) = entry?;
+    match (tree.parent(key), edge) {
+      (Some((_, edge_key)), Some(edge)) => {
+        edges.push((edge_key, edge));
+      },
+      (None, None) => {},
+      (None, Some(_)) => {
+        return Err(make_internal_report!(
+          "Scan output of root {key} holds a value for a parent edge"
+        ));
+      },
+      (Some((_, edge_key)), None) => {
+        return Err(make_internal_report!(
+          "Scan output of node {key} holds no value for its parent edge {edge_key}"
+        ));
+      },
+    }
+    nodes.push((key, node));
+  }
+  Ok(NodeEdgeMaps {
+    nodes: BTreeMap::from_iter(nodes),
+    edges: BTreeMap::from_iter(edges),
+  })
 }
 
 fn bulk_map<V>(len: usize, entries: impl Iterator<Item = (GraphNodeKey, V)>) -> BTreeMap<GraphNodeKey, V> {
@@ -102,8 +229,7 @@ where
     let capacity = tree.key_capacity();
     let mut slots = repeat_with(|| Mutex::new(None)).take(capacity).collect_vec();
     for (key, input) in inputs {
-      let is_node = key.as_usize() < capacity && (key == tree.root() || tree.parent(key).is_some());
-      if !is_node {
+      if !tree.contains(key) {
         return Err(make_internal_report!(
           "Scan input names node {key}, which is not in the tree"
         ));
@@ -157,7 +283,7 @@ where
     self.error.get_or_init(|| report);
   }
 
-  fn finish(self) -> Result<ScanOutputs<Out>, Report> {
+  fn finish(self) -> Result<ScanOutputs<'t, Out>, Report> {
     if let Some(report) = self.error.into_inner() {
       return Err(report);
     }
@@ -170,7 +296,10 @@ where
     {
       return Err(make_internal_report!("Scan finished without visiting node {key}"));
     }
-    Ok(ScanOutputs { outputs })
+    Ok(ScanOutputs {
+      tree: self.tree,
+      outputs,
+    })
   }
 }
 

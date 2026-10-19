@@ -2,9 +2,10 @@
 mod tests {
   use self::helpers::{caterpillar_parents, inputs_of, run_in_pool, run_in_small_stack_pool, subtree_sizes};
   use super::super::test_graph_support::tests::{NamedGraph, graph_from_parents};
+  use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
-  use crate::tree_scan::ScanOutputs;
+  use crate::tree_scan::{NodeEdgeMaps, ScanOutputs};
   use crate::tree_view::TreeView;
   use eyre::Report;
   use itertools::Itertools;
@@ -13,6 +14,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
+  use std::sync::Arc;
   use treetime_utils::{assert_error, make_report};
 
   #[test]
@@ -389,6 +391,131 @@ mod tests {
 
     assert_error!(result, "injected failure of node 1");
     assert_eq!(vec![GraphNodeKey(1)], visited.into_inner());
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_join_and_split_parent_edges_roundtrip() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let (root, a, b) = (tree.key("root"), tree.key("A"), tree.key("B"));
+    let (root_a, root_b) = (tree.edge("root", "A")?, tree.edge("root", "B")?);
+    let nodes = btreemap! { root => "root", a => "A", b => "B" };
+    let edges = btreemap! { root_a => "root-A", root_b => "root-B" };
+
+    let joined = view
+      .join_parent_edges(nodes.clone(), edges.clone())?
+      .collect::<BTreeMap<_, _>>();
+    let split = view
+      .scan_down(joined.clone(), |_, joined, _: Option<()>| Ok((joined, ())))?
+      .split_parent_edges()?;
+
+    let expected_joined = btreemap! {
+      root => ("root", None), a => ("A", Some("root-A")), b => ("B", Some("root-B")),
+    };
+    assert_eq!(expected_joined, joined);
+    assert_eq!(NodeEdgeMaps { nodes, edges }, split);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_join_parent_edges_rejects_missing_edge() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let nodes = inputs_of(&tree.graph, ());
+    let edges = btreemap! { tree.edge("root", "A")? => () };
+
+    let result = view.join_parent_edges(nodes, edges);
+
+    assert_error!(
+      result,
+      format!(
+        "Scan input is missing edge {} above node {}. This is an internal error. Please report it to developers.",
+        tree.edge("root", "B")?,
+        tree.key("B")
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_join_parent_edges_rejects_edge_outside_the_tree() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let nodes = inputs_of(&tree.graph, ());
+    let edges = btreemap! { tree.edge("root", "A")? => (), GraphEdgeKey(7) => () };
+
+    let result = view.join_parent_edges(nodes, edges);
+
+    assert_error!(
+      result,
+      "Scan input names edge 7, which is not in the tree. This is an internal error. Please report it to developers."
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_split_parent_edges_rejects_edge_value_at_the_root() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let outputs = view.scan_up(inputs_of(&tree.graph, ()), |_, (), _: Vec<()>| Ok((((), Some(())), ())))?;
+
+    let result = outputs.split_parent_edges();
+
+    assert_error!(
+      result,
+      format!(
+        "Scan output of root {} holds a value for a parent edge. This is an internal error. Please report it to developers.",
+        tree.key("root")
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_split_parent_edges_rejects_missing_edge_value() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let outputs = view.scan_up(inputs_of(&tree.graph, ()), |_, (), _: Vec<()>| {
+      Ok((((), None::<()>), ()))
+    })?;
+
+    let result = outputs.split_parent_edges();
+
+    assert_error!(
+      result,
+      format!(
+        "Scan output of node {} holds no value for its parent edge {}. This is an internal error. Please report it to developers.",
+        tree.key("A"),
+        tree.edge("root", "A")?
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_unwrap_shared_rejects_output_with_another_holder() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let shared = Arc::new(2);
+    let outputs = view.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+      let output = if key == tree.key("A") {
+        Arc::clone(&shared)
+      } else {
+        Arc::new(1)
+      };
+      Ok((output, ()))
+    })?;
+
+    let result = outputs.unwrap_shared().into_map();
+
+    assert_error!(
+      result,
+      format!(
+        "Scan output of node {} is still shared after the scan. This is an internal error. Please report it to developers.",
+        tree.key("A")
+      )
+    );
     Ok(())
   }
 
