@@ -43,7 +43,7 @@ Key functions: `clock_regression()`, `estimate_clock_model_with_reroot_policy()`
 
 ## Exact Root Position
 
-With the root at fraction $x$ of an edge of length $\ell$, the tips below the edge are $(1 - x)\ell$ and all others $x\ell$ further from the root. The date sums do not change and the divergence sums are linear or quadratic in $x$, so the score is a quadratic in $x$ and the parabola through $x = 0, \tfrac12, 1$ is exact; its vertex clamped to $[0, 1]$ is the optimum on that edge. v0 brackets the split on a grid and refines it with bounded Brent minimization (`scipy.optimize.minimize_scalar`); v1 needs no 1D optimizer.
+With the root at fraction $x$ of an edge of length $\ell$, the tips below the edge are $(1 - x)\ell$ and all others $x\ell$ further from the root. The date sums do not change and the divergence sums are linear or quadratic in $x$, so the score is a quadratic in $x$ and the parabola through $x = 0, \tfrac12, 1$ is exact; its vertex clamped to $[0, 1]$ is the optimum on that edge. On a terminal edge, a vertex past the tip gives $x = 1$, and the reroot then places a new root at the tip end instead of making the tip the root ([reroot.md](reroot.md), "Root Placement"). v0 brackets the split on a grid and refines it with bounded Brent minimization (`scipy.optimize.minimize_scalar`); v1 needs no 1D optimizer.
 
 v1: `fn optimize_exact()` [packages/treetime/src/clock/find_best_root/method_exact.rs#L8](../../packages/treetime/src/clock/find_best_root/method_exact.rs#L8), cost function `struct BranchPointCostFunction` [cost_function.rs](../../packages/treetime/src/clock/find_best_root/cost_function.rs).
 
@@ -68,7 +68,7 @@ v0: [`packages/legacy/treetime/treetime/clock_filter_methods.py#L5-L40`](../../p
 
 Edge inversion along the path from the old root to the new root position, with cleanup of trivial (single-child) nodes. Rerooting changes which node is the root of the tree without altering the unrooted topology. All edges along the old-root-to-new-root path are inverted (parent becomes child and vice versa), and the old root is removed if it becomes a trivial single-child node. An old root with one child would become a leaf after the inversion. When it has no date, the reroot removes it first and its child becomes the root, which is exact because a branch to a node without data contributes a factor of 1 to the likelihood and root-to-tip distances add along a path. A dated one becomes a dated leaf. `--keep-root` leaves the tree unchanged. A reroot that turns an internal node without a date into a leaf fails with an error ([packages/treetime/src/reroot/placement.rs](../../packages/treetime/src/reroot/placement.rs)). After the move, the clock reruns the backward regression pass on the new tree.
 
-v1: `fn reroot_at_best_root()` [packages/treetime/src/clock/reroot.rs#L28](../../packages/treetime/src/clock/reroot.rs#L28), topology move `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L17](../../packages/treetime/src/reroot/orchestrate.rs#L17). See [reroot.md](reroot.md).
+v1: `fn reroot_at_best_root()` [packages/treetime/src/clock/reroot.rs#L20](../../packages/treetime/src/clock/reroot.rs#L20), topology move `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L19](../../packages/treetime/src/reroot/orchestrate.rs#L19). See [reroot.md](reroot.md).
 
 ---
 
