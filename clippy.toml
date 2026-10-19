@@ -37,6 +37,6 @@ disallowed-methods = [
     { path = "std::time::Duration::from_secs_f64", reason = "panics on a negative, NaN, or overflowing value; use Duration::try_from_secs_f64" },
     { path = "reqwest::Client::new", reason = "build the client through ClientBuilder with an explicit .timeout(...)", allow-invalid = true },
     { path = "std::sync::mpsc::channel", reason = "use a bounded channel (sync_channel or crossbeam bounded) to apply backpressure" },
-    { path = "crossbeam_channel::unbounded", reason = "use crossbeam_channel::bounded to apply backpressure" },
+    { path = "crossbeam_channel::unbounded", reason = "use crossbeam_channel::bounded to apply backpressure", allow-invalid = true },
     { path = "tokio::sync::mpsc::unbounded_channel", reason = "use tokio::sync::mpsc::channel with an explicit capacity", allow-invalid = true },
 ]
