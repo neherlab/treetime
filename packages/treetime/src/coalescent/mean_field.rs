@@ -87,6 +87,10 @@ impl CoalescentPrior {
     Self::new(&self.expectation.with_topology(graph, merger_times)?, &self.tc)
   }
 
+  pub(crate) fn time_resolution(&self) -> f64 {
+    self.expectation.step
+  }
+
   pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> Result<f64, Report> {
     let weight = 1.0 - n_children.to_f64_exact();
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
@@ -159,6 +163,7 @@ pub(crate) struct LineageExpectation {
   expected: Vec<f64>,
   variance: Vec<f64>,
   expected_before: f64,
+  step: f64,
   nodes: BTreeMap<GraphNodeKey, NodeSurvival>,
 }
 
@@ -324,6 +329,7 @@ impl LineageExpectation {
       expected,
       variance,
       expected_before,
+      step,
       nodes,
     }))
   }

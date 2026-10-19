@@ -550,6 +550,38 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_backward_pass_one_month_tip_range_under_a_coalescent_prior_keeps_the_edge_grid_within_the_limit()
+  -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:9.0,B:7.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+    let leaf_b_key = find_node_key_by_name(&graph, &names, "B").expect("leaf B not found");
+    let mut inputs = BackwardInputs::new(&graph);
+    set_date_constraint(
+      &mut inputs.constraints,
+      leaf_a_key,
+      Distribution::range((2014.0, 2014.0 + 1.0 / 12.0), 0.0),
+    );
+    set_leaf_time(&mut inputs, leaf_b_key, 2012.0);
+    let t = Array1::linspace(0.0, 300.0, 3001);
+    let y = t.mapv(|t| 0.5 * t);
+    inputs.branches.insert(
+      parent_edge_key(&graph, leaf_a_key),
+      BranchLikelihood {
+        distribution: Some(Arc::new(Distribution::function(t, y)?)),
+        time_length: Some(9.0),
+      },
+    );
+    let model = point_coalescent_prior(&graph, &names, &[("A", 2014.0), ("B", 2012.0), ("root", 2005.0)], 0.5)?;
+
+    let backward = run_backward_pass(&graph, &inputs, Some(&model))?;
+
+    assert!(backward.messages[&parent_edge_key(&graph, leaf_a_key)].is_some());
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use treetime_graph::edge::GraphEdgeKey;

@@ -20,7 +20,7 @@ use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput,
 };
 use treetime_grid::{MaxGridPoints, Side};
-use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 use treetime_utils::make_internal_report;
 
 pub(crate) fn propagate_distributions_backward(
@@ -142,8 +142,10 @@ fn apply_leaf_coalescent_factor(
   };
   let distribution = match distribution.time_bounds() {
     Some((start, end)) if matches!(distribution, Distribution::Range(_)) => {
-      let dx = (end - start) / (GRID_POINTS - 1).to_f64_exact();
-      let values = Array1::from_elem(GRID_POINTS, distribution.eval(start)?);
+      let n_points =
+        (f64_to_usize_saturating(((end - start) / model.time_resolution()).ceil()) + 1).clamp(2, GRID_POINTS);
+      let dx = (end - start) / (n_points - 1).to_f64_exact();
+      let values = Array1::from_elem(n_points, distribution.eval(start)?);
       Distribution::Function(
         DistributionFunction::from_start_dx_values(start, dx, values)?
           .with_left_extrap(BoundaryBehavior::Hard)?
