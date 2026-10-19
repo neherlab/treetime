@@ -17,9 +17,11 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassNodeOutput};
+use treetime_graph::tree_scan::NodeEdgeMaps;
+use treetime_graph::tree_view::TreeView;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
+use treetime_utils::make_internal_report;
 
 pub(crate) fn process_backward_indexed(
   partition: &PartitionMarginalSparse,
@@ -28,69 +30,146 @@ pub(crate) fn process_backward_indexed(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
 ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
-  let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_backward(
-    node_states,
-    &partition.obs_edges,
-    |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
-    |context| process_node_backward_indexed(partition, gtr, branch_lengths, &context),
+  let tree = TreeView::new(graph)?;
+  let pass = SparseBackwardPass {
+    tree: &tree,
+    partition,
+    gtr,
+    branch_lengths,
+  };
+  let nodes = node_states.iter().map(|(&key, node)| (key, node)).collect();
+  let edges = partition.obs_edges.iter().map(|(&key, edge)| (key, edge)).collect();
+  let outputs = tree.scan_up(
+    tree.join_parent_edges(nodes, edges)?,
+    |key, (node, edge_obs), children| pass.node(key, node, edge_obs, &children),
   )?;
+  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
   Ok(MarginalBackward {
-    node_states: outputs.nodes,
-    backward: outputs.edges,
+    node_states: nodes,
+    backward: edges,
   })
 }
 
-fn process_node_backward_indexed(
-  partition: &PartitionMarginalSparse,
-  gtr: &GTR,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: &GraphPassBackwardContext<'_, &SparseNodeState, SparseEdgeObs, SparseNodeState, SparseEdgeBackward>,
-) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeBackward>, Report> {
-  let alphabet = &partition.alphabet;
-  let total_length = partition.total_length;
-  let obs = &partition.obs_nodes[&context.key];
+type SparseBackwardOutput = Arc<(SparseNodeState, Option<SparseEdgeBackward>)>;
 
-  let msg_to_parent = if context.is_leaf {
-    leaf_message(obs, alphabet)?
-  } else {
-    combine_child_messages(partition, gtr, context, obs)?
-  };
+struct SparseBackwardPass<'a> {
+  tree: &'a TreeView<'a>,
+  partition: &'a PartitionMarginalSparse,
+  gtr: &'a GTR,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+}
 
-  let sequence = Arc::clone(&context.input.sequence);
-  let (profile, parent_message) = if let Some((edge_key, edge_obs)) = context.parent_edge {
-    let branch_length = fix_branch_length(total_length, branch_lengths[&edge_key]);
-    let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
-      propagate_raw_per_site(
-        gtr,
-        site_rates,
-        branch_length,
-        true,
-        &msg_to_parent,
-        edge_obs.transmission.as_deref(),
-      )
+impl SparseBackwardPass<'_> {
+  fn node(
+    &self,
+    key: GraphNodeKey,
+    node: &SparseNodeState,
+    edge_obs: Option<&SparseEdgeObs>,
+    children: &[SparseBackwardOutput],
+  ) -> Result<(SparseBackwardOutput, SparseBackwardOutput), Report> {
+    let partition = self.partition;
+    let gtr = self.gtr;
+    let obs = &partition.obs_nodes[&key];
+
+    let msg_to_parent = if self.tree.children(key).is_empty() {
+      leaf_message(obs, &partition.alphabet)?
     } else {
-      propagate_raw(
-        &gtr.expQt(branch_length).t().to_owned(),
-        &msg_to_parent,
-        edge_obs.transmission.as_deref(),
-      )
+      self.combine_child_messages(key, children, obs)?
     };
-    (
-      SparseSeqDistribution::default(),
-      Some(SparseEdgeBackward {
-        msg_to_parent,
-        msg_from_child,
-      }),
-    )
-  } else {
-    (msg_to_parent, None)
-  };
 
-  Ok(GraphPassNodeOutput {
-    node: SparseNodeState { sequence, profile },
-    parent_message,
-  })
+    let sequence = Arc::clone(&node.sequence);
+    let (profile, parent_message) = match (self.tree.parent(key), edge_obs) {
+      (Some((_, edge_key)), Some(edge_obs)) => {
+        let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
+        let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
+          propagate_raw_per_site(
+            gtr,
+            site_rates,
+            branch_length,
+            true,
+            &msg_to_parent,
+            edge_obs.transmission.as_deref(),
+          )
+        } else {
+          propagate_raw(
+            &gtr.expQt(branch_length).t().to_owned(),
+            &msg_to_parent,
+            edge_obs.transmission.as_deref(),
+          )
+        };
+        (
+          SparseSeqDistribution::default(),
+          Some(SparseEdgeBackward {
+            msg_to_parent,
+            msg_from_child,
+          }),
+        )
+      },
+      (None, None) => (msg_to_parent, None),
+      _ => {
+        return Err(make_internal_report!(
+          "Sparse marginal backward pass received an inconsistent parent edge at node {key}"
+        ));
+      },
+    };
+
+    let output = Arc::new((SparseNodeState { sequence, profile }, parent_message));
+    Ok((Arc::clone(&output), output))
+  }
+
+  fn combine_child_messages(
+    &self,
+    key: GraphNodeKey,
+    children: &[SparseBackwardOutput],
+    obs: &SparseNodeObs,
+  ) -> Result<SparseSeqDistribution, Report> {
+    let partition = self.partition;
+    let alphabet = &partition.alphabet;
+    let child_keys = self.tree.children(key);
+    let n_children = child_keys.len();
+    let mut child_messages = Vec::with_capacity(n_children);
+    let mut n_events = 0;
+    for (&(child_key, edge_key), child) in izip!(child_keys, children) {
+      let child_backward = child
+        .1
+        .as_ref()
+        .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))?;
+      n_events += 2 * partition.obs_edges[&edge_key].fitch_subs().len() + child_backward.msg_from_child.variable.len();
+      child_messages.push(&child_backward.msg_from_child);
+    }
+
+    let mut events = CandidateSiteEvents::with_capacity(n_children, n_events);
+    for (ci, (&(_, edge_key), child_message)) in izip!(child_keys, &child_messages).enumerate() {
+      for mutation in partition.obs_edges[&edge_key].fitch_subs() {
+        events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
+        events.insert(mutation.pos(), SiteSlot::Reference(ci), mutation.qry());
+      }
+      for (pos, profile) in &child_message.variable {
+        events.or_insert(*pos, SiteSlot::State, profile.state);
+      }
+    }
+    let mut sites = events.finish();
+    sites.fill_missing_references(|ci, pos, parent_state| {
+      let child_obs = &partition.obs_nodes[&child_keys[ci].0];
+      if range_contains(&child_obs.non_char, pos) {
+        if range_contains(&child_obs.gaps, pos) {
+          alphabet.gap()
+        } else {
+          alphabet.unknown()
+        }
+      } else {
+        parent_state
+      }
+    });
+
+    combine_messages(
+      &obs.composition,
+      &child_messages,
+      &sites,
+      alphabet,
+      self.tree.parent(key).is_none().then_some(self.gtr.pi()),
+    )
+  }
 }
 
 fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDistribution, Report> {
@@ -116,54 +195,4 @@ fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDis
     fixed,
     log_lh: LogLh::ZERO,
   })
-}
-
-fn combine_child_messages(
-  partition: &PartitionMarginalSparse,
-  gtr: &GTR,
-  context: &GraphPassBackwardContext<'_, &SparseNodeState, SparseEdgeObs, SparseNodeState, SparseEdgeBackward>,
-  obs: &SparseNodeObs,
-) -> Result<SparseSeqDistribution, Report> {
-  let alphabet = &partition.alphabet;
-  let n_children = context.children.len();
-  let mut child_messages = Vec::with_capacity(n_children);
-  let mut n_events = 0;
-  for child in context.children {
-    let child_backward = child.edge_message()?;
-    n_events +=
-      2 * partition.obs_edges[&child.edge_key].fitch_subs().len() + child_backward.msg_from_child.variable.len();
-    child_messages.push(&child_backward.msg_from_child);
-  }
-
-  let mut events = CandidateSiteEvents::with_capacity(n_children, n_events);
-  for (ci, (child, child_message)) in izip!(context.children, &child_messages).enumerate() {
-    for mutation in partition.obs_edges[&child.edge_key].fitch_subs() {
-      events.insert(mutation.pos(), SiteSlot::State, mutation.reff());
-      events.insert(mutation.pos(), SiteSlot::Reference(ci), mutation.qry());
-    }
-    for (pos, profile) in &child_message.variable {
-      events.or_insert(*pos, SiteSlot::State, profile.state);
-    }
-  }
-  let mut sites = events.finish();
-  sites.fill_missing_references(|ci, pos, parent_state| {
-    let child_obs = &partition.obs_nodes[&context.children[ci].node_key];
-    if range_contains(&child_obs.non_char, pos) {
-      if range_contains(&child_obs.gaps, pos) {
-        alphabet.gap()
-      } else {
-        alphabet.unknown()
-      }
-    } else {
-      parent_state
-    }
-  });
-
-  combine_messages(
-    &obs.composition,
-    &child_messages,
-    &sites,
-    alphabet,
-    context.is_root.then_some(gtr.pi()),
-  )
 }

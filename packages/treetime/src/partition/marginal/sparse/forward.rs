@@ -23,7 +23,8 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_graph::tree_scan::NodeEdgeMaps;
+use treetime_graph::tree_view::TreeView;
 use treetime_primitives::LogLh;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
@@ -37,17 +38,25 @@ pub(crate) fn process_forward_indexed(
   node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
 ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
-  let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_forward_owned(
-    node_states,
-    backward,
-    |key| treetime_utils::make_internal_error!("Partition node {key} is missing before the sparse marginal pass"),
-    |context| process_node_forward_indexed(partition, gtr, branch_lengths, context),
+  let tree = TreeView::new(graph)?;
+  let pass = SparseForwardPass {
+    tree: &tree,
+    partition,
+    gtr,
+    branch_lengths,
+  };
+  let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
+  let outputs = tree.scan_down(
+    tree.join_parent_edges(node_states, backward)?,
+    |key, (node, backward), parent: Option<SparseForwardOutput>| {
+      pass.node(key, node, backward, parent.as_deref().map(|(parent, _)| parent))
+    },
   )?;
+  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
 
   let mut forward = BTreeMap::new();
   let mut estimates = BTreeMap::new();
-  for (edge_key, out) in outputs.edges {
+  for (edge_key, out) in edges {
     forward.insert(
       edge_key,
       SparseEdgeForward {
@@ -58,26 +67,64 @@ pub(crate) fn process_forward_indexed(
     estimates.insert(edge_key, out.subs_ml);
   }
   Ok(MarginalForward {
-    node_states: outputs.nodes,
+    node_states: nodes,
     forward,
     estimates,
   })
 }
 
-fn process_node_forward_indexed(
-  partition: &PartitionMarginalSparse,
-  gtr: &GTR,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: GraphPassForwardContext<'_, SparseNodeState, SparseEdgeBackward, SparseNodeState>,
-) -> Result<GraphPassNodeOutput<SparseNodeState, SparseEdgeForwardOut>, Report> {
-  let alphabet = &partition.alphabet;
-  let total_length = partition.total_length;
-  let obs = &partition.obs_nodes[&context.key];
-  let mut node = context.input;
+type SparseForwardOutput = Arc<(SparseNodeState, Option<SparseEdgeForwardOut>)>;
 
-  let parent_message = if let (Some((edge_key, backward)), Some(parent), Some(parent_key)) =
-    (context.parent_edge, context.parent, context.parent_key)
-  {
+struct SparseForwardPass<'a> {
+  tree: &'a TreeView<'a>,
+  partition: &'a PartitionMarginalSparse,
+  gtr: &'a GTR,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+}
+
+impl SparseForwardPass<'_> {
+  fn node(
+    &self,
+    key: GraphNodeKey,
+    mut node: SparseNodeState,
+    backward: Option<&SparseEdgeBackward>,
+    parent: Option<&SparseNodeState>,
+  ) -> Result<(SparseForwardOutput, SparseForwardOutput), Report> {
+    let partition = self.partition;
+    let edge = match (self.tree.parent(key), backward, parent) {
+      (Some((parent_key, edge_key)), Some(backward), Some(parent)) => {
+        Some(self.edge(key, parent_key, edge_key, &mut node, backward, parent)?)
+      },
+      (None, None, None) => {
+        if node.sequence.is_empty() {
+          node.sequence = Arc::new(partition.root_sequence.clone());
+        }
+        None
+      },
+      _ => {
+        return Err(make_internal_report!(
+          "Sparse marginal forward pass received an inconsistent parent edge and parent message at node {key}"
+        ));
+      },
+    };
+    let output = Arc::new((node, edge));
+    Ok((Arc::clone(&output), output))
+  }
+
+  fn edge(
+    &self,
+    key: GraphNodeKey,
+    parent_key: GraphNodeKey,
+    edge_key: GraphEdgeKey,
+    node: &mut SparseNodeState,
+    backward: &SparseEdgeBackward,
+    parent: &SparseNodeState,
+  ) -> Result<SparseEdgeForwardOut, Report> {
+    let partition = self.partition;
+    let gtr = self.gtr;
+    let alphabet = &partition.alphabet;
+    let obs = &partition.obs_nodes[&key];
+    let is_leaf = self.tree.children(key).is_empty();
     let edge_obs = &partition.obs_edges[&edge_key];
     let parent_obs = &partition.obs_nodes[&parent_key];
 
@@ -104,7 +151,7 @@ fn process_node_forward_indexed(
     }
     let sites = events.finish();
 
-    let branch_length = fix_branch_length(total_length, branch_lengths[&edge_key]);
+    let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
     let msg_from_parent = if let Some(site_rates) = gtr.site_rates() {
       propagate_raw_per_site(
         gtr,
@@ -129,33 +176,26 @@ fn process_node_forward_indexed(
       None,
     )?;
     node.profile = profile;
-    let msg_from_parent_out = if context.is_leaf {
+    let msg_from_parent_out = if is_leaf {
       msg_from_parent
     } else {
       SparseSeqDistribution::default()
     };
 
-    if !context.is_leaf && !parent.sequence.is_empty() {
+    if !is_leaf && !parent.sequence.is_empty() {
       let sequence = parsimony_seq(&parent.sequence, edge_obs, obs, alphabet);
       if *node.sequence != sequence {
         node.sequence = Arc::new(sequence);
       }
     }
-    let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, &node, obs, edge_obs)?;
+    let subs_ml = compute_ml_subs_for_nodes(alphabet, parent, parent_obs, node, obs, edge_obs)?;
 
-    Some(SparseEdgeForwardOut {
+    Ok(SparseEdgeForwardOut {
       msg_to_child,
       msg_from_parent: msg_from_parent_out,
       subs_ml,
     })
-  } else {
-    if node.sequence.is_empty() {
-      node.sequence = Arc::new(partition.root_sequence.clone());
-    }
-    None
-  };
-
-  Ok(GraphPassNodeOutput { node, parent_message })
+  }
 }
 
 struct SparseEdgeForwardOut {

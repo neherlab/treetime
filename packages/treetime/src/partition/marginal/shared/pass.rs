@@ -13,18 +13,18 @@ use crate::partition::storage::dense::{
 };
 use crate::seq::indel::{InDel, compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use ndarray::Array2;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{
-  GraphPass, GraphPassBackwardContext, GraphPassChildBackward, GraphPassForwardContext, GraphPassNodeOutput,
-};
+use treetime_graph::tree_scan::NodeEdgeMaps;
+use treetime_graph::tree_view::TreeView;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
-use treetime_utils::make_internal_error;
+use treetime_utils::{make_internal_error, make_internal_report};
 
 impl<P: IndexedPartition> MarginalPasses for P {
   type Node = DenseNodeState;
@@ -85,10 +85,6 @@ impl<P: IndexedPartition> MarginalPasses for P {
   }
 }
 
-#[expect(
-  clippy::zero_sized_map_values,
-  reason = "the graph pass takes a per-node input map; this pass has no per-node input and reads leaf observations by key"
-)]
 pub(crate) fn indexed_backward(
   inputs: &DenseInputs,
   gtr: &GTR,
@@ -96,105 +92,125 @@ pub(crate) fn indexed_backward(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-  let min_branch_length = inputs.min_branch_length;
-  let pass = GraphPass::new(graph)?;
+  let tree = TreeView::new(graph)?;
+  let pass = IndexedBackwardPass {
+    tree: &tree,
+    gtr,
+    min_branch_length: inputs.min_branch_length,
+    branch_lengths,
+  };
   let outputs = match kind {
     IndexedKind::Dense {
       alphabet,
       length,
       leaves,
-    } => pass.map_backward(
-      &BTreeMap::new(),
-      branch_lengths,
-      |_| Ok(()),
-      |context| {
-        indexed_node_backward(
-          gtr,
-          min_branch_length,
-          &context,
-          |key| dense_leaf_backward(alphabet, &leaves[&key]),
-          |children| backward_internal_dense(children, length),
-        )
-      },
-    )?,
-    IndexedKind::Discrete { leaves } => pass.map_backward(
-      &BTreeMap::new(),
-      branch_lengths,
-      |_| Ok(()),
-      |context| {
-        indexed_node_backward(
-          gtr,
-          min_branch_length,
-          &context,
-          |key| Ok(discrete_leaf_backward(&leaves[&key])),
-          |_| DenseSeqInfo::default(),
-        )
-      },
-    )?,
+    } => tree.scan_up(leaf_inputs(&tree, leaves), |key, leaf, children| {
+      pass.node(
+        key,
+        leaf,
+        &children,
+        |obs| dense_leaf_backward(alphabet, obs),
+        |children| backward_internal_dense(children, length),
+      )
+    })?,
+    IndexedKind::Discrete { leaves } => tree.scan_up(leaf_inputs(&tree, leaves), |key, leaf, children| {
+      pass.node(
+        key,
+        leaf,
+        &children,
+        |obs| Ok(discrete_leaf_backward(obs)),
+        |_| DenseSeqInfo::default(),
+      )
+    })?,
   };
+  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
   Ok(MarginalBackward {
-    node_states: outputs.nodes,
-    backward: outputs.edges,
+    node_states: nodes,
+    backward: edges,
   })
 }
 
-fn indexed_node_backward(
-  gtr: &GTR,
+fn leaf_inputs<'a, L>(
+  tree: &'a TreeView<'_>,
+  leaves: &'a BTreeMap<GraphNodeKey, L>,
+) -> impl Iterator<Item = (GraphNodeKey, Option<&'a L>)> {
+  tree.preorder().iter().map(|&key| (key, leaves.get(&key)))
+}
+
+type IndexedBackwardOutput = Arc<(DenseNodeState, Option<DenseEdgeBackward>)>;
+
+struct IndexedBackwardPass<'a> {
+  tree: &'a TreeView<'a>,
+  gtr: &'a GTR,
   min_branch_length: f64,
-  context: &GraphPassBackwardContext<'_, &(), f64, DenseNodeState, DenseEdgeBackward>,
-  leaf_backward: impl Fn(GraphNodeKey) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
-  internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
-) -> Result<GraphPassNodeOutput<DenseNodeState, DenseEdgeBackward>, Report> {
-  let (mut node, msg_to_parent) = if context.is_leaf {
-    leaf_backward(context.key)?
-  } else {
-    let children = context.children.iter().map(|child| child.node).collect_vec();
-    let seq = internal_seq(&children);
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+}
 
-    let child_edges = context
-      .children
-      .iter()
-      .map(GraphPassChildBackward::edge_message)
-      .collect::<Result<Vec<_>, Report>>()?;
-    let Some((first_edge, other_edges)) = child_edges.split_first() else {
-      return make_internal_error!("Internal node {} has no children", context.key);
+impl IndexedBackwardPass<'_> {
+  fn node<L>(
+    &self,
+    key: GraphNodeKey,
+    leaf: Option<&L>,
+    children: &[IndexedBackwardOutput],
+    leaf_backward: impl Fn(&L) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
+    internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
+  ) -> Result<(IndexedBackwardOutput, IndexedBackwardOutput), Report> {
+    let (mut node, msg_to_parent) = if self.tree.children(key).is_empty() {
+      let leaf =
+        leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no observation before the marginal backward pass"))?;
+      leaf_backward(leaf)?
+    } else {
+      let child_nodes = children.iter().map(|child| &child.0).collect_vec();
+      let seq = internal_seq(&child_nodes);
+      let child_edges = izip!(self.tree.children(key), children)
+        .map(|(&(child_key, _), child)| {
+          child
+            .1
+            .as_ref()
+            .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))
+        })
+        .collect::<Result<Vec<_>, Report>>()?;
+      let Some((first_edge, other_edges)) = child_edges.split_first() else {
+        return make_internal_error!("Internal node {key} has no children");
+      };
+      let mut log_dis = first_edge.msg_from_child.dis.mapv(f64::ln);
+      for edge in other_edges {
+        log_dis.zip_mut_with(&edge.msg_from_child.dis, |l, &p| *l += p.ln());
+      }
+      let (dis, delta_ll) = normalize_from_log(log_dis);
+      let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<LogLh>() + LogLh::new(delta_ll);
+      let profile = DenseSeqDistribution { dis, log_lh };
+      (
+        DenseNodeState {
+          seq,
+          profile: profile.clone(),
+        },
+        profile,
+      )
     };
-    let mut log_dis = first_edge.msg_from_child.dis.mapv(f64::ln);
-    for edge in other_edges {
-      log_dis.zip_mut_with(&edge.msg_from_child.dis, |l, &p| *l += p.ln());
-    }
-    let (dis, delta_ll) = normalize_from_log(log_dis);
-    let log_lh = child_edges.iter().map(|edge| edge.msg_from_child.log_lh).sum::<LogLh>() + LogLh::new(delta_ll);
-    let profile = DenseSeqDistribution { dis, log_lh };
-    (
-      DenseNodeState {
-        seq,
-        profile: profile.clone(),
-      },
-      profile,
-    )
-  };
 
-  let parent_message = if let Some((_edge_key, branch_length)) = context.parent_edge {
-    let branch_length = branch_length.max(min_branch_length);
-    Some(DenseEdgeBackward {
-      msg_from_child: DenseSeqDistribution {
-        dis: gtr.propagate_profile(&msg_to_parent.dis, branch_length, false),
-        log_lh: msg_to_parent.log_lh,
-      },
-      msg_to_parent,
-    })
-  } else {
-    let mut dis = &msg_to_parent.dis * gtr.pi();
-    let delta_ll = normalize_inplace(&mut dis);
-    node.profile = DenseSeqDistribution {
-      dis,
-      log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
+    let parent_message = if let Some((_, edge_key)) = self.tree.parent(key) {
+      let branch_length = self.branch_lengths[&edge_key].max(self.min_branch_length);
+      Some(DenseEdgeBackward {
+        msg_from_child: DenseSeqDistribution {
+          dis: self.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false),
+          log_lh: msg_to_parent.log_lh,
+        },
+        msg_to_parent,
+      })
+    } else {
+      let mut dis = &msg_to_parent.dis * self.gtr.pi();
+      let delta_ll = normalize_inplace(&mut dis);
+      node.profile = DenseSeqDistribution {
+        dis,
+        log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
+      };
+      None
     };
-    None
-  };
 
-  Ok(GraphPassNodeOutput { node, parent_message })
+    let output = Arc::new((node, parent_message));
+    Ok((Arc::clone(&output), output))
+  }
 }
 
 fn dense_leaf_backward(
@@ -246,18 +262,26 @@ pub(crate) fn indexed_forward(
   node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
-  let min_branch_length = inputs.min_branch_length;
-  let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_forward_owned(
-    node_states,
-    backward,
-    |key| make_internal_error!("Partition node {key} is missing before the marginal forward pass"),
-    |context| indexed_node_forward(gtr, min_branch_length, kind, branch_lengths, context),
+  let tree = TreeView::new(graph)?;
+  let pass = IndexedForwardPass {
+    tree: &tree,
+    gtr,
+    min_branch_length: inputs.min_branch_length,
+    kind,
+    branch_lengths,
+  };
+  let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
+  let outputs = tree.scan_down(
+    tree.join_parent_edges(node_states, backward)?,
+    |key, (node, backward), parent: Option<IndexedForwardOutput>| {
+      pass.node(key, node, backward, parent.as_deref().map(|(parent, _)| parent))
+    },
   )?;
+  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
 
   let mut forward = BTreeMap::new();
   let mut estimates = BTreeMap::new();
-  for (edge_key, out) in outputs.edges {
+  for (edge_key, out) in edges {
     forward.insert(
       edge_key,
       DenseEdgeForward {
@@ -267,57 +291,66 @@ pub(crate) fn indexed_forward(
     estimates.insert(edge_key, DenseEdgeEstimate { indels: out.indels });
   }
   Ok(MarginalForward {
-    node_states: outputs.nodes,
+    node_states: nodes,
     forward,
     estimates,
   })
 }
 
-fn indexed_node_forward(
-  gtr: &GTR,
+type IndexedForwardOutput = Arc<(DenseNodeState, Option<DenseEdgeForwardOut>)>;
+
+struct IndexedForwardPass<'a> {
+  tree: &'a TreeView<'a>,
+  gtr: &'a GTR,
   min_branch_length: f64,
-  kind: IndexedKind<'_>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  context: GraphPassForwardContext<'_, DenseNodeState, DenseEdgeBackward, DenseNodeState>,
-) -> Result<GraphPassNodeOutput<DenseNodeState, DenseEdgeForwardOut>, Report> {
-  let mut node = context.input;
+  kind: IndexedKind<'a>,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+}
 
-  let mut edge_out = context.parent_edge.map(|(edge_key, backward)| {
-    (
-      edge_key,
-      backward,
-      DenseEdgeForwardOut {
-        msg_to_child: DenseSeqDistribution::default(),
-        indels: vec![],
+impl IndexedForwardPass<'_> {
+  fn node(
+    &self,
+    key: GraphNodeKey,
+    mut node: DenseNodeState,
+    backward: Option<&DenseEdgeBackward>,
+    parent: Option<&DenseNodeState>,
+  ) -> Result<(IndexedForwardOutput, IndexedForwardOutput), Report> {
+    let msg_to_child = match (self.tree.parent(key), backward, parent) {
+      (Some((_, edge_key)), Some(backward), Some(parent)) => {
+        let mut dis = divide_out(&parent.profile.dis, &backward.msg_from_child.dis);
+        let delta_ll = normalize_inplace(&mut dis);
+        let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh);
+        let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
+        let msg_to_child = DenseSeqDistribution { dis, log_lh };
+        let branch_length = self.branch_lengths[&edge_key].max(self.min_branch_length);
+        let msg_child = self.gtr.evolve(&msg_to_child.dis, branch_length, false);
+        let mut dis = &backward.msg_to_parent.dis * &msg_child;
+        let delta_ll = normalize_inplace(&mut dis);
+        node.profile = DenseSeqDistribution {
+          dis,
+          log_lh: backward.msg_to_parent.log_lh + msg_to_child.log_lh + LogLh::new(delta_ll),
+        };
+        Some(msg_to_child)
       },
-    )
-  });
-
-  if let (Some((edge_key, backward, out)), Some(parent)) = (edge_out.as_mut(), context.parent) {
-    let mut dis = divide_out(&parent.profile.dis, &backward.msg_from_child.dis);
-    let delta_ll = normalize_inplace(&mut dis);
-    let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh);
-    let log_lh = forward_log_lh_add_normalization(log_lh, delta_ll);
-    out.msg_to_child = DenseSeqDistribution { dis, log_lh };
-    let branch_length = branch_lengths[&*edge_key].max(min_branch_length);
-    let msg_child = gtr.evolve(&out.msg_to_child.dis, branch_length, false);
-    let mut dis = &backward.msg_to_parent.dis * &msg_child;
-    let delta_ll = normalize_inplace(&mut dis);
-    node.profile = DenseSeqDistribution {
-      dis,
-      log_lh: backward.msg_to_parent.log_lh + out.msg_to_child.log_lh + LogLh::new(delta_ll),
+      (None, None, None) => None,
+      _ => {
+        return Err(make_internal_report!(
+          "Marginal forward pass received an inconsistent parent edge and parent message at node {key}"
+        ));
+      },
     };
-  }
 
-  if let IndexedKind::Dense { alphabet, .. } = kind {
-    let indels = forward_post_dense(context.is_leaf, context.parent, &mut node, alphabet)?;
-    if let Some((_, _, out)) = edge_out.as_mut() {
-      out.indels = indels;
-    }
-  }
+    let indels = match self.kind {
+      IndexedKind::Dense { alphabet, .. } => {
+        forward_post_dense(self.tree.children(key).is_empty(), parent, &mut node, alphabet)?
+      },
+      IndexedKind::Discrete { .. } => vec![],
+    };
 
-  let parent_message = edge_out.map(|(_, _, out)| out);
-  Ok(GraphPassNodeOutput { node, parent_message })
+    let edge = msg_to_child.map(|msg_to_child| DenseEdgeForwardOut { msg_to_child, indels });
+    let output = Arc::new((node, edge));
+    Ok((Arc::clone(&output), output))
+  }
 }
 
 struct DenseEdgeForwardOut {
