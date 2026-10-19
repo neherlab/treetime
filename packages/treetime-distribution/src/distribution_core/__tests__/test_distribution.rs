@@ -1,10 +1,12 @@
 #[cfg(test)]
 mod tests {
-  use crate::Distribution;
   use crate::distribution_core::formula::DistributionFormula;
   use crate::policy::{NegLog, Plain};
+  use crate::{Distribution, DistributionFunction};
+  use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
+  use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[test]
@@ -29,6 +31,39 @@ mod tests {
   fn test_distribution_time_bounds_function_spans_grid() {
     let func = Distribution::<Plain>::function(array![0.0, 1.0, 2.0], array![1.0, 4.0, 2.0]).unwrap();
     assert_eq!(Some((0.0, 2.0)), func.time_bounds());
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard_sides_end_at_grid(    (BoundaryBehavior::Hard,  BoundaryBehavior::Error),                                        (0.0, 2.0))]
+  #[case::soft_sides_are_unbounded(  (BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 })), (f64::NEG_INFINITY, f64::INFINITY))]
+  #[case::hard_approach_ends_at_hard_point(
+    (BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -0.5, b: 1.0 }), BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b: 0.0 })),
+    (-0.5, 3.0),
+  )]
+  #[trace]
+  fn test_distribution_support_bounds_of_function_end_at_hard_sides(
+    #[case] (left, right): (BoundaryBehavior, BoundaryBehavior),
+    #[case] expected: (f64, f64),
+  ) -> Result<(), Report> {
+    let function = DistributionFunction::<f64, NegLog>::from_range_values((0.0, 2.0), array![1.0, 0.0, 1.0])?
+      .with_left_extrap(left)?
+      .with_right_extrap(right)?;
+    assert_eq!(Some(expected), Distribution::Function(function).support_bounds());
+    Ok(())
+  }
+
+  #[test]
+  fn test_distribution_support_bounds_of_point_range_and_empty_are_time_bounds() {
+    assert_eq!(
+      Some((1.0, 1.0)),
+      Distribution::<NegLog>::point(1.0, 0.0).support_bounds()
+    );
+    assert_eq!(
+      Some((0.0, 2.0)),
+      Distribution::<NegLog>::range((0.0, 2.0), 0.0).support_bounds()
+    );
+    assert_eq!(None, Distribution::<NegLog>::Empty.support_bounds());
   }
 
   #[test]

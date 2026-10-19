@@ -134,6 +134,16 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
+  pub fn support_bounds(&self) -> Option<(f64, f64)> {
+    match self {
+      Self::Function(f) => Some((
+        hard_limit(f.left_extrap(), f.x_min(), f64::NEG_INFINITY),
+        hard_limit(f.right_extrap(), f.x_max(), f64::INFINITY),
+      )),
+      other => other.time_bounds(),
+    }
+  }
+
   pub fn eval(&self, t: f64) -> Result<f64, Report> {
     match self {
       Self::Function(f) => f.interp(t),
@@ -239,6 +249,14 @@ impl Distribution<NegLog> {
         neglog_function_normalize(&discretized)
       },
     }
+  }
+}
+
+fn hard_limit(behavior: BoundaryBehavior, edge: f64, unbounded: f64) -> f64 {
+  match behavior {
+    BoundaryBehavior::Error | BoundaryBehavior::Hard => edge,
+    BoundaryBehavior::HardApproach(law) => law.t_hard,
+    BoundaryBehavior::Linear(_) => unbounded,
   }
 }
 

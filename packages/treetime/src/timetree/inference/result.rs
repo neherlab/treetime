@@ -100,7 +100,7 @@ pub struct NodePosterior {
   pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,
-  pub time_bounds: Option<(f64, f64)>,
+  pub support_bounds: Option<(f64, f64)>,
   pub region: Option<MaxPosteriorRegion>,
   pub(crate) survival: Option<Arc<NodeSurvival>>,
 }
@@ -128,7 +128,7 @@ impl NodePosterior {
       likely_time: view.likely_time,
       time: view.time,
       contradicted: view.contradicted,
-      time_bounds: distribution.and_then(Distribution::time_bounds),
+      support_bounds: distribution.and_then(Distribution::support_bounds),
       region,
       survival,
     })

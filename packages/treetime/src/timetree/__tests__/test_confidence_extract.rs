@@ -3,15 +3,16 @@ mod tests {
   use crate::timetree::confidence::extract_confidence_intervals;
   use crate::timetree::inference::result::{PosteriorSummaries, TimeInference};
   use approx::assert_relative_eq;
-  use helpers::add_named;
+  use helpers::{add_named, laplace};
   use maplit::btreemap;
   use ndarray::Array1;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Normal};
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_distribution::Distribution;
+  use treetime_distribution::{BoundaryBehavior, Distribution};
   use treetime_graph::graph::Graph;
+  use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
 
@@ -226,6 +227,58 @@ mod tests {
   }
 
   #[test]
+  fn test_extract_confidence_intervals_soft_sides_do_not_clip_to_grid() {
+    let (t0, rate) = (2015.0, 2.0);
+    let dist = Arc::new(Distribution::Function(laplace(
+      t0,
+      rate,
+      BoundaryBehavior::Linear(SoftTailLaw { slope: rate }),
+    )));
+    let mut graph = Graph::new();
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
+    graph.build().unwrap();
+    let rate_map = btreemap! { key => [t0 - 1.0, t0, t0 + 1.0] };
+
+    let state = helpers::state(&graph, &[(key, Some(t0), Some(dist))]);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
+
+    let z = Normal::standard().inverse_cdf(0.95);
+    let three_point_laplace_region_half_width = -(0.05 * (1.0 + 3.0 * (-1.0_f64).exp())).ln() / rate;
+    let half_width = three_point_laplace_region_half_width.hypot(z);
+    assert_eq!(1, intervals.len());
+    assert_relative_eq!(intervals[0].lower, t0 - half_width, epsilon = 1e-15);
+    assert_relative_eq!(intervals[0].upper, t0 + half_width, epsilon = 1e-15);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard_edge_clips_at_grid_end(        BoundaryBehavior::Hard,  2015.5)]
+  #[case::error_side_clips_at_grid_end(       BoundaryBehavior::Error, 2015.5)]
+  #[case::hard_approach_clips_at_hard_point(  BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 2015.75, b: 1.0 }), 2015.75)]
+  #[trace]
+  fn test_extract_confidence_intervals_clip_only_at_hard_sides(
+    #[case] right: BoundaryBehavior,
+    #[case] expected_upper: f64,
+  ) {
+    let (t0, rate) = (2015.0, 2.0);
+    let dist = Arc::new(Distribution::Function(laplace(t0, rate, right)));
+    let mut graph = Graph::new();
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
+    graph.build().unwrap();
+    let rate_map = btreemap! { key => [t0 - 5.0, t0, t0 + 5.0] };
+
+    let state = helpers::state(&graph, &[(key, Some(t0), Some(dist))]);
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
+
+    let soft_lower_beyond_rate_bound = t0 - 5.0 * Normal::standard().inverse_cdf(0.95);
+    assert_eq!(1, intervals.len());
+    assert_relative_eq!(intervals[0].upper, expected_upper, epsilon = 1e-15);
+    assert!(intervals[0].lower < soft_lower_beyond_rate_bound);
+  }
+
+  #[test]
   fn test_extract_confidence_intervals_rejects_an_inference_without_regions() {
     let mut graph = Graph::new();
     let mut names = BTreeMap::new();
@@ -247,11 +300,13 @@ mod tests {
     use crate::timetree::confidence::CI_FRACTION;
     use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
     use crate::timetree::max_posterior_region::max_posterior_region;
+    use ndarray::Array1;
     use std::collections::BTreeMap;
     use std::sync::Arc;
-    use treetime_distribution::{Distribution, NegLog};
+    use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_grid::SoftTailLaw;
 
     pub(super) type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
 
@@ -274,7 +329,7 @@ mod tests {
           likely_time,
           time: *time,
           contradicted: false,
-          time_bounds: distribution.as_deref().and_then(Distribution::time_bounds),
+          support_bounds: distribution.as_deref().and_then(Distribution::support_bounds),
           region,
           survival: None,
         };
@@ -288,6 +343,15 @@ mod tests {
         },
         ..TimeInference::default()
       }
+    }
+
+    pub(super) fn laplace(t0: f64, rate: f64, right: BoundaryBehavior) -> DistributionFunction<f64, NegLog> {
+      let half_width = 1.0 / rate;
+      let y = Array1::linspace(t0 - half_width, t0 + half_width, 3).mapv(|x| rate * (x - t0).abs());
+      DistributionFunction::from_range_values((t0 - half_width, t0 + half_width), y)
+        .and_then(|f| f.with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate })))
+        .and_then(|f| f.with_right_extrap(right))
+        .expect("Laplace fixture is a valid distribution function")
     }
 
     pub(super) fn add_named(
