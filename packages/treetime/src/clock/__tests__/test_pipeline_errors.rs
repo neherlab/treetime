@@ -2,7 +2,7 @@
 mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::find_best_root::params::RerootSpec;
-  use crate::clock::pipeline::{self, ClockInput, ClockParams};
+  use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
@@ -51,5 +51,63 @@ mod tests {
     };
     assert_eq!(expected, report_to_string(&report));
     Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_errors_prefilter_requires_a_positive_rate_also_when_negative_rates_are_allowed() -> Result<(), Report>
+  {
+    let result = helpers::run_negative_rate_tree(3.0);
+
+    let Err(OperationError::InvalidInput(report)) = result else {
+      panic!("a tree without a positive-rate root must fail the clock fit of the outlier filter as invalid input");
+    };
+    assert_eq!(
+      "The clock fit of the outlier filter requires a positive clock rate, also with --allow-negative-rate. Run with \
+       --clock-filter=0 to skip the outlier filter: Clock rate is negative for all root positions. The data may lack \
+       temporal signal. Please specify --clock-rate explicitly.",
+      report_to_string(&report)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_errors_negative_rate_is_allowed_without_the_outlier_filter() -> Result<(), Report> {
+    let output = helpers::run_negative_rate_tree(0.0).map_err(OperationError::into_report)?;
+
+    assert!(
+      output.clock_model.clock_rate() < 0.0,
+      "the tree has no positive-rate root, got rate {:.6e}",
+      output.clock_model.clock_rate()
+    );
+    Ok(())
+  }
+
+  mod helpers {
+    use super::*;
+
+    const NEGATIVE_RATE_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
+
+    pub(super) fn run_negative_rate_tree(clock_filter: f64) -> Result<ClockOutput, OperationError> {
+      let parsed = nwk_read(NEGATIVE_RATE_TREE.as_bytes()).map_err(OperationError::InvalidInput)?;
+      let names = parsed.names();
+      let dates = btreemap! {
+        o!("A") => Some(DateConstraint::exact(2017.0)),
+        o!("B") => Some(DateConstraint::exact(2005.0)),
+        o!("C") => Some(DateConstraint::exact(2010.0)),
+        o!("D") => Some(DateConstraint::exact(2022.0)),
+      };
+      let params = ClockParams {
+        clock_filter,
+        keep_root: false,
+        allow_negative_rate: true,
+        reroot_spec: RerootSpec::default(),
+      };
+      let input = ClockInput {
+        dates: dates_by_node(dates, &parsed.graph, &names),
+        graph: parsed.graph,
+        branch_lengths: parsed.branch_lengths,
+      };
+      pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)
+    }
   }
 }

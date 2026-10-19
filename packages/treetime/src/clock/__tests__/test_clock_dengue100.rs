@@ -160,7 +160,7 @@ mod tests {
           outliers: &BTreeSet::new(),
           clock_rate: None,
           keep_root: false,
-          reroot_params: &RerootParams::new(RerootSpec::default(), false),
+          reroot_params: &RerootParams::new(RerootSpec::default(), true),
           prev_clock_rate: None,
         },
         &names,

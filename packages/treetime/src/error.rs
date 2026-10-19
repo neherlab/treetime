@@ -38,7 +38,7 @@ impl OperationError {
   pub fn classify(report: Report) -> Self {
     if report.downcast_ref::<CancelledError>().is_some() {
       Self::Cancelled
-    } else if report.downcast_ref::<InputError>().is_some() {
+    } else if report.downcast_ref::<InputError>().is_some() || report.downcast_ref::<NoPositiveRateRoot>().is_some() {
       Self::InvalidInput(report)
     } else {
       Self::InferenceFailed(report)
@@ -68,3 +68,11 @@ impl std::error::Error for OperationError {
 pub struct InputError(String);
 
 impl std::error::Error for InputError {}
+
+#[derive(Debug, Display)]
+#[display(
+  "Clock rate is negative for all root positions. The data may lack temporal signal. Please specify --clock-rate explicitly."
+)]
+pub(crate) struct NoPositiveRateRoot;
+
+impl std::error::Error for NoPositiveRateRoot {}

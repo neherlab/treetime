@@ -9,7 +9,7 @@ use crate::clock::divergence::root_to_node_divergences;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
-use crate::error::OperationError;
+use crate::error::{NoPositiveRateRoot, OperationError};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
 use eyre::{Report, WrapErr};
@@ -106,19 +106,28 @@ fn estimate_clock_model_with_prefilter(
   let (keep_root, clock_filter_threshold, allow_negative_rate) =
     (params.keep_root, params.clock_filter, params.allow_negative_rate);
   let (tree, filter_outliers) = if clock_filter_threshold > 0.0 {
-    let reroot_params = RerootParams::new(reroot_spec.clone(), false);
     let (tree, result) = estimate_clock_model_with_reroot_policy(
       tree,
       &ClockFitParams {
         outliers: &BTreeSet::new(),
         clock_rate: None,
         keep_root,
-        reroot_params: &reroot_params,
+        reroot_params: &RerootParams::new(reroot_spec.clone(), true),
         prev_clock_rate: None,
       },
       names,
       log,
-    )?;
+    )
+    .map_err(|report| {
+      if report.downcast_ref::<NoPositiveRateRoot>().is_some() {
+        report.wrap_err(
+          "The clock fit of the outlier filter requires a positive clock rate, also with --allow-negative-rate. Run \
+           with --clock-filter=0 to skip the outlier filter",
+        )
+      } else {
+        report
+      }
+    })?;
     let Some(regression) = result.regression() else {
       return make_internal_error!(
         "The clock fit before outlier filtering estimates the rate, so it must hold a regression"
