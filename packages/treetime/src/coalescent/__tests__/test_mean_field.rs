@@ -122,8 +122,8 @@ mod tests {
 
     let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
 
-    pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 1e-4);
-    pretty_assert_abs_diff_eq!(0.5, mergers[1], epsilon = 1e-4);
+    pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(0.5, mergers[1], epsilon = 1e-6);
     Ok(())
   }
 
@@ -133,7 +133,7 @@ mod tests {
 
     let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
 
-    pretty_assert_abs_diff_eq!(1.0, mergers[1], epsilon = 1e-4);
+    pretty_assert_abs_diff_eq!(1.0, mergers[1], epsilon = 1e-6);
     Ok(())
   }
 
