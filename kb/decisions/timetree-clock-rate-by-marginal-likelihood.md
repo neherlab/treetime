@@ -132,6 +132,13 @@ Costs: the rate error at $L=10^3$, $\mu=10^{-3}$ (0.143 to 0.191 after two round
 90% coverage at $L=10^3$, $\mu=3\cdot10^{-4}$ after six rounds (0.856 to 0.776), where the intervals of the drifted
 runs had been wide enough to cover dates more than a year off.
 
+Full validation suite (2880 runs, default two rounds, no `--time-marginal`): no failures and no run time change;
+median rate error at $L=10^3$, $\mu=3\cdot10^{-4}$ 0.505 to 0.281 (`keep-opt-est`), 0.780 to 0.530 (`reroot-opt-est`),
+0.783 to 0.453 (`reroot-skyline-est`), at $L=10^3$, $\mu=10^{-3}$ 0.143 to 0.191 (`keep-opt-est`) and 0.189 to 0.166
+(`reroot-skyline-est`), elsewhere within 0.01. No date changed, because without a final pass the output dates come
+from the rate before the last step
+([M-timetree-reported-rate-is-not-the-rate-of-the-dates.md](../issues/M-timetree-reported-rate-is-not-the-rate-of-the-dates.md)).
+
 ## Accepted limitations
 
 - The coalescent prior's lineage counts are frozen
