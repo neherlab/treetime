@@ -3,7 +3,7 @@ use crate::coalescent::mean_field::CoalescentPrior;
 use crate::make_report;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::result::BranchLikelihood;
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
@@ -85,19 +85,19 @@ pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Resul
       "Marginal clock rate step needs a positive reference rate, got {reference}"
     ));
   }
-  let probe = |factor: f64| {
-    marginal_log_lh_at_rate(inputs, reference * factor)
-      .ok()
-      .flatten()
-      .unwrap_or(f64::NEG_INFINITY)
+  let probe = |factor: f64| -> Result<f64, Report> {
+    let rate = reference * factor;
+    let log_lh = marginal_log_lh_at_rate(inputs, rate)
+      .wrap_err_with(|| format!("When computing the marginal likelihood of the node times at clock rate {rate}"))?;
+    Ok(log_lh.unwrap_or(f64::NEG_INFINITY))
   };
-  let log_lh = probe(1.0);
+  let log_lh = probe(1.0)?;
   if !log_lh.is_finite() {
     return Err(make_report!(
       "Marginal clock rate step found no finite marginal likelihood at the reference rate {reference}"
     ));
   }
-  let target = log_rate_target(probe(1.0 / PROBE_FACTOR), log_lh, probe(PROBE_FACTOR), inputs.window);
+  let target = log_rate_target(probe(1.0 / PROBE_FACTOR)?, log_lh, probe(PROBE_FACTOR)?, inputs.window);
   Ok(MarginalRateStep {
     clock_rate: reference * (STEP_FRACTION * target).exp(),
     target_rate: reference * target.exp(),

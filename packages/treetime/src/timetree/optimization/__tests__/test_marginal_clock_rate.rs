@@ -18,6 +18,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_marginal_clock_rate_matches_closed_form_curve() -> Result<(), Report> {
@@ -100,6 +101,26 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_marginal_clock_rate_probe_error_names_the_rate_of_the_probe() -> Result<(), Report> {
+    let mut setup = helpers::cherry()?;
+    let leaf_a = find_node_key_by_name(&setup.graph, &setup.names, "A").expect("leaf not found");
+    setup
+      .constraints
+      .by_node
+      .insert(leaf_a, Some(Arc::new(Distribution::<NegLog>::point(2015.0, f64::NAN))));
+
+    let result = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 0.5, RateWindow::FollowSlope));
+
+    assert_error!(
+      result,
+      format!(
+        "When computing the marginal likelihood of the node times at clock rate 0.5: When re-peaking the time distribution of node {leaf_a}: Cannot re-peak a distribution point: its amplitude is NaN"
+      )
+    );
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -110,6 +131,7 @@ mod tests {
       pub constraints: DateConstraints,
       pub bad_branches: BTreeMap<GraphNodeKey, bool>,
       pub branches: BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
+      pub names: BTreeMap<GraphNodeKey, Option<String>>,
     }
 
     impl Cherry {
@@ -161,6 +183,7 @@ mod tests {
         constraints,
         bad_branches,
         branches,
+        names,
       })
     }
   }
