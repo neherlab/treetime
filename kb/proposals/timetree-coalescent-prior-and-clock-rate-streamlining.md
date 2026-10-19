@@ -378,7 +378,6 @@ over seven passes) where the peak run converged, the same slow rate drift as in 
 ## Related
 
 - [M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md](../issues/M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md)
-- [H-timetree-empty-distribution-division.md](../issues/H-timetree-empty-distribution-division.md)
 - [timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md)
 - [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [timetree-root-time-at-posterior-median.md](../decisions/timetree-root-time-at-posterior-median.md)

@@ -13,7 +13,14 @@ treetime timetree --tree=data/zika/20/tree.nwk --dates=data/zika/20/metadata.tsv
   --aln=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
 ```
 
-The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. On `data/lassa/L/20` without a fixed rate, the run now stops earlier, at the NaN time distribution of [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md).
+The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. Without a fixed rate, the `timetree/lassa/L/200/basic` case panics the same way:
+
+```bash
+treetime timetree --tree=data/lassa/L/200/tree.nwk --dates=data/lassa/L/200/metadata.tsv \
+  --aln=data/lassa/L/200/aln.fasta.xz --name-column=accession --output-all=<dir>
+```
+
+The clock filter marks 7 tips dated 2009 to 2017 as outliers, with apparent dates between 1589 and 1758. The written clock model has rate $1.18 \cdot 10^{-4}$ and intercept $0.119$, so the regression line reaches zero divergence near the year $-1000$, and the panic comes from the augur node data writer (`fn refine_dates()` calling `year_fraction_to_datestring()`).
 
 Panics with: `cannot convert float seconds to Duration: value is negative`
 
@@ -56,7 +63,7 @@ The `date` field is cosmetic -- `augur export v2` reads the numeric `numdate`, n
 
 ### C -- separate question (not the crash)
 
-Whether `numdate = -1908` for `lassa/L/20` is faithful to v0's clock inference or a v1 clock/extrapolation parity defect. Needs a separate comparison. The crash fix must not mask this.
+Whether a root near the year $-1000$ for `lassa/L/200` is faithful to the clock inference of v0 or a v1 clock or extrapolation parity defect. Needs a separate comparison. The crash fix must not mask this.
 
 ## Related issues
 

@@ -9,13 +9,16 @@ On simulated data with weak temporal signal, the same case fails with three diff
 
 ## Related errors
 
-- [H-timetree-empty-distribution-division.md](H-timetree-empty-distribution-division.md): division by an empty distribution on real datasets
-- [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md): a `NaN` time distribution, raised with and without round and node context
+> [!WARNING]
+> **Needs review.** The recorded reproductions of the first two errors (`data/dengue/500`, `data/dengue/1000`, `data/lassa/L/20`, and `keep-skyline-fixed/const/rep01` at $L = 10^4$ of the timetree suite) complete at commit `dd2eb7428`. Collect the current errors of the suite before tracing the paths.
+
+- `Cannot divide by empty distribution`: division by an empty distribution
+- a `NaN` time distribution, raised with and without round and node context
 - an undated node, reported as a stale coalescent model by the point-time lineage counts, which phase 2 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md) removed; the expected lineage counts count an undated node as surviving at all times
 
 ## Fix direction
 
-Unknown until the three paths are traced. What an empty posterior should resolve to is described in the Mechanism section of [H-timetree-backward-pass-nan-time-distribution.md](H-timetree-backward-pass-nan-time-distribution.md).
+Unknown until the paths are traced. A node whose date the rest of the tree gives no probability gets an empty posterior; the forward pass keeps the date the node was given and warns ([packages/treetime/src/timetree/inference/forward_pass.rs#L43-L53](../../packages/treetime/src/timetree/inference/forward_pass.rs#L43-L53)).
 
 ## Validation
 
