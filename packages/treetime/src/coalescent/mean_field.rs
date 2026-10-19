@@ -9,7 +9,7 @@ use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, NegLog};
+use treetime_distribution::{Distribution, ExteriorSlopes, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -111,6 +111,18 @@ impl CoalescentPrior {
         - weight * own_weight * own
         + merger,
     )
+  }
+
+  pub(crate) fn node_contribution_exterior_slopes(&self, key: GraphNodeKey, n_children: usize) -> ExteriorSlopes {
+    let weight = 1.0 - n_children.to_f64_exact();
+    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |node| node.weight);
+    let pairs = 0.5 * weight * (weight - 1.0);
+    let grid = &self.expectation.grid;
+    let last = grid.len() - 1;
+    ExteriorSlopes {
+      left: self.rate_outside(grid[0]) * (pairs + weight * (self.expectation.expected_before - own_weight)),
+      right: self.rate_outside(grid[last]) * (pairs + weight * self.expectation.expected[last]),
+    }
   }
 
   fn rate_outside(&self, t: f64) -> f64 {

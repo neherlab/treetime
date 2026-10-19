@@ -1,23 +1,27 @@
 #[cfg(test)]
 mod tests {
+  use self::helpers::{FLAT, linear_with_soft_side};
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::DistributionFunction;
-  use crate::distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
+  use crate::distribution_ops::multiply_by_fn::{ExteriorSlopes, distribution_multiply_by_fn};
   use approx::assert_abs_diff_eq;
+  use eyre::Report;
   use ndarray::{Array1, array};
-  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
-  use treetime_utils::assert_error;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   #[test]
   fn test_multiply_by_fn_constant_is_uniform_shift() {
     let neglog = DistributionNegLog::function(array![0.0, 1.0, 2.0], array![4.0, 0.0, 3.0]).unwrap();
-    let actual = distribution_multiply_by_fn(&neglog, |_| Ok(10.0)).unwrap();
+    let actual = distribution_multiply_by_fn(&neglog, |_| Ok(10.0), FLAT).unwrap();
     assert_abs_diff_eq!(array![14.0, 10.0, 13.0], actual.y().unwrap(), epsilon = 1e-15);
   }
 
   #[test]
   fn test_multiply_by_fn_empty_passthrough() {
-    let actual = distribution_multiply_by_fn(&DistributionNegLog::Empty, |_| Ok(1.0)).unwrap();
+    let actual = distribution_multiply_by_fn(&DistributionNegLog::Empty, |_| Ok(1.0), FLAT).unwrap();
     assert_eq!(DistributionNegLog::Empty, actual);
   }
 
@@ -25,87 +29,101 @@ mod tests {
   fn test_multiply_by_fn_rejects_formula() {
     let formula = DistributionNegLog::Formula(crate::DistributionFormula::new(|_| Ok(1.0), 0.0, 10.0));
     assert_error!(
-      distribution_multiply_by_fn(&formula, |_| Ok(1.0)),
+      distribution_multiply_by_fn(&formula, |_| Ok(1.0), FLAT),
       "distribution_multiply_by_fn requires a concrete Point, Range, or Function distribution"
     );
   }
 
-  #[test]
-  fn test_multiply_by_fn_keeps_the_incoming_tail_laws() {
-    let t = Array1::linspace(0.0, 4.0, 21);
-    let y = t.mapv(|ti| -2.0 * ti);
-    let f = DistributionFunction::from_arrays(&t, y).unwrap();
-    let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
-    let input = f
-      .with_left_extrap(BoundaryBehavior::Linear(left))
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left( Side::Left,  -2.0,  0.5, (-1.0, 1.5))]
+  #[case::right(Side::Right,  2.0, -0.5, ( 5.0, 7.5))]
+  #[trace]
+  fn test_multiply_by_fn_adds_the_weight_slope_beyond_the_soft_edge(
+    #[case] side: Side,
+    #[case] slope: f64,
+    #[case] weight_slope: f64,
+    #[case] (t, expected): (f64, f64),
+  ) -> Result<(), Report> {
+    let input = linear_with_soft_side(slope, side)?;
+    let exterior = ExteriorSlopes { left: weight_slope, right: weight_slope };
 
-    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();
+    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(weight_slope * ti), exterior)?;
 
+    pretty_assert_abs_diff_eq!(expected, actual.eval(t)?, epsilon = 1e-14);
     let DistributionNegLog::Function(rf) = actual else {
-      panic!("expected a Function result");
+      panic!("expected a Function result, got {actual:?}");
     };
-    let BoundaryBehavior::Linear(law) = rf.left_extrap() else {
-      panic!(
-        "left tail must stay soft Linear, not reset to Error, got {:?}",
-        rf.left_extrap()
-      );
+    let soft = BoundaryBehavior::Linear(SoftTailLaw { slope: slope + weight_slope });
+    let expected_laws = match side {
+      Side::Left => (soft, BoundaryBehavior::Hard),
+      Side::Right => (BoundaryBehavior::Hard, soft),
     };
-    assert_abs_diff_eq!(-2.0, law.slope, epsilon = 1e-12);
-    assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
+    assert_eq!(expected_laws, (rf.left_extrap(), rf.right_extrap()));
+    Ok(())
   }
 
   #[test]
-  fn test_multiply_by_fn_step_near_the_edge_keeps_a_decaying_tail() {
+  fn test_multiply_by_fn_step_one_cell_inside_the_edge_keeps_a_decaying_tail() -> Result<(), Report> {
+    let input = linear_with_soft_side(-2.0, Side::Left)?;
+    let weight = |ti: f64| if ti < 0.2 { 0.0 } else { 3.0 };
+
+    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(weight(ti)), FLAT)?;
+
     let t = Array1::linspace(0.0, 4.0, 21);
-    let y = t.mapv(|ti| -2.0 * ti);
-    let f = DistributionFunction::from_arrays(&t, y).unwrap();
-    let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
-    let input = f
-      .with_left_extrap(BoundaryBehavior::Linear(left))
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
-
-    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| {
-      Ok(if ti < 0.5 { 0.0 } else { 3.0 })
-    })
-    .unwrap();
-
-    assert!(actual.log_mass().unwrap().is_finite());
+    let p = t.mapv(|ti| (2.0 * ti - weight(ti)).exp());
+    let grid_mass = 0.2 * (p.sum() - f64::midpoint(p[0], p[20]));
+    let tail_mass = 1.0 / 2.0;
+    pretty_assert_abs_diff_eq!((grid_mass + tail_mass).ln(), actual.log_mass()?, epsilon = 1e-14);
     let DistributionNegLog::Function(rf) = actual else {
-      panic!("expected a Function result");
+      panic!("expected a Function result, got {actual:?}");
     };
-    let BoundaryBehavior::Linear(law) = rf.left_extrap() else {
-      panic!("left tail must stay soft Linear, got {:?}", rf.left_extrap());
-    };
-    assert_abs_diff_eq!(-2.0, law.slope, epsilon = 1e-12);
+    assert_eq!(BoundaryBehavior::Linear(SoftTailLaw { slope: -2.0 }), rf.left_extrap());
+    Ok(())
   }
 
   #[test]
-  fn test_multiply_by_fn_constant_weight_keeps_soft_slope() {
-    let t = Array1::linspace(0.0, 4.0, 21);
-    let y = t.mapv(|ti| -2.0 * ti);
-    let f = DistributionFunction::from_arrays(&t, y).unwrap();
-    let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS).unwrap();
-    let input = f
-      .with_left_extrap(BoundaryBehavior::Linear(left))
-      .unwrap()
-      .with_right_extrap(BoundaryBehavior::Hard)
-      .unwrap();
+  fn test_multiply_by_fn_bounded_step_beyond_the_edge_keeps_the_incoming_decay() -> Result<(), Report> {
+    let input = linear_with_soft_side(-1.0, Side::Left)?;
 
-    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |_| Ok(10.0)).unwrap();
+    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(if ti < -0.5 { -10.0 } else { 0.0 }), FLAT)?;
 
+    pretty_assert_abs_diff_eq!(1.0, actual.eval(-1.0)?, epsilon = 1e-15);
     let DistributionNegLog::Function(rf) = actual else {
-      panic!("expected a Function result");
+      panic!("expected a Function result, got {actual:?}");
     };
-    let BoundaryBehavior::Linear(law) = rf.left_extrap() else {
-      panic!("left tail must stay soft Linear, got {:?}", rf.left_extrap());
-    };
-    assert_abs_diff_eq!(-2.0, law.slope, epsilon = 1e-12);
-    assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
+    assert_eq!(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), rf.left_extrap());
+    Ok(())
+  }
+
+  #[test]
+  fn test_multiply_by_fn_log_mass_counts_the_composed_tail() -> Result<(), Report> {
+    let input = linear_with_soft_side(-2.0, Side::Left)?;
+    let exterior = ExteriorSlopes { left: 0.5, right: 2.0 };
+
+    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(2.0 * ti), exterior)?;
+
+    let grid_mass: f64 = 4.0;
+    let tail_mass = 1.0 / 1.5;
+    pretty_assert_abs_diff_eq!((grid_mass + tail_mass).ln(), actual.log_mass()?, epsilon = 1e-15);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left( Side::Left,  -2.0,  3.0, "The weight does not let the soft Left tail decay: incoming slope -2, weight slope 3 beyond the edge at 0. This is an internal error. Please report it to developers.")]
+  #[case::right(Side::Right,  2.0, -2.0, "The weight does not let the soft Right tail decay: incoming slope 2, weight slope -2 beyond the edge at 4. This is an internal error. Please report it to developers.")]
+  #[trace]
+  fn test_multiply_by_fn_rejects_a_weight_that_stops_the_tail_decay(
+    #[case] side: Side,
+    #[case] slope: f64,
+    #[case] weight_slope: f64,
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let input = linear_with_soft_side(slope, side)?;
+    let exterior = ExteriorSlopes { left: weight_slope, right: weight_slope };
+    assert_error!(distribution_multiply_by_fn(&input, |ti: f64| Ok(weight_slope * ti), exterior), expected);
+    Ok(())
   }
 
   #[test]
@@ -118,13 +136,37 @@ mod tests {
       .unwrap()
       .with_right_extrap(BoundaryBehavior::Hard)
       .unwrap();
+    let exterior = ExteriorSlopes { left: 0.5, right: 0.5 };
 
-    let actual = distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti)).unwrap();
+    let actual =
+      distribution_multiply_by_fn(&DistributionNegLog::Function(input), |ti: f64| Ok(0.5 * ti), exterior).unwrap();
 
     let DistributionNegLog::Function(rf) = actual else {
       panic!("expected a Function result");
     };
     assert_eq!(BoundaryBehavior::Hard, rf.left_extrap());
     assert_eq!(BoundaryBehavior::Hard, rf.right_extrap());
+  }
+
+  mod helpers {
+    use crate::__tests__::aliases::DistributionNegLog;
+    use crate::DistributionFunction;
+    use crate::distribution_ops::multiply_by_fn::ExteriorSlopes;
+    use eyre::Report;
+    use ndarray::Array1;
+    use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
+
+    pub(super) const FLAT: ExteriorSlopes = ExteriorSlopes { left: 0.0, right: 0.0 };
+
+    pub(super) fn linear_with_soft_side(slope: f64, side: Side) -> Result<DistributionNegLog, Report> {
+      let t = Array1::linspace(0.0, 4.0, 21);
+      let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| slope * ti))?;
+      let soft = BoundaryBehavior::Linear(SoftTailLaw { slope });
+      let f = match side {
+        Side::Left => f.with_left_extrap(soft)?.with_right_extrap(BoundaryBehavior::Hard)?,
+        Side::Right => f.with_left_extrap(BoundaryBehavior::Hard)?.with_right_extrap(soft)?,
+      };
+      Ok(DistributionNegLog::Function(f))
+    }
   }
 }

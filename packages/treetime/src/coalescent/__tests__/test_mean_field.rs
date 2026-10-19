@@ -5,10 +5,11 @@ mod tests {
   use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
   use eyre::Report;
   use ndarray::Array1;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::{Distribution, ExteriorSlopes, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
@@ -33,6 +34,34 @@ mod tests {
       let actual = prior.node_contribution(root, 2, t)? - prior.node_contribution(root, 2, reference)?;
       pretty_assert_abs_diff_eq!((reference - t) / tc, actual, epsilon = 1e-9);
     }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::root(   "root", 2, (-0.5, 0.5))]
+  #[case::leaf(   "A",    0, ( 0.0, 0.0))]
+  #[trace]
+  fn test_mean_field_exterior_slopes_continue_the_contribution_past_the_lineage_grid(
+    #[case] name: &str,
+    #[case] n_children: usize,
+    #[case] (left, right): (f64, f64),
+  ) -> Result<(), Report> {
+    let tc = 2.0;
+    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let prior = point_coalescent_prior(&graph, &names, &[("A", 2010.0), ("B", 2010.0), ("root", 2000.0)], tc)?;
+    let key = find_node_key_by_name(&graph, &names, name).expect("node must exist");
+    let secant = |a: f64, b: f64| -> Result<f64, Report> {
+      Ok((prior.node_contribution(key, n_children, b)? - prior.node_contribution(key, n_children, a)?) / (b - a))
+    };
+
+    let actual = prior.node_contribution_exterior_slopes(key, n_children);
+
+    assert_eq!(ExteriorSlopes { left, right }, actual);
+    pretty_assert_abs_diff_eq!(secant(1900.0, 1950.0)?, actual.left, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(secant(2050.0, 2100.0)?, actual.right, epsilon = 1e-12);
     Ok(())
   }
 

@@ -130,7 +130,11 @@ fn apply_coalescent_prior(
   if n_children == 0 || matches!(distribution, Distribution::Empty) {
     return Ok(distribution);
   }
-  distribution_multiply_by_fn(&distribution, |time| model.node_contribution(key, n_children, time))
+  distribution_multiply_by_fn(
+    &distribution,
+    |time| model.node_contribution(key, n_children, time),
+    model.node_contribution_exterior_slopes(key, n_children),
+  )
 }
 
 fn apply_date_constraint(
@@ -169,7 +173,11 @@ fn apply_leaf_coalescent_factor(
     },
     _ => distribution,
   };
-  distribution_multiply_by_fn(&distribution, |time| model.node_contribution(key, 0, time))
+  distribution_multiply_by_fn(
+    &distribution,
+    |time| model.node_contribution(key, 0, time),
+    model.node_contribution_exterior_slopes(key, 0),
+  )
 }
 
 fn send_backward_message(
