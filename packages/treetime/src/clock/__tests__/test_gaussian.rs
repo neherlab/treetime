@@ -127,8 +127,8 @@ mod tests {
     let i_cross = -(ll(hm, ht) - ll(hm, -ht) - ll(-hm, ht) + ll(-hm, -ht)) / (4.0 * hm * ht);
     let cov = invert([[i_mm, i_cross], [i_cross, i_tt]]);
 
-    approx::assert_relative_eq!(clock.rate_std.unwrap(), cov[0][0].sqrt(), max_relative = 1e-5);
-    approx::assert_relative_eq!(clock.root_time_std.unwrap(), cov[1][1].sqrt(), max_relative = 1e-5);
+    approx::assert_relative_eq!(clock.rate_std.unwrap(), cov[0][0].sqrt(), max_relative = 1e-7);
+    approx::assert_relative_eq!(clock.root_time_std.unwrap(), cov[1][1].sqrt(), max_relative = 1e-7);
     Ok(())
   }
 
