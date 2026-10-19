@@ -13,7 +13,6 @@ mod tests {
   use ordered_float::OrderedFloat;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use std::iter::once;
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
   use treetime_graph::edge::GraphEdgeKey;
@@ -168,7 +167,8 @@ mod tests {
         .map_values(|time, neglog| Ok(neglog + tip_side_b.eval(time) + contribution("I", 2, time)? + leaf_cost))?;
 
       let i_reflected = branch_i.reflected(0.0);
-      let inner = |t_i: f64| root_side.exp_integral_with_shifted(&i_reflected, t_i);
+      let shifted = ShiftedProduct::new(&root_side, &i_reflected);
+      let inner = |t_i: f64| shifted.exp_integral(t_i);
       let reference = tip_side.y.iter().copied().fold(f64::INFINITY, f64::min);
       let mut total = 0.0;
       for (k, (&x0, &x1)) in tip_side.x.iter().tuple_windows().enumerate() {
@@ -204,6 +204,15 @@ mod tests {
           x: self.x.iter().rev().map(|&t| origin - t).collect(),
           y: self.y.iter().rev().copied().collect(),
         }
+      }
+
+      fn lines(&self) -> Vec<(f64, f64)> {
+        izip!(self.x.iter().tuple_windows(), self.y.iter().tuple_windows())
+          .map(|((x0, x1), (y0, y1))| {
+            let slope = (y1 - y0) / (x1 - x0);
+            (y0 - slope * x0, slope)
+          })
+          .collect()
       }
 
       fn eval(&self, t: f64) -> f64 {
@@ -257,55 +266,82 @@ mod tests {
           .collect::<Result<_, Report>>()?;
         Ok(Self { x: self.x.clone(), y })
       }
+    }
 
-      fn exp_integral_with_shifted(&self, other: &Self, shift: f64) -> f64 {
-        let (n, m) = (self.x.len(), other.x.len());
-        let lo = self.x[0].max(other.x[0] + shift);
-        let hi = self.x[n - 1].min(other.x[m - 1] + shift);
+    struct ShiftedProduct<'a> {
+      fixed: &'a [f64],
+      moving: &'a [f64],
+      fixed_lines: Vec<(f64, f64)>,
+      moving_lines: Vec<(f64, f64)>,
+    }
+
+    impl<'a> ShiftedProduct<'a> {
+      fn new(fixed: &'a NegLogPieces, moving: &'a NegLogPieces) -> Self {
+        Self {
+          fixed: &fixed.x,
+          moving: &moving.x,
+          fixed_lines: fixed.lines(),
+          moving_lines: moving.lines(),
+        }
+      }
+
+      fn exp_integral(&self, shift: f64) -> f64 {
+        let (fixed, moving) = (self.fixed, self.moving);
+        let (last_fixed, last_moving) = (fixed.len() - 1, moving.len() - 1);
+        let lo = fixed[0].max(moving[0] + shift);
+        let hi = fixed[last_fixed].min(moving[last_moving] + shift);
         if lo >= hi {
           return 0.0;
         }
-        let (mut i, mut j) = (0, 0);
-        let mut value_at = |t: f64| {
-          while i + 2 < n && self.x[i + 1] <= t {
-            i += 1;
-          }
-          while j + 2 < m && other.x[j + 1] + shift <= t {
-            j += 1;
-          }
-          let (a0, a1) = (self.x[i], self.x[i + 1]);
-          let (b0, b1) = (other.x[j] + shift, other.x[j + 1] + shift);
-          self.y[i]
-            + (t - a0) / (a1 - a0) * (self.y[i + 1] - self.y[i])
-            + other.y[j]
-            + (t - b0) / (b1 - b0) * (other.y[j + 1] - other.y[j])
+        let mut piece_fixed = fixed.partition_point(|&x| x <= lo).clamp(1, last_fixed) - 1;
+        let mut piece_moving = moving.partition_point(|&x| x + shift <= lo).clamp(1, last_moving) - 1;
+        let line = |piece_fixed: usize, piece_moving: usize| {
+          let (fixed_intercept, fixed_slope) = self.fixed_lines[piece_fixed];
+          let (moving_intercept, moving_slope) = self.moving_lines[piece_moving];
+          (
+            fixed_intercept + moving_intercept - moving_slope * shift,
+            fixed_slope + moving_slope,
+          )
         };
-        let breakpoints = self
-          .x
-          .iter()
-          .copied()
-          .merge(other.x.iter().map(|&x| x + shift))
-          .filter(|&t| t > lo && t < hi);
+        let (mut intercept, mut slope) = line(piece_fixed, piece_moving);
+        let mut start = lo;
+        let mut neglog = intercept + slope * start;
+        let mut density = (-neglog).exp();
         let mut total = 0.0;
-        let (mut t0, mut y0) = (lo, value_at(lo));
-        for t1 in breakpoints.chain(once(hi)) {
-          if t1 <= t0 {
-            continue;
+        for _ in 0..last_fixed + last_moving {
+          let next_fixed = fixed[piece_fixed + 1];
+          let next_moving = moving[piece_moving + 1] + shift;
+          let end = if next_fixed < next_moving {
+            next_fixed
+          } else {
+            next_moving
+          };
+          let end = if end < hi { end } else { hi };
+          let end_neglog = intercept + slope * end;
+          let end_density = (-end_neglog).exp();
+          total += exp_linear_integral(end - start, (neglog, density), (end_neglog, end_density));
+          if end >= hi {
+            break;
           }
-          let y1 = value_at(t1);
-          total += exp_linear_integral(t1 - t0, y0, y1);
-          (t0, y0) = (t1, y1);
+          let advance_fixed = piece_fixed < last_fixed - 1 && next_fixed <= end;
+          let advance_moving = piece_moving < last_moving - 1 && next_moving <= end;
+          piece_fixed += usize::from(advance_fixed);
+          piece_moving += usize::from(advance_moving);
+          if advance_fixed || advance_moving {
+            (intercept, slope) = line(piece_fixed, piece_moving);
+          }
+          (start, neglog, density) = (end, end_neglog, end_density);
         }
         total
       }
     }
 
-    fn exp_linear_integral(width: f64, y0: f64, y1: f64) -> f64 {
+    fn exp_linear_integral(width: f64, (y0, density0): (f64, f64), (y1, density1): (f64, f64)) -> f64 {
       let slope = y1 - y0;
       if slope.abs() < 1e-8 {
         width * (-f64::midpoint(y0, y1)).exp() * (1.0 + slope * slope / 24.0)
       } else {
-        width * ((-y0).exp() - (-y1).exp()) / slope
+        width * (density0 - density1) / slope
       }
     }
   }
