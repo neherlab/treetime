@@ -29,6 +29,8 @@ The two marginal clock rate tests carry the tolerances $10^{-4}$ and $10^{-2}$ w
 
 > [!IMPORTANT]
 > **Investigation required.** The gap of the marginal likelihood test with a coalescent prior (up to 3.3e-6) is larger than without one. Measure it with a finer edge grid to tell whether the regridding causes it, or the coalescent factor applied at the grid points of the subtree distribution, whose kinks at the prior node times fall between grid points.
+>
+> The tail laws of the coalescent factor are not the cause: `distribution_multiply_by_fn()` keeps the tail laws of its input ([M-distribution-multiply-by-fn-keeps-input-tail-laws.md](M-distribution-multiply-by-fn-keeps-input-tail-laws.md)), but a refit of the tails after the weight, and the slope of the weight added to the kept slope, both leave every gap of this test unchanged in all printed digits (largest 3.328e-6), because the grid edges of the multiplied distributions lie 36 to 69 negative-log units above their minimum.
 
 ## Fix direction
 
