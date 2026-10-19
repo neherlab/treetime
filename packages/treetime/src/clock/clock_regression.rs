@@ -15,8 +15,10 @@ use std::mem;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
+use treetime_graph::tree_scan::NodeEdgeMaps;
+use treetime_graph::tree_view::TreeView;
+use treetime_utils::make_internal_report;
 
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
@@ -219,75 +221,105 @@ fn clock_regression_backward(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
-  let mut state = ClockState::new(graph);
-  state.map_backward(graph, |context| {
-    clock_regression_backward_node(prev_clock_rate, branch_lengths, inputs, outliers, &context)
+  let tree = TreeView::new(graph)?;
+  let pass = ClockRegressionPass {
+    tree: &tree,
+    inputs,
+    branch_lengths,
+    prev_clock_rate,
+  };
+  let is_outlier = tree.preorder().iter().map(|&key| (key, outliers.contains(&key)));
+  let outputs = tree.scan_up(is_outlier, |key, is_outlier, from_children| {
+    Ok(pass.backward_node(key, is_outlier, &from_children))
   })?;
-  Ok(state)
-}
-
-fn clock_regression_backward_node(
-  prev_clock_rate: Option<f64>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  inputs: &ClockInputs,
-  outliers: &BTreeSet<GraphNodeKey>,
-  context: &GraphPassBackwardContext<'_, &ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
-) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report> {
-  let q_to_parent = if !context.is_leaf {
-    context
-      .children
-      .iter()
-      .try_fold(ClockSet::default(), |mut total, child| {
-        total += &child.edge_message()?.clock_from_child;
-        Ok::<_, Report>(total)
-      })?
-  } else if outliers.contains(&context.key) {
-    ClockSet::outlier_contribution()
-  } else {
-    ClockSet::leaf_contribution(inputs.likely_time(context.key))
-  };
-
-  let Some((edge_key, edge)) = context.parent_edge else {
-    return Ok(GraphPassNodeOutput {
-      node: q_to_parent,
-      parent_message: None,
-    });
-  };
-  let mut edge = edge.clone();
-  edge.clock_from_child = q_to_parent.shift(edge_length(inputs, branch_lengths, edge_key, prev_clock_rate));
-  edge.clock_to_parent = q_to_parent;
-  Ok(GraphPassNodeOutput {
-    node: context.input.clone(),
-    parent_message: Some(edge),
-  })
+  let NodeEdgeMaps { nodes, edges } = outputs.split_parent_edges()?;
+  Ok(ClockState { nodes, edges })
 }
 
 fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
-  mut state: ClockState,
+  state: ClockState,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
-  state.map_forward(graph, |context| {
-    let (Some((edge_key, edge)), Some(parent)) = (context.parent_edge, context.parent) else {
-      return Ok(GraphPassNodeOutput {
-        node: context.input.clone(),
-        parent_message: None,
-      });
-    };
-    let mut edge = edge.clone();
-    edge.clock_to_child = parent - &edge.clock_from_child;
-    let node = &edge.clock_to_parent
-      + edge
-        .clock_to_child
-        .shift(edge_length(inputs, branch_lengths, edge_key, prev_clock_rate));
-    Ok(GraphPassNodeOutput {
-      node,
-      parent_message: Some(edge),
-    })
+  let tree = TreeView::new(graph)?;
+  let pass = ClockRegressionPass {
+    tree: &tree,
+    inputs,
+    branch_lengths,
+    prev_clock_rate,
+  };
+  let ClockState { nodes, edges } = state;
+  let outputs = tree.scan_down(tree.join_parent_edges(nodes, edges)?, |key, (node, edge), parent| {
+    pass.forward_node(key, node, edge, parent)
   })?;
-  Ok(state)
+  let NodeEdgeMaps { nodes, edges } = outputs.split_parent_edges()?;
+  Ok(ClockState { nodes, edges })
+}
+
+type ClockNodeOutput = (ClockSet, Option<ClockEdgeState>);
+
+struct ClockRegressionPass<'a> {
+  tree: &'a TreeView<'a>,
+  inputs: &'a ClockInputs,
+  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  prev_clock_rate: Option<f64>,
+}
+
+impl ClockRegressionPass<'_> {
+  fn backward_node(
+    &self,
+    key: GraphNodeKey,
+    is_outlier: bool,
+    from_children: &[ClockSet],
+  ) -> (ClockNodeOutput, ClockSet) {
+    let q_to_parent = if !self.tree.children(key).is_empty() {
+      from_children.iter().fold(ClockSet::default(), |mut total, from_child| {
+        total += from_child;
+        total
+      })
+    } else if is_outlier {
+      ClockSet::outlier_contribution()
+    } else {
+      ClockSet::leaf_contribution(self.inputs.likely_time(key))
+    };
+
+    let Some((_, edge_key)) = self.tree.parent(key) else {
+      return ((q_to_parent, None), ClockSet::default());
+    };
+    let clock_from_child = q_to_parent.shift(self.edge_length(edge_key));
+    let edge = ClockEdgeState {
+      clock_to_parent: q_to_parent,
+      clock_to_child: ClockSet::default(),
+      clock_from_child: clock_from_child.clone(),
+    };
+    ((ClockSet::default(), Some(edge)), clock_from_child)
+  }
+
+  fn forward_node(
+    &self,
+    key: GraphNodeKey,
+    node: ClockSet,
+    edge: Option<ClockEdgeState>,
+    parent: Option<ClockSet>,
+  ) -> Result<(ClockNodeOutput, ClockSet), Report> {
+    match (self.tree.parent(key), edge, parent) {
+      (Some((_, edge_key)), Some(mut edge), Some(parent)) => {
+        edge.clock_to_child = &parent - &edge.clock_from_child;
+        let node = &edge.clock_to_parent + edge.clock_to_child.shift(self.edge_length(edge_key));
+        Ok(((node.clone(), Some(edge)), node))
+      },
+      (None, None, None) => Ok(((node.clone(), None), node)),
+      _ => Err(make_internal_report!(
+        "Clock forward pass received an inconsistent parent edge and parent message at node {key}"
+      )),
+    }
+  }
+
+  fn edge_length(&self, edge_key: GraphEdgeKey) -> f64 {
+    edge_length(self.inputs, self.branch_lengths, edge_key, self.prev_clock_rate)
+  }
 }
 
 fn clock_regression_points(

@@ -1,13 +1,9 @@
 use crate::clock::clock_set::ClockSet;
-use eyre::Report;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{
-  GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput,
-};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClockInputs {
@@ -110,18 +106,6 @@ pub(crate) struct ClockState {
 }
 
 impl ClockState {
-  pub(crate) fn new(graph: &Graph) -> Self {
-    let nodes = graph
-      .get_nodes()
-      .map(|node| (node.key(), ClockSet::default()))
-      .collect();
-    let edges = graph
-      .get_edges()
-      .map(|edge| (edge.key(), ClockEdgeState::default()))
-      .collect();
-    Self { nodes, edges }
-  }
-
   #[expect(
     clippy::panic,
     reason = "every graph node has a clock state; a missing one is a violated internal invariant"
@@ -140,38 +124,6 @@ impl ClockState {
       .edges
       .get(&key)
       .unwrap_or_else(|| panic!("Clock state is missing edge {key}"))
-  }
-
-  pub(crate) fn map_backward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
-  where
-    F: Fn(
-        GraphPassBackwardContext<'_, &ClockSet, ClockEdgeState, ClockSet, ClockEdgeState>,
-      ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report>
-      + Sync
-      + Send,
-  {
-    let pass = GraphPass::new(graph)?;
-    let GraphMapOutputs { nodes, edges } =
-      pass.map_backward(&self.nodes, &self.edges, |_| Ok(ClockSet::default()), visit)?;
-    self.nodes = nodes;
-    self.edges = edges;
-    Ok(())
-  }
-
-  pub(crate) fn map_forward<F>(&mut self, graph: &Graph, visit: F) -> Result<(), Report>
-  where
-    F: Fn(
-        GraphPassForwardContext<'_, &ClockSet, ClockEdgeState, ClockSet>,
-      ) -> Result<GraphPassNodeOutput<ClockSet, ClockEdgeState>, Report>
-      + Sync
-      + Send,
-  {
-    let pass = GraphPass::new(graph)?;
-    let GraphMapOutputs { nodes, edges } =
-      pass.map_forward(&self.nodes, &self.edges, |_| Ok(ClockSet::default()), visit)?;
-    self.nodes = nodes;
-    self.edges = edges;
-    Ok(())
   }
 }
 
