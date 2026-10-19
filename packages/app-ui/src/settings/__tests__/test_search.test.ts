@@ -7,9 +7,9 @@ const specs = commandSettings("clock").settings;
 
 describe("setting search", () => {
   test("matches the flag of a setting", () => {
-    expect(
-      matchingSpecs(specs, defaultConfig(specs), "--allow-negative", false).map((spec) => spec.key),
-    ).toStrictEqual(["allow_negative_rate"]);
+    expect(matchingSpecs(specs, defaultConfig(specs), "--allow-negative", false).map((spec) => spec.key)).toStrictEqual(
+      ["allow_negative_rate"],
+    );
   });
 
   test("changed only keeps the changed settings", () => {
