@@ -25,7 +25,7 @@ mod tests {
 
   const LAPLACE_PROBE_FAR: f64 = 2007.0;
 
-  const BRANCH_GRID_POINTS: usize = 201;
+  const BRANCH_GRID_DX: f64 = 0.0005;
 
   const BRANCH_PRECISION: f64 = 4.0;
 
@@ -98,7 +98,7 @@ mod tests {
     let actual = backward
       .log_marginal_likelihood(graph.root_key()?)?
       .expect("root has a distribution");
-    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 2e-3);
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())
   }
 
@@ -554,6 +554,7 @@ mod tests {
     use super::*;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
     pub(super) struct BackwardInputs {
       pub constraints: DateConstraints,
@@ -635,7 +636,8 @@ mod tests {
       target_key: GraphNodeKey,
       mean: f64,
     ) -> Result<(), Report> {
-      let t = Array1::linspace(0.0, 2.0 * mean, BRANCH_GRID_POINTS);
+      let n = f64_to_usize_saturating((2.0 * mean / BRANCH_GRID_DX).round()) + 1;
+      let t = Array1::from_shape_fn(n, |i| BRANCH_GRID_DX * i.to_f64_exact());
       let y = gaussian_neglog(&t, mean, BRANCH_PRECISION);
       let branch = BranchLikelihood {
         distribution: Some(Arc::new(Distribution::function(t, y)?)),

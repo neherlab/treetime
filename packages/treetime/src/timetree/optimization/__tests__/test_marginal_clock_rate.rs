@@ -55,11 +55,11 @@ mod tests {
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
 
     let target = parabola_maximum(reference);
-    assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-2);
+    assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-6);
     assert_abs_diff_eq!(
       reference * (STEP_FRACTION * target).exp(),
       step.clock_rate,
-      epsilon = 1e-2
+      epsilon = 1e-6
     );
     Ok(())
   }
@@ -123,8 +123,11 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
     const PRECISION: f64 = 4.0;
+
+    const BRANCH_GRID_DX: f64 = 0.001;
 
     pub(super) struct Cherry {
       pub graph: Graph,
@@ -169,7 +172,8 @@ mod tests {
         constraints
           .by_node
           .insert(key, Some(Arc::new(Distribution::<NegLog>::point(date, 0.0))));
-        let t = Array1::linspace(0.0, 2.0 * mean, 401);
+        let n = f64_to_usize_saturating((2.0 * mean / BRANCH_GRID_DX).round()) + 1;
+        let t = Array1::from_shape_fn(n, |i| BRANCH_GRID_DX * i.to_f64_exact());
         let y = t.mapv(|t| 0.5 * PRECISION * (t - mean).powi(2));
         let branch = BranchLikelihood {
           distribution: Some(Arc::new(Distribution::function(t, y)?)),
