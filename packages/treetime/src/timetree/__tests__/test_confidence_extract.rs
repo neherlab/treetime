@@ -115,9 +115,10 @@ mod tests {
     let state = helpers::state(&graph, &[(key, Some(2010.0), None)]);
     let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
     assert_eq!(1, intervals.len());
+    let z = Normal::standard().inverse_cdf(0.95);
     assert_relative_eq!(intervals[0].date, 2010.0);
-    assert_relative_eq!(intervals[0].lower, 2008.355146, epsilon = 1e-4);
-    assert_relative_eq!(intervals[0].upper, 2011.644854, epsilon = 1e-4);
+    assert_relative_eq!(intervals[0].lower, 2010.0 - z, epsilon = 1e-15);
+    assert_relative_eq!(intervals[0].upper, 2010.0 + z, epsilon = 1e-15);
   }
 
   #[test]
@@ -157,8 +158,9 @@ mod tests {
     assert_eq!(1, intervals.len());
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
+    let z = Normal::standard().inverse_cdf(0.95);
     assert_relative_eq!(intervals[0].upper, 2020.5);
-    assert_relative_eq!(intervals[0].lower, 2019.8355, epsilon = 1e-3);
+    assert_relative_eq!(intervals[0].lower, 2020.0 - 0.1 * z, epsilon = 1e-15);
   }
 
   #[test]
@@ -174,8 +176,9 @@ mod tests {
     assert_eq!(1, intervals.len());
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
+    let z = Normal::standard().inverse_cdf(0.95);
     assert_relative_eq!(intervals[0].lower, 2019.5);
-    assert_relative_eq!(intervals[0].upper, 2020.1645, epsilon = 1e-3);
+    assert_relative_eq!(intervals[0].upper, 2020.0 + 0.1 * z, epsilon = 1e-15);
   }
 
   #[test]
