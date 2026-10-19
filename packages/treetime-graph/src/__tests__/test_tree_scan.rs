@@ -395,6 +395,32 @@ mod tests {
   }
 
   #[test]
+  fn test_tree_scan_up_after_a_failed_scan_succeeds_on_the_same_view() -> Result<(), Report> {
+    let tree = NamedGraph::new(
+      &["root", "AB", "A", "B", "C"],
+      &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
+    )?;
+    let view = TreeView::new(&tree.graph)?;
+    let failed = view.scan_up(inputs_of(&tree.graph, 1), |_, _, _: Vec<usize>| {
+      Err::<(usize, usize), _>(make_report!("injected failure"))
+    });
+    assert_error!(failed, "injected failure");
+
+    let sizes = view
+      .scan_up(inputs_of(&tree.graph, 1), |_, weight, children: Vec<usize>| {
+        let sum = weight + children.iter().sum::<usize>();
+        Ok((sum, sum))
+      })?
+      .into_map();
+
+    let expected = btreemap! {
+      tree.key("root") => 5, tree.key("AB") => 3, tree.key("A") => 1, tree.key("B") => 1, tree.key("C") => 1,
+    };
+    assert_eq!(expected, sizes);
+    Ok(())
+  }
+
+  #[test]
   fn test_tree_scan_join_and_split_parent_edges_roundtrip() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
     let view = TreeView::new(&tree.graph)?;

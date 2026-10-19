@@ -141,7 +141,6 @@ comfy-table = "=7.2.1"
 console_error_panic_hook = "=0.1.7"
 console_log = "=1.1.0"
 criterion = { version = "=0.7.0", features = ["html_reports"] }
-crossbeam-channel = "=0.5.17"
 crossterm = "=0.29.0"
 ctor = "=1.0.13"
 derive_more = { version = "=2.1.1", features = ["full"] }

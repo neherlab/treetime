@@ -19,7 +19,6 @@ doctest = false
 treetime-utils = { workspace = true }
 
 # [external]
-crossbeam-channel = { workspace = true }
 derive_more = { workspace = true }
 deser = { workspace = true }
 eyre = { workspace = true }
