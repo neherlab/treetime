@@ -100,8 +100,9 @@ variance model (zero on internal edges, unit weight per tip) is OLS. What differ
 - The covariance is the unscaled $H^{-1}$; `determine_rate_std` uses it only with `--covariation`, while the augur
   node data report $\sqrt{(H^{-1})_{00}}$ as `rate_std` regardless.
 
-**Replacement**, following `rtt_ols.py` and `gaussian_timetree.py` of
-[neherlab/gaussian-timetree](https://github.com/neherlab/gaussian-timetree):
+**Replacement**, following an unpublished derivation and reference scripts of the maintainers (`rtt_ols.py`,
+`gaussian_timetree.py`); [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)
+states the formulas of the Gaussian timetree that v1 uses:
 
 | part | new | covers |
 | --- | --- | --- |
@@ -142,22 +143,21 @@ The start is cheap and is refined by the loop, so it should be robust rather tha
 - **Rate, root and outliers from the root-to-tip regression**, as now (least-squares reroot, residual clock filter).
   The regression is empirically the more robust on real data with misdated or erroneous tips, which the simulated
   validation data do not contain.
-- **Internal-node marginals from Gaussian propagation at that rate.** The Gaussian timetree
-  ([neherlab/gaussian-timetree](https://github.com/neherlab/gaussian-timetree), `gaussian_timetree.py`,
-  `gaussian_timetree_derivation.md`; sections below refer to the derivation) approximates a branch with $d$ mutations
-  by elapsed time $\sim\mathcal N(\nu/\eta, \nu/\eta^2)$, $\nu = d + 1$. With messages $(S, R, W)$ of mean
+- **Internal-node marginals from Gaussian propagation at that rate.** The Gaussian timetree (formulas in
+  [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md), section
+  "Gaussian timetree") approximates a branch with $d$ mutations by elapsed time $\sim\mathcal N(\nu/\eta, \nu/\eta^2)$, $\nu = d + 1$. With messages $(S, R, W)$ of mean
   $S - R/\eta$ and variance $W/\eta^2$, one upward and one outside pass give every node's marginal
   $(m_v, \sigma_v^2) = (S_v - R_v/\eta,\ W_v/\eta^2)$. The $+1$ in $\nu$ is the hazard of the event that ends a
-  branch (a split, or sampling at a tip), so the geometry runs at $\eta = \mu\,(D + M + N)/D$ for the substitution
-  rate $\mu$, with $D$ substitutions, $M$ internal and $N$ terminal branches (Sections 12, 15.3-15.4); the
-  regression's $\mu$ is converted that way.
+  branch (a split, or sampling at a tip), so the geometry runs at $\eta = \mu L\,(D + M + N)/D$ for the
+  substitution rate $\mu$ per site and the sequence length $L$, with $D$ substitutions, $M$ internal and $N$ terminal
+  branches; the regression's $\mu$ is converted that way.
 - **Widths include the rate uncertainty.** $\sigma_v$ is the width at a fixed rate; the regression's rate variance
   propagates to $\sigma_v^2 + (\partial m_v/\partial\mu)^2 \operatorname{var}(\mu)$.
 
 The marginals seed the expectation, $S_v(t) = 1 - \Phi((t - m_v)/\sigma_v)$ truncated at the earliest tip below $v$
 so that $\bar k \ge 1$; their means need not respect parent-child order, and the counts do not need it. The first
 $T_c$ is the EM fit on this expectation. The two methods form a hierarchy: the exact Gamma/Poisson branch factor at
-small $d$ cannot be had in the Gaussian family (Section 15.7), and the grid-based time passes are that refinement.
+small $d$ cannot be had in the Gaussian family, and the grid-based time passes are that refinement.
 
 **Evidence** (240 validation sets, true topology and root; scripts outside the repository, `gaussian_timetree.py` and
 `rtt_ols.py` with `tension=True`):
@@ -282,7 +282,7 @@ $z = (\hat\mu - \mu)/\sigma_\mu$:
 | $L=10^3$, $\mu=10^{-3}$ | -7.06 | 7.33 | 0.21 | 0.037 | 0.204 |
 | $L=10^3$, $\mu=3\cdot10^{-4}$ | -21.4 | 16.3 | 0.00 | 0.044 | 0.420 |
 
-With signal the width is right to within a factor 1.5–2; at low signal the rate is biased low far beyond its
+With signal the width is right to within a factor 1.5-2; at low signal the rate is biased low far beyond its
 curvature width, which is the weak-signal problem of phase 4, not a variance one. Four runs (`const` rep03 and rep09,
 $L=10^3$) stop on a non-positive regression rate, as before 0a.
 
@@ -296,8 +296,8 @@ dengue/100 golden master holds to $10^{-10}$. The clock-model statistics report 
 `rate_std` in place of the unscaled covariance, and a timetree rate from the marginal-likelihood step is reported as
 estimated rather than fixed. Left for the engineer: the smoke matrix
 ([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)).
-The pre-filter's relaxed positive rate lost its cause
-([N-clock-prefilter-positive-rate-relaxation-without-its-cause.md](../issues/N-clock-prefilter-positive-rate-relaxation-without-its-cause.md)).
+The root search of the clock pre-filter requires a positive rate, as v0 does, and the final time inference runs at
+the final rate, so the reported dates belong to the reported rate.
 
 ## Phase 1 result
 
