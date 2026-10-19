@@ -4,9 +4,10 @@ use crate::timetree::inference::result::{BranchLikelihood, TimeBackward, TimeDis
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
+use ndarray::Array1;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_distribution::Distribution;
+use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
 use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_multiplication;
@@ -19,6 +20,7 @@ use treetime_graph::pass::{
   GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput,
 };
 use treetime_grid::{MaxGridPoints, Side};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn propagate_distributions_backward(
@@ -53,6 +55,11 @@ fn propagate_distributions_backward_node(
   let distribution = combine_child_messages(&messages, max_points)?;
   let distribution = apply_coalescent_prior(coalescent_model, context.key, context.children.len(), distribution)?;
   let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
+  let distribution = apply_leaf_coalescent_factor(
+    coalescent_model.filter(|_| context.is_leaf),
+    context.key,
+    distribution,
+  )?;
 
   let subtree = if matches!(distribution, Distribution::Empty) {
     None
@@ -66,12 +73,7 @@ fn propagate_distributions_backward_node(
   let bad_branch = *context.input;
   let parent_message = context
     .parent_edge
-    .map(|(edge_key, branch)| {
-      let leaf_prior = coalescent_model
-        .filter(|_| context.is_leaf)
-        .map(|model| (model, context.key));
-      send_backward_message(leaf_prior, bad_branch, subtree.as_deref(), edge_key, branch, max_points)
-    })
+    .map(|(edge_key, branch)| send_backward_message(bad_branch, subtree.as_deref(), edge_key, branch, max_points))
     .transpose()?;
   Ok(GraphPassNodeOutput {
     node: subtree,
@@ -133,8 +135,30 @@ fn apply_date_constraint(
   distribution_multiplication(&distribution, constraint, max_points)
 }
 
+fn apply_leaf_coalescent_factor(
+  coalescent_model: Option<&CoalescentPrior>,
+  key: GraphNodeKey,
+  distribution: Distribution<NegLog>,
+) -> Result<Distribution<NegLog>, Report> {
+  let Some(model) = coalescent_model else {
+    return Ok(distribution);
+  };
+  let distribution = match distribution.time_bounds() {
+    Some((start, end)) if matches!(distribution, Distribution::Range(_)) => {
+      let dx = (end - start) / (GRID_POINTS - 1).to_f64_exact();
+      let values = Array1::from_elem(GRID_POINTS, distribution.eval(start)?);
+      Distribution::Function(
+        DistributionFunction::from_start_dx_values(start, dx, values)?
+          .with_left_extrap(BoundaryBehavior::Hard)?
+          .with_right_extrap(BoundaryBehavior::Hard)?,
+      )
+    },
+    _ => distribution,
+  };
+  distribution_multiply_by_fn(&distribution, |time| model.node_contribution(key, 0, time))
+}
+
 fn send_backward_message(
-  leaf_prior: Option<(&CoalescentPrior, GraphNodeKey)>,
   bad_branch: bool,
   subtree: Option<&Distribution<NegLog>>,
   edge_key: GraphEdgeKey,
@@ -148,13 +172,8 @@ fn send_backward_message(
     return Ok(None);
   };
 
-  let leaf_weighted = leaf_prior
-    .map(|(model, key)| distribution_multiply_by_fn(distribution, |time| model.node_contribution(key, 0, time)))
-    .transpose()?;
-  let outgoing = leaf_weighted.as_ref().unwrap_or(distribution);
-
   let negated_branch = branch_length_distribution.negate()?;
-  let message = convolve_across_edge(outgoing, &negated_branch, Side::Left, EPS, GRID_POINTS, max_points)
+  let message = convolve_across_edge(distribution, &negated_branch, Side::Left, EPS, GRID_POINTS, max_points)
     .wrap_err_with(|| format!("When sending the time message backward along edge {edge_key}"))?;
 
   Ok(Some(Arc::new(message)))

@@ -1,14 +1,16 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
+  use crate::coalescent::mean_field::CoalescentPrior;
   use crate::progress::NoopProgress;
-  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_date_constraints};
+  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, point_date_constraints};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
   use eyre::Report;
   use ndarray::Array1;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;
@@ -19,6 +21,8 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   const TREE_NEWICK: &str = "((B:1,C:1,(U1:1,U2:1)N:1)P:1,A:1)root;";
 
@@ -27,6 +31,20 @@ mod tests {
   const BRANCH_SD: f64 = 0.5;
 
   const BRANCH_GRID_POINTS: usize = 201;
+
+  const TIP_RANGE: (f64, f64) = (2014.0, 2015.0);
+
+  const TIP_DATE: f64 = 2014.5;
+
+  const ROOT_DATE: f64 = 2005.0;
+
+  const SIBLING_DATE: f64 = 2012.0;
+
+  const TIP_BRANCH_DECAY: f64 = 0.5;
+
+  const COALESCENT_TC: f64 = 0.5;
+
+  const ORACLE_INTERVALS: usize = 200_000;
 
   #[test]
   fn test_time_passes_node_with_only_undated_leaves_takes_the_parent_message() -> Result<(), Report> {
@@ -105,6 +123,39 @@ mod tests {
       (without - mean_of_b_and_c_messages).abs() < (without - mean_of_b_c_and_n_messages).abs(),
       "without the date of N, P must peak near {mean_of_b_and_c_messages}, got {without}"
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_time_passes_tip_with_a_date_range_carries_its_coalescent_factor_in_its_posterior() -> Result<(), Report> {
+    let tip = helpers::CoalescentTip::new(Distribution::range(TIP_RANGE, 0.0))?;
+
+    let posterior = tip.posterior()?;
+
+    let distribution = posterior.distribution.as_deref().expect("A must have a posterior");
+    let log_mass = distribution.log_mass()?;
+    let oracle_log_z = tip.oracle_log_normalizer()?;
+    for time in distribution.t() {
+      let actual = distribution.eval(time)? + log_mass;
+      let expected = tip.oracle_neglog_density(time)? + oracle_log_z;
+      pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
+    }
+    Ok(())
+  }
+
+  #[test]
+  fn test_time_passes_tip_with_an_exact_date_keeps_a_point_posterior_under_a_coalescent_prior() -> Result<(), Report> {
+    let tip = helpers::CoalescentTip::new(Distribution::point(TIP_DATE, 0.0))?;
+
+    let posterior = tip.posterior()?;
+
+    let expected = NodePosterior {
+      distribution: Some(Arc::new(Distribution::point(TIP_DATE, 0.0))),
+      likely_time: Some(TIP_DATE),
+      time: Some(TIP_DATE),
+      contradicted: false,
+    };
+    assert_eq!(expected, posterior);
     Ok(())
   }
 
@@ -189,6 +240,98 @@ mod tests {
           &NoopProgress,
         )?;
         Ok((bad_branches, backward, posterior))
+      }
+    }
+
+    pub(super) struct CoalescentTip {
+      graph: Graph,
+      names: BTreeMap<GraphNodeKey, Option<String>>,
+      constraints: DateConstraints,
+      branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
+      prior: CoalescentPrior,
+    }
+
+    impl CoalescentTip {
+      pub(super) fn new(tip_constraint: Distribution<NegLog>) -> Result<Self, Report> {
+        let nwk_parsed = nwk_read(b"(A:9,B:7)root;".as_slice())?;
+        let names = nwk_parsed.names();
+        let graph = nwk_parsed.graph;
+        let mut constraints = point_date_constraints(&graph, &names, &[("B", SIBLING_DATE), ("root", ROOT_DATE)]);
+        let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+        constraints.by_node.insert(key("A"), Some(Arc::new(tip_constraint)));
+        let tip_t = Array1::linspace(0.0, 20.0, 2001);
+        let tip_y = tip_t.mapv(|t| TIP_BRANCH_DECAY * t);
+        let branches = btreemap! {
+          parent_edge_key(&graph, key("A")) => BranchLikelihood {
+            distribution: Some(Arc::new(Distribution::function(tip_t, tip_y)?)),
+            time_length: Some(9.0),
+          },
+          parent_edge_key(&graph, key("B")) => BranchLikelihood {
+            distribution: Some(Arc::new(branch_distribution(7.0)?)),
+            time_length: Some(7.0),
+          },
+        };
+        let prior = point_coalescent_prior(
+          &graph,
+          &names,
+          &[("A", TIP_DATE), ("B", SIBLING_DATE), ("root", ROOT_DATE)],
+          COALESCENT_TC,
+        )?;
+        Ok(Self {
+          graph,
+          names,
+          constraints,
+          branches,
+          prior,
+        })
+      }
+
+      fn tip(&self) -> GraphNodeKey {
+        find_node_key_by_name(&self.graph, &self.names, "A").expect("tip A must exist")
+      }
+
+      pub(super) fn posterior(&self) -> Result<NodePosterior, Report> {
+        let bad_branches = self.graph.get_nodes().map(|node| (node.key(), false)).collect();
+        let backward = propagate_distributions_backward(
+          &self.graph,
+          &self.constraints,
+          Some(&self.prior),
+          &bad_branches,
+          &self.branches,
+          MaxGridPoints::default(),
+        )?;
+        let mut posterior = propagate_distributions_forward(
+          &self.graph,
+          &self.constraints,
+          &self.names,
+          &self.branches,
+          &backward,
+          MaxGridPoints::default(),
+          &NoopProgress,
+        )?;
+        Ok(posterior.remove(&self.tip()).expect("A must have a posterior"))
+      }
+
+      pub(super) fn oracle_neglog_density(&self, time: f64) -> Result<f64, Report> {
+        Ok(TIP_BRANCH_DECAY * (time - ROOT_DATE) + self.prior.node_contribution(self.tip(), 0, time)?)
+      }
+
+      pub(super) fn oracle_log_normalizer(&self) -> Result<f64, Report> {
+        let (start, end) = TIP_RANGE;
+        let h = (end - start) / ORACLE_INTERVALS.to_f64_exact();
+        let simpson_sum = (0..=ORACLE_INTERVALS)
+          .map(|i| {
+            let weight = if i == 0 || i == ORACLE_INTERVALS {
+              1.0
+            } else if i % 2 == 1 {
+              4.0
+            } else {
+              2.0
+            };
+            Ok(weight * (-self.oracle_neglog_density(start + h * i.to_f64_exact())?).exp())
+          })
+          .sum::<Result<f64, Report>>()?;
+        Ok((simpson_sum * h / 3.0).ln())
       }
     }
 

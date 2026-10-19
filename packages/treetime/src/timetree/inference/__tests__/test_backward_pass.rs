@@ -132,7 +132,7 @@ mod tests {
   }
 
   #[test]
-  fn test_backward_pass_preserves_leaf_time_distribution_with_coalescent() -> Result<(), Report> {
+  fn test_backward_pass_leaf_subtree_carries_its_coalescent_factor() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:3.0,B:2.0)I:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -160,13 +160,13 @@ mod tests {
 
     {
       let time_dist = node_time_distribution(&backward, leaf_a_key).expect("leaf A should have time distribution");
-      let expected = Distribution::point(date_a, 0.0);
+      let expected = Distribution::point(date_a, coalescent_model.node_contribution(leaf_a_key, 0, date_a)?);
       assert_eq!(&expected, time_dist.as_ref());
     }
 
     {
       let time_dist = node_time_distribution(&backward, leaf_b_key).expect("leaf B should have time distribution");
-      let expected = Distribution::point(date_b, 0.0);
+      let expected = Distribution::point(date_b, coalescent_model.node_contribution(leaf_b_key, 0, date_b)?);
       assert_eq!(&expected, time_dist.as_ref());
     }
 
