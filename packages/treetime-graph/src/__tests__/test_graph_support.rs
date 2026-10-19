@@ -55,15 +55,21 @@ pub(crate) mod tests {
         .collect_vec()
     }
   }
-  pub(crate) fn graph_from_parents(parents: &[usize]) -> Result<Graph, Report> {
-    let mut graph = Graph::new();
-    let keys = std::iter::repeat_with(|| graph.add_node())
-      .take(parents.len())
-      .collect_vec();
-    for (child, &parent) in parents.iter().enumerate().skip(1) {
-      graph.add_edge(keys[parent], keys[child])?;
+
+  pub(crate) mod helpers {
+    use crate::graph::Graph;
+    use eyre::Report;
+    use itertools::Itertools;
+    use std::iter::repeat_with;
+
+    pub(crate) fn graph_from_parents(parents: &[usize]) -> Result<Graph, Report> {
+      let mut graph = Graph::new();
+      let keys = repeat_with(|| graph.add_node()).take(parents.len()).collect_vec();
+      for (child, &parent) in parents.iter().enumerate().skip(1) {
+        graph.add_edge(keys[parent], keys[child])?;
+      }
+      graph.build()?;
+      Ok(graph)
     }
-    graph.build()?;
-    Ok(graph)
   }
 }

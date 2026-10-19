@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::{caterpillar_parents, inputs_of, run_in_pool, run_in_small_stack_pool, subtree_sizes};
-  use super::super::test_graph_support::tests::{NamedGraph, graph_from_parents};
+  use super::super::test_graph_support::tests::NamedGraph;
+  use super::super::test_graph_support::tests::helpers::graph_from_parents;
   use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;

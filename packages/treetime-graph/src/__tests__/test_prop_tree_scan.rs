@@ -2,11 +2,11 @@
 mod tests {
   use self::generators::gen_parents;
   use self::helpers::{record_scan_down, record_scan_up, sorted_keys, visits_before_children, visits_before_parent};
-  use super::super::test_graph_support::tests::graph_from_parents;
+  use super::super::test_graph_support::tests::helpers::graph_from_parents;
   use crate::node::GraphNodeKey;
   use crate::tree_view::TreeView;
   use itertools::Itertools;
-  use proptest::prelude::*;
+  use proptest::{prop_assert_eq, proptest};
   use std::collections::BTreeMap;
 
   proptest! {
@@ -57,7 +57,7 @@ mod tests {
 
   mod generators {
     use itertools::Itertools;
-    use proptest::prelude::*;
+    use proptest::strategy::Strategy;
 
     pub(super) fn gen_parents() -> impl Strategy<Value = Vec<usize>> {
       (1_usize..60).prop_flat_map(|count| (0..count).map(|index| 0..index.max(1)).collect_vec())
