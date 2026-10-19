@@ -117,7 +117,7 @@ fn node_confidence_interval(
   rate_dates: Option<&[f64; 3]>,
 ) -> Option<NodeConfidenceInterval> {
   let date = node_posterior.time?;
-  let limits = node_posterior.support_bounds.unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
+  let limits = node_posterior.subtree_support.unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
 
   let (lower, upper) = confidence_bounds(date, limits, node_posterior.region, rate_dates);
 

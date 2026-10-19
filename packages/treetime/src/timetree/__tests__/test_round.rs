@@ -77,7 +77,7 @@ mod tests {
       state
         .graph
         .get_nodes()
-        .all(|node| inference.posterior[&node.key()].support_bounds.is_some())
+        .all(|node| inference.posterior[&node.key()].likely_time.is_some())
     );
 
     let (_, outcome) = helpers::refine(&context, state, Some(&tc))?;

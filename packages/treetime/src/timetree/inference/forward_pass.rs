@@ -143,6 +143,7 @@ where
       likely_time,
       time,
       contradicted,
+      subtree_support: subtree.as_deref().and_then(Distribution::support_bounds),
     };
     let output = ForwardOutput {
       summary: (self.summarize)(key, view)?,

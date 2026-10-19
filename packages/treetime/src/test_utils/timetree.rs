@@ -97,6 +97,7 @@ pub(crate) fn full_posterior(_: GraphNodeKey, view: PosteriorView<'_>) -> Result
     likely_time: view.likely_time,
     time: view.time,
     contradicted: view.contradicted,
+    subtree_support: view.subtree_support,
   })
 }
 
@@ -106,6 +107,7 @@ pub(crate) struct FullPosterior {
   pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,
+  pub subtree_support: Option<(f64, f64)>,
 }
 
 pub(crate) fn unknown_branches(graph: &Graph) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {

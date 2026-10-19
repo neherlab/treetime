@@ -6,9 +6,10 @@ mod tests {
   use crate::test_utils::{
     FullPosterior, RecordingLog, find_node_key_by_name, full_posterior, parent_edge_key, unknown_branches,
   };
+  use crate::timetree::confidence::extract_confidence_intervals;
   use crate::timetree::inference::forward_pass::{ForwardPassInputs, committed_time, propagate_distributions_forward};
   use crate::timetree::inference::result::{
-    BranchLikelihood, NodeBackward, NodePosterior, PosteriorSummaries, PosteriorView,
+    BranchLikelihood, NodeBackward, NodePosterior, PosteriorSummaries, PosteriorView, TimeInference,
   };
   use crate::timetree::inference::runner::{EPS, GRID_POINTS, TRIM_EPS};
   use crate::timetree::max_posterior_region::MaxPosteriorRegion;
@@ -31,7 +32,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side};
+  use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -208,6 +209,7 @@ mod tests {
       likely_time: Some(2006.0),
       time: Some(2009.0),
       contradicted: true,
+      subtree_support: Some((2005.0, 2007.0)),
     };
     assert_eq!(expected, posterior[&leaf_key]);
     let expected_warnings = vec![
@@ -394,6 +396,99 @@ mod tests {
   }
 
   #[test]
+  fn test_forward_pass_child_interval_is_not_clipped_at_the_cut_of_its_parent() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(((A:1.0)C:1.0)P:2.0)R;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
+    let (parent_key, child_key) = (key("P"), key("C"));
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(
+      &mut inputs,
+      key("R"),
+      hard_gaussian((1000.0, 2010.0), 20_001, 2000.0, 2.0)?,
+    );
+    set_time_distribution(
+      &mut inputs,
+      parent_key,
+      hard_gaussian((1000.0, 2010.0), 20_001, 2003.0, 1.5)?,
+    );
+    set_time_distribution(
+      &mut inputs,
+      child_key,
+      soft_left_gaussian((1990.0, 2010.0), 4001, 1995.0, 1.0)?,
+    );
+    set_branch_distribution(
+      &graph,
+      &mut inputs,
+      parent_key,
+      hard_gaussian((0.0, 10.0), 1001, 2.0, 0.5)?,
+    );
+    set_branch_length_distribution(&graph, &mut inputs, child_key, 1.0);
+
+    let posterior = run_forward_pass(&graph, &inputs, &names)?;
+
+    let (parent_lower, _) = posterior[&parent_key]
+      .distribution
+      .as_deref()
+      .and_then(Distribution::time_bounds)
+      .expect("P has a posterior");
+    let (child_lower, _) = posterior[&child_key]
+      .distribution
+      .as_deref()
+      .and_then(Distribution::time_bounds)
+      .expect("C has a posterior");
+    pretty_assert_abs_diff_eq!(parent_lower + 1.0, child_lower, epsilon = 1e-9);
+    let subtree = inputs.backward[&child_key].subtree.as_deref();
+    let (_, subtree_upper) = subtree
+      .and_then(Distribution::time_bounds)
+      .expect("C has a subtree distribution");
+    assert_eq!(
+      Some((f64::NEG_INFINITY, subtree_upper)),
+      posterior[&child_key].subtree_support
+    );
+
+    let summaries = PosteriorSummaries {
+      regions: true,
+      ..PosteriorSummaries::default()
+    };
+    let inference = TimeInference {
+      posterior: run_forward_pass_summaries(&graph, &inputs, &names, summaries)?,
+      posterior_summaries: summaries,
+      ..TimeInference::default()
+    };
+    let date = inference.posterior[&child_key].time.expect("C is dated");
+    let rate_dates = btreemap! { child_key => [date - 50.0, date, date + 50.0] };
+    let intervals = extract_confidence_intervals(&graph, &inference, &rate_dates, &names)?;
+    let unclipped = {
+      let mut inference = inference;
+      inference
+        .posterior
+        .get_mut(&child_key)
+        .expect("C has a posterior")
+        .subtree_support = None;
+      extract_confidence_intervals(&graph, &inference, &rate_dates, &names)?
+    };
+    let child = intervals
+      .iter()
+      .find(|interval| interval.key == child_key)
+      .expect("C has an interval");
+    let child_unclipped = unclipped
+      .iter()
+      .find(|interval| interval.key == child_key)
+      .expect("C has an interval");
+
+    assert!(
+      child.lower < child_lower - 10.0,
+      "the lower bound {} reaches past the parent's cut",
+      child.lower
+    );
+    pretty_assert_ulps_eq!(child_unclipped.lower, child.lower, max_ulps = 0);
+    Ok(())
+  }
+
+  #[test]
   fn test_forward_pass_missing_backward_output_is_an_internal_error() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
     let names = nwk_parsed.names();
@@ -481,6 +576,7 @@ mod tests {
       likely_time: Some(2005.0),
       time: Some(2005.0),
       contradicted: false,
+      subtree_support: None,
     };
     let summaries = PosteriorSummaries {
       lineage_survival,
@@ -691,6 +787,23 @@ mod tests {
       let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
       let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
         .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Hard)?;
+      Ok(Distribution::Function(f))
+    }
+
+    pub(super) fn soft_left_gaussian(
+      (x_min, x_max): (f64, f64),
+      n_points: usize,
+      mean: f64,
+      sigma: f64,
+    ) -> Result<Distribution<NegLog>, Report> {
+      let grid = Array1::linspace(x_min, x_max, n_points);
+      let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
+      let law = SoftTailLaw {
+        slope: (x_min - mean) / sigma.powi(2),
+      };
+      let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
+        .with_left_extrap(BoundaryBehavior::Linear(law))?
         .with_right_extrap(BoundaryBehavior::Hard)?;
       Ok(Distribution::Function(f))
     }

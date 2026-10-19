@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::timetree::confidence::extract_confidence_intervals;
+  use crate::timetree::confidence::{CI_FRACTION, extract_confidence_intervals};
   use crate::timetree::inference::result::{PosteriorSummaries, TimeInference};
   use approx::assert_relative_eq;
   use helpers::{add_named, laplace};
@@ -279,6 +279,35 @@ mod tests {
   }
 
   #[test]
+  fn test_extract_confidence_intervals_trimmed_posterior_keeps_the_quadrature_bound_past_its_cut() {
+    let (t0, rate) = (2015.0, 2.0);
+    let trimmed = laplace(t0, rate, BoundaryBehavior::Hard)
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+    let mut graph = Graph::new();
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
+    graph.build().unwrap();
+    let rate_map = btreemap! { key => [t0 - 5.0, t0, t0 + 5.0] };
+    let mut state = helpers::state(
+      &graph,
+      &[(key, Some(t0), Some(Arc::new(Distribution::Function(trimmed))))],
+    );
+    state.posterior.get_mut(&key).unwrap().subtree_support = None;
+
+    let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
+
+    let (cell, edge_density) = (1.0 / rate, (-1.0_f64).exp());
+    let slope = (1.0 - edge_density) / cell;
+    let mass = cell * (1.0 + edge_density);
+    let region_half_width = (1.0 - (1.0 - CI_FRACTION * slope * mass).sqrt()) / slope;
+    let half_width = region_half_width.hypot(5.0 * Normal::standard().inverse_cdf(0.95));
+    assert_eq!(1, intervals.len());
+    assert_relative_eq!(intervals[0].lower, t0 - half_width, epsilon = 1e-15);
+    assert_relative_eq!(intervals[0].upper, t0 + half_width, epsilon = 1e-15);
+  }
+
+  #[test]
   fn test_extract_confidence_intervals_rejects_an_inference_without_regions() {
     let mut graph = Graph::new();
     let mut names = BTreeMap::new();
@@ -329,7 +358,7 @@ mod tests {
           likely_time,
           time: *time,
           contradicted: false,
-          support_bounds: distribution.as_deref().and_then(Distribution::support_bounds),
+          subtree_support: distribution.as_deref().and_then(Distribution::support_bounds),
           region,
           survival: None,
         };

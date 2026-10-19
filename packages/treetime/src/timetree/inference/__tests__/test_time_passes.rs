@@ -64,6 +64,7 @@ mod tests {
       likely_time: Some(2008.0 + BRANCH_MEAN),
       time: Some(2008.0 + BRANCH_MEAN),
       contradicted: false,
+      subtree_support: None,
     };
     assert_eq!(expected, posterior[&fixture.key("N")]);
     Ok(())
@@ -89,6 +90,7 @@ mod tests {
       likely_time: Some(2008.0),
       time: Some(2008.0),
       contradicted: false,
+      subtree_support: Some((2008.0, 2008.0)),
     };
     assert_eq!(expected, posterior[&fixture.key("N")]);
     Ok(())
@@ -159,6 +161,7 @@ mod tests {
       likely_time: Some(TIP_DATE),
       time: Some(TIP_DATE),
       contradicted: false,
+      subtree_support: Some((TIP_DATE, TIP_DATE)),
     };
     assert_eq!(expected, posterior);
     Ok(())
