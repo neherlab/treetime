@@ -29,6 +29,11 @@ export_dist_flags() {
     # pages (Raspberry Pi 5, Asahi Linux, Arm servers with 64K kernels).
     export JEMALLOC_SYS_WITH_LG_PAGE=16
     ;;
+  x86_64-win7-*)
+    # Windows 7 runs on many CPUs older than Haswell.
+    c_arch="-march=x86-64-v2"
+    rust_arch="-C target-cpu=x86-64-v2"
+    ;;
   x86_64-*)
     c_arch="-march=haswell"
     rust_arch="-C target-cpu=haswell"

@@ -440,7 +440,7 @@ Each target family has its own cross image, with every toolchain component pinne
 
 `dev/cross/check` fails when a binary or addon needs a library that is not part of the operating system: anything beyond glibc 2.17 on the Linux gnu targets (the addon may also need `libgcc_s.so.1`, as Electron does), any library on the musl targets, a DLL other than the Windows system DLLs (`KERNEL32.dll`, `api-ms-win-crt-*.dll`, and others) on Windows, a DLL other than the Windows 7 system DLLs and `msvcrt.dll`, or a function that Windows 8 or later added, on Windows 7, and a library outside `/usr/lib` and `/System/Library` on macOS. `dev/cross/all --run` runs each Linux binary under QEMU and each x86_64 Windows binary under Wine; macOS and aarch64 Windows binaries are only built and checked there. CI runs the Windows binaries on `windows-2022` and `windows-11-arm`, and the macOS binaries on macOS runners.
 
-The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on Linux aarch64, ARMv8.2.
+The release binaries require an x86_64 CPU with AVX2 (Haswell or newer) and, on Linux aarch64, ARMv8.2. The Windows 7 build requires x86-64-v2 (SSE4.2, POPCNT, CMPXCHG16B; Nehalem or newer). On an older CPU the binaries stop with a message that names the missing level.
 
 ### Nightly releases
 

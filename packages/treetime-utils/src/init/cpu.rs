@@ -27,8 +27,10 @@ fn exit_now(code: i32) -> ! {
 }
 
 const fn cpu_features_message() -> &'static str {
-  if cfg!(target_arch = "x86_64") {
+  if cfg!(all(target_arch = "x86_64", target_feature = "avx2")) {
     "TreeTime needs a 64-bit x86 CPU with AVX2, FMA, and BMI2, such as Intel Haswell (2013), AMD Excavator (2015), or newer. This CPU lacks some of these features."
+  } else if cfg!(all(target_arch = "x86_64", target_feature = "sse4.2")) {
+    "TreeTime needs a 64-bit x86 CPU with SSE4.2, POPCNT, and CMPXCHG16B, such as Intel Nehalem (2008), AMD Bulldozer (2011), or newer. This CPU lacks some of these features."
   } else if cfg!(target_arch = "aarch64") {
     "TreeTime needs a 64-bit Arm CPU with the Armv8.2 features LSE atomics, RDM, and CRC32, such as Arm Cortex-A55, Cortex-A76, Neoverse N1, or newer. This CPU lacks some of these features."
   } else {
@@ -58,7 +60,7 @@ const X86_REQUIRED: [u32; 4] = [
     | bit(cfg!(target_feature = "f16c"), 29)
     | bit(cfg!(target_feature = "rdrand"), 30),
   bit(cfg!(target_feature = "bmi1"), 3) | bit(cfg!(target_feature = "avx2"), 5) | bit(cfg!(target_feature = "bmi2"), 8),
-  bit(cfg!(target_feature = "lzcnt"), 5),
+  bit(cfg!(target_feature = "lahfsahf"), 0) | bit(cfg!(target_feature = "lzcnt"), 5),
   bit(cfg!(target_feature = "avx"), 1) | bit(cfg!(target_feature = "avx"), 2),
 ];
 
