@@ -112,7 +112,7 @@ mod tests {
 
     let SegmentStatistics { mergers, .. } = expectation.segment_statistics(&[expected - 100.0, expected, expected + 100.0]);
 
-    pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 2e-3);
+    pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 1e-6);
     Ok(())
   }
 

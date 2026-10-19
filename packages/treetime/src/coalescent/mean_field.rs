@@ -21,6 +21,9 @@ const SURVIVAL_POINTS: usize = 256;
 const SURVIVAL_TRIM: f64 = 1e-9;
 const MERGER_RATE_STRIDE: usize = 10;
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
+const TRUNCATED_NORMAL_POINTS: usize = 1024;
+const CURVATURE_GRID_REFINEMENT: usize = 16;
+const CURVATURE_GRID_UNIFORM_SHARE: f64 = 0.1;
 
 #[derive(Clone, Debug)]
 pub(crate) struct CoalescentPrior {
@@ -468,21 +471,20 @@ impl NodeSurvival {
     let cdf_upper = normal.cdf(z_upper);
     let tail_rate = (z_upper <= -TRUNCATED_NORMAL_SPAN).then(|| (mean - upper) / std.powi(2));
     let (start, end) = match tail_rate {
-      Some(rate) => (upper - TRUNCATED_NORMAL_SPAN / rate, upper),
+      Some(rate) => (upper + SURVIVAL_TRIM.ln() / rate, upper),
       None => (
-        mean.min(upper) - TRUNCATED_NORMAL_SPAN * std,
-        upper.min(mean + TRUNCATED_NORMAL_SPAN * std),
+        mean + std * normal.inverse_cdf(SURVIVAL_TRIM * cdf_upper),
+        upper.min(mean + std * normal.inverse_cdf((1.0 - SURVIVAL_TRIM) * cdf_upper)),
       ),
     };
     let survival = |t: f64| match tail_rate {
       Some(rate) => 1.0 - (-rate * (upper - t)).exp(),
       None => ((cdf_upper - normal.cdf((t - mean) / std)) / cdf_upper).clamp(0.0, 1.0),
     };
-    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
-    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
+    let t = curvature_grid(start, end, TRUNCATED_NORMAL_POINTS, survival);
     let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
     survival[0] = 1.0;
-    survival[SURVIVAL_POINTS - 1] = 0.0;
+    survival[TRUNCATED_NORMAL_POINTS - 1] = 0.0;
     Self {
       t,
       survival,
@@ -506,6 +508,43 @@ impl NodeSurvival {
     let (t0, t1) = (self.t[i], self.t[i + 1]);
     self.survival[i] + (x - t0) / (t1 - t0) * (self.survival[i + 1] - self.survival[i])
   }
+}
+
+fn curvature_grid(start: f64, end: f64, n_points: usize, f: impl Fn(f64) -> f64) -> Vec<f64> {
+  let fine = n_points * CURVATURE_GRID_REFINEMENT;
+  let h = (end - start) / (fine - 1).to_f64_exact();
+  let x: Vec<f64> = (0..fine).map(|i| start + h * i.to_f64_exact()).collect();
+  let y: Vec<f64> = x.iter().map(|&x| f(x)).collect();
+  let curvature: Vec<f64> = (0..fine)
+    .map(|i| {
+      let j = i.clamp(1, fine - 2);
+      ((y[j - 1] - 2.0 * y[j] + y[j + 1]) / (h * h)).abs().sqrt()
+    })
+    .collect();
+  let mean_curvature = curvature.iter().sum::<f64>() / fine.to_f64_exact();
+  let density: Vec<f64> = curvature
+    .iter()
+    .map(|&c| c + CURVATURE_GRID_UNIFORM_SHARE * mean_curvature.max(f64::MIN_POSITIVE))
+    .collect();
+  let cumulative: Vec<f64> = once(0.0)
+    .chain(density.iter().tuple_windows().scan(0.0, |acc, (a, b)| {
+      *acc += h * f64::midpoint(*a, *b);
+      Some(*acc)
+    }))
+    .collect();
+  let total = cumulative[fine - 1];
+  (0..n_points)
+    .map(|k| {
+      if k == 0 {
+        return start;
+      }
+      if k == n_points - 1 {
+        return end;
+      }
+      let target = total * k.to_f64_exact() / (n_points - 1).to_f64_exact();
+      interpolate(&cumulative, &x, target)
+    })
+    .collect()
 }
 
 fn interpolate(t: &[f64], values: &[f64], x: f64) -> f64 {
