@@ -210,12 +210,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::left_unit_width(   Side::Left,  (-1.0,  0.0), 1.0_f64.exp() - 1.0               )]
-  #[case::left_from_grid(    Side::Left,  (-2.0,  0.5), 2.0_f64.exp() - 1.0 + 0.5         )]
-  #[case::left_far_out(      Side::Left,  (-3.0, -2.0), 3.0_f64.exp() - 2.0_f64.exp()     )]
-  #[case::right_unit_width(  Side::Right, ( 1.0,  2.0), 1.0_f64.exp() - 1.0               )]
-  #[case::right_from_grid(   Side::Right, ( 0.5,  3.0), 2.0_f64.exp() - 1.0 + 0.5         )]
-  #[case::right_far_out(     Side::Right, ( 3.0,  4.0), 3.0_f64.exp() - 2.0_f64.exp()     )]
+  #[case::left_unit_width(   Side::Left,  (-1.0,  0.0), 1.0_f64.exp_m1()             )]
+  #[case::left_from_grid(    Side::Left,  (-2.0,  0.5), 2.0_f64.exp_m1() + 0.5       )]
+  #[case::left_far_out(      Side::Left,  (-3.0, -2.0), 3.0_f64.exp() - 2.0_f64.exp())]
+  #[case::right_unit_width(  Side::Right, ( 1.0,  2.0), 1.0_f64.exp_m1()             )]
+  #[case::right_from_grid(   Side::Right, ( 0.5,  3.0), 2.0_f64.exp_m1() + 0.5       )]
+  #[case::right_far_out(     Side::Right, ( 3.0,  4.0), 3.0_f64.exp() - 2.0_f64.exp())]
   #[trace]
   fn test_mass_profile_finite_interval_in_growing_tail_has_exact_mass(
     #[case] side: Side,
