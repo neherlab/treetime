@@ -44,6 +44,7 @@ use eyre::{Report, WrapErr};
 use itertools::izip;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
+use std::mem;
 use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -410,20 +411,24 @@ fn refine_final_times(
     (None, BTreeMap::new())
   };
 
-  let state = if inputs.context.time_marginal.runs_final_round() {
+  let runs_final_round = inputs.context.time_marginal.runs_final_round();
+  if runs_final_round {
     progress_info!(log, "### Final round: marginal reconstruction for confidence intervals");
-    let time_inference = match central {
-      Some(central) => central,
-      None => infer_final_times(inputs, final_prior, &state, log)?,
-    };
+  }
+  let (state, time_inference) = if let Some(central) = central {
+    (state, central)
+  } else {
+    let mut state = state;
+    drop(mem::take(&mut state.time_inference));
+    let time_inference = infer_final_times(inputs, final_prior, &state, log)?;
+    (state, time_inference)
+  };
+  let state = if runs_final_round {
     final_marginal_round(time_inference, state, log)?
   } else {
-    match central {
-      Some(time_inference) => RoundState {
-        time_inference,
-        ..state
-      },
-      None => state,
+    RoundState {
+      time_inference,
+      ..state
     }
   };
 

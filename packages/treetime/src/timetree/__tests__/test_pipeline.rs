@@ -12,17 +12,18 @@ mod tests {
     RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params,
     sequence_source,
   };
-  use crate::timetree::params::TimetreeParams;
+  use crate::timetree::params::{TimeMarginalMode, TimetreeParams};
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::{assert_error, o, pretty_assert_abs_diff_eq};
+  use treetime_utils::{assert_error, o, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   const STAR_TREE: &str = "(A:0.5,B:1.0,C:1.5,D:2.0)root;";
 
@@ -35,6 +36,10 @@ mod tests {
   const FORCED_OUTLIER_DATE: f64 = 2000.0;
 
   const ZIKA_CLOCK_RATE: f64 = 1e-3;
+
+  const ZIKA_SEQUENCE_LENGTH: usize = 10_807;
+
+  const ZIKA_COALESCENT_TC: f64 = 0.01;
 
   #[test]
   fn test_pipeline_rejects_n_branches_posterior_before_any_inference() -> Result<(), Report> {
@@ -138,7 +143,7 @@ mod tests {
       branch_length_mode: BranchLengthMode::Input,
       keep_root: false,
       clock_filter: CLOCK_FILTER_IQD,
-      sequence_length: Some(10_807),
+      sequence_length: Some(ZIKA_SEQUENCE_LENGTH),
       ..marginal_timetree_params()
     };
 
@@ -150,6 +155,38 @@ mod tests {
       "Cannot divide point by point: operation not well-defined",
       report.root_cause().to_string()
     );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::regression_rate(None)]
+  #[case::marginal_likelihood_rate(Some(ZIKA_COALESCENT_TC))]
+  #[trace]
+  fn test_pipeline_estimated_rate_dates_are_inferred_at_the_reported_rate(
+    #[case] coalescent: Option<f64>,
+  ) -> Result<(), Report> {
+    let params = |time_marginal| TimetreeParams {
+      coalescent,
+      time_marginal,
+      ..marginal_timetree_params()
+    };
+
+    let output = helpers::run(&params(TimeMarginalMode::Never), helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?, None)?;
+    let at_reported_rate = helpers::run(
+      &params(TimeMarginalMode::OnlyFinal),
+      helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?,
+      None,
+    )?;
+
+    pretty_assert_ulps_eq!(at_reported_rate.clock_model.clock_rate(), output.clock_model.clock_rate(), max_ulps = 0);
+    for (key, date) in &output.node_dates {
+      pretty_assert_abs_diff_eq!(
+        at_reported_rate.node_dates[key].expect("every node is dated"),
+        date.expect("every node is dated"),
+        epsilon = 1e-9
+      );
+    }
     Ok(())
   }
 

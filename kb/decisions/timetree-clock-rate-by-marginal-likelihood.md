@@ -27,6 +27,9 @@ the slope of the root-to-tip regression. Without a coalescent prior the regressi
   backward passes replace the 10-20 of the search. See [Step fraction](#step-fraction) for the choice of 2/3.
 - The clock model is then fitted with that rate fixed (intercept and outputs as for `--clock-rate`).
 - The pre-loop and the initial round keep the regression, which supplies the starting rate and the rooting.
+- After the last round, a final time pass infers the node times at the rate the clock model reports, in every
+  `--time-marginal` mode (`fn refine_final_times` in
+  [`pipeline.rs`](../../packages/treetime/src/timetree/pipeline.rs)), so the output dates and the reported rate agree.
 
 ## Why only with a coalescent prior
 
@@ -135,9 +138,8 @@ runs had been wide enough to cover dates more than a year off.
 Full validation suite (2880 runs, default two rounds, no `--time-marginal`): no failures and no run time change;
 median rate error at $L=10^3$, $\mu=3\cdot10^{-4}$ 0.505 to 0.281 (`keep-opt-est`), 0.780 to 0.530 (`reroot-opt-est`),
 0.783 to 0.453 (`reroot-skyline-est`), at $L=10^3$, $\mu=10^{-3}$ 0.143 to 0.191 (`keep-opt-est`) and 0.189 to 0.166
-(`reroot-skyline-est`), elsewhere within 0.01. No date changed, because without a final pass the output dates come
-from the rate before the last step
-([M-timetree-reported-rate-is-not-the-rate-of-the-dates.md](../issues/M-timetree-reported-rate-is-not-the-rate-of-the-dates.md)).
+(`reroot-skyline-est`), elsewhere within 0.01. No date changed: in these runs the output dates came from the rate
+before the last step. The final time pass (see [Method](#method)) has since made the dates follow the last step.
 
 ## Accepted limitations
 
