@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::fmt::string::counted;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct EdgeSolution {
@@ -104,13 +105,5 @@ impl ConvergenceSummary {
       ),
       names,
     });
-  }
-}
-
-fn counted(count: usize, noun: &str) -> String {
-  if count == 1 {
-    format!("{count} {noun}")
-  } else {
-    format!("{count} {noun}s")
   }
 }

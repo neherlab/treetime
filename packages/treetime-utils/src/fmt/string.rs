@@ -1,4 +1,7 @@
+use itertools::Itertools;
 use std::fmt::Display;
+
+const NAMES_SHOWN: usize = 3;
 
 #[macro_export]
 macro_rules! o {
@@ -13,6 +16,23 @@ pub fn quote(x: impl Display) -> String {
 
 pub fn quote_single(x: impl Display) -> String {
   format!("'{x}'")
+}
+
+pub fn name_list(names: &[String]) -> String {
+  let shown = names.iter().take(NAMES_SHOWN).join(", ");
+  if names.len() > NAMES_SHOWN {
+    format!("{shown}, and {} more", names.len() - NAMES_SHOWN)
+  } else {
+    shown
+  }
+}
+
+pub fn counted(count: usize, noun: &str) -> String {
+  if count == 1 {
+    format!("{count} {noun}")
+  } else {
+    format!("{count} {noun}s")
+  }
 }
 
 pub fn truncate_right_with_ellipsis(s: impl AsRef<str>, max_len: usize) -> String {

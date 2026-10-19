@@ -64,4 +64,27 @@ mod tests {
     let actual = truncate(input, max_len, Some(ellipsis), direction);
     assert_eq!(expected, actual);
   }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::empty(       vec![],                                  "")]
+  #[case::one(         vec!["A"],                               "A")]
+  #[case::all_shown(   vec!["A", "B", "C"],                     "A, B, C")]
+  #[case::one_more(    vec!["A", "B", "C", "D"],                "A, B, C, and 1 more")]
+  #[case::many_more(   vec!["A", "B", "C", "D", "E", "F"],      "A, B, C, and 3 more")]
+  #[trace]
+  fn test_name_list(#[case] names: Vec<&str>, #[case] expected: &str) {
+    let names = names.into_iter().map(str::to_owned).collect::<Vec<_>>();
+    assert_eq!(expected, name_list(&names));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero( 0, "0 tips")]
+  #[case::one(  1, "1 tip")]
+  #[case::many( 2, "2 tips")]
+  #[trace]
+  fn test_counted(#[case] count: usize, #[case] expected: &str) {
+    assert_eq!(expected, counted(count, "tip"));
+  }
 }

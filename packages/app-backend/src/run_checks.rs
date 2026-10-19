@@ -1,7 +1,6 @@
 use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputNeed};
 use crate::command::AppCommandExt;
 use app_commands::command::AppCommand;
-use app_commands::commands::shared::input_warnings::name_list;
 use app_commands::config::settings::{has_path, setting_ref};
 use app_commands::config::source::ConfigProblem;
 use app_commands::json_value::JsonValue;
@@ -12,6 +11,7 @@ use serde_json::{Map, Value};
 use std::iter;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::cast::ToF64Exact;
+use treetime_utils::fmt::string::name_list;
 use treetime_utils::vec_of_owned;
 
 const MONTH_ROUNDING_FACTOR: usize = 4;
