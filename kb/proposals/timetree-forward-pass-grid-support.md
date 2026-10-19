@@ -86,8 +86,8 @@ Replacing an operand whose standard deviation is at most the other's spacing by 
 
 ## Experiment results (2026-10-19)
 
-Prototype on branch `claude-grid-trim` (base `26c1c8533`, uncommitted, switched by environment variables; patch in the
-session scratchpad as `grid_trim_experiment.diff`). Trimming keeps a trimmed hard side `Hard` at the new edge (option
+Prototype in the `experiment(...)` commit on branch `claude-grid-trim` (base `26c1c8533`), switched by environment
+variables: `TT_TRIM=c|a|p`, `TT_COARSE`, `TT_TAILS`, `TT_GRID_STATS`, `TT_DUMP_NODE`; not for merging. Trimming keeps a trimmed hard side `Hard` at the new edge (option
 c); option (a), a `Linear` tail fitted at the new edge, put mass past child tip dates on the simulated data (a parent's
 interval reached 0.15 years past its child's sampling date) and was dropped. Release build, `--jobs 1`, idle machine.
 
