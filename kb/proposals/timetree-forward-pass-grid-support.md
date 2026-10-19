@@ -168,6 +168,49 @@ Land posterior trimming (option c at the posterior only) together with the spaci
 decision that the backward messages and the forward convolution output keep their hard support, and why. Then take
 issue 4.
 
+## Evidence from a regrid stack built before the experiments
+
+On 2026-10-18, before the experiments above, a stack of changes on `rust` of that day replaced the grid handling of time inference with an exact mass model of piecewise log-linear distributions, an exact convolution of ranges, the v0 grid rule of the FFT convolution, and a regrid of every node distribution at mass quantiles. The stack lives on local branches only and is not merged; the commits named below are provenance, not code to read. Four of its results bear on this proposal.
+
+### Node regrid at mass quantiles does not meet a 1% accuracy rule
+
+- **Construction**: after the messages of a node are combined, in the backward and in the forward pass, the node distribution is resampled to $n$ points over a window. A hard side stays at its grid edge. A soft side ends at the nearer of the $\epsilon$ mass quantile and the point where the density falls to $10^{-15}$ of the peak. When the resampled grid changes the window mass by more than 1%, the node keeps its input grid
+- **Study**: $\epsilon \in \{10^{-3}, 10^{-4}, 10^{-6}, 10^{-9}\}$ times $n \in \{100, 200, 300, 600, 1200\}$ on `flu/h3n2/20`, `flu/h3n2/200`, `ebola/362`, `zika/86`, `rsv/a/500`, `mpox/clade-ii/500`, `dengue/500` and `lassa/L/200`, against the same pipeline without the regrid. The accuracy rule: every node date and both 90% bounds stay within 1% of the reference 90% width
+- **Result**: no setting meets the rule. The best setting, $\epsilon = 10^{-9}$ with 100 points, moves one node by 0.213 of its 90% width (`mpox/clade-ii/500`, `OL504743`); $\epsilon = 10^{-6}$ with 200 points reaches 0.532, $\epsilon = 10^{-3}$ with 300 points 3.2 (`dengue/500`). Errors do not fall as $n$ grows to 1200
+- **Cause**: the window spans many 90% widths, so $n$ points leave few points inside the 90% interval, and a node date is a grid peak, so its error is of the order of the window spacing. With 5000 to 20 000 points the deviation falls to about 1% on `zika/86`, `ebola/362` and `flu/h3n2/200`
+- **Fallback**: 13% to 44% of the regrid calls keep their input, fewer as $n$ grows (0% at 20 000 points)
+- **Grid size**: the regrid does not bound it. The largest grid of every setting, 440 000 to 984 000 points, is a convolution grid, of the order of the reference (793 186 points on `lassa/L/200`), and some settings exceed the grid point limit of 1 000 000 where the reference does not
+- **Conclusion**: a fixed point count over a mass window costs accuracy and leaves the largest grids, the convolution grids, unchanged. This proposal trims only the forward posterior and caps the spacing of the convolution output instead
+- **Provenance**: local branch `worktree/feat/timetree-node-regrid-parameters`, commits `e085de2e1` and `adbbf3f65`
+
+### Cost of the v0 convolution grid rule
+
+v0 convolves at the spacing $\Delta t = \max(0.005\,m,\ \min(w_a, w_b) / 150)$ [packages/legacy/treetime/treetime/node_interpolator.py#L162](../../packages/legacy/treetime/treetime/node_interpolator.py#L162), where $m$ is the branch length of one mutation and $w_a$, $w_b$ are the full widths at half maximum of the two operands, and samples each operand from the start of its effective support (density above $10^{-15}$ of the peak) over twice the larger support width [packages/legacy/treetime/treetime/node_interpolator.py#L199-L209](../../packages/legacy/treetime/treetime/node_interpolator.py#L199-L209).
+
+Release builds on the host, `-j 1`, run time by commit of the stack:
+
+- **The v0 spacing rule** (`00a2d21da`): `ebola/362` 1.1 s to 2.1 s
+- **The hard side of a cropped FFT result stored at the FFT spacing out to the operand ends** (`13fa8ddb0`): `flu/h3n2/200` 1.45 s to 3.6 s, with 3 to 6 times the memory on cases of the validation suite
+- **Soft operand tails sampled past the effective support by the larger support width** (`38a325f2b`): `ebola/362` 3.2 s to 5.9 s
+- **The whole stack**: 5.9 s (`ebola/362`), 10.2 s (`flu/h3n2/200`), 175 s and 2.15 GB (`sc2/4500`), against 1.0 s, 1.3 s, 33 s and 1.0 GB on `rust` of 2026-10-19. 7 of 36 runs of a validation subset failed, 6 of them on the grid point limit; on the bisected cases all failures appear with the node regrid, and without it one failure remains (a backward message gridded over \[1080.26, 2024.7\] at spacing $4.7 \cdot 10^{-4}$, 2.0 million points)
+
+The stored extension is expensive because its length is the distance from the crop point to the physical hard end of the result, the sum of the operands' hard ends. In the forward pass that end is inherited from the root (see [Mechanism](#mechanism)), so the extension spans the whole inherited support at the FFT spacing. v0 represents the same extension with 9 points between the crop point and its bound, whatever the distance [packages/legacy/treetime/treetime/node_interpolator.py#L251-L254](../../packages/legacy/treetime/treetime/node_interpolator.py#L251-L254). A representation of constant size avoids this cost.
+
+### A hard edge at an FFT crop point removes density that another message needs
+
+- **Construction**: the FFT result is cropped where it falls below $10^{-13}$ of its peak, as in v0 [packages/legacy/treetime/treetime/node_interpolator.py#L226](../../packages/legacy/treetime/treetime/node_interpolator.py#L226), and the side of the result opposite its soft tail is set `Hard` at the crop point
+- **Effect**: on `lassa/L/50` with `--max-iter=0`, the posterior of `NODE_0000005` peaked on its own cut edge, 1908.69 with the 90% interval \[1906.05, 1908.69\]. With the result extended by the 3-cell slope to its physical hard end, the node is dated 1853.64 \[1828.23, 1875.55\]; before the stack changed the FFT convolution (commit `58a00ff0c`) it was dated 1850.16 \[1825.48, 1871.83\]
+- **v0**: v0 extends both cropped ends with the slope of the last 3 cells out to its bounds `Tmin` and `Tmax` [packages/legacy/treetime/treetime/node_interpolator.py#L241-L256](../../packages/legacy/treetime/treetime/node_interpolator.py#L241-L256)
+- **Conclusion**: cutting a message where its own density is small removes density where the product with another message has its mass. This is the hazard behind the rule above that convolution outputs and backward messages are not trimmed
+- **Provenance**: commit `13fa8ddb0` of the stack
+
+### A point shortcut for a narrow branch picks the wrong mode of a two-mode node
+
+- **Construction**: when the effective support of the branch distribution is narrower than the full width at half maximum of the node distribution divided by 150, the stack shifts the node distribution by the branch peak instead of convolving
+- **Case**: a node distribution with modes at 0 and 100, standard deviations 0.001 and 0.1, heights 1 and 0.99, and a Gaussian branch distribution with standard deviation 0.02. The width at half maximum of the node is that of its wide mode, so the shortcut applies. The full convolution lowers the narrow mode to 0.04994 and the wide mode to 0.97077, so the mode moves to 100; the point shortcut keeps both heights and the mode at 0
+- **Conclusion**: a gate on the global width of the node has no error bound, because a node feature narrower than the branch passes it. At a node feature with standard deviation $\sigma_f$, the shortcut errs by about $\sigma_b^2 / (2\sigma_f^2)$ in neg-log when $\sigma_b \ll \sigma_f$, where $\sigma_b$ is the standard deviation of the branch distribution, and by more as $\sigma_b$ approaches $\sigma_f$. The [moment matching](#moment-matching) of this proposal gates on the other operand's grid spacing instead: a grid that resolves a feature narrower than the branch has a spacing below $\sigma_b$, so the branch is convolved in full
+- **Provenance**: test `test_convolution_narrow_branch_point_misplaces_the_mode_of_a_two_mode_node` in `packages/treetime-distribution/src/distribution_ops/__tests__/test_convolve_function.rs` at commit `38a325f2b` (lines 190 to 245); the file does not exist on `rust`
+
 ## Issues
 
 1. [M-timetree-forward-grids-keep-untrimmed-hard-support.md](../issues/M-timetree-forward-grids-keep-untrimmed-hard-support.md): trim hard sides by mass
@@ -180,5 +223,7 @@ Order: 1, then 2, each measured on its own; 3 after its investigation; 4 after 1
 ## Related
 
 - [M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](../issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md): support growth in the backward pass at high clock rates
+- [M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](../issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md): a narrow branch distribution passes its spacing to the forward product, which then needs millions of points
+- [M-distribution-fft-convolution-hard-edge-first-order-error.md](../issues/M-distribution-fft-convolution-hard-edge-first-order-error.md): first-order error of the FFT convolution at a hard edge
 - [H-timetree-mass-sizing-node-times-break-downstream-invariants.md](../issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md): re-gridding shifted committed node times and broke pipeline tests
 - [exponential-branch-length-tails.md](exponential-branch-length-tails.md)
