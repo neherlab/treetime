@@ -467,7 +467,8 @@ export const zRunWarningKind = z.union([
   z.literal('duplicate-node-names'),
   z.literal('duplicate-sequence-names'),
   z.literal('duplicate-metadata-names'),
-  z.literal('branch-lengths-not-converged')
+  z.literal('branch-lengths-not-converged'),
+  z.literal('dates-outside-input-dates')
 ]);
 
 /**

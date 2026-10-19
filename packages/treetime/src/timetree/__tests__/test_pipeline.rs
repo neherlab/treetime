@@ -6,15 +6,16 @@ mod tests {
   use crate::error::OperationError;
   use crate::optimize::params::BranchLengthMode;
   use crate::partition::result::{PartitionResult, PartitionSequences};
-  use crate::progress::{NoopProgress, StageSink};
+  use crate::progress::{NoopProgress, RunWarning, RunWarningKind, StageSink};
   use crate::seq::sink::SeqSink;
   use crate::test_utils::{
-    RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params,
-    sequence_source,
+    RecordingLog, RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs,
+    marginal_timetree_params, sequence_source,
   };
   use crate::timetree::params::{TimeMarginalMode, TimetreeParams};
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
+  use itertools::Itertools;
   use maplit::btreemap;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
@@ -24,6 +25,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
+  use treetime_primitives::date::{DateRange, DateValue};
   use treetime_utils::{assert_error, o, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   const STAR_TREE: &str = "(A:0.5,B:1.0,C:1.5,D:2.0)root;";
@@ -133,6 +135,70 @@ mod tests {
       .copied()
       .collect();
     assert_eq!(BTreeSet::new(), flagged_good);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_warns_about_a_clock_outlier_dated_outside_its_input_date_range() -> Result<(), Report> {
+    let mut dates = helpers::zika_dates()?;
+    let outlier_name = dates.keys().next().expect("the metadata has samples").clone();
+    dates.insert(
+      outlier_name.clone(),
+      Some(DateConstraint {
+        raw: o!("forced outlier"),
+        value: DateValue::Range(DateRange {
+          start: FORCED_OUTLIER_DATE - 1.0,
+          end: FORCED_OUTLIER_DATE,
+        }),
+      }),
+    );
+    let input = helpers::zika_input(&helpers::zika_newick()?, dates, true)?;
+    let params = TimetreeParams {
+      clock_filter: CLOCK_FILTER_IQD,
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      ..marginal_timetree_params()
+    };
+    let log = RecordingLog::default();
+
+    let output = pipeline::run(&params, input, None, None, &NoopCancel, &NoopProgress, &log)
+      .map_err(OperationError::into_report)?;
+
+    let outlier = find_node_key_by_name(&output.graph, &output.names, &outlier_name).expect("outlier leaf must exist");
+    let excess = output.node_dates[&outlier].expect("the outlier is dated") - FORCED_OUTLIER_DATE;
+    let expected = vec![RunWarning {
+      kind: RunWarningKind::DatesOutsideInputDates,
+      message: format!(
+        "Some final dates lie outside the input dates: 1 tip dated outside the input date range of the tip, by up to \
+         {excess:.2} years ({outlier_name}). The clock alone dates these nodes, as it does for the tips that the clock \
+         filter flagged and for their ancestors"
+      ),
+      names: vec![outlier_name],
+    }];
+    let actual = log
+      .run_warnings()
+      .into_iter()
+      .filter(|warning| warning.kind == RunWarningKind::DatesOutsideInputDates)
+      .collect_vec();
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_does_not_warn_about_dates_without_clock_outliers() -> Result<(), Report> {
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let params = TimetreeParams {
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      ..marginal_timetree_params()
+    };
+    let log = RecordingLog::default();
+
+    pipeline::run(&params, input, None, None, &NoopCancel, &NoopProgress, &log).map_err(OperationError::into_report)?;
+
+    let kinds = log.run_warnings().into_iter().map(|warning| warning.kind).collect_vec();
+    assert!(
+      !kinds.contains(&RunWarningKind::DatesOutsideInputDates),
+      "no date may lie outside the input dates, got warnings {kinds:?}"
+    );
     Ok(())
   }
 

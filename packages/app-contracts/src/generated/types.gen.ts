@@ -769,7 +769,7 @@ export type RunWarning = {
 /**
  * Kind of a run warning.
  */
-export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'branch-lengths-not-converged';
+export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'branch-lengths-not-converged' | 'dates-outside-input-dates';
 
 /**
  * Error of a failed run.

@@ -30,6 +30,7 @@ use crate::timetree::confidence::{
   extract_confidence_intervals,
 };
 use crate::timetree::convergence::optimizer::TraceSink;
+use crate::timetree::dates_outside_input::dates_outside_input_dates;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
@@ -158,6 +159,11 @@ fn assemble_output(
     log,
   )?;
   let node_dates = time_inference.node_times();
+  if let Some(dates) = &dates
+    && let Some(warning) = dates_outside_input_dates(&graph, &names, dates, &node_dates)
+  {
+    log.warning(&warning);
+  }
   let date_branch_lengths = date_branch_lengths(&graph, &node_dates);
 
   Ok(TimetreeOutput {

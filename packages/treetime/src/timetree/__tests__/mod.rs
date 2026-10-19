@@ -2,6 +2,7 @@ mod test_coalescent_timescale;
 mod test_confidence_combine;
 mod test_confidence_extract;
 mod test_confidence_rate;
+mod test_dates_outside_input;
 mod test_gm_max_posterior_region;
 mod test_max_posterior_region;
 mod test_params;
