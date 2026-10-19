@@ -6,17 +6,20 @@
 #[cfg(test)]
 mod tests {
   use crate::distribution_ops::mass_domain::{
-    mass_bounded_domain, mass_profile, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
+    mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
     rewindow_to_mass,
   };
+  use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
   use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
   use approx::assert_abs_diff_eq;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::f64::consts::LN_10;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
+  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   const EPS: f64 = 5e-4;
   const GRID_POINTS: usize = 300;
@@ -25,14 +28,14 @@ mod tests {
   fn test_mass_domain_total_mass_exponential_matches_analytic() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
-    assert_abs_diff_eq!(mass_profile(&f).unwrap().z, 1.0 / lambda, epsilon = 1e-6);
+    assert_abs_diff_eq!(helpers::total_mass(&f), 1.0 / lambda, epsilon = 1e-6);
   }
 
   #[test]
   fn test_mass_domain_edge_extends_into_tail_to_analytic_quantile() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
-    let (lo, hi) = mass_bounded_domain(&mass_profile(&f).unwrap(), EPS).unwrap();
+    let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
     assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
@@ -41,7 +44,7 @@ mod tests {
   fn test_mass_domain_edge_trims_inward_to_analytic_quantile() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 10.0, 16001);
-    let (lo, hi) = mass_bounded_domain(&mass_profile(&f).unwrap(), EPS).unwrap();
+    let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
     assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
     assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
@@ -50,7 +53,7 @@ mod tests {
   fn test_mass_domain_symmetric_edges_hold_equal_tail_mass() {
     let slope = 1.0;
     let f = helpers::laplace_neglog(slope, 12.0, 24001);
-    let (lo, hi) = mass_bounded_domain(&mass_profile(&f).unwrap(), EPS).unwrap();
+    let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
     let expected = -(2.0 * EPS).ln() / slope;
     assert_abs_diff_eq!(hi, expected, epsilon = 1e-6);
     assert_abs_diff_eq!(lo, -expected, epsilon = 1e-6);
@@ -63,7 +66,7 @@ mod tests {
       rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS, MaxGridPoints::default()).unwrap(),
     );
 
-    let mass_once = mass_profile(&once).unwrap().z;
+    let mass_once = helpers::total_mass(&once);
     let mode_once = once.likely_time().unwrap().unwrap();
     let dx = once.dx();
 
@@ -80,7 +83,7 @@ mod tests {
       );
     }
 
-    let mass_100 = mass_profile(&current).unwrap().z;
+    let mass_100 = helpers::total_mass(&current);
     let mode_100 = current.likely_time().unwrap().unwrap();
     assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-6 * mass_once);
     assert!(
@@ -167,8 +170,43 @@ mod tests {
     assert_eq!(expected, resampled.len());
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::hard(          BoundaryBehavior::Hard,                                                    Some(0.0))]
+  #[case::hard_approach( BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -1.0, b: 2.0 }),  Some(0.0))]
+  #[case::linear(        BoundaryBehavior::Linear(SoftTailLaw { slope: -5.0 * LN_10 }),          None     )]
+  #[trace]
+  fn test_mass_domain_window_moves_only_a_soft_side(
+    #[case] left: BoundaryBehavior,
+    #[case] expected_lo: Option<f64>,
+  ) {
+    let rate = 5.0 * LN_10;
+    let t = Array1::linspace(0.0, 10.0, 10001);
+    let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| rate * (10.0 - ti)))
+      .unwrap()
+      .with_left_extrap(left)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+    let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
+    pretty_assert_ulps_eq!(10.0, hi, max_ulps = 0);
+    if let Some(edge) = expected_lo {
+      pretty_assert_ulps_eq!(edge, lo, max_ulps = 0);
+    } else {
+      pretty_assert_abs_diff_eq!(10.0 + EPS.ln() / rate, lo, epsilon = 1e-8);
+    }
+  }
+
   mod helpers {
     use super::*;
+
+    pub(super) fn total_mass(f: &DistributionFunction<f64, NegLog>) -> f64 {
+      MassProfile::new(f)
+        .unwrap()
+        .fractions(TailMass::Required)
+        .unwrap()
+        .total()
+    }
 
     pub(super) fn as_function(dist: Distribution<NegLog>) -> DistributionFunction<f64, NegLog> {
       match dist {

@@ -1,9 +1,9 @@
+use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
 use crate::distribution_ops::time_bounds::distribution_support_n_points;
-use crate::policy::{NegLog, YAxisPolicy};
+use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
-use ndarray::Array1;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, MaxGridPoints, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
@@ -13,8 +13,9 @@ pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
     Distribution::Point(p) => Ok(-p.amplitude()),
     Distribution::Range(r) => Ok(-r.amplitude() + (r.end() - r.start()).ln()),
     Distribution::Function(f) => {
-      let profile = mass_profile(f)?;
-      Ok(-f.amplitude() - f.grid_fn().y_min() + profile.z.ln())
+      let profile = MassProfile::new(f)?;
+      let relative = profile.neg_log_mass_between(f64::NEG_INFINITY, f64::INFINITY)?;
+      Ok(-f.amplitude() - profile.y_peak() - relative)
     },
     Distribution::Formula(_) => log_mass(&dist.repeak()?),
   }
@@ -47,10 +48,10 @@ pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegL
   let Ok(Some(normalized)) = f.repeak() else {
     return None;
   };
-  let Ok(profile) = mass_profile(&normalized) else {
+  let Ok(profile) = MassProfile::new(&normalized) else {
     return None;
   };
-  (profile.z.is_finite() && profile.z > 0.0).then_some(MassSized { normalized, profile })
+  is_mass_sizable(&profile).then_some(MassSized { normalized, profile })
 }
 
 #[cfg_attr(
@@ -61,10 +62,10 @@ pub(crate) fn peak_normalized_if_mass_sizable(f: &DistributionFunction<f64, NegL
   )
 )]
 pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64, NegLog>) -> Option<MassProfile> {
-  let Ok(profile) = mass_profile(f) else {
+  let Ok(profile) = MassProfile::new(f) else {
     return None;
   };
-  (profile.z.is_finite() && profile.z > 0.0).then_some(profile)
+  is_mass_sizable(&profile).then_some(profile)
 }
 
 pub(crate) struct MassSized {
@@ -79,15 +80,21 @@ impl MassSized {
 }
 
 pub(crate) fn mass_bounded_domain(profile: &MassProfile, eps: f64) -> Result<(f64, f64), Report> {
-  if !(profile.z.is_finite() && profile.z > 0.0) {
+  let Some(fractions) = profile.fractions(TailMass::Required) else {
     return make_error!(
-      "Mass-bounded domain requires a finite positive total mass, got {}; the distribution is not mass-sizable",
-      profile.z
+      "Mass-bounded domain requires a finite positive total mass; the distribution is not mass-sizable"
     );
-  }
-  let target = eps * profile.z;
-  let lo = lower_edge(profile, target)?;
-  let hi = upper_edge(profile, target)?;
+  };
+  let lo = match profile.extrap(Side::Left) {
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => profile.x_min(),
+    BoundaryBehavior::Linear(_) => fractions.quantile(eps),
+    BoundaryBehavior::Error => return make_error!("Mass-bounded domain: left side has a non-mass-sizable tail"),
+  };
+  let hi = match profile.extrap(Side::Right) {
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => profile.x_max(),
+    BoundaryBehavior::Linear(_) => fractions.survival_inverse(eps),
+    BoundaryBehavior::Error => return make_error!("Mass-bounded domain: right side has a non-mass-sizable tail"),
+  };
   if hi <= lo {
     return make_error!("Mass-bounded domain collapsed to an empty interval [{lo}, {hi}]");
   }
@@ -142,142 +149,6 @@ pub(crate) fn refit_soft_tails(
   Ok(f)
 }
 
-fn lower_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
-  match profile.left {
-    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => Ok(profile.x_min),
-    BoundaryBehavior::Linear(law) => Ok(soft_edge(
-      profile,
-      law.slope.abs(),
-      profile.left_mass,
-      target,
-      Side::Left,
-    )),
-    BoundaryBehavior::Error => {
-      make_error!("Mass-bounded domain: left side has a non-mass-sizable tail")
-    },
-  }
-}
-
-fn upper_edge(profile: &MassProfile, target: f64) -> Result<f64, Report> {
-  match profile.right {
-    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => Ok(profile.x_max),
-    BoundaryBehavior::Linear(law) => Ok(soft_edge(
-      profile,
-      law.slope.abs(),
-      profile.right_mass,
-      target,
-      Side::Right,
-    )),
-    BoundaryBehavior::Error => {
-      make_error!("Mass-bounded domain: right side has a non-mass-sizable tail")
-    },
-  }
-}
-
-fn soft_edge(profile: &MassProfile, slope: f64, tail_mass: f64, target: f64, side: Side) -> f64 {
-  if tail_mass >= target {
-    let shift = (tail_mass / target).ln() / slope;
-    match side {
-      Side::Left => profile.x_min - shift,
-      Side::Right => profile.x_max + shift,
-    }
-  } else {
-    trim_into_grid(profile, target - tail_mass, side)
-  }
-}
-
-fn trim_into_grid(profile: &MassProfile, grid_target: f64, side: Side) -> f64 {
-  let plain = &profile.plain;
-  let dx = profile.dx;
-  let n_points = plain.len();
-
-  let mut acc = 0.0;
-  for step in 0..n_points - 1 {
-    let j = match side {
-      Side::Left => step,
-      Side::Right => n_points - 2 - step,
-    };
-    let dp = plain[j + 1] - plain[j];
-    let cell_mass = f64::midpoint(plain[j], plain[j + 1]) * dx;
-    if acc + cell_mass >= grid_target {
-      let remaining = (grid_target - acc) / dx;
-      let q = match side {
-        Side::Left => remaining,
-        Side::Right => plain[j] + 0.5 * dp - remaining,
-      };
-      let h = solve_cell_fraction(plain[j], dp, q);
-      return profile.x_min + (j.to_f64_exact() + h) * dx;
-    }
-    acc += cell_mass;
-  }
-  match side {
-    Side::Left => profile.x_max,
-    Side::Right => profile.x_min,
-  }
-}
-
-fn solve_cell_fraction(p0: f64, dp: f64, q: f64) -> f64 {
-  let disc = (p0 * p0 + 2.0 * dp * q).max(0.0);
-  let denom = p0 + disc.sqrt();
-  let h = if denom > 0.0 { 2.0 * q / denom } else { 0.0 };
-  h.clamp(0.0, 1.0)
-}
-
-pub(crate) fn mass_profile(f: &DistributionFunction<f64, NegLog>) -> Result<MassProfile, Report> {
-  let ys = f.y();
-  let n_points = ys.len();
-  if n_points < 2 {
-    return make_error!("Mass domain needs at least two grid points, got {n_points}");
-  }
-
-  let y_peak = f.grid_fn().y_min();
-  if !y_peak.is_finite() {
-    return make_error!("Mass domain requires a finite peak ordinate, got {y_peak}");
-  }
-
-  let plain = ys.mapv(|yi| NegLog::to_plain(yi - y_peak));
-  let dx = f.dx();
-  let x_min = f.x_min();
-  let x_max = f.x_max();
-  let grid_mass = dx * (plain.sum() - f64::midpoint(plain[0], plain[n_points - 1]));
-
-  let left = f.left_extrap();
-  let right = f.right_extrap();
-  let left_mass = tail_mass(left, ys[0] - y_peak, x_min, Side::Left)?;
-  let right_mass = tail_mass(right, ys[n_points - 1] - y_peak, x_max, Side::Right)?;
-
-  let total = grid_mass + left_mass + right_mass;
-
-  Ok(MassProfile {
-    plain,
-    dx,
-    x_min,
-    x_max,
-    left,
-    right,
-    left_mass,
-    right_mass,
-    z: total,
-  })
-}
-
-pub(crate) struct MassProfile {
-  plain: Array1<f64>,
-  dx: f64,
-  x_min: f64,
-  x_max: f64,
-  left: BoundaryBehavior,
-  right: BoundaryBehavior,
-  left_mass: f64,
-  right_mass: f64,
-  pub(crate) z: f64,
-}
-
-fn tail_mass(extrap: BoundaryBehavior, w_edge: f64, t_edge: f64, side: Side) -> Result<f64, Report> {
-  match extrap {
-    BoundaryBehavior::Linear(law) => Ok(law.mass(w_edge)),
-    BoundaryBehavior::HardApproach(law) => Ok(law.mass(GridEdge { t: t_edge, y: w_edge })),
-    BoundaryBehavior::Hard => Ok(0.0),
-    BoundaryBehavior::Error => make_error!("Mass domain: {side:?} side has an undeclared (Error) tail"),
-  }
+fn is_mass_sizable(profile: &MassProfile) -> bool {
+  profile.fractions(TailMass::Required).is_some()
 }

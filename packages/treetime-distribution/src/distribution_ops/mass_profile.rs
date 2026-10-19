@@ -26,6 +26,8 @@ pub struct MassProfile {
   prefix: Array1<f64>,
   suffix: Array1<f64>,
   cells: CellSums,
+  left_extrap: BoundaryBehavior,
+  right_extrap: BoundaryBehavior,
   left: Option<TailLaw>,
   right: Option<TailLaw>,
 }
@@ -71,6 +73,8 @@ impl MassProfile {
       prefix,
       suffix,
       cells: CellSums::new(cells.into_iter()),
+      left_extrap,
+      right_extrap,
       left,
       right,
     })
@@ -117,6 +121,13 @@ impl MassProfile {
 
   pub fn x_max(&self) -> f64 {
     self.x_at(self.r.len() - 1)
+  }
+
+  pub(crate) fn extrap(&self, side: Side) -> BoundaryBehavior {
+    match side {
+      Side::Left => self.left_extrap,
+      Side::Right => self.right_extrap,
+    }
   }
 
   fn x_at(&self, idx: usize) -> f64 {
