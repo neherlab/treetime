@@ -9,9 +9,10 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, ExteriorSlopes, NegLog};
+  use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_grid::Side;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
@@ -42,7 +43,7 @@ mod tests {
   #[case::root(   "root", 2, (-0.5, 0.5))]
   #[case::leaf(   "A",    0, ( 0.0, 0.0))]
   #[trace]
-  fn test_mean_field_exterior_slopes_continue_the_contribution_past_the_lineage_grid(
+  fn test_mean_field_outward_slopes_continue_the_contribution_past_the_lineage_grid(
     #[case] name: &str,
     #[case] n_children: usize,
     #[case] (left, right): (f64, f64),
@@ -57,11 +58,47 @@ mod tests {
       Ok((prior.node_contribution(key, n_children, b)? - prior.node_contribution(key, n_children, a)?) / (b - a))
     };
 
-    let actual = prior.node_contribution_exterior_slopes(key, n_children);
+    let actual = (
+      prior.node_contribution_outward_slope(key, n_children, Side::Left, 1950.0),
+      prior.node_contribution_outward_slope(key, n_children, Side::Right, 2050.0),
+    );
 
-    assert_eq!(ExteriorSlopes { left, right }, actual);
-    pretty_assert_abs_diff_eq!(secant(1900.0, 1950.0)?, actual.left, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(secant(2050.0, 2100.0)?, actual.right, epsilon = 1e-12);
+    assert_eq!((left, right), actual);
+    pretty_assert_abs_diff_eq!(secant(1900.0, 1950.0)?, actual.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(secant(2050.0, 2100.0)?, actual.1, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left_inside_the_grid_before_the_merger( Side::Left,  2010.0, 1.0 - 2.0 - 1.0)]
+  #[case::left_at_the_first_grid_point(           Side::Left,  2005.0, 1.0 - 1.0 - 1.0)]
+  #[case::left_beyond_the_grid(                   Side::Left,  2000.0, 1.0 - 1.0 - 1.0)]
+  #[case::right_after_the_merger(                 Side::Right, 2012.0, 1.0 - 3.0      )]
+  #[case::right_after_the_first_tip(              Side::Right, 2013.5, 1.0 - 2.0      )]
+  #[case::right_beyond_the_grid(                  Side::Right, 2020.0, 1.0 - 0.0      )]
+  #[trace]
+  fn test_mean_field_outward_slope_is_taken_just_outside_the_edge(
+    #[case] side: Side,
+    #[case] edge: f64,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    let parsed = nwk_read(b"((A:1,B:1)I:1,C:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let times = [
+      ("A", 2015.0),
+      ("B", 2014.0),
+      ("C", 2013.0),
+      ("I", 2011.0),
+      ("root", 2005.0),
+    ];
+    let prior = point_coalescent_prior(&graph, &names, &times, 1.0)?;
+    let internal = find_node_key_by_name(&graph, &names, "I").expect("I must exist");
+
+    let actual = prior.node_contribution_outward_slope(internal, 2, side, edge);
+
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
     Ok(())
   }
 

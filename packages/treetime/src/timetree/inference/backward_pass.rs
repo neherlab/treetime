@@ -133,7 +133,7 @@ fn apply_coalescent_prior(
   distribution_multiply_by_fn(
     &distribution,
     |time| model.node_contribution(key, n_children, time),
-    model.node_contribution_exterior_slopes(key, n_children),
+    |side, edge| model.node_contribution_outward_slope(key, n_children, side, edge),
   )
 }
 
@@ -176,7 +176,7 @@ fn apply_leaf_coalescent_factor(
   distribution_multiply_by_fn(
     &distribution,
     |time| model.node_contribution(key, 0, time),
-    model.node_contribution_exterior_slopes(key, 0),
+    |side, edge| model.node_contribution_outward_slope(key, 0, side, edge),
   )
 }
 

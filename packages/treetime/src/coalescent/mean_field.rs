@@ -9,9 +9,10 @@ use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::sync::Arc;
-use treetime_distribution::{Distribution, ExteriorSlopes, NegLog};
+use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
+use treetime_grid::Side;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
@@ -113,16 +114,38 @@ impl CoalescentPrior {
     )
   }
 
-  pub(crate) fn node_contribution_exterior_slopes(&self, key: GraphNodeKey, n_children: usize) -> ExteriorSlopes {
+  pub(crate) fn node_contribution_outward_slope(
+    &self,
+    key: GraphNodeKey,
+    n_children: usize,
+    side: Side,
+    edge: f64,
+  ) -> f64 {
     let weight = 1.0 - n_children.to_f64_exact();
     let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |node| node.weight);
     let pairs = 0.5 * weight * (weight - 1.0);
     let grid = &self.expectation.grid;
     let last = grid.len() - 1;
-    ExteriorSlopes {
-      left: self.rate_outside(grid[0]) * (pairs + weight * (self.expectation.expected_before - own_weight)),
-      right: self.rate_outside(grid[last]) * (pairs + weight * self.expectation.expected[last]),
-    }
+    let (rate_before, rate_after) = (self.rate_outside(grid[0]), self.rate_outside(grid[last]));
+    let inverse_tc = match piece_slope(grid, &self.inverse_tc_integral, side, edge) {
+      PieceSlope::Before => rate_before,
+      PieceSlope::Inside(slope) => slope,
+      PieceSlope::After => rate_after,
+    };
+    let expected = match piece_slope(grid, &self.expected_integral, side, edge) {
+      PieceSlope::Before => rate_before * self.expectation.expected_before,
+      PieceSlope::Inside(slope) => slope,
+      PieceSlope::After => rate_after * self.expectation.expected[last],
+    };
+    let own = match (self.expectation.nodes.get(&key), self.own_integral.get(&key)) {
+      (Some(node), Some(integral)) => match piece_slope(&node.survival.t, integral, side, edge) {
+        PieceSlope::Before => inverse_tc,
+        PieceSlope::Inside(slope) => slope,
+        PieceSlope::After => 0.0,
+      },
+      _ => 0.0,
+    };
+    pairs * inverse_tc + weight * expected - weight * own_weight * own
   }
 
   fn rate_outside(&self, t: f64) -> f64 {
@@ -567,6 +590,26 @@ fn curvature_grid(start: f64, end: f64, n_points: usize, survival: impl Fn(f64) 
       interpolate(&cumulative, &times, target)
     })
     .collect()
+}
+
+fn piece_slope(t: &[f64], values: &[f64], side: Side, x: f64) -> PieceSlope {
+  let i = match side {
+    Side::Left => t.partition_point(|&ti| ti < x),
+    Side::Right => t.partition_point(|&ti| ti <= x),
+  };
+  if i == 0 {
+    PieceSlope::Before
+  } else if i == t.len() {
+    PieceSlope::After
+  } else {
+    PieceSlope::Inside((values[i] - values[i - 1]) / (t[i] - t[i - 1]))
+  }
+}
+
+enum PieceSlope {
+  Before,
+  Inside(f64),
+  After,
 }
 
 fn interpolate(t: &[f64], values: &[f64], x: f64) -> f64 {
