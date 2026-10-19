@@ -4,6 +4,7 @@ use crate::boundary_behavior::DEFAULT_TAIL_FIT_POINTS;
 use crate::grid::{Grid, from_count};
 use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::{HardApproachLaw, Side};
+use crate::hard_cell::HardCell;
 use crate::interp_nonuniform::interp_nonuniform;
 use crate::max_grid_points::MaxGridPoints;
 use approx::{UlpsEq, ulps_eq};
@@ -191,6 +192,36 @@ impl<T: InterpElem> GridFn<T> {
     self.interpolate_at(xi, idx, left_extrap, right_extrap)
   }
 
+  pub fn hard_cell(
+    &self,
+    cell: usize,
+    left: BoundaryBehavior,
+    right: BoundaryBehavior,
+  ) -> Result<Option<HardCell>, Report>
+  where
+    T: Float,
+  {
+    let n = self.grid.n_points();
+    if cell + 1 >= n {
+      return make_error!("Cell {cell} is outside the grid of {n} points");
+    }
+    let (boundary, anchor, side, stored) = match (self.y[cell].is_infinite(), self.y[cell + 1].is_infinite()) {
+      (true, false) => (cell, cell + 1, Side::Left, (cell == 0).then_some(left)),
+      (false, true) => (cell + 1, cell, Side::Right, (cell + 1 == n - 1).then_some(right)),
+      (true, true) | (false, false) => return Ok(None),
+    };
+    let t_boundary: f64 = self.grid.x_at(boundary).into();
+    let law = match stored {
+      Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => law,
+      _ => self.fit_hard_cell_law(t_boundary, side, anchor)?,
+    };
+    let anchor = GridEdge {
+      t: self.grid.x_at(anchor).into(),
+      y: self.y[anchor].into(),
+    };
+    Ok(Some(HardCell { law, anchor }))
+  }
+
   fn edge(&self, side: Side) -> GridEdge
   where
     T: Float,
@@ -255,45 +286,11 @@ impl<T: InterpElem> GridFn<T> {
     if t_f64 >= 1.0 - NODE_ROUNDING {
       return Ok(y1);
     }
-    match (y0.is_infinite(), y1.is_infinite()) {
-      (false, false) => Ok(y0 + t * (y1 - y0)),
-      (true, true) => Ok(y0.max(y1)),
-      (true, false) => self.hard_cell_value(q, idx, idx + 1, left, right),
-      (false, true) => self.hard_cell_value(q, idx + 1, idx, left, right),
+    match self.hard_cell(idx, left, right)? {
+      Some(cell) => Ok(<T as From<f64>>::from(cell.eval(q.into()))),
+      None if y0.is_infinite() || y1.is_infinite() => Ok(y0.max(y1)),
+      None => Ok(y0 + t * (y1 - y0)),
     }
-  }
-
-  fn hard_cell_value(
-    &self,
-    q: T,
-    boundary: usize,
-    anchor: usize,
-    left: BoundaryBehavior,
-    right: BoundaryBehavior,
-  ) -> Result<T, Report>
-  where
-    T: Float,
-  {
-    let n = self.grid.n_points();
-    let t_boundary: f64 = self.grid.x_at(boundary).into();
-    let (side, stored) = if boundary > anchor {
-      (Side::Right, (boundary == n - 1).then_some(right))
-    } else {
-      (Side::Left, (boundary == 0).then_some(left))
-    };
-    let stored_law = match stored {
-      Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => Some(law),
-      _ => None,
-    };
-    let law = match stored_law {
-      Some(law) => law,
-      None => self.fit_hard_cell_law(t_boundary, side, anchor)?,
-    };
-    let edge = GridEdge {
-      t: self.grid.x_at(anchor).into(),
-      y: self.y[anchor].into(),
-    };
-    Ok(<T as From<f64>>::from(law.eval(edge, q.into())))
   }
 
   fn fit_hard_cell_law(&self, t_boundary: f64, side: Side, anchor: usize) -> Result<HardApproachLaw, Report>

@@ -8,6 +8,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
+  use treetime_utils::cast::ToF64Exact;
 
   #[rustfmt::skip]
   #[rstest]
@@ -181,6 +182,72 @@ mod tests {
     } else if !expected.is_nan() {
       assert_ulps_eq!(expected, actual, max_ulps = 4);
     }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::regular_cell(        array![0.0, 1.0, 2.0],                     0, BoundaryBehavior::Hard, None)]
+  #[case::both_ends_infinite(  array![0.0, f64::INFINITY, f64::INFINITY], 1, BoundaryBehavior::Hard, None)]
+  #[case::flat_without_points( array![f64::INFINITY, 2.0, f64::INFINITY], 0, BoundaryBehavior::Hard,
+                               Some(HardCell { law: HardApproachLaw { t_hard: 0.0, b: 0.0 }, anchor: GridEdge { t: 1.0, y: 2.0 } }))]
+  #[case::stored_law_of_side(  array![0.0, 0.0, 0.0, 0.0, f64::INFINITY], 3, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 4.0, b: 1.5 }),
+                               Some(HardCell { law: HardApproachLaw { t_hard: 4.0, b: 1.5 }, anchor: GridEdge { t: 3.0, y: 0.0 } }))]
+  #[case::stored_law_elsewhere(array![0.0, 0.0, 0.0, 0.0, f64::INFINITY], 3, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 5.0, b: 1.5 }),
+                               Some(HardCell { law: HardApproachLaw { t_hard: 4.0, b: 0.0 }, anchor: GridEdge { t: 3.0, y: 0.0 } }))]
+  #[trace]
+  fn test_gridfn_hard_cell_returns_the_law_of_a_cell_with_one_infinite_end(
+    #[case] y: Array1<f64>,
+    #[case] cell: usize,
+    #[case] right: BoundaryBehavior,
+    #[case] expected: Option<HardCell>,
+  ) -> Result<(), Report> {
+    let n = y.len().to_f64_exact();
+    let grid_fn = GridFn::from_range_values((0.0, n - 1.0), y)?;
+    let actual = grid_fn.hard_cell(cell, BoundaryBehavior::Hard, right)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_hard_cell_fits_the_power_law_of_the_finite_points() -> Result<(), Report> {
+    let y = array![
+      -3.0 * 4.0_f64.ln(),
+      -3.0 * 3.0_f64.ln(),
+      -3.0 * 2.0_f64.ln(),
+      0.0,
+      f64::INFINITY
+    ];
+    let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
+    let actual = grid_fn
+      .hard_cell(3, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
+      .unwrap();
+    assert_eq!(GridEdge { t: 3.0, y: 0.0 }, actual.anchor);
+    assert_ulps_eq!(4.0, actual.law.t_hard, max_ulps = 0);
+    assert_ulps_eq!(3.0, actual.law.b, max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_hard_cell_value_is_the_law_of_the_cell() -> Result<(), Report> {
+    let y = array![f64::INFINITY, 1.0, 1.5, 2.5, 4.0, f64::INFINITY];
+    let grid_fn = GridFn::from_range_values((0.0, 5.0), y)?;
+    for (cell, t) in [(0, 0.3), (4, 4.6)] {
+      let hard_cell = grid_fn
+        .hard_cell(cell, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
+        .unwrap();
+      assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp(t)?, max_ulps = 0);
+    }
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_hard_cell_outside_the_grid_is_error() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, f64::INFINITY])?;
+    assert_error!(
+      grid_fn.hard_cell(1, BoundaryBehavior::Hard, BoundaryBehavior::Hard),
+      "Cell 1 is outside the grid of 2 points"
+    );
     Ok(())
   }
 }
