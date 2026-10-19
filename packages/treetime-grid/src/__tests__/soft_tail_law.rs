@@ -5,7 +5,7 @@ mod tests {
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   fn make_neglog_linear_grid(slope: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
     let y = Array1::linspace(x_min, x_max, n).mapv(|t| slope * t);
@@ -60,6 +60,45 @@ mod tests {
     let grid = make_neglog_linear_grid(1.0, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, Side::Left, 10).expect("fit should succeed");
     assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right_decay(       ( 2.0, Side::Right), (1.0, 0.5), 1.5,  1.5)]
+  #[case::left_decay(        (-0.5, Side::Left),  (1.0, 0.5), 1.5, -1.0)]
+  #[case::right_far_level(   ( 1e-3, Side::Right),(0.0, 0.0), 30.0, 3e4)]
+  #[case::at_edge_ordinate(  ( 2.0, Side::Right), (1.0, 0.5), 0.5,  1.0)]
+  #[case::below_edge_ordinate((-2.0, Side::Left), (1.0, 0.5), 0.1,  1.0)]
+  #[trace]
+  fn test_soft_tail_law_position_at_inverts_eval(
+    #[case] (slope, side): (f64, Side),
+    #[case] (t_edge, y_edge): (f64, f64),
+    #[case] level: f64,
+    #[case] expected: f64,
+  ) {
+    let law = SoftTailLaw { slope };
+    let edge = GridEdge { t: t_edge, y: y_edge };
+    let position = law.position_at(edge, level, side);
+    assert_abs_diff_eq!(expected, position, epsilon = 1e-12);
+    assert_abs_diff_eq!(level.max(y_edge), law.eval(edge, position), epsilon = 1e-15);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::flat_right(                ( 0.0, Side::Right), 2.0,  f64::INFINITY)]
+  #[case::flat_left(                 ( 0.0, Side::Left),  2.0, -f64::INFINITY)]
+  #[case::flat_at_edge_ordinate(     ( 0.0, Side::Right), 0.5,  f64::INFINITY)]
+  #[case::flat_below_edge_ordinate(  ( 0.0, Side::Right), 0.4,  1.0)]
+  #[case::growing_right(             (-1.0, Side::Right), 2.0,  f64::INFINITY)]
+  #[case::growing_left(              ( 1.0, Side::Left),  2.0, -f64::INFINITY)]
+  #[trace]
+  fn test_soft_tail_law_position_at_level_held_without_decay_is_unbounded(
+    #[case] (slope, side): (f64, Side),
+    #[case] level: f64,
+    #[case] expected: f64,
+  ) {
+    let law = SoftTailLaw { slope };
+    pretty_assert_ulps_eq!(expected, law.position_at(GridEdge { t: 1.0, y: 0.5 }, level, side), max_ulps = 0);
   }
 
   #[test]

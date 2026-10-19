@@ -51,6 +51,25 @@ impl SoftTailLaw {
     edge.y + self.slope * (t - edge.t)
   }
 
+  pub fn position_at(self, edge: GridEdge, level: f64, side: Side) -> f64 {
+    let outward = match side {
+      Side::Left => -1.0,
+      Side::Right => 1.0,
+    };
+    let rate = outward * self.slope;
+    if rate <= 0.0 {
+      return if level >= edge.y {
+        outward * f64::INFINITY
+      } else {
+        edge.t
+      };
+    }
+    if level <= edge.y {
+      return edge.t;
+    }
+    edge.t + outward * (level - edge.y) / rate
+  }
+
   pub fn mass(&self, y_edge: f64) -> f64 {
     (-y_edge).exp() / self.slope.abs()
   }

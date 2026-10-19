@@ -6,8 +6,8 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   fn make_neglog_power_law_grid(t_hard: f64, a: f64, b: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
     let y = Array1::linspace(x_min, x_max, n).mapv(|t| a - b * (t - t_hard).abs().ln());
@@ -59,6 +59,41 @@ mod tests {
     assert_abs_diff_eq!(t_hard, law.t_hard, epsilon = 1e-14);
     assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right_half_distance(  (1.0, 1.0), (0.0, 0.0), 2.0_f64.ln(), 0.5)]
+  #[case::left_half_distance(   (0.0, 2.0), (1.0, 3.0), 3.0 + 2.0 * 2.0_f64.ln(), 0.5)]
+  #[case::right_steep_quarter(  (5.0, 0.5), (4.0, 1.0), 1.0 + 0.5 * 4.0_f64.ln(), 4.75)]
+  #[case::at_edge_ordinate(     (1.0, 1.0), (0.0, 0.0), 0.0, 0.0)]
+  #[case::below_edge_ordinate(  (1.0, 1.0), (0.0, 0.0), -1.0, 0.0)]
+  #[trace]
+  fn test_hard_approach_law_position_at_inverts_eval(
+    #[case] (t_hard, b): (f64, f64),
+    #[case] (t_edge, y_edge): (f64, f64),
+    #[case] level: f64,
+    #[case] expected: f64,
+  ) {
+    let law = HardApproachLaw { t_hard, b };
+    let edge = GridEdge { t: t_edge, y: y_edge };
+    let position = law.position_at(edge, level);
+    assert_abs_diff_eq!(expected, position, epsilon = 1e-15);
+    assert_abs_diff_eq!(level.max(y_edge), law.eval(edge, position), epsilon = 1e-15);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::above_edge_ordinate(0.4, 2.5)]
+  #[case::at_edge_ordinate(   0.3, 2.5)]
+  #[case::below_edge_ordinate(0.2, 1.0)]
+  #[trace]
+  fn test_hard_approach_law_position_at_flat_law_holds_edge_ordinate_up_to_hard_point(
+    #[case] level: f64,
+    #[case] expected: f64,
+  ) {
+    let law = HardApproachLaw { t_hard: 2.5, b: 0.0 };
+    pretty_assert_ulps_eq!(expected, law.position_at(GridEdge { t: 1.0, y: 0.3 }, level), max_ulps = 0);
   }
 
   #[test]

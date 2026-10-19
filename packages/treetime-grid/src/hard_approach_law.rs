@@ -61,6 +61,16 @@ impl HardApproachLaw {
     edge.y - self.b * (dt / dt_edge).ln()
   }
 
+  pub fn position_at(&self, edge: GridEdge, level: f64) -> f64 {
+    if self.b <= 0.0 {
+      return if level >= edge.y { self.t_hard } else { edge.t };
+    }
+    if level <= edge.y {
+      return edge.t;
+    }
+    self.t_hard + (edge.t - self.t_hard) * (-(level - edge.y) / self.b).exp()
+  }
+
   pub fn mass(&self, edge: GridEdge) -> f64 {
     let dt_edge = (edge.t - self.t_hard).abs();
     let p_edge = (-edge.y).exp();
