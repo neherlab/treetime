@@ -184,6 +184,63 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left_side( Side::Left )]
+  #[case::right_side(Side::Right)]
+  #[trace]
+  fn test_mass_profile_growing_soft_tail_has_infinite_mass(#[case] side: Side) -> Result<(), Report> {
+    let f = helpers::growing_tail(side)?;
+    let profile = MassProfile::new(&f)?;
+    assert!(profile.fractions(TailMass::Required).is_none());
+    let (beyond, outer) = match side {
+      Side::Left => ((f64::NEG_INFINITY, 0.0), -1.0),
+      Side::Right => ((1.0, f64::INFINITY), 2.0),
+    };
+    pretty_assert_ulps_eq!(f64::INFINITY, profile.mass_between(beyond.0, beyond.1)?, max_ulps = 0);
+    pretty_assert_ulps_eq!(f64::NEG_INFINITY, profile.neg_log_mass_between(beyond.0, beyond.1)?, max_ulps = 0);
+    let fractions = profile.fractions(TailMass::ZeroWhereUndefined).unwrap();
+    pretty_assert_abs_diff_eq!(1.0, fractions.total(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(1.0, fractions.cdf(2.0), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(1.0, fractions.survival(-1.0), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(1.0, fractions.mass_between(-5.0, 5.0)?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(0.0, fractions.mass_between(outer, outer + 1.0)?, epsilon = 1e-15);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::left_unit_width(   Side::Left,  (-1.0,  0.0), 1.0_f64.exp() - 1.0               )]
+  #[case::left_from_grid(    Side::Left,  (-2.0,  0.5), 2.0_f64.exp() - 1.0 + 0.5         )]
+  #[case::left_far_out(      Side::Left,  (-3.0, -2.0), 3.0_f64.exp() - 2.0_f64.exp()     )]
+  #[case::right_unit_width(  Side::Right, ( 1.0,  2.0), 1.0_f64.exp() - 1.0               )]
+  #[case::right_from_grid(   Side::Right, ( 0.5,  3.0), 2.0_f64.exp() - 1.0 + 0.5         )]
+  #[case::right_far_out(     Side::Right, ( 3.0,  4.0), 3.0_f64.exp() - 2.0_f64.exp()     )]
+  #[trace]
+  fn test_mass_profile_finite_interval_in_growing_tail_has_exact_mass(
+    #[case] side: Side,
+    #[case] (a, b): (f64, f64),
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    let profile = MassProfile::new(&helpers::growing_tail(side)?)?;
+    assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 1e-15, max_relative = 1e-15);
+    Ok(())
+  }
+
+  #[test]
+  fn test_mass_profile_growing_tail_far_beyond_overflow_keeps_its_log_mass() -> Result<(), Report> {
+    let profile = MassProfile::new(&helpers::growing_tail(Side::Right)?)?;
+    let expected_ln_mass = 1000.0 + (-(-1000.0_f64).exp()).ln_1p();
+    assert_relative_eq!(
+      -expected_ln_mass,
+      profile.neg_log_mass_between(1.0, 1001.0)?,
+      epsilon = 0.0,
+      max_relative = 1e-15
+    );
+    Ok(())
+  }
+
   #[test]
   fn test_mass_profile_interval_beyond_error_side_is_error() -> Result<(), Report> {
     let f = helpers::function((0.0, 1.0), array![0.0, 2.0], BoundaryBehavior::Error, HARD)?;
@@ -233,6 +290,23 @@ mod tests {
       DistributionFunction::from_range_values(range, y)?
         .with_left_extrap(left)?
         .with_right_extrap(right)
+    }
+
+    pub(super) fn growing_tail(side: Side) -> Result<DistributionFunction<f64, NegLog>, Report> {
+      match side {
+        Side::Left => function(
+          (0.0, 1.0),
+          array![0.0, 0.0],
+          BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
+          HARD,
+        ),
+        Side::Right => function(
+          (0.0, 1.0),
+          array![0.0, 0.0],
+          HARD,
+          BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }),
+        ),
+      }
     }
   }
 }

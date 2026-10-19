@@ -538,6 +538,9 @@ impl TailLaw {
         if rate == 0.0 {
           return ScaledMass::new(r, width);
         }
+        if rate < 0.0 {
+          return growing_exponential_mass(r, -rate, width);
+        }
         let decay = -(-rate * width).exp_m1();
         let factor = decay / rate;
         if factor.is_finite() {
@@ -633,6 +636,11 @@ impl ScaledMass {
     factor: 0.0,
   };
 
+  const INFINITE: Self = Self {
+    r: f64::NEG_INFINITY,
+    factor: 1.0,
+  };
+
   fn new(r: f64, factor: f64) -> Self {
     if factor > 0.0 && r < f64::INFINITY {
       Self { r, factor }
@@ -666,10 +674,10 @@ impl Add for ScaledMass {
   type Output = Self;
 
   fn add(self, other: Self) -> Self {
-    if self.factor == 0.0 {
+    if self.factor == 0.0 || other.ln_mass() == f64::INFINITY {
       return other;
     }
-    if other.factor == 0.0 {
+    if other.factor == 0.0 || self.ln_mass() == f64::INFINITY {
       return self;
     }
     let r = self.r.min(other.r);
@@ -771,6 +779,19 @@ fn running_sums(masses: impl Iterator<Item = f64>) -> Array1<f64> {
       Some(*sum + *compensation)
     }))
     .collect()
+}
+
+fn growing_exponential_mass(r_near: f64, growth: f64, width: f64) -> ScaledMass {
+  if width == f64::INFINITY {
+    return ScaledMass::INFINITE;
+  }
+  let factor = (growth * width).exp_m1() / growth;
+  if factor.is_finite() {
+    ScaledMass::new(r_near, factor)
+  } else {
+    let ln_factor = growth * width + (-(-growth * width).exp()).ln_1p() - growth.ln();
+    ScaledMass::new(r_near - ln_factor, 1.0)
+  }
 }
 
 fn power_law_mass(r_edge: f64, delta_edge: f64, power: f64, delta_near: f64, width: f64) -> ScaledMass {
