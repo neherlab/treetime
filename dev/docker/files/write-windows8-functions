@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <output-file>
+#
+# Write the names of the Windows functions that Windows 7 lacks into a file, one
+# per line, sorted, for the Windows 7 import check of dev/cross/check. CC names
+# the C compiler of the mingw-w64 target (a command with arguments).
+#
+# The list holds:
+# - the functions that the mingw-w64 headers declare with _WIN32_WINNT=0x0A00
+#   and the newest NTDDI_VERSION of sdkddkver.h, and not with
+#   _WIN32_WINNT=0x0601 and NTDDI_VERSION=0x06010000 (Windows 7): the headers
+#   declare them under _WIN32_WINNT >= 0x0602, NTDDI_VERSION >= NTDDI_WIN8, or
+#   later values. Each header compiles on its own after windows.h, which a
+#   precompiled header holds; headers that do not compile as C on their own
+#   are left out
+# - the exports that msvcrt.dll gained in Windows 8 and 8.1 on x86_64
+#   (WINDOWS8_MSVCRT_EXPORTS), which the C runtime headers declare for every
+#   Windows version
+# - the functions of Windows 8 or later that the headers declare without a
+#   version guard (WINDOWS8_UNGUARDED)
+#
+set -euo pipefail
+trap "exit" INT
+
+# The sections "added in Windows 8" and "added in Windows 8.1 OS system version
+# of msvcrt.dll" of mingw-w64-crt/lib-common/msvcrt.def.in of mingw-w64
+# v14.0.0, without the i386 and ARM entries.
+WINDOWS8_MSVCRT_EXPORTS=(
+  _wcstod_l
+  __AdjustPointer
+  __ExceptionPtrAssign
+  __ExceptionPtrCompare
+  __ExceptionPtrCopy
+  __ExceptionPtrCopyException
+  __ExceptionPtrCreate
+  __ExceptionPtrCurrentException
+  __ExceptionPtrDestroy
+  __ExceptionPtrRethrow
+  __ExceptionPtrSwap
+  __ExceptionPtrToBool
+  _W_Getdays
+  _W_Getmonths
+  _W_Gettnames
+  _Wcsftime
+)
+
+# Functions that the Rust standard library and common crates call on newer
+# Windows versions, which the mingw-w64 v14.0.0 headers declare without a
+# version guard. The minimum versions are those of the Microsoft API
+# documentation.
+WINDOWS8_UNGUARDED=(
+  CreateFile2
+  GetCurrentThreadStackLimits
+  GetSystemTimePreciseAsFileTime
+  GetThreadDescription
+  ProcessPrng
+  SetThreadDescription
+  WaitOnAddress
+  WakeByAddressAll
+  WakeByAddressSingle
+)
+
+# Print the include directory of the mingw-w64 headers: the directory of the
+# windows.h that the preprocessor includes.
+function windows_include_dir() {
+  local deps
+  # shellcheck disable=SC2086 # CC is a command with arguments
+  deps="$(printf '#include <windows.h>\n' | ${CC} -x c -M -MT deps -)" || return
+  local headers
+  headers="$(sed -e 's/\\$//' -e 's/[[:space:]]\{1,\}/\n/g' <<<"${deps}" | grep '/windows\.h$')" || {
+    printf 'ERROR: %s does not include a windows.h\n' "${CC}" >&2
+    return 1
+  }
+  dirname "$(realpath "${headers%%$'\n'*}")"
+}
+
+# Print the names of the functions that an AST dump of clang declares, without
+# the implicit declarations of builtins.
+function ast_function_names() {
+  awk -v q="'" '/FunctionDecl 0x/ && !/ implicit / {
+    for (k = 1; k < NF && $k !~ /FunctionDecl$/; k++) {}
+    for (i = k + 2; i <= NF; i++) if (substr($i, 1, 1) == q) { print $(i - 1); break }
+  }'
+}
+
+# Write the names of the functions that one header declares on its own, after
+# the windows.h of the precompiled header, in each configuration into
+# <work dir>/<configuration>/<header>.names. Leave a header that does not
+# compile as C in either configuration out, and name it in <work dir>/skipped/.
+function windows_header_functions() {
+  local work_dir="${1}"
+  local header="${2}"
+  local config
+  local defines=()
+  local ast
+  for config in windows7 newest; do
+    read -ra defines <"${work_dir}/${config}.defines"
+    # shellcheck disable=SC2086 # CC is a command with arguments
+    if ! ast="$(printf '#include <%s>\n' "${header}" |
+      ${CC} "${defines[@]}" -include-pch "${work_dir}/${config}.pch" -x c -fsyntax-only \
+        -fno-color-diagnostics -Xclang -ast-dump - 2>/dev/null)"; then
+      rm -f "${work_dir}/windows7/${header}.names" "${work_dir}/newest/${header}.names"
+      : >"${work_dir}/skipped/${header}"
+      return 0
+    fi
+    ast_function_names <<<"${ast}" >"${work_dir}/${config}/${header}.names"
+  done
+}
+export -f windows_header_functions ast_function_names
+
+main() {
+  local output="${1:?output file}"
+  : "${CC:?CC names the C compiler of the mingw-w64 target}"
+  local work_dir
+  work_dir="$(mktemp -d)"
+  # shellcheck disable=SC2064 # the trap removes this folder, after main returns
+  trap "rm -rf -- '${work_dir}'" EXIT
+
+  local include_dir
+  include_dir="$(windows_include_dir)"
+  local macros
+  # shellcheck disable=SC2086 # CC is a command with arguments
+  macros="$(printf '#include <sdkddkver.h>\n' | ${CC} -E -dM -x c -)"
+  local versions
+  versions="$(awk '$2 ~ /^NTDDI_WIN[0-9A-Z_]+$/ && $3 ~ /^0x[0-9A-Fa-f]+$/ {print $3}' <<<"${macros}")"
+  local newest=0 value
+  while read -r value; do
+    if ((value > newest)); then
+      newest="${value}"
+    fi
+  done <<<"${versions}"
+  if ((newest <= 0x06010000)); then
+    printf 'ERROR: %s/sdkddkver.h defines no NTDDI version after Windows 7\n' "${include_dir}" >&2
+    return 1
+  fi
+
+  mkdir -p "${work_dir}/windows7" "${work_dir}/newest" "${work_dir}/skipped"
+  printf -- '-U_WIN32_WINNT -D_WIN32_WINNT=0x0601 -DNTDDI_VERSION=0x06010000\n' >"${work_dir}/windows7.defines"
+  printf -- '-U_WIN32_WINNT -D_WIN32_WINNT=0x0A00 -DNTDDI_VERSION=0x%08X\n' "${newest}" >"${work_dir}/newest.defines"
+  printf '#include <windows.h>\n' >"${work_dir}/pch-windows.h"
+  local config defines=() ast
+  for config in windows7 newest; do
+    read -ra defines <"${work_dir}/${config}.defines"
+    # shellcheck disable=SC2086 # CC is a command with arguments
+    ${CC} "${defines[@]}" -x c-header "${work_dir}/pch-windows.h" -o "${work_dir}/${config}.pch"
+    # shellcheck disable=SC2086 # CC is a command with arguments
+    ast="$(${CC} "${defines[@]}" -x c -fsyntax-only -fno-color-diagnostics -Xclang -ast-dump "${work_dir}/pch-windows.h")"
+    ast_function_names <<<"${ast}" >"${work_dir}/${config}/windows.h.names"
+  done
+
+  find "${include_dir}" -maxdepth 1 -type f -name '*.h' ! -name 'windows.h' -printf '%f\n' | LC_ALL=C sort >"${work_dir}/headers"
+  parallel --will-cite --halt now,fail=1 --jobs="$(nproc)" windows_header_functions "${work_dir}" {} <"${work_dir}/headers"
+
+  {
+    LC_ALL=C comm -13 \
+      <(cat "${work_dir}/windows7/"*.names | LC_ALL=C sort -u) \
+      <(cat "${work_dir}/newest/"*.names | LC_ALL=C sort -u)
+    printf '%s\n' "${WINDOWS8_MSVCRT_EXPORTS[@]}" "${WINDOWS8_UNGUARDED[@]}"
+  } | LC_ALL=C sort -u >"${output}"
+  local headers skipped
+  headers="$(wc -l <"${work_dir}/headers")"
+  skipped="$(find "${work_dir}/skipped" -type f | wc -l)"
+  printf 'Functions of Windows 8 or later: %s, from %s of the %s headers in %s (NTDDI_VERSION 0x%08X against 0x06010000), %s msvcrt.dll exports, and %s unguarded functions\n' \
+    "$(wc -l <"${output}")" "$((headers - skipped + 1))" "$((headers + 1))" "${include_dir}" "${newest}" \
+    "${#WINDOWS8_MSVCRT_EXPORTS[@]}" "${#WINDOWS8_UNGUARDED[@]}"
+}
+
+main "$@"

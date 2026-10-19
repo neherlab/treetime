@@ -15,6 +15,10 @@
 #   need libgcc_s.so.1, which Electron needs too
 # - Windows: KERNEL32.dll, the Universal C Runtime (api-ms-win-crt-*.dll), and
 #   the other system DLLs listed in windows_system_dlls
+# - Windows 7 (x86_64-win7-windows-gnu): the DLLs of windows7_system_dlls,
+#   msvcrt.dll as the C runtime, and none of the functions that Windows 8 or
+#   later added (the list WINDOWS8_FUNCTIONS of the image, from the mingw-w64
+#   headers)
 # - macOS: libraries in /usr/lib and frameworks in /System/Library
 #
 set -euo pipefail
@@ -27,6 +31,7 @@ glibc_max="2.17"
 glibc_libs='^(libc\.so\.6|libm\.so\.6|libpthread\.so\.0|libdl\.so\.2|librt\.so\.1|libutil\.so\.1|ld-linux-x86-64\.so\.2|ld-linux-aarch64\.so\.1)$'
 electron_libs='^libgcc_s\.so\.1$'
 windows_system_dlls='^(api-ms-win-[a-z0-9-]+|kernel32|ntdll|advapi32|bcrypt|bcryptprimitives|combase|crypt32|ncrypt|secur32|ws2_32|userenv|user32|shell32|ole32|oleaut32|iphlpapi|powrprof|dbghelp|synchronization)\.dll$'
+windows7_system_dlls='^(kernel32|ntdll|msvcrt|advapi32|bcrypt|crypt32|ncrypt|secur32|ws2_32|userenv|user32|shell32|ole32|oleaut32|iphlpapi|powrprof|dbghelp|psapi|rpcrt4)\.dll$'
 darwin_system_libs='^(/usr/lib/|/system/library/)'
 
 lib=""
@@ -59,6 +64,7 @@ foreign_dependencies() {
   local allowed extra=""
   case "${target}" in
   *-apple-darwin) allowed="${darwin_system_libs}" ;;
+  *-win7-windows-gnu) allowed="${windows7_system_dlls}" ;;
   *-windows-*) allowed="${windows_system_dlls}" ;;
   *-linux-gnu)
     allowed="${glibc_libs}"
@@ -72,6 +78,16 @@ foreign_dependencies() {
     { name = tolower($0) }
     name !~ ENVIRON["allowed"] && (ENVIRON["extra"] == "" || name !~ ENVIRON["extra"])
   '
+}
+
+# Print the imported functions of a Windows program that Windows 7 lacks, as
+# <dll> <function>.
+windows8_imports() {
+  local readobj
+  readobj="$(printenv "READOBJ_${target_safe}" || echo "llvm-readobj")"
+  "${readobj}" --coff-imports "${1}" |
+    awk '$1 == "Name:" {dll = tolower($2)} $1 == "Symbol:" {print dll, $2}' |
+    awk 'NR == FNR {denied[$1] = 1; next} $2 in denied' "${WINDOWS8_FUNCTIONS:?the Windows 7 image names the list of the functions of Windows 8 or later}" -
 }
 
 # Print the glibc symbol versions above the oldest supported glibc.
@@ -108,6 +124,16 @@ if [[ -n "${foreign}" ]]; then
     printf '  * %s\n' "${dependency}" >&2
   done <<<"${foreign}"
   failed=1
+fi
+if [[ "${target}" == *-win7-windows-gnu ]]; then
+  newer="$(windows8_imports "${file}")"
+  if [[ -n "${newer}" ]]; then
+    printf '%s imports functions that Windows 7 lacks:\n' "${file}" >&2
+    while IFS= read -r entry; do
+      printf '  * %s\n' "${entry}" >&2
+    done <<<"${newer}"
+    failed=1
+  fi
 fi
 if [[ "${target}" == *-linux-gnu ]]; then
   too_new="$(glibc_too_new "${file}")"

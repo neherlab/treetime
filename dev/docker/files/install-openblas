@@ -26,7 +26,11 @@ set -euxo pipefail
 triplet="${1:?triplet}"
 parent="${2:?parent directory}"
 version="0.3.34-432-gde5d4914"
-build_time="2026-10-18_12-54-24"
+# The Windows 7 target has its own release, built later from the same source.
+case "${triplet}" in
+x86_64-win7-windows-gnu) build_time="2026-10-19_14-04-08" ;;
+*) build_time="2026-10-18_12-54-24" ;;
+esac
 release="openblas-${version}-${build_time}"
 name="openblas-static-${version}-${triplet}-${build_time}"
 dest="${parent}/${name}"

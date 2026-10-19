@@ -59,11 +59,30 @@ case "${target}" in
   # The musl toolchains do not find these libraries on their own.
   rustflags="${RUSTFLAGS} -C link-args=-lpthread -C link-args=-lm -C link-args=-lc ${static}"
   ;;
+*-win7-windows-gnu)
+  if [[ -n "${lib}" ]]; then
+    printf 'Cannot build the Node addon for %s: Electron does not run on Windows 7\n' "${target}" >&2
+    exit 1
+  fi
+  # The CLI links the msvcrt.dll C runtime of the GCC MinGW toolchain, which
+  # Windows 7 has, and everything else statically. Rust has no self-contained
+  # MinGW objects for this tier 3 target.
+  rustflags="${RUSTFLAGS} -C target-feature=+crt-static -C link-self-contained=no"
+  ;;
 *)
   rustflags="${RUSTFLAGS}"
   ;;
 esac
 export RUSTFLAGS="${rustflags}"
+
+# Rust ships no standard library for the tier 3 target x86_64-win7-windows-gnu:
+# cargo compiles it from the rust-src component of the image with -Zbuild-std,
+# which the stable toolchain accepts only with RUSTC_BOOTSTRAP=1.
+cargo_flags=()
+if [[ "${target}" == *-win7-windows-gnu ]]; then
+  export RUSTC_BOOTSTRAP=1
+  cargo_flags+=(-Zbuild-std)
+fi
 
 # The optional kache compiler cache (KACHE_STORE in .env.example), one store per
 # kache version and target, next to the stores of the justfile.
@@ -118,7 +137,7 @@ if [[ -n "${lib}" ]]; then
   exit 0
 fi
 
-cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --bin="${name}"
+cargo build "${cargo_flags[@]}" --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --bin="${name}"
 
 ext=""
 [[ "${target}" == *windows* ]] && ext=".exe"
