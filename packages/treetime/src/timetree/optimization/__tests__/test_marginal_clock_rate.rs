@@ -19,6 +19,7 @@ mod tests {
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_marginal_clock_rate_matches_closed_form_curve() -> Result<(), Report> {
@@ -27,7 +28,12 @@ mod tests {
     let at = |mu: f64| marginal_log_lh_at_rate(&inputs, mu).map(|log_lh| log_lh.expect("root has a distribution"));
     let curve = |mu: f64| -mu.ln() - (mu - 3.0).powi(2);
     for mu in [2.0, 2.5, 4.0] {
-      assert_abs_diff_eq!(curve(mu) - curve(3.0), at(mu)? - at(3.0)?, epsilon = 2e-3);
+      pretty_assert_abs_diff_eq!(
+        curve(mu) - curve(3.0),
+        at(mu)? - at(3.0)?,
+        epsilon = 1e-4,
+        "edge messages are regridded to a mass window: kb/issues/M-timetree-edge-message-regridding-limits-accuracy.md"
+      );
     }
     Ok(())
   }
@@ -97,7 +103,12 @@ mod tests {
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::FollowSlope))?;
     let target = parabola_maximum(reference);
     assert!(target > 1.25_f64.ln() && target < 2.0_f64.ln());
-    assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-2);
+    pretty_assert_abs_diff_eq!(
+      reference * target.exp(),
+      step.target_rate,
+      epsilon = 1e-2,
+      "edge messages are regridded to a mass window: kb/issues/M-timetree-edge-message-regridding-limits-accuracy.md"
+    );
     Ok(())
   }
 
