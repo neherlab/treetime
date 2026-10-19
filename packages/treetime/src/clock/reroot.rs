@@ -17,6 +17,27 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo, remove_stem_root};
 
+pub(crate) fn reroot_undated(
+  graph: &mut Graph,
+  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  spec: &RerootSpec,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<RerootResult, Report> {
+  let tip_dates = graph.get_leaves().map(|leaf| (leaf.key(), Some(0.0))).collect();
+  let mut inputs = ClockInputs::from_times(graph, &tip_dates, &BTreeMap::new());
+  let reroot_params = RerootParams::new(spec.clone(), false);
+  reroot_at_best_root(
+    graph,
+    branch_lengths,
+    &mut inputs,
+    &BTreeSet::new(),
+    &reroot_params,
+    names,
+    log,
+  )
+}
+
 pub(crate) fn reroot_at_best_root(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -48,27 +69,6 @@ pub(crate) fn reroot_at_best_root(
   apply_reroot_to_inputs(inputs, &result);
   progress_info!(log, "Rerooted to {}", node_label(names, result.new_root_key));
   Ok(result)
-}
-
-pub(crate) fn reroot_undated(
-  graph: &mut Graph,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  spec: &RerootSpec,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
-) -> Result<RerootResult, Report> {
-  let tip_dates = graph.get_leaves().map(|leaf| (leaf.key(), Some(0.0))).collect();
-  let mut inputs = ClockInputs::from_times(graph, &tip_dates, &BTreeMap::new());
-  let reroot_params = RerootParams::new(spec.clone(), false);
-  reroot_at_best_root(
-    graph,
-    branch_lengths,
-    &mut inputs,
-    &BTreeSet::new(),
-    &reroot_params,
-    names,
-    log,
-  )
 }
 
 fn apply_reroot_to_inputs(inputs: &mut ClockInputs, result: &RerootResult) {

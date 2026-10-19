@@ -188,7 +188,7 @@ impl<T: InterpElem> GridFn<T> {
     }
 
     let idx = self.grid.find_interval_index(xi);
-    Ok(self.interpolate_at(xi, idx, left_extrap, right_extrap))
+    self.interpolate_at(xi, idx, left_extrap, right_extrap)
   }
 
   fn edge(&self, side: Side) -> GridEdge
@@ -235,14 +235,14 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  fn interpolate_at(&self, q: T, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> T
+  fn interpolate_at(&self, q: T, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> Result<T, Report>
   where
     T: Float,
   {
     const NODE_ROUNDING: f64 = 1e-9;
     let n = self.grid.n_points();
     if idx >= n - 1 {
-      return self.y[n - 1];
+      return Ok(self.y[n - 1]);
     }
     let x0 = self.grid.x_at(idx);
     let y0 = self.y[idx];
@@ -250,20 +250,27 @@ impl<T: InterpElem> GridFn<T> {
     let t = (q - x0) / self.grid.dx();
     let t_f64: f64 = t.into();
     if t_f64 <= NODE_ROUNDING {
-      return y0;
+      return Ok(y0);
     }
     if t_f64 >= 1.0 - NODE_ROUNDING {
-      return y1;
+      return Ok(y1);
     }
     match (y0.is_infinite(), y1.is_infinite()) {
-      (false, false) => y0 + t * (y1 - y0),
-      (true, true) => y0.max(y1),
+      (false, false) => Ok(y0 + t * (y1 - y0)),
+      (true, true) => Ok(y0.max(y1)),
       (true, false) => self.hard_cell_value(q, idx, idx + 1, left, right),
       (false, true) => self.hard_cell_value(q, idx + 1, idx, left, right),
     }
   }
 
-  fn hard_cell_value(&self, q: T, boundary: usize, anchor: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> T
+  fn hard_cell_value(
+    &self,
+    q: T,
+    boundary: usize,
+    anchor: usize,
+    left: BoundaryBehavior,
+    right: BoundaryBehavior,
+  ) -> Result<T, Report>
   where
     T: Float,
   {
@@ -278,25 +285,34 @@ impl<T: InterpElem> GridFn<T> {
       Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => Some(law),
       _ => None,
     };
-    let law = stored_law.unwrap_or_else(|| {
-      let points: Vec<(f64, f64)> = (0..DEFAULT_TAIL_FIT_POINTS)
-        .map_while(|k| match side {
-          Side::Right => anchor.checked_sub(k),
-          Side::Left => Some(anchor + k).filter(|&i| i < n),
-        })
-        .map(|i| (self.grid.x_at(i).into(), self.y[i].into()))
-        .take_while(|(_, y): &(f64, f64)| y.is_finite())
-        .collect();
-      HardApproachLaw::from_points(t_boundary, side, &points).unwrap_or(HardApproachLaw {
-        t_hard: t_boundary,
-        b: 0.0,
-      })
-    });
+    let law = match stored_law {
+      Some(law) => law,
+      None => self.fit_hard_cell_law(t_boundary, side, anchor)?,
+    };
     let edge = GridEdge {
       t: self.grid.x_at(anchor).into(),
       y: self.y[anchor].into(),
     };
-    <T as From<f64>>::from(law.eval(edge, q.into()))
+    Ok(<T as From<f64>>::from(law.eval(edge, q.into())))
+  }
+
+  fn fit_hard_cell_law(&self, t_boundary: f64, side: Side, anchor: usize) -> Result<HardApproachLaw, Report>
+  where
+    T: Float,
+  {
+    let n = self.grid.n_points();
+    let points: Vec<(f64, f64)> = (0..DEFAULT_TAIL_FIT_POINTS)
+      .map_while(|k| match side {
+        Side::Right => anchor.checked_sub(k),
+        Side::Left => Some(anchor + k).filter(|&i| i < n),
+      })
+      .map(|i| (self.grid.x_at(i).into(), self.y[i].into()))
+      .take_while(|(_, y): &(f64, f64)| y.is_finite())
+      .collect();
+    if points.len() < 2 {
+      return Ok(HardApproachLaw::flat(t_boundary));
+    }
+    HardApproachLaw::from_points(t_boundary, side, &points)
   }
 
   #[must_use]

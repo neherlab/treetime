@@ -153,7 +153,7 @@ impl ClockRerootResult {
           points: self.points,
         })
       },
-      _ => self.into_clock_fit(),
+      ClockEstimate::Estimated(_) | ClockEstimate::Fixed(_) => self.into_clock_fit(),
     }
   }
 

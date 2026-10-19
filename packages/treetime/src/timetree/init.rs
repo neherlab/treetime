@@ -22,14 +22,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-pub(crate) struct InitialRound {
-  pub state: RoundState,
-  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
-  pub outliers: BTreeSet<GraphNodeKey>,
-  pub coalescent: CoalescentSetup,
-  pub timescale: CoalescentTimescale,
-}
-
 pub(crate) fn initialize(
   params: &TimetreeParams,
   context: &TimetreeContext,
@@ -115,6 +107,14 @@ pub(crate) fn initialize(
     },
     timescale,
   })
+}
+
+pub(crate) struct InitialRound {
+  pub state: RoundState,
+  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
+  pub outliers: BTreeSet<GraphNodeKey>,
+  pub coalescent: CoalescentSetup,
+  pub timescale: CoalescentTimescale,
 }
 
 fn gaussian_seed(

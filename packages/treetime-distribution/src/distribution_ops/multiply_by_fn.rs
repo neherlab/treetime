@@ -22,7 +22,9 @@ where
   let times = distribution.t();
   let (ordinates, amplitude) = match distribution {
     Distribution::Function(f) => (f.y().clone(), f.amplitude()),
-    _ => (distribution.y()?, 0.0),
+    Distribution::Empty | Distribution::Point(..) | Distribution::Range(..) | Distribution::Formula(..) => {
+      (distribution.y()?, 0.0)
+    },
   };
 
   let weights: Array1<f64> = times.iter().map(|&t| weight(t)).collect::<Result<_, Report>>()?;

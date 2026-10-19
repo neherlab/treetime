@@ -148,7 +148,7 @@ mod tests {
   fn test_gridfn_interp_boundary_cell_uses_the_stored_law_of_its_side() -> Result<(), Report> {
     let y = array![0.0, 0.0, 0.0, 0.0, f64::INFINITY];
     let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
-    let law = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 4.0, b: 3.0 });
+    let law = BoundaryBehavior::HardApproach(HardApproachLaw::new(4.0, 3.0)?);
 
     let actual = grid_fn.interp_with_extrap(3.5, BoundaryBehavior::Hard, law)?;
 

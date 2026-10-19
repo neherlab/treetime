@@ -10,6 +10,17 @@ pub struct HardApproachLaw {
 }
 
 impl HardApproachLaw {
+  pub fn new(t_hard: f64, b: f64) -> Result<Self, Report> {
+    if !(b.is_finite() && b >= 0.0) {
+      return make_error!("Hard-boundary power-law exponent must be finite and non-negative, found b={b}");
+    }
+    Ok(Self { t_hard, b })
+  }
+
+  pub(crate) fn flat(t_hard: f64) -> Self {
+    Self { t_hard, b: 0.0 }
+  }
+
   pub fn fit(grid_fn: &GridFn<f64>, t_hard: f64, side: Side, n_fit: usize) -> Result<Self, Report> {
     let n = grid_fn.n_points();
     let n_fit = n_fit.min(n);
