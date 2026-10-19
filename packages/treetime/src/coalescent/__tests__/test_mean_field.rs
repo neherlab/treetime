@@ -54,10 +54,10 @@ mod tests {
       Ok((prior.node_contribution(internal, 2, b)? - prior.node_contribution(internal, 2, a)?) / (b - a))
     };
 
-    pretty_assert_abs_diff_eq!(1.0 - 3.0, slope(2006.0, 2012.0)?, epsilon = 1e-3);
-    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(2013.2, 2013.8)?, epsilon = 1e-3);
-    pretty_assert_abs_diff_eq!(1.0 - 1.0, slope(2014.2, 2014.8)?, epsilon = 1e-3);
-    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(1990.0, 2000.0)?, epsilon = 1e-3);
+    pretty_assert_abs_diff_eq!(1.0 - 3.0, slope(2006.0, 2012.0)?, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(2013.2, 2013.8)?, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 1.0, slope(2014.2, 2014.8)?, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(1990.0, 2000.0)?, epsilon = 1e-12);
     Ok(())
   }
 
@@ -77,7 +77,7 @@ mod tests {
 
     let SegmentStatistics { pair_integral, mergers } = expectation.segment_statistics(&[2005.0, 2015.0]);
 
-    pretty_assert_abs_diff_eq!(13.0, pair_integral[0], epsilon = 2e-2);
+    pretty_assert_abs_diff_eq!(13.0, pair_integral[0], epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(2.0, mergers[0], epsilon = 1e-12);
     Ok(())
   }
@@ -92,7 +92,7 @@ mod tests {
 
     let SegmentStatistics { pair_integral, mergers } = expectation.segment_statistics(&[2000.0, 2010.0]);
 
-    pretty_assert_abs_diff_eq!(8.0, pair_integral[0], epsilon = 5e-3);
+    pretty_assert_abs_diff_eq!(8.0, pair_integral[0], epsilon = 1e-11);
     pretty_assert_abs_diff_eq!(1.0, mergers[0], epsilon = 1e-9);
     Ok(())
   }

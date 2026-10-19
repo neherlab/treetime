@@ -37,7 +37,7 @@ mod tests {
     for &(t_x, t_tip) in &[(2005.0, 2010.0), (2003.0, 2015.0), (2010.0, 2020.0)] {
       let (graph, constraints) = tree3(2000.0, t_x, t_tip)?;
       let result = constant_skyline(&expectation(&graph, &constraints))?;
-      approx::assert_relative_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_relative = 1e-4);
+      approx::assert_relative_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_relative = 1e-15);
     }
 
     Ok(())

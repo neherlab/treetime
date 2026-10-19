@@ -164,11 +164,11 @@ mod tests {
 
     let result = constant_skyline(&expectation(&graph, &constraints))?;
 
-    approx::assert_relative_eq!(20.0, result.tc_schedule.values()[0], max_relative = 1e-3);
+    approx::assert_relative_eq!(20.0, result.tc_schedule.values()[0], max_relative = 1e-15);
     approx::assert_relative_eq!(
       -3.0 - 3.0 * 20.0_f64.ln(),
       result.log_likelihood.value(),
-      max_relative = 1e-3
+      max_relative = 1e-15
     );
     Ok(())
   }

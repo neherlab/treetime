@@ -2,9 +2,12 @@ use crate::clock::gaussian::NodeTimeGaussian;
 use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
 use crate::timetree::max_posterior_region::posterior_survival;
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
+use std::iter::once;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
@@ -270,8 +273,18 @@ impl LineageExpectation {
       .fold(f64::NEG_INFINITY, f64::max);
     let span = (t_max - t_min).max(f64::EPSILON);
     let step = span / (EXPECTATION_GRID_POINTS - 1).to_f64_exact();
+    let step_times: Vec<f64> = weighted
+      .iter()
+      .filter(|(_, survival)| survival.is_point())
+      .map(|(_, survival)| survival.t[0])
+      .sorted_by_key(|&t| OrderedFloat(t))
+      .dedup()
+      .collect();
     let grid: Vec<f64> = (0..EXPECTATION_GRID_POINTS)
       .map(|i| t_min + step * i.to_f64_exact())
+      .filter(|&g| step_times.binary_search_by_key(&OrderedFloat(g), |&t| OrderedFloat(t)).is_err())
+      .chain(step_times.iter().flat_map(|&t| [t, t]))
+      .sorted_by_key(|&t| OrderedFloat(t))
       .collect();
 
     let mut expected = vec![always_surviving; grid.len()];
@@ -279,6 +292,10 @@ impl LineageExpectation {
     let mut surviving_from = vec![0.0; grid.len() + 1];
     for &(weight, survival) in &weighted {
       let first = grid.partition_point(|&g| g < survival.t[0]);
+      if survival.is_point() {
+        surviving_from[first + 1] += weight;
+        continue;
+      }
       let last = grid.partition_point(|&g| g < survival.t[survival.t.len() - 1]);
       surviving_from[first] += weight;
       for i in first..last {
@@ -329,9 +346,9 @@ impl LineageExpectation {
     let n = self.grid.len();
     let mut edges: Vec<usize> = (0..n)
       .step_by(MERGER_RATE_STRIDE)
-      .chain(std::iter::once(n - 1))
+      .chain(once(n - 1))
       .collect();
-    edges.dedup();
+    edges.dedup_by_key(|&mut i| OrderedFloat(self.grid[i]));
     let mut rates = vec![rate(self.expected_before, self.grid[0])?];
     for (&start, &end) in edges.iter().zip(&edges[1..]) {
       let k = self.expected[usize::midpoint(start, end)];
@@ -353,9 +370,18 @@ impl LineageExpectation {
     };
     let mut pair_integral = vec![0.0; n_seg];
     for i in 1..self.grid.len() {
-      let mid = f64::midpoint(self.grid[i - 1], self.grid[i]);
-      pair_integral[segment_of(mid)] +=
-        (self.grid[i] - self.grid[i - 1]) * f64::midpoint(pair_rate(i - 1), pair_rate(i));
+      let (t0, t1) = (self.grid[i - 1], self.grid[i]);
+      if t1 <= t0 {
+        continue;
+      }
+      let (r0, r1) = (pair_rate(i - 1), pair_rate(i));
+      let rate_at = |t: f64| r0 + (t - t0) / (t1 - t0) * (r1 - r0);
+      let cuts = once(t0)
+        .chain(boundaries.iter().copied().filter(|&b| b > t0 && b < t1))
+        .chain(once(t1));
+      for (a, b) in cuts.tuple_windows() {
+        pair_integral[segment_of(f64::midpoint(a, b))] += (b - a) * f64::midpoint(rate_at(a), rate_at(b));
+      }
     }
     let mut mergers = vec![0.0; n_seg];
     for survival in self.nodes.values().filter(|survival| survival.weight < 0.0) {
@@ -462,6 +488,10 @@ impl NodeSurvival {
       survival,
       weight: 0.0,
     }
+  }
+
+  fn is_point(&self) -> bool {
+    self.t.len() == 1
   }
 
   fn at(&self, x: f64) -> f64 {
