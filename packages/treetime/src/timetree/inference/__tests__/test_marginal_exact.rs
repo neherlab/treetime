@@ -37,10 +37,10 @@ mod tests {
   // The CDFs of the time passes differ from the exact posterior by up to 1.4e-2 (node R, zero counts near the tips).
   #[rustfmt::skip]
   #[rstest]
-  #[case::mixed_counts(           [3, 0, 2, 6],  [1e-3, 1e-2])]
+  #[case::mixed_counts(           [3, 0, 2, 6],  [1e-4, 1e-2])]
   #[case::zero_counts_near_tips(  [1, 0, 0, 2],  [1e-3, 1e-1])]
   #[case::long_branches(          [8, 4, 5, 12], [1e-3, 1e-3])]
-  #[case::both_tips_at_zero(      [0, 0, 1, 1],  [1e-3, 1e-2])]
+  #[case::both_tips_at_zero(      [0, 0, 1, 1],  [1e-4, 1e-2])]
   #[trace]
   fn test_marginal_exact_time_passes_match_the_integrated_posterior_without_a_prior(
     #[case] counts: [usize; 4],
