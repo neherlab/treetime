@@ -7,6 +7,7 @@ mod test_mass_domain;
 mod test_mass_profile;
 mod test_mass_profile_convergence;
 mod test_mass_profile_tails;
+mod test_mass_trim;
 mod test_multiply;
 mod test_multiply_by_fn;
 mod test_negation;

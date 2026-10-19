@@ -9,8 +9,10 @@ mod tests {
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
+  use treetime_utils::cast::f64_to_usize_saturating;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[test]
@@ -182,8 +184,50 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::forward_window_wider_than_the_cap(  Side::Right, 1.0, 0.01 )]
+  #[case::forward_window_narrower_than_the_cap(Side::Right, 0.1, 0.01 )]
+  #[case::backward_keeps_the_finer_spacing(    Side::Left,  1.0, 0.001)]
+  #[trace]
+  fn test_edge_convolution_output_spacing_is_at_most_the_spacing_cap(
+    #[case] soft: Side,
+    #[case] sigma: f64,
+    #[case] max_dx: f64,
+  ) -> Result<(), Report> {
+    let fine = gaussian_at(sigma, 0.001)?;
+    let coarse = gaussian_at(sigma, 0.01)?;
+
+    let result = convolve_across_edge(&fine, &coarse, soft, 5e-4, 300, MaxGridPoints::default())?;
+
+    let Distribution::Function(f) = &result else {
+      panic!("expected a gridded Function message");
+    };
+    let width = f.x_max() - f.x_min();
+    let expected = if width / 299.0 <= max_dx {
+      300
+    } else {
+      f64_to_usize_saturating((width / max_dx).ceil()) + 1
+    };
+    assert_eq!(expected, f.len());
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
+
+    pub(super) fn gaussian_at(sigma: f64, dx: f64) -> Result<DistributionNegLog, Report> {
+      let n_points = f64_to_usize_saturating((12.0 * sigma / dx).round()) + 1;
+      let t = Array1::linspace(-6.0 * sigma, 6.0 * sigma, n_points);
+      let y = t.mapv(|t| t * t / (2.0 * sigma * sigma));
+      let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?;
+      let left = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      let right = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      let f = f
+        .with_left_extrap(BoundaryBehavior::Linear(left))?
+        .with_right_extrap(BoundaryBehavior::Linear(right))?;
+      Ok(Distribution::Function(f))
+    }
 
     pub(super) fn gaussian(sigma: f64) -> Result<DistributionNegLog, Report> {
       let f = gaussian_grid(sigma)?;

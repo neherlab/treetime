@@ -5,7 +5,7 @@ use crate::progress_warn;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodeBackward, PosteriorView, TimeDistribution, likely_time_of_node,
 };
-use crate::timetree::inference::runner::{EPS, GRID_POINTS};
+use crate::timetree::inference::runner::{EPS, GRID_POINTS, TRIM_EPS};
 use crate::timetree::max_posterior_region::posterior_median;
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
@@ -16,6 +16,7 @@ use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
+use treetime_distribution::trim_to_mass;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -207,6 +208,8 @@ fn refine_distribution_from_parent(
   let combined = distribution_multiplication(&dist_from_parent, subtree_dist, max_points)?
     .normalize()
     .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
+  let combined = trim_to_mass(combined, TRIM_EPS)
+    .wrap_err_with(|| format!("When trimming the time distribution of node {key} to its mass"))?;
   log_refinement(names, key, parent_time_dist, &dist_from_parent, &combined);
 
   if combined.likely_time()?.is_none() && date_constraint.is_some() {

@@ -138,7 +138,8 @@ mod tests {
 
     let distribution = posterior.distribution.as_deref().expect("A must have a posterior");
     let log_mass = distribution.log_mass()?;
-    let oracle_log_z = tip.oracle_log_normalizer()?;
+    let support = distribution.time_bounds().expect("A must have a support");
+    let oracle_log_z = tip.oracle_log_mass(support)?;
     for time in distribution.t() {
       let actual = distribution.eval(time)? + log_mass;
       let expected = tip.oracle_neglog_density(time)? + oracle_log_z;
@@ -323,8 +324,7 @@ mod tests {
         Ok(TIP_BRANCH_DECAY * (time - ROOT_DATE) + self.prior.node_contribution(self.tip(), 0, time)?)
       }
 
-      pub(super) fn oracle_log_normalizer(&self) -> Result<f64, Report> {
-        let (start, end) = TIP_RANGE;
+      pub(super) fn oracle_log_mass(&self, (start, end): (f64, f64)) -> Result<f64, Report> {
         let h = (end - start) / ORACLE_INTERVALS.to_f64_exact();
         let simpson_sum = (0..=ORACLE_INTERVALS)
           .map(|i| {

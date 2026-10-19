@@ -37,6 +37,8 @@ const _: () = assert!(
 
 pub(crate) const EPS: f64 = 5e-4;
 
+pub(crate) const TRIM_EPS: f64 = 5e-4;
+
 pub(crate) fn run_timetree(
   inputs: &TimeInferenceInputs<'_>,
   coalescent: Option<&CoalescentPrior>,

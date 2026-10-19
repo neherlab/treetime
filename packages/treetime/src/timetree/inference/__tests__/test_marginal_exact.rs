@@ -19,7 +19,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
@@ -47,10 +47,15 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
     let grid: Vec<f64> = (0..GRID_LEN).map(|i| GRID_START + GRID_STEP * i.to_f64_exact()).collect();
     let (exact_x, exact_r) = helpers::exact_marginals(&gtr, counts, &grid);
-    let (treetime_x, treetime_r) = helpers::treetime_marginals(&gtr, counts, &grid)?;
+    let (treetime_x, treetime_r) = helpers::treetime_marginal_cdfs(&gtr, counts, &grid)?;
 
-    for (node, exact, treetime) in [("X", exact_x, treetime_x), ("R", exact_r, treetime_r)] {
-      let difference = helpers::max_cdf_difference(&grid, &exact, &treetime);
+    let support_end_x = T_A.min(T_B);
+    let support_end_r = support_end_x.min(T_C);
+    for (node, exact, support_end, treetime) in [
+      ("X", exact_x, support_end_x, treetime_x),
+      ("R", exact_r, support_end_r, treetime_r),
+    ] {
+      let difference = helpers::max_cdf_difference(&grid, &exact, support_end, &treetime);
       assert!(
         difference < MAX_CDF_DIFFERENCE,
         "node {node}: max CDF difference {difference:.4} to the exact posterior"
@@ -80,10 +85,14 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
     let grid: Vec<f64> = (0..GRID_4_LEN).map(|i| GRID_4_START + GRID_4_STEP * i.to_f64_exact()).collect();
     let exact = helpers::exact_kingman_marginals(&gtr, counts, tc, &grid);
-    let treetime = helpers::treetime_mean_field_marginals(&gtr, counts, tc, &grid)?;
+    let treetime = helpers::treetime_mean_field_marginal_cdfs(&gtr, counts, tc, &grid)?;
 
-    for (node, exact, treetime) in ["X", "Y", "R"].iter().zip(&exact).zip(&treetime).map(|((n, e), t)| (n, e, t)) {
-      let difference = helpers::max_cdf_difference(&grid, exact, treetime);
+    let date = |name: &str| TIPS_4.iter().find(|(tip, _)| *tip == name).map(|(_, date)| *date).expect("tip date");
+    let support_end_x = date("A").min(date("B"));
+    let support_end_y = date("C").min(date("D"));
+    let support_ends = [support_end_x, support_end_y, support_end_x.min(support_end_y)];
+    for (((node, exact), support_end), treetime) in ["X", "Y", "R"].iter().zip(&exact).zip(support_ends).zip(&treetime) {
+      let difference = helpers::max_cdf_difference(&grid, exact, support_end, treetime);
       assert!(
         difference < MAX_CDF_DIFFERENCE_4,
         "node {node}: max CDF difference {difference:.4} to the exact Kingman posterior"
@@ -136,7 +145,7 @@ mod tests {
       (marginal_x, marginal_r)
     }
 
-    pub(super) fn treetime_marginals(
+    pub(super) fn treetime_marginal_cdfs(
       gtr: &GTR,
       counts: [usize; 4],
       grid: &[f64],
@@ -180,25 +189,14 @@ mod tests {
       };
       let posterior =
         propagate_distributions_forward(&graph, &forward_inputs, backward, full_posterior, &NoopProgress)?;
-      let density = |name: &str| -> Result<Vec<f64>, Report> {
+      let cdf_of = |name: &str| -> Result<Vec<f64>, Report> {
         let distribution = posterior[&key(name)]
           .distribution
           .as_deref()
-          .expect("internal node must have a posterior")
-          .normalize()?;
-        let (lower, upper) = distribution.time_bounds().expect("posterior must have bounds");
-        grid
-          .iter()
-          .map(|&t| {
-            if t < lower || t > upper {
-              Ok(0.0)
-            } else {
-              distribution.eval(t).map(|neglog| (-neglog).exp())
-            }
-          })
-          .collect()
+          .expect("internal node must have a posterior");
+        posterior_cdf(distribution, grid)
       };
-      Ok((density("X")?, density("R")?))
+      Ok((cdf_of("X")?, cdf_of("R")?))
     }
 
     fn branch_distribution(gtr: &GTR, k: usize) -> Result<Arc<Distribution<NegLog>>, Report> {
@@ -273,7 +271,7 @@ mod tests {
       [px, py, pr]
     }
 
-    pub(super) fn treetime_mean_field_marginals(
+    pub(super) fn treetime_mean_field_marginal_cdfs(
       gtr: &GTR,
       counts: [usize; 6],
       tc: f64,
@@ -346,42 +344,52 @@ mod tests {
         full_posterior,
         &NoopProgress,
       )?;
-      let density = |name: &str| -> Result<Vec<f64>, Report> {
+      let cdf_of = |name: &str| -> Result<Vec<f64>, Report> {
         let distribution = posterior[&key(name)]
           .distribution
           .as_deref()
-          .expect("internal node must have a posterior")
-          .normalize()?;
-        let (lower, upper) = distribution.time_bounds().expect("posterior must have bounds");
-        grid
-          .iter()
-          .map(|&t| {
-            if t < lower || t > upper {
-              Ok(0.0)
-            } else {
-              distribution.eval(t).map(|neglog| (-neglog).exp())
-            }
-          })
-          .collect()
+          .expect("internal node must have a posterior");
+        posterior_cdf(distribution, grid)
       };
-      Ok([density("X")?, density("Y")?, density("R")?])
+      Ok([cdf_of("X")?, cdf_of("Y")?, cdf_of("R")?])
     }
 
-    fn cdf(grid: &[f64], density: &[f64]) -> Vec<f64> {
+    fn cdf(grid: &[f64], density: &[f64], support_end: f64) -> Vec<f64> {
       let mut cumulative = vec![0.0; grid.len()];
       for i in 1..grid.len() {
-        cumulative[i] = cumulative[i - 1] + f64::midpoint(density[i], density[i - 1]) * (grid[i] - grid[i - 1]);
+        let cell = if grid[i] <= support_end {
+          f64::midpoint(density[i], density[i - 1]) * (grid[i] - grid[i - 1])
+        } else {
+          0.0
+        };
+        cumulative[i] = cumulative[i - 1] + cell;
       }
       let total = cumulative[grid.len() - 1];
       cumulative.iter().map(|c| c / total).collect()
     }
 
-    pub(super) fn max_cdf_difference(grid: &[f64], a: &[f64], b: &[f64]) -> f64 {
-      cdf(grid, a)
+    pub(super) fn max_cdf_difference(
+      grid: &[f64],
+      exact_density: &[f64],
+      support_end: f64,
+      treetime_cdf: &[f64],
+    ) -> f64 {
+      cdf(grid, exact_density, support_end)
         .iter()
-        .zip(cdf(grid, b))
+        .zip(treetime_cdf)
         .map(|(x, y)| (x - y).abs())
         .fold(0.0, f64::max)
+    }
+
+    fn posterior_cdf(distribution: &Distribution<NegLog>, grid: &[f64]) -> Result<Vec<f64>, Report> {
+      let Distribution::Function(f) = distribution else {
+        return Err(eyre::eyre!("an internal node posterior must be a function"));
+      };
+      let profile = MassProfile::new(f)?;
+      let fractions = profile
+        .fractions(TailMass::Required)
+        .ok_or_else(|| eyre::eyre!("an internal node posterior must have a finite mass"))?;
+      Ok(grid.iter().map(|&t| fractions.cdf(t)).collect())
     }
   }
 }

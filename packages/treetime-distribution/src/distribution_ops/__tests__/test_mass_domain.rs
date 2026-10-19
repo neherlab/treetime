@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
   use crate::distribution_ops::mass_domain::{
-    mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
+    SpacingLimit, mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
     rewindow_to_mass,
   };
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
@@ -165,7 +165,7 @@ mod tests {
   ) {
     let f = helpers::exponential_neglog(1.0, t_max, input_points);
     let resampled = helpers::as_function(
-      resample_to_mass_window(&f, lo, hi, grid_points, MaxGridPoints::default()).unwrap(),
+      resample_to_mass_window(&f, lo, hi, grid_points, MaxGridPoints::default(), SpacingLimit::Input).unwrap(),
     );
     assert_eq!(expected, resampled.len());
   }

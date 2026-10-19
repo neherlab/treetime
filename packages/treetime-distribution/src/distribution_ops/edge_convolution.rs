@@ -1,10 +1,11 @@
 use crate::Distribution;
 use crate::distribution_ops::convolve::distribution_convolution_fine;
 use crate::distribution_ops::mass_domain::{
-  mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
+  SpacingLimit, mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
 };
 use crate::policy::NegLog;
 use eyre::Report;
+use ordered_float::OrderedFloat;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
 
 pub fn convolve_across_edge(
@@ -48,7 +49,21 @@ pub fn convolve_across_edge(
     None => sized.bounded_domain(eps)?,
   };
 
-  resample_to_mass_window(normalized, lo, hi, grid_points, max_points)
+  let spacing = match (soft, coarser_operand_spacing(a, b)) {
+    (Side::Right, Some(max_dx)) => SpacingLimit::AtMost(max_dx),
+    (Side::Left, _) | (Side::Right, None) => SpacingLimit::Input,
+  };
+  resample_to_mass_window(normalized, lo, hi, grid_points, max_points, spacing)
+}
+
+fn coarser_operand_spacing(a: &Distribution<NegLog>, b: &Distribution<NegLog>) -> Option<f64> {
+  [a, b]
+    .into_iter()
+    .filter_map(|dist| match dist {
+      Distribution::Function(f) => Some(f.dx()),
+      Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) | Distribution::Formula(_) => None,
+    })
+    .max_by_key(|dx| OrderedFloat(*dx))
 }
 
 fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {

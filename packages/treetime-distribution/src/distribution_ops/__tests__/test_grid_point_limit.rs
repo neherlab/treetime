@@ -2,7 +2,7 @@
 mod tests {
   use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::divide::distribution_division;
-  use crate::distribution_ops::mass_domain::resample_to_mass_window;
+  use crate::distribution_ops::mass_domain::{SpacingLimit, resample_to_mass_window};
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::distribution_ops::product::distribution_product;
   use eyre::Report;
@@ -109,7 +109,7 @@ mod tests {
   #[test]
   fn test_grid_point_limit_mass_window_at_the_limit() -> Result<(), Report> {
     let normalized = flat_function(0.0, 1.0, 1_025);
-    let windowed = resample_to_mass_window(&normalized, 0.0, 999.0 / 1024.0, 300, limit())?;
+    let windowed = resample_to_mass_window(&normalized, 0.0, 999.0 / 1024.0, 300, limit(), SpacingLimit::Input)?;
     assert_eq!(1_000, windowed.t().len());
     Ok(())
   }
@@ -118,7 +118,7 @@ mod tests {
   fn test_grid_point_limit_mass_window_above_the_limit() {
     let normalized = flat_function(0.0, 1.0, 1_025);
     assert_error!(
-      resample_to_mass_window(&normalized, 0.0, 1000.0 / 1024.0, 300, limit()),
+      resample_to_mass_window(&normalized, 0.0, 1000.0 / 1024.0, 300, limit(), SpacingLimit::Input),
       "A grid over [0, 0.976563] with spacing 0.000976563 needs 1001 points, more than the limit of 1000"
     );
   }
@@ -126,7 +126,14 @@ mod tests {
   #[test]
   fn test_grid_point_limit_mass_window_equal_to_an_input_grid_above_the_limit() {
     assert_error!(
-      resample_to_mass_window(&flat_function(0.0, 1000.0, 1_001), 0.0, 1000.0, 2, limit()),
+      resample_to_mass_window(
+        &flat_function(0.0, 1000.0, 1_001),
+        0.0,
+        1000.0,
+        2,
+        limit(),
+        SpacingLimit::Input
+      ),
       ONE_ABOVE
     );
   }

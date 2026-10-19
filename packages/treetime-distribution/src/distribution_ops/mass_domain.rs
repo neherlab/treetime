@@ -3,7 +3,9 @@ use crate::distribution_ops::time_bounds::distribution_support_n_points;
 use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
+use ndarray::{Array1, s};
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side, SoftTailLaw};
+use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
@@ -34,7 +36,88 @@ pub fn rewindow_to_mass(
     return dist.repeak();
   };
   let (lo, hi) = sized.bounded_domain(eps)?;
-  resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points)
+  resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points, SpacingLimit::Input)
+}
+
+pub fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distribution<NegLog>, Report> {
+  let Distribution::Function(f) = &dist else {
+    return Ok(dist);
+  };
+  let Some(profile) = mass_sizable_profile(f) else {
+    return Ok(dist);
+  };
+  let Some(fractions) = profile.fractions(TailMass::Required) else {
+    return Ok(dist);
+  };
+  let t = f.t();
+  let lower = lower_cut(&t, f.left_extrap(), fractions.quantile(eps));
+  let upper = upper_cut(&t, f.right_extrap(), fractions.survival_inverse(eps));
+  if lower == MassCut::Kept && upper == MassCut::Kept {
+    return Ok(dist);
+  }
+  let last = t.len() - 1;
+  let first = lower.index().unwrap_or(0);
+  let end = upper.index().unwrap_or(last).max(first + 1).min(last);
+  let first = first.min(end - 1);
+  let trimmed = DistributionFunction::from_start_dx_values(t[first], f.dx(), f.y().slice(s![first..=end]).to_owned())?
+    .with_amplitude(f.amplitude())
+    .with_left_extrap(cut_side(f.left_extrap(), lower))?
+    .with_right_extrap(cut_side(f.right_extrap(), upper))?;
+  let trimmed = match lower {
+    MassCut::At(_) if trimmed.left_extrap().is_soft() => {
+      let law = SoftTailLaw::fit(trimmed.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+      trimmed.with_left_extrap(BoundaryBehavior::Linear(law))?
+    },
+    MassCut::At(_) | MassCut::Kept => trimmed,
+  };
+  let trimmed = match upper {
+    MassCut::At(_) if trimmed.right_extrap().is_soft() => {
+      let law = SoftTailLaw::fit(trimmed.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+      trimmed.with_right_extrap(BoundaryBehavior::Linear(law))?
+    },
+    MassCut::At(_) | MassCut::Kept => trimmed,
+  };
+  Ok(Distribution::Function(trimmed))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MassCut {
+  Kept,
+  At(usize),
+}
+
+impl MassCut {
+  fn index(self) -> Option<usize> {
+    match self {
+      MassCut::Kept => None,
+      MassCut::At(index) => Some(index),
+    }
+  }
+}
+
+fn lower_cut(t: &Array1<f64>, extrap: BoundaryBehavior, quantile: f64) -> MassCut {
+  let at_or_below = partition_point(t, |&x| x <= quantile);
+  match at_or_below.checked_sub(1) {
+    None => MassCut::Kept,
+    Some(0) if extrap.is_soft() => MassCut::Kept,
+    Some(index) => MassCut::At(index),
+  }
+}
+
+fn upper_cut(t: &Array1<f64>, extrap: BoundaryBehavior, quantile: f64) -> MassCut {
+  let last = t.len() - 1;
+  match partition_point(t, |&x| x < quantile) {
+    index if index > last => MassCut::Kept,
+    index if index == last && extrap.is_soft() => MassCut::Kept,
+    index => MassCut::At(index),
+  }
+}
+
+fn cut_side(extrap: BoundaryBehavior, cut: MassCut) -> BoundaryBehavior {
+  match cut {
+    MassCut::At(_) if !extrap.is_soft() => BoundaryBehavior::Hard,
+    MassCut::At(_) | MassCut::Kept => extrap,
+  }
 }
 
 #[cfg_attr(
@@ -107,24 +190,29 @@ pub(crate) fn resample_to_mass_window(
   hi: f64,
   grid_points: usize,
   max_points: MaxGridPoints,
+  spacing: SpacingLimit,
 ) -> Result<Distribution<NegLog>, Report> {
   if hi <= lo {
     return make_error!("Mass window collapsed to an empty interval [{lo}, {hi}]");
   }
   let mass_width = hi - lo;
-  let floor_dx = normalized.dx();
+  let max_dx = match spacing {
+    SpacingLimit::Input => normalized.dx(),
+    SpacingLimit::AtMost(max_dx) => max_dx,
+  };
   let target_dx = mass_width / grid_points.saturating_sub(1).max(1).to_f64_exact();
   #[expect(
     clippy::float_cmp,
     reason = "a window bounded by the hard edges of the input grid is that grid, and only identical edges give its point count"
   )]
-  let window_is_input_grid = lo == normalized.x_min() && hi == normalized.x_max();
-  let n_points = if target_dx <= floor_dx {
+  let window_is_input_grid =
+    matches!(spacing, SpacingLimit::Input) && lo == normalized.x_min() && hi == normalized.x_max();
+  let n_points = if target_dx <= max_dx {
     max_points.point_count(grid_points.max(2).to_f64_exact(), (lo, hi), target_dx)?
   } else if window_is_input_grid {
-    max_points.point_count(normalized.len().to_f64_exact(), (lo, hi), floor_dx)?
+    max_points.point_count(normalized.len().to_f64_exact(), (lo, hi), max_dx)?
   } else {
-    distribution_support_n_points((lo, hi), floor_dx, max_points)?
+    distribution_support_n_points((lo, hi), max_dx, max_points)?
   };
   let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
   let resampled = refit_soft_tails(resampled)?;
@@ -147,6 +235,12 @@ pub(crate) fn refit_soft_tails(
     f
   };
   Ok(f)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SpacingLimit {
+  Input,
+  AtMost(f64),
 }
 
 fn is_mass_sizable(profile: &MassProfile) -> bool {

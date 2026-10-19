@@ -2,7 +2,6 @@
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::mean_field::NodeSurvival;
-  use crate::pretty_assert_ulps_eq;
   use crate::progress::{LogSink, NoopProgress};
   use crate::test_utils::{
     FullPosterior, RecordingLog, find_node_key_by_name, full_posterior, parent_edge_key, unknown_branches,
@@ -11,7 +10,9 @@ mod tests {
   use crate::timetree::inference::result::{
     BranchLikelihood, NodeBackward, NodePosterior, PosteriorSummaries, PosteriorView,
   };
+  use crate::timetree::inference::runner::{EPS, GRID_POINTS, TRIM_EPS};
   use crate::timetree::max_posterior_region::MaxPosteriorRegion;
+  use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -23,11 +24,14 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use std::sync::Weak;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::{
+    Distribution, DistributionFunction, MassProfile, NegLog, TailMass, convolve_across_edge,
+    distribution_multiplication,
+  };
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_grid::MaxGridPoints;
+  use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -249,7 +253,7 @@ mod tests {
       MaxGridPoints::default(),
     )?);
 
-    pretty_assert_ulps_eq!(refine(wide_parent)?, refine(windowed)?, max_ulps = 4);
+    pretty_assert_abs_diff_eq!(refine(wide_parent)?, refine(windowed)?, epsilon = 1e-9);
 
     Ok(())
   }
@@ -301,6 +305,91 @@ mod tests {
       "the cavity peaks at 2006 and the branch adds 1, so the child must sit near 2007, got {time}"
     );
     assert_ne!(without_division, with_message);
+    Ok(())
+  }
+
+  #[test]
+  fn test_forward_pass_trims_each_refined_posterior_to_its_mass() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)N:2.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
+    let (root_key, node_key, a_key, b_key) = (key("root"), key("N"), key("A"), key("B"));
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(
+      &mut inputs,
+      root_key,
+      hard_gaussian((1000.0, 2010.0), 20_001, 2000.0, 2.0)?,
+    );
+    set_time_distribution(
+      &mut inputs,
+      node_key,
+      hard_gaussian((1000.0, 2010.0), 20_001, 2003.0, 1.5)?,
+    );
+    set_date(&mut inputs, a_key, Distribution::range((2004.5, 2005.0), 0.0));
+    set_date(&mut inputs, b_key, Distribution::range((2005.0, 2005.5), 0.0));
+    set_branch_distribution(
+      &graph,
+      &mut inputs,
+      node_key,
+      hard_gaussian((0.0, 10.0), 1001, 2.0, 0.5)?,
+    );
+    set_branch_distribution(&graph, &mut inputs, a_key, hard_gaussian((0.0, 10.0), 1001, 1.5, 0.5)?);
+    set_branch_distribution(&graph, &mut inputs, b_key, hard_gaussian((0.0, 10.0), 1001, 1.5, 0.5)?);
+
+    let posterior = run_forward_pass(&graph, &inputs, &names)?;
+
+    for (parent, child) in [(root_key, node_key), (node_key, a_key), (node_key, b_key)] {
+      let parent_time = posterior[&parent].likely_time.expect("every node is dated");
+      let child_time = posterior[&child].likely_time.expect("every node is dated");
+      assert!(
+        child_time >= parent_time,
+        "child {child} at {child_time} before parent {parent} at {parent_time}"
+      );
+
+      let parent_dist = posterior[&parent]
+        .distribution
+        .as_deref()
+        .expect("the parent has a posterior");
+      let branch = inputs.branches[&parent_edge_key(&graph, child)].distribution.as_deref();
+      let branch = branch.expect("the branch has a distribution");
+      let subtree = inputs.backward[&child].subtree
+        .as_deref()
+        .expect("the child has a subtree distribution");
+      let from_parent = convolve_across_edge(
+        parent_dist,
+        branch,
+        Side::Right,
+        EPS,
+        GRID_POINTS,
+        MaxGridPoints::default(),
+      )?;
+      let untrimmed = distribution_multiplication(&from_parent, subtree, MaxGridPoints::default())?;
+      let Distribution::Function(untrimmed) = untrimmed else {
+        return Err(eyre::eyre!("the untrimmed posterior of {child} must be a function"));
+      };
+      let profile = MassProfile::new(&untrimmed)?;
+      let fractions = profile
+        .fractions(TailMass::Required)
+        .expect("the untrimmed posterior has a finite mass");
+      let (lo, hi) = posterior[&child]
+        .distribution
+        .as_deref()
+        .and_then(Distribution::time_bounds)
+        .expect("dated");
+      let inside = fractions.mass_between(lo, hi)? / fractions.total();
+      assert!(
+        inside >= 1.0 - 2.0 * TRIM_EPS,
+        "the trimmed posterior of {child} holds {inside} of the untrimmed mass"
+      );
+      if child == node_key {
+        assert!(
+          inside < 1.0,
+          "the internal node N reaches back to the root's hard edge and must be trimmed"
+        );
+      }
+    }
     Ok(())
   }
 
@@ -576,6 +665,34 @@ mod tests {
         time_length: Some(branch_length),
       };
       inputs.branches.insert(parent_edge_key(graph, target_key), branch);
+    }
+
+    pub(super) fn set_branch_distribution(
+      graph: &Graph,
+      inputs: &mut ForwardInputs,
+      target_key: GraphNodeKey,
+      dist: Distribution<NegLog>,
+    ) {
+      let time_length = dist.likely_time().expect("the branch distribution has a peak");
+      let branch = BranchLikelihood {
+        distribution: Some(Arc::new(dist)),
+        time_length,
+      };
+      inputs.branches.insert(parent_edge_key(graph, target_key), branch);
+    }
+
+    pub(super) fn hard_gaussian(
+      (x_min, x_max): (f64, f64),
+      n_points: usize,
+      mean: f64,
+      sigma: f64,
+    ) -> Result<Distribution<NegLog>, Report> {
+      let grid = Array1::linspace(x_min, x_max, n_points);
+      let y = quadratic_neglog(&grid, mean, 1.0 / (sigma * sigma));
+      let f = DistributionFunction::from_start_dx_values(x_min, grid[1] - grid[0], y)?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Hard)?;
+      Ok(Distribution::Function(f))
     }
 
     pub(super) fn node_time(posterior: &BTreeMap<GraphNodeKey, FullPosterior>, key: GraphNodeKey) -> Option<f64> {
