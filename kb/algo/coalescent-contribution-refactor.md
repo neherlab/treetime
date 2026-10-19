@@ -12,7 +12,7 @@ $$
 V(t) = \sum_u w_u^2 S_u(t)\,(1 - S_u(t)),
 $$
 
-on a uniform grid over the span of the node distributions. The survival functions come from node posteriors (`LineageExpectation::from_posterior`) or, in the init phase, from the Gaussian node-time marginals truncated at each node's earliest tip (`LineageExpectation::from_gaussian`). Nodes on bad branches and nodes without a time count as surviving at all times, as the lineage count counts them at the present.
+on a uniform grid over the span of the node distributions. A node with a point time has a step survival function; its time enters the grid as a zero-width pair of points that holds the left and the right limit, so the trapezoid rule integrates the step exactly. The survival functions come from node posteriors (`LineageExpectation::from_posterior`) or, in the init phase, from the Gaussian node-time marginals truncated at each node's earliest tip (`LineageExpectation::from_gaussian`). Nodes on bad branches and nodes without a time count as surviving at all times, as the lineage count counts them at the present.
 
 ## Mean-field prior
 

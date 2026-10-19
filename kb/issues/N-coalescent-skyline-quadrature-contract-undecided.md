@@ -8,9 +8,10 @@ $I_i = \int_i \tfrac12(\bar k^2 - \bar k + V)\,dt$ and, through the prior, $\int
 (`LineageExpectation::segment_statistics` and `CoalescentPrior::new` in
 [packages/treetime/src/coalescent/mean_field.rs](../../packages/treetime/src/coalescent/mean_field.rs)). Both use the
 trapezoid rule on a uniform grid of 4001 points over the span of the node distributions, with $T_c$ evaluated at cell
-midpoints. The rule has no stated error bound: a step of $\bar k$ at point node times costs half a grid cell (the
-tests allow a relative error of $10^{-4}$ on $T_c = I/M$ for that reason), and the grid spacing scales with the span of
-the deepest node distribution rather than with the variation of $\bar k$ or $T_c$. Since phase 2 of
+midpoints. The steps of $\bar k$ at point node times are exact: each step time enters the grid as a zero-width pair
+of points that holds the left and the right limit, and cells are split at segment boundaries. The rest of the rule has
+no stated error bound: the grid spacing scales with the span of the deepest node distribution rather than with the
+variation of the smooth part of $\bar k$ or of $T_c$, and $T_c$ is evaluated at cell midpoints. Since phase 2 of
 [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md)
 the removed midpoint quadrature of the point-time lineage counts (`compute_integral_merger_rate`) no longer applies.
 V0 uses a different numerical integration rule, so the selected algorithm also requires an explicit parity
