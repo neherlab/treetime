@@ -184,12 +184,12 @@ pub(crate) fn gaussian_start_rate(
   Ok(rate)
 }
 
-fn gaussian_tree(
-  graph: &Graph,
+fn gaussian_tree<'g>(
+  graph: &'g Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   context: &TimetreeContext,
   excluded: &BTreeMap<GraphNodeKey, bool>,
-) -> Result<GaussianTree, Report> {
+) -> Result<GaussianTree<'g>, Report> {
   let tip_dates = given_times(graph, &context.date_constraints)?;
   GaussianTree::new(graph, branch_lengths, context.sequence_length, &tip_dates, excluded)
 }

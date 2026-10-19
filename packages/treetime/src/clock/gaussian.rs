@@ -1,21 +1,22 @@
 use crate::branch_lengths::branch_length_or_zero;
 use crate::timetree::inference::result::NodeTimes;
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
-use treetime_graph::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput};
+use treetime_graph::tree_scan::NodeEdgeMaps;
+use treetime_graph::tree_view::TreeView;
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::{make_error, make_internal_report};
+use treetime_utils::make_error;
 
 const MIN_PRECISION: f64 = 1e-300;
 
-pub(crate) struct GaussianTree {
-  pass: GraphPass,
+pub(crate) struct GaussianTree<'g> {
+  tree: TreeView<'g>,
   internal_nodes: Vec<GraphNodeKey>,
   sequence_length: f64,
-  tips: BTreeMap<GraphNodeKey, Option<Message>>,
   nu: BTreeMap<GraphEdgeKey, f64>,
   below: BTreeMap<GraphNodeKey, Below>,
   up: BTreeMap<GraphEdgeKey, Option<Message>>,
@@ -27,9 +28,9 @@ pub(crate) struct GaussianTree {
   b: f64,
 }
 
-impl GaussianTree {
+impl<'g> GaussianTree<'g> {
   pub(crate) fn new(
-    graph: &Graph,
+    graph: &'g Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     sequence_length: usize,
     tip_dates: &NodeTimes,
@@ -39,7 +40,7 @@ impl GaussianTree {
       return make_error!("Gaussian clock needs a positive sequence length");
     }
     let sequence_length = sequence_length.to_f64_exact();
-    let pass = GraphPass::new(graph)?;
+    let tree = TreeView::new(graph)?;
     let tips: BTreeMap<GraphNodeKey, Option<Message>> = graph
       .get_nodes()
       .map(|n| {
@@ -57,10 +58,10 @@ impl GaussianTree {
         )
       })
       .collect();
-    let GraphMapOutputs {
+    let NodeEdgeMaps {
       nodes: below,
       edges: up,
-    } = backward(&pass, &tips, &nu)?;
+    } = backward(&tree, tips, &nu)?;
 
     let mut substitutions = 0.0;
     let mut internal_branches = 0_usize;
@@ -86,10 +87,9 @@ impl GaussianTree {
       .values()
       .fold([0.0; 2], |acc, node| [acc[0] + node.ab[0], acc[1] + node.ab[1]]);
     Ok(Self {
-      pass,
+      tree,
       internal_nodes: graph.get_nodes().filter(|n| !n.is_leaf()).map(Node::key).collect(),
       sequence_length,
-      tips,
       nu,
       below,
       up,
@@ -107,7 +107,7 @@ impl GaussianTree {
       return make_error!("Gaussian clock needs a positive clock rate, got {clock_rate}");
     }
     let eta = self.eta(clock_rate);
-    let total = forward(&self.pass, &self.tips, &self.nu, &self.below, &self.up)?;
+    let total = forward(&self.tree, &self.nu, &self.below, &self.up)?;
     let stds = rate_and_root_std(self.a, self.kappa, self.root, eta);
 
     let node_times = self
@@ -164,34 +164,28 @@ pub(crate) struct NodeTimeGaussian {
 }
 
 fn backward(
-  pass: &GraphPass,
-  tips: &BTreeMap<GraphNodeKey, Option<Message>>,
+  tree: &TreeView<'_>,
+  tips: BTreeMap<GraphNodeKey, Option<Message>>,
   nu: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<GraphMapOutputs<Below, Option<Message>>, Report> {
-  pass.map_backward(
-    tips,
-    nu,
-    |key| Err(make_internal_report!("Gaussian clock is missing node {key}")),
-    |context| {
-      let (node, own) = if context.is_leaf {
-        (Below::default(), *context.input)
-      } else {
-        let messages: Vec<Message> = context
-          .children
-          .iter()
-          .filter_map(|child| child.edge.copied().flatten())
-          .collect();
-        let combined = combine(&messages);
-        let node = Below {
-          down: combined.map(|(m, _)| m),
-          ab: combined.map_or([0.0; 2], |(_, ab)| ab),
-        };
-        (node, node.down)
+) -> Result<NodeEdgeMaps<Below, Option<Message>>, Report> {
+  let outputs = tree.scan_up(tips, |key, tip, from_children| {
+    let (node, own) = if tree.children(key).is_empty() {
+      (Below::default(), tip)
+    } else {
+      let messages = from_children.into_iter().flatten().collect_vec();
+      let combined = combine(&messages);
+      let node = Below {
+        down: combined.map(|(m, _)| m),
+        ab: combined.map_or([0.0; 2], |(_, ab)| ab),
       };
-      let parent_message = context.parent_edge.map(|(_, &nu)| own.map(|m| m.toward_parent(nu)));
-      Ok(GraphPassNodeOutput { node, parent_message })
-    },
-  )
+      (node, node.down)
+    };
+    let to_parent = tree
+      .parent(key)
+      .map(|(_, edge_key)| own.map(|m| m.toward_parent(nu[&edge_key])));
+    Ok(((node, to_parent), to_parent.flatten()))
+  })?;
+  outputs.split_parent_edges()
 }
 
 fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
@@ -203,40 +197,34 @@ fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
 }
 
 fn forward(
-  pass: &GraphPass,
-  tips: &BTreeMap<GraphNodeKey, Option<Message>>,
+  tree: &TreeView<'_>,
   nu: &BTreeMap<GraphEdgeKey, f64>,
   below: &BTreeMap<GraphNodeKey, Below>,
   up: &BTreeMap<GraphEdgeKey, Option<Message>>,
 ) -> Result<BTreeMap<GraphNodeKey, Natural>, Report> {
-  let GraphMapOutputs { nodes, .. } = pass.map_forward(
-    tips,
-    nu,
-    |key| Err(make_internal_report!("Gaussian clock is missing node {key}")),
-    |context| {
-      let outside = match (context.parent_edge, context.parent) {
-        (Some((edge, &nu)), Some(parent_total)) => {
-          let own_up = up
-            .get(&edge)
-            .copied()
-            .flatten()
-            .map_or_else(Natural::default, Message::natural);
-          let parent_total: Natural = *parent_total;
-          parent_total.minus(own_up).message().map(|m| m.toward_child(nu))
-        },
-        _ => None,
-      };
-      let node = [below[&context.key].down, outside]
-        .into_iter()
-        .flatten()
-        .fold(Natural::default(), |acc, m| acc.plus(m.natural()));
-      Ok(GraphPassNodeOutput::<Natural, ()> {
-        node,
-        parent_message: None,
-      })
-    },
-  )?;
-  Ok(nodes)
+  let down = below.iter().map(|(&key, node)| (key, node.down));
+  let totals = tree.scan_down(down, |key, down, parent_total: Option<Natural>| {
+    let outside = match (tree.parent(key), parent_total) {
+      (Some((_, edge_key)), Some(parent_total)) => {
+        let own_up = up
+          .get(&edge_key)
+          .copied()
+          .flatten()
+          .map_or_else(Natural::default, Message::natural);
+        parent_total
+          .minus(own_up)
+          .message()
+          .map(|m| m.toward_child(nu[&edge_key]))
+      },
+      _ => None,
+    };
+    let node = [down, outside]
+      .into_iter()
+      .flatten()
+      .fold(Natural::default(), |acc, m| acc.plus(m.natural()));
+    Ok((node, node))
+  })?;
+  Ok(totals.into_map())
 }
 
 fn rate_and_root_std(a: f64, kappa: f64, root: Message, eta: f64) -> Option<(f64, f64)> {
