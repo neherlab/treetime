@@ -9,7 +9,7 @@ pub use distribution_core::point::DistributionPoint;
 pub use distribution_core::range::DistributionRange;
 pub use distribution_ops::divide::distribution_division;
 pub use distribution_ops::edge_convolution::convolve_across_edge;
-pub use distribution_ops::mass_domain::rewindow_to_mass;
+pub use distribution_ops::mass_domain::{experiment_trim_mode, rewindow_to_mass, rewindow_to_mass_trimmed};
 pub use distribution_ops::multiply::distribution_multiplication;
 pub use distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
 pub use distribution_ops::product::distribution_product;

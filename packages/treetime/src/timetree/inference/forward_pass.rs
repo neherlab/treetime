@@ -33,6 +33,7 @@ pub(crate) fn propagate_distributions_forward(
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
   let pass = GraphPass::new(graph)?;
+  let started = std::time::Instant::now();
   let GraphMapOutputs { nodes: posterior, .. } = pass.map_forward(
     &backward.subtree,
     branches,
@@ -40,6 +41,7 @@ pub(crate) fn propagate_distributions_forward(
     |context| propagate_distributions_forward_node(constraints, names, &backward.messages, &context, max_points, log),
   )?;
 
+  experiment_grid_stats::report(started.elapsed().as_secs_f64());
   let contradicted = posterior.values().filter(|node| node.contradicted).count();
   if contradicted > 0 {
     progress_warn!(
@@ -147,6 +149,7 @@ fn refine_distribution_from_parent(
   let Some(subtree_dist) = subtree else {
     let dist_from_parent =
       convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS, max_points)?;
+    experiment_grid_stats::record(dist_from_parent.t().len(), dist_from_parent.t().len());
     log_refinement(names, key, parent_time_dist, &dist_from_parent);
     return Ok(ForwardRefinement::Refined(dist_from_parent));
   };
@@ -167,6 +170,36 @@ fn refine_distribution_from_parent(
   let combined = distribution_multiplication(&dist_from_parent, subtree_dist, max_points)?
     .normalize()
     .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
+  // EXPERIMENT: trim the forward posterior by mass, hard sides included
+  let combined = match treetime_distribution::experiment_trim_mode() {
+    Some(mode) if !matches!(combined, Distribution::Empty) => {
+      treetime_distribution::rewindow_to_mass_trimmed(&combined, EPS, GRID_POINTS, max_points, mode)?
+    },
+    _ => combined,
+  };
+  experiment_grid_stats::record(dist_from_parent.t().len(), combined.t().len());
+  if std::env::var("TT_DUMP_NODE").ok().as_deref() == Some(node_label(names, key).as_str()) {
+    let dump = |label: &str, d: &Distribution<NegLog>| {
+      let (t, y) = (d.t(), d.y().unwrap_or_default());
+      let y_min = y.iter().copied().fold(f64::INFINITY, f64::min);
+      let line: Vec<String> = t
+        .iter()
+        .zip(y.iter())
+        .filter(|(_, y)| **y - y_min < 30.0)
+        .map(|(t, y)| format!("{t:.6}:{:.4}", y - y_min))
+        .collect();
+      let tails = match d {
+        Distribution::Function(f) => format!("{:?} | {:?}", f.left_extrap(), f.right_extrap()),
+        _ => String::new(),
+      };
+      eprintln!("DUMP {label} n={} [{:.6},{:.6}] tails={tails}\n{}", t.len(), t[0], t[t.len() - 1], line.join(" "));
+    };
+    dump("parent", parent_time_dist);
+    dump("cavity", &parent_except_subtree);
+    dump("conv", &dist_from_parent);
+    dump("subtree", subtree_dist);
+    dump("posterior", &combined);
+  }
   log_refinement(names, key, parent_time_dist, &combined);
 
   if combined.likely_time()?.is_none() && date_constraint.is_some() {
@@ -266,5 +299,35 @@ fn describe_grid(dist: &Distribution<NegLog>) -> String {
   match dist.time_bounds() {
     Some((t_min, t_max)) => format!("n={n_points}, [{t_min:.6}, {t_max:.6}]"),
     None => "empty".to_owned(),
+  }
+}
+
+/// EXPERIMENT: grid sizes of the forward convolution outputs and posteriors, printed per pass with `TT_GRID_STATS`
+mod experiment_grid_stats {
+  use std::sync::Mutex;
+
+  static SIZES: Mutex<Vec<(usize, usize)>> = Mutex::new(Vec::new());
+
+  pub(super) fn record(conv: usize, posterior: usize) {
+    if std::env::var_os("TT_GRID_STATS").is_some() {
+      SIZES.lock().unwrap().push((conv, posterior));
+    }
+  }
+
+  pub(super) fn report(secs: f64) {
+    if std::env::var_os("TT_GRID_STATS").is_none() {
+      return;
+    }
+    let mut sizes = std::mem::take(&mut *SIZES.lock().unwrap());
+    if sizes.is_empty() {
+      return;
+    }
+    let stats = |mut v: Vec<usize>| {
+      v.sort_unstable();
+      (v[v.len() / 2], v[v.len() * 9 / 10], v[v.len() - 1])
+    };
+    let conv = stats(sizes.iter().map(|s| s.0).collect());
+    let post = stats(sizes.drain(..).map(|s| s.1).collect());
+    eprintln!("GRID_STATS forward_secs={secs:.3} conv(med,p90,max)={conv:?} posterior(med,p90,max)={post:?}");
   }
 }

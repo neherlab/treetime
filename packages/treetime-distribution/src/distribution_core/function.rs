@@ -206,7 +206,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     false
   }
 
-  pub(crate) fn left_extrap(&self) -> BoundaryBehavior {
+  pub fn left_extrap(&self) -> BoundaryBehavior {
     self.left_extrap
   }
 

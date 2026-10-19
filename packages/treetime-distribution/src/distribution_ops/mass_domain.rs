@@ -69,7 +69,7 @@ pub(crate) fn mass_sizable_profile(f: &DistributionFunction<f64, NegLog>) -> Opt
 
 pub(crate) struct MassSized {
   pub(crate) normalized: DistributionFunction<f64, NegLog>,
-  profile: MassProfile,
+  pub(crate) profile: MassProfile,
 }
 
 impl MassSized {
@@ -273,4 +273,105 @@ fn tail_mass(extrap: BoundaryBehavior, w_edge: f64, t_edge: f64, side: Side) -> 
     BoundaryBehavior::Hard => Ok(0.0),
     BoundaryBehavior::Error => make_error!("Mass domain: {side:?} side has an undeclared (Error) tail"),
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// EXPERIMENT (kb proposal timetree-forward-pass-grid-support): trim hard sides by mass
+
+/// `TT_TRIM=a`: a trimmed hard side becomes a soft tail fitted at the new edge; `TT_TRIM=c`: it stays hard at the new
+/// edge. Unset: no trimming.
+pub fn experiment_trim_mode() -> Option<u8> {
+  std::env::var("TT_TRIM").ok().and_then(|v| v.bytes().next())
+}
+
+pub(crate) fn experiment_coarse() -> bool {
+  std::env::var_os("TT_COARSE").is_some()
+}
+
+/// As `mass_bounded_domain`, but a hard side is trimmed into the grid by mass too
+pub(crate) fn mass_trimmed_domain(profile: &MassProfile, eps: f64) -> Result<(f64, f64), Report> {
+  let target = eps * profile.z;
+  let lo = match profile.left {
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) if profile.left_mass < target => {
+      trim_into_grid(profile, target - profile.left_mass, Side::Left)
+    },
+    _ => lower_edge(profile, target)?,
+  };
+  let hi = match profile.right {
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) if profile.right_mass < target => {
+      trim_into_grid(profile, target - profile.right_mass, Side::Right)
+    },
+    _ => upper_edge(profile, target)?,
+  };
+  if hi <= lo {
+    return make_error!("Mass-trimmed domain collapsed to an empty interval [{lo}, {hi}]");
+  }
+  Ok((lo, hi))
+}
+
+/// Resamples to `[lo, hi]` with spacing at most `max_dx` when given, and turns a hard side that moved inward into the
+/// tail of `mode`
+pub(crate) fn resample_trimmed(
+  normalized: &DistributionFunction<f64, NegLog>,
+  lo: f64,
+  hi: f64,
+  grid_points: usize,
+  max_points: MaxGridPoints,
+  max_dx: Option<f64>,
+  mode: u8,
+) -> Result<Distribution<NegLog>, Report> {
+  if hi <= lo {
+    return make_error!("Mass window collapsed to an empty interval [{lo}, {hi}]");
+  }
+  let mass_width = hi - lo;
+  let target_dx = mass_width / grid_points.saturating_sub(1).max(1).to_f64_exact();
+  let dx = match max_dx {
+    Some(max_dx) => target_dx.min(max_dx),
+    None => target_dx.min(normalized.dx()),
+  };
+  let required = ((mass_width / dx).ceil() + 1.0)
+    .max(grid_points.to_f64_exact())
+    .max(2.0);
+  let n_points = max_points.point_count(required, (lo, hi), dx)?;
+  let mut f = normalized.resample_range_n_points((lo, hi), n_points)?;
+  let moved_left = lo > normalized.x_min() && !f.left_extrap().is_soft();
+  let moved_right = hi < normalized.x_max() && !f.right_extrap().is_soft();
+  if moved_left {
+    f = match mode {
+      b'a' => {
+        let law = SoftTailLaw::fit(f.grid_fn(), Side::Left, DEFAULT_TAIL_FIT_POINTS)?;
+        f.with_left_extrap(BoundaryBehavior::Linear(law))?
+      },
+      _ => f.with_left_extrap(BoundaryBehavior::Hard)?,
+    };
+  }
+  if moved_right {
+    f = match mode {
+      b'a' => {
+        let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
+        f.with_right_extrap(BoundaryBehavior::Linear(law))?
+      },
+      _ => f.with_right_extrap(BoundaryBehavior::Hard)?,
+    };
+  }
+  Ok(Distribution::Function(refit_soft_tails(f)?))
+}
+
+/// Forward posterior trimmed by mass on both sides, hard sides included
+pub fn rewindow_to_mass_trimmed(
+  dist: &Distribution<NegLog>,
+  eps: f64,
+  grid_points: usize,
+  max_points: MaxGridPoints,
+  mode: u8,
+) -> Result<Distribution<NegLog>, Report> {
+  let Distribution::Function(f) = dist else {
+    return Ok(dist.clone());
+  };
+  let Some(sized) = peak_normalized_if_mass_sizable(f) else {
+    return Ok(dist.clone());
+  };
+  let (lo, hi) = mass_trimmed_domain(&sized.profile, eps)?;
+  let max_dx = experiment_coarse().then(|| f.dx());
+  resample_trimmed(&sized.normalized, lo, hi, grid_points, max_points, max_dx, mode)
 }

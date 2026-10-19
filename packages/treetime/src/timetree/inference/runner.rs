@@ -269,7 +269,9 @@ fn compute_branch_distributions_marginal_mode(
 
       debug!("Edge {edge_key:?}: input branch_length = {branch_length:.6e}, gamma = {gamma:.4}");
 
+      let started = std::time::Instant::now();
       let contributions = [partition.create_edge_contribution(edge_key)?];
+      crate::timetree::inference::branch_length_likelihood::experiment_timers::add(0, started.elapsed());
       let indel_count: usize = if no_indels { 0 } else { indel_counts[&edge_key] };
       let distribution = compute_branch_length_distribution(
         &contributions,
@@ -294,7 +296,8 @@ fn compute_branch_distributions_marginal_mode(
       };
       Ok((edge_key, branch))
     })
-    .collect()
+    .collect::<Result<BTreeMap<_, _>, Report>>()
+    .inspect(|_| crate::timetree::inference::branch_length_likelihood::experiment_timers::report())
 }
 
 pub(super) fn create_branch_distributions_input_mode(

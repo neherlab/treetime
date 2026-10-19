@@ -38,7 +38,10 @@ pub(crate) fn compute_branch_length_distribution(
 
   let grid = create_simple_grid(current_branch_length, one_mutation, n_grid_points, min_bl);
 
+  let started = std::time::Instant::now();
   let log_lh = evaluate_log_lh_on_grid(&grid, contributions, indels)?;
+  experiment_timers::add(1, started.elapsed());
+  let started = std::time::Instant::now();
 
   let log_lh = peak_normalize_neg_log(&log_lh)?;
 
@@ -64,8 +67,34 @@ pub(crate) fn compute_branch_length_distribution(
     .with_right_extrap(BoundaryBehavior::Linear(right_boundary))?;
 
   let distribution = Distribution::Function(distribution_fn);
+  experiment_timers::add(2, started.elapsed());
+  let started = std::time::Instant::now();
   let distribution = rewindow_to_mass(&distribution, EPS, n_grid_points, max_points)?;
+  experiment_timers::add(3, started.elapsed());
   Ok(Arc::new(distribution))
+}
+
+/// EXPERIMENT: time split of the branch distributions, printed per round with `TT_GRID_STATS`
+pub(crate) mod experiment_timers {
+  use std::sync::atomic::{AtomicU64, Ordering};
+  use std::time::Duration;
+
+  static NANOS: [AtomicU64; 4] = [AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0), AtomicU64::new(0)];
+
+  pub(crate) fn add(slot: usize, elapsed: Duration) {
+    NANOS[slot].fetch_add(u64::try_from(elapsed.as_nanos()).unwrap_or(u64::MAX), Ordering::Relaxed);
+  }
+
+  pub(crate) fn report() {
+    if std::env::var_os("TT_GRID_STATS").is_none() {
+      return;
+    }
+    let secs: Vec<f64> = NANOS.iter().map(|n| n.swap(0, Ordering::Relaxed) as f64 * 1e-9).collect();
+    eprintln!(
+      "BRANCH_STATS contributions={:.3} grid_eval={:.3} tails={:.3} rewindow={:.3}",
+      secs[0], secs[1], secs[2], secs[3]
+    );
+  }
 }
 
 const MIN_BRANCH_LENGTH_MUTATION_FRACTION: f64 = 0.01;
