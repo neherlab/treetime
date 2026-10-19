@@ -1,6 +1,5 @@
 use crate::config::catalog::SettingSpec;
 use crate::run_checks::SettingPatch;
-use app_commands::config::settings::setting_ref;
 use app_commands::json_value::JsonValue;
 use deser::Serialize;
 use eyre::Report;
@@ -86,7 +85,7 @@ pub fn setting_choices(settings: &[SettingSpec]) -> Result<Vec<SettingChoice>, R
 }
 
 pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> Vec<ActiveChoice> {
-  let value = |key: &str| setting_ref(config, &[key.to_owned()]);
+  let value = |key: &str| config.get(key);
   let flag = |key: &str| value(key).and_then(Value::as_bool).unwrap_or(false);
   CHOICES
     .iter()
@@ -197,7 +196,7 @@ impl OptionDef {
           .map(|(_, value)| value.resolve(key, settings))
           .transpose()?;
         Ok(SettingPatch {
-          path: vec![(*key).to_owned()],
+          key: (*key).to_owned(),
           value,
         })
       })

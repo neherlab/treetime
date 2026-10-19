@@ -1,6 +1,6 @@
 use crate::app_settings::store::AppSettingsStore;
 use app_commands::command::AppCommand;
-use app_commands::config::properties::leaf_properties;
+use app_commands::config::properties::setting_properties;
 use eyre::Report;
 use serde_json::{Map, Value};
 use std::sync::Arc;
@@ -39,9 +39,9 @@ impl RunLimits {
 
 fn has_max_grid_points(command: AppCommand) -> Result<bool, Report> {
   Ok(
-    leaf_properties(command.config_schema().as_value())?
+    setting_properties(command.config_schema().as_value())?
       .iter()
-      .any(|leaf| leaf.key_path.len() == 1 && leaf.key() == MAX_GRID_POINTS_KEY),
+      .any(|property| property.key == MAX_GRID_POINTS_KEY),
   )
 }
 

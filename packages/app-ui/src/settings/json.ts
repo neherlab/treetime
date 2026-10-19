@@ -16,40 +16,14 @@ function canonicalJson(value: JsonValue): string {
   return JSON.stringify(sortKeys(value));
 }
 
-export function getAt(object: SparseConfig, path: readonly string[]): JsonValue | undefined {
-  let current: JsonValue | undefined = object;
+export function withSetting(config: SparseConfig, key: string, value: JsonValue | undefined): SparseConfig {
+  if (value === undefined) {
+    const { [key]: _removed, ...kept } = config;
 
-  for (const key of path) {
-    if (!isJsonObject(current)) {
-      return undefined;
-    }
-
-    current = current[key];
+    return kept;
   }
 
-  return current;
-}
-
-export function setAt(object: SparseConfig, path: readonly string[], value: JsonValue | undefined): SparseConfig {
-  const [head, ...rest] = path;
-
-  if (head === undefined) {
-    return object;
-  }
-
-  if (rest.length === 0) {
-    if (value === undefined) {
-      const { [head]: _removed, ...kept } = object;
-
-      return kept;
-    }
-
-    return { ...object, [head]: value };
-  }
-
-  const child = object[head];
-
-  return { ...object, [head]: setAt(isJsonObject(child) ? child : {}, rest, value) };
+  return { ...config, [key]: value };
 }
 
 export function cloneJson(value: JsonValue): JsonValue {

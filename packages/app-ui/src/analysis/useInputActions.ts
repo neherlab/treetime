@@ -16,7 +16,7 @@ import {
   storedValue,
   storeInOrder,
 } from "./fileSelection";
-import { fromFormValue, toFormValue, type FormConfig } from "./formValues";
+import { toFormValue, type FormConfig } from "./formValues";
 import { pendingUploadRun } from "./pendingUpload";
 
 interface InputActions {
@@ -79,7 +79,7 @@ export function useInputActions(command: AppCommand): InputActions {
       const value = getValues(key);
 
       return source?.origin === "upload" && source.run_id === runId && runId === upload_run_id && value !== undefined
-        ? pathList(fromFormValue(value))
+        ? pathList(value)
         : [];
     },
     [getValues],

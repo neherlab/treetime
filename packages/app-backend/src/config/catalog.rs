@@ -4,15 +4,14 @@ use crate::config::choices::{SettingChoice, setting_choices};
 use crate::config::labels::setting_label;
 use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::setting_arg;
-use app_commands::config::properties::{DEFS_PREFIX, LeafProperty, PathRole, def_pointer, leaf_properties};
-use app_commands::config::settings::setting_ref;
+use app_commands::config::properties::{DEFS_PREFIX, PathRole, SettingProperty, def_pointer, setting_properties};
 use app_commands::json_value::JsonValue;
 use clap::{Arg, Command};
 use deser::Serialize;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use schemars::JsonSchema;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use strum::IntoEnumIterator;
 use treetime_schema::UNSET_KEY;
 use treetime_schema::skip_serializing_optionals;
@@ -27,17 +26,26 @@ pub fn setting_catalog() -> Result<SettingCatalog, Report> {
 pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> {
   let schema = command.config_schema().to_value();
   let cli = command.cli_command();
-  let defaults = Value::Object(command.default_config()?);
-  let leaves = leaf_properties(&schema)?;
+  let defaults = command.default_config()?;
+  let properties = setting_properties(&schema)?;
 
-  let args: Vec<&Arg> = leaves.iter().map(|leaf| setting_arg(&cli, leaf)).try_collect()?;
-  let mut settings = izip!(&leaves, &args)
-    .map(|(leaf, arg)| {
+  let args: Vec<&Arg> = properties
+    .iter()
+    .map(|property| setting_arg(&cli, property))
+    .try_collect()?;
+  let mut settings = izip!(&properties, &args)
+    .map(|(property, arg)| {
       let order = cli
         .get_arguments()
         .position(|candidate| candidate.get_id() == arg.get_id())
         .unwrap_or(usize::MAX);
-      let spec = setting_spec(&schema, leaf, arg, &defaults, conflicts(&cli, &leaves, &args, arg))?;
+      let spec = setting_spec(
+        &schema,
+        property,
+        arg,
+        &defaults,
+        conflicts(&cli, &properties, &args, arg),
+      )?;
       Ok((order, arg.get_display_order(), spec))
     })
     .collect::<Result<Vec<_>, Report>>()?;
@@ -81,9 +89,9 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
   })
 }
 
-fn conflicts(cli: &Command, leaves: &[LeafProperty], args: &[&Arg], arg: &Arg) -> Vec<String> {
+fn conflicts(cli: &Command, properties: &[SettingProperty], args: &[&Arg], arg: &Arg) -> Vec<String> {
   let declared = cli.get_arg_conflicts_with(arg);
-  izip!(leaves, args)
+  izip!(properties, args)
     .filter(|(_, other)| {
       declared.iter().any(|conflict| conflict.get_id() == other.get_id())
         || cli
@@ -91,7 +99,7 @@ fn conflicts(cli: &Command, leaves: &[LeafProperty], args: &[&Arg], arg: &Arg) -
           .iter()
           .any(|conflict| conflict.get_id() == arg.get_id())
     })
-    .map(|(leaf, _)| leaf.key_path.join("."))
+    .map(|(property, _)| property.key.clone())
     .sorted()
     .dedup()
     .collect()
@@ -129,15 +137,15 @@ pub struct CommandSettings {
 
 fn setting_spec(
   schema: &Value,
-  leaf: &LeafProperty,
+  setting: &SettingProperty,
   arg: &Arg,
-  defaults: &Value,
+  defaults: &Map<String, Value>,
   conflicts: Vec<String>,
 ) -> Result<SettingSpec, Report> {
-  let key = leaf.key_path.join(".");
+  let key = setting.key.clone();
   let property = schema
-    .pointer(&leaf.schema_pointer)
-    .ok_or_else(|| make_report!("schema has no property at `{}`", leaf.schema_pointer))?;
+    .pointer(&setting.schema_pointer)
+    .ok_or_else(|| make_report!("schema has no property at `{}`", setting.schema_pointer))?;
   let long = arg
     .get_long()
     .ok_or_else(|| make_report!("config key `{key}` has no command-line flag"))?;
@@ -182,24 +190,15 @@ fn setting_spec(
   };
 
   Ok(SettingSpec {
-    label: setting_label(&leaf.key_path),
-    key,
-    path: leaf.key_path.clone(),
+    label: setting_label(&key),
     flag: format!("--{long}"),
     group: group.to_owned(),
-    role: leaf.path_role.into(),
+    role: setting.path_role.into(),
     kind,
     nullable,
     options,
     item_kind,
-    default_value: setting_ref(
-      defaults
-        .as_object()
-        .ok_or_else(|| make_report!("the defaults of a command must be a mapping of settings"))?,
-      &leaf.key_path,
-    )
-    .cloned()
-    .map(JsonValue),
+    default_value: defaults.get(&key).cloned().map(JsonValue),
     minimum: base.get("minimum").and_then(Value::as_f64),
     examples: property
       .get("examples")
@@ -215,6 +214,7 @@ fn setting_spec(
     conflicts,
     help: description.help,
     more: description.more,
+    key,
   })
 }
 
@@ -223,10 +223,8 @@ fn setting_spec(
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct SettingSpec {
-  /// Key path of the setting joined with `.`, for example `branch_split.method`.
+  /// Key of the setting in the configuration, for example `clock_rate`.
   pub key: String,
-  /// Key path of the setting in the configuration.
-  pub path: Vec<String>,
   /// Name of the setting as the form shows it, for example `Clock rate std. dev.`.
   pub label: String,
   /// Command-line flag, for example `--clock-rate`.

@@ -10,10 +10,8 @@ mod tests {
   #[case::fixed_label(       "clock_std_dev",         "Clock rate std. dev.")]
   #[case::abbreviation(      "output_tree_nwk",       "Output tree Newick")]
   #[case::leading_acronym(   "gtr_iterations",        "GTR iterations")]
-  #[case::nested_key(        "branch_split.n_points", "Branch split: Number of points")]
   #[trace]
   fn test_setting_label(#[case] key: &str, #[case] expected: &str) {
-    let key_path = key.split('.').map(str::to_owned).collect::<Vec<_>>();
-    assert_eq!(expected, setting_label(&key_path));
+    assert_eq!(expected, setting_label(key));
   }
 }

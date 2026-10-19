@@ -194,8 +194,8 @@ fn resolve_text_paths(
   text_keys: &BTreeSet<String>,
 ) -> Result<(), Report> {
   let mut value = Value::Object(mem::take(config));
-  resolve_config_paths_where(&mut value, command.config_schema().as_value(), folder, |key_path| {
-    key_path.first().is_some_and(|key| text_keys.contains(key))
+  resolve_config_paths_where(&mut value, command.config_schema().as_value(), folder, |key| {
+    text_keys.contains(key)
   })?;
   if let Value::Object(settings) = value {
     *config = settings;

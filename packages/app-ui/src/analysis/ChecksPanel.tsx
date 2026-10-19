@@ -107,7 +107,7 @@ export function CheckItem({ check }: { check: RunCheck }) {
 
   const apply = useCallback(() => {
     for (const setting of fix?.patch ?? []) {
-      setValue(setting.path.join("."), toFormValue(setting.value), {
+      setValue(setting.key, toFormValue(setting.value), {
         shouldDirty: true,
         shouldValidate: true,
       });

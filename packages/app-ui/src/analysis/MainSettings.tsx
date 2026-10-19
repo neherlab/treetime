@@ -152,8 +152,8 @@ export function MainSettings({
       reported,
       checked,
       patch: (patches) => {
-        for (const { path, value } of patches) {
-          write(path.join("."), value);
+        for (const { key, value } of patches) {
+          write(key, value);
         }
       },
       reset,

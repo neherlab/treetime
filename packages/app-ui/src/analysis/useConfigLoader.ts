@@ -7,7 +7,7 @@ import { useApiContext } from "../api/context";
 import { commandSettings } from "../settings/catalog";
 import { normalizeConfig, settingValue } from "../settings/config";
 import { baseName, pathList } from "../settings/inputs";
-import { getAt, sameJson } from "../settings/json";
+import { sameJson } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 
 type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
@@ -51,7 +51,7 @@ export function useConfigLoader() {
 
         if (paths.length > 0) {
           sources[spec.key] =
-            previous !== undefined && sameJson(value, getAt(draft.config, spec.path))
+            previous !== undefined && sameJson(value, draft.config[spec.key])
               ? previous
               : { label: paths.map(baseName).join(", "), origin: "config" };
         }
@@ -71,7 +71,7 @@ export function useConfigLoader() {
 function inputSettings(command: AppCommand, config: SparseConfig): SparseConfig {
   return Object.fromEntries(
     commandSettings(command).settings.flatMap((spec) => {
-      const value = getAt(config, spec.path);
+      const value = config[spec.key];
 
       return spec.role === "input" && value !== undefined ? [[spec.key, value] as const] : [];
     }),

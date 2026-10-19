@@ -1,7 +1,7 @@
 use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
 use crate::run_config::RUN_CONFIG_OUTPUT_DIR;
 use app_commands::command::AppCommand;
-use app_commands::config::settings::{has_path, setting_ref};
+use app_commands::config::settings::has_path;
 use app_commands::yaml::yaml_text;
 use app_datasets::schema_directive;
 use clap::{Arg, Command};
@@ -13,7 +13,7 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
 use treetime_utils::io::json::{JsonPretty, json_write_str};
-use treetime_utils::{make_error, make_report};
+use treetime_utils::make_report;
 
 const OUTPUT_ALL_KEY: &str = "output_all";
 
@@ -28,7 +28,7 @@ pub fn config_code(command: AppCommand, config: &Map<String, Value>) -> Result<C
     .settings
     .iter()
     .filter(|spec| matches!(spec.role, SettingRole::Input | SettingRole::InputTemplate))
-    .filter_map(|spec| Some((spec, setting_ref(config, &spec.path)?.clone())))
+    .filter_map(|spec| Some((spec, config.get(&spec.key)?.clone())))
     .filter(|(_, value)| has_path(value))
     .collect_vec();
   let changed = changed_settings(&settings, config);
@@ -72,7 +72,7 @@ fn changed_settings<'a>(settings: &'a CommandSettings, config: &Map<String, Valu
     .iter()
     .filter(|spec| spec.role == SettingRole::Setting)
     .filter_map(|spec| {
-      let value = setting_ref(config, &spec.path)?;
+      let value = config.get(&spec.key)?;
       (Some(value) != spec.default_value.as_deref()).then(|| (spec, value.clone()))
     })
     .collect()
@@ -163,12 +163,8 @@ fn yaml(
   for (spec, value) in inputs {
     lines.extend(yaml_entry(&spec.key, value, CodeLineKind::Input)?);
   }
-  let mut nested = Map::new();
   for (spec, value) in changed {
-    insert_at(&mut nested, &spec.path, value.clone())?;
-  }
-  for (key, value) in &nested {
-    lines.extend(yaml_entry(key, value, CodeLineKind::Changed)?);
+    lines.extend(yaml_entry(&spec.key, value, CodeLineKind::Changed)?);
   }
   lines.extend(yaml_entry(
     OUTPUT_ALL_KEY,
@@ -219,22 +215,6 @@ pub enum CodeLineKind {
   Output,
   /// A comment.
   Comment,
-}
-
-fn insert_at(map: &mut Map<String, Value>, path: &[String], value: Value) -> Result<(), Report> {
-  let Some((last, parents)) = path.split_last() else {
-    return make_error!("a setting must have a key");
-  };
-  let mut current = map;
-  for key in parents {
-    current = current
-      .entry(key.clone())
-      .or_insert_with(|| Value::Object(Map::new()))
-      .as_object_mut()
-      .ok_or_else(|| make_report!("setting `{}` is inside a value that is not a mapping", path.join(".")))?;
-  }
-  current.insert(last.clone(), value);
-  Ok(())
 }
 
 fn list_tokens(arg: &Arg, flag: &str, items: &[Value]) -> Option<Vec<String>> {

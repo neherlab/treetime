@@ -9,7 +9,7 @@ import {
   slotFactsText,
   slotProblems,
 } from "../inputs";
-import { setAt } from "../json";
+import { withSetting } from "../json";
 
 const ZIKA_86 = {
   name: "zika/86",
@@ -55,7 +55,7 @@ describe("inputs", () => {
   });
 
   test("the input check sends the command and its configuration", () => {
-    const config = setAt(defaultConfig(commandSettings("mugration").settings), ["tree"], "t.nwk");
+    const config = withSetting(defaultConfig(commandSettings("mugration").settings), "tree", "t.nwk");
 
     expect(inputFactsRequest("mugration", config)).toStrictEqual({ command: "mugration", config });
   });

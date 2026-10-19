@@ -1,7 +1,7 @@
 use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputNeed};
 use crate::command::AppCommandExt;
 use app_commands::command::AppCommand;
-use app_commands::config::settings::{has_path, setting_ref};
+use app_commands::config::settings::has_path;
 use app_commands::config::source::ConfigProblem;
 use app_commands::json_value::JsonValue;
 use deser::Serialize;
@@ -166,7 +166,7 @@ fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
   let limit = context.command.missing_sequences();
   let ignored = context
     .config
-    .and_then(|config| setting_ref(config, &[IGNORE_MISSING_SEQUENCES_SETTING.to_owned()]))
+    .and_then(|config| config.get(IGNORE_MISSING_SEQUENCES_SETTING))
     == Some(&Value::Bool(true));
   sequence_files(context)
     .filter_map(|alignment| {
@@ -192,7 +192,7 @@ fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
           fix: Some(CheckFix {
             label: "Treat missing sequences as unknown".to_owned(),
             patch: vec![SettingPatch {
-              path: vec![IGNORE_MISSING_SEQUENCES_SETTING.to_owned()],
+              key: IGNORE_MISSING_SEQUENCES_SETTING.to_owned(),
               value: Some(JsonValue(Value::Bool(true))),
             }],
           }),
@@ -439,8 +439,8 @@ pub struct CheckFix {
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct SettingPatch {
-  /// Key path of the setting.
-  pub path: Vec<String>,
+  /// Key of the setting.
+  pub key: String,
   /// The value to set; absent: the setting is removed and takes its default.
   pub value: Option<JsonValue>,
 }

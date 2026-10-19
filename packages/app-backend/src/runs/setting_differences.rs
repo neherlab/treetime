@@ -1,6 +1,5 @@
 use crate::config::catalog::{SettingRole, SettingSpec, command_settings};
 use crate::runs::record::{RunInput, RunRecord};
-use app_commands::config::settings::setting_ref;
 use app_commands::json_value::JsonValue;
 use deser::Serialize;
 use eyre::Report;
@@ -35,7 +34,7 @@ pub fn setting_differences(first: &RunRecord, second: &RunRecord) -> Result<Vec<
 }
 
 fn setting_value(settings: &Map<String, Value>, spec: &SettingSpec) -> Option<JsonValue> {
-  setting_ref(settings, &spec.path).cloned().map(JsonValue)
+  settings.get(&spec.key).cloned().map(JsonValue)
 }
 
 fn input_difference(spec: &SettingSpec, first: &RunRecord, second: &RunRecord) -> Option<SettingDifference> {

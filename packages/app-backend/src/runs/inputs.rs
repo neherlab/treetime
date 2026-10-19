@@ -1,8 +1,7 @@
 use crate::runs::record::RunInput;
 use app_commands::command::AppCommand;
 use app_commands::commands::ancestral::aa_node_data::translation_input_paths;
-use app_commands::config::properties::{PathRole, leaf_properties};
-use app_commands::config::settings::{remove_setting, setting_mut, setting_ref};
+use app_commands::config::properties::{PathRole, setting_properties};
 use deser::adapters::As;
 use deser_serde::Serde;
 use eyre::{Report, WrapErr};
@@ -20,19 +19,21 @@ const HASH_BUFFER_SIZE: usize = 1 << 16;
 pub fn hash_inputs(command: AppCommand, config: &Map<String, Value>) -> Result<HashedInputs, Report> {
   let mut canonical = config.clone();
   let mut inputs = vec![];
-  for leaf in leaf_properties(command.config_schema().as_value())? {
-    let setting = leaf.key_path.join(".");
-    match leaf.path_role {
-      Some(PathRole::Output) => remove_setting(&mut canonical, &leaf.key_path),
+  for property in setting_properties(command.config_schema().as_value())? {
+    let setting = property.key.as_str();
+    match property.path_role {
+      Some(PathRole::Output) => {
+        canonical.remove(setting);
+      },
       Some(PathRole::Input) => {
-        if let Some(value) = setting_mut(&mut canonical, &leaf.key_path) {
-          hash_path_values(&setting, value, &mut inputs)?;
+        if let Some(value) = canonical.get_mut(setting) {
+          hash_path_values(setting, value, &mut inputs)?;
         }
       },
       Some(PathRole::InputTemplate) => {
-        let paths = template_input_paths(config, &leaf.key_path)?;
-        if let Some(value) = setting_mut(&mut canonical, &leaf.key_path) {
-          let recorded: Vec<RunInput> = paths.iter().map(|path| record_input(&setting, path)).try_collect()?;
+        let paths = template_input_paths(config, setting)?;
+        if let Some(value) = canonical.get_mut(setting) {
+          let recorded: Vec<RunInput> = paths.iter().map(|path| record_input(setting, path)).try_collect()?;
           *value = Value::Array(
             recorded
               .iter()
@@ -116,8 +117,8 @@ fn hex(bytes: &[u8]) -> Result<String, fmt::Error> {
   })
 }
 
-pub fn template_input_paths(config: &Map<String, Value>, key_path: &[String]) -> Result<Vec<PathBuf>, Report> {
-  let Some(Value::String(template)) = setting_ref(config, key_path) else {
+pub fn template_input_paths(config: &Map<String, Value>, key: &str) -> Result<Vec<PathBuf>, Report> {
+  let Some(Value::String(template)) = config.get(key) else {
     return Ok(vec![]);
   };
   let cdses = config

@@ -1,7 +1,6 @@
 use app_backend::runs::inputs::template_input_paths;
 use app_commands::command::AppCommand;
-use app_commands::config::properties::{PathRole, leaf_properties};
-use app_commands::config::settings::setting_mut;
+use app_commands::config::properties::{PathRole, setting_properties};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use serde_json::{Map, Value};
@@ -32,24 +31,24 @@ impl PathPolicy {
     let Value::Object(settings) = config else {
       return make_error!("a command configuration must be a mapping of settings");
     };
-    let leaves = leaf_properties(command.config_schema().as_value())?;
+    let properties = setting_properties(command.config_schema().as_value())?;
 
-    for leaf in &leaves {
-      match leaf.path_role {
+    for property in &properties {
+      match property.path_role {
         Some(PathRole::Input) => {
-          if let Some(value) = setting_mut(settings, &leaf.key_path) {
-            self.confine_value(&leaf.key_path.join("."), value)?;
+          if let Some(value) = settings.get_mut(&property.key) {
+            self.confine_value(&property.key, value)?;
           }
         },
         Some(PathRole::InputTemplate | PathRole::Output) | None => {},
       }
     }
 
-    for leaf in leaves
+    for property in properties
       .iter()
-      .filter(|leaf| leaf.path_role == Some(PathRole::InputTemplate))
+      .filter(|property| property.path_role == Some(PathRole::InputTemplate))
     {
-      self.confine_template(&leaf.key_path.join("."), settings, &leaf.key_path)?;
+      self.confine_template(&property.key, settings)?;
     }
 
     Ok(())
@@ -101,13 +100,8 @@ impl PathPolicy {
     }
   }
 
-  fn confine_template(
-    &self,
-    setting: &str,
-    settings: &mut Map<String, Value>,
-    key_path: &[String],
-  ) -> Result<(), Report> {
-    let Some(Value::String(template)) = setting_mut(settings, key_path) else {
+  fn confine_template(&self, setting: &str, settings: &mut Map<String, Value>) -> Result<(), Report> {
+    let Some(Value::String(template)) = settings.get_mut(setting) else {
       return Ok(());
     };
     let in_examples_dir = self.examples_dir.join(&*template);
@@ -119,7 +113,7 @@ impl PathPolicy {
     .to_string_lossy()
     .into_owned();
 
-    let paths = template_input_paths(settings, key_path)
+    let paths = template_input_paths(settings, setting)
       .wrap_err_with(|| format!("When listing the inputs of setting `{setting}`"))?;
     let rejected = paths
       .iter()

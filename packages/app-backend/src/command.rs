@@ -16,9 +16,8 @@ use app_commands::commands::shared::output_args::{
 };
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_commands::config::load::{check_command_config, load_config_document, merge_value};
-use app_commands::config::properties::{PathRole, leaf_properties};
+use app_commands::config::properties::{PathRole, setting_properties};
 use app_commands::config::schema::command_schema;
-use app_commands::config::settings::{remove_setting, setting_ref};
 use app_commands::config::source::{ConfigSource, render_and_bail};
 use app_commands::json_value::SparseConfig;
 use app_output::output_plan::{CommandKind, OutputSelection, PathPlaceholder, ResolvedOutputs};
@@ -166,9 +165,9 @@ impl AppCommandExt for AppCommand {
   }
 
   fn remove_output_paths(self, settings: &mut Map<String, Value>) -> Result<(), Report> {
-    for leaf in leaf_properties(self.config_schema().as_value())? {
-      if leaf.path_role == Some(PathRole::Output) {
-        remove_setting(settings, &leaf.key_path);
+    for property in setting_properties(self.config_schema().as_value())? {
+      if property.path_role == Some(PathRole::Output) {
+        settings.remove(&property.key);
       }
     }
     Ok(())
@@ -330,11 +329,11 @@ fn changed_settings(
   schema: &Value,
 ) -> Result<Vec<String>, Report> {
   Ok(
-    leaf_properties(schema)?
+    setting_properties(schema)?
       .into_iter()
-      .filter(|leaf| leaf.path_role.is_none())
-      .filter(|leaf| setting_ref(config, &leaf.key_path) != setting_ref(defaults, &leaf.key_path))
-      .map(|leaf| leaf.key_path.join("."))
+      .filter(|property| property.path_role.is_none())
+      .filter(|property| config.get(&property.key) != defaults.get(&property.key))
+      .map(|property| property.key)
       .collect(),
   )
 }

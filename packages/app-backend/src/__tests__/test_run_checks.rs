@@ -240,7 +240,7 @@ mod tests {
         Some(CheckFix {
           label: o!("Treat missing sequences as unknown"),
           patch: vec![SettingPatch {
-            path: vec_of_owned!["ignore_missing_alns"],
+            key: o!("ignore_missing_alns"),
             value: Some(JsonValue(Value::Bool(true))),
           }],
         })

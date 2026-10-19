@@ -1,6 +1,6 @@
 import { commandSettings } from "../catalog";
 import { defaultConfig } from "../config";
-import { setAt } from "../json";
+import { withSetting } from "../json";
 import { matchingSpecs } from "../search";
 
 const specs = commandSettings("clock").settings;
@@ -13,7 +13,7 @@ describe("setting search", () => {
   });
 
   test("changed only keeps the changed settings", () => {
-    const config = setAt(defaultConfig(specs), ["keep_root"], true);
+    const config = withSetting(defaultConfig(specs), "keep_root", true);
 
     expect(matchingSpecs(specs, config, "", true).map((spec) => spec.key)).toStrictEqual(["keep_root"]);
   });

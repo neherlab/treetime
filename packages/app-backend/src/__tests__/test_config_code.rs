@@ -4,7 +4,7 @@ mod tests {
   use crate::config::catalog::{SettingRole, command_settings};
   use crate::config::code::{CodeLineKind, config_code};
   use app_commands::command::AppCommand;
-  use helpers::{changed_value, load_yaml, parse_command_line, set_setting, with_output_dir};
+  use helpers::{changed_value, load_yaml, parse_command_line, with_output_dir};
   use indoc::indoc;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -21,7 +21,7 @@ mod tests {
         }
         let mut config = defaults.clone();
         let value = changed_value(&spec);
-        set_setting(&mut config, &spec.path, value.clone());
+        config.insert(spec.key.clone(), value.clone());
         let code = config_code(command, &config).unwrap();
         assert!(
           code.command_line.iter().all(|line| line.kind != CodeLineKind::Comment),
@@ -140,7 +140,7 @@ mod tests {
           continue;
         }
         let mut config = defaults.clone();
-        set_setting(&mut config, &spec.path, changed_value(&spec));
+        config.insert(spec.key.clone(), changed_value(&spec));
         let code = config_code(command, &config).unwrap();
         assert_eq!(
           Value::Object(with_output_dir(config)),
@@ -236,18 +236,6 @@ mod tests {
           ListItemKind::Integer => json!([1, 2]),
         },
       }
-    }
-
-    pub(super) fn set_setting(config: &mut Map<String, Value>, path: &[String], value: Value) {
-      let (last, parents) = path.split_last().unwrap();
-      let parent = parents.iter().fold(config, |map, key| {
-        map
-          .entry(key.clone())
-          .or_insert_with(|| json!({}))
-          .as_object_mut()
-          .unwrap()
-      });
-      parent.insert(last.clone(), value);
     }
 
     pub(super) fn with_output_dir(mut config: Map<String, Value>) -> Map<String, Value> {

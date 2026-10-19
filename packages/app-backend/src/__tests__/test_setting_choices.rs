@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_check_config::tests::helpers::{fresh_draft, set_at};
+  use crate::__tests__::test_check_config::tests::helpers::fresh_draft;
   use crate::check_config::CheckConfigResponse;
   use crate::config::catalog::command_settings;
   use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOptionName};
   use app_commands::command::AppCommand;
-  use app_commands::config::properties::leaf_properties;
-  use app_commands::config::settings::remove_setting;
+  use app_commands::config::properties::setting_properties;
   use helpers::{active_choices_of, check};
   use itertools::{Itertools, iproduct};
   use pretty_assertions::assert_eq;
@@ -20,10 +19,10 @@ mod tests {
     let unknown = AppCommand::iter()
       .flat_map(|command| {
         let settings = command_settings(command).unwrap();
-        let leaves: BTreeSet<String> = leaf_properties(command.config_schema().as_value())
+        let keys: BTreeSet<String> = setting_properties(command.config_schema().as_value())
           .unwrap()
-          .iter()
-          .map(|leaf| leaf.key_path.join("."))
+          .into_iter()
+          .map(|setting| setting.key)
           .collect();
         let named = settings
           .choices
@@ -38,14 +37,14 @@ mod tests {
                   .settings
                   .iter()
                   .cloned()
-                  .chain(option.patch.iter().map(|patch| patch.path.join(".")))
+                  .chain(option.patch.iter().map(|patch| patch.key.clone()))
               }))
           })
           .chain(settings.main_settings.iter().cloned())
           .collect_vec();
         named
           .into_iter()
-          .filter(|key| !leaves.contains(key))
+          .filter(|key| !keys.contains(key))
           .map(|key| format!("{command}: {key}"))
           .collect_vec()
       })
@@ -96,8 +95,12 @@ mod tests {
               let mut draft = fresh_draft(command);
               for patch in &option.patch {
                 match &patch.value {
-                  Some(value) => set_at(&mut draft, &patch.path, value.0.clone()),
-                  None => remove_setting(&mut draft, &patch.path),
+                  Some(value) => {
+                    draft.insert(patch.key.clone(), value.0.clone());
+                  },
+                  None => {
+                    draft.remove(&patch.key);
+                  },
                 }
               }
               let expected = ActiveChoice {

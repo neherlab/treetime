@@ -12,7 +12,7 @@ import { baseName, pathList, slotFactsText, slotProblems } from "../settings/inp
 import { useDraftStore } from "../store/draft";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { EXAMPLES_PANEL_KINDS, EXAMPLES_PANELS, ExamplesPanel, type ExamplesPanelKind } from "./ExamplesPanel";
-import { fromFormValue, type FormConfig } from "./formValues";
+import type { FormConfig } from "./formValues";
 import { PathPicker, useFileDrop } from "./PathPicker";
 
 export function InputsSection({ command, facts }: { command: AppCommand; facts: InputFacts | undefined }) {
@@ -72,7 +72,7 @@ function InputSlotRow({
   const watched = useWatch<FormConfig>({ name: slot.kind });
   const source = useDraftStore((state) => state.draft.sources[slot.kind]);
   const { getRootProps, getInputProps, isDragActive } = useFileDrop(command, slot.kind, slot.list);
-  const paths = pathList(watched === undefined ? undefined : fromFormValue(watched));
+  const paths = pathList(watched);
   const factsText = slotFactsText(slot.kind, facts, commandSettings(command).uses_dates);
   const problems = slotProblems(slot.kind, facts);
 

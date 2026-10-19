@@ -525,7 +525,7 @@ pub(crate) mod tests {
       let mut draft = Map::new();
       for spec in command_settings(command).unwrap().settings {
         if let Some(default) = spec.default_value {
-          set_at(&mut draft, &spec.path, default.0);
+          draft.insert(spec.key, default.0);
         }
       }
       for input in command
@@ -544,20 +544,6 @@ pub(crate) mod tests {
         draft.insert(o!("attribute"), json!("country"));
       }
       draft
-    }
-
-    pub(crate) fn set_at(config: &mut Map<String, Value>, path: &[String], value: Value) {
-      let Some((last, parents)) = path.split_last() else {
-        return;
-      };
-      let parent = parents.iter().fold(config, |map, key| {
-        map
-          .entry(key.clone())
-          .or_insert_with(|| json!({}))
-          .as_object_mut()
-          .expect("a setting group is a mapping")
-      });
-      parent.insert(last.clone(), value);
     }
   }
 }

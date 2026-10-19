@@ -2052,12 +2052,9 @@
         "description": "New value of one setting.",
         "type": "object",
         "properties": {
-          "path": {
-            "description": "Key path of the setting.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "key": {
+            "description": "Key of the setting.",
+            "type": "string"
           },
           "value": {
             "description": "The value to set; absent: the setting is removed and takes its default.",
@@ -2066,7 +2063,7 @@
           }
         },
         "required": [
-          "path"
+          "key"
         ]
       },
       "ActiveChoice": {
@@ -5365,15 +5362,8 @@
         "type": "object",
         "properties": {
           "key": {
-            "description": "Key path of the setting joined with `.`, for example `branch_split.method`.",
+            "description": "Key of the setting in the configuration, for example `clock_rate`.",
             "type": "string"
-          },
-          "path": {
-            "description": "Key path of the setting in the configuration.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           },
           "label": {
             "description": "Name of the setting as the form shows it, for example `Clock rate std. dev.`.",
@@ -5453,7 +5443,6 @@
         },
         "required": [
           "key",
-          "path",
           "label",
           "flag",
           "group",

@@ -2,7 +2,7 @@ import type { AppCommand, JobId, UiDraft } from "@neherlab/app-contracts";
 
 import { commandSettings } from "../settings/catalog";
 import { defaultConfig, resetValue } from "../settings/config";
-import { setAt } from "../settings/json";
+import { withSetting } from "../settings/json";
 
 export function freshDraft(command: AppCommand): UiDraft {
   return {
@@ -31,7 +31,7 @@ export function forgetRuns(draft: UiDraft, lost: ReadonlySet<JobId>): ForgottenR
 
   const config = commandSettings(draft.command)
     .settings.filter((spec) => keys.has(spec.key))
-    .reduce((current, spec) => setAt(current, spec.path, resetValue(spec)), draft.config);
+    .reduce((current, spec) => withSetting(current, spec.key, resetValue(spec)), draft.config);
 
   const sources = Object.fromEntries(Object.entries(draft.sources).filter(([key]) => !keys.has(key)));
   const { upload_run_id: uploadRun, from_run_id: fromRun, ...kept } = draft;

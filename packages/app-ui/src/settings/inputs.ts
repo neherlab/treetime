@@ -12,7 +12,6 @@ import type {
 import * as z from "zod";
 
 import { commandSettings } from "./catalog";
-import { getAt } from "./json";
 
 export interface InputAssignment {
   key: string;
@@ -55,7 +54,7 @@ export function runInputAssignments(command: AppCommand, inputs: readonly RunInp
 }
 
 export function inputFactsRequest(command: AppCommand, config: SparseConfig): CheckInputsRequest | null {
-  const given = commandSettings(command).inputs.some((slot) => pathList(getAt(config, [slot.kind])).length > 0);
+  const given = commandSettings(command).inputs.some((slot) => pathList(config[slot.kind]).length > 0);
 
   return given ? { command, config } : null;
 }

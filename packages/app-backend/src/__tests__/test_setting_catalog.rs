@@ -91,7 +91,6 @@ mod tests {
     assert_eq!(
       SettingSpec {
         key: o!("clock_rate"),
-        path: vec_of_owned!["clock_rate"],
         label: o!("Clock rate"),
         flag: o!("--clock-rate"),
         group: o!("Molecular clock"),

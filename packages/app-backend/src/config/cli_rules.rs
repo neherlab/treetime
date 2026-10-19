@@ -1,10 +1,8 @@
 use crate::config::catalog::{CommandSettings, SettingRole, SettingSpec, command_settings};
 use app_commands::command::AppCommand;
-use app_commands::config::settings::setting_ref;
 use app_commands::config::source::{RawDiagnostic, escape_pointer};
 use clap::{Arg, ArgAction, Command};
 use eyre::Report;
-use itertools::Itertools;
 use serde_json::{Map, Value};
 use treetime_utils::make_report;
 
@@ -35,7 +33,7 @@ fn given_settings<'a>(
     .iter()
     .filter(|spec| spec.role != SettingRole::Output)
     .filter_map(|spec| {
-      let value = setting_ref(config, &spec.path)?;
+      let value = config.get(&spec.key)?;
       (Some(value) != spec.default_value.as_deref()).then_some((spec, value))
     })
     .map(|(spec, value)| {
@@ -123,9 +121,5 @@ const fn plural<'a>(count: usize, one: &'a str, many: &'a str) -> &'a str {
 }
 
 fn setting_pointer(spec: &SettingSpec) -> String {
-  spec
-    .path
-    .iter()
-    .map(|part| format!("/{}", escape_pointer(part)))
-    .join("")
+  format!("/{}", escape_pointer(&spec.key))
 }

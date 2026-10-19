@@ -232,7 +232,7 @@ export const zCheckLevel = z.union([
  * New value of one setting.
  */
 export const zSettingPatch = z.object({
-  path: z.array(z.string()),
+  key: z.string(),
   value: zJsonValue.optional()
 });
 
@@ -1238,7 +1238,6 @@ export const zListItemKind = z.enum([
  */
 export const zSettingSpec = z.object({
   key: z.string(),
-  path: z.array(z.string()),
   label: z.string(),
   flag: z.string(),
   group: z.string(),

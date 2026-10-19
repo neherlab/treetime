@@ -295,8 +295,7 @@ search at rate zero, exact instead of Brent. The library tests pass unchanged ap
 dengue/100 golden master holds to $10^{-10}$. The clock-model statistics report $\chi^2$, $r$ and the Gaussian
 `rate_std` in place of the unscaled covariance, and a timetree rate from the marginal-likelihood step is reported as
 estimated rather than fixed. Left for the engineer: the smoke matrix
-([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)) and
-the nested-setting support of the app ([N-app-nested-settings-have-no-nested-setting.md](../issues/N-app-nested-settings-have-no-nested-setting.md)).
+([M-smoke-clock-ols-retired-flags-and-snapshots.md](../issues/M-smoke-clock-ols-retired-flags-and-snapshots.md)).
 The pre-filter's relaxed positive rate lost its cause
 ([N-clock-prefilter-positive-rate-relaxation-without-its-cause.md](../issues/N-clock-prefilter-positive-rate-relaxation-without-its-cause.md)).
 

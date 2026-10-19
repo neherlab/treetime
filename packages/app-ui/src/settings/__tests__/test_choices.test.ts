@@ -6,13 +6,13 @@ const COALESCENT: SettingChoice = {
   choice: "coalescent-prior",
   keys: ["coalescent", "coalescent_opt"],
   options: [
-    { option: "none", patch: [{ path: ["coalescent"] }, { path: ["coalescent_opt"] }], settings: [] },
+    { option: "none", patch: [{ key: "coalescent" }, { key: "coalescent_opt" }], settings: [] },
     {
       option: "fixed",
-      patch: [{ path: ["coalescent"], value: 0.5 }, { path: ["coalescent_opt"] }],
+      patch: [{ key: "coalescent", value: 0.5 }, { key: "coalescent_opt" }],
       settings: ["coalescent"],
     },
-    { option: "optimized", patch: [{ path: ["coalescent"] }, { path: ["coalescent_opt"], value: true }], settings: [] },
+    { option: "optimized", patch: [{ key: "coalescent" }, { key: "coalescent_opt", value: true }], settings: [] },
   ],
 };
 

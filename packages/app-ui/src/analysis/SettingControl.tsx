@@ -11,7 +11,7 @@ import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Switch } from "../ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
 import { settingFieldId } from "./fieldIds";
-import { fromFormValue, toFormValue, type FormConfig } from "./formValues";
+import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";
 import { PathPicker } from "./PathPicker";
 
@@ -278,7 +278,7 @@ function scalarText(value: JsonValue): string {
 function useSetting(spec: SettingSpec) {
   const { field, fieldState } = useController<FormConfig>({ name: spec.key });
   const watched = useWatch<FormConfig>({ name: spec.key });
-  const value = watched === undefined ? undefined : fromFormValue(watched);
+  const value = watched;
   const { onChange } = field;
   const set = useCallback((next: JsonValue) => onChange(toFormValue(next)), [onChange]);
   const unset = useCallback(() => onChange(undefined), [onChange]);

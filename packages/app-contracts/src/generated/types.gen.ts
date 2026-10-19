@@ -434,9 +434,9 @@ export type CheckFix = {
  */
 export type SettingPatch = {
   /**
-   * Key path of the setting.
+   * Key of the setting.
    */
-  path: Array<string>;
+  key: string;
   /**
    * The value to set; absent: the setting is removed and takes its default.
    */
@@ -2519,13 +2519,9 @@ export type ChoiceOption = {
  */
 export type SettingSpec = {
   /**
-   * Key path of the setting joined with `.`, for example `branch_split.method`.
+   * Key of the setting in the configuration, for example `clock_rate`.
    */
   key: string;
-  /**
-   * Key path of the setting in the configuration.
-   */
-  path: Array<string>;
   /**
    * Name of the setting as the form shows it, for example `Clock rate std. dev.`.
    */

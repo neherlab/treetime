@@ -1,13 +1,13 @@
 import type { SparseConfig, JsonValue, SettingSpec } from "@neherlab/app-contracts";
 
-import { cloneJson, getAt, sameJson, setAt } from "./json";
+import { cloneJson, sameJson, withSetting } from "./json";
 
 export function defaultConfig(specs: readonly SettingSpec[]): SparseConfig {
   let config: SparseConfig = {};
 
   for (const spec of specs) {
     if (spec.default_value !== undefined) {
-      config = setAt(config, spec.path, cloneJson(spec.default_value));
+      config = withSetting(config, spec.key, cloneJson(spec.default_value));
     }
   }
 
@@ -15,7 +15,7 @@ export function defaultConfig(specs: readonly SettingSpec[]): SparseConfig {
 }
 
 export function settingValue(config: SparseConfig, spec: SettingSpec): JsonValue | undefined {
-  return getAt(config, spec.path) ?? spec.default_value;
+  return config[spec.key] ?? spec.default_value;
 }
 
 export function isChanged(config: SparseConfig, spec: SettingSpec): boolean {
@@ -34,10 +34,10 @@ export function normalizeConfig(specs: readonly SettingSpec[], config: SparseCon
   let normalized = defaultConfig(specs);
 
   for (const spec of specs) {
-    const value = getAt(config, spec.path);
+    const value = config[spec.key];
 
     if (value !== undefined && spec.role !== "output") {
-      normalized = setAt(normalized, spec.path, cloneJson(value));
+      normalized = withSetting(normalized, spec.key, cloneJson(value));
     }
   }
 
@@ -56,10 +56,10 @@ export function carryOverConfig(
   let config = defaultConfig(specs);
 
   for (const spec of specs) {
-    const value = getAt(previous, spec.path);
+    const value = previous[spec.key];
 
     if (carried.has(spec.key) && value !== undefined && acceptsValue(spec, value)) {
-      config = setAt(config, spec.path, cloneJson(value));
+      config = withSetting(config, spec.key, cloneJson(value));
     }
   }
 

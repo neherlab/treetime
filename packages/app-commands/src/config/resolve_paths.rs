@@ -1,5 +1,4 @@
-use crate::config::properties::{PathRole, leaf_properties};
-use crate::config::settings::setting_mut;
+use crate::config::properties::{PathRole, setting_properties};
 use eyre::Report;
 use serde_json::Value;
 use std::path::Path;
@@ -15,20 +14,20 @@ pub fn resolve_config_paths_where(
   config: &mut Value,
   schema: &Value,
   base: &Path,
-  include: impl Fn(&[String]) -> bool,
+  include: impl Fn(&str) -> bool,
 ) -> Result<(), Report> {
   let Value::Object(settings) = config else {
     return Ok(());
   };
-  for leaf in leaf_properties(schema)? {
+  for property in setting_properties(schema)? {
     if !matches!(
-      leaf.path_role,
+      property.path_role,
       Some(PathRole::Input | PathRole::InputTemplate | PathRole::Output)
-    ) || !include(&leaf.key_path)
+    ) || !include(&property.key)
     {
       continue;
     }
-    if let Some(value) = setting_mut(settings, &leaf.key_path) {
+    if let Some(value) = settings.get_mut(&property.key) {
       resolve_value(value, base)?;
     }
   }

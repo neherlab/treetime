@@ -104,14 +104,10 @@
               "option": "estimate",
               "patch": [
                 {
-                  "path": [
-                    "clock_rate"
-                  ]
+                  "key": "clock_rate"
                 },
                 {
-                  "path": [
-                    "clock_std_dev"
-                  ]
+                  "key": "clock_std_dev"
                 }
               ],
               "settings": []
@@ -120,15 +116,11 @@
               "option": "fixed",
               "patch": [
                 {
-                  "path": [
-                    "clock_rate"
-                  ],
+                  "key": "clock_rate",
                   "value": 0.001
                 },
                 {
-                  "path": [
-                    "clock_std_dev"
-                  ]
+                  "key": "clock_std_dev"
                 }
               ],
               "settings": [
@@ -152,29 +144,19 @@
               "option": "none",
               "patch": [
                 {
-                  "path": [
-                    "coalescent"
-                  ]
+                  "key": "coalescent"
                 },
                 {
-                  "path": [
-                    "coalescent_opt"
-                  ]
+                  "key": "coalescent_opt"
                 },
                 {
-                  "path": [
-                    "coalescent_skyline"
-                  ]
+                  "key": "coalescent_skyline"
                 },
                 {
-                  "path": [
-                    "skyline_n_points"
-                  ]
+                  "key": "skyline_n_points"
                 },
                 {
-                  "path": [
-                    "skyline_stiffness"
-                  ]
+                  "key": "skyline_stiffness"
                 }
               ],
               "settings": []
@@ -183,30 +165,20 @@
               "option": "fixed",
               "patch": [
                 {
-                  "path": [
-                    "coalescent"
-                  ],
+                  "key": "coalescent",
                   "value": 1.0
                 },
                 {
-                  "path": [
-                    "coalescent_opt"
-                  ]
+                  "key": "coalescent_opt"
                 },
                 {
-                  "path": [
-                    "coalescent_skyline"
-                  ]
+                  "key": "coalescent_skyline"
                 },
                 {
-                  "path": [
-                    "skyline_n_points"
-                  ]
+                  "key": "skyline_n_points"
                 },
                 {
-                  "path": [
-                    "skyline_stiffness"
-                  ]
+                  "key": "skyline_stiffness"
                 }
               ],
               "settings": [
@@ -217,30 +189,20 @@
               "option": "optimized",
               "patch": [
                 {
-                  "path": [
-                    "coalescent"
-                  ]
+                  "key": "coalescent"
                 },
                 {
-                  "path": [
-                    "coalescent_opt"
-                  ],
+                  "key": "coalescent_opt",
                   "value": true
                 },
                 {
-                  "path": [
-                    "coalescent_skyline"
-                  ]
+                  "key": "coalescent_skyline"
                 },
                 {
-                  "path": [
-                    "skyline_n_points"
-                  ]
+                  "key": "skyline_n_points"
                 },
                 {
-                  "path": [
-                    "skyline_stiffness"
-                  ]
+                  "key": "skyline_stiffness"
                 }
               ],
               "settings": []
@@ -249,30 +211,20 @@
               "option": "skyline",
               "patch": [
                 {
-                  "path": [
-                    "coalescent"
-                  ]
+                  "key": "coalescent"
                 },
                 {
-                  "path": [
-                    "coalescent_opt"
-                  ]
+                  "key": "coalescent_opt"
                 },
                 {
-                  "path": [
-                    "coalescent_skyline"
-                  ],
+                  "key": "coalescent_skyline",
                   "value": true
                 },
                 {
-                  "path": [
-                    "skyline_n_points"
-                  ]
+                  "key": "skyline_n_points"
                 },
                 {
-                  "path": [
-                    "skyline_stiffness"
-                  ]
+                  "key": "skyline_stiffness"
                 }
               ],
               "settings": [
@@ -293,14 +245,10 @@
               "option": "reroot",
               "patch": [
                 {
-                  "path": [
-                    "reroot"
-                  ]
+                  "key": "reroot"
                 },
                 {
-                  "path": [
-                    "keep_root"
-                  ]
+                  "key": "keep_root"
                 }
               ],
               "settings": [
@@ -311,14 +259,10 @@
               "option": "keep",
               "patch": [
                 {
-                  "path": [
-                    "reroot"
-                  ]
+                  "key": "reroot"
                 },
                 {
-                  "path": [
-                    "keep_root"
-                  ],
+                  "key": "keep_root",
                   "value": true
                 }
               ],
@@ -330,9 +274,6 @@
       "settings": [
         {
           "key": "alignment",
-          "path": [
-            "alignment"
-          ],
           "label": "Alignment",
           "flag": "--alignment",
           "group": "Input data",
@@ -352,9 +293,6 @@
         },
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -373,9 +311,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -444,9 +379,6 @@
         },
         {
           "key": "vcf_reference",
-          "path": [
-            "vcf_reference"
-          ],
           "label": "VCF reference",
           "flag": "--vcf-reference",
           "group": "Input data",
@@ -465,9 +397,6 @@
         },
         {
           "key": "metadata",
-          "path": [
-            "metadata"
-          ],
           "label": "Metadata",
           "flag": "--metadata",
           "group": "Input data",
@@ -486,9 +415,6 @@
         },
         {
           "key": "metadata_id_columns",
-          "path": [
-            "metadata_id_columns"
-          ],
           "label": "Metadata id columns",
           "flag": "--metadata-id-columns",
           "group": "Input data",
@@ -512,9 +438,6 @@
         },
         {
           "key": "metadata_delimiters",
-          "path": [
-            "metadata_delimiters"
-          ],
           "label": "Metadata delimiters",
           "flag": "--metadata-delimiters",
           "group": "Input data",
@@ -538,9 +461,6 @@
         },
         {
           "key": "date_column",
-          "path": [
-            "date_column"
-          ],
           "label": "Date column",
           "flag": "--date-column",
           "group": "Input data",
@@ -559,9 +479,6 @@
         },
         {
           "key": "date_format",
-          "path": [
-            "date_format"
-          ],
           "label": "Date format",
           "flag": "--date-format",
           "group": "Input data",
@@ -581,9 +498,6 @@
         },
         {
           "key": "sequence_length",
-          "path": [
-            "sequence_length"
-          ],
           "label": "Sequence length",
           "flag": "--sequence-length",
           "group": "Input data",
@@ -603,9 +517,6 @@
         },
         {
           "key": "alphabet",
-          "path": [
-            "alphabet"
-          ],
           "label": "Alphabet",
           "flag": "--alphabet",
           "group": "Input data",
@@ -637,9 +548,6 @@
         },
         {
           "key": "zero_based",
-          "path": [
-            "zero_based"
-          ],
           "label": "Zero based",
           "flag": "--zero-based",
           "group": "Input data",
@@ -659,9 +567,6 @@
         },
         {
           "key": "aa",
-          "path": [
-            "aa"
-          ],
           "label": "Amino-acid",
           "flag": "--aa",
           "group": "Input data",
@@ -681,9 +586,6 @@
         },
         {
           "key": "clock_rate",
-          "path": [
-            "clock_rate"
-          ],
           "label": "Clock rate",
           "flag": "--clock-rate",
           "group": "Molecular clock",
@@ -704,9 +606,6 @@
         },
         {
           "key": "clock_std_dev",
-          "path": [
-            "clock_std_dev"
-          ],
           "label": "Clock rate std. dev.",
           "flag": "--clock-std-dev",
           "group": "Molecular clock",
@@ -725,9 +624,6 @@
         },
         {
           "key": "relax",
-          "path": [
-            "relax"
-          ],
           "label": "Relaxed clock (slack, coupling)",
           "flag": "--relax",
           "group": "Molecular clock",
@@ -753,9 +649,6 @@
         },
         {
           "key": "clock_filter",
-          "path": [
-            "clock_filter"
-          ],
           "label": "Clock filter",
           "flag": "--clock-filter",
           "group": "Molecular clock",
@@ -775,9 +668,6 @@
         },
         {
           "key": "n_iqd",
-          "path": [
-            "n_iqd"
-          ],
           "label": "Number of IQD",
           "flag": "--n-iqd",
           "group": "Molecular clock",
@@ -796,9 +686,6 @@
         },
         {
           "key": "allow_negative_rate",
-          "path": [
-            "allow_negative_rate"
-          ],
           "label": "Allow negative rate",
           "flag": "--allow-negative-rate",
           "group": "Molecular clock",
@@ -818,9 +705,6 @@
         },
         {
           "key": "clock_filter_method",
-          "path": [
-            "clock_filter_method"
-          ],
           "label": "Clock filter method",
           "flag": "--clock-filter-method",
           "group": "Molecular clock",
@@ -839,9 +723,6 @@
         },
         {
           "key": "branch_length_mode",
-          "path": [
-            "branch_length_mode"
-          ],
           "label": "Branch length mode",
           "flag": "--branch-length-mode",
           "group": "Branch lengths",
@@ -870,9 +751,6 @@
         },
         {
           "key": "no_indels",
-          "path": [
-            "no_indels"
-          ],
           "label": "No indels",
           "flag": "--no-indels",
           "group": "Branch lengths",
@@ -892,9 +770,6 @@
         },
         {
           "key": "time_marginal",
-          "path": [
-            "time_marginal"
-          ],
           "label": "Time marginal",
           "flag": "--time-marginal",
           "group": "Dating",
@@ -927,9 +802,6 @@
         },
         {
           "key": "confidence",
-          "path": [
-            "confidence"
-          ],
           "label": "Date confidence intervals",
           "flag": "--confidence",
           "group": "Dating",
@@ -949,9 +821,6 @@
         },
         {
           "key": "max_grid_points",
-          "path": [
-            "max_grid_points"
-          ],
           "label": "Max grid points",
           "flag": "--max-grid-points",
           "group": "Dating",
@@ -973,9 +842,6 @@
         },
         {
           "key": "max_iter",
-          "path": [
-            "max_iter"
-          ],
           "label": "Iterations",
           "flag": "--max-iter",
           "group": "Dating",
@@ -996,9 +862,6 @@
         },
         {
           "key": "n_branches_posterior",
-          "path": [
-            "n_branches_posterior"
-          ],
           "label": "Number of branches posterior",
           "flag": "--n-branches-posterior",
           "group": "Dating",
@@ -1018,9 +881,6 @@
         },
         {
           "key": "keep_polytomies",
-          "path": [
-            "keep_polytomies"
-          ],
           "label": "Keep polytomies",
           "flag": "--keep-polytomies",
           "group": "Polytomies",
@@ -1040,9 +900,6 @@
         },
         {
           "key": "resolve_polytomies",
-          "path": [
-            "resolve_polytomies"
-          ],
           "label": "Resolve polytomies",
           "flag": "--resolve-polytomies",
           "group": "Polytomies",
@@ -1062,9 +919,6 @@
         },
         {
           "key": "coalescent",
-          "path": [
-            "coalescent"
-          ],
           "label": "Coalescent time scale Tc",
           "flag": "--coalescent",
           "group": "Coalescent prior",
@@ -1088,9 +942,6 @@
         },
         {
           "key": "coalescent_opt",
-          "path": [
-            "coalescent_opt"
-          ],
           "label": "Optimize Tc",
           "flag": "--coalescent-opt",
           "group": "Coalescent prior",
@@ -1113,9 +964,6 @@
         },
         {
           "key": "coalescent_skyline",
-          "path": [
-            "coalescent_skyline"
-          ],
           "label": "Skyline coalescent",
           "flag": "--coalescent-skyline",
           "group": "Coalescent prior",
@@ -1138,9 +986,6 @@
         },
         {
           "key": "skyline_n_points",
-          "path": [
-            "skyline_n_points"
-          ],
           "label": "Skyline number of points",
           "flag": "--skyline-n-points",
           "group": "Coalescent prior",
@@ -1161,9 +1006,6 @@
         },
         {
           "key": "skyline_stiffness",
-          "path": [
-            "skyline_stiffness"
-          ],
           "label": "Skyline stiffness",
           "flag": "--skyline-stiffness",
           "group": "Coalescent prior",
@@ -1183,9 +1025,6 @@
         },
         {
           "key": "coalescent_confidence",
-          "path": [
-            "coalescent_confidence"
-          ],
           "label": "Coalescent confidence",
           "flag": "--coalescent-confidence",
           "group": "Coalescent prior",
@@ -1205,9 +1044,6 @@
         },
         {
           "key": "gen_per_year",
-          "path": [
-            "gen_per_year"
-          ],
           "label": "Gen per year",
           "flag": "--gen-per-year",
           "group": "Coalescent prior",
@@ -1227,9 +1063,6 @@
         },
         {
           "key": "plot_tree",
-          "path": [
-            "plot_tree"
-          ],
           "label": "Plot tree",
           "flag": "--plot-tree",
           "group": "Plots",
@@ -1248,9 +1081,6 @@
         },
         {
           "key": "plot_rtt",
-          "path": [
-            "plot_rtt"
-          ],
           "label": "Plot root-to-tip",
           "flag": "--plot-rtt",
           "group": "Plots",
@@ -1269,9 +1099,6 @@
         },
         {
           "key": "tip_labels",
-          "path": [
-            "tip_labels"
-          ],
           "label": "Tip labels",
           "flag": "--tip-labels",
           "group": "Plots",
@@ -1291,9 +1118,6 @@
         },
         {
           "key": "no_tip_labels",
-          "path": [
-            "no_tip_labels"
-          ],
           "label": "No tip labels",
           "flag": "--no-tip-labels",
           "group": "Plots",
@@ -1313,9 +1137,6 @@
         },
         {
           "key": "reroot",
-          "path": [
-            "reroot"
-          ],
           "label": "Reroot method",
           "flag": "--reroot",
           "group": "Rooting",
@@ -1354,9 +1175,6 @@
         },
         {
           "key": "reroot_tips",
-          "path": [
-            "reroot_tips"
-          ],
           "label": "Reroot tips",
           "flag": "--reroot-tips",
           "group": "Rooting",
@@ -1379,9 +1197,6 @@
         },
         {
           "key": "keep_root",
-          "path": [
-            "keep_root"
-          ],
           "label": "Keep root",
           "flag": "--keep-root",
           "group": "Rooting",
@@ -1404,9 +1219,6 @@
         },
         {
           "key": "model",
-          "path": [
-            "model"
-          ],
           "label": "Substitution model",
           "flag": "--model",
           "group": "Substitution model",
@@ -1459,9 +1271,6 @@
         },
         {
           "key": "model_params",
-          "path": [
-            "model_params"
-          ],
           "label": "Model params",
           "flag": "--model-params",
           "group": "Substitution model",
@@ -1481,9 +1290,6 @@
         },
         {
           "key": "partition_rates",
-          "path": [
-            "partition_rates"
-          ],
           "label": "Partition rates",
           "flag": "--partition-rates",
           "group": "Substitution model",
@@ -1512,9 +1318,6 @@
         },
         {
           "key": "custom_gtr",
-          "path": [
-            "custom_gtr"
-          ],
           "label": "Custom GTR",
           "flag": "--custom-gtr",
           "group": "Substitution model",
@@ -1533,9 +1336,6 @@
         },
         {
           "key": "method_anc",
-          "path": [
-            "method_anc"
-          ],
           "label": "Ancestral method",
           "flag": "--method-anc",
           "group": "Ancestral reconstruction",
@@ -1564,9 +1364,6 @@
         },
         {
           "key": "dense",
-          "path": [
-            "dense"
-          ],
           "label": "Dense",
           "flag": "--dense",
           "group": "Ancestral reconstruction",
@@ -1585,9 +1382,6 @@
         },
         {
           "key": "gap_fill",
-          "path": [
-            "gap_fill"
-          ],
           "label": "Gap fill",
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
@@ -1622,9 +1416,6 @@
         },
         {
           "key": "keep_overhangs",
-          "path": [
-            "keep_overhangs"
-          ],
           "label": "Keep overhangs",
           "flag": "--keep-overhangs",
           "group": "Ancestral reconstruction",
@@ -1646,9 +1437,6 @@
         },
         {
           "key": "include_leaves",
-          "path": [
-            "include_leaves"
-          ],
           "label": "Include leaves",
           "flag": "--include-leaves",
           "group": "Ancestral reconstruction",
@@ -1668,9 +1456,6 @@
         },
         {
           "key": "impute_missing_data",
-          "path": [
-            "impute_missing_data"
-          ],
           "label": "Impute missing data",
           "flag": "--impute-missing-data",
           "group": "Ancestral reconstruction",
@@ -1690,9 +1475,6 @@
         },
         {
           "key": "reconstruct_tip_states",
-          "path": [
-            "reconstruct_tip_states"
-          ],
           "label": "Reconstruct tip states",
           "flag": "--reconstruct-tip-states",
           "group": "Ancestral reconstruction",
@@ -1712,9 +1494,6 @@
         },
         {
           "key": "report_ambiguous",
-          "path": [
-            "report_ambiguous"
-          ],
           "label": "Report ambiguous",
           "flag": "--report-ambiguous",
           "group": "Ancestral reconstruction",
@@ -1734,9 +1513,6 @@
         },
         {
           "key": "divergence_units",
-          "path": [
-            "divergence_units"
-          ],
           "label": "Divergence units",
           "flag": "--divergence-units",
           "group": "Output",
@@ -1765,9 +1541,6 @@
         },
         {
           "key": "output_augur_node_data",
-          "path": [
-            "output_augur_node_data"
-          ],
           "label": "Output augur node data",
           "flag": "--output-augur-node-data",
           "group": "Output",
@@ -1786,9 +1559,6 @@
         },
         {
           "key": "output_gtr",
-          "path": [
-            "output_gtr"
-          ],
           "label": "Output GTR",
           "flag": "--output-gtr",
           "group": "Output",
@@ -1807,9 +1577,6 @@
         },
         {
           "key": "output_reconstructed_nuc_fasta",
-          "path": [
-            "output_reconstructed_nuc_fasta"
-          ],
           "label": "Output reconstructed nucleotide fasta",
           "flag": "--output-reconstructed-nuc-fasta",
           "group": "Output",
@@ -1828,9 +1595,6 @@
         },
         {
           "key": "output_clock_model",
-          "path": [
-            "output_clock_model"
-          ],
           "label": "Output clock model",
           "flag": "--output-clock-model",
           "group": "Output",
@@ -1849,9 +1613,6 @@
         },
         {
           "key": "output_clock_csv",
-          "path": [
-            "output_clock_csv"
-          ],
           "label": "Output clock CSV",
           "flag": "--output-clock-csv",
           "group": "Output",
@@ -1870,9 +1631,6 @@
         },
         {
           "key": "output_confidence_tsv",
-          "path": [
-            "output_confidence_tsv"
-          ],
           "label": "Output confidence TSV",
           "flag": "--output-confidence-tsv",
           "group": "Output",
@@ -1891,9 +1649,6 @@
         },
         {
           "key": "output_tracelog",
-          "path": [
-            "output_tracelog"
-          ],
           "label": "Output tracelog",
           "flag": "--output-tracelog",
           "group": "Output",
@@ -1912,9 +1667,6 @@
         },
         {
           "key": "output_coalescent_tsv",
-          "path": [
-            "output_coalescent_tsv"
-          ],
           "label": "Output coalescent TSV",
           "flag": "--output-coalescent-tsv",
           "group": "Output",
@@ -1933,9 +1685,6 @@
         },
         {
           "key": "output_coalescent_csv",
-          "path": [
-            "output_coalescent_csv"
-          ],
           "label": "Output coalescent CSV",
           "flag": "--output-coalescent-csv",
           "group": "Output",
@@ -1954,9 +1703,6 @@
         },
         {
           "key": "output_coalescent_json",
-          "path": [
-            "output_coalescent_json"
-          ],
           "label": "Output coalescent JSON",
           "flag": "--output-coalescent-json",
           "group": "Output",
@@ -1975,9 +1721,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -1996,9 +1739,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -2031,9 +1771,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -2052,9 +1789,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -2073,9 +1807,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -2094,9 +1825,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -2115,9 +1843,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -2136,9 +1861,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -2157,9 +1879,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -2178,9 +1897,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -2273,9 +1989,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -2312,9 +2025,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -2380,9 +2090,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -2416,9 +2123,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -2439,9 +2143,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -2472,9 +2173,6 @@
         },
         {
           "key": "seed",
-          "path": [
-            "seed"
-          ],
           "label": "Seed",
           "flag": "--seed",
           "group": "Reproducibility",
@@ -2583,14 +2281,10 @@
               "option": "reroot",
               "patch": [
                 {
-                  "path": [
-                    "reroot"
-                  ]
+                  "key": "reroot"
                 },
                 {
-                  "path": [
-                    "keep_root"
-                  ]
+                  "key": "keep_root"
                 }
               ],
               "settings": [
@@ -2601,14 +2295,10 @@
               "option": "keep",
               "patch": [
                 {
-                  "path": [
-                    "reroot"
-                  ]
+                  "key": "reroot"
                 },
                 {
-                  "path": [
-                    "keep_root"
-                  ],
+                  "key": "keep_root",
                   "value": true
                 }
               ],
@@ -2620,9 +2310,6 @@
       "settings": [
         {
           "key": "alignment",
-          "path": [
-            "alignment"
-          ],
           "label": "Alignment",
           "flag": "--alignment",
           "group": "Input data",
@@ -2642,9 +2329,6 @@
         },
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -2663,9 +2347,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -2734,9 +2415,6 @@
         },
         {
           "key": "vcf_reference",
-          "path": [
-            "vcf_reference"
-          ],
           "label": "VCF reference",
           "flag": "--vcf-reference",
           "group": "Input data",
@@ -2755,9 +2433,6 @@
         },
         {
           "key": "metadata",
-          "path": [
-            "metadata"
-          ],
           "label": "Metadata",
           "flag": "--metadata",
           "group": "Input data",
@@ -2776,9 +2451,6 @@
         },
         {
           "key": "metadata_id_columns",
-          "path": [
-            "metadata_id_columns"
-          ],
           "label": "Metadata id columns",
           "flag": "--metadata-id-columns",
           "group": "Input data",
@@ -2802,9 +2474,6 @@
         },
         {
           "key": "metadata_delimiters",
-          "path": [
-            "metadata_delimiters"
-          ],
           "label": "Metadata delimiters",
           "flag": "--metadata-delimiters",
           "group": "Input data",
@@ -2828,9 +2497,6 @@
         },
         {
           "key": "date_column",
-          "path": [
-            "date_column"
-          ],
           "label": "Date column",
           "flag": "--date-column",
           "group": "Input data",
@@ -2849,9 +2515,6 @@
         },
         {
           "key": "date_format",
-          "path": [
-            "date_format"
-          ],
           "label": "Date format",
           "flag": "--date-format",
           "group": "Input data",
@@ -2871,9 +2534,6 @@
         },
         {
           "key": "model",
-          "path": [
-            "model"
-          ],
           "label": "Substitution model",
           "flag": "--model",
           "group": "Substitution model",
@@ -2926,9 +2586,6 @@
         },
         {
           "key": "model_params",
-          "path": [
-            "model_params"
-          ],
           "label": "Model params",
           "flag": "--model-params",
           "group": "Substitution model",
@@ -2948,9 +2605,6 @@
         },
         {
           "key": "branch_length_mode",
-          "path": [
-            "branch_length_mode"
-          ],
           "label": "Branch length mode",
           "flag": "--branch-length-mode",
           "group": "Branch lengths",
@@ -2979,9 +2633,6 @@
         },
         {
           "key": "prune_short",
-          "path": [
-            "prune_short"
-          ],
           "label": "Prune short",
           "flag": "--prune-short",
           "group": "Branch lengths",
@@ -3001,9 +2652,6 @@
         },
         {
           "key": "method_anc",
-          "path": [
-            "method_anc"
-          ],
           "label": "Ancestral method",
           "flag": "--method-anc",
           "group": "Ancestral reconstruction",
@@ -3032,9 +2680,6 @@
         },
         {
           "key": "clock_filter",
-          "path": [
-            "clock_filter"
-          ],
           "label": "Clock filter",
           "flag": "--clock-filter",
           "group": "Molecular clock",
@@ -3054,9 +2699,6 @@
         },
         {
           "key": "allow_negative_rate",
-          "path": [
-            "allow_negative_rate"
-          ],
           "label": "Allow negative rate",
           "flag": "--allow-negative-rate",
           "group": "Molecular clock",
@@ -3076,9 +2718,6 @@
         },
         {
           "key": "clock_filter_method",
-          "path": [
-            "clock_filter_method"
-          ],
           "label": "Clock filter method",
           "flag": "--clock-filter-method",
           "group": "Molecular clock",
@@ -3097,9 +2736,6 @@
         },
         {
           "key": "prune_outliers",
-          "path": [
-            "prune_outliers"
-          ],
           "label": "Prune outliers",
           "flag": "--prune-outliers",
           "group": "Molecular clock",
@@ -3119,9 +2755,6 @@
         },
         {
           "key": "reroot",
-          "path": [
-            "reroot"
-          ],
           "label": "Reroot method",
           "flag": "--reroot",
           "group": "Rooting",
@@ -3160,9 +2793,6 @@
         },
         {
           "key": "reroot_tips",
-          "path": [
-            "reroot_tips"
-          ],
           "label": "Reroot tips",
           "flag": "--reroot-tips",
           "group": "Rooting",
@@ -3185,9 +2815,6 @@
         },
         {
           "key": "keep_root",
-          "path": [
-            "keep_root"
-          ],
           "label": "Keep root",
           "flag": "--keep-root",
           "group": "Rooting",
@@ -3210,9 +2837,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -3231,9 +2855,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -3266,9 +2887,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -3287,9 +2905,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -3308,9 +2923,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -3329,9 +2941,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -3350,9 +2959,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -3371,9 +2977,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -3392,9 +2995,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -3413,9 +3013,6 @@
         },
         {
           "key": "output_clock_model",
-          "path": [
-            "output_clock_model"
-          ],
           "label": "Output clock model",
           "flag": "--output-clock-model",
           "group": "Output",
@@ -3434,9 +3031,6 @@
         },
         {
           "key": "output_clock_csv",
-          "path": [
-            "output_clock_csv"
-          ],
           "label": "Output clock CSV",
           "flag": "--output-clock-csv",
           "group": "Output",
@@ -3455,9 +3049,6 @@
         },
         {
           "key": "output_clock_chart_svg",
-          "path": [
-            "output_clock_chart_svg"
-          ],
           "label": "Output clock chart svg",
           "flag": "--output-clock-chart-svg",
           "group": "Output",
@@ -3476,9 +3067,6 @@
         },
         {
           "key": "output_clock_chart_png",
-          "path": [
-            "output_clock_chart_png"
-          ],
           "label": "Output clock chart png",
           "flag": "--output-clock-chart-png",
           "group": "Output",
@@ -3497,9 +3085,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -3568,9 +3153,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -3607,9 +3189,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -3675,9 +3254,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -3711,9 +3287,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -3734,9 +3307,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -3767,9 +3337,6 @@
         },
         {
           "key": "plot_rtt",
-          "path": [
-            "plot_rtt"
-          ],
           "label": "Plot root-to-tip",
           "flag": "--plot-rtt",
           "group": "Plots",
@@ -3850,9 +3417,6 @@
       "settings": [
         {
           "key": "alignment",
-          "path": [
-            "alignment"
-          ],
           "label": "Alignment",
           "flag": "--alignment",
           "group": "Input data",
@@ -3872,9 +3436,6 @@
         },
         {
           "key": "vcf_reference",
-          "path": [
-            "vcf_reference"
-          ],
           "label": "VCF reference",
           "flag": "--vcf-reference",
           "group": "Input data",
@@ -3893,9 +3454,6 @@
         },
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -3914,9 +3472,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -3985,9 +3540,6 @@
         },
         {
           "key": "alphabet",
-          "path": [
-            "alphabet"
-          ],
           "label": "Alphabet",
           "flag": "--alphabet",
           "group": "Input data",
@@ -4019,9 +3571,6 @@
         },
         {
           "key": "zero_based",
-          "path": [
-            "zero_based"
-          ],
           "label": "Zero based",
           "flag": "--zero-based",
           "group": "Input data",
@@ -4041,9 +3590,6 @@
         },
         {
           "key": "ignore_missing_alns",
-          "path": [
-            "ignore_missing_alns"
-          ],
           "label": "Ignore missing alignments",
           "flag": "--ignore-missing-alns",
           "group": "Input data",
@@ -4063,9 +3609,6 @@
         },
         {
           "key": "translations",
-          "path": [
-            "translations"
-          ],
           "label": "Translations",
           "flag": "--translations",
           "group": "Input data",
@@ -4084,9 +3627,6 @@
         },
         {
           "key": "cdses",
-          "path": [
-            "cdses"
-          ],
           "label": "CDSes",
           "flag": "--cdses",
           "group": "Input data",
@@ -4106,9 +3646,6 @@
         },
         {
           "key": "annotation",
-          "path": [
-            "annotation"
-          ],
           "label": "Annotation",
           "flag": "--annotation",
           "group": "Input data",
@@ -4127,9 +3664,6 @@
         },
         {
           "key": "aa",
-          "path": [
-            "aa"
-          ],
           "label": "Amino-acid",
           "flag": "--aa",
           "group": "Input data",
@@ -4149,9 +3683,6 @@
         },
         {
           "key": "model",
-          "path": [
-            "model"
-          ],
           "label": "Substitution model",
           "flag": "--model",
           "group": "Substitution model",
@@ -4204,9 +3735,6 @@
         },
         {
           "key": "model_params",
-          "path": [
-            "model_params"
-          ],
           "label": "Model params",
           "flag": "--model-params",
           "group": "Substitution model",
@@ -4226,9 +3754,6 @@
         },
         {
           "key": "aa_model",
-          "path": [
-            "aa_model"
-          ],
           "label": "Amino-acid model",
           "flag": "--aa-model",
           "group": "Substitution model",
@@ -4257,9 +3782,6 @@
         },
         {
           "key": "gtr_iterations",
-          "path": [
-            "gtr_iterations"
-          ],
           "label": "GTR iterations",
           "flag": "--gtr-iterations",
           "group": "Substitution model",
@@ -4280,9 +3802,6 @@
         },
         {
           "key": "site_specific_gtr",
-          "path": [
-            "site_specific_gtr"
-          ],
           "label": "Site specific GTR",
           "flag": "--site-specific-gtr",
           "group": "Substitution model",
@@ -4302,9 +3821,6 @@
         },
         {
           "key": "custom_gtr",
-          "path": [
-            "custom_gtr"
-          ],
           "label": "Custom GTR",
           "flag": "--custom-gtr",
           "group": "Substitution model",
@@ -4323,9 +3839,6 @@
         },
         {
           "key": "method_anc",
-          "path": [
-            "method_anc"
-          ],
           "label": "Ancestral method",
           "flag": "--method-anc",
           "group": "Ancestral reconstruction",
@@ -4354,9 +3867,6 @@
         },
         {
           "key": "dense",
-          "path": [
-            "dense"
-          ],
           "label": "Dense",
           "flag": "--dense",
           "group": "Ancestral reconstruction",
@@ -4375,9 +3885,6 @@
         },
         {
           "key": "gap_fill",
-          "path": [
-            "gap_fill"
-          ],
           "label": "Gap fill",
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
@@ -4412,9 +3919,6 @@
         },
         {
           "key": "keep_overhangs",
-          "path": [
-            "keep_overhangs"
-          ],
           "label": "Keep overhangs",
           "flag": "--keep-overhangs",
           "group": "Ancestral reconstruction",
@@ -4436,9 +3940,6 @@
         },
         {
           "key": "include_leaves",
-          "path": [
-            "include_leaves"
-          ],
           "label": "Include leaves",
           "flag": "--include-leaves",
           "group": "Ancestral reconstruction",
@@ -4458,9 +3959,6 @@
         },
         {
           "key": "impute_missing_data",
-          "path": [
-            "impute_missing_data"
-          ],
           "label": "Impute missing data",
           "flag": "--impute-missing-data",
           "group": "Ancestral reconstruction",
@@ -4480,9 +3978,6 @@
         },
         {
           "key": "reconstruct_tip_states",
-          "path": [
-            "reconstruct_tip_states"
-          ],
           "label": "Reconstruct tip states",
           "flag": "--reconstruct-tip-states",
           "group": "Ancestral reconstruction",
@@ -4502,9 +3997,6 @@
         },
         {
           "key": "report_ambiguous",
-          "path": [
-            "report_ambiguous"
-          ],
           "label": "Report ambiguous",
           "flag": "--report-ambiguous",
           "group": "Ancestral reconstruction",
@@ -4524,9 +4016,6 @@
         },
         {
           "key": "aa_root_sequence",
-          "path": [
-            "aa_root_sequence"
-          ],
           "label": "Amino-acid root sequence",
           "flag": "--aa-root-sequence",
           "group": "Ancestral reconstruction",
@@ -4545,9 +4034,6 @@
         },
         {
           "key": "marginal",
-          "path": [
-            "marginal"
-          ],
           "label": "Marginal",
           "flag": "--marginal",
           "group": "Ancestral reconstruction",
@@ -4567,9 +4053,6 @@
         },
         {
           "key": "sample_from_profile",
-          "path": [
-            "sample_from_profile"
-          ],
           "label": "Sample from profile",
           "flag": "--sample-from-profile",
           "group": "Ancestral reconstruction",
@@ -4602,9 +4085,6 @@
         },
         {
           "key": "output_augur_node_data",
-          "path": [
-            "output_augur_node_data"
-          ],
           "label": "Output augur node data",
           "flag": "--output-augur-node-data",
           "group": "Output",
@@ -4623,9 +4103,6 @@
         },
         {
           "key": "output_gtr",
-          "path": [
-            "output_gtr"
-          ],
           "label": "Output GTR",
           "flag": "--output-gtr",
           "group": "Output",
@@ -4644,9 +4121,6 @@
         },
         {
           "key": "output_reconstructed_nuc_fasta",
-          "path": [
-            "output_reconstructed_nuc_fasta"
-          ],
           "label": "Output reconstructed nucleotide fasta",
           "flag": "--output-reconstructed-nuc-fasta",
           "group": "Output",
@@ -4665,9 +4139,6 @@
         },
         {
           "key": "output_reconstructed_aa_fasta",
-          "path": [
-            "output_reconstructed_aa_fasta"
-          ],
           "label": "Output reconstructed amino-acid fasta",
           "flag": "--output-reconstructed-aa-fasta",
           "group": "Output",
@@ -4686,9 +4157,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -4707,9 +4175,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -4742,9 +4207,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -4763,9 +4225,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -4784,9 +4243,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -4805,9 +4261,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -4826,9 +4279,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -4847,9 +4297,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -4868,9 +4315,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -4889,9 +4333,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -4960,9 +4401,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -4999,9 +4437,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -5067,9 +4502,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -5103,9 +4535,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -5126,9 +4555,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -5159,9 +4585,6 @@
         },
         {
           "key": "seed",
-          "path": [
-            "seed"
-          ],
           "label": "Seed",
           "flag": "--seed",
           "group": "Reproducibility",
@@ -5245,9 +4668,6 @@
       "settings": [
         {
           "key": "alignment",
-          "path": [
-            "alignment"
-          ],
           "label": "Alignment",
           "flag": "--alignment",
           "group": "Input data",
@@ -5267,9 +4687,6 @@
         },
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -5288,9 +4705,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -5359,9 +4773,6 @@
         },
         {
           "key": "alphabet",
-          "path": [
-            "alphabet"
-          ],
           "label": "Alphabet",
           "flag": "--alphabet",
           "group": "Input data",
@@ -5393,9 +4804,6 @@
         },
         {
           "key": "zero_based",
-          "path": [
-            "zero_based"
-          ],
           "label": "Zero based",
           "flag": "--zero-based",
           "group": "Input data",
@@ -5415,9 +4823,6 @@
         },
         {
           "key": "ignore_missing_alns",
-          "path": [
-            "ignore_missing_alns"
-          ],
           "label": "Ignore missing alignments",
           "flag": "--ignore-missing-alns",
           "group": "Input data",
@@ -5437,9 +4842,6 @@
         },
         {
           "key": "model",
-          "path": [
-            "model"
-          ],
           "label": "Substitution model",
           "flag": "--model",
           "group": "Substitution model",
@@ -5492,9 +4894,6 @@
         },
         {
           "key": "model_params",
-          "path": [
-            "model_params"
-          ],
           "label": "Model params",
           "flag": "--model-params",
           "group": "Substitution model",
@@ -5514,9 +4913,6 @@
         },
         {
           "key": "gtr_iterations",
-          "path": [
-            "gtr_iterations"
-          ],
           "label": "GTR iterations",
           "flag": "--gtr-iterations",
           "group": "Substitution model",
@@ -5537,9 +4933,6 @@
         },
         {
           "key": "site_specific_gtr",
-          "path": [
-            "site_specific_gtr"
-          ],
           "label": "Site specific GTR",
           "flag": "--site-specific-gtr",
           "group": "Substitution model",
@@ -5559,9 +4952,6 @@
         },
         {
           "key": "method_anc",
-          "path": [
-            "method_anc"
-          ],
           "label": "Ancestral method",
           "flag": "--method-anc",
           "group": "Ancestral reconstruction",
@@ -5590,9 +4980,6 @@
         },
         {
           "key": "dense",
-          "path": [
-            "dense"
-          ],
           "label": "Dense",
           "flag": "--dense",
           "group": "Ancestral reconstruction",
@@ -5611,9 +4998,6 @@
         },
         {
           "key": "gap_fill",
-          "path": [
-            "gap_fill"
-          ],
           "label": "Gap fill",
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
@@ -5648,9 +5032,6 @@
         },
         {
           "key": "keep_overhangs",
-          "path": [
-            "keep_overhangs"
-          ],
           "label": "Keep overhangs",
           "flag": "--keep-overhangs",
           "group": "Ancestral reconstruction",
@@ -5672,9 +5053,6 @@
         },
         {
           "key": "impute_missing_data",
-          "path": [
-            "impute_missing_data"
-          ],
           "label": "Impute missing data",
           "flag": "--impute-missing-data",
           "group": "Ancestral reconstruction",
@@ -5694,9 +5072,6 @@
         },
         {
           "key": "sample_from_profile",
-          "path": [
-            "sample_from_profile"
-          ],
           "label": "Sample from profile",
           "flag": "--sample-from-profile",
           "group": "Ancestral reconstruction",
@@ -5729,9 +5104,6 @@
         },
         {
           "key": "seed",
-          "path": [
-            "seed"
-          ],
           "label": "Seed",
           "flag": "--seed",
           "group": "Reproducibility",
@@ -5751,9 +5123,6 @@
         },
         {
           "key": "constant_sites",
-          "path": [
-            "constant_sites"
-          ],
           "label": "Constant sites",
           "flag": "--const",
           "group": "Homoplasy",
@@ -5774,9 +5143,6 @@
         },
         {
           "key": "rescale",
-          "path": [
-            "rescale"
-          ],
           "label": "Rescale",
           "flag": "--rescale",
           "group": "Homoplasy",
@@ -5796,9 +5162,6 @@
         },
         {
           "key": "detailed",
-          "path": [
-            "detailed"
-          ],
           "label": "Detailed",
           "flag": "--detailed",
           "group": "Homoplasy",
@@ -5818,9 +5181,6 @@
         },
         {
           "key": "drms",
-          "path": [
-            "drms"
-          ],
           "label": "Drms",
           "flag": "--drms",
           "group": "Homoplasy",
@@ -5839,9 +5199,6 @@
         },
         {
           "key": "num_mut",
-          "path": [
-            "num_mut"
-          ],
           "label": "Num mut",
           "flag": "--num-mut",
           "group": "Homoplasy",
@@ -5862,9 +5219,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -5883,9 +5237,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -5918,9 +5269,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -5939,9 +5287,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -5960,9 +5305,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -5981,9 +5323,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -6002,9 +5341,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -6023,9 +5359,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -6044,9 +5377,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -6065,9 +5395,6 @@
         },
         {
           "key": "output_homoplasy_stats",
-          "path": [
-            "output_homoplasy_stats"
-          ],
           "label": "Output homoplasy stats",
           "flag": "--output-homoplasy-stats",
           "group": "Output",
@@ -6086,9 +5413,6 @@
         },
         {
           "key": "output_homoplasy_report",
-          "path": [
-            "output_homoplasy_report"
-          ],
           "label": "Output homoplasy report",
           "flag": "--output-homoplasy-report",
           "group": "Output",
@@ -6107,9 +5431,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -6170,9 +5491,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -6209,9 +5527,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -6277,9 +5592,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -6313,9 +5625,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -6336,9 +5645,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -6428,9 +5734,6 @@
       "settings": [
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -6449,9 +5752,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -6520,9 +5820,6 @@
         },
         {
           "key": "attribute",
-          "path": [
-            "attribute"
-          ],
           "label": "Attribute",
           "flag": "--attribute",
           "group": "Input data",
@@ -6541,9 +5838,6 @@
         },
         {
           "key": "metadata",
-          "path": [
-            "metadata"
-          ],
           "label": "Metadata",
           "flag": "--metadata",
           "group": "Input data",
@@ -6562,9 +5856,6 @@
         },
         {
           "key": "weights",
-          "path": [
-            "weights"
-          ],
           "label": "Weights",
           "flag": "--weights",
           "group": "Input data",
@@ -6583,9 +5874,6 @@
         },
         {
           "key": "metadata_id_columns",
-          "path": [
-            "metadata_id_columns"
-          ],
           "label": "Metadata id columns",
           "flag": "--metadata-id-columns",
           "group": "Input data",
@@ -6609,9 +5897,6 @@
         },
         {
           "key": "metadata_delimiters",
-          "path": [
-            "metadata_delimiters"
-          ],
           "label": "Metadata delimiters",
           "flag": "--metadata-delimiters",
           "group": "Input data",
@@ -6635,9 +5920,6 @@
         },
         {
           "key": "missing_data",
-          "path": [
-            "missing_data"
-          ],
           "label": "Missing data",
           "flag": "--missing-data",
           "group": "Input data",
@@ -6657,9 +5939,6 @@
         },
         {
           "key": "output_confidence_csv",
-          "path": [
-            "output_confidence_csv"
-          ],
           "label": "Output confidence CSV",
           "flag": "--output-confidence-csv",
           "group": "Output",
@@ -6678,9 +5957,6 @@
         },
         {
           "key": "output_augur_node_data",
-          "path": [
-            "output_augur_node_data"
-          ],
           "label": "Output augur node data",
           "flag": "--output-augur-node-data",
           "group": "Output",
@@ -6699,9 +5975,6 @@
         },
         {
           "key": "output_gtr",
-          "path": [
-            "output_gtr"
-          ],
           "label": "Output GTR",
           "flag": "--output-gtr",
           "group": "Output",
@@ -6720,9 +5993,6 @@
         },
         {
           "key": "output_traits_csv",
-          "path": [
-            "output_traits_csv"
-          ],
           "label": "Output traits CSV",
           "flag": "--output-traits-csv",
           "group": "Output",
@@ -6741,9 +6011,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -6762,9 +6029,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -6797,9 +6061,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -6818,9 +6079,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -6839,9 +6097,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -6860,9 +6115,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -6881,9 +6133,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -6902,9 +6151,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -6923,9 +6169,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -6944,9 +6187,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -7015,9 +6255,6 @@
         },
         {
           "key": "pc",
-          "path": [
-            "pc"
-          ],
           "label": "Pseudocount",
           "flag": "--pc",
           "group": "Substitution model",
@@ -7036,9 +6273,6 @@
         },
         {
           "key": "missing_weights_threshold",
-          "path": [
-            "missing_weights_threshold"
-          ],
           "label": "Missing weights threshold",
           "flag": "--missing-weights-threshold",
           "group": "Substitution model",
@@ -7058,9 +6292,6 @@
         },
         {
           "key": "iterations",
-          "path": [
-            "iterations"
-          ],
           "label": "Iterations",
           "flag": "--iterations",
           "group": "Substitution model",
@@ -7081,9 +6312,6 @@
         },
         {
           "key": "sampling_bias_correction",
-          "path": [
-            "sampling_bias_correction"
-          ],
           "label": "Sampling bias correction",
           "flag": "--sampling-bias-correction",
           "group": "Substitution model",
@@ -7102,9 +6330,6 @@
         },
         {
           "key": "smooth_initial_pi",
-          "path": [
-            "smooth_initial_pi"
-          ],
           "label": "Smooth initial pi",
           "flag": "--smooth-initial-pi",
           "group": "Substitution model",
@@ -7124,9 +6349,6 @@
         },
         {
           "key": "filter_uninformative_root",
-          "path": [
-            "filter_uninformative_root"
-          ],
           "label": "Filter uninformative root",
           "flag": "--filter-uninformative-root",
           "group": "Substitution model",
@@ -7146,9 +6368,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -7185,9 +6404,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -7253,9 +6469,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -7289,9 +6502,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -7312,9 +6522,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -7416,14 +6623,10 @@
               "option": "reroot",
               "patch": [
                 {
-                  "path": [
-                    "reroot"
-                  ]
+                  "key": "reroot"
                 },
                 {
-                  "path": [
-                    "keep_root"
-                  ]
+                  "key": "keep_root"
                 }
               ],
               "settings": [
@@ -7434,14 +6637,10 @@
               "option": "keep",
               "patch": [
                 {
-                  "path": [
-                    "reroot"
-                  ]
+                  "key": "reroot"
                 },
                 {
-                  "path": [
-                    "keep_root"
-                  ],
+                  "key": "keep_root",
                   "value": true
                 }
               ],
@@ -7453,9 +6652,6 @@
       "settings": [
         {
           "key": "alignment",
-          "path": [
-            "alignment"
-          ],
           "label": "Alignment",
           "flag": "--alignment",
           "group": "Input data",
@@ -7475,9 +6671,6 @@
         },
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -7496,9 +6689,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -7567,9 +6757,6 @@
         },
         {
           "key": "alphabet",
-          "path": [
-            "alphabet"
-          ],
           "label": "Alphabet",
           "flag": "--alphabet",
           "group": "Input data",
@@ -7601,9 +6788,6 @@
         },
         {
           "key": "model",
-          "path": [
-            "model"
-          ],
           "label": "Substitution model",
           "flag": "--model",
           "group": "Substitution model",
@@ -7656,9 +6840,6 @@
         },
         {
           "key": "model_params",
-          "path": [
-            "model_params"
-          ],
           "label": "Model params",
           "flag": "--model-params",
           "group": "Substitution model",
@@ -7678,9 +6859,6 @@
         },
         {
           "key": "partition_rates",
-          "path": [
-            "partition_rates"
-          ],
           "label": "Partition rates",
           "flag": "--partition-rates",
           "group": "Substitution model",
@@ -7709,9 +6887,6 @@
         },
         {
           "key": "dense",
-          "path": [
-            "dense"
-          ],
           "label": "Dense",
           "flag": "--dense",
           "group": "Ancestral reconstruction",
@@ -7730,9 +6905,6 @@
         },
         {
           "key": "gap_fill",
-          "path": [
-            "gap_fill"
-          ],
           "label": "Gap fill",
           "flag": "--gap-fill",
           "group": "Ancestral reconstruction",
@@ -7767,9 +6939,6 @@
         },
         {
           "key": "keep_overhangs",
-          "path": [
-            "keep_overhangs"
-          ],
           "label": "Keep overhangs",
           "flag": "--keep-overhangs",
           "group": "Ancestral reconstruction",
@@ -7791,9 +6960,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -7812,9 +6978,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -7847,9 +7010,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -7868,9 +7028,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -7889,9 +7046,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -7910,9 +7064,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -7931,9 +7082,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -7952,9 +7100,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -7973,9 +7118,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -7994,9 +7136,6 @@
         },
         {
           "key": "divergence_units",
-          "path": [
-            "divergence_units"
-          ],
           "label": "Divergence units",
           "flag": "--divergence-units",
           "group": "Output",
@@ -8025,9 +7164,6 @@
         },
         {
           "key": "output_augur_node_data",
-          "path": [
-            "output_augur_node_data"
-          ],
           "label": "Output augur node data",
           "flag": "--output-augur-node-data",
           "group": "Output",
@@ -8046,9 +7182,6 @@
         },
         {
           "key": "output_gtr",
-          "path": [
-            "output_gtr"
-          ],
           "label": "Output GTR",
           "flag": "--output-gtr",
           "group": "Output",
@@ -8067,9 +7200,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -8130,9 +7260,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -8169,9 +7296,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -8237,9 +7361,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -8273,9 +7394,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -8296,9 +7414,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -8329,9 +7444,6 @@
         },
         {
           "key": "max_iter",
-          "path": [
-            "max_iter"
-          ],
           "label": "Iterations",
           "flag": "--max-iter",
           "group": "Branch lengths",
@@ -8352,9 +7464,6 @@
         },
         {
           "key": "dp",
-          "path": [
-            "dp"
-          ],
           "label": "DP",
           "flag": "--dp",
           "group": "Branch lengths",
@@ -8374,9 +7483,6 @@
         },
         {
           "key": "damping",
-          "path": [
-            "damping"
-          ],
           "label": "Damping",
           "flag": "--damping",
           "group": "Branch lengths",
@@ -8396,9 +7502,6 @@
         },
         {
           "key": "branch_length_initial_guess",
-          "path": [
-            "branch_length_initial_guess"
-          ],
           "label": "Branch length initial guess",
           "flag": "--branch-length-initial-guess",
           "group": "Branch lengths",
@@ -8431,9 +7534,6 @@
         },
         {
           "key": "opt_method",
-          "path": [
-            "opt_method"
-          ],
           "label": "Optimization method",
           "flag": "--opt-method",
           "group": "Branch lengths",
@@ -8462,9 +7562,6 @@
         },
         {
           "key": "no_indels",
-          "path": [
-            "no_indels"
-          ],
           "label": "No indels",
           "flag": "--no-indels",
           "group": "Branch lengths",
@@ -8484,9 +7581,6 @@
         },
         {
           "key": "no_collapse_short_branches",
-          "path": [
-            "no_collapse_short_branches"
-          ],
           "label": "No collapse short branches",
           "flag": "--no-collapse-short-branches",
           "group": "Branch lengths",
@@ -8506,9 +7600,6 @@
         },
         {
           "key": "no_merge_siblings",
-          "path": [
-            "no_merge_siblings"
-          ],
           "label": "No merge siblings",
           "flag": "--no-merge-siblings",
           "group": "Branch lengths",
@@ -8528,9 +7619,6 @@
         },
         {
           "key": "no_flip_parent_child",
-          "path": [
-            "no_flip_parent_child"
-          ],
           "label": "No flip parent child",
           "flag": "--no-flip-parent-child",
           "group": "Branch lengths",
@@ -8550,9 +7638,6 @@
         },
         {
           "key": "reroot",
-          "path": [
-            "reroot"
-          ],
           "label": "Reroot method",
           "flag": "--reroot",
           "group": "Rooting",
@@ -8579,9 +7664,6 @@
         },
         {
           "key": "reroot_tips",
-          "path": [
-            "reroot_tips"
-          ],
           "label": "Reroot tips",
           "flag": "--reroot-tips",
           "group": "Rooting",
@@ -8604,9 +7686,6 @@
         },
         {
           "key": "keep_root",
-          "path": [
-            "keep_root"
-          ],
           "label": "Keep root",
           "flag": "--keep-root",
           "group": "Rooting",
@@ -8688,9 +7767,6 @@
       "settings": [
         {
           "key": "alignment",
-          "path": [
-            "alignment"
-          ],
           "label": "Alignment",
           "flag": "--alignment",
           "group": "Input data",
@@ -8710,9 +7786,6 @@
         },
         {
           "key": "tree",
-          "path": [
-            "tree"
-          ],
           "label": "Tree",
           "flag": "--tree",
           "group": "Input data",
@@ -8731,9 +7804,6 @@
         },
         {
           "key": "tree_dialect",
-          "path": [
-            "tree_dialect"
-          ],
           "label": "Tree dialect",
           "flag": "--tree-dialect",
           "group": "Input data",
@@ -8802,9 +7872,6 @@
         },
         {
           "key": "alphabet",
-          "path": [
-            "alphabet"
-          ],
           "label": "Alphabet",
           "flag": "--alphabet",
           "group": "Input data",
@@ -8836,9 +7903,6 @@
         },
         {
           "key": "output_all",
-          "path": [
-            "output_all"
-          ],
           "label": "Output all",
           "flag": "--output-all",
           "group": "Output",
@@ -8857,9 +7921,6 @@
         },
         {
           "key": "output_nwk_style",
-          "path": [
-            "output_nwk_style"
-          ],
           "label": "Newick style",
           "flag": "--output-nwk-style",
           "group": "Output",
@@ -8892,9 +7953,6 @@
         },
         {
           "key": "output_tree_nwk",
-          "path": [
-            "output_tree_nwk"
-          ],
           "label": "Output tree Newick",
           "flag": "--output-tree-nwk",
           "group": "Output",
@@ -8913,9 +7971,6 @@
         },
         {
           "key": "output_tree_nexus",
-          "path": [
-            "output_tree_nexus"
-          ],
           "label": "Output tree nexus",
           "flag": "--output-tree-nexus",
           "group": "Output",
@@ -8934,9 +7989,6 @@
         },
         {
           "key": "output_tree_auspice",
-          "path": [
-            "output_tree_auspice"
-          ],
           "label": "Output tree auspice",
           "flag": "--output-tree-auspice",
           "group": "Output",
@@ -8955,9 +8007,6 @@
         },
         {
           "key": "output_tree_mat_pb",
-          "path": [
-            "output_tree_mat_pb"
-          ],
           "label": "Output tree MAT protobuf",
           "flag": "--output-tree-mat-pb",
           "group": "Output",
@@ -8976,9 +8025,6 @@
         },
         {
           "key": "output_tree_mat_json",
-          "path": [
-            "output_tree_mat_json"
-          ],
           "label": "Output tree MAT JSON",
           "flag": "--output-tree-mat-json",
           "group": "Output",
@@ -8997,9 +8043,6 @@
         },
         {
           "key": "output_tree_graph_json",
-          "path": [
-            "output_tree_graph_json"
-          ],
           "label": "Output tree graph JSON",
           "flag": "--output-tree-graph-json",
           "group": "Output",
@@ -9018,9 +8061,6 @@
         },
         {
           "key": "output_tree_dot",
-          "path": [
-            "output_tree_dot"
-          ],
           "label": "Output tree DOT",
           "flag": "--output-tree-dot",
           "group": "Output",
@@ -9039,9 +8079,6 @@
         },
         {
           "key": "output_gtr",
-          "path": [
-            "output_gtr"
-          ],
           "label": "Output GTR",
           "flag": "--output-gtr",
           "group": "Output",
@@ -9060,9 +8097,6 @@
         },
         {
           "key": "output_selection",
-          "path": [
-            "output_selection"
-          ],
           "label": "Output files",
           "flag": "--output-selection",
           "group": "Output",
@@ -9119,9 +8153,6 @@
         },
         {
           "key": "ladderize",
-          "path": [
-            "ladderize"
-          ],
           "label": "Ladderize",
           "flag": "--ladderize",
           "group": "Tree ordering",
@@ -9158,9 +8189,6 @@
         },
         {
           "key": "topology_order",
-          "path": [
-            "topology_order"
-          ],
           "label": "Topology order",
           "flag": "--topology-order",
           "group": "Tree ordering",
@@ -9226,9 +8254,6 @@
         },
         {
           "key": "topology_order_target_source",
-          "path": [
-            "topology_order_target_source"
-          ],
           "label": "Topology order target source",
           "flag": "--topology-order-target-source",
           "group": "Tree ordering",
@@ -9262,9 +8287,6 @@
         },
         {
           "key": "topology_order_target_file",
-          "path": [
-            "topology_order_target_file"
-          ],
           "label": "Topology order target file",
           "flag": "--topology-order-target-file",
           "group": "Tree ordering",
@@ -9285,9 +8307,6 @@
         },
         {
           "key": "topology_order_target_aggregate",
-          "path": [
-            "topology_order_target_aggregate"
-          ],
           "label": "Topology order target aggregate",
           "flag": "--topology-order-target-aggregate",
           "group": "Tree ordering",
@@ -9318,9 +8337,6 @@
         },
         {
           "key": "prune_short",
-          "path": [
-            "prune_short"
-          ],
           "label": "Prune short",
           "flag": "--prune-short",
           "group": "Pruning",
@@ -9339,9 +8355,6 @@
         },
         {
           "key": "prune_empty",
-          "path": [
-            "prune_empty"
-          ],
           "label": "Prune empty",
           "flag": "--prune-empty",
           "group": "Pruning",
@@ -9361,9 +8374,6 @@
         },
         {
           "key": "merge_shared_mutations",
-          "path": [
-            "merge_shared_mutations"
-          ],
           "label": "Merge shared mutations",
           "flag": "--merge-shared-mutations",
           "group": "Pruning",
@@ -9383,9 +8393,6 @@
         },
         {
           "key": "prune_nodes_list",
-          "path": [
-            "prune_nodes_list"
-          ],
           "label": "Prune nodes list",
           "flag": "--prune-nodes-list",
           "group": "Pruning",
@@ -9404,9 +8411,6 @@
         },
         {
           "key": "prune_nodes_list_delimiter",
-          "path": [
-            "prune_nodes_list_delimiter"
-          ],
           "label": "Prune nodes list delimiter",
           "flag": "--prune-nodes-list-delimiter",
           "group": "Pruning",
@@ -9426,9 +8430,6 @@
         },
         {
           "key": "prune_nodes_list_file",
-          "path": [
-            "prune_nodes_list_file"
-          ],
           "label": "Prune nodes list file",
           "flag": "--prune-nodes-list-file",
           "group": "Pruning",
@@ -9447,9 +8448,6 @@
         },
         {
           "key": "prune_nodes_list_file_delimiter",
-          "path": [
-            "prune_nodes_list_file_delimiter"
-          ],
           "label": "Prune nodes list file delimiter",
           "flag": "--prune-nodes-list-file-delimiter",
           "group": "Pruning",

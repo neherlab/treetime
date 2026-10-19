@@ -40,11 +40,7 @@ const WORDS: [(&str, &str); 22] = [
   ("vcf", "VCF"),
 ];
 
-pub fn setting_label(key_path: &[String]) -> String {
-  key_path.iter().map(|part| key_label(part)).join(": ")
-}
-
-fn key_label(key: &str) -> String {
+pub fn setting_label(key: &str) -> String {
   if let Some((_, label)) = LABELS.iter().find(|(known, _)| *known == key) {
     return (*label).to_owned();
   }

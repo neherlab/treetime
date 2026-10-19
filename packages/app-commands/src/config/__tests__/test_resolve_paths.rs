@@ -22,8 +22,6 @@ mod tests {
   #[case::tilde(          json!({ "tree": "~/tree.nwk" }),                 json!({ "tree": "/data/zika/~/tree.nwk" }))]
   #[case::not_a_string(   json!({ "tree": 7 }),                            json!({ "tree": 7 }))]
   #[case::not_a_path(     json!({ "attribute": "country.tsv" }),           json!({ "attribute": "country.tsv" }))]
-  #[case::nested_def(     json!({ "model": { "weights": "w.csv" } }),     json!({ "model": { "weights": "/data/zika/w.csv" } }))]
-  #[case::nested_any_of(  json!({ "gaps": { "mask": "mask.bed" } }),      json!({ "gaps": { "mask": "/data/zika/mask.bed" } }))]
   #[trace]
   fn test_resolve_paths_rewrites_relative_paths_of_path_settings(#[case] config: Value, #[case] expected: Value) {
     let mut config = config;
@@ -41,10 +39,7 @@ mod tests {
   #[test]
   fn test_resolve_paths_where_skips_settings_outside_the_selection() {
     let mut config = json!({ "tree": "tree.nwk", "alignment": ["aln.fasta"] });
-    resolve_config_paths_where(&mut config, &schema(), Path::new(BASE), |key_path| {
-      key_path[0] == "tree"
-    })
-    .unwrap();
+    resolve_config_paths_where(&mut config, &schema(), Path::new(BASE), |key| key == "tree").unwrap();
     assert_eq!(
       json!({ "tree": "/data/zika/tree.nwk", "alignment": ["aln.fasta"] }),
       config
@@ -62,19 +57,7 @@ mod tests {
           "alignment": { "type": "array", "items": { "type": "string" }, "x-path": "input" },
           "translations": { "type": "string", "x-path": "input-template" },
           "output_all": { "type": "string", "x-path": "output" },
-          "attribute": { "type": "string" },
-          "model": { "$ref": "#/$defs/ModelArgs" },
-          "gaps": { "anyOf": [{ "$ref": "#/$defs/GapArgs" }, { "type": "null" }] }
-        },
-        "$defs": {
-          "ModelArgs": {
-            "type": "object",
-            "properties": { "weights": { "type": "string", "x-path": "input" } }
-          },
-          "GapArgs": {
-            "type": "object",
-            "properties": { "mask": { "type": "string", "x-path": "input" } }
-          }
+          "attribute": { "type": "string" }
         }
       })
     }

@@ -2,7 +2,7 @@ import type { SettingSpec } from "@neherlab/app-contracts";
 
 import { commandSettings } from "../catalog";
 import { carryOverConfig, changedSpecs, defaultConfig, isChanged, normalizeConfig, resetValue } from "../config";
-import { setAt } from "../json";
+import { withSetting } from "../json";
 
 const clock = commandSettings("clock").settings;
 
@@ -33,27 +33,27 @@ describe("form config", () => {
   });
 
   test("a changed value is detected by its key", () => {
-    const config = setAt(defaultConfig(clock), ["clock_filter"], 2);
+    const config = withSetting(defaultConfig(clock), "clock_filter", 2);
 
     expect(changedSpecs(clock, config).map((found) => found.key)).toStrictEqual(["clock_filter"]);
   });
 
   test("a list in another order is a change", () => {
-    const config = setAt(defaultConfig(timetree), ["metadata_id_columns"], ["name", "strain", "accession"]);
+    const config = withSetting(defaultConfig(timetree), "metadata_id_columns", ["name", "strain", "accession"]);
 
     expect(isChanged(config, spec(timetree, "metadata_id_columns"))).toStrictEqual(true);
   });
 
   test("input paths are never reported as changed", () => {
-    const config = setAt(defaultConfig(timetree), ["tree"], "data/zika/86/tree.nwk");
+    const config = withSetting(defaultConfig(timetree), "tree", "data/zika/86/tree.nwk");
 
     expect(changedSpecs(timetree, config)).toStrictEqual([]);
   });
 
   test("reset restores the default of one setting only", () => {
-    const changed = setAt(setAt(defaultConfig(timetree), ["clock_rate"], 0.001), ["max_iter"], 5);
+    const changed = withSetting(withSetting(defaultConfig(timetree), "clock_rate", 0.001), "max_iter", 5);
     const clockRate = spec(timetree, "clock_rate");
-    const reset = setAt(changed, clockRate.path, resetValue(clockRate));
+    const reset = withSetting(changed, clockRate.key, resetValue(clockRate));
 
     expect(changedSpecs(timetree, reset).map((found) => found.key)).toStrictEqual(["max_iter"]);
   });
@@ -61,7 +61,7 @@ describe("form config", () => {
   test("a fresh config, a reset, and an unset setting hold no null", () => {
     const fresh = defaultConfig(timetree);
     const clockRate = spec(timetree, "clock_rate");
-    const unset = setAt(setAt(fresh, ["clock_rate"], 0.003), ["clock_rate"], resetValue(clockRate));
+    const unset = withSetting(withSetting(fresh, "clock_rate", 0.003), "clock_rate", resetValue(clockRate));
 
     expect({
       fresh: JSON.stringify(fresh).includes("null"),
@@ -97,9 +97,9 @@ describe("form config", () => {
   });
 
   test("switching the command keeps inputs and changed shared settings", () => {
-    const previous = setAt(
-      setAt(setAt(defaultConfig(timetree), ["tree"], "t.nwk"), ["keep_root"], true),
-      ["confidence"],
+    const previous = withSetting(
+      withSetting(withSetting(defaultConfig(timetree), "tree", "t.nwk"), "keep_root", true),
+      "confidence",
       true,
     );
 
@@ -117,9 +117,9 @@ describe("form config", () => {
     const ancestral = commandSettings("ancestral").settings;
     const homoplasy = commandSettings("homoplasy").settings;
 
-    const previous = setAt(
-      setAt(defaultConfig(ancestral), ["output_selection"], ["nwk", "gtr"]),
-      ["output_nwk_style"],
+    const previous = withSetting(
+      withSetting(defaultConfig(ancestral), "output_selection", ["nwk", "gtr"]),
+      "output_nwk_style",
       ["nhx"],
     );
 

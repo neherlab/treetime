@@ -1,5 +1,5 @@
 use crate::command::AppCommand;
-use crate::config::properties::{CLI_FLAG_KEY, LeafProperty, leaf_properties};
+use crate::config::properties::{CLI_FLAG_KEY, SettingProperty, setting_properties};
 use clap::{Arg, Command};
 use eyre::Report;
 use schemars::Schema;
@@ -15,23 +15,22 @@ pub fn annotated_config_schema(command: AppCommand) -> Result<Schema, Report> {
 pub fn annotate_cli_flags(schema: &mut Schema, command: &Command) -> Result<(), Report> {
   let mut command = command.clone();
   command.build();
-  let leaves = leaf_properties(schema.as_value())?;
-  for leaf in &leaves {
-    let arg = setting_arg(&command, leaf)?;
+  for setting in setting_properties(schema.as_value())? {
+    let arg = setting_arg(&command, &setting)?;
     let long = arg
       .get_long()
-      .ok_or_else(|| make_report!("config key `{}` has no command-line flag", leaf.key_path.join(".")))?;
-    let Some(Value::Object(property)) = schema.pointer_mut(&leaf.schema_pointer) else {
-      return make_error!("schema has no property at `{}`", leaf.schema_pointer);
+      .ok_or_else(|| make_report!("config key `{}` has no command-line flag", setting.key))?;
+    let Some(Value::Object(property)) = schema.pointer_mut(&setting.schema_pointer) else {
+      return make_error!("schema has no property at `{}`", setting.schema_pointer);
     };
     property.insert(CLI_FLAG_KEY.to_owned(), Value::String(format!("--{long}")));
   }
   Ok(())
 }
 
-pub fn setting_arg<'a>(cli: &'a Command, leaf: &LeafProperty) -> Result<&'a Arg, Report> {
+pub fn setting_arg<'a>(cli: &'a Command, setting: &SettingProperty) -> Result<&'a Arg, Report> {
   cli
     .get_arguments()
-    .find(|arg| arg.get_id() == leaf.key() && arg.get_long().is_some())
-    .ok_or_else(|| make_report!("config key `{}` has no command-line flag", leaf.key_path.join(".")))
+    .find(|arg| arg.get_id() == setting.key.as_str() && arg.get_long().is_some())
+    .ok_or_else(|| make_report!("config key `{}` has no command-line flag", setting.key))
 }

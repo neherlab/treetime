@@ -5,7 +5,7 @@ mod tests {
   };
   use crate::command::AppCommandExt;
   use app_commands::command::AppCommand;
-  use app_commands::config::properties::leaf_properties;
+  use app_commands::config::properties::setting_properties;
   use helpers::{data, request};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -221,10 +221,10 @@ mod tests {
   fn test_check_inputs_input_settings_are_settings_of_every_command_that_reads_them() {
     let missing = AppCommand::iter()
       .flat_map(|command| {
-        let keys = leaf_properties(command.config_schema().as_value())
+        let keys = setting_properties(command.config_schema().as_value())
           .unwrap()
           .into_iter()
-          .map(|leaf| leaf.key_path.join("."))
+          .map(|setting| setting.key)
           .collect::<BTreeSet<_>>();
         let reads_metadata = command.inputs().iter().any(|input| input.kind == InputKind::Metadata);
         let metadata_keys: &[&str] = if reads_metadata {
