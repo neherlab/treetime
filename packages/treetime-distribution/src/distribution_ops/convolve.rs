@@ -19,7 +19,7 @@ const CONV_TRUST_FRACTION: f64 = 1e-13;
 
 const CONV_TAIL_MARGIN: usize = 3;
 
-const SAMPLES_PER_SUPPORT_COMPONENT: f64 = 3.0;
+const CELLS_PER_RISE: f64 = 8.0;
 
 pub(crate) fn distribution_convolution_fine(
   a: &Distribution<NegLog>,
@@ -96,9 +96,13 @@ fn convolution_range_function(
   let profile = MassProfile::new(f)?;
   let (lo, hi) = (left.t + r.start(), right.t + r.end());
   let hard_ends = usize::from(!left.soft) + usize::from(!right.soft);
-  let dx = f
-    .dx()
-    .min((narrowest + (r.end() - r.start())) / SAMPLES_PER_SUPPORT_COMPONENT);
+  let has_hard_cells = hard_ends > 0 || f.y().iter().any(|y| y.is_infinite());
+  let rise = (r.end() - r.start()).min(narrowest);
+  let dx = if has_hard_cells {
+    f.dx().min(rise / CELLS_PER_RISE)
+  } else {
+    f.dx()
+  };
   let n_points = distribution_support_n_points((lo, hi), dx, max_points)?.max(2 + hard_ends);
   let dx = (hi - lo) / (n_points - 1).to_f64_exact();
   let y = (0..n_points)

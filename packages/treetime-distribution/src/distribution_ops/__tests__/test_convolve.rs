@@ -123,19 +123,22 @@ mod tests {
     let DistributionNegLog::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
-    let overlap_lengths = array![0.0, 2.0, 4.0, 4.0, 4.0, 4.0, 2.0, 0.0];
-    pretty_assert_ulps_eq!(Array1::linspace(2.0, 16.0, 8), g.t(), max_ulps = 4);
-    pretty_assert_abs_diff_eq!(overlap_lengths / 2.0, g.values().mapv(|y| (-y).exp()), epsilon = 1e-15);
+    let overlap_length = |t: f64| ((t - 2.0).min(10.0) - (t - 6.0).max(0.0)).max(0.0);
+    let rise_cell = 4.0 / 8.0;
+    let t = Array1::linspace(2.0, 16.0, 1 + 14 * 2);
+    pretty_assert_ulps_eq!(rise_cell, g.dx(), max_ulps = 0);
+    pretty_assert_ulps_eq!(t, g.t(), max_ulps = 4);
+    pretty_assert_abs_diff_eq!(
+      t.mapv(overlap_length) / 2.0,
+      g.values().mapv(|y| (-y).exp()),
+      epsilon = 1e-15
+    );
     assert_eq!(
       (BoundaryBehavior::Hard, BoundaryBehavior::Hard),
       (g.left_extrap(), g.right_extrap())
     );
-    for t in [3.0, 15.0] {
-      let density = (-actual.eval(t)?).exp();
-      assert!(
-        density > 0.0 && density.is_finite(),
-        "density {density} at {t} inside an end cell"
-      );
+    for t in [2.3, 15.7] {
+      pretty_assert_abs_diff_eq!(overlap_length(t) / 2.0, (-actual.eval(t)?).exp(), epsilon = 1e-15);
     }
     Ok(())
   }
@@ -293,7 +296,7 @@ mod tests {
     let DistributionNegLog::Function(g) = &actual else {
       panic!("expected a Function result, got {actual:?}");
     };
-    pretty_assert_ulps_eq!(array![0.0, 0.8, 1.6, 2.4, 3.2], g.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(Array1::linspace(0.0, 3.2, 1 + 128), g.t(), max_ulps = 4);
     let expected = g.t().slice(s![1..]).mapv(|t| -model.box_mass((0.0, 0.2), t).ln());
     pretty_assert_abs_diff_eq!(expected, g.y().slice(s![1..]).to_owned(), epsilon = 1e-15);
     assert!(g.y()[0].is_infinite(), "zero density at the start, got {}", g.y()[0]);
@@ -301,11 +304,11 @@ mod tests {
   }
 
   #[test]
-  fn test_convolution_range_function_coarse_grid_keeps_its_physical_ends() -> Result<(), Report> {
-    let f = DistributionFunction::from_range_values((0.0, 1.0), array![0.0, 1.0])?
+  fn test_convolution_range_function_end_cells_rise_linearly_from_the_support_ends() -> Result<(), Report> {
+    let f = DistributionFunction::from_range_values((0.0, 1.0), array![0.0, 0.0])?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
-    let model = PiecewiseLinear::of(&f, f64::INFINITY);
+    let box_mass = |t: f64| (t.min(1.0) - (t - 0.2).max(0.0)).max(0.0);
 
     let actual = distribution_convolution(
       &DistributionNegLog::range((0.0, 0.2), 0.0),
@@ -313,30 +316,68 @@ mod tests {
       MaxGridPoints::default(),
     )?;
 
-    let DistributionNegLog::Function(g) = &actual else {
-      panic!("expected a Function result, got {actual:?}");
-    };
-    pretty_assert_ulps_eq!(array![0.0, 0.4, 0.8, 1.2], g.t(), max_ulps = 4);
-    let y = g.y();
-    assert!(
-      y[0].is_infinite() && y[3].is_infinite(),
-      "zero density at both ends, got {y:?}"
-    );
-    pretty_assert_abs_diff_eq!(
-      neg_log(&array![
-        model.box_mass((0.0, 0.2), 0.4),
-        model.box_mass((0.0, 0.2), 0.8)
-      ]),
-      y.slice(s![1..3]).to_owned(),
-      epsilon = 1e-15
-    );
+    pretty_assert_abs_diff_eq!(0.2_f64.ln(), actual.log_mass()?, epsilon = 1e-15);
+    for t in [0.1, 0.01, 0.013, 1.187, 1.19] {
+      pretty_assert_abs_diff_eq!(box_mass(t), (-actual.eval(t)?).exp(), epsilon = 1e-15);
+    }
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::infinite_edge_ordinates( (0.0, 4.0), array![f64::INFINITY, 0.0, 0.0, f64::INFINITY, f64::INFINITY], vec![(0.0, 3.0)],             Array1::linspace(0.0, 3.2, 5))]
-  #[case::gap_wider_than_box(      (0.0, 5.0), array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0],      vec![(0.0, 2.0), (3.0, 5.0)], Array1::linspace(0.0, 5.2, 9))]
+  #[case::box_narrower_than_the_support( (0.0, 1.0), 2,  0.0,     (0.0, 0.2 ), 0.0     )]
+  #[case::box_wider_than_the_support(    (0.0, 1.0), 5,  LN_2,    (0.0, 2.0 ), 4.0_f64.ln())]
+  #[case::shifted_box_and_support(       (0.5, 2.0), 4,  -LN_2,   (1.5, 2.25), 0.5     )]
+  #[trace]
+  fn test_convolution_range_function_piecewise_linear_result_keeps_the_mass_exactly(
+    #[case] support: (f64, f64),
+    #[case] n_points: usize,
+    #[case] y: f64,
+    #[case] range: (f64, f64),
+    #[case] range_amplitude: f64,
+  ) -> Result<(), Report> {
+    let f = DistributionFunction::from_range_values(support, Array1::from_elem(n_points, y))?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Hard)?;
+    let range_log_mass = (range.1 - range.0).ln() - range_amplitude;
+    let function_log_mass = (support.1 - support.0).ln() - y;
+
+    let actual = distribution_convolution(
+      &DistributionNegLog::range(range, range_amplitude),
+      &DistributionNegLog::Function(f),
+      MaxGridPoints::default(),
+    )?;
+
+    pretty_assert_abs_diff_eq!(range_log_mass + function_log_mass, actual.log_mass()?, epsilon = 1e-14);
+    Ok(())
+  }
+
+  #[test]
+  fn test_convolution_range_function_mass_converges_at_second_order() -> Result<(), Report> {
+    let (lambda, range) = (1.5_f64, (0.0, 1.0));
+    let errors: Vec<f64> = [32, 64, 128, 256]
+      .iter()
+      .map(|&cells| {
+        let f = function_on((0.0, 2.0), cells + 1, |t| lambda * t)?
+          .with_left_extrap(BoundaryBehavior::Hard)?
+          .with_right_extrap(BoundaryBehavior::Hard)?;
+        let function_mass = DistributionNegLog::Function(f.clone()).log_mass()?.exp();
+        let actual = distribution_convolution(
+          &DistributionNegLog::range(range, 0.0),
+          &DistributionNegLog::Function(f),
+          MaxGridPoints::default(),
+        )?;
+        Ok(actual.log_mass()?.exp() - (range.1 - range.0) * function_mass)
+      })
+      .try_collect::<_, _, Report>()?;
+    assert_second_order(&errors);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::infinite_edge_ordinates( (0.0, 4.0), array![f64::INFINITY, 0.0, 0.0, f64::INFINITY, f64::INFINITY], vec![(0.0, 3.0)],             Array1::linspace(0.0, 3.2, 1 + 128))]
+  #[case::gap_wider_than_box(      (0.0, 5.0), array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0],      vec![(0.0, 2.0), (3.0, 5.0)], Array1::linspace(0.0, 5.2, 1 + 208))]
   #[trace]
   fn test_convolution_range_function_resolves_every_support_component(
     #[case] range: (f64, f64),
@@ -531,8 +572,9 @@ mod tests {
     let DistributionNegLog::Function(f) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
-    assert_eq!(n + 2, f.len());
-    assert_abs_diff_eq!(dx, f.dx(), epsilon = 1e-15);
+    let rise_cell = 2e-7 / 8.0;
+    assert_eq!(1 + (n + 1) * 4, f.len());
+    assert_abs_diff_eq!(rise_cell, f.dx(), epsilon = 1e-22);
     Ok(())
   }
 
