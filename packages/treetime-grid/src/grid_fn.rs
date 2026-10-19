@@ -1,20 +1,16 @@
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::boundary_behavior::DEFAULT_TAIL_FIT_POINTS;
-use crate::grid::{Grid, from_count};
+use crate::grid::Grid;
 use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::{HardApproachLaw, Side};
 use crate::hard_cell::HardCell;
-use crate::interp_nonuniform::interp_nonuniform;
 use crate::max_grid_points::MaxGridPoints;
 use approx::{UlpsEq, ulps_eq};
-use eyre::{Report, WrapErr};
-use ndarray::{Array1, s};
-use ndarray_stats::QuantileExt;
+use eyre::Report;
+use ndarray::Array1;
 use num::Float;
 use std::fmt::Debug;
-use treetime_utils::array::ndarray::has_uniform_spacing;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,42 +44,6 @@ impl<T: InterpElem> GridFn<T> {
     }
     let grid = Grid::from_array(x)?;
     Self::from_grid_array(grid, y)
-  }
-
-  pub fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>, max_points: MaxGridPoints) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    if x.len() < 2 {
-      return make_error!("Grid must have at least 2 points, got {}", x.len());
-    }
-    if x.len() != y.len() {
-      return make_error!(
-        "x and y arrays must have the same length, got {} and {}",
-        x.len(),
-        y.len()
-      );
-    }
-
-    let x_min = x[0];
-    let x_max = x[x.len() - 1];
-    let range = (x_min.into(), x_max.into());
-    let input_dx = (range.1 - range.0) / (x.len() - 1).to_f64_exact();
-    max_points.point_count(x.len().to_f64_exact(), range, input_dx)?;
-
-    if has_uniform_spacing(x) {
-      let grid = Grid::from_array(x)?;
-      return Self::from_grid_array(grid, y.clone());
-    }
-
-    let dx = find_min_spacing(x)?;
-    let required = ((x_max - x_min) / dx).ceil() + T::one();
-    let n_points = max_points.point_count(required.into(), range, dx.into())?;
-    let dx = (x_max - x_min) / from_count::<T>(n_points - 1);
-
-    let grid = Grid::from_start_dx(x_min, dx, n_points)?;
-    let y_uniform = interp_nonuniform(x, y, n_points, |i| grid.x_at(i))?;
-    Self::from_grid_array(grid, y_uniform)
   }
 
   pub fn from_start_dx_values(x_min: T, dx: T, y: Array1<T>) -> Result<Self, Report>
@@ -394,29 +354,4 @@ impl<T: InterpElem> GridFn<T> {
       .collect::<Result<Vec<T>, Report>>()?;
     Self::from_grid_array(grid, Array1::from_vec(y_new))
   }
-}
-
-fn find_min_spacing<T>(x: &Array1<T>) -> Result<T, Report>
-where
-  T: Float + Debug,
-{
-  if x.len() < 2 {
-    return make_error!("Array must have at least 2 points");
-  }
-
-  let diffs = &x.slice(s![1..]) - &x.slice(s![..-1]);
-
-  if diffs.iter().any(|&dx| dx <= T::zero()) {
-    return make_error!("x array must be sorted in ascending order");
-  }
-
-  let min_dx = *diffs
-    .min()
-    .wrap_err("When finding the smallest spacing of the input array")?;
-
-  if !min_dx.is_finite() || min_dx <= T::zero() {
-    return make_error!("Invalid spacing in input array: {min_dx:?}");
-  }
-
-  Ok(min_dx)
 }

@@ -25,7 +25,6 @@ deser = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }
 ndarray = { workspace = true }
-ndarray-stats = { workspace = true }
 num = { workspace = true }
 num-traits = { workspace = true }
 schemars = { workspace = true }

@@ -4,7 +4,7 @@ mod tests {
   use crate::grid_fn::GridFn;
   use crate::max_grid_points::{GridPointLimitExceeded, MaxGridPoints};
   use eyre::Report;
-  use ndarray::{Array1, array};
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use schemars::schema_for;
@@ -160,35 +160,6 @@ mod tests {
     assert_error!(
       grid_fn.resample_range_dx_clamped((0.0, 1000.0), 1.0, MaxGridPoints::new(1_000).unwrap()),
       "A grid over [0, 1000] with spacing 1 needs 1001 points, more than the limit of 1000"
-    );
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::uniform_at_the_limit(   Array1::linspace(0.0, 999.0, 1_000), 1_000)]
-  #[case::nonuniform_at_the_limit(array![0.0, 1.0, 2.5, 999.0],        1_000)]
-  #[trace]
-  fn test_max_grid_points_from_arrays_nonuniform_accepts(
-    #[case] x: Array1<f64>,
-    #[case] expected: usize,
-  ) -> Result<(), Report> {
-    let y = Array1::zeros(x.len());
-    let grid_fn = GridFn::from_arrays_nonuniform(&x, &y, MaxGridPoints::new(1_000)?)?;
-    assert_eq!(expected, grid_fn.len());
-    Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::uniform_one_above(   Array1::linspace(0.0, 1000.0, 1_001), "A grid over [0, 1000] with spacing 1 needs 1001 points, more than the limit of 1000")]
-  #[case::nonuniform_one_above(array![0.0, 1.0, 2.5, 1000.0],        "A grid over [0, 1000] with spacing 1 needs 1001 points, more than the limit of 1000")]
-  #[case::nonuniform_overflow( array![0.0, 1e-300, 1e300],           "A grid over [0, 1.0e300] with spacing 1.0e-300 needs more points than the limit of 1000")]
-  #[trace]
-  fn test_max_grid_points_from_arrays_nonuniform_rejects(#[case] x: Array1<f64>, #[case] expected: &str) {
-    let y = Array1::zeros(x.len());
-    assert_error!(
-      GridFn::from_arrays_nonuniform(&x, &y, MaxGridPoints::new(1_000).unwrap()),
-      expected
     );
   }
 }

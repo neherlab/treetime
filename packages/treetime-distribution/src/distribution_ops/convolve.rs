@@ -2,39 +2,45 @@ use crate::Distribution;
 use crate::distribution_core::function::DistributionFunction;
 use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
+use crate::distribution_ops::mass_profile::MassProfile;
 use crate::distribution_ops::multiply::{HardDomain, distribution_hard_domain, guarded_empty_result};
-use crate::policy::SupportsConvolution;
-use approx::ulps_eq;
+use crate::distribution_ops::time_bounds::distribution_support_n_points;
+use crate::policy::NegLog;
 use eyre::Report;
-use ndarray::{Array1, array, s};
-use treetime_grid::{BoundaryBehavior, MaxGridPoints};
+use itertools::Itertools;
+use ndarray::{Array1, s};
+use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
 use treetime_ops::convolve_fft;
-use treetime_utils::array::ndarray::{has_uniform_spacing, max_or, min_or};
+use treetime_utils::array::ndarray::{max_or, min_or};
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_internal_error};
 
 const CONV_TRUST_FRACTION: f64 = 1e-13;
 
 const CONV_TAIL_MARGIN: usize = 3;
 
-pub(crate) fn distribution_convolution_fine<Y: SupportsConvolution>(
-  a: &Distribution<Y>,
-  b: &Distribution<Y>,
+const SAMPLES_PER_SUPPORT_COMPONENT: f64 = 3.0;
+
+pub(crate) fn distribution_convolution_fine(
+  a: &Distribution<NegLog>,
+  b: &Distribution<NegLog>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution<NegLog>, Report> {
   match (a, b) {
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine::<Y>(a, b, max_points),
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function_fine(a, b, max_points),
     _ => distribution_convolution(a, b, max_points),
   }
 }
 
-pub(crate) fn distribution_convolution<Y: SupportsConvolution>(
-  a: &Distribution<Y>,
-  b: &Distribution<Y>,
+pub(crate) fn distribution_convolution(
+  a: &Distribution<NegLog>,
+  b: &Distribution<NegLog>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution<NegLog>, Report> {
   match (a, b) {
-    (Distribution::Formula(_), _) | (_, Distribution::Formula(_)) => {
+    (Distribution::Formula(_), _)
+    | (_, Distribution::Formula(_))
+    | (Distribution::Range(_), Distribution::Range(_)) => {
       make_error!("Cannot convolve {a} with {b}: operation not implemented")
     },
     (Distribution::Empty, _) | (_, Distribution::Empty) => {
@@ -42,110 +48,204 @@ pub(crate) fn distribution_convolution<Y: SupportsConvolution>(
       let b_domain = distribution_hard_domain(b);
       guarded_empty_result("convolution", a_domain, b_domain)
     },
-    (Distribution::Point(a), Distribution::Point(b)) => Ok(convolution_point_point::<Y>(a, b)),
+    (Distribution::Point(a), Distribution::Point(b)) => Ok(convolution_point_point(a, b)),
     (Distribution::Point(a), Distribution::Range(b)) | (Distribution::Range(b), Distribution::Point(a)) => {
-      Ok(convolution_point_range::<Y>(a, b))
+      Ok(convolution_point_range(a, b))
     },
-    (Distribution::Range(a), Distribution::Range(b)) => convolution_range_range::<Y>(a, b, max_points),
     (Distribution::Point(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Point(a)) => {
-      Ok(Distribution::Function(convolution_point_function::<Y>(a, b)?))
+      Ok(Distribution::Function(convolution_point_function(a, b)?))
     },
     (Distribution::Range(a), Distribution::Function(b)) | (Distribution::Function(b), Distribution::Range(a)) => {
-      convolution_range_function::<Y>(a, b)
+      convolution_range_function(a, b, max_points)
     },
-    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function::<Y>(a, b, max_points),
+    (Distribution::Function(a), Distribution::Function(b)) => convolution_function_function(a, b, max_points),
   }
 }
 
-fn convolution_point_point<Y: SupportsConvolution>(
-  a: &DistributionPoint<f64, Y>,
-  b: &DistributionPoint<f64, Y>,
-) -> Distribution<Y> {
-  let x = a.t() + b.t();
-  let y = Y::multiply(a.amplitude(), b.amplitude());
-  Distribution::point(x, y)
+fn convolution_point_point(
+  a: &DistributionPoint<f64, NegLog>,
+  b: &DistributionPoint<f64, NegLog>,
+) -> Distribution<NegLog> {
+  Distribution::point(a.t() + b.t(), a.amplitude() + b.amplitude())
 }
 
-fn convolution_range_range<Y: SupportsConvolution>(
-  a: &DistributionRange<f64, Y>,
-  b: &DistributionRange<f64, Y>,
+fn convolution_point_range(
+  p: &DistributionPoint<f64, NegLog>,
+  r: &DistributionRange<f64, NegLog>,
+) -> Distribution<NegLog> {
+  Distribution::range((r.start() + p.t(), r.end() + p.t()), p.amplitude() + r.amplitude())
+}
+
+fn convolution_range_function(
+  r: &DistributionRange<f64, NegLog>,
+  f: &DistributionFunction<f64, NegLog>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
-  let start = a.start() + b.start();
-  let end = a.end() + b.end();
+) -> Result<Distribution<NegLog>, Report> {
+  if f.is_empty() || !f.grid_fn().y_min().is_finite() || r.amplitude() == f64::INFINITY {
+    return guarded_empty_result("convolution", conv_operand_domain(false), conv_operand_domain(false));
+  }
+  if f.len() == 1 {
+    let point = DistributionPoint::new(f.x_min(), f.values()[0]);
+    return Ok(convolution_point_range(&point, r));
+  }
+  let left = SupportEnd::of(f, Side::Left);
+  let right = SupportEnd::of(f, Side::Right);
+  let Some(narrowest) = narrowest_support_component(f, left, right) else {
+    return guarded_empty_result("convolution", conv_operand_domain(false), conv_operand_domain(false));
+  };
+  let profile = MassProfile::new(f)?;
+  let (lo, hi) = (left.t + r.start(), right.t + r.end());
+  let hard_ends = usize::from(!left.soft) + usize::from(!right.soft);
+  let dx = f
+    .dx()
+    .min((narrowest + (r.end() - r.start())) / SAMPLES_PER_SUPPORT_COMPONENT);
+  let n_points = distribution_support_n_points((lo, hi), dx, max_points)?.max(2 + hard_ends);
+  let dx = (hi - lo) / (n_points - 1).to_f64_exact();
+  let y = (0..n_points)
+    .map(|i| {
+      let t = if i == n_points - 1 {
+        hi
+      } else {
+        lo + dx * i.to_f64_exact()
+      };
+      let s_lo = left.clamp_lower(t - r.end());
+      let s_hi = right.clamp_upper(t - r.start());
+      if s_lo < s_hi {
+        Ok(profile.y_peak() + profile.neg_log_mass_between(s_lo, s_hi)?)
+      } else {
+        Ok(f64::INFINITY)
+      }
+    })
+    .collect::<Result<Array1<f64>, Report>>()?;
+  if !y.iter().any(|y| y.is_finite()) {
+    return make_internal_error!(
+      "Convolution of the range [{}, {}] with a function on [{}, {}] left no point with density at spacing {dx}",
+      r.start(),
+      r.end(),
+      f.x_min(),
+      f.x_max()
+    );
+  }
+  let g = DistributionFunction::from_range_values((lo, hi), y)?
+    .with_left_extrap(left.result_tail())?
+    .with_right_extrap(right.result_tail())?;
+  Ok(Distribution::Function(g.with_amplitude(r.amplitude() + f.amplitude())))
+}
 
-  let peak_start = f64::max(a.start() + b.start(), a.end() + b.start());
-  let peak_end = f64::min(a.end() + b.end(), a.start() + b.end());
+fn narrowest_support_component(
+  f: &DistributionFunction<f64, NegLog>,
+  left: SupportEnd,
+  right: SupportEnd,
+) -> Option<f64> {
+  let last = f.len() - 1;
+  f.y()
+    .iter()
+    .enumerate()
+    .chunk_by(|(_, y)| y.is_finite())
+    .into_iter()
+    .filter(|(finite, _)| *finite)
+    .filter_map(|(_, run)| {
+      let indices = run.map(|(i, _)| i).collect_vec();
+      let (&first, &end) = (indices.first()?, indices.last()?);
+      let start = match (first, left.soft) {
+        (0, true) => f64::NEG_INFINITY,
+        (0, false) => left.t,
+        _ => grid_x(f, first - 1),
+      };
+      let end = match (end == last, right.soft) {
+        (true, true) => f64::INFINITY,
+        (true, false) => right.t,
+        (false, _) => grid_x(f, end + 1),
+      };
+      let width = end - start;
+      (width > 0.0).then_some(width)
+    })
+    .reduce(f64::min)
+}
 
-  let peak_amplitude = Y::multiply(a.amplitude(), b.amplitude());
-  let zero = Y::from_plain(0.0);
-
-  if ulps_eq!(&peak_start, &peak_end, max_ulps = 10) {
-    let x = array![start, peak_start, end];
-    let y = array![zero, peak_amplitude, zero];
-    Distribution::function(x, y)
+fn grid_x(f: &DistributionFunction<f64, NegLog>, i: usize) -> f64 {
+  if i == f.len() - 1 {
+    f.x_max()
   } else {
-    let x = array![start, peak_start, peak_end, end];
-    let y = array![zero, peak_amplitude, peak_amplitude, zero];
-    if has_uniform_spacing(&x) {
-      Distribution::function(x, y)
-    } else {
-      DistributionFunction::from_arrays_nonuniform(&x, &y, max_points).map(Distribution::Function)
+    f.x_min() + f.dx() * i.to_f64_exact()
+  }
+}
+
+#[derive(Clone, Copy)]
+struct SupportEnd {
+  behavior: BoundaryBehavior,
+  t: f64,
+  soft: bool,
+}
+
+impl SupportEnd {
+  fn of(f: &DistributionFunction<f64, NegLog>, side: Side) -> Self {
+    let y = f.y();
+    let last = y.len() - 1;
+    let (behavior, edge_index, outermost_finite) = match side {
+      Side::Left => (f.left_extrap(), 0, y.iter().position(|y| y.is_finite())),
+      Side::Right => (f.right_extrap(), last, y.iter().rposition(|y| y.is_finite())),
+    };
+    match (outermost_finite, side) {
+      (Some(i), Side::Left) if i != edge_index => Self::new(BoundaryBehavior::Hard, grid_x(f, i - 1)),
+      (Some(i), Side::Right) if i != edge_index => Self::new(BoundaryBehavior::Hard, grid_x(f, i + 1)),
+      _ => Self::new(behavior, grid_x(f, edge_index)),
+    }
+  }
+
+  fn new(behavior: BoundaryBehavior, grid_edge: f64) -> Self {
+    let t = match behavior {
+      BoundaryBehavior::HardApproach(law) => law.t_hard,
+      BoundaryBehavior::Error | BoundaryBehavior::Hard | BoundaryBehavior::Linear(_) => grid_edge,
+    };
+    Self {
+      behavior,
+      t,
+      soft: behavior.is_soft(),
+    }
+  }
+
+  fn clamp_lower(self, s: f64) -> f64 {
+    if self.soft { s } else { s.max(self.t) }
+  }
+
+  fn clamp_upper(self, s: f64) -> f64 {
+    if self.soft { s } else { s.min(self.t) }
+  }
+
+  fn result_tail(self) -> BoundaryBehavior {
+    match self.behavior {
+      BoundaryBehavior::HardApproach(_) => BoundaryBehavior::Hard,
+      other => other,
     }
   }
 }
 
-fn convolution_point_range<Y: SupportsConvolution>(
-  p: &DistributionPoint<f64, Y>,
-  r: &DistributionRange<f64, Y>,
-) -> Distribution<Y> {
-  let begin = r.start() + p.t();
-  let end = r.end() + p.t();
-  let amplitude = Y::multiply(p.amplitude(), r.amplitude());
-  Distribution::range((begin, end), amplitude)
+fn convolution_point_function(
+  p: &DistributionPoint<f64, NegLog>,
+  f: &DistributionFunction<f64, NegLog>,
+) -> Result<DistributionFunction<f64, NegLog>, Report> {
+  let shifted = DistributionFunction::from_start_dx_values(f.x_min() + p.t(), f.dx(), f.y().clone())?
+    .with_left_extrap(shift_tail_law(f.left_extrap(), p.t()))?
+    .with_right_extrap(shift_tail_law(f.right_extrap(), p.t()))?;
+  Ok(shifted.with_amplitude(f.amplitude() + p.amplitude()))
 }
 
-fn convolution_range_function<Y: SupportsConvolution>(
-  r: &DistributionRange<f64, Y>,
-  f: &DistributionFunction<f64, Y>,
-) -> Result<Distribution<Y>, Report> {
-  let dx = f.dx();
-
-  let shift = f64::midpoint(r.start(), r.end());
-  let amplitude = r.amplitude();
-  let half_width = (r.end() - r.start()) / 2.0;
-
-  let point_distr = DistributionPoint::new(shift, amplitude);
-  let shifted_function = convolution_point_function::<Y>(&point_distr, f)?;
-
-  let (plain, peak) = to_peak_normalized_plain::<Y>(shifted_function.y());
-  let t = shifted_function.t();
-  let mut smoothed = Array1::zeros(plain.len());
-  for (i, &ti) in t.iter().enumerate() {
-    let mask = t.mapv(|x| if (x - ti).abs() <= half_width { 1.0 } else { 0.0 });
-    smoothed[i] = (&plain * &mask).sum() * dx;
+fn shift_tail_law(behavior: BoundaryBehavior, shift: f64) -> BoundaryBehavior {
+  match behavior {
+    BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(HardApproachLaw {
+      t_hard: law.t_hard + shift,
+      ..law
+    }),
+    other => other,
   }
-  let y = smoothed.mapv(|v| Y::from_neg_log(if v > 0.0 { -v.ln() + peak } else { f64::INFINITY }));
-
-  DistributionFunction::from_start_dx_values(shifted_function.x_min(), shifted_function.dx(), y)
-    .map(|smoothed| Distribution::Function(smoothed.with_amplitude(shifted_function.amplitude())))
 }
 
-fn convolution_point_function<Y: SupportsConvolution>(
-  p: &DistributionPoint<f64, Y>,
-  f: &DistributionFunction<f64, Y>,
-) -> Result<DistributionFunction<f64, Y>, Report> {
-  let x_min = f.x_min() + p.t();
-  let dx = f.dx();
-  let shifted = DistributionFunction::from_start_dx_values(x_min, dx, f.y().clone())?;
-  Ok(shifted.with_amplitude(Y::multiply(f.amplitude(), p.amplitude())))
-}
-
-fn convolution_function_function<Y: SupportsConvolution>(
-  a: &DistributionFunction<f64, Y>,
-  b: &DistributionFunction<f64, Y>,
+fn convolution_function_function(
+  a: &DistributionFunction<f64, NegLog>,
+  b: &DistributionFunction<f64, NegLog>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution<NegLog>, Report> {
   let coarse_dx = a.dx().max(b.dx());
   match convolution_function_function_fine(a, b, max_points)? {
     Distribution::Function(conv_distr) => coarsen_convolution(conv_distr, coarse_dx, max_points),
@@ -153,11 +253,11 @@ fn convolution_function_function<Y: SupportsConvolution>(
   }
 }
 
-fn convolution_function_function_fine<Y: SupportsConvolution>(
-  a: &DistributionFunction<f64, Y>,
-  b: &DistributionFunction<f64, Y>,
+fn convolution_function_function_fine(
+  a: &DistributionFunction<f64, NegLog>,
+  b: &DistributionFunction<f64, NegLog>,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution<NegLog>, Report> {
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
     let b_domain = conv_operand_domain(!b.is_empty());
@@ -182,13 +282,13 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   if a.len() == 1 && b.len() == 1 {
     return Ok(Distribution::point(
       a.x_min() + b.x_min(),
-      Y::multiply(a.values()[0], b.values()[0]),
+      a.values()[0] + b.values()[0],
     ));
   }
-  let amplitude = Y::multiply(a.amplitude(), b.amplitude());
+  let amplitude = a.amplitude() + b.amplitude();
 
-  let (pa, peak_a) = to_peak_normalized_plain::<Y>(a.y());
-  let (pb, peak_b) = to_peak_normalized_plain::<Y>(b.y());
+  let (pa, peak_a) = to_peak_normalized_plain(a.y());
+  let (pb, peak_b) = to_peak_normalized_plain(b.y());
   if !(peak_a.is_finite() && peak_b.is_finite()) {
     let a_domain = conv_operand_domain(peak_a.is_finite());
     let b_domain = conv_operand_domain(peak_b.is_finite());
@@ -208,13 +308,13 @@ fn convolution_function_function_fine<Y: SupportsConvolution>(
   let x_min = a.x_min() + b.x_min() + reconstructed.start_offset.to_f64_exact() * dx;
 
   let offset = peak_a + peak_b;
-  let y = reconstructed.neg_log.mapv(|v| Y::from_neg_log(v + offset));
+  let y = reconstructed.neg_log.mapv(|v| v + offset);
 
   if y.len() == 1 {
-    return Ok(Distribution::point(x_min, Y::multiply(amplitude, y[0])));
+    return Ok(Distribution::point(x_min, amplitude + y[0]));
   }
 
-  let conv_distr = DistributionFunction::<f64, Y>::from_start_dx_values(x_min, dx, y)?.with_amplitude(amplitude);
+  let conv_distr = DistributionFunction::from_start_dx_values(x_min, dx, y)?.with_amplitude(amplitude);
   Ok(Distribution::Function(conv_distr))
 }
 
@@ -225,11 +325,11 @@ fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {
   ))
 }
 
-pub(super) fn coarsen_convolution<Y: SupportsConvolution>(
-  conv_distr: DistributionFunction<f64, Y>,
+pub(super) fn coarsen_convolution(
+  conv_distr: DistributionFunction<f64, NegLog>,
   coarse_dx: f64,
   max_points: MaxGridPoints,
-) -> Result<Distribution<Y>, Report> {
+) -> Result<Distribution<NegLog>, Report> {
   let range = conv_distr.x_max() - conv_distr.x_min();
   let coarse_intervals = (range / coarse_dx).round();
   if coarse_intervals.is_nan() || coarse_intervals < 1.0 {
@@ -238,11 +338,10 @@ pub(super) fn coarsen_convolution<Y: SupportsConvolution>(
   Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx, max_points)?))
 }
 
-fn to_peak_normalized_plain<Y: SupportsConvolution>(y: &Array1<f64>) -> (Array1<f64>, f64) {
-  let neg_log = y.mapv(|v| Y::to_neg_log(v));
-  let peak = min_or(&neg_log, f64::INFINITY);
+fn to_peak_normalized_plain(neg_log: &Array1<f64>) -> (Array1<f64>, f64) {
+  let peak = min_or(neg_log, f64::INFINITY);
   if !peak.is_finite() {
-    return (Array1::zeros(y.len()), peak);
+    return (Array1::zeros(neg_log.len()), peak);
   }
   let plain = neg_log.mapv(|nl| (peak - nl).exp());
   (plain, peak)

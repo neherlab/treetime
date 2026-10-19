@@ -5072,7 +5072,6 @@ dependencies = [
  "eyre",
  "itertools",
  "ndarray",
- "ndarray-stats",
  "num",
  "num-traits",
  "pretty_assertions",

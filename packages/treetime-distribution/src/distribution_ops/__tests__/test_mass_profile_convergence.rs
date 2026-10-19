@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
   use crate::policy::NegLog;
   use crate::{BoundaryBehavior, DistributionFunction};
@@ -72,7 +72,7 @@ mod tests {
     Ok(())
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use super::*;
     use crate::distribution_ops::mass_profile::MassFractions;
 
@@ -110,7 +110,7 @@ mod tests {
       f.with_left_extrap(left)?.with_right_extrap(right)
     }
 
-    pub(super) fn assert_second_order(errors: &[f64]) {
+    pub(crate) fn assert_second_order(errors: &[f64]) {
       let coarsest = errors[0].abs();
       let bounded = errors
         .iter()

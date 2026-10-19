@@ -15,7 +15,13 @@ pub fn convolve_across_edge(
   grid_points: usize,
   max_points: MaxGridPoints,
 ) -> Result<Distribution<NegLog>, Report> {
-  let conv = distribution_convolution_fine(a, b, max_points)?.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?;
+  let is_fft = matches!((a, b), (Distribution::Function(_), Distribution::Function(_)));
+  let conv = distribution_convolution_fine(a, b, max_points)?;
+  let conv = if is_fft || has_no_soft_law(&conv, soft) {
+    conv.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?
+  } else {
+    conv
+  };
   let conv = match soft {
     Side::Left => conv.with_right_extrap(BoundaryBehavior::Hard)?,
     Side::Right => conv.with_left_extrap(BoundaryBehavior::Hard)?,
@@ -23,6 +29,9 @@ pub fn convolve_across_edge(
   let Distribution::Function(conv) = conv else {
     return conv.repeak();
   };
+  if !is_fft {
+    return Distribution::Function(conv).repeak();
+  }
   let Some(sized) = peak_normalized_if_mass_sizable(&conv) else {
     return Distribution::Function(conv).repeak();
   };
@@ -40,6 +49,17 @@ pub fn convolve_across_edge(
   };
 
   resample_to_mass_window(normalized, lo, hi, grid_points, max_points)
+}
+
+fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {
+  let Distribution::Function(f) = conv else {
+    return false;
+  };
+  let law = match soft {
+    Side::Left => f.left_extrap(),
+    Side::Right => f.right_extrap(),
+  };
+  law == BoundaryBehavior::Error
 }
 
 fn convolution_output_window(

@@ -39,14 +39,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Self::from_grid_fn(grid_fn))
   }
 
-  pub(crate) fn from_arrays_nonuniform(x: &Array1<T>, y: &Array1<T>, max_points: MaxGridPoints) -> Result<Self, Report>
-  where
-    T: Float + UlpsEq,
-  {
-    let grid_fn = GridFn::from_arrays_nonuniform(x, y, max_points)?;
-    Ok(Self::from_grid_fn(grid_fn))
-  }
-
   pub fn from_range_values(x_range: (T, T), y: Array1<T>) -> Result<Self, Report>
   where
     T: Float,

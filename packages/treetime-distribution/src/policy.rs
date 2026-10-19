@@ -21,8 +21,6 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Plain;
 
-impl SupportsConvolution for Plain {}
-
 impl YAxisPolicy for Plain {
   fn from_plain(p: f64) -> f64 {
     p
@@ -68,8 +66,6 @@ impl YAxisPolicy for Plain {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NegLog;
 
-impl SupportsConvolution for NegLog {}
-
 impl YAxisPolicy for NegLog {
   fn from_plain(p: f64) -> f64 {
     -p.ln()
@@ -111,8 +107,6 @@ impl YAxisPolicy for NegLog {
     nl
   }
 }
-
-pub(crate) trait SupportsConvolution: YAxisPolicy {}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PolicyMarker<Y: YAxisPolicy>(PhantomData<Y>);
