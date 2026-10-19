@@ -187,7 +187,7 @@ fn refine_distribution_from_parent(
   let Some(subtree_dist) = subtree else {
     let dist_from_parent =
       convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS, max_points)?;
-    log_refinement(names, key, parent_time_dist, &dist_from_parent);
+    log_refinement(names, key, parent_time_dist, &dist_from_parent, &dist_from_parent);
     return Ok(ForwardRefinement::Refined(dist_from_parent));
   };
 
@@ -207,7 +207,7 @@ fn refine_distribution_from_parent(
   let combined = distribution_multiplication(&dist_from_parent, subtree_dist, max_points)?
     .normalize()
     .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
-  log_refinement(names, key, parent_time_dist, &combined);
+  log_refinement(names, key, parent_time_dist, &dist_from_parent, &combined);
 
   if combined.likely_time()?.is_none() && date_constraint.is_some() {
     log_kept_given_date(names, key, date_constraint, &dist_from_parent);
@@ -254,6 +254,7 @@ fn log_refinement(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
   parent: &Distribution<NegLog>,
+  convolved: &Distribution<NegLog>,
   refined: &Distribution<NegLog>,
 ) {
   if !log_enabled!(Level::Debug) {
@@ -261,8 +262,9 @@ fn log_refinement(
   }
   let name = node_label(names, key);
   debug!(
-    "Timetree forward pass: node '{name}': parent {} -> refined {}",
+    "Timetree forward pass: node '{name}': parent {} -> convolved {} -> refined {}",
     describe_grid(parent),
+    describe_grid(convolved),
     describe_grid(refined)
   );
 }
