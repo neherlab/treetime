@@ -44,7 +44,6 @@ mugration_attribute = "country"
 
 [families."flu/h3n2"]
 mugration_attribute = "location"
-command_args = { clock = "--sequence-length=1400" }
 
 [families."lassa/L"]
 metadata_args = "--name-column=accession"
@@ -649,7 +648,6 @@ args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
 
 [[timetree]]
 variant = "basic"
-fail.'dengue/100' = "rejects a negative clock rate: kb/decisions/timetree-rejects-negative-clock-rate.md"
 fail.'dengue/500' = "kb/issues/H-timetree-empty-distribution-division.md"
 fail.'dengue/1000' = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
 fail.'lassa/L/20' = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
