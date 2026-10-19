@@ -258,12 +258,6 @@ pub(crate) enum RateRangeEdge {
   LowerCostEnd,
 }
 
-type RateStepResult<P> = (
-  GTR,
-  BTreeMap<GraphNodeKey, <P as MarginalPasses>::Node>,
-  BTreeMap<GraphEdgeKey, <P as MarginalPasses>::Backward>,
-);
-
 fn keep_start_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
@@ -285,6 +279,12 @@ fn keep_start_rate<P: MarginalPasses>(
   debug!("GTR rate optimization: skipped (no bracket), keeping mu = {old_mu:.6}");
   Ok((restored_gtr, restored_nodes, restored_backward))
 }
+
+type RateStepResult<P> = (
+  GTR,
+  BTreeMap<GraphNodeKey, <P as MarginalPasses>::Node>,
+  BTreeMap<GraphEdgeKey, <P as MarginalPasses>::Backward>,
+);
 
 struct GtrRateCandidate<P: MarginalPasses> {
   gtr: GTR,

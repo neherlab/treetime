@@ -102,6 +102,53 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   Ok(resolved)
 }
 
+fn expand_partitions(
+  command: CommandKind,
+  partition_count: NonZeroUsize,
+  tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
+  non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
+) -> Result<ResolvedOutputs, Report> {
+  let partitions = (1..=partition_count.get())
+    .map(|partition| partition.to_string())
+    .collect_vec();
+  let mut resolved = ResolvedOutputs {
+    partition_count,
+    tree_outputs: BTreeMap::new(),
+    non_tree_outputs: BTreeMap::new(),
+    tree_outputs_by_partition: BTreeMap::new(),
+    non_tree_outputs_by_partition: BTreeMap::new(),
+  };
+  for (kind, path) in tree_outputs {
+    let label = tree_write_kind_label(kind);
+    if command.is_per_partition_tree(kind)
+      || (command.reads_alignments() && PathPlaceholder::Partition.is_in_file_name(&path))
+    {
+      let paths = expand_path_template(&label, &path, PathPlaceholder::Partition, &partitions)?;
+      resolved.tree_outputs_by_partition.insert(kind, paths);
+    } else {
+      ensure_no_partition_placeholder(&label, &path)?;
+      resolved.tree_outputs.insert(kind, path);
+    }
+  }
+  for (selection, file) in non_tree_outputs {
+    let label = selection.flag_name();
+    if command.is_per_partition(selection) {
+      let files = expand_path_template(label, &file.path, PathPlaceholder::Partition, &partitions)?
+        .into_iter()
+        .map(|path| PlannedFile {
+          path,
+          requested: file.requested,
+        })
+        .collect();
+      resolved.non_tree_outputs_by_partition.insert(selection, files);
+    } else {
+      ensure_no_partition_placeholder(label, &file.path)?;
+      resolved.non_tree_outputs.insert(selection, file);
+    }
+  }
+  Ok(resolved)
+}
+
 pub fn expand_path_template(
   flag: &str,
   template: &Path,
@@ -132,6 +179,92 @@ pub fn expand_path_template(
       Ok(template.with_file_name(placeholder.substitute(name, value)))
     })
     .collect()
+}
+
+fn ensure_no_partition_placeholder(label: &str, path: &Path) -> Result<(), Report> {
+  if PathPlaceholder::Partition.is_in_file_name(path) {
+    return make_error!(
+      "{label} is written once per run, so its file name cannot contain {}",
+      PathPlaceholder::Partition.quoted_tokens()
+    );
+  }
+  Ok(())
+}
+
+fn tree_write_kind_label(kind: TreeWriteKind) -> Cow<'static, str> {
+  let flag = tree_write_kind_selection(kind).flag_name();
+  match kind {
+    TreeWriteKind::Nwk(style) | TreeWriteKind::Nexus(style) => {
+      Cow::Owned(format!("{flag} (style {})", nwk_style_name(style)))
+    },
+    TreeWriteKind::Auspice
+    | TreeWriteKind::MatPb
+    | TreeWriteKind::MatJson
+    | TreeWriteKind::GraphJson
+    | TreeWriteKind::Dot => Cow::Borrowed(flag),
+  }
+}
+
+fn expand_override_styles(path: &Path, styles: &[NwkStyle]) -> Vec<(NwkStyle, PathBuf)> {
+  let multi = styles.len() > 1;
+  styles
+    .iter()
+    .map(|&style| {
+      let p = if multi {
+        insert_secondary_ext(path, nwk_style_secondary_ext(style))
+      } else {
+        path.to_path_buf()
+      };
+      (style, p)
+    })
+    .collect()
+}
+
+fn insert_secondary_ext(path: &Path, secondary: &str) -> PathBuf {
+  if secondary.is_empty() {
+    return path.to_path_buf();
+  }
+  if let (Some(stem), Some(ext)) = (path.file_stem(), path.extension()) {
+    let mut name = OsString::from(stem);
+    name.push(secondary);
+    name.push(".");
+    name.push(ext);
+    path.with_file_name(name)
+  } else {
+    let mut name = OsString::from(path.as_os_str());
+    name.push(secondary);
+    PathBuf::from(name)
+  }
+}
+
+fn expand_outputall_styles(
+  dir: &Path,
+  stem: &str,
+  partitioned: bool,
+  command: CommandKind,
+  variant: OutputSelection,
+  styles: &[NwkStyle],
+) -> Vec<(NwkStyle, PathBuf)> {
+  let multi = styles.len() > 1;
+  let primary = variant.extension();
+  styles
+    .iter()
+    .map(|&style| {
+      let secondary = if multi { nwk_style_secondary_ext(style) } else { "" };
+      let stem = default_stem(
+        stem,
+        partitioned && command.is_per_partition_tree(styled_tree_write_kind(variant, style)),
+      );
+      (style, dir.join(format!("{stem}{secondary}{primary}")))
+    })
+    .collect()
+}
+
+fn default_stem(stem: &str, per_partition: bool) -> Cow<'_, str> {
+  match (per_partition, PathPlaceholder::Partition.tokens()) {
+    (true, [token, ..]) => Cow::Owned(format!("{stem}.{token}")),
+    _ => Cow::Borrowed(stem),
+  }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -189,145 +322,12 @@ impl PathPlaceholder {
   }
 }
 
-fn default_stem(stem: &str, per_partition: bool) -> Cow<'_, str> {
-  match (per_partition, PathPlaceholder::Partition.tokens()) {
-    (true, [token, ..]) => Cow::Owned(format!("{stem}.{token}")),
-    _ => Cow::Borrowed(stem),
-  }
-}
-
-fn expand_partitions(
-  command: CommandKind,
-  partition_count: NonZeroUsize,
-  tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
-  non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
-) -> Result<ResolvedOutputs, Report> {
-  let partitions = (1..=partition_count.get())
-    .map(|partition| partition.to_string())
-    .collect_vec();
-  let mut resolved = ResolvedOutputs {
-    partition_count,
-    tree_outputs: BTreeMap::new(),
-    non_tree_outputs: BTreeMap::new(),
-    tree_outputs_by_partition: BTreeMap::new(),
-    non_tree_outputs_by_partition: BTreeMap::new(),
-  };
-  for (kind, path) in tree_outputs {
-    let label = tree_write_kind_label(kind);
-    if command.is_per_partition_tree(kind)
-      || (command.reads_alignments() && PathPlaceholder::Partition.is_in_file_name(&path))
-    {
-      let paths = expand_path_template(&label, &path, PathPlaceholder::Partition, &partitions)?;
-      resolved.tree_outputs_by_partition.insert(kind, paths);
-    } else {
-      ensure_no_partition_placeholder(&label, &path)?;
-      resolved.tree_outputs.insert(kind, path);
-    }
-  }
-  for (selection, file) in non_tree_outputs {
-    let label = selection.flag_name();
-    if command.is_per_partition(selection) {
-      let files = expand_path_template(label, &file.path, PathPlaceholder::Partition, &partitions)?
-        .into_iter()
-        .map(|path| PlannedFile {
-          path,
-          requested: file.requested,
-        })
-        .collect();
-      resolved.non_tree_outputs_by_partition.insert(selection, files);
-    } else {
-      ensure_no_partition_placeholder(label, &file.path)?;
-      resolved.non_tree_outputs.insert(selection, file);
-    }
-  }
-  Ok(resolved)
-}
-
-fn ensure_no_partition_placeholder(label: &str, path: &Path) -> Result<(), Report> {
-  if PathPlaceholder::Partition.is_in_file_name(path) {
-    return make_error!(
-      "{label} is written once per run, so its file name cannot contain {}",
-      PathPlaceholder::Partition.quoted_tokens()
-    );
-  }
-  Ok(())
-}
-
-fn tree_write_kind_label(kind: TreeWriteKind) -> Cow<'static, str> {
-  let flag = tree_write_kind_selection(kind).flag_name();
-  match kind {
-    TreeWriteKind::Nwk(style) | TreeWriteKind::Nexus(style) => {
-      Cow::Owned(format!("{flag} (style {})", nwk_style_name(style)))
-    },
-    TreeWriteKind::Auspice
-    | TreeWriteKind::MatPb
-    | TreeWriteKind::MatJson
-    | TreeWriteKind::GraphJson
-    | TreeWriteKind::Dot => Cow::Borrowed(flag),
-  }
-}
-
 fn styled_tree_write_kind(variant: OutputSelection, style: NwkStyle) -> TreeWriteKind {
   match variant {
     OutputSelection::Nwk => TreeWriteKind::Nwk(style),
     OutputSelection::Nexus => TreeWriteKind::Nexus(style),
     _ => unreachable!("styled_tree_write_kind called on non-styled variant"),
   }
-}
-
-fn expand_override_styles(path: &Path, styles: &[NwkStyle]) -> Vec<(NwkStyle, PathBuf)> {
-  let multi = styles.len() > 1;
-  styles
-    .iter()
-    .map(|&style| {
-      let p = if multi {
-        insert_secondary_ext(path, nwk_style_secondary_ext(style))
-      } else {
-        path.to_path_buf()
-      };
-      (style, p)
-    })
-    .collect()
-}
-
-fn insert_secondary_ext(path: &Path, secondary: &str) -> PathBuf {
-  if secondary.is_empty() {
-    return path.to_path_buf();
-  }
-  if let (Some(stem), Some(ext)) = (path.file_stem(), path.extension()) {
-    let mut name = OsString::from(stem);
-    name.push(secondary);
-    name.push(".");
-    name.push(ext);
-    path.with_file_name(name)
-  } else {
-    let mut name = OsString::from(path.as_os_str());
-    name.push(secondary);
-    PathBuf::from(name)
-  }
-}
-
-fn expand_outputall_styles(
-  dir: &Path,
-  stem: &str,
-  partitioned: bool,
-  command: CommandKind,
-  variant: OutputSelection,
-  styles: &[NwkStyle],
-) -> Vec<(NwkStyle, PathBuf)> {
-  let multi = styles.len() > 1;
-  let primary = variant.extension();
-  styles
-    .iter()
-    .map(|&style| {
-      let secondary = if multi { nwk_style_secondary_ext(style) } else { "" };
-      let stem = default_stem(
-        stem,
-        partitioned && command.is_per_partition_tree(styled_tree_write_kind(variant, style)),
-      );
-      (style, dir.join(format!("{stem}{secondary}{primary}")))
-    })
-    .collect()
 }
 
 fn nwk_style_name(style: NwkStyle) -> &'static str {

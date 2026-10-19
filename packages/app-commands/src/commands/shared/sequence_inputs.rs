@@ -16,20 +16,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::{NewickDialect, NwkParse};
 
-pub(crate) fn read_sequence_sources(
-  alignment: &AlignmentArgs,
-  settings: &SourceSettings<'_>,
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  log: &dyn LogSink,
-) -> Result<Vec<AlignmentSource>, Report> {
-  alignment
-    .paths()?
-    .iter()
-    .map(|path| read_sequence_source(path, settings, graph, names, log))
-    .collect()
-}
-
 pub(crate) fn read_tree_and_sources(
   args: &SequenceInputArgs<'_>,
   cancel: &dyn Cancel,
@@ -54,6 +40,20 @@ pub(crate) fn read_tree_and_sources(
   Ok(TreeAndSources { tree, sources })
 }
 
+pub(crate) fn read_sequence_sources(
+  alignment: &AlignmentArgs,
+  settings: &SourceSettings<'_>,
+  graph: &Graph,
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  log: &dyn LogSink,
+) -> Result<Vec<AlignmentSource>, Report> {
+  alignment
+    .paths()?
+    .iter()
+    .map(|path| read_sequence_source(path, settings, graph, names, log))
+    .collect()
+}
+
 pub(crate) fn ancestral_input(tree: NwkParse, sources: Vec<SequenceSource>) -> AncestralInput {
   let edges = tree
     .branch_lengths
@@ -65,18 +65,6 @@ pub(crate) fn ancestral_input(tree: NwkParse, sources: Vec<SequenceSource>) -> A
     edges,
     sources,
   }
-}
-
-pub(crate) struct SourceSettings<'a> {
-  pub(crate) alphabet: &'a Alphabet,
-  pub(crate) gap_fill: Option<GapFill>,
-  pub(crate) missing_leaves: MissingLeafLimit,
-}
-
-pub(crate) struct AlignmentSource {
-  pub(crate) source: SequenceSource,
-  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
-  pub(crate) n_records: usize,
 }
 
 pub(crate) struct SequenceInputArgs<'a> {
@@ -133,4 +121,16 @@ fn read_sequence_source(
     descs,
     n_records,
   })
+}
+
+pub(crate) struct SourceSettings<'a> {
+  pub(crate) alphabet: &'a Alphabet,
+  pub(crate) gap_fill: Option<GapFill>,
+  pub(crate) missing_leaves: MissingLeafLimit,
+}
+
+pub(crate) struct AlignmentSource {
+  pub(crate) source: SequenceSource,
+  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) n_records: usize,
 }

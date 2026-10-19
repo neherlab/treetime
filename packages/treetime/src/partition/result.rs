@@ -46,19 +46,6 @@ impl PartitionSequences {
   }
 }
 
-pub(crate) struct PartitionSource {
-  pub(crate) number: usize,
-  pub(crate) path: PathBuf,
-  pub(crate) length: usize,
-  pub(crate) mask: Vec<bool>,
-}
-
-pub(crate) struct SplitSource {
-  pub(crate) source: PartitionSource,
-  pub(crate) alphabet: Alphabet,
-  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
-}
-
 pub(crate) fn split_sources(sources: Vec<SequenceSource>) -> Vec<SplitSource> {
   sources
     .into_iter()
@@ -85,4 +72,17 @@ pub(crate) fn split_source(number: usize, source: SequenceSource) -> SplitSource
     alphabet,
     nodes,
   }
+}
+
+pub(crate) struct SplitSource {
+  pub(crate) source: PartitionSource,
+  pub(crate) alphabet: Alphabet,
+  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+}
+
+pub(crate) struct PartitionSource {
+  pub(crate) number: usize,
+  pub(crate) path: PathBuf,
+  pub(crate) length: usize,
+  pub(crate) mask: Vec<bool>,
 }

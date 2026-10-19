@@ -112,21 +112,8 @@ impl MarginalReconstruction {
       .stream_sequences(graph, impute, track, include_leaves, report_unknown, sink)
   }
 
-  pub fn root_sequence(&self, graph: &Graph) -> Result<Seq, Report> {
-    self.view().root_sequence(graph)
-  }
-
   pub(crate) fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel> {
     self.view().edge_indels(edge_key)
-  }
-
-  pub fn edge_mutations(
-    &self,
-    graph: &Graph,
-    edge_key: GraphEdgeKey,
-    track: &MutationTrack,
-  ) -> Result<Vec<Mutation>, Report> {
-    self.view().edge_mutations(graph, edge_key, track)
   }
 }
 

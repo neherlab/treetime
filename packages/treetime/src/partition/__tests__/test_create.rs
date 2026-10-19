@@ -49,7 +49,7 @@ mod tests {
       format!("{:#?}", reconstruction.gtr())
     );
     let (updated, _) = reconstruction.marginal_update(&input.graph, &input.branch_lengths)?;
-    assert_eq!("ACGT", updated.root_sequence(&input.graph)?.to_string());
+    assert_eq!("ACGT", updated.view().root_sequence(&input.graph)?.to_string());
     Ok(())
   }
 

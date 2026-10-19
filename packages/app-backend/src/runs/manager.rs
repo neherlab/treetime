@@ -27,6 +27,7 @@ use parking_lot::Mutex;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
@@ -55,12 +56,6 @@ pub struct RunManager {
   pub(super) inputs: Mutex<BTreeMap<JobId, Arc<RunInputs>>>,
   records: Mutex<()>,
   app_events: AppEventLog,
-}
-
-#[derive(Default)]
-pub(super) struct RunInputs {
-  lock: Mutex<()>,
-  uploading: Mutex<Option<String>>,
 }
 
 impl RunManager {
@@ -572,9 +567,9 @@ fn upload_file(inputs_dir: &Path, path: &Path) -> Option<PathBuf> {
   else {
     return None;
   };
-  folder.to_str()?.parse::<usize>().ok()?;
-  validate_upload_name(name.to_str()?).ok()?;
-  Some(inputs_dir.join(folder).join(name))
+  let is_upload = folder.to_str().is_some_and(is_upload_folder_name)
+    && name.to_str().is_some_and(|name| validate_upload_name(name).is_ok());
+  is_upload.then(|| inputs_dir.join(folder).join(name))
 }
 
 fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {
@@ -584,6 +579,12 @@ fn upload_in_progress(id: &JobId, inputs: &RunInputs, action: &str) -> Report {
     id.as_str(),
     uploading.map_or_else(|| o!("a file"), |name| format!("`{name}`"))
   ))
+}
+
+#[derive(Default)]
+pub(super) struct RunInputs {
+  lock: Mutex<()>,
+  uploading: Mutex<Option<String>>,
 }
 
 fn started(id: &JobId, consequence: &str) -> Report {
@@ -607,15 +608,6 @@ fn file_size(path: &Path) -> Result<usize, Report> {
   }
 }
 
-fn remove_upload(file: &Path) -> Result<(), Report> {
-  match fs::remove_file(file) {
-    Err(err) if err.kind() != io::ErrorKind::NotFound => {
-      Err(Report::new(err).wrap_err(format!("When removing the upload '{}'", file.display())))
-    },
-    _ => Ok(()),
-  }
-}
-
 fn remove_dir_all_if_exists(folder: &Path) -> Result<(), Report> {
   match fs::remove_dir_all(folder) {
     Err(err) if err.kind() != io::ErrorKind::NotFound => {
@@ -636,10 +628,10 @@ fn remove_unused_uploads(inputs_dir: &Path, settings: &Map<String, Value>) -> Re
       .wrap_err_with(|| format!("When listing '{}'", inputs_dir.display()))?
       .path();
     if !folder.is_dir()
-      || folder
+      || !folder
         .file_name()
-        .and_then(|name| name.to_str()?.parse::<usize>().ok())
-        .is_none()
+        .and_then(OsStr::to_str)
+        .is_some_and(is_upload_folder_name)
     {
       continue;
     }
@@ -659,6 +651,19 @@ fn remove_unused_uploads(inputs_dir: &Path, settings: &Map<String, Value>) -> Re
     }
   }
   Ok(())
+}
+
+fn remove_upload(file: &Path) -> Result<(), Report> {
+  match fs::remove_file(file) {
+    Err(err) if err.kind() != io::ErrorKind::NotFound => {
+      Err(Report::new(err).wrap_err(format!("When removing the upload '{}'", file.display())))
+    },
+    _ => Ok(()),
+  }
+}
+
+fn is_upload_folder_name(name: &str) -> bool {
+  name.parse::<usize>().is_ok()
 }
 
 fn string_values(value: &Value) -> Vec<&str> {

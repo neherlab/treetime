@@ -25,17 +25,6 @@ pub fn write_run_tree_outputs<'a>(
   write_tree_output_set(graph, &resolved.tree_outputs, resolved, command, log)
 }
 
-pub fn write_partition_tree_outputs<'a>(
-  graph: &'a AnnotatedGraph<'a>,
-  partition: usize,
-  resolved: &ResolvedOutputs,
-  command: CommandKind,
-  log: &dyn LogSink,
-) -> Result<Option<AnnotatedTreeView<'a>>, Report> {
-  let outputs = resolved.partition_tree_outputs(partition);
-  write_tree_output_set(graph, &outputs, resolved, command, log)
-}
-
 pub fn write_tree_outputs_per_partition<'a>(
   run_graph: &AnnotatedGraph<'a>,
   sequences: &BTreeMap<usize, TreeSequences<'a>>,
@@ -51,6 +40,17 @@ pub fn write_tree_outputs_per_partition<'a>(
     write_partition_tree_outputs(&graph, partition, resolved, command, log)?;
   }
   Ok(())
+}
+
+pub fn write_partition_tree_outputs<'a>(
+  graph: &'a AnnotatedGraph<'a>,
+  partition: usize,
+  resolved: &ResolvedOutputs,
+  command: CommandKind,
+  log: &dyn LogSink,
+) -> Result<Option<AnnotatedTreeView<'a>>, Report> {
+  let outputs = resolved.partition_tree_outputs(partition);
+  write_tree_output_set(graph, &outputs, resolved, command, log)
 }
 
 fn write_tree_output_set<'a>(

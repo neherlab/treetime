@@ -70,9 +70,9 @@ pub fn run_homoplasy(
   let params = homoplasy_ancestral_params(args, seed);
   let output = ancestral::pipeline::run(&params, input, None, cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
-  let Ok(result) = output.results.into_iter().exactly_one() else {
-    return make_internal_error!("Homoplasy reconstruction is expected to return one partition result");
-  };
+  let result = output.results.into_iter().exactly_one().map_err(|error| {
+    make_internal_report!("Homoplasy reconstruction is expected to return one partition result: {error}")
+  })?;
   let Some(sequences) = result.sequences else {
     return make_internal_error!("Homoplasy reconstruction returned no reconstructed sequences");
   };

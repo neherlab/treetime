@@ -18,6 +18,25 @@ pub enum RunModel {
   Trait(TraitModelSummary),
 }
 
+impl RunModel {
+  fn from_entry(entry: &ModelEntry) -> Self {
+    match entry {
+      ModelEntry::Sequence(model) => Self::Sequence(SequenceModelSummary {
+        partition: model.partition,
+        alignment: model.alignment.clone(),
+        name: model.model.model_name().to_string(),
+        mu: model.model.mu(),
+      }),
+      ModelEntry::Trait(model) => Self::Trait(TraitModelSummary {
+        attribute: model.attribute.clone(),
+        name: model.model.model_name().to_string(),
+        mu: model.model.mu(),
+        states: model.states.clone(),
+      }),
+    }
+  }
+}
+
 /// The substitution model fitted to one alignment file.
 #[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 pub struct SequenceModelSummary {
@@ -42,23 +61,4 @@ pub struct TraitModelSummary {
   pub mu: f64,
   /// Trait states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
   pub states: Vec<String>,
-}
-
-impl RunModel {
-  fn from_entry(entry: &ModelEntry) -> Self {
-    match entry {
-      ModelEntry::Sequence(model) => Self::Sequence(SequenceModelSummary {
-        partition: model.partition,
-        alignment: model.alignment.clone(),
-        name: model.model.model_name().to_string(),
-        mu: model.model.mu(),
-      }),
-      ModelEntry::Trait(model) => Self::Trait(TraitModelSummary {
-        attribute: model.attribute.clone(),
-        name: model.model.model_name().to_string(),
-        mu: model.model.mu(),
-        states: model.states.clone(),
-      }),
-    }
-  }
 }

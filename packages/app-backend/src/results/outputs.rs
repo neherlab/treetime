@@ -23,13 +23,6 @@ pub fn read_auspice(out_dir: &Path, output_files: &[OutputFile]) -> Result<Optio
     .transpose()
 }
 
-pub fn shown_auspice(output_files: &[OutputFile]) -> Option<&OutputFile> {
-  output_files
-    .iter()
-    .filter(|file| file.kind == OutputSelection::Auspice)
-    .min_by_key(|file| file.partition.as_ref().map_or(0, |partition| partition.number))
-}
-
 #[derive(Default)]
 pub struct RunOutputs {
   pub auspice: Option<AuspiceTree>,
@@ -82,6 +75,13 @@ impl RunOutputs {
     }
     Ok(())
   }
+}
+
+pub fn shown_auspice(output_files: &[OutputFile]) -> Option<&OutputFile> {
+  output_files
+    .iter()
+    .filter(|file| file.kind == OutputSelection::Auspice)
+    .min_by_key(|file| file.partition.as_ref().map_or(0, |partition| partition.number))
 }
 
 /// An output file of a run that could not be read.

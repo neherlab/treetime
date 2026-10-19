@@ -300,27 +300,6 @@ fn dates_rounded_to_the_month(context: &CheckContext<'_>) -> Vec<RunCheck> {
   }
 }
 
-pub struct CheckContext<'a> {
-  pub command: AppCommand,
-  pub config: Option<&'a Map<String, Value>>,
-  pub rejection: Option<ConfigRejection<'a>>,
-  pub facts: Option<&'a InputFacts>,
-}
-
-pub struct ConfigRejection<'a> {
-  pub message: &'a str,
-  pub causes: &'a [String],
-  pub problems: &'a [ConfigProblem],
-  pub settings: &'a [String],
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MissingSequences {
-  Unread,
-  Limited,
-  LimitedUnlessIgnored,
-}
-
 fn sequence_files<'a>(context: &CheckContext<'a>) -> impl Iterator<Item = &'a AlignmentFacts> {
   let read = context.command.missing_sequences() != MissingSequences::Unread;
   context
@@ -331,12 +310,11 @@ fn sequence_files<'a>(context: &CheckContext<'a>) -> impl Iterator<Item = &'a Al
     .iter()
 }
 
-fn several_alignments(context: &CheckContext<'_>) -> bool {
-  context
-    .config
-    .and_then(|config| config.get(InputKind::Alignment.setting()))
-    .and_then(Value::as_array)
-    .is_some_and(|paths| paths.len() > 1)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MissingSequences {
+  Unread,
+  Limited,
+  LimitedUnlessIgnored,
 }
 
 fn alignment_id(context: &CheckContext<'_>, id: &str, alignment: &AlignmentFacts) -> String {
@@ -353,6 +331,28 @@ fn alignment_noun(context: &CheckContext<'_>, alignment: &AlignmentFacts) -> Str
   } else {
     "alignment".to_owned()
   }
+}
+
+fn several_alignments(context: &CheckContext<'_>) -> bool {
+  context
+    .config
+    .and_then(|config| config.get(InputKind::Alignment.setting()))
+    .and_then(Value::as_array)
+    .is_some_and(|paths| paths.len() > 1)
+}
+
+pub struct CheckContext<'a> {
+  pub command: AppCommand,
+  pub config: Option<&'a Map<String, Value>>,
+  pub rejection: Option<ConfigRejection<'a>>,
+  pub facts: Option<&'a InputFacts>,
+}
+
+pub struct ConfigRejection<'a> {
+  pub message: &'a str,
+  pub causes: &'a [String],
+  pub problems: &'a [ConfigProblem],
+  pub settings: &'a [String],
 }
 
 fn reads(command: AppCommand, kind: InputKind) -> bool {

@@ -80,13 +80,6 @@ pub fn total_mutation_counts<'a>(
     })
 }
 
-pub struct RefineRun<'a> {
-  pub alignments: &'a [PathBuf],
-  pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
-  pub input_tree: Option<&'a Path>,
-  pub clock_model: Option<&'a ClockModel>,
-}
-
 fn refine_lengths(tree: &AnnotatedTreeView<'_>, run: &RefineRun<'_>, key: GraphNodeKey) -> RefineLengths {
   let graph = tree.graph();
   let parent_edge = tree.tree().parent(key).map(|(_, edge_key)| edge_key);
@@ -119,6 +112,13 @@ fn mutation_length(tree: &AnnotatedTreeView<'_>, run: &RefineRun<'_>, edge_key: 
     Some(counts) => Some(counts.get(&edge_key).copied().unwrap_or_default().to_f64_exact()),
     None => tree.graph().divergence_branch_lengths[&edge_key],
   }
+}
+
+pub struct RefineRun<'a> {
+  pub alignments: &'a [PathBuf],
+  pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
+  pub input_tree: Option<&'a Path>,
+  pub clock_model: Option<&'a ClockModel>,
 }
 
 fn refine_dates(dates: &TreeDates<'_>, key: GraphNodeKey, is_leaf: bool) -> RefineDates {

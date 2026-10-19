@@ -28,8 +28,6 @@ pub(crate) fn capture_ancestral_states(graph: &Graph, branch_model: &BranchModel
   }
 }
 
-pub(crate) type AncestralStateSnapshot = BTreeMap<GraphNodeKey, SeqOverlay>;
-
 fn count_partition_changes(previous: &AncestralStateSnapshot, current: &AncestralStateSnapshot) -> usize {
   let prev_only = previous.keys().filter(|k| !current.contains_key(k)).count();
   let curr_only = current.keys().filter(|k| !previous.contains_key(k)).count();
@@ -42,3 +40,5 @@ fn count_partition_changes(previous: &AncestralStateSnapshot, current: &Ancestra
     .filter_map(|(key, prev_seq)| current.get(key).map(|curr_seq| prev_seq.count_differences(curr_seq)))
     .sum()
 }
+
+pub(crate) type AncestralStateSnapshot = BTreeMap<GraphNodeKey, SeqOverlay>;
