@@ -1,9 +1,15 @@
+use std::io::{self, Write};
+
 pub const CPU_FEATURES_MESSAGE: &str = cpu_features_message();
 
 pub fn require_cpu_features() {
   if !cpu_has_build_features() {
-    eprintln!("{CPU_FEATURES_MESSAGE}");
-    exit_now(1);
+    let code = if writeln!(io::stderr().lock(), "{CPU_FEATURES_MESSAGE}").is_ok() {
+      1
+    } else {
+      2
+    };
+    exit_now(code);
   }
 }
 
@@ -38,11 +44,6 @@ const fn cpu_features_message() -> &'static str {
   }
 }
 
-#[cfg(any(target_arch = "x86_64", all(target_arch = "aarch64", target_os = "linux")))]
-const fn bit(enabled: bool, position: u32) -> u32 {
-  if enabled { 1 << position } else { 0 }
-}
-
 #[cfg(target_arch = "x86_64")]
 const X86_REQUIRED: [u32; 4] = [
   bit(cfg!(target_feature = "sse3"), 0)
@@ -72,9 +73,15 @@ pub fn cpu_has_build_features() -> bool {
 #[cfg(target_arch = "x86_64")]
 mod x86 {
   #![expect(
-    unsafe_code,
     clippy::inline_asm_x86_intel_syntax,
-    reason = "assembly, so that the compiler cannot emit an instruction of the build CPU level before the check has run; the function follows the sysv64 convention, reads the four words behind its argument, saves rbx, which cpuid overwrites, and returns 1 when every required bit of CPUID leaf 1 ECX, leaf 7 EBX, leaf 0x80000001 ECX, and XCR0 is set"
+    reason = "assembly, so that the compiler cannot emit an instruction of the build CPU level before the check has run"
+  )]
+  #![cfg_attr(
+    not(dylint_lib = "custom"),
+    expect(
+      unsafe_code,
+      reason = "the function follows the sysv64 convention, reads the four words behind its argument, saves rbx, which cpuid overwrites, and returns 1 when every required bit of CPUID leaf 1 ECX, leaf 7 EBX, leaf 0x80000001 ECX, and XCR0 is set; the older nightly of the dylint driver does not lint the unsafe naked attribute"
+    )
   )]
 
   #[unsafe(naked)]
@@ -150,4 +157,9 @@ pub fn cpu_has_build_features() -> bool {
 #[cfg(not(any(target_arch = "x86_64", all(target_arch = "aarch64", target_os = "linux"))))]
 pub fn cpu_has_build_features() -> bool {
   true
+}
+
+#[cfg(any(target_arch = "x86_64", all(target_arch = "aarch64", target_os = "linux")))]
+const fn bit(enabled: bool, position: u32) -> u32 {
+  if enabled { 1 << position } else { 0 }
 }
