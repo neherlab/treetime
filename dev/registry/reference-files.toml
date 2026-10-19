@@ -132,7 +132,7 @@ test = "packages/treetime/src/timetree/inference/__tests__/test_gm_runner/mod.rs
 origin = "TreeTime v0 (Python) timetree inference runner"
 revision = "vendored in-repo reference at packages/legacy/treetime"
 capture = "./dev/docker/python python packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_capture"
-normalization = "parsed JSON compared with per-assertion float tolerance across the marginal dense and marginal sparse cases"
+normalization = "parsed JSON; the marginal dense node times are compared with a per-assertion float tolerance, and the rerooted trees and clock rates are the inputs of the marginal dense, marginal sparse, pre-optimize, and coalescent runner tests"
 files = [
   "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_inputs.json",
   "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json",
