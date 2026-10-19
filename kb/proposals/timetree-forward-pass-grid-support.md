@@ -84,6 +84,90 @@ The FFT convolves grid values only; operand tails beyond the grid are dropped an
 
 Replacing an operand whose standard deviation is at most the other's spacing by a mean shift and the three-point kernel $[s/2, 1-s, s/2]$, $s = \sigma^2/dx^2$, is exact for mass, mean and variance. It applies to 0–6% of the measured convolutions, so it is not a performance lever while supports are untrimmed. Prototype with tail moments (`TailMoments`, `fn SoftTailLaw::moments()`, `fn HardApproachLaw::moments()`, `fn MassProfile::mean_variance()`, `fn MassProfile::mass_quantile()`) on the unmerged branch `moment-matched-convolution`.
 
+## Experiment results (2026-10-19)
+
+Prototype on branch `claude-grid-trim` (base `26c1c8533`, uncommitted, switched by environment variables; patch in the
+session scratchpad as `grid_trim_experiment.diff`). Trimming keeps a trimmed hard side `Hard` at the new edge (option
+c); option (a), a `Linear` tail fitted at the new edge, put mass past child tip dates on the simulated data (a parent's
+interval reached 0.15 years past its child's sampling date) and was dropped. Release build, `--jobs 1`, idle machine.
+
+### Where to trim: the forward posterior only
+
+| variant | what is trimmed by mass, hard sides included | result |
+| --- | --- | --- |
+| c | forward convolution output and forward posterior | `data/mpox/clade-ii/1000`: 152 internal nodes without a date (empty posterior), tips with uncertain dates moved by up to 6 years; `data/sc2/4500`: some intervals at 3% of base |
+| p | forward posterior only | consistent with base on all datasets (below); without the spacing cap, `mpox` exceeds `--max-grid-points` |
+| p + coarse | as p, convolution output spacing at most the coarser operand's | below |
+
+Trimming the convolution output by its own mass is unsafe: the subtree distribution it is multiplied with can put
+the product's mass exactly where the convolution was trimmed (the multiplicative hazard of the [empty
+invariant](../decisions/distribution-tails-and-arithmetic.md#empty-invariant)). The backward messages must not be
+trimmed for the same reason (a first prototype that trimmed every `fn convolve_across_edge()` call cut a subtree
+message at 2024.22 where the posterior had mass up to 2024.38). Trimming the posterior is safe in exact arithmetic: a
+parent's posterior mass removed below its $\epsilon$ quantile bounds the mass any child loses by $\epsilon$. Children
+still get small grids, because their operand, the parent's cavity, comes from the trimmed posterior.
+
+Trimming and the spacing cap have to land together, not in the order of the [issues](#issues): a trimmed posterior is
+gridded at 300 points over its mass window, its fine spacing passes into the next convolution with a wide branch
+distribution, and the forward grids grow (sc2: median forward convolution 9 989 to 13 349 points, maximum 240 050;
+mpox: a 1.5-million-point grid).
+
+### Speed (p + coarse)
+
+| dataset | wall time base | p + coarse | forward pass, one round | peak memory |
+| --- | --- | --- | --- | --- |
+| validation `const/rep00/L10000_mu0.01`, fixed clock, 3 passes | 36.3 s | 5.9 s | 8.7 s to 0.3 s | 398 to 123 MB |
+| `data/sc2/4500` | 47.3 s | 14.9 s | 9.8 s to 1.05 s | 1070 to 695 MB |
+| `data/mpox/clade-ii/1000`, fixed clock | 5.6 s | 5.3 s | 0.33 s to 0.24 s | 414 to 410 MB |
+| `data/ebola/362` | 1.0 s | 0.9 s | 0.08 s to 0.06 s | 60 MB |
+
+Median forward grid (convolution / posterior points): simulated 85 424 / 84 245 to 459 / 461; sc2 9 989 / 9 620 to
+449 / 300. On this base mpox no longer has the 30 000-point grids measured above, so it gains little. Validation
+suite (2880 runs): run time ratio per variant 0.50-0.72, total 1300 s to 516 s on 12 cores.
+
+### Accuracy
+
+- Validation suite, 2880 runs against base: no failures, no node dated before its parent, median change of date RMSE
+  per variant below $2\cdot10^{-4}$ years. 33 runs change their date RMSE by more than 0.05 years (16 worse, 17
+  better), all at $L=10^3$, $\mu=3\cdot10^{-4}$, where the root date is off by 7-18 years in base too.
+- Real data against base (no truth): every node dated; largest date change 0.005 years (ebola), 0.027 (mpox), 0.009
+  (sc2); interval widths median 0.993-0.997 of base. On sc2, 97 of 5099 internal intervals are narrower by more than
+  10%, all on a ladder of nodes pinned at the earliest tip date, where base itself dates a child interval 0.034 years
+  before its parent's (one violation above 0.01 years in base, none trimmed).
+- Calibration gate (240 sets, `--coalescent-opt`, estimated rate, `--time-marginal only-final`): 90% coverage
+  unchanged within 0.013 wherever $\mu \ge 10^{-3}$ or $L=10^4$. At $L=10^3$, $\mu=3\cdot10^{-4}$ coverage falls
+  from 0.830 to 0.743, in all 30 runs, with interval widths down 20-35% and the date RMSE unchanged. At this signal
+  base posteriors are gridded coarsely over their whole hard support (one node: 68 points over five years), and base
+  reports a 90% interval of 1.2 years for a posterior whose 5-95% quantiles span 0.15 years; trimmed posteriors are
+  resolved at 300 points over their mass. The lower coverage is the model's under-coverage at low signal, which the
+  coarse base grids had masked; it needs its own fix (rate and prior at low signal), not wider grids.
+
+### Branch distributions (issue 4)
+
+With the forward pass fixed, building the branch distributions is half the run time of the simulated set (0.9 s of
+1.9 s per round). Of that, 93% is evaluating the per-site likelihood at the 300 grid branch lengths
+(`fn evaluate_log_lh_on_grid()`), 5-6% building the edge contributions, about 1% re-windowing. It scales with the
+mutations: 0.81 s per round at $\mu=10^{-2}$, 0.11 s at $\mu=10^{-3}$ ($L=10^4$, 400 tips). Directions: fewer
+evaluation points with interpolation of the smooth log-likelihood, or grouping sites with the same pattern.
+
+### Operand tails (issue 3)
+
+Prototype: before each convolution, `Linear` tails of both operands are resampled onto the grid for 12 nats of decay
+at the operand's spacing (`HardApproach` tails, the branch distributions' side near zero length, left as they are).
+Calibration gate as above, without trimming: at $L=10^3$, $\mu=3\cdot10^{-4}$ coverage 0.830 to 0.817 and date RMSE
+0.494 to 0.586; at a fixed true rate on one set the interval widths stay within 1% (median 0.994) and dates within
+0.14 years, while with an estimated rate the probes of the rate step change (one set: rate $1.9\cdot10^{-4}$ to
+$2.3\cdot10^{-4}$, true $3\cdot10^{-4}$). The prototype also fails on 31 of 240 runs, all with $\mu \ge 10^{-3}$,
+$L=10^4$ or $\mu=10^{-2}$ (`NaN` when re-peaking a backward message), so its high-signal numbers are biased. No sign
+that the dropped tails limit the low-signal coverage; the coarse-grid effect above is the larger one. Not pursued.
+
+### Recommendation
+
+Land posterior trimming (option c at the posterior only) together with the spacing cap
+`dx = min(window / (GRID_POINTS - 1), max(dx_a, dx_b))`, both in the forward pass only, as one change; record in a
+decision that the backward messages and the forward convolution output keep their hard support, and why. Then take
+issue 4.
+
 ## Issues
 
 1. [M-timetree-forward-grids-keep-untrimmed-hard-support.md](../issues/M-timetree-forward-grids-keep-untrimmed-hard-support.md): trim hard sides by mass

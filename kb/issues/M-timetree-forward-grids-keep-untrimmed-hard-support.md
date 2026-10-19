@@ -15,6 +15,11 @@ Trim both sides of the forward convolution output and of the forward posterior a
 > [!IMPORTANT]
 > **Decision required.** What a trimmed hard side becomes. Options: (a) a `Linear` tail fitted at the new edge, which bridges gaps under the empty invariant but drops the hard bound; (b) a `Linear` tail truncated at the original bound, which keeps the exact support but needs a new `BoundaryBehavior` variant handled by multiplication, division, mass and tail composition; (c) `Hard` at the trimmed edge, which moves a bound inward. Evidence: shifting a hard edge inward by about one narrow-operand mean produced an empty posterior on `data/sc2/4500`. Options (a) and (b) change the tail assignments in [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) (forward message: `Hard` left).
 
+Prototyped 2026-10-19: trim the forward posterior only, together with the spacing cap of
+[M-timetree-grid-spacing-inherits-finest-operand.md](M-timetree-grid-spacing-inherits-finest-operand.md); trimming the
+convolution output emptied 152 posteriors on mpox. Results and recommendation:
+[proposal](../proposals/timetree-forward-pass-grid-support.md#experiment-results-2026-10-19).
+
 ## Validation
 
 - `cargo test` including the golden-master runner tests
