@@ -90,7 +90,7 @@ impl MarginalNodeState for SparseNodeState {
   }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 #[expect(
   clippy::partial_pub_fields,
   reason = "private fields hold derived state that only the constructor keeps consistent"
@@ -222,29 +222,12 @@ pub struct FixedProfile {
 
 pub(crate) type SiteProfile = SmallVec<[f64; INLINE_STATES]>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FitchNodeData {
   pub(crate) seq: FitchSeqInfo,
 }
 
 impl FitchNodeData {
-  pub(crate) fn empty(alphabet: &Alphabet) -> Self {
-    Self {
-      seq: FitchSeqInfo {
-        unknown: vec![],
-        gaps: vec![],
-        non_char: vec![],
-        composition: Composition::new(alphabet.chars(), alphabet.gap()),
-        sequence: seq![],
-        fitch: FitchSeqDistribution {
-          variable: btreemap! {},
-          variable_indel: BTreeSet::new(),
-          chosen_state: btreemap! {},
-        },
-      },
-    }
-  }
-
   pub fn new(seq: Seq, alphabet: &Alphabet) -> Self {
     let SeqObservation {
       unknown,
@@ -266,7 +249,7 @@ impl FitchNodeData {
   }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FitchSeqInfo {
   pub(crate) unknown: Vec<(usize, usize)>,
   pub(crate) gaps: Vec<(usize, usize)>,
@@ -323,7 +306,7 @@ struct SeqObservation {
   fitch: FitchSeqDistribution,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FitchSeqDistribution {
   pub(crate) variable: BTreeMap<usize, StateSet>,
 

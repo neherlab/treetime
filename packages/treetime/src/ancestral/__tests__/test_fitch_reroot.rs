@@ -52,13 +52,13 @@ mod tests {
     let mut graph: Graph = graph;
     let alphabet = Alphabet::default();
 
-    let mut fitch = PartitionFitch {
+    let fitch = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -240,13 +240,13 @@ mod tests {
     let mut graph: Graph = graph;
     let alphabet = Alphabet::default();
 
-    let mut fitch = PartitionFitch {
+    let fitch = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,
@@ -368,13 +368,13 @@ mod tests {
     let mut graph: Graph = graph;
     let alphabet = Alphabet::default();
 
-    let mut fitch = PartitionFitch {
+    let fitch = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut fitch, leaf_seq_inputs(&graph, &names, aln))?;
+    let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
     let gtr = jc69(JC69Params {
       alphabet: AlphabetName::Nuc,

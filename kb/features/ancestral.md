@@ -33,7 +33,6 @@
 - [x] Sparse compression before GTR selection
 - [x] Per-partition GTR assignment after dummy JC69 bootstrap
 - [x] Single `update_marginal()` pass after final GTR assignment
-- [/] Fitch passes leave the partition without nodes when a pass returns an error ([kb/issues/N-inference-fallible-parallel-passes-partially-commit.md](../issues/N-inference-fallible-parallel-passes-partially-commit.md))
 
 ## Several Alignment Files
 

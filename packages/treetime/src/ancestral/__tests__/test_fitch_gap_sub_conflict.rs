@@ -26,13 +26,13 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
 

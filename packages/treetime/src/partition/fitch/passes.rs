@@ -11,14 +11,16 @@ use crate::seq::composition::Composition;
 use crate::seq::indel::{compute_node_ranges, resolve_indels_backward, resolve_indels_forward};
 use crate::{make_internal_report, make_report};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use maplit::btreemap;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
-use std::mem;
+use std::sync::Arc;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphPass, GraphPassBackwardContext, GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_graph::tree_scan::NodeEdgeMaps;
+use treetime_graph::tree_view::TreeView;
 use treetime_primitives::{AlphabetLike, seq};
 use treetime_utils::interval::range_union::range_union;
 
@@ -28,32 +30,31 @@ pub fn create_fitch_partition(
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
   let length = get_common_length_of_node_inputs(&node_inputs)?;
-  let mut partition = PartitionFitch {
+  let partition = PartitionFitch {
     alphabet,
     length,
     nodes: btreemap! {},
     edges: btreemap! {},
   };
-  compress_sequences(graph, &mut partition, node_inputs)?;
-  Ok(partition)
+  compress_sequences(graph, partition, node_inputs)
 }
 
 pub(crate) fn compress_sequences(
   graph: &Graph,
-  partition: &mut PartitionFitch,
+  partition: PartitionFitch,
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<(), Report> {
-  attach_seqs_to_graph(graph, partition, node_inputs)?;
-  fitch_backward(graph, partition)?;
-  fitch_forward(graph, partition)?;
-  fitch_cleanup(graph, partition)
+) -> Result<PartitionFitch, Report> {
+  let partition = attach_seqs_to_graph(graph, partition, node_inputs)?;
+  let partition = fitch_backward(graph, partition)?;
+  let partition = fitch_forward(graph, partition)?;
+  Ok(fitch_cleanup(graph, partition))
 }
 
 pub(crate) fn attach_seqs_to_graph(
   graph: &Graph,
-  partition: &mut PartitionFitch,
+  mut partition: PartitionFitch,
   mut node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<(), Report> {
+) -> Result<PartitionFitch, Report> {
   let leaf_records = graph
     .get_leaves()
     .map(|leaf| -> Result<_, Report> {
@@ -83,41 +84,73 @@ pub(crate) fn attach_seqs_to_graph(
     partition.edges.insert(edge_key, SparseEdgeObs::default());
   }
 
-  Ok(())
+  Ok(partition)
 }
 
-pub(crate) fn fitch_backward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
-  let alphabet = partition.alphabet.clone();
-  let length = partition.length;
-  let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_backward_owned(
-    mem::take(&mut partition.nodes),
-    &partition.edges,
-    |_| Ok(FitchNodeData::empty(&alphabet)),
-    |context| run_fitch_backward_indexed(&alphabet, length, context),
-  )?;
-  partition.nodes = outputs.nodes;
-  partition.edges = outputs.edges;
-  Ok(())
+pub(crate) fn fitch_backward(graph: &Graph, partition: PartitionFitch) -> Result<PartitionFitch, Report> {
+  let PartitionFitch {
+    alphabet,
+    length,
+    mut nodes,
+    edges,
+  } = partition;
+  let tree = TreeView::new(graph)?;
+  if let Some(key) = nodes.keys().find(|&&key| !tree.contains(key)) {
+    return Err(make_internal_report!(
+      "Partition node {key} is not in the tree before the Fitch backward pass"
+    ));
+  }
+  let inputs = tree.preorder().iter().map(|&key| (key, nodes.remove(&key)));
+  let pass = FitchBackwardPass {
+    tree: &tree,
+    alphabet: &alphabet,
+    length,
+    edges: &edges,
+  };
+  let nodes = tree
+    .scan_up(inputs, |key, leaf, children| pass.node(key, leaf, &children))?
+    .unwrap_shared()
+    .into_map()?;
+  Ok(PartitionFitch {
+    alphabet,
+    length,
+    nodes,
+    edges,
+  })
 }
 
-fn run_fitch_backward_indexed(
+struct FitchBackwardPass<'a> {
+  tree: &'a TreeView<'a>,
+  alphabet: &'a Alphabet,
+  length: usize,
+  edges: &'a BTreeMap<GraphEdgeKey, SparseEdgeObs>,
+}
+
+impl FitchBackwardPass<'_> {
+  fn node(
+    &self,
+    key: GraphNodeKey,
+    leaf: Option<FitchNodeData>,
+    children: &[Arc<FitchNodeData>],
+  ) -> Result<(Arc<FitchNodeData>, Arc<FitchNodeData>), Report> {
+    let node = if self.tree.children(key).is_empty() {
+      leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no sequence before the Fitch backward pass"))?
+    } else {
+      let children = izip!(self.tree.children(key), children)
+        .map(|(&(_, edge_key), child)| (&child.seq, &self.edges[&edge_key]))
+        .collect_vec();
+      fitch_backward_internal_node(self.alphabet, self.length, &children)
+    };
+    let node = Arc::new(node);
+    Ok((Arc::clone(&node), node))
+  }
+}
+
+fn fitch_backward_internal_node(
   alphabet: &Alphabet,
   length: usize,
-  context: GraphPassBackwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData, SparseEdgeObs>,
-) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
-  if context.is_leaf {
-    let node = context.input;
-    let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
-    return Ok(GraphPassNodeOutput { node, parent_message });
-  }
-
-  let children = context
-    .children
-    .iter()
-    .map(|child| Ok((&child.node.seq, child.edge_message()?)))
-    .collect::<Result<Vec<_>, Report>>()?;
-
+  children: &[(&FitchSeqInfo, &SparseEdgeObs)],
+) -> FitchNodeData {
   let child_non_chars: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.non_char).collect_vec();
   let child_gaps: Vec<&Vec<(usize, usize)>> = children.iter().map(|(c, _)| &c.gaps).collect_vec();
 
@@ -136,10 +169,10 @@ fn run_fitch_backward_indexed(
     sequence[r.0..r.1].fill(NON_CHAR);
   }
 
-  let discovered = discover_fixed_disagreements_backward(&children, alphabet, &mut sequence);
-  let variable = resolve_variable_positions_backward(&children, &discovered, &non_char, &mut sequence);
+  let discovered = discover_fixed_disagreements_backward(children, alphabet, &mut sequence);
+  let variable = resolve_variable_positions_backward(children, &discovered, &non_char, &mut sequence);
 
-  let node = FitchNodeData {
+  FitchNodeData {
     seq: FitchSeqInfo {
       gaps: indels_bw.resolved_gaps,
       unknown,
@@ -152,90 +185,100 @@ fn run_fitch_backward_indexed(
       sequence,
       composition: Composition::new(alphabet.chars(), alphabet.gap()),
     },
-  };
-
-  let parent_message = context.parent_edge.map(|(_, edge)| edge.clone());
-  Ok(GraphPassNodeOutput { node, parent_message })
+  }
 }
 
-pub(crate) fn fitch_forward(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
-  let alphabet = partition.alphabet.clone();
-  let pass = GraphPass::new(graph)?;
-  let outputs = pass.map_forward_owned(
-    mem::take(&mut partition.nodes),
-    &partition.edges,
-    |key| {
-      Err(make_report!(
-        "Partition node {key} is missing before the Fitch forward pass"
-      ))
-    },
-    |context| run_fitch_forward_indexed(&alphabet, context),
-  )?;
-  partition.nodes = outputs.nodes;
-  partition.edges = outputs.edges;
-  Ok(())
+pub(crate) fn fitch_forward(graph: &Graph, partition: PartitionFitch) -> Result<PartitionFitch, Report> {
+  let PartitionFitch {
+    alphabet,
+    length,
+    nodes,
+    edges,
+  } = partition;
+  let tree = TreeView::new(graph)?;
+  let inputs = tree.join_parent_edges(nodes, edges)?;
+  let outputs = tree.scan_down(inputs, |key, (node, edge), parent: Option<FitchForwardOutput>| {
+    fitch_forward_node(&alphabet, key, node, edge, parent.as_deref().map(|(parent, _)| parent))
+  })?;
+  let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
+  Ok(PartitionFitch {
+    alphabet,
+    length,
+    nodes,
+    edges,
+  })
 }
 
-fn run_fitch_forward_indexed(
+type FitchForwardOutput = Arc<(FitchNodeData, Option<SparseEdgeObs>)>;
+
+fn fitch_forward_node(
   alphabet: &Alphabet,
-  context: GraphPassForwardContext<'_, FitchNodeData, SparseEdgeObs, FitchNodeData>,
-) -> Result<GraphPassNodeOutput<FitchNodeData, SparseEdgeObs>, Report> {
-  let mut node = context.input;
+  key: GraphNodeKey,
+  mut node: FitchNodeData,
+  edge: Option<SparseEdgeObs>,
+  parent: Option<&FitchNodeData>,
+) -> Result<(FitchForwardOutput, FitchForwardOutput), Report> {
+  let edge = match (edge, parent) {
+    (Some(mut edge), Some(parent)) => {
+      let parent = &parent.seq;
+      let seq = &mut node.seq;
+      seq.composition = parent.composition.clone();
 
-  let parent_message = if let (Some((_, edge)), Some(parent)) = (context.parent_edge, context.parent) {
-    let mut edge = edge.clone();
-    let parent = &parent.seq;
-    let seq = &mut node.seq;
-    seq.composition = parent.composition.clone();
-
-    for r in &seq.non_char {
-      seq.sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
-    }
-
-    let subs = resolve_nonroot_substitutions_forward(
-      &mut seq.sequence,
-      &seq.gaps,
-      &mut seq.fitch.variable,
-      &mut seq.fitch.chosen_state,
-      &mut seq.composition,
-      parent,
-      alphabet,
-    )?;
-
-    let (indels, new_gaps) = resolve_indels_forward(
-      &seq.fitch.variable_indel,
-      &seq.gaps,
-      &seq.non_char,
-      &parent.gaps,
-      &parent.sequence,
-      &seq.sequence,
-    );
-    seq.gaps = new_gaps;
-    seq.non_char = range_union(&[seq.non_char.clone(), seq.gaps.clone()]);
-    for indel in &indels {
-      seq.composition.add_indel(indel);
-    }
-    for r in &seq.unknown {
-      for pos in r.0..r.1 {
-        seq.composition.adjust_count(seq.sequence[pos], -1);
+      for r in &seq.non_char {
+        seq.sequence[r.0..r.1].clone_from_slice(&parent.sequence[r.0..r.1]);
       }
-      seq
-        .composition
-        .adjust_count(alphabet.unknown(), isize::try_from(r.1 - r.0)?);
-    }
 
-    edge.extend_fitch_subs(subs);
-    edge.indels.extend(indels);
-    Some(edge)
-  } else {
-    let seq = &mut node.seq;
-    resolve_root_forward(
-      &mut seq.sequence,
-      &seq.fitch.variable,
-      &mut seq.fitch.chosen_state,
-      alphabet,
-    );
-    None
+      let subs = resolve_nonroot_substitutions_forward(
+        &mut seq.sequence,
+        &seq.gaps,
+        &mut seq.fitch.variable,
+        &mut seq.fitch.chosen_state,
+        &mut seq.composition,
+        parent,
+        alphabet,
+      )?;
+
+      let (indels, new_gaps) = resolve_indels_forward(
+        &seq.fitch.variable_indel,
+        &seq.gaps,
+        &seq.non_char,
+        &parent.gaps,
+        &parent.sequence,
+        &seq.sequence,
+      );
+      seq.gaps = new_gaps;
+      seq.non_char = range_union(&[seq.non_char.clone(), seq.gaps.clone()]);
+      for indel in &indels {
+        seq.composition.add_indel(indel);
+      }
+      for r in &seq.unknown {
+        for pos in r.0..r.1 {
+          seq.composition.adjust_count(seq.sequence[pos], -1);
+        }
+        seq
+          .composition
+          .adjust_count(alphabet.unknown(), isize::try_from(r.1 - r.0)?);
+      }
+
+      edge.extend_fitch_subs(subs);
+      edge.indels.extend(indels);
+      Some(edge)
+    },
+    (None, None) => {
+      let seq = &mut node.seq;
+      resolve_root_forward(
+        &mut seq.sequence,
+        &seq.fitch.variable,
+        &mut seq.fitch.chosen_state,
+        alphabet,
+      );
+      None
+    },
+    (Some(_), None) | (None, Some(_)) => {
+      return Err(make_internal_report!(
+        "Fitch forward pass received an inconsistent parent edge and parent message at node {key}"
+      ));
+    },
   };
 
   let seq = &mut node.seq;
@@ -245,17 +288,18 @@ fn run_fitch_forward_indexed(
     &seq.unknown,
     &mut seq.composition,
     alphabet,
-    context.is_root,
+    edge.is_none(),
   );
 
-  Ok(GraphPassNodeOutput { node, parent_message })
+  let output = Arc::new((node, edge));
+  Ok((Arc::clone(&output), output))
 }
 
-fn fitch_cleanup(graph: &Graph, partition: &mut PartitionFitch) -> Result<(), Report> {
+fn fitch_cleanup(graph: &Graph, mut partition: PartitionFitch) -> PartitionFitch {
   for (key, node) in &mut partition.nodes {
     if !graph.is_leaf(*key) {
       node.seq.fitch.variable = btreemap! {};
     }
   }
-  Ok(())
+  partition
 }

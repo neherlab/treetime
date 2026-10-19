@@ -14,7 +14,7 @@ pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
 pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Alphabet {
   all: StateSet,
   canonical: StateSet,

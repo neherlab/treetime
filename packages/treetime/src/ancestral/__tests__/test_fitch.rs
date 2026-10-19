@@ -67,13 +67,13 @@ pub(super) mod tests {
 
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -142,13 +142,13 @@ pub(super) mod tests {
 
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
 
     let mut actual = BTreeMap::new();
@@ -192,13 +192,13 @@ pub(super) mod tests {
     let graph: Graph = graph;
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let actual = get_internal_sequences(&graph, &names, &partition);
     let expected = btreemap! {
       o!("AB") => o!("GCGTACGT"),
@@ -238,13 +238,13 @@ pub(super) mod tests {
 
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
@@ -301,13 +301,13 @@ pub(super) mod tests {
 
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
@@ -368,13 +368,13 @@ pub(super) mod tests {
 
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
-    compress_sequences(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
     let actual_subs = collect_edge_subs(&graph, &names, &partition);
     let expected_subs = btreemap! {
@@ -431,15 +431,15 @@ pub(super) mod tests {
 
     let alphabet = Alphabet::default();
 
-    let mut partition = PartitionFitch {
+    let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
       nodes: btreemap! {},
       edges: btreemap! {},
     };
 
-    attach_seqs_to_graph(&graph, &mut partition, leaf_seq_inputs(&graph, &names, aln))?;
-    fitch_backward(&graph, &mut partition)?;
+    let partition = attach_seqs_to_graph(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
+    let partition = fitch_backward(&graph, partition)?;
 
     {
       let variable_positions = get_root_variable_positions(&graph, &partition);
@@ -467,7 +467,7 @@ pub(super) mod tests {
       assert!(!cd_vars.is_empty(), "CD should have variable positions");
     }
 
-    fitch_forward(&graph, &mut partition)?;
+    let partition = fitch_forward(&graph, partition)?;
 
     {
       let variable_positions = get_root_variable_positions(&graph, &partition);
