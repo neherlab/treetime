@@ -11,6 +11,7 @@ pub mod pass;
 pub mod reachability;
 pub mod reroot;
 pub mod topology_order;
+pub mod tree_scan;
 pub mod tree_view;
 
 #[cfg(test)]

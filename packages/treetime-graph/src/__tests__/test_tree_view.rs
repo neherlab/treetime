@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{graph_from_parents, names};
-  use super::super::test_graph_support::tests::NamedGraph;
+  use self::helpers::names;
+  use super::super::test_graph_support::tests::{NamedGraph, graph_from_parents};
   use crate::tree_view::TreeView;
   use eyre::Report;
   use itertools::Itertools;
@@ -167,6 +167,9 @@ mod tests {
         let key = node.key();
         prop_assert_eq!(graph.node_parent(key).unwrap(), view.parent(key));
         prop_assert_eq!(graph.children_keys_of(node).collect_vec(), view.children(key).to_vec());
+        for (position, &(child, _)) in view.children(key).iter().enumerate() {
+          prop_assert_eq!(position, view.position_in_parent(child));
+        }
         if let Some((parent, _)) = view.parent(key) {
           let position = |target| view.preorder().iter().position(|&key| key == target);
           prop_assert!(position(parent) < position(key));
@@ -177,25 +180,11 @@ mod tests {
 
   mod helpers {
     use super::super::super::test_graph_support::tests::NamedGraph;
-    use crate::graph::Graph;
     use crate::node::GraphNodeKey;
-    use eyre::Report;
     use itertools::Itertools;
 
     pub(super) fn names(tree: &NamedGraph, keys: &[GraphNodeKey]) -> Vec<&'static str> {
       keys.iter().map(|&key| tree.name(key)).collect_vec()
-    }
-
-    pub(super) fn graph_from_parents(parents: &[usize]) -> Result<Graph, Report> {
-      let mut graph = Graph::new();
-      let keys = std::iter::repeat_with(|| graph.add_node())
-        .take(parents.len())
-        .collect_vec();
-      for (child, &parent) in parents.iter().enumerate().skip(1) {
-        graph.add_edge(keys[parent], keys[child])?;
-      }
-      graph.build()?;
-      Ok(graph)
     }
   }
 }

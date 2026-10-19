@@ -13,13 +13,18 @@ pub struct TreeView<'g> {
   parents: Vec<Option<(GraphNodeKey, GraphEdgeKey)>>,
   child_offsets: Vec<usize>,
   children: Vec<(GraphNodeKey, GraphEdgeKey)>,
+  positions: Vec<usize>,
 }
 
 impl<'g> TreeView<'g> {
   pub fn new(graph: &'g Graph) -> Result<Self, Report> {
     let root = single_root(graph)?;
     let parents = single_parents(graph)?;
-    let (child_offsets, children) = children_by_node(graph);
+    let ChildIndex {
+      child_offsets,
+      children,
+      positions,
+    } = children_by_node(graph);
     let preorder = preorder_from(root, &child_offsets, &children);
     if preorder.len() != graph.get_nodes().count() {
       return Err(cycle_error(graph, &preorder, &parents));
@@ -31,6 +36,7 @@ impl<'g> TreeView<'g> {
       parents,
       child_offsets,
       children,
+      positions,
     })
   }
 
@@ -49,6 +55,14 @@ impl<'g> TreeView<'g> {
   pub fn children(&self, key: GraphNodeKey) -> &[(GraphNodeKey, GraphEdgeKey)] {
     let index = key.as_usize();
     &self.children[self.child_offsets[index]..self.child_offsets[index + 1]]
+  }
+
+  pub fn position_in_parent(&self, key: GraphNodeKey) -> usize {
+    self.positions[key.as_usize()]
+  }
+
+  pub(crate) fn key_capacity(&self) -> usize {
+    self.parents.len()
   }
 }
 
@@ -87,17 +101,31 @@ fn single_parents(graph: &Graph) -> Result<Vec<Option<(GraphNodeKey, GraphEdgeKe
   Ok(parents)
 }
 
-fn children_by_node(graph: &Graph) -> (Vec<usize>, Vec<(GraphNodeKey, GraphEdgeKey)>) {
-  let mut offsets = Vec::with_capacity(graph.nodes.len() + 1);
+fn children_by_node(graph: &Graph) -> ChildIndex {
+  let mut child_offsets = Vec::with_capacity(graph.nodes.len() + 1);
   let mut children = Vec::with_capacity(graph.edges.len());
-  offsets.push(0);
+  let mut positions = vec![0; graph.nodes.len()];
+  child_offsets.push(0);
   for node in &graph.nodes {
     if let Some(node) = node {
-      children.extend(graph.children_keys_of(node));
+      for (position, (child_key, edge_key)) in graph.children_keys_of(node).enumerate() {
+        positions[child_key.as_usize()] = position;
+        children.push((child_key, edge_key));
+      }
     }
-    offsets.push(children.len());
+    child_offsets.push(children.len());
   }
-  (offsets, children)
+  ChildIndex {
+    child_offsets,
+    children,
+    positions,
+  }
+}
+
+struct ChildIndex {
+  child_offsets: Vec<usize>,
+  children: Vec<(GraphNodeKey, GraphEdgeKey)>,
+  positions: Vec<usize>,
 }
 
 fn preorder_from(

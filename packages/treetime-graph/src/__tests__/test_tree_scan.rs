@@ -1,0 +1,450 @@
+#[cfg(test)]
+mod tests {
+  use self::helpers::{caterpillar_parents, inputs_of, run_in_pool, run_in_small_stack_pool, subtree_sizes};
+  use super::super::test_graph_support::tests::{NamedGraph, graph_from_parents};
+  use crate::graph::Graph;
+  use crate::node::GraphNodeKey;
+  use crate::tree_scan::ScanOutputs;
+  use crate::tree_view::TreeView;
+  use eyre::Report;
+  use itertools::Itertools;
+  use maplit::btreemap;
+  use parking_lot::Mutex;
+  use pretty_assertions::assert_eq;
+  use rstest::rstest;
+  use std::collections::{BTreeMap, BTreeSet};
+  use treetime_utils::{assert_error, make_report};
+
+  #[test]
+  fn test_tree_scan_up_sums_subtrees() -> Result<(), Report> {
+    let tree = NamedGraph::new(
+      &["root", "AB", "A", "B", "C"],
+      &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
+    )?;
+    let view = TreeView::new(&tree.graph)?;
+    let weights = btreemap! {
+      tree.key("root") => 100, tree.key("AB") => 10, tree.key("A") => 1, tree.key("B") => 2, tree.key("C") => 3,
+    };
+
+    let sums = view
+      .scan_up(weights, |_, weight, children: Vec<usize>| {
+        let sum = weight + children.iter().sum::<usize>();
+        Ok((sum, sum))
+      })?
+      .into_map();
+
+    let expected = btreemap! {
+      tree.key("root") => 116, tree.key("AB") => 13, tree.key("A") => 1, tree.key("B") => 2, tree.key("C") => 3,
+    };
+    assert_eq!(expected, sums);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_up_delivers_children_in_tree_order() -> Result<(), Report> {
+    let tree = NamedGraph::new(
+      &["root", "AB", "A", "B", "C"],
+      &[("root", "C"), ("root", "AB"), ("AB", "B"), ("AB", "A")],
+    )?;
+    let view = TreeView::new(&tree.graph)?;
+
+    let received = view
+      .scan_up(inputs_of(&tree.graph, ()), |key, (), children: Vec<&'static str>| {
+        Ok((children, tree.name(key)))
+      })?
+      .into_map();
+
+    let expected = btreemap! {
+      tree.key("root") => vec!["C", "AB"], tree.key("AB") => vec!["B", "A"],
+      tree.key("A") => vec![], tree.key("B") => vec![], tree.key("C") => vec![],
+    };
+    assert_eq!(expected, received);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_down_accumulates_from_the_root() -> Result<(), Report> {
+    let tree = NamedGraph::new(
+      &["root", "AB", "A", "B", "C"],
+      &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
+    )?;
+    let view = TreeView::new(&tree.graph)?;
+    let weights = btreemap! {
+      tree.key("root") => 100, tree.key("AB") => 10, tree.key("A") => 1, tree.key("B") => 2, tree.key("C") => 3,
+    };
+
+    let sums = view
+      .scan_down(weights, |_, weight, parent: Option<usize>| {
+        let sum = weight + parent.unwrap_or(0);
+        Ok((sum, sum))
+      })?
+      .into_map();
+
+    let expected = btreemap! {
+      tree.key("root") => 100, tree.key("AB") => 110, tree.key("A") => 111, tree.key("B") => 112, tree.key("C") => 103,
+    };
+    assert_eq!(expected, sums);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_down_single_node_receives_no_message() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root"], &[])?;
+    let view = TreeView::new(&tree.graph)?;
+
+    let received = view
+      .scan_down(inputs_of(&tree.graph, ()), |_, (), parent: Option<u8>| Ok((parent, 0)))?
+      .into_map();
+
+    assert_eq!(btreemap! { tree.key("root") => None }, received);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_up_single_node_receives_no_messages() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root"], &[])?;
+    let view = TreeView::new(&tree.graph)?;
+
+    let received = view
+      .scan_up(inputs_of(&tree.graph, ()), |_, (), children: Vec<u8>| Ok((children, 0)))?
+      .into_map();
+
+    assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::one_thread(1)]
+  #[case::four_threads(4)]
+  #[trace]
+  fn test_tree_scan_up_star_delivers_every_leaf_in_order(#[case] threads: usize) -> Result<(), Report> {
+    let graph = graph_from_parents(&vec![0; 1000])?;
+    let view = TreeView::new(&graph)?;
+
+    let received = run_in_pool(threads, || {
+      view
+        .scan_up(inputs_of(&graph, ()), |key, (), children: Vec<GraphNodeKey>| {
+          Ok((children, key))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let leaves = view.children(view.root()).iter().map(|&(child, _)| child).collect_vec();
+    assert_eq!(999, leaves.len());
+    assert_eq!(leaves, received[&view.root()]);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::one_thread(1)]
+  #[case::four_threads(4)]
+  #[trace]
+  fn test_tree_scan_down_star_sends_the_root_message_to_every_leaf(#[case] threads: usize) -> Result<(), Report> {
+    let graph = graph_from_parents(&vec![0; 1000])?;
+    let view = TreeView::new(&graph)?;
+
+    let received = run_in_pool(threads, || {
+      view
+        .scan_down(inputs_of(&graph, ()), |key, (), parent: Option<GraphNodeKey>| {
+          Ok((parent, key))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let root = view.root();
+    let expected = graph
+      .get_nodes()
+      .map(|node| (node.key(), (node.key() != root).then_some(root)))
+      .collect::<BTreeMap<_, _>>();
+    assert_eq!(expected, received);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::leaf_first_one_thread(false, 1)]
+  #[case::leaf_first_sixteen_threads(false, 16)]
+  #[case::spine_first_one_thread(true, 1)]
+  #[case::spine_first_sixteen_threads(true, 16)]
+  #[trace]
+  fn test_tree_scan_up_caterpillar_of_100000_nodes_fits_small_worker_stacks(
+    #[case] spine_first: bool,
+    #[case] threads: usize,
+  ) -> Result<(), Report> {
+    let graph = graph_from_parents(&caterpillar_parents(100_000, spine_first))?;
+    let view = TreeView::new(&graph)?;
+
+    let sizes = run_in_small_stack_pool(threads, || {
+      view
+        .scan_up(inputs_of(&graph, ()), |_, (), children: Vec<usize>| {
+          let size = 1 + children.iter().sum::<usize>();
+          Ok((size, size))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    assert_eq!(subtree_sizes(&view), sizes);
+    assert_eq!(100_000, sizes[&view.root()]);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::leaf_first_one_thread(false, 1)]
+  #[case::leaf_first_sixteen_threads(false, 16)]
+  #[case::spine_first_one_thread(true, 1)]
+  #[case::spine_first_sixteen_threads(true, 16)]
+  #[trace]
+  fn test_tree_scan_down_caterpillar_of_100000_nodes_fits_small_worker_stacks(
+    #[case] spine_first: bool,
+    #[case] threads: usize,
+  ) -> Result<(), Report> {
+    let graph = graph_from_parents(&caterpillar_parents(100_000, spine_first))?;
+    let view = TreeView::new(&graph)?;
+
+    let depths = run_in_small_stack_pool(threads, || {
+      view
+        .scan_down(inputs_of(&graph, ()), |_, (), parent: Option<usize>| {
+          let depth = parent.map_or(0, |depth| depth + 1);
+          Ok((depth, depth))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let max_depth = depths.values().copied().max();
+    assert_eq!((100_000, Some(50_000)), (depths.len(), max_depth));
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_up_skips_deleted_key_gaps() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let removed = graph.add_node();
+    let child = graph.add_node();
+    graph.add_edge(root, child)?;
+    graph.remove_node(removed)?;
+    graph.build()?;
+    let view = TreeView::new(&graph)?;
+
+    let sums = view
+      .scan_up(
+        btreemap! { root => 100, child => 1 },
+        |_, weight, children: Vec<usize>| {
+          let sum = weight + children.iter().sum::<usize>();
+          Ok((sum, sum))
+        },
+      )?
+      .into_map();
+
+    assert_eq!(btreemap! { root => 101, child => 1 }, sums);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_rejects_missing_input() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let visited = Mutex::new(0_usize);
+    let inputs = btreemap! { tree.key("root") => (), tree.key("A") => () };
+
+    let result = view.scan_up(inputs, |_, (), _: Vec<()>| {
+      *visited.lock() += 1;
+      Ok(((), ()))
+    });
+
+    assert_error!(
+      result,
+      format!(
+        "Scan input is missing node {}. This is an internal error. Please report it to developers.",
+        tree.key("B")
+      )
+    );
+    assert_eq!(0, *visited.lock());
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_rejects_input_of_unknown_node() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let unknown = GraphNodeKey(7);
+    let inputs = btreemap! { tree.key("root") => (), tree.key("A") => (), unknown => () };
+
+    let result = view.scan_down(inputs, |_, (), _: Option<()>| Ok(((), ())));
+
+    assert_error!(
+      result,
+      "Scan input names node 7, which is not in the tree. This is an internal error. Please report it to developers."
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_rejects_input_of_deleted_node() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let removed = graph.add_node();
+    let child = graph.add_node();
+    graph.add_edge(root, child)?;
+    graph.remove_node(removed)?;
+    graph.build()?;
+    let view = TreeView::new(&graph)?;
+    let inputs = btreemap! { root => (), removed => (), child => () };
+
+    let result = view.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+
+    assert_error!(
+      result,
+      format!(
+        "Scan input names node {removed}, which is not in the tree. This is an internal error. Please report it to \
+         developers."
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_rejects_input_named_twice() -> Result<(), Report> {
+    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
+    let view = TreeView::new(&tree.graph)?;
+    let inputs = [(tree.key("root"), ()), (tree.key("A"), ()), (tree.key("A"), ())];
+
+    let result = view.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+
+    assert_error!(
+      result,
+      format!(
+        "Scan input names node {} twice. This is an internal error. Please report it to developers.",
+        tree.key("A")
+      )
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_up_failed_node_stops_its_ancestors() -> Result<(), Report> {
+    let tree = NamedGraph::new(
+      &["root", "AB", "A", "B", "C"],
+      &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
+    )?;
+    let view = TreeView::new(&tree.graph)?;
+    let visited = Mutex::new(BTreeSet::new());
+
+    let result = view.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+      visited.lock().insert(tree.name(key));
+      if tree.name(key) == "B" {
+        return Err(make_report!("injected failure of node B"));
+      }
+      Ok(((), ()))
+    });
+
+    assert_error!(result, "injected failure of node B");
+    let visited = visited.into_inner();
+    assert_eq!(
+      (false, false),
+      (visited.contains("AB"), visited.contains("root")),
+      "the ancestors of the failed node must not run"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_down_failed_node_stops_its_descendants() -> Result<(), Report> {
+    let tree = NamedGraph::new(
+      &["root", "AB", "A", "B", "C"],
+      &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
+    )?;
+    let view = TreeView::new(&tree.graph)?;
+    let visited = Mutex::new(BTreeSet::new());
+
+    let result = view.scan_down(inputs_of(&tree.graph, ()), |key, (), _: Option<()>| {
+      visited.lock().insert(tree.name(key));
+      if tree.name(key) == "AB" {
+        return Err(make_report!("injected failure of node AB"));
+      }
+      Ok(((), ()))
+    });
+
+    assert_error!(result, "injected failure of node AB");
+    let visited = visited.into_inner();
+    assert_eq!(
+      (false, false),
+      (visited.contains("A"), visited.contains("B")),
+      "the children of the failed node must not run"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_scan_up_returns_the_first_error_and_stops_later_visits() -> Result<(), Report> {
+    let graph = graph_from_parents(&[0, 0, 0, 0])?;
+    let view = TreeView::new(&graph)?;
+    let visited = Mutex::new(vec![]);
+
+    let result = run_in_pool(1, || {
+      view.scan_up(inputs_of(&graph, ()), |key, (), _: Vec<()>| {
+        visited.lock().push(key);
+        Err::<((), ()), _>(make_report!("injected failure of node {key}"))
+      })
+    });
+
+    assert_error!(result, "injected failure of node 1");
+    assert_eq!(vec![GraphNodeKey(1)], visited.into_inner());
+    Ok(())
+  }
+
+  mod helpers {
+    use crate::graph::Graph;
+    use crate::node::GraphNodeKey;
+    use crate::tree_view::TreeView;
+    use eyre::Report;
+    use rayon::ThreadPoolBuilder;
+    use std::collections::BTreeMap;
+
+    const SMALL_WORKER_STACK_BYTES: usize = 32 * 1024;
+
+    pub(super) fn inputs_of<N: Clone>(graph: &Graph, value: N) -> BTreeMap<GraphNodeKey, N> {
+      graph.get_nodes().map(|node| (node.key(), value.clone())).collect()
+    }
+
+    pub(super) fn run_in_pool<T: Send>(
+      threads: usize,
+      run: impl FnOnce() -> Result<T, Report> + Send,
+    ) -> Result<T, Report> {
+      ThreadPoolBuilder::new().num_threads(threads).build()?.install(run)
+    }
+
+    pub(super) fn run_in_small_stack_pool<T: Send>(
+      threads: usize,
+      run: impl FnOnce() -> Result<T, Report> + Send,
+    ) -> Result<T, Report> {
+      ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .stack_size(SMALL_WORKER_STACK_BYTES)
+        .build()?
+        .install(run)
+    }
+
+    pub(super) fn caterpillar_parents(count: usize, spine_first: bool) -> Vec<usize> {
+      (0..count)
+        .map(|index| {
+          let previous = index.saturating_sub(1);
+          let pair_start = previous - previous % 2;
+          if spine_first {
+            pair_start.saturating_sub(1)
+          } else {
+            pair_start
+          }
+        })
+        .collect()
+    }
+
+    pub(super) fn subtree_sizes(view: &TreeView<'_>) -> BTreeMap<GraphNodeKey, usize> {
+      let mut sizes = BTreeMap::new();
+      for &key in view.preorder().iter().rev() {
+        let size = 1 + view.children(key).iter().map(|(child, _)| sizes[child]).sum::<usize>();
+        sizes.insert(key, size);
+      }
+      sizes
+    }
+  }
+}
