@@ -25,7 +25,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::RerootResult;
+use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
 use treetime_primitives::{LogLh, Seq};
 
 #[derive(Clone, Debug)]
@@ -380,16 +380,15 @@ impl SparseReconstruction {
     reroot_sparse(self.partition, self.gtr, self.node_states, changes)
   }
 
-  #[must_use]
-  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
+  pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
     let live_nodes = live_node_keys(graph);
     let mut partition = self.partition;
-    partition.reconcile_topology(graph);
-    Self::seeded(
+    partition.reconcile_topology(graph, merges)?;
+    Ok(Self::seeded(
       partition,
       self.gtr,
       reconcile_node_states(self.node_states, &live_nodes, SparseNodeState::empty),
-    )
+    ))
   }
 
   #[must_use]

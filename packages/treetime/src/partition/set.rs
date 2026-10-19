@@ -13,7 +13,7 @@ use itertools::{Either, Itertools, izip};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::reroot::RerootResult;
+use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
 use treetime_primitives::LogLh;
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -132,17 +132,16 @@ impl PartitionSet {
     })
   }
 
-  #[must_use]
-  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
-    match self {
+  pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
+    Ok(match self {
       Self::Dense(partitions) => Self::Dense(partitions.into_iter().map(DenseReconstruction::reseeded).collect()),
       Self::Sparse(partitions) => Self::Sparse(
         partitions
           .into_iter()
-          .map(|partition| partition.reconcile_topology(graph))
-          .collect(),
+          .map(|partition| partition.reconcile_topology(graph, merges))
+          .try_collect()?,
       ),
-    }
+    })
   }
 
   #[must_use]

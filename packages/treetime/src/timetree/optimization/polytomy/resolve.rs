@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
+use treetime_graph::reroot::{EdgeMergeInfo, record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::cast::f64_to_usize_saturating;
@@ -36,7 +36,7 @@ pub(crate) fn resolve_polytomies(
       graph,
       branch_lengths,
       merger_times: BTreeMap::new(),
-      removed_nodes: 0,
+      merges: vec![],
     });
   }
 
@@ -59,9 +59,9 @@ pub(crate) fn resolve_polytomies(
     merger_times.extend(created);
   }
 
-  let removed_nodes = remove_single_child_nodes(&mut graph, &mut branch_lengths)?;
-  if removed_nodes > 0 {
-    debug!("Removed {removed_nodes} obsolete single-child nodes");
+  let merges = remove_single_child_nodes(&mut graph, &mut branch_lengths)?;
+  if !merges.is_empty() {
+    debug!("Removed {} obsolete single-child nodes", merges.len());
   }
 
   graph.build()?;
@@ -76,7 +76,7 @@ pub(crate) fn resolve_polytomies(
     graph,
     branch_lengths,
     merger_times,
-    removed_nodes,
+    merges,
   })
 }
 
@@ -84,7 +84,7 @@ pub(crate) struct PolytomyResolution {
   pub graph: Graph,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub merger_times: BTreeMap<GraphNodeKey, f64>,
-  pub removed_nodes: usize,
+  pub merges: Vec<EdgeMergeInfo>,
 }
 
 #[expect(
@@ -228,8 +228,8 @@ fn inferred_time(node_times: &NodeTimes, node_key: GraphNodeKey) -> Result<f64, 
 fn remove_single_child_nodes(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<usize, Report> {
-  let mut removed_count = 0;
+) -> Result<Vec<EdgeMergeInfo>, Report> {
+  let mut merges = vec![];
 
   loop {
     let obsolete_key = graph.get_nodes().into_iter().find_map(|node| {
@@ -244,11 +244,11 @@ fn remove_single_child_nodes(
     let (parent_branch, child_branch) = trivial_node_branch_lengths(graph, node_key, branch_lengths);
     if let Some(merge) = remove_node_if_trivial(graph, node_key, parent_branch, child_branch)? {
       record_merge(branch_lengths, &merge);
-      removed_count += 1;
+      merges.push(merge);
     }
   }
 
-  Ok(removed_count)
+  Ok(merges)
 }
 
 pub(crate) fn require_internal_node_times(graph: &Graph, node_times: &NodeTimes) -> Result<(), Report> {

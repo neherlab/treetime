@@ -141,7 +141,7 @@ fn refine_topology(
     graph,
     branch_lengths,
     merger_times,
-    removed_nodes,
+    merges,
   } = resolve_polytomies(
     state.graph,
     state.branch_lengths,
@@ -153,7 +153,7 @@ fn refine_topology(
     &node_times,
   )
   .wrap_err("Polytomy resolution failed")?;
-  if merger_times.is_empty() && removed_nodes == 0 {
+  if merger_times.is_empty() && merges.is_empty() {
     let state = RoundState {
       graph,
       branch_lengths,
@@ -171,7 +171,7 @@ fn refine_topology(
   require_internal_node_times(&graph, &node_times)
     .wrap_err("Polytomy resolution left an internal node without an inferred time")?;
   let gammas = unit_gammas(&graph);
-  let branch_model = state.branch_model.reconcile_topology(&graph);
+  let branch_model = state.branch_model.reconcile_topology(&graph, &merges)?;
   let clock_branch_lengths = blended_clock_branch_lengths(
     &graph,
     state.clock_model.clock_rate(),

@@ -21,6 +21,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::reroot::EdgeMergeInfo;
 use treetime_primitives::{LogLh, Seq, seq};
 use treetime_utils::interval::range_union::range_union;
 
@@ -115,21 +116,60 @@ impl PartitionMarginalSparse {
     )
   }
 
-  pub(crate) fn reconcile_topology(&mut self, graph: &Graph) {
+  pub(crate) fn reconcile_topology(&mut self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<(), Report> {
+    let merged_from: BTreeMap<GraphEdgeKey, GraphNodeKey> = merges
+      .iter()
+      .map(|merge| (merge.merged_edge_key, merge.removed_node_key))
+      .collect();
+    let new_nodes: Vec<(GraphNodeKey, GraphNodeKey)> = graph
+      .get_nodes()
+      .map(|node| node.key())
+      .filter(|key| !self.obs_nodes.contains_key(key))
+      .map(|key| Ok((key, self.sequence_source(graph, &merged_from, key)?)))
+      .collect::<Result<_, Report>>()?;
+    for (key, source) in new_nodes {
+      let obs = self.obs_nodes[&source].clone();
+      self.obs_nodes.insert(key, obs);
+    }
+
+    for merge in merges {
+      let parent_edge = self.obs_edges.remove(&merge.parent_edge_key).unwrap_or_default();
+      let child_edge = self.obs_edges.remove(&merge.child_edge_key).unwrap_or_default();
+      let mut merged_edge = SparseEdgeObs::default();
+      merged_edge.set_fitch_subs(parent_edge.chain_fitch_subs(child_edge.fitch_subs())?);
+      merged_edge.indels = parent_edge.chain_fitch_indels(&child_edge.indels);
+      self.obs_edges.insert(merge.merged_edge_key, merged_edge);
+    }
+
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|n| n.key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().map(|e| e.key()).collect();
-
-    for &key in &graph_node_keys {
-      self
-        .obs_nodes
-        .entry(key)
-        .or_insert_with(|| SparseNodeObs::empty(&self.alphabet));
-    }
     for &key in &graph_edge_keys {
       self.obs_edges.entry(key).or_default();
     }
     self.obs_nodes.retain(|k, _| graph_node_keys.contains(k));
     self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
+    Ok(())
+  }
+
+  fn sequence_source(
+    &self,
+    graph: &Graph,
+    merged_from: &BTreeMap<GraphEdgeKey, GraphNodeKey>,
+    node_key: GraphNodeKey,
+  ) -> Result<GraphNodeKey, Report> {
+    let mut key = node_key;
+    while let Some((parent_key, edge_key)) = graph.node_parent(key)? {
+      if let Some(&removed_key) = merged_from.get(&edge_key) {
+        return Ok(removed_key);
+      }
+      if self.obs_nodes.contains_key(&parent_key) {
+        return Ok(parent_key);
+      }
+      key = parent_key;
+    }
+    Err(make_internal_report!(
+      "Node {node_key} is new after a topology change, but no ancestor carries a sequence observation"
+    ))
   }
 
   pub(crate) fn node_sequence(

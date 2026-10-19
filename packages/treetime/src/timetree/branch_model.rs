@@ -6,7 +6,7 @@ use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::reroot::RerootResult;
+use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
 
 pub(crate) enum BranchModel {
   Input,
@@ -29,12 +29,11 @@ impl BranchModel {
     })
   }
 
-  #[must_use]
-  pub(crate) fn reconcile_topology(self, graph: &Graph) -> Self {
-    match self {
+  pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
+    Ok(match self {
       Self::Input => Self::Input,
-      Self::Marginal(partitions) => Self::Marginal(partitions.reconcile_topology(graph)),
-    }
+      Self::Marginal(partitions) => Self::Marginal(partitions.reconcile_topology(graph, merges)?),
+    })
   }
 
   pub(crate) fn apply_reroot(
