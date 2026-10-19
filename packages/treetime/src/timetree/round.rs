@@ -55,7 +55,8 @@ pub(crate) fn refinement_round(
     (Some(prior), TopologyOutcome::Changed { merger_times }) => Some(prior.with_topology(&state.graph, merger_times)?),
     _ => None,
   };
-  let state = refresh_times(inputs, rebuilt.as_ref().or(prior), topology.changed(), state, log)?;
+  let prior = rebuilt.as_ref().or(prior);
+  let state = refresh_times(inputs, prior, topology.changed(), state, log)?;
 
   let current_states = capture_ancestral_states(&state.graph, &state.branch_model);
   let current_times = capture_node_times(&state.graph, &state.time_inference);

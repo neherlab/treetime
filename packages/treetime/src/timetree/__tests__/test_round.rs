@@ -13,6 +13,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalEdges;
   use crate::partition::set::PartitionSet;
   use crate::pretty_assert_abs_diff_eq;
+  use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
   use crate::test_utils::leaf_seq_inputs;
@@ -22,7 +23,7 @@ mod tests {
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::given_times;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::optimization::marginal_clock_rate::RateWindow;
+  use crate::timetree::optimization::marginal_clock_rate::{MarginalRateInputs, RateWindow, step_marginal_clock_rate};
   use crate::timetree::optimization::relaxed_clock::{apply_relaxed_clock, unit_gammas};
   use crate::timetree::params::TimeMarginalMode;
   use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
@@ -276,6 +277,63 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_round_rate_step_after_a_topology_change_uses_the_rebuilt_coalescent_prior() -> Result<(), Report> {
+    let (state, context) = helpers::create_state(
+      "((A:0.001,B:0.009,C:0.009,D:0.017)P:0.004,E:0.017)root;",
+      indoc! {r#"
+        >A
+        ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+        >B
+        ACGTACGAACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+        >C
+        ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACCTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+        >D
+        ACGTACGTACGTACGTACGTTCGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+        >E
+        TCGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTAAGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
+      "#},
+      &btreemap! {
+        "A".to_owned() => Some(DateConstraint::exact(2010.0)),
+        "B".to_owned() => Some(DateConstraint::exact(2012.0)),
+        "C".to_owned() => Some(DateConstraint::exact(2014.0)),
+        "D".to_owned() => Some(DateConstraint::exact(2016.0)),
+        "E".to_owned() => Some(DateConstraint::exact(2015.0)),
+      },
+    )?;
+    let reference_rate = state.clock_model.clock_rate();
+    let expectation = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
+    let prior = CoalescentPrior::new(&expectation, &Distribution::constant(ROUND_TEST_TC))?;
+    let params = TimetreeParams {
+      clock_rate: None,
+      ..helpers::round_params(true, vec![])
+    };
+
+    let (state, outcome) = helpers::refine_with_prior(&context, state, Some(&prior), &params)?;
+
+    let TopologyOutcome::Changed { merger_times } = &outcome.topology else {
+      panic!("the round must resolve the polytomy");
+    };
+    assert!(!merger_times.is_empty());
+    let rate_step = |prior: &CoalescentPrior| {
+      step_marginal_clock_rate(&MarginalRateInputs {
+        graph: &state.graph,
+        date_constraints: &context.date_constraints,
+        coalescent: Some(prior),
+        bad_branches: &state.time_inference.bad_branches,
+        branches: &state.time_inference.branches,
+        reference_rate,
+        window: RateWindow::FollowSlope,
+        max_points: MaxGridPoints::default(),
+      })
+      .map(|step| step.clock_rate)
+    };
+    let rebuilt_prior_rate = rate_step(&prior.with_topology(&state.graph, merger_times)?)?;
+    assert_ne!(rebuilt_prior_rate.to_bits(), rate_step(&prior)?.to_bits());
+    pretty_assert_ulps_eq!(rebuilt_prior_rate, state.clock_model.clock_rate(), max_ulps = 0);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use crate::optimize::indel::IndelPolicy;
@@ -451,14 +509,21 @@ mod tests {
       coalescent_tc: Option<&Distribution>,
       params: &TimetreeParams,
     ) -> Result<(RoundState, RoundOutcome), Report> {
-      let pinned_tc = Distribution::constant(ROUND_TEST_TC);
-      let expectation = LineageExpectation::from_posterior(
-        &state.graph,
-        &state.time_inference.posterior,
-        &state.time_inference.bad_branches,
-      )?;
-      let prior = CoalescentPrior::new(&expectation, coalescent_tc.unwrap_or(&pinned_tc))?;
-      let merger_rate = expectation.merger_rate_schedule(&pinned_tc)?;
+      let expectation = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
+      let prior = coalescent_tc
+        .map(|tc| CoalescentPrior::new(&expectation, tc))
+        .transpose()?;
+      refine_with_prior(context, state, prior.as_ref(), params)
+    }
+
+    pub(super) fn refine_with_prior(
+      context: &TimetreeContext,
+      state: RoundState,
+      prior: Option<&CoalescentPrior>,
+      params: &TimetreeParams,
+    ) -> Result<(RoundState, RoundOutcome), Report> {
+      let expectation = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
+      let merger_rate = expectation.merger_rate_schedule(&Distribution::constant(ROUND_TEST_TC))?;
       let leaf_bad_branches = bad_leaves(&state.graph, &context.date_constraints, &BTreeSet::new());
       let outliers = BTreeSet::new();
       let inputs = RoundInputs {
@@ -471,7 +536,7 @@ mod tests {
       refinement_round(
         &inputs,
         &merger_rate,
-        coalescent_tc.is_some().then_some(&prior),
+        prior,
         RateWindow::FollowSlope,
         state,
         &mut get_random_number_generator(ROUND_TEST_SEED),
