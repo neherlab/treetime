@@ -106,6 +106,7 @@ pub(super) mod support {
       &self,
       indel_policy: IndelPolicy,
       coalescent: Option<&CoalescentPrior>,
+      posterior_summaries: PosteriorSummaries,
     ) -> Result<TimeInference, Report> {
       run_timetree(
         &TimeInferenceInputs {
@@ -120,7 +121,7 @@ pub(super) mod support {
           clock_rate_fixed: false,
           indel_policy,
           max_grid_points: MaxGridPoints::default(),
-          posterior_summaries: PosteriorSummaries::default(),
+          posterior_summaries,
         },
         coalescent,
         &NoopProgress,
@@ -164,7 +165,7 @@ pub(super) mod support {
     indel_policy: IndelPolicy,
   ) -> Result<BTreeMap<String, f64>, Report> {
     let setup = marginal_setup(dataset, mode)?;
-    let inference = setup.run(indel_policy, None)?;
+    let inference = setup.run(indel_policy, None, PosteriorSummaries::default())?;
     Ok(setup.node_times(&inference))
   }
 

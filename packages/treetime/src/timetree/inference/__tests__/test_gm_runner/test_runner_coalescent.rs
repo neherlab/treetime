@@ -1,42 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use super::super::test_gm_runner_support::support::{
-    ALPHABET, OUTPUTS, extract_node_times, load_alignment_for_dataset, load_dates_for_dataset,
-  };
-  use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
-  use crate::clock::clock_state::ClockInputs;
-  use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::clock::reroot::RerootParams;
-  use crate::coalescent::mean_field::CoalescentPrior;
-  use crate::gtr::get_gtr::{JC69Params, jc69};
+  use super::super::test_gm_runner_support::support::{SequenceMode, marginal_setup};
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::optimize::indel::IndelPolicy;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::shared::update::MarginalEdges;
-  use crate::partition::set::PartitionSet;
-  use crate::progress::NoopProgress;
-  use crate::test_utils::constraint_expectation;
-  use crate::test_utils::dates_by_node;
-  use crate::test_utils::leaf_seq_inputs;
-  use crate::timetree::branch_model::BranchModel;
-  use crate::timetree::inference::bad_branches::bad_leaves;
-
-  use crate::timetree::inference::result::{PosteriorSummaries, given_times};
-  use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-  use crate::timetree::optimization::relaxed_clock::unit_gammas;
+  use crate::timetree::inference::result::PosteriorSummaries;
   use eyre::Report;
-  use helpers::build_timetree_setup;
   use rstest::rstest;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeMap;
   use treetime_distribution::Distribution;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
-  use treetime_grid::MaxGridPoints;
-  use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlignmentRecord;
 
   #[rustfmt::skip]
   #[rstest]
@@ -44,113 +15,22 @@ mod tests {
   #[case::tc_1_0( 1.0)]
   #[case::tc_10_0(10.0)]
   #[trace]
-  #[ignore = "golden master datasets not yet passing"]
   fn test_runner_coalescent_completes(#[case] tc: f64) -> Result<(), Report> {
-    let dataset = "flu_h3n2_20";
-    let case = &OUTPUTS[dataset];
-
-let (graph, names, partition, clock_model, constraints, branch_lengths) = build_timetree_setup(dataset, case)?;
-    let expectation = constraint_expectation(&graph, &constraints)?;
+    let setup = marginal_setup("flu_h3n2_20", SequenceMode::Dense)?;
+    let survival = PosteriorSummaries {
+      lineage_survival: true,
+      ..PosteriorSummaries::default()
+    };
+    let prior_free = setup.run(IndelPolicy::Include, None, survival)?;
+    let expectation = LineageExpectation::of_inference(&setup.graph, &prior_free)?;
     let coalescent = CoalescentPrior::new(&expectation, &Distribution::constant(tc))?;
-    let run_names = names.clone();
-    let inference = run_timetree(
-      &TimeInferenceInputs {
-        graph: &graph,
-        date_constraints: &constraints,
-        leaf_bad_branches: &bad_leaves(&graph, &constraints, &BTreeSet::new()),
-        gammas: &unit_gammas(&graph),
-        branch_model: &BranchModel::Marginal(partition),
-        branch_lengths: &branch_lengths,
-        names: &run_names,
-        clock_model: &clock_model,
-        clock_rate_fixed: false,
-        indel_policy: IndelPolicy::Include,
-        max_grid_points: MaxGridPoints::default(),
-        posterior_summaries: PosteriorSummaries::default(),
-      },
-      Some(&coalescent),
-      &NoopProgress,
-    )?;
 
-    let times = extract_node_times(&graph, &names, &inference.posterior);
-    let expected_count = graph.num_nodes();
-    assert_eq!(
-      expected_count,
-      times.len(),
-      "All nodes (tips + internal) must have time values, but only {actual} of {expected} do",
-      actual = times.len(),
-      expected = expected_count,
-    );
+    let inference = setup.run(IndelPolicy::Include, Some(&coalescent), PosteriorSummaries::default())?;
 
-    for (name, time) in &times {
-      assert!(time.is_finite(), "Node {name} has non-finite time {time}");
-    }
-
+    let times = setup.node_times(&inference);
+    assert_eq!(setup.graph.num_nodes(), times.len(), "every node must be dated");
+    let non_finite: BTreeMap<&String, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
+    assert_eq!(BTreeMap::new(), non_finite, "every node time must be finite");
     Ok(())
-  }
-
-  type TimetreeSetup = (
-    Graph,
-    BTreeMap<GraphNodeKey, Option<String>>,
-    PartitionSet,
-    ClockModel,
-    DateConstraints,
-    BTreeMap<GraphEdgeKey, Option<f64>>,
-  );
-
-  mod helpers {
-    use super::*;
-
-    pub(super) fn build_timetree_setup(
-      dataset: &str,
-      case: &super::super::super::test_gm_runner_support::support::DatasetOutputs,
-    ) -> Result<TimetreeSetup, Report> {
-      let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
-      let names = nwk_parsed.names();
-      let graph = nwk_parsed.graph;
-      let branch_lengths = nwk_parsed.branch_lengths;
-      let dates = load_dates_for_dataset(dataset)?;
-      let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
-
-      let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?
-        .into_iter()
-        .map(AlignmentRecord::from)
-        .collect();
-      let dense_partition = PartitionSet::Dense(vec![DenseReconstruction {
-        partition: PartitionMarginalDense::new(ALPHABET.clone(), &graph, &leaf_seq_inputs(&graph, &names, aln))?,
-        gtr: jc69(JC69Params::default())?,
-        node_states: BTreeMap::new(),
-        edges: MarginalEdges::default(),
-      }]);
-
-      let (partition, _) = dense_partition.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-
-      let times = given_times(&graph, &constraints)?;
-      let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
-      let (
-        ClockTree {
-          graph, branch_lengths, ..
-        },
-        clock_reroot,
-      ) = estimate_clock_model_with_reroot_policy(
-        ClockTree {
-          graph,
-          branch_lengths,
-          inputs: clock_estimate_inputs,
-        },
-        &ClockFitParams {
-          outliers: &BTreeSet::new(),
-          clock_rate: Some(case.clock_rate()),
-          keep_root: true,
-          reroot_params: &RerootParams::default(),
-          prev_clock_rate: None,
-        },
-        &names,
-        &NoopProgress,
-      )?;
-      let clock_model = clock_reroot.into_clock_fit()?.model;
-
-      Ok((graph, names, partition, clock_model, constraints, branch_lengths))
-    }
   }
 }
