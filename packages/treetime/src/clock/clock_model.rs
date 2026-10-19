@@ -99,8 +99,6 @@ impl ClockModel {
     })
   }
 
-  /// The model at an estimated rate that did not come from the regression (the marginal-likelihood rate of a timetree):
-  /// chi-squared and r of the clock line through the dated, included tips of `set`, and the rate's standard deviation
   pub(crate) fn estimated_at_rate(&self, set: &ClockSet, rate_std: Option<f64>) -> Self {
     Self {
       stats: ClockModelStats::Estimated(RegressionStats {
@@ -131,7 +129,6 @@ impl ClockModel {
     self.r_val().map(r_squared)
   }
 
-  /// Standard deviation of an estimated rate, when known
   pub fn rate_std(&self) -> Option<f64> {
     self.get_regression_stat(|s| s.rate_std).flatten()
   }
@@ -269,7 +266,6 @@ pub enum ClockModelStats {
 pub struct RegressionStats {
   pub(crate) chisq: f64,
   pub(crate) r_val: f64,
-  /// Standard deviation of the rate from the Gaussian timetree at the final rate, when it does not degenerate
   #[deser(skip_serializing_if = Option::is_none, default)]
   pub(crate) rate_std: Option<f64>,
 }

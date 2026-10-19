@@ -62,8 +62,6 @@ impl SoftTailLaw {
     }
   }
 
-  /// The law of the same tail on the argument scaled by `factor` (a negative factor reflects it): the slope per unit
-  /// of argument divides by the factor
   #[must_use]
   pub fn scale_arg(&self, factor: f64) -> Self {
     SoftTailLaw {

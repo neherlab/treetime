@@ -17,9 +17,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo, remove_stem_root};
 
-/// Moves the root to the position that `reroot_params` selects, with the regression on the input branch lengths and
-/// without the `outliers`. When the root moves and is an undated stem, the stem goes first and the search repeats
-/// without it. The nodes and edges that the move creates get default clock inputs.
 pub(crate) fn reroot_at_best_root(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -53,8 +50,6 @@ pub(crate) fn reroot_at_best_root(
   Ok(result)
 }
 
-/// Reroots a tree without dates by a `spec` that needs none (min-dev or tips). Every tip gets the same date and the
-/// search runs at rate zero, so min-dev ranks the roots by the variance of the root-to-tip divergences.
 pub(crate) fn reroot_undated(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -113,8 +108,6 @@ fn remove_undated_stem(
   Ok(Some(stem))
 }
 
-/// The edge and the split along it, from its parent end, where `reroot_params` puts the root; no edge means the
-/// current root
 fn select_root(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -187,7 +180,6 @@ fn tip_group_mrca(graph: &Graph, tips: &[GraphNodeKey]) -> Result<GraphNodeKey, 
   common_ancestor(graph, tips)
 }
 
-/// The midpoint of the edge above `node_key`, or the current root when `node_key` is the root
 fn named_root_point(graph: &Graph, node_key: GraphNodeKey) -> Result<(Option<GraphEdgeKey>, f64), Report> {
   Ok(match graph.parent_inbound_edge(node_key)? {
     Some(edge) => (Some(edge), 0.5),

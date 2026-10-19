@@ -64,7 +64,6 @@ pub(crate) struct TimetreeContext {
   pub final_sequences: FinalSequences,
   pub time_marginal: TimeMarginalMode,
   pub date_constraints: DateConstraints,
-  /// Sites of the alignment, else `--sequence-length`
   pub sequence_length: usize,
 }
 

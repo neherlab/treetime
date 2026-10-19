@@ -79,8 +79,6 @@ mod tests {
 
   #[test]
   fn test_backward_pass_root_carries_the_marginal_likelihood() -> Result<(), Report> {
-    // Z = integral of B_A(t_A - t) B_B(t_B - t) dt for peak-1 Gaussian branch likelihoods of precision p is
-    // sqrt(pi / p) exp(-p d^2 / 4), d = (t_A - m_A) - (t_B - m_B); the leaves' amplitudes are factors of Z
     let nwk_parsed = nwk_read(b"(A:3.0,B:2.5)root;".as_slice())?;
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
@@ -100,7 +98,6 @@ mod tests {
     let actual = backward
       .log_marginal_likelihood(graph.root_key()?)?
       .expect("root has a distribution");
-    // each message's mass window drops up to EPS = 5e-4 of its mass
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 2e-3);
     Ok(())
   }

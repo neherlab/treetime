@@ -79,7 +79,6 @@ fn propagate_distributions_forward_node(
     subtree.as_deref(),
     max_points,
   )?;
-  // the subtree distribution carries the subtree likelihood as its level; a posterior is normalized
   let normalized_subtree = || -> Result<_, Report> {
     subtree
       .as_deref()
@@ -92,7 +91,6 @@ fn propagate_distributions_forward_node(
     ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
   };
 
-  // a broad root posterior can have close peaks, and its peak then jumps between rounds; the median does not
   let likely_time = if context.is_root && !context.is_leaf {
     distribution
       .as_deref()

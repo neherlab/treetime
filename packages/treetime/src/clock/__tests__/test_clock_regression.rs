@@ -59,8 +59,6 @@ mod tests {
     Ok(())
   }
 
-  // A regression rate that is not positive gives way to the fallback rate, with the intercept of the least-squares
-  // line at that rate, (sum d - rate sum t) / n; a positive regression rate is kept and the fallback not asked for
   #[test]
   fn test_clock_regression_fallback_replaces_only_a_non_positive_rate() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
@@ -304,7 +302,6 @@ mod tests {
       Ok(root_fit(tree, dates)?.regression().unwrap().clone())
     }
 
-    /// Clock fit at the root of `tree`, without rerooting
     pub(super) fn root_fit(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRerootResult, Report> {
       let nwk_parsed = nwk_read(tree.as_bytes())?;
       let names = nwk_parsed.names();

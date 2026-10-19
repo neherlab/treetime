@@ -9,8 +9,6 @@ use treetime_grid::grid::Grid;
 use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
-/// Values are `Y::multiply(ampl, stored)`: the grid holds the shape and `ampl` the level, so that the grid can be kept
-/// near the peak (`fn repeak()`) without losing the level.
 #[derive(Clone, Debug)]
 pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   grid_fn: GridFn<T>,
@@ -20,7 +18,6 @@ pub struct DistributionFunction<T: InterpElem, Y: YAxisPolicy = Plain> {
   _policy: PolicyMarker<Y>,
 }
 
-/// Equal when grid, tails and values are equal, however the level is split between grid and amplitude
 impl<T: InterpElem, Y: YAxisPolicy> PartialEq for DistributionFunction<T, Y> {
   fn eq(&self, other: &Self) -> bool {
     let with_level = |f: &Self| {
@@ -117,7 +114,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.dx()
   }
 
-  /// Stored values, relative to the amplitude
   pub fn y(&self) -> &Array1<T> {
     self.grid_fn.y()
   }
@@ -132,7 +128,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self
   }
 
-  /// Values including the amplitude
   pub fn values(&self) -> Array1<T>
   where
     T: Float,
@@ -156,7 +151,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     Ok(Array1::from_vec(values))
   }
 
-  /// Value relative to the amplitude, extrapolated by the tail laws
   pub(crate) fn interp_stored(&self, x: T) -> Result<T, Report>
   where
     T: Float + UlpsEq,
@@ -335,8 +329,6 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 }
 
 impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
-  /// The same values on the time axis scaled by `factor > 0` (t -> factor * t), with the tail laws transformed to
-  /// match. The values are a likelihood, not a density, so they are not rescaled.
   pub fn scale_time(&self, factor: f64) -> Result<Self, Report> {
     Ok(Self::from_grid_fn_with_extrap(
       self.grid_fn.scale_x(factor)?,
@@ -346,8 +338,6 @@ impl<Y: YAxisPolicy> DistributionFunction<f64, Y> {
     ))
   }
 
-  /// Moves the peak of the stored values into the amplitude; the values are unchanged. `None` when no stored value is
-  /// a finite peak (no probability anywhere).
   pub fn repeak(&self) -> Result<Option<Self>, Report> {
     let stored = self.y();
     let extremum = if Y::likely_is_maximum() {
@@ -391,7 +381,6 @@ fn unit_amplitude<T: InterpElem, Y: YAxisPolicy>() -> T {
   Y::from_plain(1.0).into()
 }
 
-/// The tail law on the argument scaled by `factor`; a negative factor reflects it (the caller swaps the sides)
 fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale_arg(factor)),

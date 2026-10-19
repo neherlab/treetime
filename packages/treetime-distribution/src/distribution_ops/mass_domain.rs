@@ -7,7 +7,6 @@ use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, MaxGrid
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
-/// Natural log of the total mass, amplitude and tails included. Infinite for an improper tail, `-inf` for `Empty`.
 pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
   match dist {
     Distribution::Empty => Ok(f64::NEG_INFINITY),

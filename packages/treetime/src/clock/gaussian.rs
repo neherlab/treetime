@@ -1,19 +1,3 @@
-//! Gaussian message passing on a dated tree at a given clock rate.
-//!
-//! A branch with `d` substitutions (branch length times sequence length) has an elapsed time approximated by
-//! `N(nu / eta, nu / eta^2)` with `nu = d + 1`, the moment match of its Gamma(`d + 1`, `eta`) likelihood under a flat
-//! prior on time. The `+1` is the hazard of the event that ends a branch (a split, or sampling at a tip), so `eta` is
-//! the rate of the combined process: `eta = mu (D + M + N) / D` for the substitution rate `mu`, with `D` the
-//! substitutions, `M` the internal and `N` the terminal branches. A message about a node's time `t` is
-//! `(S, R, W)` with mean `S - R / eta` and variance `W / eta^2`; `S`, `R`, `W` do not depend on `eta`. A message
-//! crosses a branch toward the parent as `(S, R + nu, W + nu)` and toward the child as `(S, R - nu, W + nu)`; messages
-//! about the same time combine by summing their natural parameters `(1/W, S/W, R/W)`.
-//!
-//! The combination of messages `i` at a node leaves `-(a eta^2 - 2 b eta + c) / 2` in the log-likelihood, with
-//! `a = sum S_i^2 / W_i - S^2 / W`, `b = sum S_i R_i / W_i - S R / W`, `c = sum R_i^2 / W_i - R^2 / W`. With the root
-//! time optimized, `log L(eta) = kappa ln eta - A eta^2 / 2 + B eta - C / 2`, `kappa` the number of dated tips and `A`,
-//! `B`, `C` the sums over nodes. Following `gaussian_timetree.py` and its derivation (neherlab/gaussian-timetree).
-
 use crate::branch_lengths::branch_length_or_zero;
 use crate::timetree::inference::result::NodeTimes;
 use eyre::Report;
@@ -25,24 +9,18 @@ use treetime_graph::pass::{GraphMapOutputs, GraphPass, GraphPassNodeOutput};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_report};
 
-/// Precision below which a combination of messages carries no information
 const MIN_PRECISION: f64 = 1e-300;
 
-/// Time of a node as a Gaussian
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct NodeTimeGaussian {
   pub mean: f64,
   pub std: f64,
 }
 
-/// Rate and root uncertainty and the node-time marginals of the Gaussian approximation at a given rate
 #[derive(Clone, Debug)]
 pub(crate) struct GaussianClock {
-  /// Standard deviation of the substitution rate, per site and unit time
-  /// `None` when the information matrix of rate and root time is not positive definite
   pub rate_std: Option<f64>,
   pub root_time_std: Option<f64>,
-  /// Marginal time of every internal node that has a dated tip below it
   pub node_times: BTreeMap<GraphNodeKey, NodeTimeGaussian>,
 }
 
@@ -79,7 +57,6 @@ impl Message {
   }
 }
 
-/// Natural parameters `(1/W, S/W, R/W)` of a message, which add when messages combine
 #[derive(Clone, Copy, Debug, Default)]
 struct Natural {
   p: f64,
@@ -113,8 +90,6 @@ impl Natural {
   }
 }
 
-/// Combination of the messages at one node, and the coefficients `a` and `b` it adds to the log-likelihood; `c` does not
-/// depend on the rate and is not needed
 fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
   let total = messages.iter().fold(Natural::default(), |acc, m| acc.plus(m.natural()));
   let combined = total.message()?;
@@ -125,14 +100,10 @@ fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Below {
-  /// Combined message from the children, about the node's own time
   down: Option<Message>,
   ab: [f64; 2],
 }
 
-/// The Gaussian timetree up to the rate: messages toward the root, the branch weights `nu`, the counts `D`
-/// (substitutions) and `D + M + N` (events) of the dated part of the tree, the number `kappa` of dated tips, and the
-/// sums `A`, `B` of the log-likelihood `kappa ln eta - A eta^2 / 2 + B eta - C / 2`
 pub(crate) struct GaussianTree {
   pass: GraphPass,
   internal_nodes: Vec<GraphNodeKey>,
@@ -150,7 +121,6 @@ pub(crate) struct GaussianTree {
 }
 
 impl GaussianTree {
-  /// A tip takes part when it has a date in `tip_dates` and is not flagged in `excluded`; the others send no message.
   pub(crate) fn new(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -163,7 +133,6 @@ impl GaussianTree {
     }
     let sequence_length = sequence_length.to_f64_exact();
     let pass = GraphPass::new(graph)?;
-    // a tip's own message: its date, known exactly
     let tips: BTreeMap<GraphNodeKey, Option<Message>> = graph
       .get_nodes()
       .map(|n| {
@@ -226,7 +195,6 @@ impl GaussianTree {
     })
   }
 
-  /// Node-time marginals, rate std and root-time std at substitution rate `clock_rate` (per site and unit time)
   pub(crate) fn clock(&self, clock_rate: f64) -> Result<GaussianClock, Report> {
     if clock_rate.is_nan() || clock_rate <= 0.0 {
       return make_error!("Gaussian clock needs a positive clock rate, got {clock_rate}");
@@ -257,9 +225,6 @@ impl GaussianTree {
     })
   }
 
-  /// Substitution rate that maximizes the Gaussian log-likelihood with the root time free,
-  /// `kappa ln eta - A eta^2 / 2 + B eta - C / 2`: `eta = (B + sqrt(B^2 + 4 A kappa)) / 2A`, converted to the rate
-  /// per site and unit time. Unlike the root-to-tip regression it is positive whenever `A > 0`.
   pub(crate) fn rate(&self) -> Result<f64, Report> {
     let (a, b, kappa) = (self.a, self.b, self.kappa);
     if a.is_nan() || a <= 0.0 {
@@ -269,7 +234,6 @@ impl GaussianTree {
     Ok(self.mu(eta))
   }
 
-  /// `eta` of substitution rate `mu`: `mu L (D + M + N) / D`
   fn eta(&self, mu: f64) -> f64 {
     mu * self.sequence_length * self.events / self.substitutions
   }
@@ -279,7 +243,6 @@ impl GaussianTree {
   }
 }
 
-/// Messages toward the root: per node the combination from its children, per edge the message it carries upward
 fn backward(
   pass: &GraphPass,
   tips: &BTreeMap<GraphNodeKey, Option<Message>>,
@@ -311,8 +274,6 @@ fn backward(
   )
 }
 
-/// Messages toward the tips, combined with `below` into the natural parameters of each node's marginal: the outside
-/// message of a node is its parent's total without the node's own upward message, carried across the edge
 fn forward(
   pass: &GraphPass,
   tips: &BTreeMap<GraphNodeKey, Option<Message>>,
@@ -350,10 +311,6 @@ fn forward(
   Ok(nodes)
 }
 
-/// Standard deviations of `eta` and the root time from the observed information of the fixed-root log-likelihood
-/// `kappa ln eta - A' eta^2 / 2 + B' eta - C' / 2` with `A' = A + (t_r - S_r)^2 / W_r`, at `t_r = S_r - R_r / eta`:
-///
-/// `I = [[kappa / eta^2 + A + R_r^2 / (eta^2 W_r), -R_r / W_r], [-R_r / W_r, eta^2 / W_r]]`, `cov = I^-1`.
 fn rate_and_root_std(a: f64, kappa: f64, root: Message, eta: f64) -> Option<(f64, f64)> {
   let i_rate = kappa / eta.powi(2) + a + root.r.powi(2) / (eta.powi(2) * root.w);
   let i_cross = -root.r / root.w;

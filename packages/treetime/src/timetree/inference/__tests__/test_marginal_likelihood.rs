@@ -20,10 +20,6 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::f64_to_usize_saturating;
 
-  // ((A,B)I,C)root with tips at 2015, 2014, 2013 and Poisson branch likelihoods (b L)^k exp(-b L), L = 1000. The log
-  // marginal likelihood from the backward pass is compared with a brute-force integral of the same integrand over
-  // (t_I, t_root), for the same branch distributions and coalescent factors.
-
   #[rstest]
   #[case::no_prior_reference_rate(1e-3, None)]
   #[case::no_prior_slower(0.5e-3, None)]
@@ -33,7 +29,6 @@ mod tests {
   #[trace]
   fn test_marginal_likelihood_matches_brute_force(#[case] rate: f64, #[case] tc: Option<f64>) -> Result<(), Report> {
     let setup = helpers::setup()?;
-    // branch distributions at `rate`, rescaled from those at the reference rate
     let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
     let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
     let backward = propagate_distributions_backward(
@@ -48,8 +43,6 @@ mod tests {
       .log_marginal_likelihood(setup.graph.root_key()?)?
       .expect("root has a distribution");
     let expected = helpers::brute_force_log_z(&setup, branches, model.as_ref())?;
-    // without a prior the difference is below 5e-3 (mass windows, grids); the coalescent prior adds the grid resolution
-    // of its factors
     assert_abs_diff_eq!(expected, actual, epsilon = 2e-2);
     Ok(())
   }
@@ -60,7 +53,6 @@ mod tests {
     pub(super) const REFERENCE_RATE: f64 = 1e-3;
     const SITES: f64 = 1000.0;
     const TIPS: [(&str, f64); 3] = [("A", 2015.0), ("B", 2014.0), ("C", 2013.0)];
-    /// substitutions on the branch above each node
     const COUNTS: [(&str, f64); 4] = [("A", 3.0), ("B", 2.0), ("I", 2.0), ("C", 5.0)];
 
     pub(super) struct Setup {
@@ -106,7 +98,6 @@ mod tests {
       })
     }
 
-    /// Peak-1 Poisson likelihood of k substitutions as a function of branch time at the reference rate
     fn poisson_branch(k: f64) -> Result<BranchLikelihood, Report> {
       let mean_time = k / (SITES * REFERENCE_RATE);
       let t = Array1::linspace(1e-4, mean_time * 6.0 + 4.0, 2001);
@@ -123,7 +114,6 @@ mod tests {
       })
     }
 
-    /// Mean-field prior whose lineage expectation has the root at 2005 and I at 2011
     pub(super) fn coalescent(setup: &Setup, tc: f64) -> Result<CoalescentPrior, Report> {
       let times = [("root", 2005.0), ("I", 2011.0)];
       point_coalescent_prior(
@@ -134,8 +124,6 @@ mod tests {
       )
     }
 
-    /// log of the integral over t_I < 2014 and t_root < min(t_I, 2013) of the product of the branch likelihoods and the
-    /// coalescent factors, by the trapezoidal rule
     pub(super) fn brute_force_log_z(
       setup: &Setup,
       branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,

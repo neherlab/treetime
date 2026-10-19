@@ -24,12 +24,6 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
 
-  // ((A,B)X,C)R with heterochronous tips: X is bounded by B, the root by no tip directly. Each branch has k of SITES
-  // sites differing under JC69 at RATE substitutions per year over all sites. Without a tree prior the joint density
-  // of the internal times is the product of the branch likelihoods,
-  //   p(x, r) ∝ L_A(t_A - x) L_B(t_B - x) L_X(x - r) L_C(t_C - r),   r < x < min(t_A, t_B),
-  // and its marginals, integrated on a uniform grid, are the exact node posteriors that the time passes must match.
-
   const RATE: f64 = 2.0;
   const SITES: usize = 1000;
   const T_A: f64 = 2012.0;
@@ -65,11 +59,6 @@ mod tests {
     Ok(())
   }
 
-  // ((A,B)X,(C,D)Y)R with tips at 2012, 2010.5, 2011.5 and 2010: X and Y are sibling clades whose posteriors
-  // overlap. The exact Kingman prior for this topology at constant Tc, with n(t) the number of tips sampled after t, is
-  //   Tc log p = int^x (n - 1) + int^y (n - 1) + int^r (n - 1) - min(x, y) - 2 r   + const,
-  // whose pair term min(x, y) is not linear in either time. The time passes use the mean-field prior, built from the
-  // prior-free posteriors and rebuilt once from the first prior pass, as the initial round does.
   const TIPS_4: [(&str, f64); 4] = [("A", 2012.0), ("B", 2010.5), ("C", 2011.5), ("D", 2010.0)];
   const GRID_4_START: f64 = 2003.0;
   const GRID_4_STEP: f64 = 0.02;
@@ -106,8 +95,6 @@ mod tests {
   mod helpers {
     use super::*;
 
-    /// Transition probabilities P(same) and P(a specific other state) of JC69 over branch length b, from the
-    /// eigendecomposition the branch likelihood uses: `P(c | a, b) = sum_j v[a, j] v_inv[j, c] exp(lambda_j b)`
     fn transition_probabilities(gtr: &GTR, b: f64) -> (f64, f64) {
       let eigvals = gtr.rate_eigvals();
       let p = |a: usize, c: usize| {
@@ -118,7 +105,6 @@ mod tests {
       (p(0, 0), p(0, 1))
     }
 
-    /// Likelihood of a branch of duration tau with `k` of SITES sites differing; zero for negative durations
     fn branch_likelihood(gtr: &GTR, tau: f64, k: usize) -> f64 {
       if tau < 0.0 || (tau == 0.0 && k > 0) {
         return 0.0;
@@ -128,7 +114,6 @@ mod tests {
       ((SITES - k).to_f64_exact() * same.ln() + differing).exp()
     }
 
-    /// Marginal densities of X and R on `grid`; the X branch likelihood is tabulated on multiples of the grid step
     pub(super) fn exact_marginals(gtr: &GTR, [ka, kb, kx, kc]: [usize; 4], grid: &[f64]) -> (Vec<f64>, Vec<f64>) {
       let n = grid.len();
       let branch_x: Vec<f64> = (0..n)
@@ -151,8 +136,6 @@ mod tests {
       (marginal_x, marginal_r)
     }
 
-    /// Marginal densities of X and R from the time passes on `grid`, with branch distributions from the production
-    /// builder
     pub(super) fn treetime_marginals(
       gtr: &GTR,
       counts: [usize; 4],
@@ -219,8 +202,6 @@ mod tests {
       Ok((density("X")?, density("R")?))
     }
 
-    /// Branch distribution as the time passes receive it: the JC69 contribution of `k` differing sites, on the grid
-    /// of `fn compute_branch_length_distribution()` centred at the maximum-likelihood length
     fn branch_distribution(gtr: &GTR, k: usize) -> Result<Arc<Distribution<NegLog>>, Report> {
       let n_states = gtr.v().nrows();
       let mut coefficients = Array2::<f64>::zeros((SITES, n_states));
@@ -244,7 +225,6 @@ mod tests {
       )
     }
 
-    /// Marginals of X, Y and R of ((A,B)X,(C,D)Y)R under the exact Kingman prior; `counts` are A, B, C, D, X, Y
     pub(super) fn exact_kingman_marginals(gtr: &GTR, counts: [usize; 6], tc: f64, grid: &[f64]) -> [Vec<f64>; 3] {
       let [ka, kb, kc, kd, kx, ky] = counts;
       let n = grid.len();
@@ -294,7 +274,6 @@ mod tests {
       [px, py, pr]
     }
 
-    /// Marginals of X, Y and R from the time passes with the mean-field prior, built as the initial round builds it
     pub(super) fn treetime_mean_field_marginals(
       gtr: &GTR,
       counts: [usize; 6],

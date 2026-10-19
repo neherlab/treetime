@@ -50,9 +50,6 @@ mod tests {
     Ok(())
   }
 
-  // The rate, intercept and r are reproduced by an independent ordinary least-squares root search (`rtt_ols.py` of
-  // neherlab/gaussian-timetree, rerooting on every node and branch) on the tree with these outliers pruned: rate
-  // 6.460054e-4, root time 1623.80, r 0.966705.
   #[test]
   fn test_dengue100_clock_pipeline_golden_master() -> Result<(), Report> {
     let output = run_clock(3.0, false)?;

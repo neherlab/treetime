@@ -38,8 +38,6 @@ impl ClockSet {
     }
   }
 
-  /// Sums with every divergence in the set lengthened by `branch_length`, as seen from the parent end of a branch:
-  /// `d -> d + l`, so `sum d += l n`, `sum t d += l sum t`, `sum d^2 += 2 l sum d + l^2 n`; the date sums stay.
   pub(crate) fn shift(&self, branch_length: f64) -> Self {
     let l = branch_length;
     Self {
@@ -50,7 +48,6 @@ impl ClockSet {
     }
   }
 
-  /// Sums over the dated tips of a regression that are not outliers, at their divergences from the root
   pub(crate) fn from_points(points: &[ClockRegressionPoint]) -> Self {
     points
       .iter()
@@ -72,8 +69,6 @@ impl ClockSet {
     (self.d_sum() - self.t_sum() * rate) / self.norm()
   }
 
-  /// Half the residual sum of squares of the least-squares line, `(S_dd - S_d^2 / n - (S_td - S_t S_d / n)^2 /
-  /// (S_tt - S_t^2 / n)) / 2` in the sums of the set
   pub(crate) fn chisq(&self) -> f64 {
     let det = self.determinant();
     0.5
@@ -83,8 +78,6 @@ impl ClockSet {
       / self.norm()
   }
 
-  /// Half the residual sum of squares of the line of slope `rate` with the best intercept, `(sum (d - rate t)^2 -
-  /// (sum (d - rate t))^2 / n) / 2`; at rate zero, n / 2 times the variance of the divergences
   pub(crate) fn chisq_fixed_rate(&self, rate: f64) -> f64 {
     0.5
       * (self.dsq_sum() - 2.0 * rate * self.dt_sum() + rate.powi(2) * self.tsq_sum()

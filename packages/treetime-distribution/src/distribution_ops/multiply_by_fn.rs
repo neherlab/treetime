@@ -20,7 +20,6 @@ where
   }
 
   let times = distribution.t();
-  // a function's weights apply to its stored values and its amplitude carries over
   let (ordinates, amplitude) = match distribution {
     Distribution::Function(f) => (f.y().clone(), f.amplitude()),
     _ => (distribution.y()?, 0.0),
@@ -38,8 +37,6 @@ where
     let combined_fn = DistributionFunction::from_start_dx_values(f.x_min(), f.dx(), combined)?
       .with_left_extrap(f.left_extrap())?
       .with_right_extrap(f.right_extrap())?;
-    // keeps the incoming tail laws: a weight with steps near the edge (the coalescent cost jumps where the number of
-    // lineages changes) would otherwise fit a tail that rises outward
     Distribution::Function(combined_fn.with_amplitude(amplitude))
   } else {
     Distribution::function(times, combined)?

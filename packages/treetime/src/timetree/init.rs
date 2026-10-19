@@ -22,8 +22,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
-/// The state that the refinement loop starts from: node times inferred under the coalescent prior, the frozen
-/// expected lineage counts and the first coalescent time scale
 pub(crate) struct InitialRound {
   pub state: RoundState,
   pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
@@ -32,14 +30,6 @@ pub(crate) struct InitialRound {
   pub timescale: CoalescentTimescale,
 }
 
-/// Starts the timetree from the rooted tree and the clock fit of the pre-loop:
-///
-/// 1. seed the expected lineage counts `kbar(t)` from the Gaussian node-time marginals at the regression rate, or,
-///    when the Gaussian timetree degenerates, from a pass of the time inference without a prior;
-/// 2. fit the coalescent time scale to the seed;
-/// 3. infer the node times under the mean-field prior of the seed and that time scale (with the coalescent prior
-///    disabled, the prior-free pass of step 1 is the result);
-/// 4. rebuild `kbar(t)` from these posteriors; it stays frozen in the loop.
 pub(crate) fn initialize(
   params: &TimetreeParams,
   context: &TimetreeContext,
@@ -127,8 +117,6 @@ pub(crate) fn initialize(
   })
 }
 
-/// Expected lineage counts from the Gaussian node-time marginals at the rate of the clock model, or `None` when the
-/// Gaussian timetree is not available
 fn gaussian_seed(
   inputs: &RoundInputs<'_>,
   state: &RoundState,
@@ -148,7 +136,6 @@ fn gaussian_seed(
   Ok(Some(expectation))
 }
 
-/// Gaussian timetree at the rate of the clock model, or `None` when it degenerates
 pub(crate) fn timetree_gaussian_clock(
   inputs: &RoundInputs<'_>,
   state: &RoundState,
@@ -179,8 +166,6 @@ pub(crate) fn timetree_gaussian_clock(
   }
 }
 
-/// Rate of the Gaussian timetree with the root time free, to start from when the root-to-tip regression gives no
-/// positive rate; the tips without a date and the `outliers` are left out
 pub(crate) fn gaussian_start_rate(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -199,7 +184,6 @@ pub(crate) fn gaussian_start_rate(
   Ok(rate)
 }
 
-/// Gaussian timetree of the tips dated by the constraints of `context`, without the `excluded` ones
 fn gaussian_tree(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

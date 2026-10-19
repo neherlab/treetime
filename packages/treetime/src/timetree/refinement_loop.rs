@@ -57,8 +57,6 @@ pub(crate) fn run_refinement_loop(
       inputs,
       &merger_rate,
       coalescent.prior_wanted().then_some(&coalescent_prior),
-      // the first step (i counts from 1) may correct the start rate; later the prior frozen in calendar time tilts the
-      // slope
       if i == 1 {
         RateWindow::FollowSlope
       } else {
@@ -72,8 +70,6 @@ pub(crate) fn run_refinement_loop(
     state = next_state;
     current = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
     if outcome.topology.changed() {
-      // the mergers created by polytomy resolution have posteriors now; the expectation takes them in and stays
-      // fixed again
       coalescent = CoalescentSetup {
         lineage_expectation: Arc::clone(&current),
         ..coalescent

@@ -67,7 +67,6 @@ mod tests {
   mod helpers {
     use super::*;
 
-    /// Branch-like likelihood t^2 exp(-1.5 t) on [0.1, 4]: power-law approach to t = 0, exponential right tail
     pub(super) fn branch_like() -> Result<DistributionFunction<f64, NegLog>, Report> {
       let t = Array1::linspace(0.1, 4.0, 391);
       let y = t.mapv(|t: f64| 1.5 * t - 2.0 * t.ln());

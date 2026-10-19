@@ -124,7 +124,6 @@ fn divide_function_by_function<Y: YAxisPolicy>(
     SupportIntersection::Interval(bounds) => {
       let n_points = distribution_support_n_points(bounds, dividend.dx().min(divisor.dx()), max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
-      // stored values divide, amplitudes divide: the grid stays near the operands' peaks
       let dividend_values = dividend.interp_many_stored(&grid)?;
       let divisor_values = divisor.interp_many_stored(&grid)?;
       let values = Zip::from(&dividend_values)

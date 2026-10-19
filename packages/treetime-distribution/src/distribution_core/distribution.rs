@@ -177,7 +177,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  /// The same values on the time axis scaled by `factor > 0` (t -> factor * t)
   pub fn scale_time(&self, factor: f64) -> Result<Self, Report> {
     if factor.is_nan() || factor <= 0.0 {
       return make_error!("Time scale factor must be positive, got {factor}");
@@ -191,8 +190,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
     }
   }
 
-  /// Keeps the values and moves the level into the amplitude, so that the grid holds values near the peak. A function
-  /// with no finite peak becomes `Empty`.
   pub fn repeak(&self) -> Result<Self, Report> {
     match self {
       Self::Function(f) => Ok(f.repeak()?.map_or(Self::Empty, Self::Function)),
@@ -216,7 +213,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
 impl Distribution<Plain> {}
 
 impl Distribution<NegLog> {
-  /// Natural log of the total mass, amplitude and tails included; see `fn log_mass()` in `mass_domain`
   pub fn log_mass(&self) -> Result<f64, Report> {
     crate::distribution_ops::mass_domain::log_mass(self)
   }

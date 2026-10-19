@@ -23,11 +23,6 @@ impl HardApproachLaw {
     Self::from_points(t_hard, side, &points)
   }
 
-  /// Fits `y(t) = c - b ln|t - t_hard|` to the finite points `(t, y)` off the boundary, with `b >= 0`
-  ///
-  /// # Errors
-  ///
-  /// Fewer than two finite points off the boundary, or a non-finite exponent.
   pub fn from_points(t_hard: f64, side: Side, points: &[(f64, f64)]) -> Result<Self, Report> {
     let (xs, ys): (Vec<f64>, Vec<f64>) = points
       .iter()
@@ -68,8 +63,6 @@ impl HardApproachLaw {
     p_edge * dt_edge / (self.b + 1.0)
   }
 
-  /// The law of the same tail on the argument scaled by `factor` (a negative factor reflects it): the boundary moves,
-  /// the power-law exponent is scale-free
   #[must_use]
   pub fn scale_arg(&self, factor: f64) -> Self {
     HardApproachLaw {

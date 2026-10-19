@@ -24,8 +24,6 @@ pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent
   }
 }
 
-/// The coalescent time scale of `mode` for the lineages of `expectation`: the fixed Tc, or the constant or skyline Tc
-/// fitted to them. Without a coalescent model, the constant fit still gives the merger rates of polytomy resolution.
 pub(crate) fn coalescent_timescale(
   mode: CoalescentMode,
   skyline_params: &SkylineParams,
@@ -128,8 +126,6 @@ pub(crate) struct CoalescentTimescale {
 }
 
 impl CoalescentTimescale {
-  /// Expected complete-data log-likelihood of the node times behind `expectation` under this time scale (see
-  /// `fn expected_log_likelihood`), on the segments of the report or, without one, the span of the expectation
   pub(crate) fn expected_log_likelihood(&self, expectation: &LineageExpectation) -> LogLh {
     let boundaries = self.report.as_ref().map_or_else(
       || {
@@ -165,8 +161,6 @@ pub(crate) struct CoalescentReportBand {
 pub(crate) struct CoalescentSetup {
   pub mode: CoalescentMode,
   pub skyline_params: SkylineParams,
-  /// Expected lineage counts from node posteriors, for the mean-field prior on node times and the merger rates of
-  /// polytomy resolution
   pub lineage_expectation: Arc<LineageExpectation>,
 }
 

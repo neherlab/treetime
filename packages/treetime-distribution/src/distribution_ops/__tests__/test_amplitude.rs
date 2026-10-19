@@ -50,7 +50,6 @@ mod tests {
     let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
-    // resampling to the finer grid and the FFT tail floor; a lost amplitude would be off by 0.5 or more
     assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-4);
     Ok(())
   }
@@ -61,7 +60,6 @@ mod tests {
     let b = DistributionNegLog::Function(helpers::gaussian(0.5, 0.4)?.with_amplitude(-1.5));
     let product = distribution_multiplication(&a, &b, MaxGridPoints::default())?;
     for t in [-1.0, 0.0, 0.25, 1.0] {
-      // linear interpolation on the product grid; a lost amplitude would be off by 1.5 or more
       assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-3);
     }
     Ok(())
@@ -80,7 +78,6 @@ mod tests {
 
   #[test]
   fn test_amplitude_log_mass_of_gaussian() -> Result<(), Report> {
-    // peak-1 Gaussian of standard deviation s has mass sqrt(2 pi) s
     let f = DistributionNegLog::Function(helpers::gaussian(0.0, 0.5)?.with_amplitude(2.0));
     let expected = (2.0 * std::f64::consts::PI).sqrt().ln() + 0.5_f64.ln() - 2.0;
     assert_abs_diff_eq!(expected, f.log_mass()?, epsilon = 1e-9);
@@ -90,7 +87,6 @@ mod tests {
   mod helpers {
     use super::*;
 
-    /// Peak-1 Gaussian on mean +- 10 sd (1001 points), hard on both sides
     pub(super) fn gaussian(mean: f64, sd: f64) -> Result<DistributionFunction<f64, NegLog>, Report> {
       let t = Array1::linspace(mean - 10.0 * sd, mean + 10.0 * sd, 1001);
       let y = t.mapv(|t| (t - mean).powi(2) / (2.0 * sd * sd));

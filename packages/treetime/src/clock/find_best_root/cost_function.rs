@@ -5,7 +5,6 @@ use crate::clock::find_best_root::params::RootObjective;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 
-/// Regression sums with the root placed on one edge, at fraction `x` of its length from the parent
 pub(crate) struct BranchPointCostFunction {
   to_parent: ClockSet,
   to_child: ClockSet,
@@ -29,7 +28,6 @@ impl BranchPointCostFunction {
     }
   }
 
-  /// The tips below the edge are `(1 - x) l` further from the new root, all others `x l`
   pub(crate) fn evaluate_clock_set(&self, x: f64) -> ClockSet {
     self.to_child.shift(self.branch_length * x) + self.to_parent.shift(self.branch_length * (1.0 - x))
   }

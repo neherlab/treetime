@@ -51,7 +51,6 @@ pub(crate) fn refinement_round(
   let previous_times = capture_node_times(&state.graph, &state.time_inference);
   let previous_states = capture_ancestral_states(&state.graph, &state.branch_model);
   let (state, topology) = refine_topology(inputs, state, total_length, merger_rate, rng, log)?;
-  // the prior follows a topology change: the new mergers enter the expected lineage counts at their sampled times
   let rebuilt = match (prior, &topology) {
     (Some(prior), TopologyOutcome::Changed { merger_times }) => Some(prior.with_topology(&state.graph, merger_times)?),
     _ => None,
@@ -189,10 +188,7 @@ fn refine_topology(
 
 pub(crate) enum TopologyOutcome {
   Unchanged,
-  /// The topology changed; `merger_times` holds the sampled times of the mergers that polytomy resolution created
-  Changed {
-    merger_times: BTreeMap<GraphNodeKey, f64>,
-  },
+  Changed { merger_times: BTreeMap<GraphNodeKey, f64> },
 }
 
 impl TopologyOutcome {
@@ -248,9 +244,6 @@ fn infer_times(
   run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Timetree inference failed")
 }
 
-/// Re-estimates the clock model on the round's times, keeping the root. With a coalescent prior and no user-fixed rate,
-/// the rate takes one damped step toward the maximum of the marginal likelihood of the node times under the round's
-/// prior, and the clock model is fitted with that rate fixed; otherwise the rate comes from the root-to-tip regression.
 fn update_clock_model(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentPrior>,

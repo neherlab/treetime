@@ -215,7 +215,6 @@ mod tests {
     pretty_assert_array_eq!(solve.segment_boundaries, report.segment_boundaries);
     pretty_assert_array_eq!(solve.tc_schedule.values().clone(), timescale.schedule.values().clone());
     assert_eq!(Some(solve.log_likelihood.value()), report.log_likelihood);
-    // the convergence metric evaluates the same expected log-likelihood
     pretty_assert_ulps_eq!(solve.log_likelihood.value(), metric, max_ulps = 16);
     let band = report.band.expect("an inferred skyline carries a confidence band");
     pretty_assert_array_eq!(solve.tc_lower_bounds, band.lower);

@@ -10,8 +10,6 @@ use treetime_graph::reroot::{
   trivial_node_branch_lengths,
 };
 
-/// Moves the root onto `edge` at fraction `split` from its parent, splitting the edge or snapping to an end as `topo`
-/// says; a leaf that the move creates must satisfy `is_dated`
 #[expect(
   clippy::too_many_arguments,
   reason = "each argument is an independent input of the move; a parameter struct would be built only for this call"

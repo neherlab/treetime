@@ -59,8 +59,6 @@ mod tests {
 
   #[test]
   fn test_multiply_by_fn_step_near_the_edge_keeps_a_decaying_tail() {
-    // a weight that drops by 3 going into the past within the outermost fit points, like the coalescent cost where an
-    // older sample adds a lineage
     let t = Array1::linspace(0.0, 4.0, 21);
     let y = t.mapv(|ti| -2.0 * ti);
     let f = DistributionFunction::from_arrays(&t, y).unwrap();

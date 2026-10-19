@@ -216,8 +216,6 @@ mod tests {
     Ok(())
   }
 
-  // With input branch lengths there is no reconstruction to take the sequence length from; the relaxed clock uses the
-  // run's sequence length and moves the rates as with an alignment (it was skipped as "no sequence data")
   #[test]
   fn test_round_relaxes_the_clock_with_input_branch_lengths() -> Result<(), Report> {
     let (state, context) = helpers::create_state(

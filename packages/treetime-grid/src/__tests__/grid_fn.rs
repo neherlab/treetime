@@ -126,9 +126,6 @@ mod tests {
     assert_eq!(expected, behavior.is_soft());
   }
 
-  // Negative-log values of a density that vanishes as a power law at a hard boundary t_b = 10 inside the grid,
-  // y(t) = 1 - 2 ln(10 - t), stored on t = 0, 1, ..., 10 with +inf at t_b. Inside the boundary cell [9, 10] the
-  // interpolation must follow the law, not the line from y(9) = 1 to +inf.
   #[rustfmt::skip]
   #[rstest]
   #[case::cell_midpoint(  9.5)]
@@ -149,7 +146,6 @@ mod tests {
 
   #[test]
   fn test_gridfn_interp_boundary_cell_uses_the_stored_law_of_its_side() -> Result<(), Report> {
-    // the stored values are flat; the stored law of the right side has b = 3 and ends at the boundary point
     let y = array![0.0, 0.0, 0.0, 0.0, f64::INFINITY];
     let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
     let law = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 4.0, b: 3.0 });
@@ -170,7 +166,6 @@ mod tests {
     #[case] query: f64,
     #[case] expected: f64,
   ) -> Result<(), Report> {
-    // +inf (zero probability) at both ends, finite in between
     let y = array![f64::INFINITY, 2.0, 0.0, f64::INFINITY, f64::INFINITY];
     let grid_fn = GridFn::from_range_values((0.0, 4.0), y)?;
 

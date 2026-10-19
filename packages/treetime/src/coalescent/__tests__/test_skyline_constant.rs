@@ -37,7 +37,6 @@ mod tests {
     for &(t_x, t_tip) in &[(2005.0, 2010.0), (2003.0, 2015.0), (2010.0, 2020.0)] {
       let (graph, constraints) = tree3(2000.0, t_x, t_tip)?;
       let result = constant_skyline(&expectation(&graph, &constraints))?;
-      // the expected statistics integrate k(t) on a grid of 4001 points, so a step of k costs half a cell
       approx::assert_relative_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_relative = 1e-4);
     }
 

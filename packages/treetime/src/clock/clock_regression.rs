@@ -18,8 +18,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::pass::{GraphPassBackwardContext, GraphPassNodeOutput};
 use treetime_graph::reroot::RerootResult;
 
-/// Fits the clock model, after moving the root unless `keep_root`. The root search regresses on the input branch
-/// lengths; `prev_clock_rate`, when given, turns the divergences of the final fit into time lengths times that rate.
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
   params: &ClockFitParams<'_>,
@@ -134,7 +132,6 @@ pub struct ClockRerootResult {
   estimate: ClockEstimate,
   reroot_result: Option<RerootResult>,
   points: Vec<ClockRegressionPoint>,
-  /// Regression sums of the tips at the root, for a refit at another rate
   root_clock_set: ClockSet,
 }
 
@@ -147,8 +144,6 @@ impl ClockRerootResult {
     })
   }
 
-  /// The clock fit, with the rate of `fallback` in place of a regression rate that is not positive, the intercept then
-  /// that of the line at this rate through the tips of the fit
   pub(crate) fn into_clock_fit_or(self, fallback: impl FnOnce() -> Result<f64, Report>) -> Result<ClockFit, Report> {
     match &self.estimate {
       ClockEstimate::Estimated(regression) if regression.clock_rate() <= 0.0 => {
@@ -206,8 +201,6 @@ pub(crate) struct ClockFit {
   pub points: Vec<ClockRegressionPoint>,
 }
 
-/// Backward and forward regression passes: every node holds the sums of all dated tips with divergences measured from
-/// it, and every edge the sums of the tips on either side, which the root search combines
 pub(crate) fn clock_regression(
   graph: &Graph,
   inputs: &ClockInputs,
@@ -330,8 +323,6 @@ pub(crate) struct ClockRegressionPoint {
   pub is_outlier: bool,
 }
 
-/// Divergence along an edge: the branch length, or once a rate is known, its time length times rate and the edge's
-/// relative rate
 pub(crate) fn edge_length(
   inputs: &ClockInputs,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,

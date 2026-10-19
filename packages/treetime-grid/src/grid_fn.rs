@@ -235,11 +235,6 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  /// Linear interpolation within cell `idx`. A query within rounding of a grid point takes its stored value. A cell
-  /// with one infinite end (zero probability for negative-log values) is a hard boundary inside the grid: it follows
-  /// the power law `y(t) = y_f - b ln(|t - t_b| / |t_f - t_b|)` of `HardApproachLaw`, anchored at the finite end
-  /// `(t_f, y_f)`, with the side's stored law when it ends at that point and a fit to the finite points beyond the
-  /// anchor otherwise. A cell with two infinite ends stays infinite.
   fn interpolate_at(&self, q: T, idx: usize, left: BoundaryBehavior, right: BoundaryBehavior) -> T
   where
     T: Float,
@@ -323,7 +318,6 @@ impl<T: InterpElem> GridFn<T> {
     }
   }
 
-  /// The same values on the argument scaled by `factor > 0`: x -> factor * x
   pub fn scale_x(&self, factor: T) -> Result<Self, Report>
   where
     T: Float,

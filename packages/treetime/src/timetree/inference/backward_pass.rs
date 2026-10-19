@@ -57,7 +57,6 @@ fn propagate_distributions_backward_node(
   let subtree = if matches!(distribution, Distribution::Empty) {
     None
   } else {
-    // keeps the level (likelihood of the subtree) in the amplitude
     let distribution = distribution
       .repeak()
       .wrap_err_with(|| format!("When re-peaking the time distribution of node {}", context.key))?;
@@ -105,8 +104,6 @@ fn combine_child_messages(
   distribution_product(&factors, max_points)
 }
 
-/// Multiplies the subtree distribution of an internal node by its coalescent prior factor; a tip's factor is applied
-/// to the message it sends, in `fn send_backward_message()`
 fn apply_coalescent_prior(
   coalescent_model: Option<&CoalescentPrior>,
   key: GraphNodeKey,

@@ -15,9 +15,6 @@ pub struct TimeBackward {
 }
 
 impl TimeBackward {
-  /// Log marginal likelihood of the node times: the log mass of the root's subtree distribution, whose amplitude
-  /// carries the levels of all messages and factors below it. Branch-length likelihoods enter peak-normalized, so the
-  /// value omits their (rate- and root-independent) peaks. `None` when the root has no distribution.
   pub(crate) fn log_marginal_likelihood(&self, root: GraphNodeKey) -> Result<Option<f64>, Report> {
     self
       .subtree
@@ -59,7 +56,6 @@ pub(crate) fn likely_times(
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimeInference {
-  /// Log marginal likelihood of the node times from the backward pass (see `fn TimeBackward::log_marginal_likelihood()`)
   pub log_lh_time: Option<LogLh>,
   pub bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
@@ -88,7 +84,6 @@ pub struct BranchLikelihood {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct NodePosterior {
   pub distribution: TimeDistribution,
-  /// Point estimate of the node's time: the posterior peak, and for the root the posterior median
   pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,

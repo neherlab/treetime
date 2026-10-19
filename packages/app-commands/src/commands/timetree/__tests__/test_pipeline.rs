@@ -68,7 +68,6 @@ mod tests {
       log_lh_seq < 0.0,
       "Sequence log-likelihood must be negative, got {log_lh_seq}"
     );
-    // a log marginal likelihood of node times has no fixed sign: it includes densities over time
     assert!(
       log_lh_time.is_finite(),
       "Node-time log-likelihood must be finite, got {log_lh_time}"

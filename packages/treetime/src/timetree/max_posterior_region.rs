@@ -26,7 +26,6 @@ pub fn max_posterior_region(
   Ok(Some(MaxPosteriorRegion::Grid(region)))
 }
 
-/// Time that splits the posterior mass in half, from its grid; `None` for an empty distribution
 pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Option<f64>, Report> {
   let normalized = distribution.normalize()?;
   match &normalized {
@@ -41,8 +40,6 @@ pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Op
   }
 }
 
-/// Survival function S(t) = P(T > t) of a posterior at its grid times, from the same grid CDF as the confidence
-/// intervals; `None` for an empty distribution. A point at `t0` gives the single time `t0` with S = 0.
 pub(crate) fn posterior_survival(distribution: &Distribution<NegLog>) -> Result<Option<(Vec<f64>, Vec<f64>)>, Report> {
   let normalized = distribution.normalize()?;
   match &normalized {

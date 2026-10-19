@@ -157,9 +157,6 @@ mod tests {
     Ok(())
   }
 
-  // Four tips at 2010 merge at a root at 2000: four lineages over ten years, so the pair-rate integral is
-  // I = 6 * 10 = 60 and the root holds M = 3 mergers. The constant-Tc estimate is I / M = 20 and the reported expected
-  // log-likelihood -I / Tc - M ln Tc = -3 - 3 ln 20.
   #[test]
   fn test_skyline_constant_tc_of_a_star_tree_is_the_kingman_estimate() -> Result<(), Report> {
     let (graph, constraints) = graph_with_dates("(a:1,b:1,c:1,d:1)root:1;", &star_tree_dates())?;
@@ -175,8 +172,6 @@ mod tests {
     Ok(())
   }
 
-  // Point times of the star tree: four lineages between the root (2000) and the tips (2010), so the merger rate of a
-  // lineage is (4 - 1) / (2 Tc) there; before the root one lineage is left and the floor 1/2 gives 1 / (4 Tc)
   #[test]
   fn test_skyline_merger_rate_and_span_of_a_star_tree_follow_the_lineage_count() -> Result<(), Report> {
     let (graph, constraints) = graph_with_dates("(a:1,b:1,c:1,d:1)root:1;", &star_tree_dates())?;

@@ -12,8 +12,6 @@ use treetime_primitives::LogLh;
 use treetime_utils::array::ndarray::exp;
 use treetime_utils::cast::ToF64Exact;
 
-/// Fits Tc(t) to the expected coalescent statistics of `expectation` on `params.n_points` equal segments over its span
-/// (see `LineageExpectation::span`)
 pub(crate) fn optimize_skyline(
   params: &SkylineParams,
   expectation: &LineageExpectation,
@@ -92,8 +90,6 @@ pub(crate) fn optimize_skyline(
   })
 }
 
-/// Expected complete-data log-likelihood of the coalescent with `tc_values` on the segments of `i_seg` and `m_seg`
-/// (see `LineageExpectation::segment_statistics`): `-sum_i I_i / Tc_i - sum_i M_i ln Tc_i`
 pub(crate) fn expected_log_likelihood(i_seg: &[f64], m_seg: &[f64], tc_values: &[f64]) -> LogLh {
   LogLh::new(
     -i_seg

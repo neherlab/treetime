@@ -21,7 +21,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
 
-/// Expected lineage counts of point node times at the dates of `constraints`
 pub(crate) fn constraint_expectation(
   graph: &Graph,
   constraints: &DateConstraints,
@@ -126,7 +125,6 @@ pub(crate) fn point_date_constraints(
   DateConstraints { by_node }
 }
 
-/// Mean-field coalescent prior with constant `tc` whose lineage expectation comes from point times of the named nodes
 pub(crate) fn point_coalescent_prior(
   graph: &Graph,
   names: &BTreeMap<GraphNodeKey, Option<String>>,

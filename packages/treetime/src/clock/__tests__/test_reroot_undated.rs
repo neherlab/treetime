@@ -42,8 +42,6 @@ mod tests {
     Ok(())
   }
 
-  // Root at distance x up the branch to C of the star (A:1, B:2, C:6): 3 Var = 14 - 12 x + 8 x^2 / 3, minimal at x = 9/4
-  // with distances 3.25, 4.25, 3.75; on the branches to A and B the variance only grows.
   #[test]
   fn test_reroot_undated_min_dev_places_the_root_at_the_analytic_minimum_of_the_variance() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:2,C:6)R;".as_slice())?;

@@ -19,27 +19,18 @@ mod tests {
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
 
-  // Two leaves dated t_A = 2015, t_B = 2014 below the root; Gaussian branch likelihoods of precision 4 in branch length
-  // with means m_A = 5, m_B = 2. log Z(mu) = -ln(mu) - (mu (t_A - t_B) - (m_A - m_B))^2 + const = -ln(mu) - (mu - 3)^2
-  // + const, maximal where 2 mu^2 - 6 mu + 1 = 0.
-
   #[test]
   fn test_marginal_clock_rate_matches_closed_form_curve() -> Result<(), Report> {
     let setup = helpers::cherry()?;
     let inputs = setup.inputs();
     let at = |mu: f64| marginal_log_lh_at_rate(&inputs, mu).map(|log_lh| log_lh.expect("root has a distribution"));
     let curve = |mu: f64| -mu.ln() - (mu - 3.0).powi(2);
-    // near the maximum the two messages overlap within 2 sd; far from it (mu = 0.5: 5 sd apart) their product lies in
-    // the messages' outer grid and fitted tails, and the curve is off by about 0.02
     for mu in [2.0, 2.5, 4.0] {
-      // differences to mu = 3 drop the constant
       assert_abs_diff_eq!(curve(mu) - curve(3.0), at(mu)? - at(3.0)?, epsilon = 2e-3);
     }
     Ok(())
   }
 
-  // at mu_ref = 2.5 the parabola peaks between the probes 2.0 and 3.125, though the upper probe beats the reference
-  /// Maximum of the parabola in x = ln(mu / reference) through the closed-form curve at x = -h, 0, h, h = ln 1.25
   fn parabola_maximum(reference: f64) -> f64 {
     let h = 1.25_f64.ln();
     let curve = |x: f64| {
@@ -50,7 +41,6 @@ mod tests {
     h * (below - above) / (2.0 * (above + below - 2.0 * at))
   }
 
-  // at mu_ref = 2.5 the parabola peaks between the probes 2.0 and 3.125, though the upper probe beats the reference
   #[rstest]
   #[case::follow_slope(RateWindow::FollowSlope)]
   #[case::interior_maximum(RateWindow::InteriorMaximum)]
@@ -73,9 +63,6 @@ mod tests {
     Ok(())
   }
 
-  // In x = ln(mu / mu_ref) the probes sit at x = -h, 0, h with h = ln 1.25. At mu_ref = 1 the curve is convex over the
-  // probes and rises toward faster rates; at mu_ref = 2 it is concave, but its parabola peaks at x = 0.65 > h, past the
-  // upper probe (the maximum of the curve, mu = 2.82, lies there too). Neither has a maximum between the probes.
   #[rstest]
   #[case::convex(1.0)]
   #[case::concave_maximum_past_the_window(2.0)]
@@ -86,7 +73,6 @@ mod tests {
     let setup = helpers::cherry()?;
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::InteriorMaximum))?;
-    // a step of zero leaves the rate bit-identical
     pretty_assert_ulps_eq!(reference, step.target_rate, max_ulps = 0);
     pretty_assert_ulps_eq!(reference, step.clock_rate, max_ulps = 0);
     Ok(())
@@ -95,7 +81,6 @@ mod tests {
   #[test]
   fn test_marginal_clock_rate_follow_slope_window_without_a_maximum_steps_toward_the_bound_of_the_better_probe()
   -> Result<(), Report> {
-    // at mu = 1 the curve is convex over the probes and rises toward faster rates
     let setup = helpers::cherry()?;
     let step = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 1.0, RateWindow::FollowSlope))?;
     assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
@@ -105,7 +90,6 @@ mod tests {
 
   #[test]
   fn test_marginal_clock_rate_follow_slope_window_takes_a_maximum_past_the_probes() -> Result<(), Report> {
-    // at mu = 2 the parabola peaks at x = 0.65, past the upper probe (h = 0.22) but within the bound ln 2 = 0.69
     let setup = helpers::cherry()?;
     let reference = 2.0;
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
@@ -152,7 +136,6 @@ mod tests {
       }
     }
 
-    /// Branch likelihoods are given at reference rate 1, where time equals branch length
     pub(super) fn cherry() -> Result<Cherry, Report> {
       let parsed = nwk_read(b"(A:5.0,B:2.0)root;".as_slice())?;
       let names = parsed.names();

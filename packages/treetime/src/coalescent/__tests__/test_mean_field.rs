@@ -14,9 +14,6 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
-  // Two tips sampled at the same time t_s merge at the root. Under the Kingman coalescent the root time has density
-  // (1/Tc) exp(-(t_s - t)/Tc) for t < t_s: two lineages, one pair, merger rate 1/Tc. The other node's expectation
-  // (the tips) does not depend on the root, so the mean-field factor is exact here for any point time of the root.
   #[rustfmt::skip]
   #[rstest]
   #[case::root_far_back(   2.0, 1990.0)]
@@ -39,9 +36,6 @@ mod tests {
     Ok(())
   }
 
-  // ((A,B)I,C)root with point times: the expectation is the lineage count k(t). With Tc = 1 the slope of an internal
-  // node's negative log factor is 1 - k_{-v}(t), where k_{-v} counts the lineages without the node's own merger. The
-  // steps of kbar are resolved to one cell of the expectation grid, 1e-3 years here.
   #[test]
   fn test_mean_field_internal_slope_counts_the_lineages_without_the_own_merger() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)I:1,C:1)root;".as_slice())?;
@@ -60,20 +54,13 @@ mod tests {
       Ok((prior.node_contribution(internal, 2, b)? - prior.node_contribution(internal, 2, a)?) / (b - a))
     };
 
-    // between the root and C, without I's merger: A, B and C
     pretty_assert_abs_diff_eq!(1.0 - 3.0, slope(2006.0, 2012.0)?, epsilon = 1e-3);
-    // between C and B: A and B
     pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(2013.2, 2013.8)?, epsilon = 1e-3);
-    // between B and A: A only
     pretty_assert_abs_diff_eq!(1.0 - 1.0, slope(2014.2, 2014.8)?, epsilon = 1e-3);
-    // before the root: two lineages remain once I's merger is removed
     pretty_assert_abs_diff_eq!(1.0 - 2.0, slope(1990.0, 2000.0)?, epsilon = 1e-3);
     Ok(())
   }
 
-  // Point times give the statistics of the lineage counts: ((A,B)I,C)root with the root at 2005, I at 2011 and tips at
-  // 2013, 2014, 2015 has k = 2, 3, 2, 1 on the four intervals, so int k (k - 1) / 2 dt = 6 + 6 + 1 + 0 and two mergers.
-  // The steps of kbar are resolved to one cell of the expectation grid.
   #[test]
   fn test_mean_field_segment_statistics_of_point_times_are_those_of_the_lineage_counts() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)I:1,C:1)root;".as_slice())?;
@@ -95,10 +82,6 @@ mod tests {
     Ok(())
   }
 
-  // A cherry with tips at 2010 and the root uniform on [2000, 2004]: k = 2 between the root and the tips, so
-  // E[int k (k - 1) / 2 dt] = E[2010 - t_root] = 8 with one merger, and Tc = I / M = 8. The variance of k enters: at a
-  // time t inside the root's range E[k (k - 1)] / 2 = P(t_root < t), not kbar (kbar - 1) / 2. The tips' step is resolved
-  // to half a cell of the expectation grid, 1.25e-3 here.
   #[test]
   fn test_mean_field_segment_statistics_integrate_over_the_root_posterior() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
@@ -114,9 +97,6 @@ mod tests {
     Ok(())
   }
 
-  // Seed of the expectation from a Gaussian root marginal N(m, s^2) truncated at the tips' date u: the median solves
-  // Phi(z) = Phi(z_u) / 2, z = (t - m) / s, so it is the mean when the truncation is far, and m + s Phi^-1(Phi(z_u) / 2)
-  // otherwise. Beyond 8 deviations the tail is exponential with rate (m - u) / s^2 and the median u - ln 2 (s^2 / (m - u)).
   #[rustfmt::skip]
   #[rstest]
   #[case::far_truncation(   2000.0, 2.0, 2000.0)]
@@ -130,15 +110,12 @@ mod tests {
   ) -> Result<(), Report> {
     let (_, _, expectation) = helpers::gaussian_cherry(mean, std, &[])?;
 
-    // the root's merger splits in half at its median
     let (_, mergers) = expectation.segment_statistics(&[expected - 100.0, expected, expected + 100.0]);
 
-    // the truncated density near the median reaches about 5 per year, against a survival grid of 0.012 years
     pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 2e-3);
     Ok(())
   }
 
-  // Far from the truncation, half of the root's merger falls before its mean and half after
   #[test]
   fn test_mean_field_gaussian_seed_splits_the_merger_at_the_mean() -> Result<(), Report> {
     let (_, _, expectation) = helpers::gaussian_cherry(2000.0, 2.0, &[])?;
@@ -150,8 +127,6 @@ mod tests {
     Ok(())
   }
 
-  // An excluded tip does not bound its ancestors: with B (at 2000) excluded, the root N(2005, 1) is truncated at A
-  // (2010), so its merger falls after 2000; with B included the truncation at 2000 would put it all before
   #[test]
   fn test_mean_field_gaussian_seed_truncates_at_the_earliest_included_tip() -> Result<(), Report> {
     let (_, _, expectation) = helpers::gaussian_cherry_dated(2005.0, 1.0, [2010.0, 2000.0], &["B"])?;
@@ -162,10 +137,6 @@ mod tests {
     Ok(())
   }
 
-  // The star (A, B, C) has its root at 2000 and its tips at 2010; kbar is built with the root's weight -2, and the root is
-  // evaluated as binary (weight -1, as after a polytomy resolution). Removing the root's own share at the weight it has
-  // in kbar gives kbar_{-v} = 3 on both sides of the root's time (1 + 2 before, 3 after), so the slope is
-  // (1 - 3) / Tc throughout, with no step at the node's own time.
   #[test]
   fn test_mean_field_own_share_is_removed_at_its_weight_in_the_expectation() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1,C:1)root;".as_slice())?;
@@ -189,8 +160,6 @@ mod tests {
     Ok(())
   }
 
-  // An expectation that lacks a merger, extended by `with_topology` with the merger at its sampled time, equals one built
-  // with that merger from the start
   #[test]
   fn test_mean_field_with_topology_equals_a_fresh_expectation() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)N:1,C:1)root;".as_slice())?;
@@ -239,8 +208,6 @@ mod tests {
   mod helpers {
     use crate::clock::gaussian::NodeTimeGaussian;
 
-    /// Cherry `(A, B)root` with both tips at 2010 and the root marginal N(`mean`, `std`^2); `excluded` tips are
-    /// flagged
     pub(super) fn gaussian_cherry(
       mean: f64,
       std: f64,
@@ -249,7 +216,6 @@ mod tests {
       gaussian_cherry_dated(mean, std, [2010.0, 2010.0], excluded)
     }
 
-    /// Cherry `(A, B)root` with the tips at `dates` and the root marginal N(`mean`, `std`^2)
     pub(super) fn gaussian_cherry_dated(
       mean: f64,
       std: f64,
@@ -273,7 +239,6 @@ mod tests {
 
     use super::*;
 
-    /// Expectation from point times of the `points` nodes and the posteriors of the `distributions` nodes
     pub(super) fn expectation(
       graph: &Graph,
       names: &BTreeMap<GraphNodeKey, Option<String>>,

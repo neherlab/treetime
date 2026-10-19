@@ -150,8 +150,6 @@ mod tests {
     assert!(r_squared > 0.5, "R² should be > 0.5 for this tree, got {r_squared}");
 
     let chisq = clock_model.chisq().expect("Clock model should have chisq");
-    // the least-squares root lies 6.18 / 45 of the way down the root-CD edge (length 0.05), which moves A and B
-    // further from the root and C and D closer
     let dates = [2013.0, 2022.0, 2017.0, 2005.0];
     let shift = 0.05 * 6.18 / 45.0;
     let divs_after_split = [0.2 + shift, 0.3 + shift, 0.25 - shift, 0.17 - shift];

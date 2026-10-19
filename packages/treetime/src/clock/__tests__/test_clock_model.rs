@@ -207,7 +207,6 @@ mod tests {
     Ok(())
   }
 
-  // At the regression's own rate, the chi-squared of the line at a given rate is the regression's minimum
   #[test]
   fn test_clock_model_estimated_at_the_regression_rate_reproduces_the_regression_stats() -> Result<(), Report> {
     let set = ClockSet::leaf_contribution(Some(2019.0)).shift(0.01)
@@ -218,7 +217,6 @@ mod tests {
 
     let restated = model.estimated_at_rate(&set, Some(1e-3));
 
-    // the two formulas cancel differently on dates near 2020
     approx::assert_relative_eq!(model.chisq().unwrap(), restated.chisq().unwrap(), max_relative = 1e-6);
     assert_eq!((model.r_val(), Some(1e-3)), (restated.r_val(), restated.rate_std()));
     Ok(())

@@ -62,7 +62,6 @@ mod tests {
 
   #[test]
   fn test_posterior_median_lies_between_two_equal_peaks() -> Result<(), Report> {
-    // two equal, narrow peaks at 2013 and 2015: the peak is either, the median is between them
     let t = grid(2010.0, 2018.0, 80_001);
     let neglog = t.mapv(|x| {
       let a = (-(x - 2013.0).powi(2) / 0.02).exp();

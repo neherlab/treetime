@@ -1,25 +1,3 @@
-//! Mean-field coalescent prior on node times.
-//!
-//! With merger indicators `I_u(t) = [t_u > t]` and node weights `w_u = 1 - n_children(u)` (+1 for a tip, -m for a node
-//! of m mergers), the lineage count is `k(t) = sum_u w_u I_u(t)`. For a fixed topology the Kingman log-density is
-//!
-//! ```text
-//! log p = -int k(t) (k(t) - 1) / (2 Tc(t)) dt - sum_v m_v ln Tc(t_v)
-//! ```
-//!
-//! which couples all node times through `k(t)`. Linearized in the indicators of the other nodes around their
-//! expectations `S_u(t) = P(t_u > t)`, the terms of node v are local:
-//!
-//! ```text
-//! -log f_v(x) = int^x [w_v (w_v - 1) / 2 + w_v kbar_{-v}(t)] / Tc(t) dt + m_v ln Tc(x)
-//! ```
-//!
-//! with `kbar_{-v}(t) = kbar(t) - w_v S_v(t)` and `kbar(t) = sum_u w_u S_u(t)`. For a binary internal node the slope
-//! is `(kbar_{-v} - 1) / Tc` and the merger factor `1 / Tc` carries no step, unlike a lineage count frozen at point
-//! times. The expectations come from the node posteriors of an earlier pass; `w_v` in `kbar_{-v}` is the weight the
-//! node has in `kbar`, while the other `w_v` follow the current tree, so that a node's share is removed exactly even
-//! when its number of children changed since.
-
 use crate::clock::gaussian::NodeTimeGaussian;
 use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
 use crate::timetree::max_posterior_region::posterior_survival;
@@ -35,18 +13,12 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
-/// Number of points of the global grid that carries `kbar(t)` and its integrals
 const EXPECTATION_GRID_POINTS: usize = 4001;
-/// Largest number of points kept of one node's survival function
 const SURVIVAL_POINTS: usize = 256;
-/// Survival below this, or above one minus it, counts as 0 or 1 when a survival function is trimmed
 const SURVIVAL_TRIM: f64 = 1e-9;
-/// Grid cells per piece of the merger-rate schedule
 const MERGER_RATE_STRIDE: usize = 10;
-/// Standard deviations (or decay lengths of the exponential tail) that a truncated normal survival function spans
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 
-/// Survival function `S(t) = P(T > t)` of one node on its own grid: 1 before the first time, 0 after the last
 #[derive(Clone, Debug)]
 struct NodeSurvival {
   t: Vec<f64>,
@@ -55,7 +27,6 @@ struct NodeSurvival {
 }
 
 impl NodeSurvival {
-  /// Trimmed to where the survival moves away from 1 and 0, and resampled to at most `SURVIVAL_POINTS` uniform times
   fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
     let n = t.len();
     if n <= 2 {
@@ -90,7 +61,6 @@ impl NodeSurvival {
     }
   }
 
-  /// A node at a known time
   fn point(time: f64) -> Self {
     Self {
       t: vec![time],
@@ -99,10 +69,6 @@ impl NodeSurvival {
     }
   }
 
-  /// `S(t) = P(T > t | T < u)` for `T ~ N(m, s^2)`: `(Phi(z_u) - Phi(z_t)) / Phi(z_u)` with `z = (t - m) / s`, on
-  /// `SURVIVAL_POINTS` times over `[min(m, u) - TRUNCATED_NORMAL_SPAN s, min(u, m + TRUNCATED_NORMAL_SPAN s)]`. When
-  /// `u` lies more than `TRUNCATED_NORMAL_SPAN` deviations below the mean, the tail is exponential to leading order,
-  /// `S(t) = 1 - exp(-lambda (u - t))` with `lambda = (m - u) / s^2`, taken over `[u - TRUNCATED_NORMAL_SPAN / lambda, u]`.
   fn truncated_normal(mean: f64, std: f64, upper: f64) -> Self {
     let std = std.max(f64::EPSILON * mean.abs().max(1.0));
     let z_upper = (upper - mean) / std;
@@ -146,22 +112,16 @@ impl NodeSurvival {
   }
 }
 
-/// Expected lineage count `kbar(t)` and the survival function of every node, from the node posteriors of one pass or
-/// the Gaussian node-time marginals. Nodes without a time, such as those on bad branches, count as surviving at all
-/// times.
 #[derive(Clone, Debug)]
 pub(crate) struct LineageExpectation {
   grid: Vec<f64>,
   expected: Vec<f64>,
-  /// `V(t) = sum_u w_u^2 S_u(t) (1 - S_u(t))`, the variance of the lineage count for independent node times
   variance: Vec<f64>,
-  /// `kbar` before the first grid time
   expected_before: f64,
   nodes: BTreeMap<GraphNodeKey, NodeSurvival>,
 }
 
 impl LineageExpectation {
-  /// From the node posteriors of `time_inference`, without its bad branches
   pub(crate) fn of_inference(graph: &Graph, time_inference: &TimeInference) -> Result<Arc<Self>, Report> {
     Self::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
       .wrap_err("Failed to compute the expected coalescent lineage counts")
@@ -190,9 +150,6 @@ impl LineageExpectation {
     })
   }
 
-  /// From the Gaussian node-time marginals of [`GaussianTree::clock`](crate::clock::gaussian::GaussianTree::clock): an internal
-  /// node's time is its marginal truncated at the earliest included tip below it, a tip in `tip_times` that is not
-  /// `excluded` sits at its date, and every other node counts as surviving at all times.
   pub(crate) fn from_gaussian(
     graph: &Graph,
     marginals: &BTreeMap<GraphNodeKey, NodeTimeGaussian>,
@@ -233,7 +190,6 @@ impl LineageExpectation {
     })
   }
 
-  /// `survival(key)` is the survival function of a node, or `None` for a node that survives at all times
   fn from_survivals(
     graph: &Graph,
     survival: impl Fn(GraphNodeKey) -> Result<Option<NodeSurvival>, Report>,
@@ -252,9 +208,6 @@ impl LineageExpectation {
     Self::aggregate(nodes, always_surviving)
   }
 
-  /// The same node-time distributions on the topology of `graph`: every node keeps its distribution at its current
-  /// weight, a node new to the expectation (a merger that polytomy resolution created) enters at its time in
-  /// `merger_times`, and every other node counts as surviving at all times
   pub(crate) fn with_topology(
     &self,
     graph: &Graph,
@@ -269,7 +222,6 @@ impl LineageExpectation {
     })
   }
 
-  /// `kbar(t)` and `V(t)` on a uniform grid over the span of the node survival functions
   fn aggregate(nodes: BTreeMap<GraphNodeKey, NodeSurvival>, always_surviving: f64) -> Result<Arc<Self>, Report> {
     let weighted: Vec<(f64, &NodeSurvival)> = nodes.values().map(|survival| (survival.weight, survival)).collect();
     if weighted.is_empty() {
@@ -317,8 +269,6 @@ impl LineageExpectation {
     }))
   }
 
-  /// Calendar span of the coalescent: from where `kbar` first rises half a lineage above its value before every node
-  /// (around the root's median) to the end of the grid (the latest tip)
   pub(crate) fn span(&self) -> (f64, f64) {
     let start = self
       .expected
@@ -328,9 +278,6 @@ impl LineageExpectation {
     (start, self.grid[self.grid.len() - 1])
   }
 
-  /// Merger rate of one lineage, `max(1/2, kbar - 1) / (2 Tc)`, constant on every `MERGER_RATE_STRIDE` cells of the
-  /// grid at its value in the middle and, before the grid, at `kbar` before every node; the floor keeps a lineage
-  /// mergeable where fewer than two are expected
   pub(crate) fn merger_rate_schedule(&self, tc: &Distribution) -> Result<PiecewiseConstantFn, Report> {
     let rate = |k: f64, t: f64| -> Result<f64, Report> {
       let tc = tc
@@ -359,10 +306,6 @@ impl LineageExpectation {
     ))
   }
 
-  /// Expected coalescent statistics of the segments between `boundaries` (the first and last segments extend to the
-  /// past and the future): the pair-rate integral `I_i = int_i E[k (k - 1) / 2] dt` with
-  /// `E[k (k - 1)] = kbar^2 - kbar + V` for independent node times, and the expected number of mergers
-  /// `M_i = sum_v m_v P(t_v in segment i)`. With point times they are the statistics of the lineage counts.
   pub(crate) fn segment_statistics(&self, boundaries: &[f64]) -> (Vec<f64>, Vec<f64>) {
     let n_seg = boundaries.len() - 1;
     let segment_of = |t: f64| boundaries.partition_point(|&b| b <= t).saturating_sub(1).min(n_seg - 1);
@@ -392,16 +335,12 @@ impl LineageExpectation {
   }
 }
 
-/// Mean-field coalescent prior for one coalescent time scale; see the module documentation
 #[derive(Clone, Debug)]
 pub(crate) struct CoalescentPrior {
   expectation: Arc<LineageExpectation>,
   tc: Distribution,
-  /// `Q(g) = int_{g_0}^{g} dt / Tc(t)` on the grid of the expectation
   inverse_tc_integral: Vec<f64>,
-  /// `B(g) = int_{g_0}^{g} kbar(t) / Tc(t) dt`
   expected_integral: Vec<f64>,
-  /// `C_v(t) = int_{t_0}^{t} S_v(s) / Tc(s) ds` on the grid of each node's survival function
   own_integral: BTreeMap<GraphNodeKey, Vec<f64>>,
 }
 
@@ -450,8 +389,6 @@ impl CoalescentPrior {
     })
   }
 
-  /// The prior on the topology of `graph`, with the mergers that polytomy resolution created at `merger_times` (see
-  /// `LineageExpectation::with_topology`)
   pub(crate) fn with_topology(
     &self,
     graph: &Graph,
@@ -460,13 +397,10 @@ impl CoalescentPrior {
     Self::new(&self.expectation.with_topology(graph, merger_times)?, &self.tc)
   }
 
-  /// Negative log prior of node `key` with `n_children` children at time `x` (the module's `-log f_v`, up to a
-  /// constant per node). Tips (no children) take the same form with weight 1 and no merger factor.
   pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> Result<f64, Report> {
     let weight = 1.0 - n_children.to_f64_exact();
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
     let own = self.own_integral_at(key, x);
-    // the node's share of kbar, at the weight it entered with
     let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |survival| survival.weight);
     let merger = if n_mergers > 0.0 {
       let tc = self
@@ -513,7 +447,6 @@ impl CoalescentPrior {
     interpolate(grid, &self.expected_integral, x)
   }
 
-  /// `C_v(x)`; 0 for a node without an earlier posterior, which then sees `kbar` unchanged
   fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
     let (Some(survival), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
       return 0.0;

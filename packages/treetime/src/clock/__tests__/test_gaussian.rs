@@ -13,7 +13,6 @@ mod tests {
   const SEQUENCE_LENGTH: usize = 1000;
   const RATE: f64 = 1e-3;
 
-  /// Gaussian clock of `nwk` with tips dated by `dates` and flagged by `excluded`, node times keyed by name
   fn run(
     nwk: &str,
     dates: &[(&str, f64)],
@@ -46,7 +45,6 @@ mod tests {
     Ok((clock, times))
   }
 
-  /// Tree `((A, B)V, C)R` with the branch lengths below; `nu` counts substitutions plus one
   const TREE_3: &str = "((A:0.010,B:0.020)V:0.015,C:0.030)R;";
   const DATES_3: [(&str, f64); 3] = [("A", 2020.0), ("B", 2015.0), ("C", 2022.0)];
 
@@ -56,7 +54,6 @@ mod tests {
   }
 
   impl Tree3 {
-    /// `nu` of the branches to A, B, V, C and the dates of A, B, C
     fn new() -> Self {
       let nu = [0.010, 0.020, 0.015, 0.030].map(|d| d * SEQUENCE_LENGTH.to_f64_exact() + 1.0);
       Self {
@@ -65,14 +62,11 @@ mod tests {
       }
     }
 
-    /// `eta = mu L (D + M + N) / D` with all four branches dated
     fn eta(&self, rate: f64) -> f64 {
       let d: f64 = self.nu.iter().map(|nu| nu - 1.0).sum();
       rate * SEQUENCE_LENGTH.to_f64_exact() * (d + 4.0) / d
     }
 
-    /// Joint Gaussian of `(t_R, t_V)` from `sum_e eta^2 (tau_e - nu_e / eta)^2 / (2 nu_e)`, `tau_e` the elapsed time on
-    /// branch `e`: precision `Q` and linear term `h`, so that the mean is `Q^-1 h`
     fn joint(&self, eta: f64) -> ([[f64; 2]; 2], [f64; 2]) {
       let [na, nb, nv, nc] = self.nu;
       let [ta, tb, tc] = self.t;
@@ -88,8 +82,6 @@ mod tests {
       (q, h)
     }
 
-    /// Log-likelihood with the root fixed at `t_r` and `t_V` integrated out:
-    /// `3 ln eta + max_{t_V} -sum_e (eta tau_e - nu_e)^2 / (2 nu_e)`, three branch normalizations net of the integral
     fn log_likelihood(&self, rate: f64, t_r: f64) -> f64 {
       let eta = self.eta(rate);
       let [na, nb, nv, nc] = self.nu;
@@ -140,8 +132,6 @@ mod tests {
     Ok(())
   }
 
-  // The rate estimate maximizes the likelihood with V integrated out and the root at its optimum, which is the root's
-  // marginal mean at that rate: the profile is stationary at the estimate and lower one percent to either side
   #[test]
   fn test_gaussian_rate_maximizes_the_profile_likelihood() -> Result<(), Report> {
     let tree = Tree3::new();

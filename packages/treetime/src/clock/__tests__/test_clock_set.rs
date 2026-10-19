@@ -43,7 +43,6 @@ mod tests {
   fn test_clock_set_chisq_fixed_rate_matches_zero_rate_formula() {
     let cs = ClockSet::leaf_contribution(Some(0.0)).shift(1.0) + ClockSet::leaf_contribution(Some(1.0)).shift(3.0);
 
-    // residuals -1, +1 about the mean divergence 2: RSS / 2 = 1
     pretty_assert_ulps_eq!(cs.chisq_fixed_rate(0.0), 1.0, max_ulps = 4);
   }
 
@@ -51,7 +50,6 @@ mod tests {
   fn test_clock_set_chisq_fixed_rate_matches_nonzero_rate_formula() {
     let cs = ClockSet::leaf_contribution(Some(0.0)).shift(1.0) + ClockSet::leaf_contribution(Some(1.0)).shift(3.0);
 
-    // d - t = 1, 2 about their mean 1.5: RSS / 2 = 0.25
     pretty_assert_ulps_eq!(cs.chisq_fixed_rate(1.0), 0.25, max_ulps = 4);
   }
 }

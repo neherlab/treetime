@@ -12,8 +12,6 @@ mod tests {
   use treetime_utils::assert_error;
   use treetime_utils::least_squares::LineFit;
 
-  // Under ordinary least squares the score along an edge is a quadratic in the split and the search places the root at
-  // its vertex: 6.18 / 45 is the analytic optimum on the root-CD edge.
   #[test]
   fn test_find_best_root_splits_the_root_to_cd_branch_at_the_exact_optimum() -> Result<(), Report> {
     let expected_chisq =

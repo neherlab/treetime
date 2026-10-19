@@ -184,7 +184,6 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
       let n_points = distribution_support_n_points(bounds, dx, max_points)?;
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
 
-      // stored values multiply, amplitudes multiply: the grid stays near the operands' peaks
       let mut values = first.interp_many_stored(&grid)?;
       let mut amplitude = first.amplitude();
       for f in rest {
