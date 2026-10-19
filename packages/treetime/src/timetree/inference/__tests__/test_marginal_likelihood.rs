@@ -45,7 +45,7 @@ mod tests {
     )?;
     let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?)?.expect("root has a distribution");
     let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
-    assert_abs_diff_eq!(expected, actual, epsilon = 1e-5);
+    assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())
   }
 
@@ -112,7 +112,7 @@ mod tests {
 
     fn poisson_branch(k: f64) -> Result<BranchLikelihood, Report> {
       let mean_time = k / (SITES * REFERENCE_RATE);
-      let t = Array1::linspace(1e-4, mean_time * 6.0 + 4.0, 2001);
+      let t = Array1::linspace(1e-4, mean_time * 6.0 + 4.0, 6001);
       let y = t.mapv(|t| {
         let m = t * SITES * REFERENCE_RATE;
         m - k * m.ln() - (k - k * k.ln())
