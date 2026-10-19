@@ -44,22 +44,37 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::sparse_one_fit(       None,       0)]
-  #[case::sparse_gtr_iterations(None,       3)]
-  #[case::dense_one_fit(        Some(true), 0)]
-  #[case::dense_gtr_iterations( Some(true), 3)]
+  #[case::sparse(None      )]
+  #[case::dense( Some(true))]
   #[trace]
   fn test_ancestral_one_alignment_with_inferred_model_has_unit_overall_rate(
     #[case] dense: Option<bool>,
-    #[case] gtr_iterations: usize,
   ) -> Result<(), Report> {
-    let gtr = helpers::run_flu_20(dense, gtr_iterations)?;
+    let gtr = helpers::run_flu_20(dense, 0)?;
 
     pretty_assert_ulps_eq!(
       1.0,
       gtr.mu(),
       max_ulps = 0,
       "v0 sets the overall rate of an inferred model to 1: packages/legacy/treetime/treetime/treeanc.py#L1626-L1631"
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::sparse(None      )]
+  #[case::dense( Some(true))]
+  #[trace]
+  fn test_ancestral_gtr_iterations_reestimate_the_overall_rate_from_the_unit_start(
+    #[case] dense: Option<bool>,
+  ) -> Result<(), Report> {
+    let gtr = helpers::run_flu_20(dense, 3)?;
+
+    assert!(
+      (gtr.mu() - 1.0).abs() > 1e-3,
+      "the refinement re-estimates mu with W and pi (kb/decisions/ancestral-iterative-gtr-refinement.md), got mu = {}",
+      gtr.mu()
     );
     Ok(())
   }
