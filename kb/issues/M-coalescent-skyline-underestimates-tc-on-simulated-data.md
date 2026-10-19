@@ -22,7 +22,7 @@ where:
 The differences:
 
 - Smoothing strength: v1 [packages/treetime/src/coalescent/skyline.rs#L360](../../packages/treetime/src/coalescent/skyline.rs#L360), v0 [packages/legacy/treetime/treetime/merger_models.py#L312](../../packages/legacy/treetime/treetime/merger_models.py#L312). At the same default, v1 smooths half as strongly. [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md) does not record the factor
-- Shape of $T_c$: v1 is piecewise constant on equal-width segments [packages/treetime/src/coalescent/skyline.rs#L60](../../packages/treetime/src/coalescent/skyline.rs#L60). v0 interpolates between evenly spaced points [packages/legacy/treetime/treetime/merger_models.py#L305](../../packages/legacy/treetime/treetime/merger_models.py#L305)
+- Shape of $T_c$: v1 is piecewise constant on equal-width segments [packages/treetime/src/coalescent/skyline.rs#L58](../../packages/treetime/src/coalescent/skyline.rs#L58). v0 interpolates between evenly spaced points [packages/legacy/treetime/treetime/merger_models.py#L305](../../packages/legacy/treetime/treetime/merger_models.py#L305)
 - When the skyline is fitted: [M-timetree-skyline-timing-v0-divergence.md](M-timetree-skyline-timing-v0-divergence.md)
 - Node times it is fitted to: v1 marginal [kb/decisions/timetree-marginal-only-time-inference.md](../decisions/timetree-marginal-only-time-inference.md), v0 joint by default
 - Lineage counts of the coalescent prior, fixed before the loop: [kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md)

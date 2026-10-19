@@ -7,7 +7,7 @@ Multiplying two non-negative `Distribution::Function` operands can produce grid 
 
 ## Mechanism
 
-`multiply_function_function` [packages/treetime-distribution/src/distribution_ops/multiply.rs#L150](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L150) resamples onto a fresh uniform grid over the support intersection and evaluates `a.interp(t) * b.interp(t)` at each point. `GridFn::interpolate_at` [packages/treetime-grid/src/grid_fn.rs#L338](../../packages/treetime-grid/src/grid_fn.rs#L338) computes `y0 + t * (y1 - y0)`. For a decreasing tail (`y1 < y0`, both near `1e-13`) with `t` at the interval edge, catastrophic cancellation and `t = (q - x0) / dx` rounding can push the interpolated value a few ulps below zero. The product of that tiny negative with the other operand's positive value yields a `~-1e-26` amplitude, which `normalize()` preserves (it only rescales by the maximum).
+`multiply_function_function` [packages/treetime-distribution/src/distribution_ops/multiply.rs#L150](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L150) resamples onto a fresh uniform grid over the support intersection and evaluates `a.interp(t) * b.interp(t)` at each point. `GridFn::interpolate_at` [packages/treetime-grid/src/grid_fn.rs#L332](../../packages/treetime-grid/src/grid_fn.rs#L332) computes `y0 + t * (y1 - y0)`. For a decreasing tail (`y1 < y0`, both near `1e-13`) with `t` at the interval edge, catastrophic cancellation and `t = (q - x0) / dx` rounding can push the interpolated value a few ulps below zero. The product of that tiny negative with the other operand's positive value yields a `~-1e-26` amplitude, which `normalize()` preserves (it only rescales by the maximum).
 
 ## Evidence
 

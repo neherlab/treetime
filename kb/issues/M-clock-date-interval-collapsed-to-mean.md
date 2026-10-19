@@ -18,7 +18,7 @@ A public support thread documents mixed-granularity sampling dates and recommend
 ## Affected code
 
 - Date collapse: [packages/treetime/src/clock/assign_dates.rs#L25-L28](../../packages/treetime/src/clock/assign_dates.rs#L25-L28)
-- Downstream consumer: leaf date in the backward regression, `fn clock_regression_backward_node()` [packages/treetime/src/clock/clock_regression.rs#L285](../../packages/treetime/src/clock/clock_regression.rs#L285), and the tip sums `fn ClockSet::leaf_contribution()` [packages/treetime/src/clock/clock_set.rs#L19](../../packages/treetime/src/clock/clock_set.rs#L19)
+- Downstream consumer: leaf date in the backward regression, `fn clock_regression_backward_node()` [packages/treetime/src/clock/clock_regression.rs#L278](../../packages/treetime/src/clock/clock_regression.rs#L278), and the tip sums `fn ClockSet::leaf_contribution()` [packages/treetime/src/clock/clock_set.rs#L19](../../packages/treetime/src/clock/clock_set.rs#L19)
 
 ## Possible fix
 

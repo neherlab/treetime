@@ -251,7 +251,7 @@ v1: functionality exists in the optimize command but not as a GTR method.
 Enhancement to the coalescent model that uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
 
 v0: `--n-branches-posterior` flag uses posterior distributions for branch counting in merger rate computation.
-v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L385`](../../packages/app-commands/src/commands/timetree/args.rs#L385), returns error at [`packages/treetime/src/timetree/pipeline.rs#L221-L225`](../../packages/treetime/src/timetree/pipeline.rs#L221-L225).
+v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L405`](../../packages/app-commands/src/commands/timetree/args.rs#L405), returns error at [`packages/treetime/src/timetree/pipeline.rs#L221-L225`](../../packages/treetime/src/timetree/pipeline.rs#L221-L225).
 
 ---
 
@@ -259,7 +259,7 @@ v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L3
 
 When no input tree is provided, infer a phylogenetic tree from the alignment. v0 has no tree builder of its own: `fn tree_inference()` calls the external programs IQ-TREE, FastTree, and RAxML as subprocesses, in that order ([`packages/legacy/treetime/treetime/utils.py#L410-L452`](../../packages/legacy/treetime/treetime/utils.py#L410-L452)).
 
-v1: the `timetree` and `clock` commands declare `--tree` as optional and stop with the required-arguments error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L157-L159`](../../packages/app-commands/src/commands/timetree/args.rs#L157-L159), [`packages/app-commands/src/commands/clock/args.rs#L101-L108`](../../packages/app-commands/src/commands/clock/args.rs#L101-L108)). Methods and open design decisions: [kb/reports/feat-tree-infer.md](../reports/feat-tree-infer.md).
+v1: the `timetree` and `clock` commands declare `--tree` as optional and stop with the required-arguments error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L177-L179`](../../packages/app-commands/src/commands/timetree/args.rs#L177-L179), [`packages/app-commands/src/commands/clock/args.rs#L101-L108`](../../packages/app-commands/src/commands/clock/args.rs#L101-L108)). Methods and open design decisions: [kb/reports/feat-tree-infer.md](../reports/feat-tree-infer.md).
 
 ---
 

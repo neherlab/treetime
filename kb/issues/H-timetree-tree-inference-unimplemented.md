@@ -6,7 +6,7 @@ Every v1 command that reads a tree requires `--tree`: without it, the command st
 
 Each command declares `--tree` as `Option<PathBuf>`, but its argument conversion stops with the required-arguments error when the flag is missing:
 
-- `timetree`: [`packages/app-commands/src/commands/timetree/args.rs#L157-L159`](../../packages/app-commands/src/commands/timetree/args.rs#L157-L159)
+- `timetree`: [`packages/app-commands/src/commands/timetree/args.rs#L177-L179`](../../packages/app-commands/src/commands/timetree/args.rs#L177-L179)
 - `clock`: [`packages/app-commands/src/commands/clock/args.rs#L101-L108`](../../packages/app-commands/src/commands/clock/args.rs#L101-L108)
 - `ancestral`: [`packages/app-commands/src/commands/ancestral/args.rs#L106`](../../packages/app-commands/src/commands/ancestral/args.rs#L106)
 - `homoplasy`: [`packages/app-commands/src/commands/homoplasy/args.rs#L70-L72`](../../packages/app-commands/src/commands/homoplasy/args.rs#L70-L72)

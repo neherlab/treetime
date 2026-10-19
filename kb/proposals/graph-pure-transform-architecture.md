@@ -37,7 +37,7 @@ Parallel traversal runs through the work-first pass. `struct GraphPass` [package
 
 Reroot, polytomy resolution, and edge collapse restructure the graph between passes. `fn reparent_edge` [packages/treetime-graph/src/graph_ops.rs#L93](../../packages/treetime-graph/src/graph_ops.rs#L93) preserves the edge key; `fn collapse_edge` [packages/treetime-graph/src/graph_ops.rs#L166](../../packages/treetime-graph/src/graph_ops.rs#L166) removes nodes and edges. Node and edge keys are append-only and never reused: `fn add_node` [packages/treetime-graph/src/graph_ops.rs#L12-L16](../../packages/treetime-graph/src/graph_ops.rs#L12-L16) assigns `GraphNodeKey(self.nodes.len())`, and removal leaves a `None` hole rather than compacting. After a topology change, `fn MarginalReconstruction::reconcile_topology` [packages/treetime/src/partition/marginal/reconstruction.rs#L241](../../packages/treetime/src/partition/marginal/reconstruction.rs#L241) adds state entries for new keys and drops entries for removed ones.
 
-The timetree refinement loop `fn run_refinement_loop` [packages/treetime/src/timetree/refinement_loop.rs#L12-L97](../../packages/treetime/src/timetree/refinement_loop.rs#L12-L97) runs one `fn refinement_round` [packages/treetime/src/timetree/round.rs#L115-L140](../../packages/treetime/src/timetree/round.rs#L115-L140) per iteration: relaxed clock, polytomy resolution, marginal update, time inference and clock re-estimation, until convergence. Each round takes the round state by value and returns the next one.
+The timetree refinement loop `fn run_refinement_loop` [packages/treetime/src/timetree/refinement_loop.rs#L12-L93](../../packages/treetime/src/timetree/refinement_loop.rs#L12-L93) runs one `fn refinement_round` [packages/treetime/src/timetree/round.rs#L114-L139](../../packages/treetime/src/timetree/round.rs#L114-L139) per iteration: relaxed clock, polytomy resolution, marginal update, time inference and clock re-estimation, until convergence. Each round takes the round state by value and returns the next one.
 
 ## Target: a pure transform pipeline
 
@@ -130,28 +130,28 @@ Use an immutable topology index between topology changes. A topology change prod
 The inference passes share a dependency order, but their numerical operations and forward passes differ. The backward operations are:
 
 - **Marginal**: log-space profile product; matrix propagation across the branch
-- **Dating**: distribution product [packages/treetime/src/timetree/inference/backward_pass.rs#L117](../../packages/treetime/src/timetree/inference/backward_pass.rs#L117); convolution across the branch
+- **Dating**: distribution product [packages/treetime/src/timetree/inference/backward_pass.rs#L114](../../packages/treetime/src/timetree/inference/backward_pass.rs#L114); convolution across the branch
 - **Fitch**: state-set intersection with union fallback [packages/treetime/src/ancestral/fitch_sub.rs#L81](../../packages/treetime/src/partition/fitch/sub.rs#L81); identity
-- **Clock regression**: moment sum [packages/treetime/src/clock/clock_regression.rs#L132](../../packages/treetime/src/clock/clock_regression.rs#L132); affine map
+- **Clock regression**: moment sum [packages/treetime/src/clock/clock_regression.rs#L130](../../packages/treetime/src/clock/clock_regression.rs#L130); affine map
 
 These operations suggest a possible shared traversal driver. Its interface must also account for:
 
 - **Leaf initializer**: the observation a leaf contributes
-- **Child-inclusion predicate**: dating skips bad branches [packages/treetime/src/timetree/inference/backward_pass.rs#L94](../../packages/treetime/src/timetree/inference/backward_pass.rs#L94)
-- **Node-finalize step**: dating multiplies a role-specific coalescent prior and the input date constraint [packages/treetime/src/timetree/inference/backward_pass.rs#L136](../../packages/treetime/src/timetree/inference/backward_pass.rs#L136); marginal multiplies the root by the equilibrium frequencies; regression does neither
-- **Point-estimate commit**: dating projects onto the parent time [packages/treetime/src/timetree/inference/forward_pass.rs#L151](../../packages/treetime/src/timetree/inference/forward_pass.rs#L151)
+- **Child-inclusion predicate**: dating skips bad branches [packages/treetime/src/timetree/inference/backward_pass.rs#L93](../../packages/treetime/src/timetree/inference/backward_pass.rs#L93)
+- **Node-finalize step**: dating multiplies a role-specific coalescent prior and the input date constraint [packages/treetime/src/timetree/inference/backward_pass.rs#L133](../../packages/treetime/src/timetree/inference/backward_pass.rs#L133); marginal multiplies the root by the equilibrium frequencies; regression does neither
+- **Point-estimate commit**: dating projects onto the parent time [packages/treetime/src/timetree/inference/forward_pass.rs#L149](../../packages/treetime/src/timetree/inference/forward_pass.rs#L149)
 - **Pass-level reduction**: dating counts contradicted dates [packages/treetime/src/timetree/inference/forward_pass.rs#L24](../../packages/treetime/src/timetree/inference/forward_pass.rs#L24)
 
 Message type and normalization also vary:
 
 - **Marginal**: an explicit `(profile, log-likelihood)` pair [packages/treetime/src/partition/storage/dense.rs#L54](../../packages/treetime/src/partition/storage/dense.rs#L54)
-- **Dating**: peak-normalized, the offset discarded by shift-invariance [packages/treetime/src/timetree/inference/backward_pass.rs#L68](../../packages/treetime/src/timetree/inference/backward_pass.rs#L68)
+- **Dating**: peak-normalized, the offset discarded by shift-invariance [packages/treetime/src/timetree/inference/backward_pass.rs#L67](../../packages/treetime/src/timetree/inference/backward_pass.rs#L67)
 - **Regression and Fitch**: no normalizer
 
 The forward contribution-removal diverges most:
 
-- **Regression**: subtraction [packages/treetime/src/clock/clock_regression.rs#L184](../../packages/treetime/src/clock/clock_regression.rs#L184). Numerical error requires separate validation
-- **Marginal and dating**: division, the <a id="gloss-use-4"></a>cavity distribution <sup>[4](#gloss-4)</sup> clamped away from zero [packages/treetime/src/partition/marginal/shared/pass.rs#L164](../../packages/treetime/src/partition/marginal/shared/pass.rs#L164) and guarded against disjoint support [packages/treetime/src/timetree/inference/forward_pass.rs#L138](../../packages/treetime/src/timetree/inference/forward_pass.rs#L138)
+- **Regression**: subtraction [packages/treetime/src/clock/clock_regression.rs#L179](../../packages/treetime/src/clock/clock_regression.rs#L179). Numerical error requires separate validation
+- **Marginal and dating**: division, the <a id="gloss-use-4"></a>cavity distribution <sup>[4](#gloss-4)</sup> clamped away from zero [packages/treetime/src/partition/marginal/shared/pass.rs#L164](../../packages/treetime/src/partition/marginal/shared/pass.rs#L164) and guarded against disjoint support [packages/treetime/src/timetree/inference/forward_pass.rs#L136](../../packages/treetime/src/timetree/inference/forward_pass.rs#L136)
 - **Fitch**: a top-down resolution that removes nothing [packages/treetime/src/ancestral/fitch_sub.rs#L177](../../packages/treetime/src/partition/fitch/sub.rs#L177)
 
 Compare the callback requirements of clock regression and marginal inference before extracting a shared numerical driver. Keep separate callbacks if a common interface requires pass-specific conditionals. Scheduling is already separate: `fn run_dependency_queue` accepts a per-node closure [packages/treetime-graph/src/dependency_queue.rs#L8](../../packages/treetime-graph/src/dependency_queue.rs#L8). Any replacement schedule must preserve dependencies and be measured on balanced and unbalanced trees.

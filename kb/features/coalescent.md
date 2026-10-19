@@ -28,7 +28,7 @@ fit, the polytomy merger rates, the reported likelihood and the convergence trac
 
 A constant $T_c$ is exactly the one-segment skyline, so
 `estimate_coalescent_tc()` in
-[`packages/treetime/src/timetree/coalescent_timescale.rs#L42`](../../packages/treetime/src/timetree/coalescent_timescale.rs#L42)
+[`packages/treetime/src/timetree/coalescent_timescale.rs#L40`](../../packages/treetime/src/timetree/coalescent_timescale.rs#L40)
 calls `optimize_skyline` with `n_points = 1` for the constant mode and reports its single
 segment's $T_c$ and likelihood. The derivation below explains why that one-segment
 solve is the closed form $T_c^{*}=I/M$; the I/M accumulation, likelihood reporting,

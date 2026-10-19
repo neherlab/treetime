@@ -1,7 +1,7 @@
 # Internal node dates missing in nexus for input branch length mode
 
 > [!WARNING]
-> **Needs review.** The message-passing code changed after the 19/37 measurement. The backward pass now drops `Empty` child messages before the n-ary `distribution_product()` ([`backward_pass.rs#L101-L111`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L101-L111)), and the forward pass divides out the subtree message and keeps the given date when the product is empty ([`forward_pass.rs#L143-L158`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L143-L158)). Input mode still builds Point branch distributions and `multiply_point_point()` still uses the `1e-9` tolerance, but the measured scope and the diagnostic output need a rerun of the repro below.
+> **Needs review.** The message-passing code changed after the 19/37 measurement. The backward pass now drops `Empty` child messages before the n-ary `distribution_product()` ([`backward_pass.rs#L100-L108`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L100-L108)), and the forward pass divides out the subtree message and keeps the given date when the product is empty ([`forward_pass.rs#L141-L156`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L141-L156)). Input mode still builds Point branch distributions and `multiply_point_point()` still uses the `1e-9` tolerance, but the measured scope and the diagnostic output need a rerun of the repro below.
 
 `timetree.nexus` contains date annotations only on tips when using `--branch-length-mode=input`. Default mode correctly annotates all nodes (tips + internal).
 
@@ -23,13 +23,13 @@ Point distribution multiplication fails when time coordinates differ by more tha
 2. Leaf time distributions are Point distributions at collection dates.
 
 3. Backward pass at
-   [`backward_pass.rs#L101-L111`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L101-L111) and [`backward_pass.rs#L147-L172`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L147-L172):
+   [`backward_pass.rs#L100-L108`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L100-L108) and [`backward_pass.rs#L147-L172`](../../packages/treetime/src/timetree/inference/backward_pass.rs#L147-L172):
    - Convolves child Point with negated branch Point (`convolve_across_edge()`), yielding parent Point
    - Multiplies the non-empty child messages via `distribution_product()`
    - Point x Point works when `|t_a - t_b| <= 1e-9`
 
 4. Forward pass at
-   [`forward_pass.rs#L137-L158`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L137-L158):
+   [`forward_pass.rs#L135-L156`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L135-L156):
    - `dist_from_parent = convolve_across_edge(parent_except_subtree, branch_dist)` - Point
    - `combined = distribution_multiplication(dist_from_parent, subtree_dist)` - Point x Point
    - When these Points have slightly different `t` values (floating-point

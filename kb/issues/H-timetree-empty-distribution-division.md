@@ -68,7 +68,7 @@ non-empty parent posterior, the other 45 inherit an empty parent:
 
 1. The parent's posterior stores negative log `+inf` only at its last grid point, the hard boundary at 2021.2, and its
    peak (0.0) at the point before, 2018.88: at this rate one grid cell is 2.32 years.
-2. `GridFn::interpolate_at` ([`grid_fn.rs#L237-L250`](../../packages/treetime-grid/src/grid_fn.rs#L237-L250))
+2. `GridFn::interpolate_at` ([`grid_fn.rs#L237-L245`](../../packages/treetime-grid/src/grid_fn.rs#L237-L245))
    interpolates negative logs linearly, `y0 + t * (y1 - y0)`: inside a cell whose right end is `+inf` every point is
    `+inf`, and at a cell whose left end is `+inf` the result is NaN. The division builds the cavity on
    `linspace` of the same bounds and point count; rounding puts the query at 2018.8764 just inside the last cell, so

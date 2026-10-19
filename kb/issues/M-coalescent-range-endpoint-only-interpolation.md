@@ -6,7 +6,7 @@ For any nonlinear weight function -- the coalescent prior's `node_contribution` 
 
 ## Affected code
 
-- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L22-L26`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L22-L26): Range/Point branch extracts 2-element grid via `distribution.t()` and `distribution.y()`
+- [`packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L22-L25`](../../packages/treetime-distribution/src/distribution_ops/multiply_by_fn.rs#L22-L25): Range/Point branch extracts 2-element grid via `distribution.t()` and `distribution.y()`
 - [`packages/treetime/src/coalescent/mean_field.rs`](../../packages/treetime/src/coalescent/mean_field.rs): `CoalescentPrior::node_contribution` is nonlinear in the time through the integrals of $\bar k/T_c$ and $\ln T_c$ (the `CoalescentModel` contributions this issue first described were removed in phase 2; the endpoint-only evaluation applies to the mean-field prior alike)
 
 ## Impact

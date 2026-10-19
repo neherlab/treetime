@@ -79,7 +79,7 @@ v1's default 10 grid points means 10D optimization without convergence guarantee
 
 **TreeTime v1**:
 
-- Skyline: [packages/treetime/src/coalescent/skyline.rs#L68-L157](../../../packages/treetime/src/coalescent/skyline.rs#L68-L157) `optimize_skyline()` via argmin `NelderMead`
+- Skyline: [packages/treetime/src/coalescent/skyline.rs#L66-L153](../../../packages/treetime/src/coalescent/skyline.rs#L66-L153) `optimize_skyline()` via argmin `NelderMead`
 
 ## References
 

@@ -28,7 +28,7 @@ A detailed item-by-item audit with code locations, callers, callees, and converg
 | H5  | [distribution.rs#L425-L491](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L425-L491)                  | HPD bisection         | **Medium** - `BrentRoot` (P2)    |
 | H6  | Same as E3                                                                                                                            | Grid search           | Retire (P4)                      |
 | H7  | [zero_boundary.rs#L67-L95](../../../packages/treetime/src/optimize/zero_boundary.rs#L67-L95)                       | Grid fallback         | **Medium** - `BrentOpt` (P5)     |
-| H8  | [function.rs#L250](../../../packages/treetime-distribution/src/distribution_core/function.rs#L250)                                    | Array argmax          | No - array scan                  |
+| H8  | [function.rs#L244](../../../packages/treetime-distribution/src/distribution_core/function.rs#L244)                                    | Array argmax          | No - array scan                  |
 | H9  | [distribution.rs#L236-L293](../../../packages/treetime-distribution/src/distribution_core/distribution.rs#L236-L293)                  | CDF linear scan       | No - sorted lookup               |
 | H10 | [branch_length_likelihood.rs#L31-L63](../../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L31-L63) | Grid evaluation       | No - full distribution needed    |
 | H11 | [relaxed_clock.rs#L25-L125](../../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L25-L125)                  | Analytical quadratic  | No - closed-form solution        |

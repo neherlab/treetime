@@ -2,7 +2,7 @@
 
 clap enforces the conflicts between flags only for values given on the command line. `fn overlay_config` merges the config file into the parsed arguments after clap has run and checks the merged value against the JSON schema only [packages/app-cli/src/cli/config.rs#L17-L42](../../packages/app-cli/src/cli/config.rs#L17-L42). The schema does not carry the clap conflicts, so a config file can set two settings that the command line rejects together.
 
-Example: `--keep-root` conflicts with `--reroot` in `clock` ([packages/app-commands/src/commands/clock/args.rs#L221](../../packages/app-commands/src/commands/clock/args.rs#L221)) and in `timetree` ([packages/app-commands/src/commands/timetree/args.rs#L439](../../packages/app-commands/src/commands/timetree/args.rs#L439)).
+Example: `--keep-root` conflicts with `--reroot` in `clock` ([packages/app-commands/src/commands/clock/args.rs#L221](../../packages/app-commands/src/commands/clock/args.rs#L221)) and in `timetree` ([packages/app-commands/src/commands/timetree/args.rs#L459](../../packages/app-commands/src/commands/timetree/args.rs#L459)).
 
 ```
 treetime clock --tree=data/zika/20/tree.nwk --dates=data/zika/20/metadata.tsv --keep-root --reroot=oldest --output-all=<dir>

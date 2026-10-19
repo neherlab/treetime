@@ -8,7 +8,7 @@ Multiply two ranges (or a formula with a range or another formula) whose support
 
 ## Impact and scope
 
-- Affects `multiply_range_range` [`packages/treetime-distribution/src/distribution_ops/multiply.rs#L119`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L119), `multiply_formula_formula` [`multiply.rs#L194`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L194), and `multiply_formula_range` [`multiply.rs#L270`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L270).
+- Affects `multiply_range_range` [`packages/treetime-distribution/src/distribution_ops/multiply.rs#L119`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L119), `multiply_formula_formula` [`multiply.rs#L193`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L193), and `multiply_formula_range` [`multiply.rs#L269`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L269).
 - Triggers only on exact floating-point endpoint contact, so it is rare in practice.
 - Before the empty-result guard these arms silently returned `Empty` at touching; both `Empty` and the internal error are wrong for a measure-zero overlap.
 

@@ -454,7 +454,7 @@ Verify these against current source before relying on line numbers.
 
 `convolution_point_function` and `convolution_range_function` build via `from_start_dx_values`, then `from_grid_array`, which **resets both boundary sides to `Error`** [packages/treetime-grid/src/grid_fn.rs#L62-L76](packages/treetime-grid/src/grid_fn.rs#L62-L76). The operand tails are lost.
 
-The backward and forward passes then fit fresh tails **after** each convolution [packages/treetime/src/timetree/inference/backward_pass.rs#L143-L146](packages/treetime/src/timetree/inference/backward_pass.rs#L143-L146), [packages/treetime/src/timetree/inference/forward_pass.rs#L235-L238](packages/treetime/src/timetree/inference/forward_pass.rs#L235-L238). That recovers a soft slope, but it cannot recover a dropped hard bound or truncated support.
+The backward and forward passes then fit fresh tails **after** each convolution [packages/treetime/src/timetree/inference/backward_pass.rs#L140-L143](packages/treetime/src/timetree/inference/backward_pass.rs#L140-L143), [packages/treetime/src/timetree/inference/forward_pass.rs#L233-L236](packages/treetime/src/timetree/inference/forward_pass.rs#L233-L236). That recovers a soft slope, but it cannot recover a dropped hard bound or truncated support.
 
 </details>
 
@@ -472,7 +472,7 @@ Main path [packages/treetime-distribution/src/distribution_ops/convolve.rs#L130-
 <details>
 <summary>K13. Compact operands present `Error` sides, so range-clipped products lose mass sizing 💻🚩</summary>
 
-Point, range, and formula operands present `Error` on both sides for the multiplication support and composition rules [packages/treetime-distribution/src/distribution_ops/multiply.rs#L431-L452](packages/treetime-distribution/src/distribution_ops/multiply.rs#L431-L452). This is correct for the disjointness test, where `Error` and `Hard` both restrict the domain, but wrong for tail composition: `Error` dominates the lattice [packages/treetime-distribution/src/distribution_ops/multiply.rs#L352-L373](packages/treetime-distribution/src/distribution_ops/multiply.rs#L352-L373), so any product clipped by a date range or point inherits `Error` on that side and becomes non-mass-sizable, forcing `rewindow_to_mass` back to a shift-only normalize.
+Point, range, and formula operands present `Error` on both sides for the multiplication support and composition rules [packages/treetime-distribution/src/distribution_ops/multiply.rs#L430-L451](packages/treetime-distribution/src/distribution_ops/multiply.rs#L430-L451). This is correct for the disjointness test, where `Error` and `Hard` both restrict the domain, but wrong for tail composition: `Error` dominates the lattice [packages/treetime-distribution/src/distribution_ops/multiply.rs#L351-L372](packages/treetime-distribution/src/distribution_ops/multiply.rs#L351-L372), so any product clipped by a date range or point inherits `Error` on that side and becomes non-mass-sizable, forcing `rewindow_to_mass` back to a shift-only normalize.
 
 A compact operand carries zero density beyond its support, a hard fact, so it should present `Hard`, letting the clipped product stay mass-sizable. Same correction as the `range * range` and `point *` law declarations (C2, C3 emit `Hard`).
 

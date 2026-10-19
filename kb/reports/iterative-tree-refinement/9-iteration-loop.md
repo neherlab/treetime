@@ -129,7 +129,7 @@ Loop (convergence-controlled):
   9. re-estimate clock model
 ```
 
-v1 code: `fn refinement_round` [packages/treetime/src/timetree/round.rs#L115-L140](../../../packages/treetime/src/timetree/round.rs#L115-L140), driven by `fn run_refinement_loop` [packages/treetime/src/timetree/refinement_loop.rs#L12-L97](../../../packages/treetime/src/timetree/refinement_loop.rs#L12-L97)
+v1 code: `fn refinement_round` [packages/treetime/src/timetree/round.rs#L114-L139](../../../packages/treetime/src/timetree/round.rs#L114-L139), driven by `fn run_refinement_loop` [packages/treetime/src/timetree/refinement_loop.rs#L12-L93](../../../packages/treetime/src/timetree/refinement_loop.rs#L12-L93)
 
 The M-step is *constrained*: rather than optimizing each branch length freely, step 7 sets it to
 `mu * gamma * dt` over the inferred times, and step 6 of the next round propagates profiles along

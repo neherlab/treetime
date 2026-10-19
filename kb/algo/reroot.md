@@ -8,12 +8,12 @@ The backward and forward clock passes give, on both sides of every edge, the sum
 
 v1:
 
-- Search: `fn find_best_root()` [packages/treetime/src/clock/find_best_root/find_best_root.rs#L16](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L16), `fn optimize_exact()` [method_exact.rs#L19](../../packages/treetime/src/clock/find_best_root/method_exact.rs#L19)
-- Method dispatch: `fn select_root()` [packages/treetime/src/clock/reroot.rs#L130](../../packages/treetime/src/clock/reroot.rs#L130)
-- Topology move: `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L19](../../packages/treetime/src/reroot/orchestrate.rs#L19), placement rules in [`reroot/placement.rs`](../../packages/treetime/src/reroot/placement.rs)
+- Search: `fn find_best_root()` [packages/treetime/src/clock/find_best_root/find_best_root.rs#L16](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L16), `fn optimize_exact()` [method_exact.rs#L8](../../packages/treetime/src/clock/find_best_root/method_exact.rs#L8)
+- Method dispatch: `fn select_root()` [packages/treetime/src/clock/reroot.rs#L123](../../packages/treetime/src/clock/reroot.rs#L123)
+- Topology move: `fn apply_root_at_edge()` [packages/treetime/src/reroot/orchestrate.rs#L17](../../packages/treetime/src/reroot/orchestrate.rs#L17), placement rules in [`reroot/placement.rs`](../../packages/treetime/src/reroot/placement.rs)
 - Topology primitives: [`packages/treetime-graph/src/reroot.rs`](../../packages/treetime-graph/src/reroot.rs), [`common_ancestor.rs`](../../packages/treetime-graph/src/common_ancestor.rs)
 
-One driver serves every caller (`fn reroot_at_best_root()`, [packages/treetime/src/clock/reroot.rs#L31](../../packages/treetime/src/clock/reroot.rs#L31)): it searches, removes an undated stem and searches again when the root moves, applies the move and gives the new nodes and edges default clock inputs. The clock then reruns the backward pass on the new tree instead of carrying the regression state through the move.
+One driver serves every caller (`fn reroot_at_best_root()`, [packages/treetime/src/clock/reroot.rs#L28](../../packages/treetime/src/clock/reroot.rs#L28)): it searches, removes an undated stem and searches again when the root moves, applies the move and gives the new nodes and edges default clock inputs. The clock then reruns the backward pass on the new tree instead of carrying the regression state through the move.
 
 ## Minimum-Variance Rooting (min-dev)
 
@@ -23,7 +23,7 @@ $$\text{score} = \frac{S_{dd}\, n - S_d^2}{2n^2}$$
 
 where $n$ is the number of contributing tips, $S_d$ the sum of root-to-tip distances and $S_{dd}$ their sum of squares; the score is half the variance of the root-to-tip distances. Sampling dates do not occur in it, so changing them cannot change the selected root while the contributing tips stay the same.
 
-`optimize` has no dates: `fn reroot_undated()` gives every tip the same date, so that every tip contributes, and runs the same driver at rate zero for `min-dev` and `--reroot-tips` ([packages/treetime/src/clock/reroot.rs#L64](../../packages/treetime/src/clock/reroot.rs#L64)).
+`optimize` has no dates: `fn reroot_undated()` gives every tip the same date, so that every tip contributes, and runs the same driver at rate zero for `min-dev` and `--reroot-tips` ([packages/treetime/src/clock/reroot.rs#L59](../../packages/treetime/src/clock/reroot.rs#L59)).
 
 TreeTime v0 passes a zero slope for `min_dev`, but its `base_regression()` function still subtracts the estimated-rate regression term when scoring candidates, so its executed behavior does not implement its documented minimum-variance objective.
 

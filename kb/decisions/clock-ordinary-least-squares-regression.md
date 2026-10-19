@@ -25,7 +25,7 @@ following an unpublished derivation and reference scripts of the maintainers (`r
 - Gaussian timetree: `struct GaussianTree` [packages/treetime/src/clock/gaussian.rs#L107-L121](../../packages/treetime/src/clock/gaussian.rs#L107-L121), built by `fn GaussianTree::new()`
   [packages/treetime/src/clock/gaussian.rs#L124-L196](../../packages/treetime/src/clock/gaussian.rs#L124-L196); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L198-L226](../../packages/treetime/src/clock/gaussian.rs#L198-L226);
   closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L228-L235](../../packages/treetime/src/clock/gaussian.rs#L228-L235); callers `fn timetree_gaussian_clock()`
-  [packages/treetime/src/timetree/init.rs#L152-L180](../../packages/treetime/src/timetree/init.rs#L152-L180) and `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L184-L200](../../packages/treetime/src/timetree/init.rs#L184-L200)
+  [packages/treetime/src/timetree/init.rs#L139-L167](../../packages/treetime/src/timetree/init.rs#L139-L167) and `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L169-L185](../../packages/treetime/src/timetree/init.rs#L169-L185)
 
 ## Decision
 

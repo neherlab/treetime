@@ -13,15 +13,15 @@ rate `1 - f` rather than reaching the fixed point directly. The fixed point is t
 
 ## Why it is flat today
 
-Four places in `timetree/` compute clock branch lengths with `fn blended_clock_branch_lengths`. Three go through `fn RoundState::blend_clock_branch_lengths` [packages/treetime/src/timetree/round.rs#L191-L205](../../packages/treetime/src/timetree/round.rs#L191-L205):
+Four places in `timetree/` compute clock branch lengths with `fn blended_clock_branch_lengths`. Three go through `fn RoundState::blend_clock_branch_lengths` [packages/treetime/src/timetree/round.rs#L190-L201](../../packages/treetime/src/timetree/round.rs#L190-L201):
 
-- `fn initialize` [packages/treetime/src/timetree/init.rs#L136](../../packages/treetime/src/timetree/init.rs#L136): undamped, before the refinement loop
-- `fn refresh_times` [packages/treetime/src/timetree/round.rs#L364](../../packages/treetime/src/timetree/round.rs#L364): damped with `CLOCK_BRANCH_LENGTH_DAMPING`, inside the refinement loop
-- `fn final_marginal_round` [packages/treetime/src/timetree/round.rs#L160](../../packages/treetime/src/timetree/round.rs#L160): undamped, after the refinement loop
+- `fn initialize` [packages/treetime/src/timetree/init.rs#L124](../../packages/treetime/src/timetree/init.rs#L124): undamped, before the refinement loop
+- `fn refresh_times` [packages/treetime/src/timetree/round.rs#L357](../../packages/treetime/src/timetree/round.rs#L357): damped with `CLOCK_BRANCH_LENGTH_DAMPING`, inside the refinement loop
+- `fn final_marginal_round` [packages/treetime/src/timetree/round.rs#L159](../../packages/treetime/src/timetree/round.rs#L159): undamped, after the refinement loop
 
-`fn refine_topology` [packages/treetime/src/timetree/round.rs#L325-L333](../../packages/treetime/src/timetree/round.rs#L325-L333) calls it directly: undamped, inside the refinement loop, after a polytomy resolution changes the topology.
+`fn refine_topology` [packages/treetime/src/timetree/round.rs#L318-L326](../../packages/treetime/src/timetree/round.rs#L318-L326) calls it directly: undamped, inside the refinement loop, after a polytomy resolution changes the topology.
 
-Only the `refresh_times` site applies the flat factor. `fn refinement_round` [packages/treetime/src/timetree/round.rs#L115-L122](../../packages/treetime/src/timetree/round.rs#L115-L122) does not receive the round index, so a schedule needs the index threaded through `refinement_round` and `refresh_times`. This plumbing waits until a dataset shows that the flat factor costs measurable rounds.
+Only the `refresh_times` site applies the flat factor. `fn refinement_round` [packages/treetime/src/timetree/round.rs#L114-L121](../../packages/treetime/src/timetree/round.rs#L114-L121) does not receive the round index, so a schedule needs the index threaded through `refinement_round` and `refresh_times`. This plumbing waits until a dataset shows that the flat factor costs measurable rounds.
 
 ## Evidence
 

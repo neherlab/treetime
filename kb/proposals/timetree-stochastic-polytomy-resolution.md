@@ -94,7 +94,7 @@ about where either comes from: $\mu$ as a scalar, $\kappa$ as a function of cale
 
 $\mu$ is already computed in the caller: `clock_model.clock_rate() * total_length` is passed
 as `zero_branch_slope` at
-[packages/treetime/src/timetree/round.rs#L194](../../packages/treetime/src/timetree/round.rs#L194).
+[packages/treetime/src/timetree/round.rs#L191](../../packages/treetime/src/timetree/round.rs#L191).
 Rename the parameter `mutation_rate`; no new plumbing.
 
 $\kappa(t)$ is the per-lineage merger rate of the expected lineage counts the round's prior is built from
@@ -144,7 +144,7 @@ further back would require relocating the parent node itself and re-checking aga
 grandparent branch, i.e. mutating a second node's time inside a routine scoped to one node.
 
 Deliberately out of scope: `run_timetree` re-infers every node time immediately afterwards
-([packages/treetime/src/timetree/round.rs#L287](../../packages/treetime/src/timetree/round.rs#L287)),
+([packages/treetime/src/timetree/round.rs#L280](../../packages/treetime/src/timetree/round.rs#L280)),
 so the parent's time is not final at this point. A partially resolved polytomy gets another
 attempt on the next refinement iteration with a relocated parent, which reaches the same
 outcome without coupling two nodes' times inside the sweep.
@@ -224,7 +224,7 @@ now `LineageExpectation::merger_rate_schedule` in
 Build the model once per refinement pass from `coalescent_tc` via `compute_coalescent_model`.
 
 **RNG threading.** `fn refinement_round` runs once per iteration
-([packages/treetime/src/timetree/refinement_loop.rs#L68-L76](../../packages/treetime/src/timetree/refinement_loop.rs#L68-L76)),
+([packages/treetime/src/timetree/refinement_loop.rs#L66-L72](../../packages/treetime/src/timetree/refinement_loop.rs#L66-L72)),
 so the generator is created before the loop from `params.seed` via
 `treetime_utils::sync::random::get_random_number_generator`
 ([packages/treetime/src/timetree/refinement_loop.rs#L32-L39](../../packages/treetime/src/timetree/refinement_loop.rs#L32-L39))

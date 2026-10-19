@@ -20,7 +20,7 @@ Possible change: count transitions with raw branch lengths and handle zero-lengt
 
 ### Timetree round always refits the clock model
 
-`fn refinement_round()` calls `fn update_clock_model()` unconditionally ([packages/treetime/src/timetree/round.rs#L136](../../packages/treetime/src/timetree/round.rs#L136), [#L385](../../packages/treetime/src/timetree/round.rs#L385)), also when no sequence changed and no polytomy was resolved. The refit is a regression over all dated tips. It costs computation when nothing moved, and small floating-point differences in the regression can perturb the next round and delay convergence detection.
+`fn refinement_round()` calls `fn update_clock_model()` unconditionally ([packages/treetime/src/timetree/round.rs#L135](../../packages/treetime/src/timetree/round.rs#L135), [#L378](../../packages/treetime/src/timetree/round.rs#L378)), also when no sequence changed and no polytomy was resolved. The refit is a regression over all dated tips. It costs computation when nothing moved, and small floating-point differences in the regression can perturb the next round and delay convergence detection.
 
 Possible change: skip the refit when the round changed no sequence state, topology, or node time.
 

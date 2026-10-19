@@ -44,7 +44,7 @@ and the setup logs that the date constraint of a bad branch will be ignored
 ([packages/legacy/treetime/treetime/clock_tree.py#L389-L396](../../packages/legacy/treetime/treetime/clock_tree.py#L389-L396)).
 
 v1 differs for flagged tips with an exact date: the forward pass leaves a node with an exact date unrefined
-(`fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L137](../../packages/treetime/src/timetree/inference/forward_pass.rs#L137)),
+(`fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L135](../../packages/treetime/src/timetree/inference/forward_pass.rs#L135)),
 so such a tip keeps its input date while its ancestors are dated from the clock. This gives the branches that run
 backwards in time on `data/ebola/362`. Flagged tips with a date range are dated from the clock, as in v0.
 

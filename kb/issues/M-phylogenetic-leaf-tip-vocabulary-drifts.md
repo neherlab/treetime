@@ -1,6 +1,6 @@
 # Leaf and tip vocabulary drifts across phylogenetic operations
 
-The generic graph layer consistently names terminal nodes leaves, and CLI concepts name sampled taxa tips. Core phylogenetic operations mix both terms for the same concept: `find_tip_group_root()` reports `no dated leaves`, while `complete_alignment_for_leaves()` reports missing tips [`packages/treetime/src/clock/reroot.rs#L190`](../../packages/treetime/src/clock/reroot.rs#L190) [`packages/treetime/src/ancestral/attach.rs#L12`](../../packages/treetime/src/ancestral/attach.rs#L12).
+The generic graph layer consistently names terminal nodes leaves, and CLI concepts name sampled taxa tips. Core phylogenetic operations mix both terms for the same concept: `find_tip_group_root()` reports `no dated leaves`, while `complete_alignment_for_leaves()` reports missing tips [`packages/treetime/src/clock/reroot.rs#L183`](../../packages/treetime/src/clock/reroot.rs#L183) [`packages/treetime/src/ancestral/attach.rs#L12`](../../packages/treetime/src/ancestral/attach.rs#L12).
 
 ## Why the distinction matters
 
