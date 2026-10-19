@@ -285,7 +285,11 @@ impl LineageExpectation {
       .collect();
     let grid: Vec<f64> = (0..EXPECTATION_GRID_POINTS)
       .map(|i| t_min + step * i.to_f64_exact())
-      .filter(|&g| step_times.binary_search_by_key(&OrderedFloat(g), |&t| OrderedFloat(t)).is_err())
+      .filter(|&g| {
+        step_times
+          .binary_search_by_key(&OrderedFloat(g), |&t| OrderedFloat(t))
+          .is_err()
+      })
       .chain(step_times.iter().flat_map(|&t| [t, t]))
       .sorted_by_key(|&t| OrderedFloat(t))
       .collect();
@@ -347,10 +351,7 @@ impl LineageExpectation {
       Ok(0.5 * f64::max(0.5, k - 1.0) / tc)
     };
     let n = self.grid.len();
-    let mut edges: Vec<usize> = (0..n)
-      .step_by(MERGER_RATE_STRIDE)
-      .chain(once(n - 1))
-      .collect();
+    let mut edges: Vec<usize> = (0..n).step_by(MERGER_RATE_STRIDE).chain(once(n - 1)).collect();
     edges.dedup_by_key(|&mut i| OrderedFloat(self.grid[i]));
     let mut rates = vec![rate(self.expected_before, self.grid[0])?];
     for (&start, &end) in edges.iter().zip(&edges[1..]) {
