@@ -5033,6 +5033,7 @@ dependencies = [
  "proptest",
  "rayon",
  "rstest",
+ "statrs",
  "strum_macros",
  "treetime-grid",
  "treetime-ops",

@@ -38,6 +38,7 @@ pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+statrs = { workspace = true }
 
 [lints]
 workspace = true
