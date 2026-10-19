@@ -11,99 +11,6 @@ use treetime_utils::{make_error, make_internal_report};
 
 const MIN_PRECISION: f64 = 1e-300;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct NodeTimeGaussian {
-  pub mean: f64,
-  pub std: f64,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct GaussianClock {
-  pub rate_std: Option<f64>,
-  pub root_time_std: Option<f64>,
-  pub node_times: BTreeMap<GraphNodeKey, NodeTimeGaussian>,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct Message {
-  s: f64,
-  r: f64,
-  w: f64,
-}
-
-impl Message {
-  fn toward_parent(self, nu: f64) -> Self {
-    Self {
-      r: self.r + nu,
-      w: self.w + nu,
-      ..self
-    }
-  }
-
-  fn toward_child(self, nu: f64) -> Self {
-    Self {
-      r: self.r - nu,
-      w: self.w + nu,
-      ..self
-    }
-  }
-
-  fn natural(self) -> Natural {
-    Natural {
-      p: 1.0 / self.w,
-      ps: self.s / self.w,
-      pr: self.r / self.w,
-    }
-  }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-struct Natural {
-  p: f64,
-  ps: f64,
-  pr: f64,
-}
-
-impl Natural {
-  fn message(self) -> Option<Message> {
-    (self.p > MIN_PRECISION).then(|| Message {
-      s: self.ps / self.p,
-      r: self.pr / self.p,
-      w: 1.0 / self.p,
-    })
-  }
-
-  fn plus(self, other: Self) -> Self {
-    Self {
-      p: self.p + other.p,
-      ps: self.ps + other.ps,
-      pr: self.pr + other.pr,
-    }
-  }
-
-  fn minus(self, other: Self) -> Self {
-    Self {
-      p: self.p - other.p,
-      ps: self.ps - other.ps,
-      pr: self.pr - other.pr,
-    }
-  }
-}
-
-fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
-  let total = messages.iter().fold(Natural::default(), |acc, m| acc.plus(m.natural()));
-  let combined = total.message()?;
-  let a = messages.iter().map(|m| m.s * m.s / m.w).sum::<f64>() - combined.s * combined.s / combined.w;
-  let b = messages.iter().map(|m| m.s * m.r / m.w).sum::<f64>() - combined.s * combined.r / combined.w;
-  Some((combined, [a, b]))
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-struct Below {
-  down: Option<Message>,
-  ab: [f64; 2],
-}
-
 pub(crate) struct GaussianTree {
   pass: GraphPass,
   internal_nodes: Vec<GraphNodeKey>,
@@ -243,6 +150,19 @@ impl GaussianTree {
   }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) struct GaussianClock {
+  pub rate_std: Option<f64>,
+  pub root_time_std: Option<f64>,
+  pub node_times: BTreeMap<GraphNodeKey, NodeTimeGaussian>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct NodeTimeGaussian {
+  pub mean: f64,
+  pub std: f64,
+}
+
 fn backward(
   pass: &GraphPass,
   tips: &BTreeMap<GraphNodeKey, Option<Message>>,
@@ -272,6 +192,14 @@ fn backward(
       Ok(GraphPassNodeOutput { node, parent_message })
     },
   )
+}
+
+fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
+  let total = messages.iter().fold(Natural::default(), |acc, m| acc.plus(m.natural()));
+  let combined = total.message()?;
+  let a = messages.iter().map(|m| m.s * m.s / m.w).sum::<f64>() - combined.s * combined.s / combined.w;
+  let b = messages.iter().map(|m| m.s * m.r / m.w).sum::<f64>() - combined.s * combined.r / combined.w;
+  Some((combined, [a, b]))
 }
 
 fn forward(
@@ -317,4 +245,76 @@ fn rate_and_root_std(a: f64, kappa: f64, root: Message, eta: f64) -> Option<(f64
   let i_root = eta.powi(2) / root.w;
   let det = i_rate * i_root - i_cross.powi(2);
   (det > 0.0 && i_rate > 0.0).then(|| ((i_root / det).sqrt(), (i_rate / det).sqrt()))
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct Below {
+  down: Option<Message>,
+  ab: [f64; 2],
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Message {
+  s: f64,
+  r: f64,
+  w: f64,
+}
+
+impl Message {
+  fn toward_parent(self, nu: f64) -> Self {
+    Self {
+      r: self.r + nu,
+      w: self.w + nu,
+      ..self
+    }
+  }
+
+  fn toward_child(self, nu: f64) -> Self {
+    Self {
+      r: self.r - nu,
+      w: self.w + nu,
+      ..self
+    }
+  }
+
+  fn natural(self) -> Natural {
+    Natural {
+      p: 1.0 / self.w,
+      ps: self.s / self.w,
+      pr: self.r / self.w,
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct Natural {
+  p: f64,
+  ps: f64,
+  pr: f64,
+}
+
+impl Natural {
+  fn message(self) -> Option<Message> {
+    (self.p > MIN_PRECISION).then(|| Message {
+      s: self.ps / self.p,
+      r: self.pr / self.p,
+      w: 1.0 / self.p,
+    })
+  }
+
+  fn plus(self, other: Self) -> Self {
+    Self {
+      p: self.p + other.p,
+      ps: self.ps + other.ps,
+      pr: self.pr + other.pr,
+    }
+  }
+
+  fn minus(self, other: Self) -> Self {
+    Self {
+      p: self.p - other.p,
+      ps: self.ps - other.ps,
+      pr: self.pr - other.pr,
+    }
+  }
 }

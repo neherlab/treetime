@@ -15,10 +15,51 @@ const PROBE_FACTOR: f64 = 1.25;
 const MAX_TARGET_FACTOR: f64 = 2.0;
 pub(crate) const STEP_FRACTION: f64 = 2.0 / 3.0;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum RateWindow {
-  FollowSlope,
-  InteriorMaximum,
+pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Result<MarginalRateStep, Report> {
+  let reference = inputs.reference_rate;
+  if !(reference.is_finite() && reference > 0.0) {
+    return Err(make_report!(
+      "Marginal clock rate step needs a positive reference rate, got {reference}"
+    ));
+  }
+  let probe = |factor: f64| -> Result<f64, Report> {
+    let rate = reference * factor;
+    let log_lh = marginal_log_lh_at_rate(inputs, rate)
+      .wrap_err_with(|| format!("When computing the marginal likelihood of the node times at clock rate {rate}"))?;
+    Ok(log_lh.unwrap_or(f64::NEG_INFINITY))
+  };
+  let log_lh = probe(1.0)?;
+  if !log_lh.is_finite() {
+    return Err(make_report!(
+      "Marginal clock rate step found no finite marginal likelihood at the reference rate {reference}"
+    ));
+  }
+  let target = log_rate_target(probe(1.0 / PROBE_FACTOR)?, log_lh, probe(PROBE_FACTOR)?, inputs.window);
+  Ok(MarginalRateStep {
+    clock_rate: reference * (STEP_FRACTION * target).exp(),
+    target_rate: reference * target.exp(),
+    log_lh,
+  })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct MarginalRateStep {
+  pub clock_rate: f64,
+  pub target_rate: f64,
+  pub log_lh: f64,
+}
+
+pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rate: f64) -> Result<Option<f64>, Report> {
+  let branches = branches_at_rate(inputs.branches, inputs.reference_rate, clock_rate)?;
+  let backward = propagate_distributions_backward(
+    inputs.graph,
+    inputs.date_constraints,
+    inputs.coalescent,
+    inputs.bad_branches,
+    &branches,
+    inputs.max_points,
+  )?;
+  backward.log_marginal_likelihood(inputs.graph.root_key()?)
 }
 
 pub(crate) struct MarginalRateInputs<'a> {
@@ -30,13 +71,6 @@ pub(crate) struct MarginalRateInputs<'a> {
   pub reference_rate: f64,
   pub window: RateWindow,
   pub max_points: MaxGridPoints,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct MarginalRateStep {
-  pub clock_rate: f64,
-  pub target_rate: f64,
-  pub log_lh: f64,
 }
 
 pub(crate) fn branches_at_rate(
@@ -65,46 +99,6 @@ pub(crate) fn branches_at_rate(
     .collect()
 }
 
-pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rate: f64) -> Result<Option<f64>, Report> {
-  let branches = branches_at_rate(inputs.branches, inputs.reference_rate, clock_rate)?;
-  let backward = propagate_distributions_backward(
-    inputs.graph,
-    inputs.date_constraints,
-    inputs.coalescent,
-    inputs.bad_branches,
-    &branches,
-    inputs.max_points,
-  )?;
-  backward.log_marginal_likelihood(inputs.graph.root_key()?)
-}
-
-pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Result<MarginalRateStep, Report> {
-  let reference = inputs.reference_rate;
-  if !(reference.is_finite() && reference > 0.0) {
-    return Err(make_report!(
-      "Marginal clock rate step needs a positive reference rate, got {reference}"
-    ));
-  }
-  let probe = |factor: f64| -> Result<f64, Report> {
-    let rate = reference * factor;
-    let log_lh = marginal_log_lh_at_rate(inputs, rate)
-      .wrap_err_with(|| format!("When computing the marginal likelihood of the node times at clock rate {rate}"))?;
-    Ok(log_lh.unwrap_or(f64::NEG_INFINITY))
-  };
-  let log_lh = probe(1.0)?;
-  if !log_lh.is_finite() {
-    return Err(make_report!(
-      "Marginal clock rate step found no finite marginal likelihood at the reference rate {reference}"
-    ));
-  }
-  let target = log_rate_target(probe(1.0 / PROBE_FACTOR)?, log_lh, probe(PROBE_FACTOR)?, inputs.window);
-  Ok(MarginalRateStep {
-    clock_rate: reference * (STEP_FRACTION * target).exp(),
-    target_rate: reference * target.exp(),
-    log_lh,
-  })
-}
-
 fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow) -> f64 {
   let h = PROBE_FACTOR.ln();
   let bound = MAX_TARGET_FACTOR.ln();
@@ -118,4 +112,10 @@ fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow) -> f64 {
     (RateWindow::FollowSlope, None) if above > below => bound,
     (RateWindow::FollowSlope, None) => -bound,
   }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum RateWindow {
+  FollowSlope,
+  InteriorMaximum,
 }

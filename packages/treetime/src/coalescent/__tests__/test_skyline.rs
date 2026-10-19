@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::coalescent::__tests__::helpers::tests::{constant_skyline, expectation, graph_with_dates};
+  use crate::coalescent::mean_field::TimeSpan;
   use crate::coalescent::skyline::{SkylineParams, optimize_skyline};
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
@@ -180,7 +181,13 @@ mod tests {
 
     let rate = expectation.merger_rate_schedule(&Distribution::constant(tc))?;
 
-    assert_eq!((2000.0, 2010.0), expectation.span());
+    assert_eq!(
+      TimeSpan {
+        t_min: 2000.0,
+        t_max: 2010.0
+      },
+      expectation.span()
+    );
     pretty_assert_ulps_eq!(3.0 / (2.0 * tc), rate.eval(2005.0), max_ulps = 4);
     pretty_assert_ulps_eq!(0.5 / (2.0 * tc), rate.eval(1990.0), max_ulps = 4);
     Ok(())

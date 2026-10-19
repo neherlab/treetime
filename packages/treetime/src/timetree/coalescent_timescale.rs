@@ -1,4 +1,4 @@
-use crate::coalescent::mean_field::LineageExpectation;
+use crate::coalescent::mean_field::{LineageExpectation, SegmentStatistics, TimeSpan};
 use crate::coalescent::skyline::{SkylineParams, expected_log_likelihood, optimize_skyline};
 use crate::progress::LogSink;
 use crate::timetree::coalescent::{
@@ -59,7 +59,7 @@ pub(crate) fn coalescent_timescale(
 }
 
 fn fixed_timescale(tc: f64, expectation: &LineageExpectation) -> CoalescentTimescale {
-  let (t_min, t_max) = expectation.span();
+  let TimeSpan { t_min, t_max } = expectation.span();
   CoalescentTimescale {
     report: Some(CoalescentTcReport {
       segment_boundaries: array![t_min, t_max],
@@ -129,12 +129,15 @@ impl CoalescentTimescale {
   pub(crate) fn expected_log_likelihood(&self, expectation: &LineageExpectation) -> LogLh {
     let boundaries = self.report.as_ref().map_or_else(
       || {
-        let (t_min, t_max) = expectation.span();
+        let TimeSpan { t_min, t_max } = expectation.span();
         vec![t_min, t_max]
       },
       |report| report.segment_boundaries.to_vec(),
     );
-    let (i_seg, m_seg) = expectation.segment_statistics(&boundaries);
+    let SegmentStatistics {
+      pair_integral: i_seg,
+      mergers: m_seg,
+    } = expectation.segment_statistics(&boundaries);
     expected_log_likelihood(&i_seg, &m_seg, self.schedule.values().as_slice().unwrap_or_default())
   }
 

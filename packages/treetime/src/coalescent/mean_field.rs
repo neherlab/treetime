@@ -20,95 +20,130 @@ const MERGER_RATE_STRIDE: usize = 10;
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 
 #[derive(Clone, Debug)]
-struct NodeSurvival {
-  t: Vec<f64>,
-  survival: Vec<f64>,
-  weight: f64,
+pub(crate) struct CoalescentPrior {
+  expectation: Arc<LineageExpectation>,
+  tc: Distribution,
+  inverse_tc_integral: Vec<f64>,
+  expected_integral: Vec<f64>,
+  own_integral: BTreeMap<GraphNodeKey, Vec<f64>>,
 }
 
-impl NodeSurvival {
-  fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
-    let n = t.len();
-    if n <= 2 {
-      return Self {
-        t,
-        survival,
-        weight: 0.0,
-      };
+impl CoalescentPrior {
+  pub(crate) fn new(expectation: &Arc<LineageExpectation>, tc: &Distribution) -> Result<Self, Report> {
+    let grid = &expectation.grid;
+    let inverse_tc = |t: f64| -> Result<f64, Report> {
+      let value = tc
+        .eval(t)
+        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {t:.6e}"))?;
+      if !value.is_finite() || value <= 0.0 {
+        return make_error!("Coalescent Tc must be finite and positive at calendar time {t:.6e}, got {value:.6e}");
+      }
+      Ok(1.0 / value)
+    };
+    let mut inverse_tc_integral = vec![0.0; grid.len()];
+    let mut expected_integral = vec![0.0; grid.len()];
+    for i in 1..grid.len() {
+      let dt = grid[i] - grid[i - 1];
+      let rate = inverse_tc(f64::midpoint(grid[i - 1], grid[i]))?;
+      inverse_tc_integral[i] = inverse_tc_integral[i - 1] + dt * rate;
+      expected_integral[i] =
+        expected_integral[i - 1] + dt * rate * f64::midpoint(expectation.expected[i - 1], expectation.expected[i]);
     }
-    let first = survival
+    let own_integral = expectation
+      .nodes
       .iter()
-      .position(|&s| s < 1.0 - SURVIVAL_TRIM)
-      .unwrap_or(0)
-      .saturating_sub(1);
-    let last = (survival.iter().rposition(|&s| s > SURVIVAL_TRIM).unwrap_or(n - 1) + 1).min(n - 1);
-    let full = Self {
-      t: t[first..=last].to_vec(),
-      survival: survival[first..=last].to_vec(),
-      weight: 0.0,
-    };
-    if full.t.len() <= SURVIVAL_POINTS {
-      return full;
-    }
-    let (start, end) = (full.t[0], full.t[full.t.len() - 1]);
-    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
-    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
-    let survival = t.iter().map(|&x| full.at(x)).collect();
-    Self {
-      t,
-      survival,
-      weight: 0.0,
-    }
+      .map(|(key, survival)| {
+        let mut integral = vec![0.0; survival.t.len()];
+        for i in 1..survival.t.len() {
+          let rate = inverse_tc(f64::midpoint(survival.t[i - 1], survival.t[i]))?;
+          integral[i] = integral[i - 1]
+            + (survival.t[i] - survival.t[i - 1])
+              * rate
+              * f64::midpoint(survival.survival[i - 1], survival.survival[i]);
+        }
+        Ok((*key, integral))
+      })
+      .collect::<Result<_, Report>>()?;
+    Ok(Self {
+      expectation: Arc::clone(expectation),
+      tc: tc.clone(),
+      inverse_tc_integral,
+      expected_integral,
+      own_integral,
+    })
   }
 
-  fn point(time: f64) -> Self {
-    Self {
-      t: vec![time],
-      survival: vec![0.0],
-      weight: 0.0,
-    }
+  pub(crate) fn with_topology(
+    &self,
+    graph: &Graph,
+    merger_times: &BTreeMap<GraphNodeKey, f64>,
+  ) -> Result<Self, Report> {
+    Self::new(&self.expectation.with_topology(graph, merger_times)?, &self.tc)
   }
 
-  fn truncated_normal(mean: f64, std: f64, upper: f64) -> Self {
-    let std = std.max(f64::EPSILON * mean.abs().max(1.0));
-    let z_upper = (upper - mean) / std;
-    let normal = Normal::standard();
-    let cdf_upper = normal.cdf(z_upper);
-    let tail_rate = (z_upper <= -TRUNCATED_NORMAL_SPAN).then(|| (mean - upper) / std.powi(2));
-    let (start, end) = match tail_rate {
-      Some(rate) => (upper - TRUNCATED_NORMAL_SPAN / rate, upper),
-      None => (
-        mean.min(upper) - TRUNCATED_NORMAL_SPAN * std,
-        upper.min(mean + TRUNCATED_NORMAL_SPAN * std),
-      ),
+  pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> Result<f64, Report> {
+    let weight = 1.0 - n_children.to_f64_exact();
+    let n_mergers = n_children.saturating_sub(1).to_f64_exact();
+    let own = self.own_integral_at(key, x);
+    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |survival| survival.weight);
+    let merger = if n_mergers > 0.0 {
+      let tc = self
+        .tc
+        .eval(x)
+        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {x:.6e}"))?;
+      n_mergers * tc.ln()
+    } else {
+      0.0
     };
-    let survival = |t: f64| match tail_rate {
-      Some(rate) => 1.0 - (-rate * (upper - t)).exp(),
-      None => ((cdf_upper - normal.cdf((t - mean) / std)) / cdf_upper).clamp(0.0, 1.0),
-    };
-    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
-    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
-    let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
-    survival[0] = 1.0;
-    survival[SURVIVAL_POINTS - 1] = 0.0;
-    Self {
-      t,
-      survival,
-      weight: 0.0,
-    }
+    Ok(
+      0.5 * weight * (weight - 1.0) * self.inverse_tc_integral_at(x) + weight * self.expected_integral_at(x)
+        - weight * own_weight * own
+        + merger,
+    )
   }
 
-  fn at(&self, x: f64) -> f64 {
-    let n = self.t.len();
-    if x < self.t[0] {
-      return 1.0;
+  fn rate_outside(&self, t: f64) -> f64 {
+    self.tc.eval(t).map_or(0.0, |tc| if tc > 0.0 { 1.0 / tc } else { 0.0 })
+  }
+
+  fn inverse_tc_integral_at(&self, x: f64) -> f64 {
+    let grid = &self.expectation.grid;
+    let n = grid.len();
+    if x <= grid[0] {
+      return (x - grid[0]) * self.rate_outside(grid[0]);
     }
-    if x >= self.t[n - 1] {
+    if x >= grid[n - 1] {
+      return self.inverse_tc_integral[n - 1] + (x - grid[n - 1]) * self.rate_outside(grid[n - 1]);
+    }
+    interpolate(grid, &self.inverse_tc_integral, x)
+  }
+
+  fn expected_integral_at(&self, x: f64) -> f64 {
+    let grid = &self.expectation.grid;
+    let n = grid.len();
+    if x <= grid[0] {
+      return (x - grid[0]) * self.rate_outside(grid[0]) * self.expectation.expected_before;
+    }
+    if x >= grid[n - 1] {
+      return self.expected_integral[n - 1]
+        + (x - grid[n - 1]) * self.rate_outside(grid[n - 1]) * self.expectation.expected[n - 1];
+    }
+    interpolate(grid, &self.expected_integral, x)
+  }
+
+  fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
+    let (Some(survival), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
       return 0.0;
+    };
+    let t = &survival.t;
+    let n = t.len();
+    if x < t[0] {
+      return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(t[0]);
     }
-    let i = self.t.partition_point(|&ti| ti <= x) - 1;
-    let (t0, t1) = (self.t[i], self.t[i + 1]);
-    self.survival[i] + (x - t0) / (t1 - t0) * (self.survival[i + 1] - self.survival[i])
+    if x >= t[n - 1] {
+      return integral[n - 1];
+    }
+    interpolate(t, integral, x)
   }
 }
 
@@ -269,13 +304,16 @@ impl LineageExpectation {
     }))
   }
 
-  pub(crate) fn span(&self) -> (f64, f64) {
-    let start = self
+  pub(crate) fn span(&self) -> TimeSpan {
+    let t_min = self
       .expected
       .iter()
       .position(|&k| k - self.expected_before >= 0.5)
       .map_or(self.grid[0], |i| self.grid[i]);
-    (start, self.grid[self.grid.len() - 1])
+    TimeSpan {
+      t_min,
+      t_max: self.grid[self.grid.len() - 1],
+    }
   }
 
   pub(crate) fn merger_rate_schedule(&self, tc: &Distribution) -> Result<PiecewiseConstantFn, Report> {
@@ -306,7 +344,7 @@ impl LineageExpectation {
     ))
   }
 
-  pub(crate) fn segment_statistics(&self, boundaries: &[f64]) -> (Vec<f64>, Vec<f64>) {
+  pub(crate) fn segment_statistics(&self, boundaries: &[f64]) -> SegmentStatistics {
     let n_seg = boundaries.len() - 1;
     let segment_of = |t: f64| boundaries.partition_point(|&b| b <= t).saturating_sub(1).min(n_seg - 1);
     let pair_rate = |i: usize| {
@@ -331,135 +369,112 @@ impl LineageExpectation {
         *merger += -survival.weight * (before - after);
       }
     }
-    (pair_integral, mergers)
+    SegmentStatistics { pair_integral, mergers }
   }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct TimeSpan {
+  pub t_min: f64,
+  pub t_max: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct SegmentStatistics {
+  pub pair_integral: Vec<f64>,
+  pub mergers: Vec<f64>,
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CoalescentPrior {
-  expectation: Arc<LineageExpectation>,
-  tc: Distribution,
-  inverse_tc_integral: Vec<f64>,
-  expected_integral: Vec<f64>,
-  own_integral: BTreeMap<GraphNodeKey, Vec<f64>>,
+struct NodeSurvival {
+  t: Vec<f64>,
+  survival: Vec<f64>,
+  weight: f64,
 }
 
-impl CoalescentPrior {
-  pub(crate) fn new(expectation: &Arc<LineageExpectation>, tc: &Distribution) -> Result<Self, Report> {
-    let grid = &expectation.grid;
-    let inverse_tc = |t: f64| -> Result<f64, Report> {
-      let value = tc
-        .eval(t)
-        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {t:.6e}"))?;
-      if !value.is_finite() || value <= 0.0 {
-        return make_error!("Coalescent Tc must be finite and positive at calendar time {t:.6e}, got {value:.6e}");
-      }
-      Ok(1.0 / value)
-    };
-    let mut inverse_tc_integral = vec![0.0; grid.len()];
-    let mut expected_integral = vec![0.0; grid.len()];
-    for i in 1..grid.len() {
-      let dt = grid[i] - grid[i - 1];
-      let rate = inverse_tc(f64::midpoint(grid[i - 1], grid[i]))?;
-      inverse_tc_integral[i] = inverse_tc_integral[i - 1] + dt * rate;
-      expected_integral[i] =
-        expected_integral[i - 1] + dt * rate * f64::midpoint(expectation.expected[i - 1], expectation.expected[i]);
-    }
-    let own_integral = expectation
-      .nodes
-      .iter()
-      .map(|(key, survival)| {
-        let mut integral = vec![0.0; survival.t.len()];
-        for i in 1..survival.t.len() {
-          let rate = inverse_tc(f64::midpoint(survival.t[i - 1], survival.t[i]))?;
-          integral[i] = integral[i - 1]
-            + (survival.t[i] - survival.t[i - 1])
-              * rate
-              * f64::midpoint(survival.survival[i - 1], survival.survival[i]);
-        }
-        Ok((*key, integral))
-      })
-      .collect::<Result<_, Report>>()?;
-    Ok(Self {
-      expectation: Arc::clone(expectation),
-      tc: tc.clone(),
-      inverse_tc_integral,
-      expected_integral,
-      own_integral,
-    })
-  }
-
-  pub(crate) fn with_topology(
-    &self,
-    graph: &Graph,
-    merger_times: &BTreeMap<GraphNodeKey, f64>,
-  ) -> Result<Self, Report> {
-    Self::new(&self.expectation.with_topology(graph, merger_times)?, &self.tc)
-  }
-
-  pub(crate) fn node_contribution(&self, key: GraphNodeKey, n_children: usize, x: f64) -> Result<f64, Report> {
-    let weight = 1.0 - n_children.to_f64_exact();
-    let n_mergers = n_children.saturating_sub(1).to_f64_exact();
-    let own = self.own_integral_at(key, x);
-    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |survival| survival.weight);
-    let merger = if n_mergers > 0.0 {
-      let tc = self
-        .tc
-        .eval(x)
-        .wrap_err_with(|| format!("When evaluating coalescent Tc at calendar time {x:.6e}"))?;
-      n_mergers * tc.ln()
-    } else {
-      0.0
-    };
-    Ok(
-      0.5 * weight * (weight - 1.0) * self.inverse_tc_integral_at(x) + weight * self.expected_integral_at(x)
-        - weight * own_weight * own
-        + merger,
-    )
-  }
-
-  fn rate_outside(&self, t: f64) -> f64 {
-    self.tc.eval(t).map_or(0.0, |tc| if tc > 0.0 { 1.0 / tc } else { 0.0 })
-  }
-
-  fn inverse_tc_integral_at(&self, x: f64) -> f64 {
-    let grid = &self.expectation.grid;
-    let n = grid.len();
-    if x <= grid[0] {
-      return (x - grid[0]) * self.rate_outside(grid[0]);
-    }
-    if x >= grid[n - 1] {
-      return self.inverse_tc_integral[n - 1] + (x - grid[n - 1]) * self.rate_outside(grid[n - 1]);
-    }
-    interpolate(grid, &self.inverse_tc_integral, x)
-  }
-
-  fn expected_integral_at(&self, x: f64) -> f64 {
-    let grid = &self.expectation.grid;
-    let n = grid.len();
-    if x <= grid[0] {
-      return (x - grid[0]) * self.rate_outside(grid[0]) * self.expectation.expected_before;
-    }
-    if x >= grid[n - 1] {
-      return self.expected_integral[n - 1]
-        + (x - grid[n - 1]) * self.rate_outside(grid[n - 1]) * self.expectation.expected[n - 1];
-    }
-    interpolate(grid, &self.expected_integral, x)
-  }
-
-  fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
-    let (Some(survival), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
-      return 0.0;
-    };
-    let t = &survival.t;
+impl NodeSurvival {
+  fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
     let n = t.len();
-    if x < t[0] {
-      return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(t[0]);
+    if n <= 2 {
+      return Self {
+        t,
+        survival,
+        weight: 0.0,
+      };
     }
-    if x >= t[n - 1] {
-      return integral[n - 1];
+    let first = survival
+      .iter()
+      .position(|&s| s < 1.0 - SURVIVAL_TRIM)
+      .unwrap_or(0)
+      .saturating_sub(1);
+    let last = (survival.iter().rposition(|&s| s > SURVIVAL_TRIM).unwrap_or(n - 1) + 1).min(n - 1);
+    let full = Self {
+      t: t[first..=last].to_vec(),
+      survival: survival[first..=last].to_vec(),
+      weight: 0.0,
+    };
+    if full.t.len() <= SURVIVAL_POINTS {
+      return full;
     }
-    interpolate(t, integral, x)
+    let (start, end) = (full.t[0], full.t[full.t.len() - 1]);
+    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
+    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
+    let survival = t.iter().map(|&x| full.at(x)).collect();
+    Self {
+      t,
+      survival,
+      weight: 0.0,
+    }
+  }
+
+  fn point(time: f64) -> Self {
+    Self {
+      t: vec![time],
+      survival: vec![0.0],
+      weight: 0.0,
+    }
+  }
+
+  fn truncated_normal(mean: f64, std: f64, upper: f64) -> Self {
+    let std = std.max(f64::EPSILON * mean.abs().max(1.0));
+    let z_upper = (upper - mean) / std;
+    let normal = Normal::standard();
+    let cdf_upper = normal.cdf(z_upper);
+    let tail_rate = (z_upper <= -TRUNCATED_NORMAL_SPAN).then(|| (mean - upper) / std.powi(2));
+    let (start, end) = match tail_rate {
+      Some(rate) => (upper - TRUNCATED_NORMAL_SPAN / rate, upper),
+      None => (
+        mean.min(upper) - TRUNCATED_NORMAL_SPAN * std,
+        upper.min(mean + TRUNCATED_NORMAL_SPAN * std),
+      ),
+    };
+    let survival = |t: f64| match tail_rate {
+      Some(rate) => 1.0 - (-rate * (upper - t)).exp(),
+      None => ((cdf_upper - normal.cdf((t - mean) / std)) / cdf_upper).clamp(0.0, 1.0),
+    };
+    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
+    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
+    let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
+    survival[0] = 1.0;
+    survival[SURVIVAL_POINTS - 1] = 0.0;
+    Self {
+      t,
+      survival,
+      weight: 0.0,
+    }
+  }
+
+  fn at(&self, x: f64) -> f64 {
+    let n = self.t.len();
+    if x < self.t[0] {
+      return 1.0;
+    }
+    if x >= self.t[n - 1] {
+      return 0.0;
+    }
+    let i = self.t.partition_point(|&ti| ti <= x) - 1;
+    let (t0, t1) = (self.t[i], self.t[i + 1]);
+    self.survival[i] + (x - t0) / (t1 - t0) * (self.survival[i + 1] - self.survival[i])
   }
 }
 

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation, SegmentStatistics};
   use crate::test_utils::{find_node_key_by_name, point_coalescent_prior};
   use crate::timetree::inference::result::NodePosterior;
   use eyre::Report;
@@ -75,7 +75,7 @@ mod tests {
     ];
     let expectation = helpers::expectation(&graph, &names, &times, &[])?;
 
-    let (pair_integral, mergers) = expectation.segment_statistics(&[2005.0, 2015.0]);
+    let SegmentStatistics { pair_integral, mergers } = expectation.segment_statistics(&[2005.0, 2015.0]);
 
     pretty_assert_abs_diff_eq!(13.0, pair_integral[0], epsilon = 2e-2);
     pretty_assert_abs_diff_eq!(2.0, mergers[0], epsilon = 1e-12);
@@ -90,7 +90,7 @@ mod tests {
     let flat_root = Distribution::function(Array1::linspace(2000.0, 2004.0, 401), Array1::zeros(401))?;
     let expectation = helpers::expectation(&graph, &names, &[("A", 2010.0), ("B", 2010.0)], &[("root", flat_root)])?;
 
-    let (pair_integral, mergers) = expectation.segment_statistics(&[2000.0, 2010.0]);
+    let SegmentStatistics { pair_integral, mergers } = expectation.segment_statistics(&[2000.0, 2010.0]);
 
     pretty_assert_abs_diff_eq!(8.0, pair_integral[0], epsilon = 5e-3);
     pretty_assert_abs_diff_eq!(1.0, mergers[0], epsilon = 1e-9);
@@ -110,7 +110,7 @@ mod tests {
   ) -> Result<(), Report> {
     let (_, _, expectation) = helpers::gaussian_cherry(mean, std, &[])?;
 
-    let (_, mergers) = expectation.segment_statistics(&[expected - 100.0, expected, expected + 100.0]);
+    let SegmentStatistics { mergers, .. } = expectation.segment_statistics(&[expected - 100.0, expected, expected + 100.0]);
 
     pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 2e-3);
     Ok(())
@@ -120,7 +120,7 @@ mod tests {
   fn test_mean_field_gaussian_seed_splits_the_merger_at_the_mean() -> Result<(), Report> {
     let (_, _, expectation) = helpers::gaussian_cherry(2000.0, 2.0, &[])?;
 
-    let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
+    let SegmentStatistics { mergers, .. } = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
 
     pretty_assert_abs_diff_eq!(0.5, mergers[0], epsilon = 1e-6);
     pretty_assert_abs_diff_eq!(0.5, mergers[1], epsilon = 1e-6);
@@ -131,7 +131,7 @@ mod tests {
   fn test_mean_field_gaussian_seed_truncates_at_the_earliest_included_tip() -> Result<(), Report> {
     let (_, _, expectation) = helpers::gaussian_cherry_dated(2005.0, 1.0, [2010.0, 2000.0], &["B"])?;
 
-    let (_, mergers) = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
+    let SegmentStatistics { mergers, .. } = expectation.segment_statistics(&[1990.0, 2000.0, 2020.0]);
 
     pretty_assert_abs_diff_eq!(1.0, mergers[1], epsilon = 1e-6);
     Ok(())

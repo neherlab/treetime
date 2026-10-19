@@ -125,12 +125,6 @@ pub fn run(
   assemble_output(final_inputs, seq_sink, initial.outliers, dates, results, log)
 }
 
-struct FinalInputs<'a> {
-  params: &'a TimetreeParams,
-  context: &'a TimetreeContext,
-  sources: Vec<PartitionSource>,
-}
-
 fn assemble_output(
   inputs: FinalInputs<'_>,
   seq_sink: Option<&mut dyn SeqSink>,
@@ -575,6 +569,12 @@ fn final_partition_results(
       })
     })
     .collect()
+}
+
+struct FinalInputs<'a> {
+  params: &'a TimetreeParams,
+  context: &'a TimetreeContext,
+  sources: Vec<PartitionSource>,
 }
 
 fn stream_final_sequences(

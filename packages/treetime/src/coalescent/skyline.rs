@@ -1,4 +1,4 @@
-use crate::coalescent::mean_field::LineageExpectation;
+use crate::coalescent::mean_field::{LineageExpectation, SegmentStatistics, TimeSpan};
 use crate::make_error;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
@@ -37,9 +37,12 @@ pub(crate) fn optimize_skyline(
     params.stiffness
   );
 
-  let (t_min, t_max) = expectation.span();
+  let TimeSpan { t_min, t_max } = expectation.span();
   let boundaries = equal_width_boundaries(t_min, t_max, params.n_points);
-  let (i_seg, m_seg) = expectation.segment_statistics(&boundaries);
+  let SegmentStatistics {
+    pair_integral: i_seg,
+    mergers: m_seg,
+  } = expectation.segment_statistics(&boundaries);
 
   let i_tot: f64 = i_seg.iter().sum();
   let m_tot: f64 = m_seg.iter().sum();
