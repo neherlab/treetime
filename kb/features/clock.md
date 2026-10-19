@@ -10,6 +10,7 @@
 - [x] Forward regression pass for reroot search
 - [x] Ordinary least squares with unit tip weights (v0 splits a tip's unit variance along a terminal branch; see [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [ ] Covariation mode (`--covariation`, `--tip-slack`, variance parameters): removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
+- [ ] Rate and root-date standard deviations in `clock` output (v0: `--covariation`): see [kb/issues/M-clock-command-reports-no-rate-uncertainty.md](../issues/M-clock-command-reports-no-rate-uncertainty.md)
 
 ## Rerooting
 
