@@ -9,8 +9,8 @@ mod tests {
   use crate::timetree::inference::forward_pass::propagate_distributions_forward;
   use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
   use eyre::Report;
-  use ndarray::Array1;
   use maplit::btreemap;
+  use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::collections::BTreeSet;

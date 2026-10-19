@@ -7,12 +7,12 @@ use itertools::Itertools;
 use ndarray::Array1;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
 use treetime_distribution::NegLog;
 use treetime_distribution::convolve_across_edge;
 use treetime_distribution::distribution_multiplication;
 use treetime_distribution::distribution_multiply_by_fn;
 use treetime_distribution::distribution_product;
+use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -55,11 +55,8 @@ fn propagate_distributions_backward_node(
   let distribution = combine_child_messages(&messages, max_points)?;
   let distribution = apply_coalescent_prior(coalescent_model, context.key, context.children.len(), distribution)?;
   let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
-  let distribution = apply_leaf_coalescent_factor(
-    coalescent_model.filter(|_| context.is_leaf),
-    context.key,
-    distribution,
-  )?;
+  let distribution =
+    apply_leaf_coalescent_factor(coalescent_model.filter(|_| context.is_leaf), context.key, distribution)?;
 
   let subtree = if matches!(distribution, Distribution::Empty) {
     None

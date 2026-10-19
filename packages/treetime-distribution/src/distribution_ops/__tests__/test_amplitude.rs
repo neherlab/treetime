@@ -93,7 +93,9 @@ mod tests {
     pub(super) fn gaussian(mean: f64, sd: f64) -> Result<DistributionFunction<f64, NegLog>, Report> {
       let n = f64_to_usize_saturating((20.0 * sd / GAUSSIAN_DX).round()) + 1;
       let start = mean - 10.0 * sd;
-      let y = Array1::from_shape_fn(n, |i| (start + GAUSSIAN_DX * i.to_f64_exact() - mean).powi(2) / (2.0 * sd * sd));
+      let y = Array1::from_shape_fn(n, |i| {
+        (start + GAUSSIAN_DX * i.to_f64_exact() - mean).powi(2) / (2.0 * sd * sd)
+      });
       DistributionFunction::from_start_dx_values(start, GAUSSIAN_DX, y)?
         .with_left_extrap(BoundaryBehavior::Hard)?
         .with_right_extrap(BoundaryBehavior::Hard)
