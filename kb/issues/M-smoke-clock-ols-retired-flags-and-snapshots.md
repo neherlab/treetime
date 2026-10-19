@@ -1,13 +1,13 @@
-# Smoke matrix still runs the retired clock flags, and its snapshots predate the least-squares clock
+# Smoke baseline snapshots predate the least-squares clock
 
 ## Problem
 
 The clock regression became ordinary least squares with an exact root search, and its covariation and optimizer
 flags were removed ([clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md),
-branch `claude-clock-exact-root`). [dev/smoke.toml](../../dev/smoke.toml) still has rows for the removed flags, which
-now fail on argument parsing, and the baseline snapshots hold outputs of the old regression.
+branch `claude-clock-exact-root`). The baseline snapshots hold outputs of the old regression.
 
-Rows to remove (command, variant, arguments):
+[dev/smoke.toml](../../dev/smoke.toml) no longer has the rows of the removed flags, which failed on argument parsing.
+The removed rows (command, variant, arguments):
 
 | command | variant | arguments |
 | --- | --- | --- |
@@ -24,8 +24,8 @@ Rows to remove (command, variant, arguments):
 | timetree | `reroot-covar` | `--reroot=least-squares --covariation` |
 | timetree | `conf-covariation` | `--confidence --covariation --max-iter=3` |
 
-The expected failure of `clock/flu/h3n2/20/covariation` points to `kb/issues/N-clock-regression-all-negative-rate.md`,
-which is deleted: the exact root search finds a positive rate where the old search found none.
+No example config in `data/` sets a removed setting, and every `timetree` row and example config passes an alignment,
+so none stops on the requirement of an alignment or `--sequence-length`.
 
 ## Expected output changes
 
@@ -45,10 +45,8 @@ Every case below changes against a baseline from before the change, for the stat
 
 ## Fix direction
 
-Remove the rows now, since they fail on argument parsing, and check that no other row relied on the removed flags
-through a config file (`[config]` cases). Rebuild the baseline after phase 1 of the proposal rather than now: that
-phase changes every `timetree` output again, and one re-baseline then records the reasons above together with its
-own.
+Rebuild the baseline after phase 1 of the proposal: that phase changes every `timetree` output again, and one
+re-baseline then records the reasons above together with its own.
 
 ## Validation
 

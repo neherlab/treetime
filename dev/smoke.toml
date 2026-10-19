@@ -387,50 +387,9 @@ datasets = ["flu/h3n2/20"]
 args = "--keep-root"
 
 [[clock]]
-variant = "tip-slack"
-datasets = ["flu/h3n2/20"]
-args = "--tip-slack=0.1"
-
-[[clock]]
-variant = "covariation"
-datasets = ["flu/h3n2/20"]
-args = "--covariation"
-fail = "kb/issues/N-clock-regression-all-negative-rate.md"
-
-[[clock]]
-variant = "covariation"
-datasets = ["ebola/20"]
-args = "--covariation --sequence-length=19006"
-
-[[clock]]
 variant = "allow-negative-rate"
 datasets = ["dengue/100"]
 args = "--allow-negative-rate"
-
-[[clock]]
-variant = "branch-split-brent"
-datasets = ["flu/h3n2/20"]
-args = "--branch-split-method=brent"
-
-[[clock]]
-variant = "branch-split-golden-section"
-datasets = ["flu/h3n2/20"]
-args = "--branch-split-method=golden-section"
-
-[[clock]]
-variant = "branch-split-grid-21"
-datasets = ["flu/h3n2/20"]
-args = "--branch-split-grid-n-points=21"
-
-[[clock]]
-variant = "variance-factor"
-datasets = ["flu/h3n2/20"]
-args = "--variance-factor=1"
-
-[[clock]]
-variant = "variance-offset"
-datasets = ["flu/h3n2/20"]
-args = "--variance-offset=0.1"
 
 [[clock]]
 variant = "date-column"
@@ -851,11 +810,6 @@ datasets = ["sc2/4500"]
 args = "--clock-filter=10"
 
 [[timetree]]
-variant = "covariation"
-datasets = ["flu/h3n2/20", "flu/h3n2/200"]
-args = "--covariation"
-
-[[timetree]]
 variant = "parsimony"
 datasets = ["flu/h3n2/20"]
 args = "--method-anc=parsimony --max-iter=1"
@@ -881,11 +835,6 @@ datasets = ["flu/h3n2/20", "flu/h3n2/200", "ebola/20"]
 args = "--max-iter=4"
 
 [[timetree]]
-variant = "tip-slack"
-datasets = ["flu/h3n2/20"]
-args = "--tip-slack=0.1"
-
-[[timetree]]
 variant = "coal-polytomy"
 datasets = ["flu/h3n2/200"]
 args = "--coalescent=10.0 --resolve-polytomies --max-iter=3"
@@ -904,11 +853,6 @@ args = "--coalescent-opt --time-marginal=always --max-iter=3"
 variant = "skyline-marginal"
 datasets = ["flu/h3n2/20"]
 args = "--coalescent-skyline --time-marginal=always"
-
-[[timetree]]
-variant = "reroot-covar"
-datasets = ["flu/h3n2/200"]
-args = "--reroot=least-squares --covariation"
 
 [[timetree]]
 variant = "conf-marginal-final"
@@ -944,11 +888,6 @@ args = "--relax 1.0 0.0 --max-iter=3"
 variant = "conf-stddev"
 datasets = ["flu/h3n2/20"]
 args = "--confidence --clock-std-dev=0.001 --max-iter=3"
-
-[[timetree]]
-variant = "conf-covariation"
-datasets = ["flu/h3n2/20"]
-args = "--confidence --covariation --max-iter=3"
 
 # Fixed clock on mpox, with the rerooted tree and with the input tree
 [[timetree]]
