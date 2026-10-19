@@ -37,7 +37,7 @@ const _: () = assert!(
 
 pub(crate) const EPS: f64 = 5e-4;
 
-pub(crate) const TRIM_EPS: f64 = 5e-4;
+pub(crate) const TRIM_EPS: f64 = 1e-9;
 
 pub(crate) fn run_timetree(
   inputs: &TimeInferenceInputs<'_>,
