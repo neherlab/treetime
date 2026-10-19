@@ -133,8 +133,9 @@ The proposal is still scientifically plausible, but the expected payoff is conce
 ### v1 marginal passes
 
 - [`packages/treetime/src/partition/marginal/reconstruction.rs`](../../packages/treetime/src/partition/marginal/reconstruction.rs): `SparseReconstruction::marginal_update()` and `DenseReconstruction::marginal_update()`
-- [`packages/treetime/src/partition/marginal_dense.rs`](../../packages/treetime/src/partition/marginal_dense.rs)
-- [`packages/treetime/src/partition/marginal_passes.rs`](../../packages/treetime/src/partition/marginal_passes.rs)
+- [`packages/treetime/src/partition/marginal/dense/partition.rs`](../../packages/treetime/src/partition/marginal/dense/partition.rs): `PartitionMarginalDense`
+- [`packages/treetime/src/partition/marginal/shared/update.rs`](../../packages/treetime/src/partition/marginal/shared/update.rs): `trait MarginalPasses`
+- [`packages/treetime/src/partition/marginal/shared/pass.rs`](../../packages/treetime/src/partition/marginal/shared/pass.rs): `MarginalPasses` for every indexed partition
 
 ### v0 precedent
 
