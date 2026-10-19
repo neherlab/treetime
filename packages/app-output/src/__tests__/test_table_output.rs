@@ -1,14 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::output_plan::OutputSelection;
-  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime::timetree::confidence::extract_confidence_intervals;
-  use treetime::timetree::inference::result::NodePosterior;
-  use treetime_graph::graph::Graph;
+  use treetime::timetree::confidence::NodeConfidenceInterval;
+  use treetime_graph::node::GraphNodeKey;
   use treetime_io::csv::{CsvWriter, TableFormat};
+  use treetime_utils::o;
 
   #[rustfmt::skip]
   #[rstest]
@@ -29,17 +27,13 @@ mod tests {
 
   #[test]
   fn test_table_output_confidence_tsv_omits_internal_key_column() {
-    let mut graph = Graph::new();
-    let key = graph.add_node();
-    graph.build().unwrap();
-    let names = btreemap! { key => Some("named".to_owned()) };
-    let posterior = btreemap! {
-      key => NodePosterior {
-        time: Some(2020.0),
-        ..NodePosterior::default()
-      },
-    };
-    let intervals = extract_confidence_intervals(&graph, &posterior, &BTreeMap::new(), &names).unwrap();
+    let intervals = [NodeConfidenceInterval {
+      key: GraphNodeKey(0),
+      name: o!("named"),
+      date: 2020.0,
+      lower: 2019.5,
+      upper: 2020.5,
+    }];
 
     let mut buf = Vec::new();
     let mut csv = CsvWriter::new(&mut buf, OutputSelection::ConfidenceTsv.table_format().unwrap());

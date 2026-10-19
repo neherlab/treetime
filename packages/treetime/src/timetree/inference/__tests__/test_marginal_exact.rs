@@ -7,12 +7,12 @@ mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::progress::NoopProgress;
-  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_date_constraints};
+  use crate::test_utils::{find_node_key_by_name, full_posterior, parent_edge_key, point_date_constraints};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
-  use crate::timetree::inference::forward_pass::propagate_distributions_forward;
-  use crate::timetree::inference::result::BranchLikelihood;
+  use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+  use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, PosteriorSummaries};
   use crate::timetree::inference::runner::GRID_POINTS;
   use eyre::Report;
   use ndarray::Array2;
@@ -172,15 +172,14 @@ mod tests {
         &branches,
         MaxGridPoints::default(),
       )?;
-      let posterior = propagate_distributions_forward(
-        &graph,
-        &constraints,
-        &names,
-        &branches,
-        &backward,
-        MaxGridPoints::default(),
-        &NoopProgress,
-      )?;
+      let forward_inputs = ForwardPassInputs {
+        constraints: &constraints,
+        names: &names,
+        branches: &branches,
+        max_points: MaxGridPoints::default(),
+      };
+      let posterior =
+        propagate_distributions_forward(&graph, &forward_inputs, backward, full_posterior, &NoopProgress)?;
       let density = |name: &str| -> Result<Vec<f64>, Report> {
         let distribution = posterior[&key(name)]
           .distribution
@@ -303,22 +302,32 @@ mod tests {
         &constraints,
         &bad_leaves(&graph, &constraints, &BTreeSet::new()),
       )?;
-      let passes = |prior: Option<&CoalescentPrior>| {
-        let backward = propagate_distributions_backward(
+      let backward = |prior: Option<&CoalescentPrior>| {
+        propagate_distributions_backward(
           &graph,
           &constraints,
           prior,
           &bad_branches,
           &branches,
           MaxGridPoints::default(),
-        )?;
+        )
+      };
+      let forward_inputs = ForwardPassInputs {
+        constraints: &constraints,
+        names: &names,
+        branches: &branches,
+        max_points: MaxGridPoints::default(),
+      };
+      let summaries = PosteriorSummaries {
+        lineage_survival: true,
+        ..PosteriorSummaries::default()
+      };
+      let passes = |prior: Option<&CoalescentPrior>| {
         propagate_distributions_forward(
           &graph,
-          &constraints,
-          &names,
-          &branches,
-          &backward,
-          MaxGridPoints::default(),
+          &forward_inputs,
+          backward(prior)?,
+          |key, view| NodePosterior::summarize(key, view, summaries, bad_branches[&key]),
           &NoopProgress,
         )
       };
@@ -330,7 +339,13 @@ mod tests {
       )?;
       let first = passes(Some(&seed))?;
       let rebuilt = CoalescentPrior::new(&LineageExpectation::from_posterior(&graph, &first, &bad_branches)?, &tc)?;
-      let posterior = passes(Some(&rebuilt))?;
+      let posterior = propagate_distributions_forward(
+        &graph,
+        &forward_inputs,
+        backward(Some(&rebuilt))?,
+        full_posterior,
+        &NoopProgress,
+      )?;
       let density = |name: &str| -> Result<Vec<f64>, Report> {
         let distribution = posterior[&key(name)]
           .distribution

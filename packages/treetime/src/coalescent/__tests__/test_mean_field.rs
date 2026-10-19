@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation, SegmentStatistics};
-  use crate::test_utils::{find_node_key_by_name, point_coalescent_prior};
-  use crate::timetree::inference::result::NodePosterior;
+  use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation, NodeSurvival, SegmentStatistics};
+  use crate::test_utils::{empty_time_inference, find_node_key_by_name, point_coalescent_prior};
+  use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;
@@ -12,7 +12,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::pretty_assert_abs_diff_eq;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -174,10 +174,9 @@ mod tests {
       ("N", 2005.0),
     ];
     let point = |time: f64| NodePosterior {
-      distribution: None,
       likely_time: Some(time),
       time: Some(time),
-      contradicted: false,
+      ..NodePosterior::default()
     };
     let full: BTreeMap<GraphNodeKey, NodePosterior> = times.iter().map(|(n, t)| (key(n), point(*t))).collect();
     let mut without_n = full.clone();
@@ -202,6 +201,33 @@ mod tests {
         );
       }
     }
+    Ok(())
+  }
+
+  #[test]
+  fn test_mean_field_of_inference_rejects_an_inference_without_survival_functions() -> Result<(), Report> {
+    let graph = nwk_read(b"(A:1,B:1)root;".as_slice())?.graph;
+    let dated = NodePosterior {
+      likely_time: Some(2010.0),
+      time: Some(2010.0),
+      ..NodePosterior::default()
+    };
+    let inference = TimeInference {
+      posterior: graph.get_nodes().map(|node| (node.key(), dated.clone())).collect(),
+      posterior_summaries: PosteriorSummaries {
+        regions: true,
+        lineage_survival: false,
+      },
+      ..empty_time_inference(&graph)
+    };
+
+    let result = LineageExpectation::of_inference(&graph, &inference);
+
+    assert_error!(
+      result,
+      "The time inference holds no survival functions, so it cannot give expected lineage counts. This is an \
+       internal error. Please report it to developers."
+    );
     Ok(())
   }
 
@@ -257,7 +283,9 @@ mod tests {
         })
         .chain(distributions.iter().map(|(name, distribution)| {
           let entry = NodePosterior {
-            distribution: Some(Arc::new(distribution.clone())),
+            survival: NodeSurvival::of_posterior(distribution)
+              .expect("fixture distribution must have a survival function")
+              .map(Arc::new),
             ..NodePosterior::default()
           };
           (key(name), entry)

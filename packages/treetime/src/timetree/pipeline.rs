@@ -34,9 +34,7 @@ use crate::timetree::dates_outside_input::dates_outside_input_dates;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
-use crate::timetree::params::{
-  FinalSequences, TimeMarginalMode, TimetreeContext, TimetreeParams, compute_effective_time_marginal,
-};
+use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams, compute_effective_time_marginal};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times};
@@ -452,19 +450,16 @@ fn gather_results(
     rate_susceptibility_dates,
   } = final_times;
 
-  let confidence_intervals = (matches!(
-    context.time_marginal,
-    TimeMarginalMode::OnlyFinal | TimeMarginalMode::Always
-  ) || rate_std.is_some())
-  .then(|| {
-    extract_confidence_intervals(
-      &state.graph,
-      &state.time_inference.posterior,
-      &rate_susceptibility_dates,
-      &state.names,
-    )
-  })
-  .transpose()?;
+  let confidence_intervals = (context.time_marginal.gives_confidence_intervals() || rate_std.is_some())
+    .then(|| {
+      extract_confidence_intervals(
+        &state.graph,
+        &state.time_inference,
+        &rate_susceptibility_dates,
+        &state.names,
+      )
+    })
+    .transpose()?;
 
   let coalescent_output = build_coalescent_output(
     coalescent.mode,

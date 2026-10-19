@@ -23,7 +23,7 @@ mod tests {
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
 
-  use crate::timetree::inference::result::given_times;
+  use crate::timetree::inference::result::{PosteriorSummaries, given_times};
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
@@ -66,6 +66,7 @@ let (graph, names, partition, clock_model, constraints, branch_lengths) = build_
         clock_rate_fixed: false,
         indel_policy: IndelPolicy::Include,
         max_grid_points: MaxGridPoints::default(),
+        posterior_summaries: PosteriorSummaries::default(),
       },
       Some(&coalescent),
       &NoopProgress,

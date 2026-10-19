@@ -3,11 +3,14 @@ mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::mean_field::CoalescentPrior;
   use crate::progress::NoopProgress;
-  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, point_date_constraints};
+  use crate::test_utils::{
+    FullPosterior, find_node_key_by_name, full_posterior, parent_edge_key, point_coalescent_prior,
+    point_date_constraints,
+  };
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
-  use crate::timetree::inference::forward_pass::propagate_distributions_forward;
-  use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
+  use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+  use crate::timetree::inference::result::{BranchLikelihood, NodeBackward};
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::Array1;
@@ -55,8 +58,8 @@ mod tests {
     let (bad_branches, backward, posterior) = fixture.run(&constraints)?;
 
     assert!(bad_branches[&fixture.key("N")], "N has only undated leaves below it");
-    assert_eq!(None, backward.subtree[&fixture.key("N")]);
-    let expected = NodePosterior {
+    assert_eq!(None, backward[&fixture.key("N")].subtree);
+    let expected = FullPosterior {
       distribution: Some(Arc::new(Distribution::point(2008.0 + BRANCH_MEAN, 0.0))),
       likely_time: Some(2008.0 + BRANCH_MEAN),
       time: Some(2008.0 + BRANCH_MEAN),
@@ -78,10 +81,10 @@ mod tests {
       "a node with its own date is never bad"
     );
     assert!(
-      backward.messages[&fixture.edge("N")].is_some(),
+      backward[&fixture.key("N")].to_parent.is_some(),
       "the date of N must reach its parent as evidence"
     );
-    let expected = NodePosterior {
+    let expected = FullPosterior {
       distribution: Some(Arc::new(Distribution::point(2008.0, 0.0).normalize()?)),
       likely_time: Some(2008.0),
       time: Some(2008.0),
@@ -103,8 +106,9 @@ mod tests {
     let (_, with_backward, _) = fixture.run(&with_date_of_n)?;
     let (_, without_backward, _) = fixture.run(&without_date_of_n)?;
 
-    let peak_of = |backward: &TimeBackward| -> Result<f64, Report> {
-      let subtree = backward.subtree[&fixture.key("P")]
+    let peak_of = |backward: &BTreeMap<GraphNodeKey, NodeBackward>| -> Result<f64, Report> {
+      let subtree = backward[&fixture.key("P")]
+        .subtree
         .as_deref()
         .expect("P must have a subtree distribution");
       Ok(subtree.likely_time()?.expect("P must have a likely time"))
@@ -149,7 +153,7 @@ mod tests {
 
     let posterior = tip.posterior()?;
 
-    let expected = NodePosterior {
+    let expected = FullPosterior {
       distribution: Some(Arc::new(Distribution::point(TIP_DATE, 0.0))),
       likely_time: Some(TIP_DATE),
       time: Some(TIP_DATE),
@@ -212,8 +216,8 @@ mod tests {
       ) -> Result<
         (
           BTreeMap<GraphNodeKey, bool>,
-          TimeBackward,
-          BTreeMap<GraphNodeKey, NodePosterior>,
+          BTreeMap<GraphNodeKey, NodeBackward>,
+          BTreeMap<GraphNodeKey, FullPosterior>,
         ),
         Report,
       > {
@@ -230,13 +234,17 @@ mod tests {
           &self.branches,
           MaxGridPoints::default(),
         )?;
+        let forward_inputs = ForwardPassInputs {
+          constraints,
+          names: &self.names,
+          branches: &self.branches,
+          max_points: MaxGridPoints::default(),
+        };
         let posterior = propagate_distributions_forward(
           &self.graph,
-          constraints,
-          &self.names,
-          &self.branches,
-          &backward,
-          MaxGridPoints::default(),
+          &forward_inputs,
+          backward.clone(),
+          full_posterior,
           &NoopProgress,
         )?;
         Ok((bad_branches, backward, posterior))
@@ -290,7 +298,7 @@ mod tests {
         find_node_key_by_name(&self.graph, &self.names, "A").expect("tip A must exist")
       }
 
-      pub(super) fn posterior(&self) -> Result<NodePosterior, Report> {
+      pub(super) fn posterior(&self) -> Result<FullPosterior, Report> {
         let bad_branches = self.graph.get_nodes().map(|node| (node.key(), false)).collect();
         let backward = propagate_distributions_backward(
           &self.graph,
@@ -300,15 +308,14 @@ mod tests {
           &self.branches,
           MaxGridPoints::default(),
         )?;
-        let mut posterior = propagate_distributions_forward(
-          &self.graph,
-          &self.constraints,
-          &self.names,
-          &self.branches,
-          &backward,
-          MaxGridPoints::default(),
-          &NoopProgress,
-        )?;
+        let forward_inputs = ForwardPassInputs {
+          constraints: &self.constraints,
+          names: &self.names,
+          branches: &self.branches,
+          max_points: MaxGridPoints::default(),
+        };
+        let mut posterior =
+          propagate_distributions_forward(&self.graph, &forward_inputs, backward, full_posterior, &NoopProgress)?;
         Ok(posterior.remove(&self.tip()).expect("A must have a posterior"))
       }
 

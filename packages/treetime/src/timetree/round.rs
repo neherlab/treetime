@@ -11,7 +11,7 @@ use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
-use crate::timetree::inference::result::{TimeInference, likely_times};
+use crate::timetree::inference::result::{PosteriorSummaries, TimeInference, likely_times};
 use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
   run_timetree, timetree_branch_lengths,
@@ -75,7 +75,14 @@ pub(crate) fn infer_final_times(
   state: &RoundState,
   log: &dyn LogSink,
 ) -> Result<TimeInference, Report> {
-  run_timetree(&state.time_inference_inputs(inputs), prior, log).wrap_err("Final timetree inference failed")
+  let time_inputs = TimeInferenceInputs {
+    posterior_summaries: PosteriorSummaries {
+      regions: inputs.context.time_marginal.gives_confidence_intervals(),
+      lineage_survival: false,
+    },
+    ..state.time_inference_inputs(inputs)
+  };
+  run_timetree(&time_inputs, prior, log).wrap_err("Final timetree inference failed")
 }
 
 pub(crate) fn final_marginal_round(
@@ -355,6 +362,10 @@ impl RoundState {
       clock_rate_fixed: inputs.params.clock_rate.is_some(),
       indel_policy: inputs.params.indel_policy,
       max_grid_points: inputs.params.max_grid_points,
+      posterior_summaries: PosteriorSummaries {
+        regions: false,
+        lineage_survival: true,
+      },
     }
   }
 

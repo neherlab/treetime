@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::timetree::confidence::extract_confidence_intervals;
+  use crate::timetree::inference::result::{PosteriorSummaries, TimeInference};
   use approx::assert_relative_eq;
   use helpers::add_named;
   use maplit::btreemap;
@@ -11,6 +12,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
+  use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
 
   #[test]
@@ -223,8 +225,28 @@ mod tests {
     assert_eq!(v0_delta_region, (intervals[0].lower, intervals[0].upper));
   }
 
+  #[test]
+  fn test_extract_confidence_intervals_rejects_an_inference_without_regions() {
+    let mut graph = Graph::new();
+    let mut names = BTreeMap::new();
+    let key = add_named(&mut graph, &mut names, Some("node_a"));
+    graph.build().unwrap();
+    let inference = TimeInference {
+      posterior_summaries: PosteriorSummaries::default(),
+      ..helpers::state(&graph, &[(key, Some(2020.5), None)])
+    };
+
+    assert_error!(
+      extract_confidence_intervals(&graph, &inference, &BTreeMap::new(), &names),
+      "The time inference holds no posterior regions, so it cannot give confidence intervals. This is an internal \
+       error. Please report it to developers."
+    );
+  }
+
   mod helpers {
-    use crate::timetree::inference::result::NodePosterior;
+    use crate::timetree::confidence::CI_FRACTION;
+    use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
+    use crate::timetree::max_posterior_region::max_posterior_region;
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use treetime_distribution::{Distribution, NegLog};
@@ -233,7 +255,7 @@ mod tests {
 
     pub(super) type NodeTimeEntry = (GraphNodeKey, Option<f64>, Option<Arc<Distribution<NegLog>>>);
 
-    pub(super) fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> BTreeMap<GraphNodeKey, NodePosterior> {
+    pub(super) fn state(graph: &Graph, entries: &[NodeTimeEntry]) -> TimeInference {
       let mut posterior: BTreeMap<GraphNodeKey, NodePosterior> = graph
         .get_nodes()
         .map(|node| (node.key(), NodePosterior::default()))
@@ -244,15 +266,28 @@ mod tests {
             .likely_time()
             .expect("fixture distribution has a likely time")
         });
+        let region = distribution
+          .as_deref()
+          .filter(|_| time.is_some())
+          .and_then(|distribution| max_posterior_region(distribution, CI_FRACTION).expect("fixture region exists"));
         let node = NodePosterior {
-          distribution: distribution.clone(),
           likely_time,
           time: *time,
           contradicted: false,
+          time_bounds: distribution.as_deref().and_then(Distribution::time_bounds),
+          region,
+          survival: None,
         };
         posterior.insert(*key, node);
       }
-      posterior
+      TimeInference {
+        posterior,
+        posterior_summaries: PosteriorSummaries {
+          regions: true,
+          ..PosteriorSummaries::default()
+        },
+        ..TimeInference::default()
+      }
     }
 
     pub(super) fn add_named(

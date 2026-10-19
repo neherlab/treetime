@@ -21,7 +21,7 @@ mod tests {
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::sequence_changes::capture_ancestral_states;
   use crate::timetree::inference::bad_branches::bad_leaves;
-  use crate::timetree::inference::result::given_times;
+  use crate::timetree::inference::result::{PosteriorSummaries, given_times};
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::marginal_clock_rate::{MarginalRateInputs, RateWindow, step_marginal_clock_rate};
   use crate::timetree::optimization::relaxed_clock::{apply_relaxed_clock, unit_gammas};
@@ -77,7 +77,7 @@ mod tests {
       state
         .graph
         .get_nodes()
-        .all(|node| inference.posterior[&node.key()].distribution.is_some())
+        .all(|node| inference.posterior[&node.key()].time_bounds.is_some())
     );
 
     let (_, outcome) = helpers::refine(&context, state, Some(&tc))?;
@@ -464,6 +464,10 @@ mod tests {
           clock_rate_fixed: false,
           indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
+          posterior_summaries: PosteriorSummaries {
+            regions: false,
+            lineage_survival: true,
+          },
         },
         None,
         &NoopProgress,

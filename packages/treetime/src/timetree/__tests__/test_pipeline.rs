@@ -338,6 +338,35 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::never(                    (TimeMarginalMode::Never,     false, None),       false)]
+  #[case::always(                   (TimeMarginalMode::Always,    false, None),       true)]
+  #[case::only_final(               (TimeMarginalMode::OnlyFinal, false, None),       true)]
+  #[case::confidence_with_rate_std( (TimeMarginalMode::Never,     true,  Some(1e-4)), true)]
+  #[case::always_with_rate_std(     (TimeMarginalMode::Always,    true,  Some(1e-4)), true)]
+  #[trace]
+  fn test_pipeline_gives_a_confidence_interval_for_every_dated_node_when_marginal_times_are_requested(
+    #[case] (time_marginal, confidence, clock_std_dev): (TimeMarginalMode, bool, Option<f64>),
+    #[case] expected_intervals: bool,
+  ) -> Result<(), Report> {
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let params = TimetreeParams {
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      time_marginal,
+      confidence,
+      clock_std_dev,
+      ..marginal_timetree_params()
+    };
+
+    let output = helpers::run(&params, input, None)?;
+
+    let dated_nodes = output.node_dates.values().flatten().count();
+    let interval_count = output.confidence_intervals.map(|intervals| intervals.len());
+    assert_eq!(expected_intervals.then_some(dated_nodes), interval_count);
+    Ok(())
+  }
+
   #[test]
   fn test_pipeline_date_branch_lengths_need_both_end_dates() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)root;".as_slice())?;

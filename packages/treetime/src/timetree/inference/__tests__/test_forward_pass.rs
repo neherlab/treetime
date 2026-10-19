@@ -1,17 +1,28 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
+  use crate::coalescent::mean_field::NodeSurvival;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::{LogSink, NoopProgress};
-  use crate::test_utils::{RecordingLog, find_node_key_by_name, parent_edge_key, unknown_branches};
-  use crate::timetree::inference::forward_pass::{committed_time, propagate_distributions_forward};
-  use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeBackward};
+  use crate::test_utils::{
+    FullPosterior, RecordingLog, find_node_key_by_name, full_posterior, parent_edge_key, unknown_branches,
+  };
+  use crate::timetree::inference::forward_pass::{ForwardPassInputs, committed_time, propagate_distributions_forward};
+  use crate::timetree::inference::result::{
+    BranchLikelihood, NodeBackward, NodePosterior, PosteriorSummaries, PosteriorView,
+  };
+  use crate::timetree::max_posterior_region::MaxPosteriorRegion;
   use eyre::Report;
+  use itertools::Itertools;
+  use maplit::btreemap;
   use ndarray::Array1;
+  use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
+  use rayon::ThreadPoolBuilder;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
+  use std::sync::Weak;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -65,6 +76,41 @@ mod tests {
     ];
     assert_eq!(expected_warnings, log.warnings());
 
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_thread(  1)]
+  #[case::four_threads(4)]
+  #[trace]
+  fn test_forward_pass_warns_about_undated_nodes_in_preorder(#[case] threads: usize) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:1.0,B:1.0,C:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(&mut inputs, key("root"), Distribution::empty());
+    for name in ["A", "B", "C"] {
+      set_date(&mut inputs, key(name), Distribution::range((2010.0, 2011.0), 0.0));
+      set_time_distribution(&mut inputs, key(name), Distribution::empty());
+    }
+
+    let log = RecordingLog::default();
+    ThreadPoolBuilder::new()
+      .num_threads(threads)
+      .build()?
+      .install(|| run_forward_pass_with_log(&graph, &inputs, &names, &log))?;
+
+    let expected = ["root", "A", "B", "C"].map(|name| {
+      format!(
+        "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. The messages \
+         meeting at this node leave no time with any probability: the dates below it and the times the rest of the \
+         tree implies have disjoint support."
+      )
+    });
+    assert_eq!(expected.to_vec(), log.warnings());
     Ok(())
   }
 
@@ -153,7 +199,7 @@ mod tests {
     let log = RecordingLog::default();
     let posterior = run_forward_pass_with_log(&graph, &inputs, &names, &log)?;
 
-    let expected = NodePosterior {
+    let expected = FullPosterior {
       distribution: Some(Arc::new(given)),
       likely_time: Some(2006.0),
       time: Some(2009.0),
@@ -266,14 +312,174 @@ mod tests {
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut inputs = ForwardInputs::new(&graph);
-    inputs.backward.subtree.remove(&leaf_key);
+    inputs.backward.remove(&leaf_key);
 
     assert_error!(
       run_forward_pass(&graph, &inputs, &names),
-      format!(
-        "Backward pass output is missing node {leaf_key}. This is an internal error. Please report it to developers."
-      )
+      format!("Scan input is missing node {leaf_key}. This is an internal error. Please report it to developers.")
     );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::not_requested(false, None)]
+  #[case::requested(    true,  Some(MaxPosteriorRegion::Point))]
+  #[trace]
+  fn test_forward_pass_stores_the_posterior_region_only_when_requested(
+    #[case] regions: bool,
+    #[case] expected: Option<MaxPosteriorRegion>,
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(&mut inputs, root_key, Distribution::point(2009.0, 0.0));
+    set_date(&mut inputs, leaf_key, Distribution::point(2008.0, 0.0));
+    set_branch_length_distribution(&graph, &mut inputs, leaf_key, 1.0);
+    let summaries = PosteriorSummaries {
+      regions,
+      ..PosteriorSummaries::default()
+    };
+
+    let posterior = run_forward_pass_summaries(&graph, &inputs, &names, summaries)?;
+
+    assert_eq!(expected, posterior[&leaf_key].region);
+    Ok(())
+  }
+
+  #[test]
+  fn test_forward_pass_stores_no_region_for_an_undated_node() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
+    let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(&mut inputs, root_key, Distribution::point(2009.0, 0.0));
+    let summaries = PosteriorSummaries {
+      regions: true,
+      ..PosteriorSummaries::default()
+    };
+
+    let posterior = run_forward_pass_summaries(&graph, &inputs, &names, summaries)?;
+
+    assert_eq!(NodePosterior::default(), posterior[&leaf_key]);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::not_requested(false, false, false)]
+  #[case::requested(    true,  false, true )]
+  #[case::bad_branch(   true,  true,  false)]
+  #[trace]
+  fn test_forward_pass_summary_stores_the_survival_only_when_requested_outside_bad_branches(
+    #[case] lineage_survival: bool,
+    #[case] bad_branch: bool,
+    #[case] stored: bool,
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let leaf_key = find_node_key_by_name(&nwk_parsed.graph, &names, "A").expect("leaf A not found");
+    let distribution = Arc::new(Distribution::range((2004.0, 2006.0), 0.0));
+    let view = PosteriorView {
+      distribution: Some(&distribution),
+      likely_time: Some(2005.0),
+      time: Some(2005.0),
+      contradicted: false,
+    };
+    let summaries = PosteriorSummaries {
+      lineage_survival,
+      ..PosteriorSummaries::default()
+    };
+
+    let posterior = NodePosterior::summarize(leaf_key, view, summaries, bad_branch)?;
+
+    let expected = if stored {
+      NodeSurvival::of_posterior(&distribution)?.map(Arc::new)
+    } else {
+      None
+    };
+    assert_eq!(expected, posterior.survival);
+    Ok(())
+  }
+
+  #[test]
+  fn test_forward_pass_frees_every_posterior_distribution_when_it_returns() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0,C:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(&mut inputs, key("root"), Distribution::range((2000.0, 2002.0), 0.0));
+    for (name, date) in [("A", 2010.0), ("B", 2009.0), ("C", 2011.0)] {
+      set_date(&mut inputs, key(name), Distribution::point(date, 0.0));
+    }
+    for name in ["A", "B", "C", "I"] {
+      set_branch_length_distribution(&graph, &mut inputs, key(name), 1.0);
+    }
+
+    let posterior = propagate_distributions_forward(
+      &graph,
+      &forward_inputs(&inputs, &names),
+      inputs.backward.clone(),
+      |_, view| Ok(view.distribution.map(Arc::downgrade)),
+      &NoopProgress,
+    )?;
+
+    let live = posterior
+      .into_values()
+      .map(|weak| weak.as_ref().map(Weak::strong_count))
+      .collect_vec();
+    assert_eq!(vec![Some(0); 5], live);
+    Ok(())
+  }
+
+  #[test]
+  fn test_forward_pass_frees_the_grids_of_a_finished_sibling_subtree_before_the_next_sibling() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0,C:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(&mut inputs, key("root"), Distribution::range((2000.0, 2002.0), 0.0));
+    for (name, date) in [("A", 2010.0), ("B", 2009.0), ("C", 2011.0)] {
+      set_date(&mut inputs, key(name), Distribution::point(date, 0.0));
+    }
+    for name in ["A", "B", "C", "I"] {
+      set_branch_length_distribution(&graph, &mut inputs, key(name), 1.0);
+    }
+    let grids: Mutex<BTreeMap<GraphNodeKey, Weak<Distribution<NegLog>>>> = Mutex::new(BTreeMap::new());
+
+    let live_before_each_node = ThreadPoolBuilder::new().num_threads(1).build()?.install(|| {
+      propagate_distributions_forward(
+        &graph,
+        &forward_inputs(&inputs, &names),
+        inputs.backward.clone(),
+        |key, view| {
+          let mut grids = grids.lock();
+          let live = grids
+            .iter()
+            .map(|(&key, grid)| (key, grid.strong_count()))
+            .collect::<BTreeMap<_, _>>();
+          if let Some(distribution) = view.distribution {
+            grids.insert(key, Arc::downgrade(distribution));
+          }
+          Ok(live)
+        },
+        &NoopProgress,
+      )
+    })?;
+
+    let expected = btreemap! { key("root") => 1, key("I") => 0, key("A") => 0, key("B") => 0 };
+    assert_eq!(expected, live_before_each_node[&key("C")]);
     Ok(())
   }
 
@@ -283,19 +489,18 @@ mod tests {
     pub(super) struct ForwardInputs {
       pub constraints: DateConstraints,
       pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
-      pub backward: TimeBackward,
+      pub backward: BTreeMap<GraphNodeKey, NodeBackward>,
     }
 
     impl ForwardInputs {
       pub(super) fn new(graph: &Graph) -> Self {
-        let backward = TimeBackward {
-          subtree: graph.get_nodes().map(|node| (node.key(), None)).collect(),
-          messages: graph.get_edges().map(|edge| (edge.key(), None)).collect(),
-        };
         Self {
           constraints: DateConstraints::default(),
           branches: unknown_branches(graph),
-          backward,
+          backward: graph
+            .get_nodes()
+            .map(|node| (node.key(), NodeBackward::default()))
+            .collect(),
         }
       }
     }
@@ -304,7 +509,7 @@ mod tests {
       graph: &Graph,
       inputs: &ForwardInputs,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
-    ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
+    ) -> Result<BTreeMap<GraphNodeKey, FullPosterior>, Report> {
       run_forward_pass_with_log(graph, inputs, names, &NoopProgress)
     }
 
@@ -313,26 +518,51 @@ mod tests {
       inputs: &ForwardInputs,
       names: &BTreeMap<GraphNodeKey, Option<String>>,
       log: &dyn LogSink,
+    ) -> Result<BTreeMap<GraphNodeKey, FullPosterior>, Report> {
+      propagate_distributions_forward(
+        graph,
+        &forward_inputs(inputs, names),
+        inputs.backward.clone(),
+        full_posterior,
+        log,
+      )
+    }
+
+    pub(super) fn run_forward_pass_summaries(
+      graph: &Graph,
+      inputs: &ForwardInputs,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      summaries: PosteriorSummaries,
     ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
       propagate_distributions_forward(
         graph,
-        &inputs.constraints,
-        names,
-        &inputs.branches,
-        &inputs.backward,
-        MaxGridPoints::default(),
-        log,
+        &forward_inputs(inputs, names),
+        inputs.backward.clone(),
+        |key, view| NodePosterior::summarize(key, view, summaries, false),
+        &NoopProgress,
       )
+    }
+
+    pub(super) fn forward_inputs<'a>(
+      inputs: &'a ForwardInputs,
+      names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> ForwardPassInputs<'a> {
+      ForwardPassInputs {
+        constraints: &inputs.constraints,
+        names,
+        branches: &inputs.branches,
+        max_points: MaxGridPoints::default(),
+      }
     }
 
     pub(super) fn set_date(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution<NegLog>) {
       let dist = Arc::new(dist);
       inputs.constraints.by_node.insert(key, Some(Arc::clone(&dist)));
-      inputs.backward.subtree.insert(key, Some(dist));
+      inputs.backward.entry(key).or_default().subtree = Some(dist);
     }
 
     pub(super) fn set_time_distribution(inputs: &mut ForwardInputs, key: GraphNodeKey, dist: Distribution<NegLog>) {
-      inputs.backward.subtree.insert(key, Some(Arc::new(dist)));
+      inputs.backward.entry(key).or_default().subtree = Some(Arc::new(dist));
     }
 
     pub(super) fn set_branch_length_distribution(
@@ -348,7 +578,7 @@ mod tests {
       inputs.branches.insert(parent_edge_key(graph, target_key), branch);
     }
 
-    pub(super) fn node_time(posterior: &BTreeMap<GraphNodeKey, NodePosterior>, key: GraphNodeKey) -> Option<f64> {
+    pub(super) fn node_time(posterior: &BTreeMap<GraphNodeKey, FullPosterior>, key: GraphNodeKey) -> Option<f64> {
       posterior[&key].time
     }
 
@@ -369,16 +599,13 @@ mod tests {
       set_time_distribution(&mut inputs, root_key, parent_posterior);
       set_date(&mut inputs, child_key, Distribution::range((2003.0, 2010.0), 0.0));
       set_branch_length_distribution(&graph, &mut inputs, child_key, 1.0);
-      inputs
-        .backward
-        .messages
-        .insert(parent_edge_key(&graph, child_key), message_from_child.map(Arc::new));
+      inputs.backward.entry(child_key).or_default().to_parent = message_from_child.map(Arc::new);
       let posterior = run_forward_pass(&graph, &inputs, &names)?;
       Ok(node_time(&posterior, child_key))
     }
 
     pub(super) fn leaf_time_distribution(
-      posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
+      posterior: &BTreeMap<GraphNodeKey, FullPosterior>,
       key: GraphNodeKey,
     ) -> Option<Distribution<NegLog>> {
       posterior[&key].distribution.as_deref().cloned()

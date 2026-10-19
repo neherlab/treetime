@@ -24,6 +24,6 @@ pub(crate) use marginal::{
 pub(crate) use mugration::{TraitsByNode, traits_by_node};
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
-  RecordingLog, constraint_expectation, empty_time_inference, marginal_timetree_params, parent_edge_key,
-  point_coalescent_prior, point_date_constraints, unknown_branches,
+  FullPosterior, RecordingLog, constraint_expectation, empty_time_inference, full_posterior, marginal_timetree_params,
+  parent_edge_key, point_coalescent_prior, point_date_constraints, unknown_branches,
 };

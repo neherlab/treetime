@@ -9,12 +9,12 @@ use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::sync::Arc;
-use treetime_distribution::Distribution;
+use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_internal_error};
 
 const EXPECTATION_GRID_POINTS: usize = 4001;
 const SURVIVAL_POINTS: usize = 256;
@@ -58,7 +58,8 @@ impl CoalescentPrior {
     let own_integral = expectation
       .nodes
       .iter()
-      .map(|(key, survival)| {
+      .map(|(key, node)| {
+        let survival = &node.survival;
         let mut integral = vec![0.0; survival.t.len()];
         for i in 1..survival.t.len() {
           let rate = inverse_tc(f64::midpoint(survival.t[i - 1], survival.t[i]))?;
@@ -95,7 +96,7 @@ impl CoalescentPrior {
     let weight = 1.0 - n_children.to_f64_exact();
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
     let own = self.own_integral_at(key, x);
-    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |survival| survival.weight);
+    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |node| node.weight);
     let merger = if n_mergers > 0.0 {
       let tc = self
         .tc
@@ -142,10 +143,10 @@ impl CoalescentPrior {
   }
 
   fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
-    let (Some(survival), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
+    let (Some(node), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
       return 0.0;
     };
-    let t = &survival.t;
+    let t = &node.survival.t;
     let n = t.len();
     if x < t[0] {
       return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(t[0]);
@@ -164,11 +165,16 @@ pub(crate) struct LineageExpectation {
   variance: Vec<f64>,
   expected_before: f64,
   step: f64,
-  nodes: BTreeMap<GraphNodeKey, NodeSurvival>,
+  nodes: BTreeMap<GraphNodeKey, WeightedSurvival>,
 }
 
 impl LineageExpectation {
   pub(crate) fn of_inference(graph: &Graph, time_inference: &TimeInference) -> Result<Arc<Self>, Report> {
+    if !time_inference.posterior_summaries.lineage_survival {
+      return make_internal_error!(
+        "The time inference holds no survival functions, so it cannot give expected lineage counts"
+      );
+    }
     Self::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
       .wrap_err("Failed to compute the expected coalescent lineage counts")
   }
@@ -183,16 +189,13 @@ impl LineageExpectation {
         return Ok(None);
       }
       let entry = posterior.get(&key);
-      let survival = match entry.and_then(|p| p.distribution.as_deref()) {
-        Some(distribution) => posterior_survival(distribution)
-          .wrap_err_with(|| format!("When computing the survival function of node {key}"))?,
-        None => None,
-      };
-      Ok(match (survival, entry.and_then(|p| p.time)) {
-        (Some((t, survival)), _) => Some(NodeSurvival::compact(t, survival)),
-        (None, Some(time)) => Some(NodeSurvival::point(time)),
-        (None, None) => None,
-      })
+      Ok(
+        match (entry.and_then(|p| p.survival.as_ref()), entry.and_then(|p| p.time)) {
+          (Some(survival), _) => Some(Arc::clone(survival)),
+          (None, Some(time)) => Some(Arc::new(NodeSurvival::point(time))),
+          (None, None) => None,
+        },
+      )
     })
   }
 
@@ -225,20 +228,21 @@ impl LineageExpectation {
     })?;
     Self::from_survivals(graph, |key| {
       let is_leaf = graph.get_node(key).is_some_and(Node::is_leaf);
-      Ok(if is_leaf {
+      let survival = if is_leaf {
         tip_time(key).map(NodeSurvival::point)
       } else {
         marginals
           .get(&key)
           .filter(|_| earliest_tip[&key].is_finite())
           .map(|marginal| NodeSurvival::truncated_normal(marginal.mean, marginal.std, earliest_tip[&key]))
-      })
+      };
+      Ok(survival.map(Arc::new))
     })
   }
 
   fn from_survivals(
     graph: &Graph,
-    survival: impl Fn(GraphNodeKey) -> Result<Option<NodeSurvival>, Report>,
+    survival: impl Fn(GraphNodeKey) -> Result<Option<Arc<NodeSurvival>>, Report>,
   ) -> Result<Arc<Self>, Report> {
     let mut always_surviving = 0.0;
     let mut nodes = BTreeMap::new();
@@ -246,7 +250,7 @@ impl LineageExpectation {
       let weight = 1.0 - node.outbound().len().to_f64_exact();
       match survival(node.key())? {
         Some(survival) => {
-          nodes.insert(node.key(), NodeSurvival { weight, ..survival });
+          nodes.insert(node.key(), WeightedSurvival { weight, survival });
         },
         None => always_surviving += weight,
       }
@@ -261,15 +265,18 @@ impl LineageExpectation {
   ) -> Result<Arc<Self>, Report> {
     Self::from_survivals(graph, |key| {
       Ok(match (self.nodes.get(&key), merger_times.get(&key)) {
-        (Some(survival), _) => Some(survival.clone()),
-        (None, Some(&time)) => Some(NodeSurvival::point(time)),
+        (Some(node), _) => Some(Arc::clone(&node.survival)),
+        (None, Some(&time)) => Some(Arc::new(NodeSurvival::point(time))),
         (None, None) => None,
       })
     })
   }
 
-  fn aggregate(nodes: BTreeMap<GraphNodeKey, NodeSurvival>, always_surviving: f64) -> Result<Arc<Self>, Report> {
-    let weighted: Vec<(f64, &NodeSurvival)> = nodes.values().map(|survival| (survival.weight, survival)).collect();
+  fn aggregate(nodes: BTreeMap<GraphNodeKey, WeightedSurvival>, always_surviving: f64) -> Result<Arc<Self>, Report> {
+    let weighted: Vec<(f64, &NodeSurvival)> = nodes
+      .values()
+      .map(|node| (node.weight, node.survival.as_ref()))
+      .collect();
     if weighted.is_empty() {
       return make_error!("Cannot build the expected lineage count: no node has a time");
     }
@@ -394,15 +401,15 @@ impl LineageExpectation {
       }
     }
     let mut mergers = vec![0.0; n_seg];
-    for survival in self.nodes.values().filter(|survival| survival.weight < 0.0) {
+    for node in self.nodes.values().filter(|node| node.weight < 0.0) {
       for (i, merger) in mergers.iter_mut().enumerate() {
-        let before = if i == 0 { 1.0 } else { survival.at(boundaries[i]) };
+        let before = if i == 0 { 1.0 } else { node.survival.at(boundaries[i]) };
         let after = if i == n_seg - 1 {
           0.0
         } else {
-          survival.at(boundaries[i + 1])
+          node.survival.at(boundaries[i + 1])
         };
-        *merger += -survival.weight * (before - after);
+        *merger += -node.weight * (before - after);
       }
     }
     SegmentStatistics { pair_integral, mergers }
@@ -422,21 +429,26 @@ pub(crate) struct SegmentStatistics {
 }
 
 #[derive(Clone, Debug)]
-struct NodeSurvival {
+struct WeightedSurvival {
+  weight: f64,
+  survival: Arc<NodeSurvival>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct NodeSurvival {
   t: Vec<f64>,
   survival: Vec<f64>,
-  weight: f64,
 }
 
 impl NodeSurvival {
+  pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
+    Ok(posterior_survival(distribution)?.map(|(t, survival)| Self::compact(t, survival)))
+  }
+
   fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
     let n = t.len();
     if n <= 2 {
-      return Self {
-        t,
-        survival,
-        weight: 0.0,
-      };
+      return Self { t, survival };
     }
     let first = survival
       .iter()
@@ -447,7 +459,6 @@ impl NodeSurvival {
     let full = Self {
       t: t[first..=last].to_vec(),
       survival: survival[first..=last].to_vec(),
-      weight: 0.0,
     };
     if full.t.len() <= SURVIVAL_POINTS {
       return full;
@@ -456,18 +467,13 @@ impl NodeSurvival {
     let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
     let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
     let survival = t.iter().map(|&x| full.at(x)).collect();
-    Self {
-      t,
-      survival,
-      weight: 0.0,
-    }
+    Self { t, survival }
   }
 
   fn point(time: f64) -> Self {
     Self {
       t: vec![time],
       survival: vec![0.0],
-      weight: 0.0,
     }
   }
 
@@ -492,11 +498,7 @@ impl NodeSurvival {
     let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
     survival[0] = 1.0;
     survival[TRUNCATED_NORMAL_POINTS - 1] = 0.0;
-    Self {
-      t,
-      survival,
-      weight: 0.0,
-    }
+    Self { t, survival }
   }
 
   fn is_point(&self) -> bool {

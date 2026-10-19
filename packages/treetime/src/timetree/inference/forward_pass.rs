@@ -3,7 +3,7 @@ use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_warn;
 use crate::timetree::inference::result::{
-  BranchLikelihood, NodePosterior, TimeBackward, TimeDistribution, likely_time_of_node,
+  BranchLikelihood, NodeBackward, PosteriorView, TimeDistribution, likely_time_of_node,
 };
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use crate::timetree::max_posterior_region::posterior_median;
@@ -19,28 +19,38 @@ use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{GraphMapOutputs, GraphPass, GraphPassForwardContext, GraphPassNodeOutput};
+use treetime_graph::tree_view::TreeView;
 use treetime_grid::{MaxGridPoints, Side};
-use treetime_utils::make_internal_report;
 
-pub(crate) fn propagate_distributions_forward(
+pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   graph: &Graph,
-  constraints: &DateConstraints,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
-  backward: &TimeBackward,
-  max_points: MaxGridPoints,
+  inputs: &ForwardPassInputs<'_>,
+  backward: BTreeMap<GraphNodeKey, NodeBackward>,
+  summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
   log: &dyn LogSink,
-) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
-  let pass = GraphPass::new(graph)?;
-  let GraphMapOutputs { nodes: posterior, .. } = pass.map_forward(
-    &backward.subtree,
-    branches,
-    |key| Err(make_internal_report!("Backward pass output is missing node {key}")),
-    |context| propagate_distributions_forward_node(constraints, names, &backward.messages, &context, max_points, log),
-  )?;
+) -> Result<BTreeMap<GraphNodeKey, S>, Report> {
+  let tree = TreeView::new(graph)?;
+  let pass = ForwardPass {
+    tree: &tree,
+    inputs,
+    summarize,
+  };
+  let outputs = tree
+    .scan_down(backward, |key, backward, parent| {
+      pass.node(key, backward, parent.as_ref())
+    })?
+    .into_map();
 
-  let contradicted = posterior.values().filter(|node| node.contradicted).count();
+  for &key in tree.preorder().iter().filter(|key| outputs[key].undated) {
+    let name = node_label(inputs.names, key);
+    progress_warn!(
+      log,
+      "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
+       The messages meeting at this node leave no time with any probability: the dates below it \
+       and the times the rest of the tree implies have disjoint support."
+    );
+  }
+  let contradicted = outputs.values().filter(|output| output.contradicted).count();
   if contradicted > 0 {
     progress_warn!(
       log,
@@ -52,81 +62,113 @@ pub(crate) fn propagate_distributions_forward(
     );
   }
 
-  Ok(posterior)
+  Ok(outputs.into_iter().map(|(key, output)| (key, output.summary)).collect())
 }
 
-fn propagate_distributions_forward_node(
-  constraints: &DateConstraints,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  messages: &BTreeMap<GraphEdgeKey, TimeDistribution>,
-  context: &GraphPassForwardContext<'_, &TimeDistribution, BranchLikelihood, NodePosterior>,
-  max_points: MaxGridPoints,
-  log: &dyn LogSink,
-) -> Result<GraphPassNodeOutput<NodePosterior, ()>, Report> {
-  let date_constraint = constraints.date_constraint(context.key);
-  let subtree = context.input;
-  let parent_edge = context.parent_edge.map(|(edge_key, branch)| ParentEdge {
-    branch,
-    msg_to_parent: messages[&edge_key].as_deref(),
-  });
+pub(crate) struct ForwardPassInputs<'a> {
+  pub constraints: &'a DateConstraints,
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  pub max_points: MaxGridPoints,
+}
 
-  let refinement = refine_distribution_from_parent(
-    names,
-    context.key,
-    date_constraint.as_ref(),
-    context.parent,
-    parent_edge,
-    subtree.as_deref(),
-    max_points,
-  )?;
-  let normalized_subtree = || -> Result<_, Report> {
-    subtree
-      .as_deref()
-      .map(|subtree| subtree.normalize().map(Arc::new))
-      .transpose()
-  };
-  let (distribution, contradicted) = match refinement {
-    ForwardRefinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
-    ForwardRefinement::Unrefined => (normalized_subtree()?, false),
-    ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
-  };
+struct ForwardPass<'a, F> {
+  tree: &'a TreeView<'a>,
+  inputs: &'a ForwardPassInputs<'a>,
+  summarize: F,
+}
 
-  let likely_time = if context.is_root && !context.is_leaf {
-    distribution
-      .as_deref()
-      .map(posterior_median)
-      .transpose()
-      .wrap_err_with(|| format!("When finding the median time of root {}", context.key))?
-      .flatten()
-  } else {
-    likely_time_of_node(context.key, distribution.as_deref())?
-  };
-  let time = commit_node_time(
-    names,
-    context.key,
-    date_constraint.as_ref(),
-    context.parent,
-    context.is_leaf,
-    likely_time,
-    log,
-  );
+impl<S, F> ForwardPass<'_, F>
+where
+  F: Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report>,
+{
+  fn node(
+    &self,
+    key: GraphNodeKey,
+    backward: NodeBackward,
+    parent: Option<&Posterior>,
+  ) -> Result<(ForwardOutput<S>, Posterior), Report> {
+    let ForwardPassInputs {
+      constraints,
+      names,
+      branches,
+      max_points,
+    } = *self.inputs;
+    let date_constraint = constraints.date_constraint(key);
+    let NodeBackward { subtree, to_parent } = backward;
+    let parent_edge = self.tree.parent(key).map(|(_, edge_key)| ParentEdge {
+      branch: &branches[&edge_key],
+      msg_to_parent: to_parent.as_deref(),
+    });
 
-  Ok(GraphPassNodeOutput {
-    node: NodePosterior {
-      distribution,
+    let refinement = refine_distribution_from_parent(
+      names,
+      key,
+      date_constraint.as_ref(),
+      parent,
+      parent_edge,
+      subtree.as_deref(),
+      max_points,
+    )?;
+    let normalized_subtree = || -> Result<_, Report> {
+      subtree
+        .as_deref()
+        .map(|subtree| subtree.normalize().map(Arc::new))
+        .transpose()
+    };
+    let (distribution, contradicted) = match refinement {
+      ForwardRefinement::Refined(distribution) => (Some(Arc::new(distribution)), false),
+      ForwardRefinement::Unrefined => (normalized_subtree()?, false),
+      ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
+    };
+
+    let is_root = self.tree.parent(key).is_none();
+    let is_leaf = self.tree.children(key).is_empty();
+    let likely_time = if is_root && !is_leaf {
+      distribution
+        .as_deref()
+        .map(posterior_median)
+        .transpose()
+        .wrap_err_with(|| format!("When finding the median time of root {key}"))?
+        .flatten()
+    } else {
+      likely_time_of_node(key, distribution.as_deref())?
+    };
+    let time = commit_node_time(date_constraint.as_ref(), parent, likely_time);
+    let undated = time.is_none() && (!is_leaf || date_constraint.is_some());
+
+    let view = PosteriorView {
+      distribution: distribution.as_ref(),
       likely_time,
       time,
       contradicted,
-    },
-    parent_message: None,
-  })
+    };
+    let output = ForwardOutput {
+      summary: (self.summarize)(key, view)?,
+      undated,
+      contradicted,
+    };
+    Ok((output, Posterior { distribution, time }))
+  }
+}
+
+struct ForwardOutput<S> {
+  summary: S,
+  undated: bool,
+  contradicted: bool,
+}
+
+#[derive(Clone)]
+struct Posterior {
+  distribution: TimeDistribution,
+  time: Option<f64>,
 }
 
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  parent: Option<&NodePosterior>,
+  parent: Option<&Posterior>,
   edge: Option<ParentEdge<'_>>,
   subtree: Option<&Distribution<NegLog>>,
   max_points: MaxGridPoints,
@@ -188,32 +230,16 @@ enum ForwardRefinement {
 }
 
 fn commit_node_time(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  key: GraphNodeKey,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  parent: Option<&NodePosterior>,
-  is_leaf: bool,
+  parent: Option<&Posterior>,
   likely_time: Option<f64>,
-  log: &dyn LogSink,
 ) -> Option<f64> {
   let parent_time = if has_exact_date(date_constraint) {
     None
   } else {
     parent.and_then(|parent| parent.time)
   };
-
-  let time = likely_time.map(|likely_time| committed_time(likely_time, parent_time));
-  let is_dateable = !is_leaf || date_constraint.is_some();
-  if time.is_none() && is_dateable {
-    let name = node_label(names, key);
-    progress_warn!(
-      log,
-      "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
-       The messages meeting at this node leave no time with any probability: the dates below it \
-       and the times the rest of the tree implies have disjoint support."
-    );
-  }
-  time
+  likely_time.map(|likely_time| committed_time(likely_time, parent_time))
 }
 
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {

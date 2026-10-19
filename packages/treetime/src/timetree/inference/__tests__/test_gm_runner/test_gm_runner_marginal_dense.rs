@@ -18,7 +18,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
-  use crate::timetree::inference::result::given_times;
+  use crate::timetree::inference::result::{PosteriorSummaries, given_times};
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use eyre::Report;
@@ -111,6 +111,7 @@ mod tests {
         clock_rate_fixed: false,
         indel_policy,
         max_grid_points: MaxGridPoints::default(),
+        posterior_summaries: PosteriorSummaries::default(),
       },
       None,
       &NoopProgress,

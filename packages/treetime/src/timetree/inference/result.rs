@@ -1,4 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
+use crate::coalescent::mean_field::NodeSurvival;
+use crate::timetree::confidence::CI_FRACTION;
+use crate::timetree::max_posterior_region::{MaxPosteriorRegion, max_posterior_region};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -8,21 +11,21 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TimeBackward {
-  pub subtree: BTreeMap<GraphNodeKey, TimeDistribution>,
-  pub messages: BTreeMap<GraphEdgeKey, TimeDistribution>,
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct NodeBackward {
+  pub subtree: TimeDistribution,
+  pub to_parent: TimeDistribution,
 }
 
-impl TimeBackward {
-  pub(crate) fn log_marginal_likelihood(&self, root: GraphNodeKey) -> Result<Option<f64>, Report> {
-    self
-      .subtree
-      .get(&root)
-      .and_then(Option::as_deref)
-      .map(Distribution::log_mass)
-      .transpose()
-  }
+pub(crate) fn log_marginal_likelihood(
+  backward: &BTreeMap<GraphNodeKey, NodeBackward>,
+  root: GraphNodeKey,
+) -> Result<Option<f64>, Report> {
+  backward
+    .get(&root)
+    .and_then(|node| node.subtree.as_deref())
+    .map(Distribution::log_mass)
+    .transpose()
 }
 
 pub(crate) fn given_times(graph: &Graph, constraints: &DateConstraints) -> Result<NodeTimes, Report> {
@@ -60,6 +63,7 @@ pub struct TimeInference {
   pub bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
   pub posterior: BTreeMap<GraphNodeKey, NodePosterior>,
+  pub posterior_summaries: PosteriorSummaries,
 }
 
 impl TimeInference {
@@ -73,6 +77,12 @@ impl TimeInference {
   }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PosteriorSummaries {
+  pub regions: bool,
+  pub lineage_survival: bool,
+}
+
 pub(crate) type NodeTimes = BTreeMap<GraphNodeKey, Option<f64>>;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -82,8 +92,52 @@ pub struct BranchLikelihood {
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
+#[expect(
+  clippy::partial_pub_fields,
+  reason = "the survival function only feeds the coalescent prior inside this crate"
+)]
 pub struct NodePosterior {
-  pub distribution: TimeDistribution,
+  pub likely_time: Option<f64>,
+  pub time: Option<f64>,
+  pub contradicted: bool,
+  pub time_bounds: Option<(f64, f64)>,
+  pub region: Option<MaxPosteriorRegion>,
+  pub(crate) survival: Option<Arc<NodeSurvival>>,
+}
+
+impl NodePosterior {
+  pub(crate) fn summarize(
+    key: GraphNodeKey,
+    view: PosteriorView<'_>,
+    summaries: PosteriorSummaries,
+    bad_branch: bool,
+  ) -> Result<Self, Report> {
+    let distribution = view.distribution.map(Arc::as_ref);
+    let region = match (distribution, view.time) {
+      (Some(distribution), Some(_)) if summaries.regions => max_posterior_region(distribution, CI_FRACTION)
+        .wrap_err_with(|| format!("When computing the confidence interval of node {key}"))?,
+      _ => None,
+    };
+    let survival = match distribution {
+      Some(distribution) if summaries.lineage_survival && !bad_branch => NodeSurvival::of_posterior(distribution)
+        .wrap_err_with(|| format!("When computing the survival function of node {key}"))?
+        .map(Arc::new),
+      _ => None,
+    };
+    Ok(Self {
+      likely_time: view.likely_time,
+      time: view.time,
+      contradicted: view.contradicted,
+      time_bounds: distribution.and_then(Distribution::time_bounds),
+      region,
+      survival,
+    })
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PosteriorView<'a> {
+  pub distribution: Option<&'a Arc<Distribution<NegLog>>>,
   pub likely_time: Option<f64>,
   pub time: Option<f64>,
   pub contradicted: bool,

@@ -86,4 +86,8 @@ impl TimeMarginalMode {
   pub(crate) fn runs_final_round(self) -> bool {
     self == Self::OnlyFinal
   }
+
+  pub(crate) fn gives_confidence_intervals(self) -> bool {
+    matches!(self, Self::OnlyFinal | Self::Always)
+  }
 }

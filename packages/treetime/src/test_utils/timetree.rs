@@ -8,7 +8,9 @@ use crate::optimize::partition_rates::PartitionRates;
 use crate::progress::{LogEvent, LogLevel, LogSink, RunWarning};
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
-use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, TimeInference, given_times};
+use crate::timetree::inference::result::{
+  BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
+};
 use crate::timetree::params::TimeMarginalMode;
 use crate::timetree::params::TimetreeParams;
 use eyre::Report;
@@ -30,10 +32,9 @@ pub(crate) fn constraint_expectation(
     .into_iter()
     .map(|(key, time)| {
       let entry = NodePosterior {
-        distribution: None,
         likely_time: time,
         time,
-        contradicted: false,
+        ..NodePosterior::default()
       };
       (key, entry)
     })
@@ -50,6 +51,7 @@ pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
       .get_nodes()
       .map(|node| (node.key(), NodePosterior::default()))
       .collect(),
+    posterior_summaries: PosteriorSummaries::default(),
   }
 }
 
@@ -87,6 +89,23 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     seed: 0,
     max_grid_points: MaxGridPoints::default(),
   }
+}
+
+pub(crate) fn full_posterior(_: GraphNodeKey, view: PosteriorView<'_>) -> Result<FullPosterior, Report> {
+  Ok(FullPosterior {
+    distribution: view.distribution.cloned(),
+    likely_time: view.likely_time,
+    time: view.time,
+    contradicted: view.contradicted,
+  })
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct FullPosterior {
+  pub distribution: TimeDistribution,
+  pub likely_time: Option<f64>,
+  pub time: Option<f64>,
+  pub contradicted: bool,
 }
 
 pub(crate) fn unknown_branches(graph: &Graph) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
@@ -136,10 +155,9 @@ pub(crate) fn point_coalescent_prior(
     .map(|(name, time)| {
       let key = find_node_key_by_name(graph, names, name).expect("timed node must exist");
       let entry = NodePosterior {
-        distribution: None,
         likely_time: Some(*time),
         time: Some(*time),
-        contradicted: false,
+        ..NodePosterior::default()
       };
       (key, entry)
     })

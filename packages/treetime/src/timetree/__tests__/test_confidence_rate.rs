@@ -17,6 +17,7 @@ mod tests {
     quantile_to_zscore,
   };
   use crate::timetree::inference::bad_branches::bad_leaves;
+  use crate::timetree::inference::result::PosteriorSummaries;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
   use approx::assert_relative_eq;
@@ -105,7 +106,14 @@ mod tests {
 
     let RateSusceptibility { dates, central } = compute_rate_susceptibility(&inputs, None, rate_std, &NoopProgress)?;
 
-    let direct = run_timetree(&inputs, None, &NoopProgress)?;
+    let direct_inputs = TimeInferenceInputs {
+      posterior_summaries: PosteriorSummaries {
+        regions: true,
+        ..PosteriorSummaries::default()
+      },
+      ..fixture.inputs()
+    };
+    let direct = run_timetree(&direct_inputs, None, &NoopProgress)?;
     assert_eq!(direct, central);
 
     let dated_nodes: BTreeSet<GraphNodeKey> = central
@@ -223,6 +231,7 @@ mod tests {
           clock_rate_fixed: false,
           indel_policy: IndelPolicy::Include,
           max_grid_points: MaxGridPoints::default(),
+          posterior_summaries: PosteriorSummaries::default(),
         }
       }
     }

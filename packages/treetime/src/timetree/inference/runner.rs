@@ -10,8 +10,10 @@ use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::bad_branches::derive_bad_branches;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
-use crate::timetree::inference::forward_pass::propagate_distributions_forward;
-use crate::timetree::inference::result::{BranchLikelihood, NodeTimes, TimeInference};
+use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+use crate::timetree::inference::result::{
+  BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, TimeInference, log_marginal_likelihood,
+};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
 use log::debug;
@@ -60,6 +62,7 @@ fn infer_times(
     clock_model,
     indel_policy,
     max_grid_points,
+    posterior_summaries,
     ..
   } = *inputs;
   progress_info!(log, "# Running timetree inference");
@@ -100,19 +103,23 @@ fn infer_times(
     max_grid_points,
   )?;
 
-  let log_lh_time = backward.log_marginal_likelihood(graph.root_key()?)?.map(LogLh::new);
+  let log_lh_time = log_marginal_likelihood(&backward, graph.root_key()?)?.map(LogLh::new);
   if let Some(log_lh) = log_lh_time {
     progress_info!(log, "**Log marginal likelihood of node times:** {:.4}", log_lh.value());
   }
 
   progress_info!(log, "## Propagating distributions forward");
+  let forward_inputs = ForwardPassInputs {
+    constraints: date_constraints,
+    names,
+    branches: &branches,
+    max_points: max_grid_points,
+  };
   let posterior = propagate_distributions_forward(
     graph,
-    date_constraints,
-    names,
-    &branches,
-    &backward,
-    max_grid_points,
+    &forward_inputs,
+    backward,
+    |key, view| NodePosterior::summarize(key, view, posterior_summaries, bad_branches[&key]),
     log,
   )?;
 
@@ -122,6 +129,7 @@ fn infer_times(
     bad_branches,
     branches,
     posterior,
+    posterior_summaries,
   })
 }
 
@@ -137,6 +145,7 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub clock_rate_fixed: bool,
   pub indel_policy: IndelPolicy,
   pub max_grid_points: MaxGridPoints,
+  pub posterior_summaries: PosteriorSummaries,
 }
 
 pub(super) fn explain_grid_point_limit(report: Report, clock_rate: f64, clock_rate_fixed: bool) -> Report {

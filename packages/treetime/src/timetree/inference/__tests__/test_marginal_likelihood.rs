@@ -4,7 +4,7 @@ mod tests {
   use crate::coalescent::mean_field::CoalescentPrior;
   use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, unknown_branches};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-  use crate::timetree::inference::result::BranchLikelihood;
+  use crate::timetree::inference::result::{BranchLikelihood, log_marginal_likelihood};
   use crate::timetree::optimization::marginal_clock_rate::branches_at_rate;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -44,9 +44,7 @@ mod tests {
       branches,
       MaxGridPoints::default(),
     )?;
-    let actual = backward
-      .log_marginal_likelihood(setup.graph.root_key()?)?
-      .expect("root has a distribution");
+    let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?)?.expect("root has a distribution");
     let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
     assert_abs_diff_eq!(expected, actual, epsilon = 1e-5);
     Ok(())

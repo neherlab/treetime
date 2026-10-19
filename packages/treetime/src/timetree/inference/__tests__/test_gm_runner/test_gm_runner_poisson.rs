@@ -7,8 +7,8 @@ mod tests {
   use crate::test_utils::dates_by_node;
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
-  use crate::timetree::inference::forward_pass::propagate_distributions_forward;
-  use crate::timetree::inference::result::BranchLikelihood;
+  use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+  use crate::timetree::inference::result::{BranchLikelihood, NodePosterior, PosteriorSummaries};
   use crate::timetree::inference::runner::GRID_POINTS;
   use eyre::Report;
   use rstest::rstest;
@@ -64,7 +64,19 @@ mod tests {
       .collect();
     let bad_branches = derive_bad_branches(&graph, &constraints, &bad_leaves(&graph, &constraints, &BTreeSet::new()))?;
     let backward = propagate_distributions_backward(&graph, &constraints, None, &bad_branches, &branches, MaxGridPoints::default())?;
-    let posterior = propagate_distributions_forward(&graph, &constraints, &names, &branches, &backward, MaxGridPoints::default(), &NoopProgress)?;
+    let forward_inputs = ForwardPassInputs {
+      constraints: &constraints,
+      names: &names,
+      branches: &branches,
+      max_points: MaxGridPoints::default(),
+    };
+    let posterior = propagate_distributions_forward(
+      &graph,
+      &forward_inputs,
+      backward,
+      |key, view| NodePosterior::summarize(key, view, PosteriorSummaries::default(), bad_branches[&key]),
+      &NoopProgress,
+    )?;
 
     let actual = extract_node_times(&graph, &names, &posterior);
     pretty_assert_map_abs_diff_eq!(expected, &actual, epsilon = 1e-6);

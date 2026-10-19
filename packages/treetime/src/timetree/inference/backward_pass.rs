@@ -1,6 +1,6 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::mean_field::CoalescentPrior;
-use crate::timetree::inference::result::{BranchLikelihood, TimeBackward, TimeDistribution};
+use crate::timetree::inference::result::{BranchLikelihood, NodeBackward, TimeDistribution};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -16,12 +16,9 @@ use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pass::{
-  GraphMapOutputs, GraphPass, GraphPassBackwardContext, GraphPassChildBackward, GraphPassNodeOutput,
-};
+use treetime_graph::tree_view::TreeView;
 use treetime_grid::{MaxGridPoints, Side};
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
-use treetime_utils::make_internal_report;
 
 pub(crate) fn propagate_distributions_backward(
   graph: &Graph,
@@ -30,62 +27,80 @@ pub(crate) fn propagate_distributions_backward(
   bad_branches: &BTreeMap<GraphNodeKey, bool>,
   branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
   max_points: MaxGridPoints,
-) -> Result<TimeBackward, Report> {
-  let pass = GraphPass::new(graph)?;
-  let GraphMapOutputs { nodes, edges } = pass.map_backward(
-    bad_branches,
+) -> Result<BTreeMap<GraphNodeKey, NodeBackward>, Report> {
+  let tree = TreeView::new(graph)?;
+  let pass = BackwardPass {
+    tree: &tree,
+    constraints,
+    coalescent_model,
     branches,
-    |key| Err(make_internal_report!("Bad-branch flags are missing node {key}")),
-    |context| propagate_distributions_backward_node(constraints, coalescent_model, &context, max_points),
-  )?;
-  Ok(TimeBackward {
-    subtree: nodes,
-    messages: edges,
-  })
-}
-
-fn propagate_distributions_backward_node(
-  constraints: &DateConstraints,
-  coalescent_model: Option<&CoalescentPrior>,
-  context: &GraphPassBackwardContext<'_, &bool, BranchLikelihood, TimeDistribution, TimeDistribution>,
-  max_points: MaxGridPoints,
-) -> Result<GraphPassNodeOutput<TimeDistribution, TimeDistribution>, Report> {
-  let date_constraint = constraints.date_constraint(context.key);
-  let messages = gather_child_messages(context.children)?;
-  let distribution = combine_child_messages(&messages, max_points)?;
-  let distribution = apply_coalescent_prior(coalescent_model, context.key, context.children.len(), distribution)?;
-  let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
-  let distribution =
-    apply_leaf_coalescent_factor(coalescent_model.filter(|_| context.is_leaf), context.key, distribution)?;
-
-  let subtree = if matches!(distribution, Distribution::Empty) {
-    None
-  } else {
-    let distribution = distribution
-      .repeak()
-      .wrap_err_with(|| format!("When re-peaking the time distribution of node {}", context.key))?;
-    Some(Arc::new(distribution))
+    max_points,
   };
-
-  let bad_branch = *context.input;
-  let parent_message = context
-    .parent_edge
-    .map(|(edge_key, branch)| send_backward_message(bad_branch, subtree.as_deref(), edge_key, branch, max_points))
-    .transpose()?;
-  Ok(GraphPassNodeOutput {
-    node: subtree,
-    parent_message,
-  })
+  let outputs = tree.scan_up(
+    bad_branches.iter().map(|(&key, &bad_branch)| (key, bad_branch)),
+    |key, bad_branch, messages| pass.node(key, bad_branch, messages),
+  )?;
+  Ok(outputs.into_map())
 }
 
-fn gather_child_messages(
-  children: &[GraphPassChildBackward<'_, TimeDistribution, TimeDistribution>],
-) -> Result<Vec<Arc<Distribution<NegLog>>>, Report> {
-  children
-    .iter()
-    .map(GraphPassChildBackward::edge_message)
-    .filter_map_ok(Clone::clone)
-    .try_collect()
+struct BackwardPass<'a> {
+  tree: &'a TreeView<'a>,
+  constraints: &'a DateConstraints,
+  coalescent_model: Option<&'a CoalescentPrior>,
+  branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  max_points: MaxGridPoints,
+}
+
+impl BackwardPass<'_> {
+  fn node(
+    &self,
+    key: GraphNodeKey,
+    bad_branch: bool,
+    messages: Vec<TimeDistribution>,
+  ) -> Result<(NodeBackward, TimeDistribution), Report> {
+    let BackwardPass {
+      tree,
+      constraints,
+      coalescent_model,
+      branches,
+      max_points,
+    } = *self;
+    let date_constraint = constraints.date_constraint(key);
+    let n_children = tree.children(key).len();
+    let messages = messages.into_iter().flatten().collect_vec();
+    let distribution = combine_child_messages(&messages, max_points)?;
+    let distribution = apply_coalescent_prior(coalescent_model, key, n_children, distribution)?;
+    let distribution = apply_date_constraint(date_constraint.as_ref(), distribution, max_points)?;
+    let distribution = apply_leaf_coalescent_factor(coalescent_model.filter(|_| n_children == 0), key, distribution)?;
+
+    let subtree = if matches!(distribution, Distribution::Empty) {
+      None
+    } else {
+      let distribution = distribution
+        .repeak()
+        .wrap_err_with(|| format!("When re-peaking the time distribution of node {key}"))?;
+      Some(Arc::new(distribution))
+    };
+
+    let to_parent = tree
+      .parent(key)
+      .map(|(_, edge_key)| {
+        send_backward_message(
+          bad_branch,
+          subtree.as_deref(),
+          edge_key,
+          &branches[&edge_key],
+          max_points,
+        )
+      })
+      .transpose()?
+      .flatten();
+    let output = NodeBackward {
+      subtree,
+      to_parent: to_parent.clone(),
+    };
+    Ok((output, to_parent))
+  }
 }
 
 fn combine_child_messages(

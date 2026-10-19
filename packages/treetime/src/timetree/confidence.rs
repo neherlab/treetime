@@ -1,10 +1,10 @@
 use crate::coalescent::mean_field::CoalescentPrior;
-use crate::make_error;
 use crate::progress::LogSink;
 use crate::progress_info;
-use crate::timetree::inference::result::{NodePosterior, TimeInference};
+use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
 use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
-use crate::timetree::max_posterior_region::{MaxPosteriorRegion, PeakLocation, max_posterior_region};
+use crate::timetree::max_posterior_region::{MaxPosteriorRegion, PeakLocation};
+use crate::{make_error, make_internal_error};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -12,7 +12,6 @@ use ordered_float::OrderedFloat;
 use statrs::function::erf::erf_inv;
 use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
-use treetime_distribution::Distribution;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 
@@ -33,7 +32,7 @@ pub(crate) fn compute_rate_susceptibility(
   let upper_rate = current_rate + rate_std;
   let lower_rate = (0.1 * current_rate).max(current_rate - rate_std);
 
-  let run_scaled = |scale: f64| {
+  let run_scaled = |scale: f64, regions: bool| {
     let scaled_gammas = time_inputs
       .gammas
       .iter()
@@ -41,19 +40,25 @@ pub(crate) fn compute_rate_susceptibility(
       .collect::<BTreeMap<_, _>>();
     let scaled_inputs = TimeInferenceInputs {
       gammas: &scaled_gammas,
+      posterior_summaries: PosteriorSummaries {
+        regions,
+        lineage_survival: false,
+      },
       ..*time_inputs
     };
     run_timetree(&scaled_inputs, coalescent, log)
   };
 
   progress_info!(log, "Rate susceptibility: running with upper rate {upper_rate:.6e}");
-  let upper = run_scaled(upper_rate / current_rate).wrap_err("Rate susceptibility: timetree at upper rate failed")?;
+  let upper =
+    run_scaled(upper_rate / current_rate, false).wrap_err("Rate susceptibility: timetree at upper rate failed")?;
 
   progress_info!(log, "Rate susceptibility: running with lower rate {lower_rate:.6e}");
-  let lower = run_scaled(lower_rate / current_rate).wrap_err("Rate susceptibility: timetree at lower rate failed")?;
+  let lower =
+    run_scaled(lower_rate / current_rate, false).wrap_err("Rate susceptibility: timetree at lower rate failed")?;
 
   progress_info!(log, "Rate susceptibility: running with central rate {current_rate:.6e}");
-  let central = run_scaled(1.0).wrap_err("Rate susceptibility: timetree at central rate failed")?;
+  let central = run_scaled(1.0, true).wrap_err("Rate susceptibility: timetree at central rate failed")?;
 
   let dates = graph
     .get_nodes()
@@ -79,19 +84,30 @@ pub(crate) struct RateSusceptibility {
 
 pub fn extract_confidence_intervals(
   graph: &Graph,
-  posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
+  inference: &TimeInference,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<Vec<NodeConfidenceInterval>, Report> {
-  graph
+  if !inference.posterior_summaries.regions {
+    return make_internal_error!(
+      "The time inference holds no posterior regions, so it cannot give confidence intervals"
+    );
+  }
+  let intervals = graph
     .get_nodes()
-    .map(|node| {
+    .filter_map(|node| {
       let key = node.key();
       let name = names[&key].clone().unwrap_or_default();
-      node_confidence_interval(key, name, &posterior[&key], rate_susceptibility_dates.get(&key))
-        .wrap_err_with(|| format!("When computing the confidence interval of node {key}"))
+      node_confidence_interval(
+        key,
+        name,
+        &inference.posterior[&key],
+        rate_susceptibility_dates.get(&key),
+      )
     })
-    .process_results(|intervals| intervals.flatten().sorted_by_key(|ci| ci.key).collect_vec())
+    .sorted_by_key(|ci| ci.key)
+    .collect_vec();
+  Ok(intervals)
 }
 
 fn node_confidence_interval(
@@ -99,32 +115,22 @@ fn node_confidence_interval(
   name: String,
   node_posterior: &NodePosterior,
   rate_dates: Option<&[f64; 3]>,
-) -> Result<Option<NodeConfidenceInterval>, Report> {
-  let Some(date) = node_posterior.time else {
-    return Ok(None);
-  };
+) -> Option<NodeConfidenceInterval> {
+  let date = node_posterior.time?;
+  let limits = node_posterior.time_bounds.unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
 
-  let distribution = node_posterior.distribution.as_deref();
-  let region = distribution
-    .map(|distribution| max_posterior_region(distribution, CI_FRACTION))
-    .transpose()?
-    .flatten();
-  let limits = distribution
-    .and_then(Distribution::time_bounds)
-    .unwrap_or((f64::NEG_INFINITY, f64::INFINITY));
-
-  let (lower, upper) = confidence_bounds(date, limits, region, rate_dates);
+  let (lower, upper) = confidence_bounds(date, limits, node_posterior.region, rate_dates);
 
   let lower = lower.min(date);
   let upper = upper.max(date);
 
-  Ok(Some(NodeConfidenceInterval {
+  Some(NodeConfidenceInterval {
     key,
     name,
     date,
     lower,
     upper,
-  }))
+  })
 }
 
 pub(crate) fn confidence_bounds(

@@ -5,7 +5,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, unknown_branches};
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-  use crate::timetree::inference::result::{BranchLikelihood, TimeBackward};
+  use crate::timetree::inference::result::{BranchLikelihood, NodeBackward, log_marginal_likelihood};
   use eyre::Report;
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
@@ -95,9 +95,7 @@ mod tests {
 
     let d: f64 = (2015.0 - 3.0) - (2014.0 - 2.5);
     let expected = 0.5 * (std::f64::consts::PI / BRANCH_PRECISION).ln() - BRANCH_PRECISION * d * d / 4.0 - 0.3 - 0.7;
-    let actual = backward
-      .log_marginal_likelihood(graph.root_key()?)?
-      .expect("root has a distribution");
+    let actual = log_marginal_likelihood(&backward, graph.root_key()?)?.expect("root has a distribution");
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())
   }
@@ -316,7 +314,8 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
-    let msg = backward.messages[&parent_edge_key(&graph, leaf_key)]
+    let msg = backward[&leaf_key]
+      .to_parent
       .as_ref()
       .expect("edge should have msg_to_parent after backward pass");
     let msg_time = msg.likely_time()?.expect("message should have likely_time");
@@ -476,8 +475,8 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
-    assert_eq!(None, backward.messages[&parent_edge_key(&graph, leaf_b_key)]);
-    assert!(backward.messages[&parent_edge_key(&graph, leaf_a_key)].is_some());
+    assert_eq!(None, backward[&leaf_b_key].to_parent);
+    assert!(backward[&leaf_a_key].to_parent.is_some());
     Ok(())
   }
 
@@ -498,10 +497,10 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
-    assert!(backward.messages[&parent_edge_key(&graph, leaf_a_key)].is_some());
-    assert_eq!(None, backward.messages[&parent_edge_key(&graph, leaf_b_key)]);
+    assert!(backward[&leaf_a_key].to_parent.is_some());
+    assert_eq!(None, backward[&leaf_b_key].to_parent);
     assert_eq!(None, node_time_distribution(&backward, leaf_c_key));
-    assert_eq!(None, backward.messages[&parent_edge_key(&graph, leaf_c_key)]);
+    assert_eq!(None, backward[&leaf_c_key].to_parent);
     Ok(())
   }
 
@@ -517,9 +516,7 @@ mod tests {
 
     assert_error!(
       run_backward_pass(&graph, &inputs, None),
-      format!(
-        "Bad-branch flags are missing node {leaf_a_key}. This is an internal error. Please report it to developers."
-      )
+      format!("Scan input is missing node {leaf_a_key}. This is an internal error. Please report it to developers.")
     );
     Ok(())
   }
@@ -546,7 +543,7 @@ mod tests {
     let backward = run_backward_pass(&graph, &inputs, None)?;
 
     assert_eq!(None, node_time_distribution(&backward, internal_key));
-    assert_eq!(None, backward.messages[&parent_edge_key(&graph, internal_key)]);
+    assert_eq!(None, backward[&internal_key].to_parent);
     Ok(())
   }
 
@@ -578,7 +575,7 @@ mod tests {
 
     let backward = run_backward_pass(&graph, &inputs, Some(&model))?;
 
-    assert!(backward.messages[&parent_edge_key(&graph, leaf_a_key)].is_some());
+    assert!(backward[&leaf_a_key].to_parent.is_some());
     Ok(())
   }
 
@@ -609,7 +606,7 @@ mod tests {
       graph: &Graph,
       inputs: &BackwardInputs,
       coalescent_model: Option<&CoalescentPrior>,
-    ) -> Result<TimeBackward, Report> {
+    ) -> Result<BTreeMap<GraphNodeKey, NodeBackward>, Report> {
       propagate_distributions_backward(
         graph,
         &inputs.constraints,
@@ -621,10 +618,10 @@ mod tests {
     }
 
     pub(super) fn node_time_distribution(
-      backward: &TimeBackward,
+      backward: &BTreeMap<GraphNodeKey, NodeBackward>,
       key: GraphNodeKey,
     ) -> Option<Arc<Distribution<NegLog>>> {
-      backward.subtree[&key].clone()
+      backward[&key].subtree.clone()
     }
 
     pub(super) fn set_date_constraint(

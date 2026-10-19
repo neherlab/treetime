@@ -2,7 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::make_report;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
-use crate::timetree::inference::result::BranchLikelihood;
+use crate::timetree::inference::result::{BranchLikelihood, log_marginal_likelihood};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -59,7 +59,7 @@ pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rat
     &branches,
     inputs.max_points,
   )?;
-  backward.log_marginal_likelihood(inputs.graph.root_key()?)
+  log_marginal_likelihood(&backward, inputs.graph.root_key()?)
 }
 
 pub(crate) struct MarginalRateInputs<'a> {

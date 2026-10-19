@@ -52,7 +52,7 @@ mod tests {
     let names = nwk_parsed.names();
     let graph = nwk_parsed.graph;
     let key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
-    let inference = helpers::inference_with_posterior(&graph, key, Distribution::point(2010.0, 0.0));
+    let inference = helpers::inference_with_likely_time(&graph, key, 2010.0);
     let mut constraints = DateConstraints::default();
     constraints
       .by_node
@@ -84,10 +84,9 @@ mod tests {
       inference.posterior.insert(
         key(name),
         NodePosterior {
-          distribution: Some(Arc::new(Distribution::point(1900.0, 0.0))),
           likely_time: Some(1900.0),
           time,
-          contradicted: false,
+          ..NodePosterior::default()
         },
       );
     }
@@ -117,7 +116,6 @@ mod tests {
       inference.posterior.insert(
         key(name),
         NodePosterior {
-          distribution: Some(Arc::new(Distribution::point(peak, 0.0))),
           likely_time: Some(peak),
           ..NodePosterior::default()
         },
@@ -169,7 +167,6 @@ mod tests {
     inference.posterior.insert(
       merger,
       NodePosterior {
-        distribution: Some(Arc::new(Distribution::point(2001.0, 0.0))),
         likely_time: Some(2001.0),
         ..NodePosterior::default()
       },
@@ -196,19 +193,12 @@ mod tests {
       Distribution::function(array![0.0, 1.0, 2.0], array![1.0, f64::NAN, 2.0])
     }
 
-    pub(super) fn inference_with_posterior(
-      graph: &Graph,
-      key: GraphNodeKey,
-      distribution: Distribution<NegLog>,
-    ) -> TimeInference {
+    pub(super) fn inference_with_likely_time(graph: &Graph, key: GraphNodeKey, likely_time: f64) -> TimeInference {
       let mut inference = empty_time_inference(graph);
       inference.posterior.insert(
         key,
         NodePosterior {
-          likely_time: distribution
-            .likely_time()
-            .expect("fixture distribution has a likely time"),
-          distribution: Some(Arc::new(distribution)),
+          likely_time: Some(likely_time),
           ..NodePosterior::default()
         },
       );
