@@ -28,12 +28,7 @@ mod tests {
     let at = |mu: f64| marginal_log_lh_at_rate(&inputs, mu).map(|log_lh| log_lh.expect("root has a distribution"));
     let curve = |mu: f64| -mu.ln() - (mu - 3.0).powi(2);
     for mu in [2.0, 2.5, 4.0] {
-      pretty_assert_abs_diff_eq!(
-        curve(mu) - curve(3.0),
-        at(mu)? - at(3.0)?,
-        epsilon = 1e-4,
-        "edge messages are regridded to a mass window: kb/issues/M-timetree-edge-message-regridding-limits-accuracy.md"
-      );
+      pretty_assert_abs_diff_eq!(curve(mu) - curve(3.0), at(mu)? - at(3.0)?, epsilon = 1e-13);
     }
     Ok(())
   }
@@ -103,12 +98,7 @@ mod tests {
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::FollowSlope))?;
     let target = parabola_maximum(reference);
     assert!(target > 1.25_f64.ln() && target < 2.0_f64.ln());
-    pretty_assert_abs_diff_eq!(
-      reference * target.exp(),
-      step.target_rate,
-      epsilon = 1e-2,
-      "edge messages are regridded to a mass window: kb/issues/M-timetree-edge-message-regridding-limits-accuracy.md"
-    );
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-12);
     Ok(())
   }
 
@@ -173,12 +163,12 @@ mod tests {
     }
 
     pub(super) fn cherry() -> Result<Cherry, Report> {
-      let parsed = nwk_read(b"(A:5.0,B:2.0)root;".as_slice())?;
+      let parsed = nwk_read(b"(A:8.0,B:5.0)root;".as_slice())?;
       let names = parsed.names();
       let graph = parsed.graph;
       let mut constraints = DateConstraints::default();
       let mut branches = unknown_branches(&graph);
-      for (name, date, mean) in [("A", 2015.0, 5.0_f64), ("B", 2014.0, 2.0)] {
+      for (name, date, mean) in [("A", 2015.0, 8.0_f64), ("B", 2014.0, 5.0)] {
         let key = find_node_key_by_name(&graph, &names, name).expect("leaf not found");
         constraints
           .by_node
