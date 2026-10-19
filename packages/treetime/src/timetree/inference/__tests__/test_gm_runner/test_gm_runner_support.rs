@@ -4,28 +4,20 @@ pub(super) mod support {
   use crate::timetree::inference::result::NodePosterior;
   use deser::Deserialize;
   use eyre::Report;
-  use ndarray::Array1;
-  use ordered_float::OrderedFloat;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
-  use std::sync::Arc;
   use std::sync::LazyLock;
-  use treetime_distribution::{Distribution, DistributionFunction, NegLog};
-  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
   use treetime_io::fasta::{FastaRecord, fasta_read_file};
-  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::io::json::json_read_str;
 
   const FIXTURES_DIR: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/src/timetree/inference/__tests__/__fixtures__"
   );
-
-  const MIN_TIME_MUTATION_FRACTION: f64 = 0.01;
 
   pub(crate) static OUTPUTS: LazyLock<BTreeMap<String, DatasetOutputs>> = LazyLock::new(|| {
     let path = Path::new(FIXTURES_DIR).join("gm_runner_outputs.json");
@@ -53,8 +45,6 @@ pub(super) mod support {
   pub(crate) struct DatasetOutputs {
     rerooted_tree_nwk: String,
     clock_rate: f64,
-    sequence_length: usize,
-    poisson: BTreeMap<String, f64>,
     marginal_dense: BTreeMap<String, f64>,
   }
 
@@ -65,14 +55,6 @@ pub(super) mod support {
 
     pub(crate) fn clock_rate(&self) -> f64 {
       self.clock_rate
-    }
-
-    pub(crate) fn sequence_length(&self) -> usize {
-      self.sequence_length
-    }
-
-    pub(crate) fn poisson(&self) -> &BTreeMap<String, f64> {
-      &self.poisson
     }
 
     pub(crate) fn marginal_dense(&self) -> &BTreeMap<String, f64> {
@@ -120,39 +102,5 @@ pub(super) mod support {
         Some((name, time))
       })
       .collect()
-  }
-
-  pub(crate) fn create_poisson_branch_distributions(
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    mu: f64,
-    seq_len: usize,
-    n_points: usize,
-  ) -> Result<BTreeMap<GraphEdgeKey, Arc<Distribution<NegLog>>>, Report> {
-    let seq_len_f64 = seq_len.to_f64_exact();
-
-    let mut distributions = BTreeMap::new();
-    for edge_ref in graph.get_edges() {
-      let edge_key = edge_ref.key();
-
-      if let Some(branch_length) = branch_lengths[&edge_key] {
-        let expected_time = branch_length / mu;
-        let max_time = 3.0 * expected_time.max(1.0);
-
-        let min_time = MIN_TIME_MUTATION_FRACTION / (mu * seq_len_f64);
-        let grid = Array1::linspace(min_time, max_time, n_points);
-
-        let log_p = grid.mapv(|dt| -dt * mu * seq_len_f64 + branch_length * seq_len_f64 * (dt * mu * seq_len_f64).ln());
-
-        let log_p_max = log_p.iter().copied().map(OrderedFloat).max().map_or(0.0, |x| x.0);
-        let neg_log = log_p.mapv(|value| log_p_max - value);
-
-        let distribution_fn = DistributionFunction::from_range_values((min_time, max_time), neg_log)?;
-        let distribution = Distribution::Function(distribution_fn);
-        distributions.insert(edge_key, Arc::new(distribution));
-      }
-    }
-
-    Ok(distributions)
   }
 }

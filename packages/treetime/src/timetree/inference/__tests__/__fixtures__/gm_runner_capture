@@ -11,8 +11,7 @@ v1 results to ensure scientific agreement between implementations.
 
 For each dataset:
 1. Run v0 clock estimation to reroot tree and obtain clock rate
-2. Run v0 timetree with branch-length-mode=input (Poisson distributions)
-3. Run v0 timetree with branch-length-mode=marginal, time-marginal=true
+2. Run v0 timetree with branch-length-mode=marginal, time-marginal=true
 
 Usage:
     ./dev/docker/python python packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_capture
@@ -110,31 +109,9 @@ def capture_dataset(name: str, config: dict[str, str]) -> dict:
     clock_rate = float(tt_clock.date2dist.clock_rate)
     print(f"    clock_rate={clock_rate}")
 
-    # Timetree with branch-length-mode=input (Poisson branch lengths).
+    # Timetree with branch-length-mode=marginal, time-marginal=true.
     # Pass a deepcopy of the rerooted tree object - NWK string roundtrip
     # fails for node names with special characters.
-    print("    timetree input mode...")
-    tt_input = TreeTime(
-        dates=dates,
-        tree=copy.deepcopy(tt_clock.tree),
-        gtr="JC69",
-        seq_len=seq_length,
-        verbose=0,
-        rng_seed=SEED,
-        branch_length_mode="input",
-    )
-    tt_input.run(
-        root=None,
-        resolve_polytomies=False,
-        max_iter=0,
-        fixed_clock_rate=clock_rate,
-        time_marginal=False,
-        branch_length_mode="input",
-    )
-    poisson_times = extract_node_times(tt_input.tree)
-    print(f"    poisson: {len(poisson_times)} nodes")
-
-    # Timetree with branch-length-mode=marginal, time-marginal=true
     print("    timetree marginal mode...")
     tt_marginal = TreeTime(
         dates=dates,
@@ -160,8 +137,6 @@ def capture_dataset(name: str, config: dict[str, str]) -> dict:
     return {
         "rerooted_tree_nwk": rerooted_nwk,
         "clock_rate": round(clock_rate, 6),
-        "sequence_length": seq_length,
-        "poisson": poisson_times,
         "marginal_dense": marginal_times,
     }
 
