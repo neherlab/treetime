@@ -28,16 +28,21 @@ pub(crate) enum RootTarget {
 impl RootTarget {
   pub(crate) fn on_edge(graph: &Graph, edge_key: GraphEdgeKey, split: f64, split_edge: bool) -> Result<Self, Report> {
     let (source_key, target_key) = graph.edge_endpoints(edge_key)?;
+    let at_target = ulps_eq!(split, 1.0, max_ulps = 5) || (!split_edge && split >= 0.5);
     Ok(if ulps_eq!(split, 0.0, max_ulps = 5) {
       Self::Node(source_key)
-    } else if ulps_eq!(split, 1.0, max_ulps = 5) {
+    } else if at_target && graph.is_leaf(target_key) {
+      if split_edge {
+        Self::Split { edge_key, split: 1.0 }
+      } else {
+        Self::Node(source_key)
+      }
+    } else if at_target {
       Self::Node(target_key)
     } else if split_edge {
       Self::Split { edge_key, split }
-    } else if split < 0.5 {
-      Self::Node(source_key)
     } else {
-      Self::Node(target_key)
+      Self::Node(source_key)
     })
   }
 }

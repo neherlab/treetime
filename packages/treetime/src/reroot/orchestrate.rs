@@ -1,3 +1,5 @@
+use crate::make_internal_error;
+use crate::node_label::node_label;
 use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
 use eyre::Report;
 use smart_default::SmartDefault;
@@ -39,6 +41,9 @@ pub(crate) fn apply_root_at_edge(
 
   let leaves_before = leaf_keys(graph);
   let (new_root_key, edge_split) = match target {
+    RootTarget::Node(key) if graph.is_leaf(key) => {
+      return make_internal_error!("Rerooting must not make the leaf '{}' the root", node_label(names, key));
+    },
     RootTarget::Node(key) => (key, None),
     RootTarget::Split { edge_key, split } => {
       let length = branch_lengths.get(&edge_key).copied().flatten();

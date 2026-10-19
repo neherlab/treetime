@@ -3,7 +3,7 @@ mod tests {
   use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves, root_moves};
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
-  use helpers::{Expected, edge_fixture};
+  use helpers::{Expected, edge_fixture, terminal_edge_fixture};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read;
@@ -31,6 +31,36 @@ mod tests {
       Expected::Source => RootTarget::Node(source_key),
       Expected::Target => RootTarget::Node(target_key),
       Expected::Split => RootTarget::Split { edge_key, split },
+      Expected::LeafEndSplit => RootTarget::Split { edge_key, split: 1.0 },
+    };
+
+    let actual = RootTarget::on_edge(&graph, edge_key, split, split_edge)?;
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::leaf_end_split(                1.0,                        true,  Expected::LeafEndSplit)]
+  #[case::within_epsilon_of_leaf_end(    1.0 - f64::EPSILON / 2.0,   true,  Expected::LeafEndSplit)]
+  #[case::interior_split(                0.75,                       true,  Expected::Split)]
+  #[case::parent_end(                    0.0,                        true,  Expected::Source)]
+  #[case::leaf_end_no_split(             1.0,                        false, Expected::Source)]
+  #[case::above_half_no_split(           0.75,                       false, Expected::Source)]
+  #[case::below_half_no_split(           0.25,                       false, Expected::Source)]
+  #[trace]
+  fn test_root_target_on_a_terminal_edge_is_never_the_leaf(
+    #[case] split: f64,
+    #[case] split_edge: bool,
+    #[case] expected: Expected,
+  ) -> Result<(), Report> {
+    let (graph, edge_key, source_key, target_key) = terminal_edge_fixture()?;
+    let expected = match expected {
+      Expected::Source => RootTarget::Node(source_key),
+      Expected::Target => RootTarget::Node(target_key),
+      Expected::Split => RootTarget::Split { edge_key, split },
+      Expected::LeafEndSplit => RootTarget::Split { edge_key, split: 1.0 },
     };
 
     let actual = RootTarget::on_edge(&graph, edge_key, split, split_edge)?;
@@ -123,6 +153,7 @@ mod tests {
       Source,
       Target,
       Split,
+      LeafEndSplit,
     }
 
     pub(super) fn edge_fixture() -> Result<(Graph, GraphEdgeKey, GraphNodeKey, GraphNodeKey), Report> {
@@ -132,6 +163,16 @@ mod tests {
       let edge_key = find_edge_key(&graph, &names, "root", "AB").expect("root->AB exists");
       let source_key = find_node_key_by_name(&graph, &names, "root").expect("root exists");
       let target_key = find_node_key_by_name(&graph, &names, "AB").expect("AB exists");
+      Ok((graph, edge_key, source_key, target_key))
+    }
+
+    pub(super) fn terminal_edge_fixture() -> Result<(Graph, GraphEdgeKey, GraphNodeKey, GraphNodeKey), Report> {
+      let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
+      let names = nwk_parsed.names();
+      let graph = nwk_parsed.graph;
+      let edge_key = find_edge_key(&graph, &names, "root", "C").expect("root->C exists");
+      let source_key = find_node_key_by_name(&graph, &names, "root").expect("root exists");
+      let target_key = find_node_key_by_name(&graph, &names, "C").expect("C exists");
       Ok((graph, edge_key, source_key, target_key))
     }
   }

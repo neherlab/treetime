@@ -305,6 +305,48 @@ pub(crate) mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_reroot_past_a_tip_roots_at_a_new_node_with_a_zero_length_branch_to_the_tip() -> Result<(), Report> {
+    let fixture = helpers::setup_tip_past_optimum_graph()?;
+    let names = fixture.names.clone();
+
+    let (tree, result) = helpers::reroot_at_fixed_rate(fixture, &RerootParams::default())?;
+
+    let a_key = find_node_key_by_name(&tree.graph, &names, "A").expect("A exists");
+    assert!(
+      tree.graph.is_leaf(a_key),
+      "v0 roots a split at the tip end with Biopython root_with_outgroup(tip): a new root with a 0-length branch to \
+       the tip (packages/legacy/treetime/treetime/treeregression.py#L443-L463)"
+    );
+    assert_eq!(None, names.get(&result.new_root_key).cloned().flatten());
+    helpers::assert_inputs_match_graph(&tree);
+    let expected = btreemap! { o!("A") => 0.0, o!("N") => 0.002 };
+    let actual = helpers::root_child_lengths(&tree, &names, result.new_root_key)?;
+    pretty_assert_map_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[test]
+  fn test_reroot_past_a_tip_without_edge_split_keeps_the_parent_end() -> Result<(), Report> {
+    let fixture = helpers::setup_tip_past_optimum_graph()?;
+    let names = fixture.names.clone();
+    let reroot_params = RerootParams {
+      topology: RerootTopologyParams {
+        split_edge: false,
+        ..RerootTopologyParams::default()
+      },
+      ..RerootParams::default()
+    };
+
+    let (tree, result) = helpers::reroot_at_fixed_rate(fixture, &reroot_params)?;
+
+    assert_eq!(Some(o!("R")), names[&result.new_root_key]);
+    let expected = btreemap! { o!("A") => 0.001, o!("N") => 0.001 };
+    let actual = helpers::root_child_lengths(&tree, &names, result.new_root_key)?;
+    pretty_assert_map_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+    Ok(())
+  }
+
   pub(crate) mod helpers {
     use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
     use crate::clock::clock_state::ClockInputs;
@@ -329,6 +371,10 @@ pub(crate) mod tests {
     const STEM_TREE: &str = "(((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)R:0.001)STEM;";
 
     const UNSTEMMED_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)R;";
+
+    const TIP_PAST_OPTIMUM_TREE: &str = "(A:0.001,(B:0.002,C:0.003)N:0.001)R;";
+
+    const TIP_PAST_OPTIMUM_RATE: f64 = 0.01;
 
     pub(super) struct RerootFixture {
       pub tree: ClockTree,
@@ -369,6 +415,37 @@ pub(crate) mod tests {
 
     pub(super) fn setup_unstemmed_graph(dates: &BTreeMap<String, f64>) -> Result<RerootFixture, Report> {
       setup_graph(UNSTEMMED_TREE, dates)
+    }
+
+    pub(super) fn setup_tip_past_optimum_graph() -> Result<RerootFixture, Report> {
+      let dates = btreemap! {
+        o!("A") => 2000.0,
+        o!("B") => 2001.0,
+        o!("C") => 2001.0,
+      };
+      setup_graph(TIP_PAST_OPTIMUM_TREE, &dates)
+    }
+
+    pub(super) fn reroot_at_fixed_rate(
+      fixture: RerootFixture,
+      reroot_params: &RerootParams,
+    ) -> Result<(ClockTree, RerootResult), Report> {
+      let (tree, result) = estimate_clock_model_with_reroot_policy(
+        fixture.tree,
+        &ClockFitParams {
+          outliers: &BTreeSet::new(),
+          clock_rate: Some(TIP_PAST_OPTIMUM_RATE),
+          keep_root: false,
+          reroot_params,
+          prev_clock_rate: None,
+        },
+        &fixture.names,
+        &NoopProgress,
+      )?;
+      Ok((
+        tree,
+        result.reroot_result().cloned().expect("a reroot reports its result"),
+      ))
     }
 
     pub(super) fn estimate(

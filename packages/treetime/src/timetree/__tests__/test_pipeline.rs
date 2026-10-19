@@ -44,6 +44,12 @@ mod tests {
 
   const ZIKA_COALESCENT_TC: f64 = 0.01;
 
+  const TIP_PAST_OPTIMUM_TREE: &str = "(A:0.001,(B:0.002,C:0.003)N:0.001)R;";
+
+  const TIP_PAST_OPTIMUM_RATE: f64 = 0.01;
+
+  const TIP_PAST_OPTIMUM_SEQUENCE_LENGTH: usize = 1000;
+
   #[test]
   fn test_pipeline_rejects_n_branches_posterior_before_any_inference() -> Result<(), Report> {
     let params = TimetreeParams {
@@ -221,6 +227,32 @@ mod tests {
     assert_eq!(
       "Cannot divide point by point: operation not well-defined",
       report.root_cause().to_string()
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_reroot_past_a_tip_dates_the_tip_at_its_input_date() -> Result<(), Report> {
+    let params = TimetreeParams {
+      branch_length_mode: BranchLengthMode::Input,
+      keep_root: false,
+      clock_rate: Some(TIP_PAST_OPTIMUM_RATE),
+      sequence_length: Some(TIP_PAST_OPTIMUM_SEQUENCE_LENGTH),
+      ..marginal_timetree_params()
+    };
+
+    let output = helpers::run(&params, helpers::tip_past_optimum_input()?, None)?;
+
+    let a_key = find_node_key_by_name(&output.graph, &output.names, "A").expect("A exists");
+    assert!(
+      output.graph.is_leaf(a_key),
+      "v0 roots a split at the tip end with Biopython root_with_outgroup(tip): a new root with a 0-length branch to \
+       the tip (packages/legacy/treetime/treetime/treeregression.py#L443-L463)"
+    );
+    pretty_assert_ulps_eq!(
+      2000.0,
+      output.node_dates[&a_key].expect("the tip is dated"),
+      max_ulps = 0
     );
     Ok(())
   }
@@ -432,6 +464,24 @@ mod tests {
         branch_lengths: nwk_parsed.branch_lengths,
       };
       Ok(input)
+    }
+
+    pub(super) fn tip_past_optimum_input() -> Result<TimetreeInput, Report> {
+      let nwk_parsed = nwk_read(TIP_PAST_OPTIMUM_TREE.as_bytes())?;
+      let names = nwk_parsed.names();
+      let dates = btreemap! {
+        o!("A") => Some(DateConstraint::exact(2000.0)),
+        o!("B") => Some(DateConstraint::exact(2001.0)),
+        o!("C") => Some(DateConstraint::exact(2001.0)),
+      };
+      let dates = dates_by_node(dates, &nwk_parsed.graph, &names);
+      Ok(TimetreeInput {
+        graph: nwk_parsed.graph,
+        names,
+        sources: vec![],
+        dates: Some(dates),
+        branch_lengths: nwk_parsed.branch_lengths,
+      })
     }
 
     pub(super) fn zika_newick() -> Result<String, Report> {
