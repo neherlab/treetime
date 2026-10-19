@@ -511,39 +511,40 @@ impl NodeSurvival {
   }
 }
 
-fn curvature_grid(start: f64, end: f64, n_points: usize, f: impl Fn(f64) -> f64) -> Vec<f64> {
+fn curvature_grid(start: f64, end: f64, n_points: usize, survival: impl Fn(f64) -> f64) -> Vec<f64> {
   let fine = n_points * CURVATURE_GRID_REFINEMENT;
-  let h = (end - start) / (fine - 1).to_f64_exact();
-  let x: Vec<f64> = (0..fine).map(|i| start + h * i.to_f64_exact()).collect();
-  let y: Vec<f64> = x.iter().map(|&x| f(x)).collect();
+  let spacing = (end - start) / (fine - 1).to_f64_exact();
+  let times: Vec<f64> = (0..fine).map(|i| start + spacing * i.to_f64_exact()).collect();
+  let values: Vec<f64> = times.iter().map(|&time| survival(time)).collect();
   let curvature: Vec<f64> = (0..fine)
     .map(|i| {
-      let j = i.clamp(1, fine - 2);
-      ((y[j - 1] - 2.0 * y[j] + y[j + 1]) / (h * h)).abs().sqrt()
+      let center = i.clamp(1, fine - 2);
+      let second_difference = values[center - 1] - 2.0 * values[center] + values[center + 1];
+      (second_difference / (spacing * spacing)).abs().sqrt()
     })
     .collect();
   let mean_curvature = curvature.iter().sum::<f64>() / fine.to_f64_exact();
   let density: Vec<f64> = curvature
     .iter()
-    .map(|&c| c + CURVATURE_GRID_UNIFORM_SHARE * mean_curvature.max(f64::MIN_POSITIVE))
+    .map(|&local| local + CURVATURE_GRID_UNIFORM_SHARE * mean_curvature.max(f64::MIN_POSITIVE))
     .collect();
   let cumulative: Vec<f64> = once(0.0)
-    .chain(density.iter().tuple_windows().scan(0.0, |acc, (a, b)| {
-      *acc += h * f64::midpoint(*a, *b);
+    .chain(density.iter().tuple_windows().scan(0.0, |acc, (left, right)| {
+      *acc += spacing * f64::midpoint(*left, *right);
       Some(*acc)
     }))
     .collect();
   let total = cumulative[fine - 1];
   (0..n_points)
-    .map(|k| {
-      if k == 0 {
+    .map(|index| {
+      if index == 0 {
         return start;
       }
-      if k == n_points - 1 {
+      if index == n_points - 1 {
         return end;
       }
-      let target = total * k.to_f64_exact() / (n_points - 1).to_f64_exact();
-      interpolate(&cumulative, &x, target)
+      let target = total * index.to_f64_exact() / (n_points - 1).to_f64_exact();
+      interpolate(&cumulative, &times, target)
     })
     .collect()
 }

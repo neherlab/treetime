@@ -156,18 +156,20 @@ mod tests {
         .map(|&(name, date)| contribution(name, 0, date))
         .sum::<Result<f64, Report>>()?;
 
-      let (a, b, i, c) = (branch("A")?, branch("B")?, branch("I")?, branch("C")?);
-      let root_side = c
+      let (branch_a, branch_b) = (branch("A")?, branch("B")?);
+      let (branch_i, branch_c) = (branch("I")?, branch("C")?);
+      let root_side = branch_c
         .reflected(TIP_DATE_C)
         .with_kinks(&kinks)
         .plus(|t| contribution("root", 2, t))?;
-      let tip_side = a
+      let tip_side_b = branch_b.reflected(TIP_DATE_B);
+      let tip_side = branch_a
         .reflected(TIP_DATE_A)
-        .intersect_kinks(&b.reflected(TIP_DATE_B))
+        .intersect_kinks(&tip_side_b)
         .with_kinks(&kinks)
-        .map_values(|t, y| Ok(y + b.reflected(TIP_DATE_B).eval(t) + contribution("I", 2, t)? + leaf_cost))?;
+        .map_values(|time, neglog| Ok(neglog + tip_side_b.eval(time) + contribution("I", 2, time)? + leaf_cost))?;
 
-      let i_reflected = i.reflected(0.0);
+      let i_reflected = branch_i.reflected(0.0);
       let inner = |t_i: f64| root_side.exp_integral_with_shifted(&i_reflected, t_i);
       let reference = tip_side.y.iter().copied().fold(f64::INFINITY, f64::min);
       let mut total = 0.0;
@@ -177,9 +179,9 @@ mod tests {
           continue;
         }
         for (node, weight) in GAUSS_LEGENDRE {
-          let t = x0 + 0.5 * (x1 - x0) * (1.0 + node);
-          let y = y0 + (t - x0) / (x1 - x0) * (y1 - y0);
-          total += 0.5 * (x1 - x0) * weight * (reference - y).exp() * inner(t);
+          let time = x0 + 0.5 * (x1 - x0) * (1.0 + node);
+          let neglog = y0 + (time - x0) / (x1 - x0) * (y1 - y0);
+          total += 0.5 * (x1 - x0) * weight * (reference - neglog).exp() * inner(time);
         }
       }
       Ok(total.ln() - reference)
