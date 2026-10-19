@@ -6,7 +6,7 @@ mod tests {
   use crate::error::OperationError;
   use crate::optimize::params::BranchLengthMode;
   use crate::partition::result::{PartitionResult, PartitionSequences};
-  use crate::progress::NoopProgress;
+  use crate::progress::{NoopProgress, StageSink};
   use crate::seq::sink::SeqSink;
   use crate::test_utils::{
     RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs, marginal_timetree_params,
@@ -16,6 +16,7 @@ mod tests {
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
   use maplit::btreemap;
+  use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
@@ -191,6 +192,31 @@ mod tests {
   }
 
   #[test]
+  fn test_pipeline_refinement_progress_counts_iterations_from_one() -> Result<(), Report> {
+    let params = TimetreeParams {
+      clock_rate: Some(ZIKA_CLOCK_RATE),
+      max_iter: 2,
+      ..marginal_timetree_params()
+    };
+    let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
+    let stages = helpers::RecordingStages::default();
+
+    pipeline::run(&params, input, None, None, &NoopCancel, &stages, &NoopProgress)
+      .map_err(OperationError::into_report)?;
+
+    let iterations: Vec<(String, String)> = stages
+      .reports
+      .into_inner()
+      .into_iter()
+      .filter(|(stage, _, message)| stage == "Refinement loop" && !message.is_empty())
+      .map(|(_, fraction, message)| (format!("{fraction:.2}"), message))
+      .collect();
+    let expected = vec![(o!("0.30"), o!("iteration 1/2")), (o!("0.55"), o!("iteration 2/2"))];
+    assert_eq!(expected, iterations);
+    Ok(())
+  }
+
+  #[test]
   fn test_pipeline_date_branch_lengths_sum_to_node_dates() -> Result<(), Report> {
     let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
@@ -298,6 +324,20 @@ mod tests {
     ) -> Result<TimetreeOutput, Report> {
       pipeline::run(params, input, None, seq_sink, &NoopCancel, &NoopProgress, &NoopProgress)
         .map_err(OperationError::into_report)
+    }
+
+    #[derive(Default)]
+    pub(super) struct RecordingStages {
+      pub reports: Mutex<Vec<(String, f64, String)>>,
+    }
+
+    impl StageSink for RecordingStages {
+      fn report(&self, stage: &str, fraction: f64, message: &str) {
+        self
+          .reports
+          .lock()
+          .push((stage.to_owned(), fraction, message.to_owned()));
+      }
     }
 
     pub(super) fn star_dates() -> BTreeMap<String, Option<DateConstraint>> {

@@ -41,12 +41,8 @@ pub(crate) fn run_refinement_loop(
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
-    let iter_fraction = 0.3 + 0.5 * (i.to_f64_exact() / max_iter.to_f64_exact());
-    stages.report(
-      "Refinement loop",
-      iter_fraction,
-      &format!("iteration {}/{max_iter}", i + 1),
-    );
+    let iter_fraction = 0.3 + 0.5 * ((i - 1).to_f64_exact() / max_iter.to_f64_exact());
+    stages.report("Refinement loop", iter_fraction, &format!("iteration {i}/{max_iter}"));
 
     if coalescent.mode.is_optimized() {
       timescale = coalescent_timescale(coalescent.mode, &coalescent.skyline_params, &current, log)?;
