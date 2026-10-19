@@ -28,8 +28,8 @@ v1 uses deterministic `get_one()` (`#get_one`) for root state selection when the
 
 ### Key functions
 
-- `fitch_backward()` (`#fitch_backward`) and `run_fitch_backward_indexed()` (`#run_fitch_backward_indexed`): postorder pass computing state sets and parsimony score
-- `fitch_forward()` (`#fitch_forward`) and `run_fitch_forward_indexed()` (`#run_fitch_forward_indexed`): preorder pass resolving ambiguities
+- `fitch_backward()` (`#fitch_backward`) and `FitchBackwardPass::node()` (`#FitchBackwardPass::node`): postorder pass computing state sets and parsimony score
+- `fitch_forward()` (`#fitch_forward`) and `fitch_forward_node()` (`#fitch_forward_node`): preorder pass resolving ambiguities
 
 ### References
 
@@ -53,7 +53,7 @@ where P(X->Y|t) = exp(Q*t) is the transition probability matrix from the GTR sub
 
 The backward pass (leaf-to-root) computes partial likelihoods. The forward pass (root-to-leaf) computes "outgroup messages" via cavity/division: each node receives the information from the rest of the tree excluding its own subtree, and combines it with the backward message to produce the marginal posterior.
 
-Both passes use [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs) to move partition maps into pass-scoped topology-indexed storage. Each node owns a disjoint mutable slot. Backward work reads only completed descendant payloads; forward work reads only completed ancestor payloads. Parent-edge data has a stable slot throughout the pass. A node runs as soon as its dependencies complete rather than at a per-level barrier, preserving the sequential dependency order while allowing independent nodes to run concurrently.
+Both passes run on the tree scans of [`packages/treetime-graph/src/tree_scan.rs`](../../packages/treetime-graph/src/tree_scan.rs): the backward pass on `TreeView::scan_up`, the forward pass on `TreeView::scan_down`. Each scan takes the per-node inputs by value, gives each node step only its own input and the messages of its children (up) or its parent (down), and returns the per-node outputs. A node runs as soon as its dependencies complete rather than at a per-level barrier, and children are combined in tree order, so results do not depend on the thread count.
 
 ### v1 implementations
 
@@ -81,7 +81,7 @@ Non-char (N, gap) differences between parent and child are tracked through `non_
 
 Branches in typical TreeTime datasets are short, and on a given edge or near a given node only a small minority of sites change. Computing propagators for every site wastes most of the work on sites with negligible probability of change. Two alternatives exist. Parsimony avoids probabilistic models altogether. MAPLE (<a id="cite-8"></a>[De Maio et al. 2023](https://doi.org/10.1038/s41588-023-01368-0) [[8](#ref-8)]) stores explicit vectors only for positions that differ from a reference genome, but that set grows with the distance from the reference, so the representation stops being sparse as the tree gets deeper. v1 instead keeps a site explicit only where it varies near the current node: at Fitch substitutions on adjacent edges, at ambiguous leaf sites, and where the messages disagree or are uncertain. Every other site is represented by the shared `fixed` vector of its Fitch state. The Fitch reconstruction supplies everything the passes need: the root sequence, the substitutions on each edge, the gap and unknown ranges of each node, the ambiguous sites of each leaf with their chosen states, and the state counts of each node.
 
-**Backward pass** (`fn process_node_backward_indexed()` [`packages/treetime/src/partition/marginal/sparse/backward.rs#L44-L169`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L44-L169)):
+**Backward pass** (`fn SparseBackwardPass::node()` [`packages/treetime/src/partition/marginal/sparse/backward.rs#L63-L173`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L63-L173)):
 
 - Leaf (`fn leaf_message()`): `fixed` holds the profile of each determined state (canonical and ambiguous) with the leaf composition count of that state. Each ambiguous position becomes an explicit position whose `dis` is the profile of its ambiguity set and whose `state` is the Fitch chosen state (or one member of the set when the chosen state is not canonical)
 - Internal node, collection (`fn combine_child_messages()`): the explicit positions of the node are (1) every position with a Fitch substitution on a child edge, with the substitution's reference state as the node state and its query state recorded for that child, and (2) every position explicit in a child message, with the child's state. Substitutions take precedence
@@ -96,9 +96,9 @@ Branches in typical TreeTime datasets are short, and on a given edge or near a g
 
 The check does not require the argmax to equal the Fitch state; both conditions together make a disagreement unlikely but not impossible. A dropped position counts toward the `fixed` count of its state. The `fixed` vectors are combined once per canonical state. The log-likelihood weights each by the composition count of the state minus every candidate site of that state, while the stored `count` subtracts only the sites that stay explicit. Dropping positions is an approximation; see [kb/decisions/ancestral-marginal-sparse-parsimony-chain.md](../decisions/ancestral-marginal-sparse-parsimony-chain.md) and [kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](../issues/H-ancestral-sparse-dense-internal-residues-diverge.md).
 
-**Forward pass** (`fn process_node_forward_indexed()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L67-L159`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L67-L159)):
+**Forward pass** (`fn SparseForwardPass::node()` and `fn SparseForwardPass::edge()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L86-L198`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L86-L198)):
 
-- `msg_to_child` (`fn compute_msg_to_child()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L167-L226`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L167-L226)) divides the parent profile by the child's `msg_from_child`, position by position and for each `fixed` vector, and normalizes. Its explicit positions are the edge substitutions and the explicit positions of the parent profile and of `msg_from_child`, without the child's `non_char` positions
+- `msg_to_child` (`fn compute_msg_to_child()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L207-L266`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L207-L266)) divides the parent profile by the child's `msg_from_child`, position by position and for each `fixed` vector, and normalizes. Its explicit positions are the edge substitutions and the explicit positions of the parent profile and of `msg_from_child`, without the child's `non_char` positions
 - `msg_to_child` is propagated along the edge with $P(t)$ to give `msg_from_parent`
 - The node profile is `combine_messages(msg_from_parent, msg_to_parent)` without a root prior. Its explicit positions are the edge substitutions (child state), the explicit positions of `msg_to_child` outside the child's `non_char` ranges, and the explicit positions of `msg_to_parent`
 
@@ -110,8 +110,8 @@ v1 backward pass uses log-space arithmetic with logsumexp normalization (dense `
 
 ### Key functions
 
-- `process_node_backward_indexed()` (`#process_node_backward_indexed`, sparse) and `indexed_node_backward()` (`#indexed_node_backward`, dense): compute partial likelihoods via GTR matrix multiplication
-- `process_node_forward_indexed()` (`#process_node_forward_indexed`, sparse) and `indexed_node_forward()` (`#indexed_node_forward`, dense): compute outgroup messages via cavity/division
+- `SparseBackwardPass::node()` (`#SparseBackwardPass::node`, sparse) and `IndexedBackwardPass::node()` (`#IndexedBackwardPass::node`, dense): compute partial likelihoods via GTR matrix multiplication
+- `SparseForwardPass::edge()` (`#SparseForwardPass::edge`, sparse) and `IndexedForwardPass::node()` (`#IndexedForwardPass::node`, dense): compute outgroup messages via cavity/division
 - `combine_messages()` (`#combine_messages`): combines child messages in log-space via logsumexp normalization
 - `propagate_raw()` (`#propagate_raw`): GTR matrix-vector product `P(t) * profile`
 
@@ -184,7 +184,7 @@ The property test `test_prop_sparse_edge_mutations_match_full_sequence_compariso
 | [`packages/treetime/src/partition/marginal/shared/pass.rs`](../../packages/treetime/src/partition/marginal/shared/pass.rs)                                                                                                                                               | Dense and discrete marginal passes (Felsenstein pruning)                         |
 | [`packages/treetime/src/partition/marginal/sparse/backward.rs`](../../packages/treetime/src/partition/marginal/sparse/backward.rs)                                                                                                                                       | Sparse marginal backward pass                                                    |
 | [`packages/treetime/src/partition/marginal/sparse/forward.rs`](../../packages/treetime/src/partition/marginal/sparse/forward.rs)                                                                                                                                         | Sparse marginal forward pass                                                     |
-| [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs)                                                                                                                                                                                       | Topology-indexed work-first pass storage for Fitch and marginal passes           |
+| [`packages/treetime-graph/src/tree_scan.rs`](../../packages/treetime-graph/src/tree_scan.rs)                                                                                                                                                                             | Parallel tree scans that run the Fitch and marginal passes                       |
 | [`packages/treetime/src/partition/marginal/sparse/message.rs`](../../packages/treetime/src/partition/marginal/sparse/message.rs)                                                                                                                                         | `combine_messages()` (`#combine_messages`), `propagate_raw()` (`#propagate_raw`) |
 | [`packages/treetime/src/seq/mutation.rs`](../../packages/treetime/src/seq/mutation.rs)                                                                                                                                                                                   | Branch mutations by full sequence comparison (`stream_sequence_mutations()`)     |
 | [`packages/treetime/src/partition/marginal/sparse/mutations.rs`](../../packages/treetime/src/partition/marginal/sparse/mutations.rs)                                                                                                                                     | Sparse branch mutations (`sparse_edge_mutations()`)                              |

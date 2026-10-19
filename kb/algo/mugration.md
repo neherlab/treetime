@@ -24,7 +24,7 @@ For each leaf node:
 
 This follows Felsenstein's treatment of ambiguous data: the likelihood of an unknown state is 1 for every possible state, so the leaf contributes a factor of 1 and the tree likelihood marginalizes over it. A profile of `1/n_states` gives the same posteriors but lowers the log-likelihood by `ln(n_states)` per missing leaf.
 
-Backward pass (postorder, leaves to root) (`fn indexed_node_backward` [packages/treetime/src/partition/marginal/shared/pass.rs#L83](../../packages/treetime/src/partition/marginal/shared/pass.rs#L83)):
+Backward pass (postorder, leaves to root) (`fn IndexedBackwardPass::node` [packages/treetime/src/partition/marginal/shared/pass.rs#L150-L213](../../packages/treetime/src/partition/marginal/shared/pass.rs#L150-L213)):
 
 For each node in postorder:
 
@@ -44,7 +44,7 @@ For each node in postorder:
    ```
    where `P = exp(Q*t)` is the transition probability matrix for branch length `t`.
 
-Forward pass (preorder, root to leaves) (`fn indexed_node_forward` [packages/treetime/src/partition/marginal/shared/pass.rs#L225](../../packages/treetime/src/partition/marginal/shared/pass.rs#L225)):
+Forward pass (preorder, root to leaves) (`fn IndexedForwardPass::node` [packages/treetime/src/partition/marginal/shared/pass.rs#L311-L353](../../packages/treetime/src/partition/marginal/shared/pass.rs#L311-L353)):
 
 For each node in preorder:
 
@@ -83,7 +83,7 @@ Supporting references for missing data treatment:
 
 ## Architecture
 
-The discrete partition (`struct PartitionMarginalDiscrete`) implements the shared `trait MarginalPasses` [packages/treetime/src/partition/marginal/shared/update.rs#L11](../../packages/treetime/src/partition/marginal/shared/update.rs#L11). Its passes call the shared `fn indexed_backward` and `fn indexed_forward` with `IndexedKind::Discrete` [packages/treetime/src/partition/marginal/discrete/partition.rs#L87-L91](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L87-L91). Discrete traits are `Array2(1, n_states)` profiles stored in the same `DenseNodeState` type as dense sequence inference. A discrete leaf reads its observed profile in `fn discrete_leaf_backward` [packages/treetime/src/partition/marginal/shared/pass.rs#L160](../../packages/treetime/src/partition/marginal/shared/pass.rs#L160). The forward pass skips the indel and sequence step for the discrete kind [packages/treetime/src/partition/marginal/shared/pass.rs#L263-L268](../../packages/treetime/src/partition/marginal/shared/pass.rs#L263-L268).
+The discrete partition (`struct PartitionMarginalDiscrete`) implements the shared `trait MarginalPasses` [packages/treetime/src/partition/marginal/shared/update.rs#L11](../../packages/treetime/src/partition/marginal/shared/update.rs#L11). Its passes call the shared `fn indexed_backward` and `fn indexed_forward` with `IndexedKind::Discrete` [packages/treetime/src/partition/marginal/discrete/partition.rs#L87-L91](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L87-L91). Discrete traits are `Array2(1, n_states)` profiles stored in the same `DenseNodeState` type as dense sequence inference. A discrete leaf reads its observed profile in `fn discrete_leaf_backward` [packages/treetime/src/partition/marginal/shared/pass.rs#L231-L238](../../packages/treetime/src/partition/marginal/shared/pass.rs#L231-L238). The forward pass skips the indel and sequence step for the discrete kind [packages/treetime/src/partition/marginal/shared/pass.rs#L343-L348](../../packages/treetime/src/partition/marginal/shared/pass.rs#L343-L348).
 
 GTR refinement lives in [`packages/treetime/src/gtr/refinement.rs`](../../packages/treetime/src/gtr/refinement.rs) as a domain-level algorithm generic over `MarginalPasses`, called from the mugration pipeline.
 

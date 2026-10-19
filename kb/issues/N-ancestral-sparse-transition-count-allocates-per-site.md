@@ -6,7 +6,7 @@ Sparse transition statistics create a temporary inside a loop that scales with t
 
 - `fn accumulate_site_transition_weighted()` [packages/treetime/src/partition/marginal/sparse/count.rs#L91-L132](../../packages/treetime/src/partition/marginal/sparse/count.rs#L91-L132) allocates a joint `n_states x n_states` array for every variable site of every edge and fills, normalizes, and sums it with nested index loops instead of ndarray broadcasting, `Zip`, and `sum_axis()`.
 
-The dense backward combination does not have this problem: `fn indexed_node_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L162-L165](../../packages/treetime/src/partition/marginal/shared/pass.rs#L162-L165) allocates one log array per node and adds the other children into it in place.
+The dense backward combination does not have this problem: `fn IndexedBackwardPass::node()` [packages/treetime/src/partition/marginal/shared/pass.rs#L176-L179](../../packages/treetime/src/partition/marginal/shared/pass.rs#L176-L179) allocates one log array per node and adds the other children into it in place.
 
 ## Options
 

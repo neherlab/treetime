@@ -78,14 +78,14 @@ and then `MarginalPasses::marginal_update`
 ([`packages/treetime/src/partition/marginal/shared/update.rs#L48`](../../packages/treetime/src/partition/marginal/shared/update.rs#L48))
 through the dense or sparse reconstruction of each partition. Four propagation sites read the map:
 
-- Dense and discrete backward: `fn indexed_node_backward`
-  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L178-L179`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L178-L179))
-- Dense and discrete forward: `fn indexed_node_forward`
-  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L302`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L302))
-- Sparse backward: `fn process_node_backward_indexed`
-  ([`packages/treetime/src/partition/marginal/sparse/backward.rs#L62`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L62))
-- Sparse forward: `fn process_node_forward_indexed`
-  ([`packages/treetime/src/partition/marginal/sparse/forward.rs#L107`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L107))
+- Dense and discrete backward: `fn IndexedBackwardPass::node`
+  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L192-L193`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L192-L193))
+- Dense and discrete forward: `fn IndexedForwardPass::node`
+  ([`packages/treetime/src/partition/marginal/shared/pass.rs#L325`](../../packages/treetime/src/partition/marginal/shared/pass.rs#L325))
+- Sparse backward: `fn SparseBackwardPass::node`
+  ([`packages/treetime/src/partition/marginal/sparse/backward.rs#L83`](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L83))
+- Sparse forward: `fn SparseForwardPass::edge`
+  ([`packages/treetime/src/partition/marginal/sparse/forward.rs#L154`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L154))
 
 Transition counting for GTR refinement (`MarginalPasses::count_transitions`) never sees the
 clock-constrained lengths: timetree infers its GTR model once, before the loop, from the input
