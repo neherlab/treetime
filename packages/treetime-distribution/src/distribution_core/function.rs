@@ -6,7 +6,7 @@ use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use num::Float;
 use treetime_grid::grid::Grid;
-use treetime_grid::{BoundaryBehavior, GridFn, InterpElem, MaxGridPoints, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, GridFn, HardCell, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
 #[derive(Clone, Debug)]
@@ -99,11 +99,11 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.grid_fn.x()
   }
 
-  pub(crate) fn x_min(&self) -> T {
+  pub fn x_min(&self) -> T {
     self.grid_fn.x_min()
   }
 
-  pub(crate) fn x_max(&self) -> T
+  pub fn x_max(&self) -> T
   where
     T: Float,
   {
@@ -200,12 +200,19 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     false
   }
 
-  pub(crate) fn left_extrap(&self) -> BoundaryBehavior {
+  pub fn left_extrap(&self) -> BoundaryBehavior {
     self.left_extrap
   }
 
   pub fn right_extrap(&self) -> BoundaryBehavior {
     self.right_extrap
+  }
+
+  pub fn hard_cell(&self, cell: usize) -> Result<Option<HardCell>, Report>
+  where
+    T: Float,
+  {
+    self.grid_fn.hard_cell(cell, self.left_extrap, self.right_extrap)
   }
 
   pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {

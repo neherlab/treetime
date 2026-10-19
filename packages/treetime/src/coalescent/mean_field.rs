@@ -442,7 +442,7 @@ pub(crate) struct NodeSurvival {
 
 impl NodeSurvival {
   pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
-    Ok(posterior_survival(distribution)?.map(|(t, survival)| Self::compact(t, survival)))
+    Ok(posterior_survival(distribution, SURVIVAL_TRIM)?.map(|survival| Self::compact(survival.t, survival.survival)))
   }
 
   fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {

@@ -139,19 +139,6 @@ files = [
 ]
 
 [[reference]]
-name = "gm_max_posterior_region"
-kind = "golden-master"
-test = "packages/treetime/src/timetree/__tests__/test_gm_max_posterior_region.rs"
-origin = "TreeTime v0 (Python) ClockTree.get_max_posterior_region on marginal time posteriors"
-revision = "vendored in-repo reference at packages/legacy/treetime"
-capture = "./dev/docker/python python packages/treetime/src/timetree/__tests__/__fixtures__/gm_max_posterior_region_capture"
-normalization = "posterior grids stored as negated time before present; the owning test maps regions to numeric dates with the captured affine map and compares with a float tolerance"
-files = [
-  "packages/treetime/src/timetree/__tests__/__fixtures__/gm_max_posterior_region_inputs.json",
-  "packages/treetime/src/timetree/__tests__/__fixtures__/gm_max_posterior_region_outputs.json",
-]
-
-[[reference]]
 name = "gm_relaxed_clock"
 kind = "golden-master"
 test = "packages/treetime/src/timetree/optimization/__tests__/test_relaxed_clock.rs"
