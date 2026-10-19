@@ -83,28 +83,58 @@ mod tests {
   }
 
   #[test]
-  fn test_multiply_by_fn_bounded_step_beyond_the_edge_keeps_the_incoming_decay() -> Result<(), Report> {
-    let input = linear_with_soft_side(-1.0, Side::Left)?;
+  fn test_multiply_by_fn_tail_law_takes_the_weight_slope_at_the_edge_and_omits_a_step_farther_out() -> Result<(), Report>
+  {
+    let incoming_slope = -1.0;
+    let input = linear_with_soft_side(incoming_slope, Side::Left)?;
+    let weight = |ti: f64| if ti < -0.5 { -10.0 } else { 0.0 };
+    let slope_at_edge = 0.0;
 
-    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(if ti < -0.5 { -10.0 } else { 0.0 }), FLAT)?;
+    let actual = distribution_multiply_by_fn(
+      &input,
+      |ti: f64| Ok(weight(ti)),
+      ExteriorSlopes {
+        left: slope_at_edge,
+        right: 0.0,
+      },
+    )?;
 
-    pretty_assert_abs_diff_eq!(1.0, actual.eval(-1.0)?, epsilon = 1e-15);
+    let composed_slope = incoming_slope + slope_at_edge;
+    let (edge, t) = (0.0, -1.0);
+    let ordinate_at_edge = incoming_slope * edge + weight(edge);
+    let expected = ordinate_at_edge + composed_slope * (t - edge);
+    pretty_assert_abs_diff_eq!(expected, actual.eval(t)?, epsilon = 1e-15);
     let DistributionNegLog::Function(rf) = actual else {
       panic!("expected a Function result, got {actual:?}");
     };
-    assert_eq!(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }), rf.left_extrap());
+    assert_eq!(
+      BoundaryBehavior::Linear(SoftTailLaw { slope: composed_slope }),
+      rf.left_extrap()
+    );
     Ok(())
   }
 
   #[test]
   fn test_multiply_by_fn_log_mass_counts_the_composed_tail() -> Result<(), Report> {
-    let input = linear_with_soft_side(-2.0, Side::Left)?;
-    let exterior = ExteriorSlopes { left: 0.5, right: 2.0 };
+    let incoming_slope = -2.0;
+    let input = linear_with_soft_side(incoming_slope, Side::Left)?;
+    let (slope_inside, slope_outside) = (2.0, 1.5);
+    let weight = move |ti: f64| {
+      if ti < 0.0 {
+        slope_outside * ti
+      } else {
+        slope_inside * ti
+      }
+    };
+    let exterior = ExteriorSlopes {
+      left: slope_outside,
+      right: slope_inside,
+    };
 
-    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(2.0 * ti), exterior)?;
+    let actual = distribution_multiply_by_fn(&input, |ti: f64| Ok(weight(ti)), exterior)?;
 
     let grid_mass: f64 = 4.0;
-    let tail_mass = 1.0 / 1.5;
+    let tail_mass = 1.0 / -(incoming_slope + slope_outside);
     pretty_assert_abs_diff_eq!((grid_mass + tail_mass).ln(), actual.log_mass()?, epsilon = 1e-15);
     Ok(())
   }
