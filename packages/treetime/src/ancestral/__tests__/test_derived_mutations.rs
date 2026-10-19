@@ -8,6 +8,7 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::Representation;
+  use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::sample::SampleMode;
   use crate::progress::NoopProgress;
   use crate::seq::mutation::{Mutation, MutationEvent, Sub};
@@ -177,6 +178,7 @@ mod tests {
       let partition = reconstruct_partition(
         &parse.graph,
         &plan,
+        InferredRate::Unit,
         alphabet,
         node_inputs,
         &branch_lengths_or_zero(&parse.branch_lengths),
@@ -297,6 +299,7 @@ mod tests {
       let partition = reconstruct_partition(
         graph,
         &plan,
+        InferredRate::Unit,
         alphabet,
         node_inputs,
         &branch_lengths_or_zero(&parse.branch_lengths),

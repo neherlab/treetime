@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::progress::NoopProgress;
   use eyre::Report;
@@ -12,14 +13,17 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::sparse_infer(Representation::Sparse, GtrModelName::Infer, false, helpers::fitch_inferred_gtr)]
-  #[case::sparse_jc69( Representation::Sparse, GtrModelName::JC69,  false, helpers::jc69_gtr)]
-  #[case::dense_infer( Representation::Dense,  GtrModelName::Infer, true,  helpers::fitch_inferred_gtr)]
-  #[case::dense_jc69(  Representation::Dense,  GtrModelName::JC69,  true,  helpers::jc69_gtr)]
+  #[case::sparse_infer_unit(  Representation::Sparse, GtrModelName::Infer, InferredRate::Unit,   false, helpers::fitch_inferred_gtr_unit_rate)]
+  #[case::sparse_infer_fitted(Representation::Sparse, GtrModelName::Infer, InferredRate::Fitted, false, helpers::fitch_inferred_gtr)]
+  #[case::sparse_jc69(        Representation::Sparse, GtrModelName::JC69,  InferredRate::Unit,   false, helpers::jc69_gtr)]
+  #[case::dense_infer_unit(   Representation::Dense,  GtrModelName::Infer, InferredRate::Unit,   true,  helpers::fitch_inferred_gtr_unit_rate)]
+  #[case::dense_infer_fitted( Representation::Dense,  GtrModelName::Infer, InferredRate::Fitted, true,  helpers::fitch_inferred_gtr)]
+  #[case::dense_jc69(         Representation::Dense,  GtrModelName::JC69,  InferredRate::Unit,   true,  helpers::jc69_gtr)]
   #[trace]
   fn test_build_marginal_partition_selects_representation_and_gtr(
     #[case] representation: Representation,
     #[case] model: GtrModelName,
+    #[case] rate: InferredRate,
     #[case] expected_dense: bool,
     #[case]
     #[notrace]
@@ -27,10 +31,16 @@ mod tests {
   ) -> Result<(), Report> {
     let input = helpers::Input::star(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGA")])?;
 
-    let reconstruction = build_marginal_partition(representation, model, &input.graph, Alphabet::default(),
-    input.node_inputs.clone(),
-    &input.branch_lengths,
-    &NoopProgress,)?;
+    let reconstruction = build_marginal_partition(
+      representation,
+      model,
+      rate,
+      &input.graph,
+      Alphabet::default(),
+      input.node_inputs.clone(),
+      &input.branch_lengths,
+      &NoopProgress,
+    )?;
 
     assert_eq!(expected_dense, matches!(reconstruction, MarginalReconstruction::Dense(_)));
     assert_eq!(4, reconstruction.view().length());
@@ -50,6 +60,7 @@ mod tests {
     let result = build_marginal_partition(
       Representation::Dense,
       GtrModelName::JC69,
+      InferredRate::Unit,
       &input.graph,
       Alphabet::default(),
       input.node_inputs.clone(),
@@ -112,6 +123,16 @@ mod tests {
     pub(super) fn fitch_inferred_gtr(input: &Input) -> Result<GTR, Report> {
       let fitch = create_fitch_partition(&input.graph, Alphabet::default(), input.node_inputs.clone())?;
       infer_gtr_fitch(&fitch, &input.graph, &input.branch_lengths, &NoopProgress)
+    }
+
+    pub(super) fn fitch_inferred_gtr_unit_rate(input: &Input) -> Result<GTR, Report> {
+      let mut gtr = fitch_inferred_gtr(input)?;
+      assert!(
+        (gtr.mu() - 1.0).abs() > 1e-3,
+        "the fitted rate must differ from 1 to tell the rate rules apart"
+      );
+      gtr.set_mu(1.0)?;
+      Ok(gtr)
     }
 
     pub(super) fn jc69_gtr(_input: &Input) -> Result<GTR, Report> {

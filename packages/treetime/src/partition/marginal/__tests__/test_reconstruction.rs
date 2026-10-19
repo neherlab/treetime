@@ -6,6 +6,7 @@ mod tests {
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::create::Representation;
   use crate::partition::fitch::passes::create_fitch_partition;
+  use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sample::SampleMode;
@@ -205,6 +206,7 @@ mod tests {
       let reconstruction = build_marginal_partition(
         representation,
         GtrModelName::JC69,
+        InferredRate::Unit,
         &graph,
         Alphabet::new(AlphabetName::Nuc)?,
         leaf_seq_inputs(&graph, &names, aln),

@@ -10,6 +10,7 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::refine_gtr_model;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
+use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -103,6 +104,7 @@ pub(crate) fn reconstruct_partitions(
           let partition = reconstruct_partition(
             graph,
             plan,
+            InferredRate::for_separate_files(),
             alphabet,
             nodes,
             branch_lengths,
@@ -126,6 +128,7 @@ pub(crate) fn reconstruct_partitions(
 pub(crate) fn reconstruct_partition(
   graph: &Graph,
   plan: &ReconstructionPlan,
+  rate: InferredRate,
   alphabet: Alphabet,
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -152,13 +155,22 @@ pub(crate) fn reconstruct_partition(
       gtr_refinement,
     } => {
       checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
-      let reconstruction =
-        build_marginal_partition(representation, model, graph, alphabet, node_inputs, branch_lengths, log)?;
+      let reconstruction = build_marginal_partition(
+        representation,
+        model,
+        rate,
+        graph,
+        alphabet,
+        node_inputs,
+        branch_lengths,
+        log,
+      )?;
       checkpoint(cancel, stages, "Marginal reconstruction", 0.4)?;
       reconstruct_marginal(
         graph,
         reconstruction,
         gtr_refinement,
+        rate,
         branch_lengths,
         options,
         rng,
@@ -214,6 +226,7 @@ fn reconstruct_marginal(
   graph: &Graph,
   reconstruction: MarginalReconstruction,
   gtr_refinement: Option<usize>,
+  rate: InferredRate,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   options: &ReconstructionOptions,
   rng: &mut dyn Rng,
@@ -223,7 +236,7 @@ fn reconstruct_marginal(
 ) -> Result<AncestralPartition, Report> {
   let reconstruction = match gtr_refinement {
     None => reconstruction.marginal_update(graph, branch_lengths)?.0,
-    Some(iterations) => refine_gtr(reconstruction, iterations, graph, branch_lengths, log)?,
+    Some(iterations) => refine_gtr(reconstruction, iterations, rate, graph, branch_lengths, log)?,
   };
   checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
   let sampled = reconstruction.sample_sequences(graph, options.sample_mode, rng)?;
@@ -248,6 +261,7 @@ impl ReconstructionOptions {
 fn refine_gtr(
   reconstruction: MarginalReconstruction,
   iterations: usize,
+  rate: InferredRate,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
@@ -259,8 +273,16 @@ fn refine_gtr(
       node_states,
       ..
     }) => {
-      let (gtr, MarginalUpdate { node_states, edges, .. }) =
-        refined_update(&partition, gtr, &node_states, iterations, graph, branch_lengths, log)?;
+      let (gtr, MarginalUpdate { node_states, edges, .. }) = refined_update(
+        &partition,
+        gtr,
+        &node_states,
+        iterations,
+        rate,
+        graph,
+        branch_lengths,
+        log,
+      )?;
       MarginalReconstruction::Sparse(SparseReconstruction {
         partition,
         gtr,
@@ -270,7 +292,7 @@ fn refine_gtr(
     },
     MarginalReconstruction::Dense(DenseReconstruction { partition, gtr, .. }) => {
       let (gtr, MarginalUpdate { node_states, edges, .. }) =
-        refined_update(&partition, gtr, &(), iterations, graph, branch_lengths, log)?;
+        refined_update(&partition, gtr, &(), iterations, rate, graph, branch_lengths, log)?;
       MarginalReconstruction::Dense(DenseReconstruction {
         partition,
         gtr,
@@ -281,17 +303,32 @@ fn refine_gtr(
   })
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the refinement forwards the partition, model, pass input, iteration count, rate rule, graph, branch lengths and log sink to the shared GTR refinement"
+)]
 fn refined_update<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   input: &P::BackwardInput,
   iterations: usize,
+  rate: InferredRate,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report> {
   let update = partition.marginal_update(&gtr, graph, branch_lengths, input)?;
-  refine_gtr_model(partition, gtr, update, iterations, 1.0, graph, branch_lengths, log)
+  refine_gtr_model(
+    partition,
+    gtr,
+    update,
+    iterations,
+    rate,
+    1.0,
+    graph,
+    branch_lengths,
+    log,
+  )
 }
 
 fn checkpoint(cancel: &dyn Cancel, stages: &dyn StageSink, stage: &str, fraction: f64) -> Result<(), Report> {

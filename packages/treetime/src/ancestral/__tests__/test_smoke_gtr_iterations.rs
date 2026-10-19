@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
   use eyre::Report;
+  use rstest::rstest;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_smoke_ancestral_gtr_iterations_sparse() -> Result<(), Report> {
@@ -37,6 +39,28 @@ mod tests {
       "GTR iterations must replace the parsimony-inferred GTR"
     );
 
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::sparse_one_fit(       None,       0)]
+  #[case::sparse_gtr_iterations(None,       3)]
+  #[case::dense_one_fit(        Some(true), 0)]
+  #[case::dense_gtr_iterations( Some(true), 3)]
+  #[trace]
+  fn test_ancestral_one_alignment_with_inferred_model_has_unit_overall_rate(
+    #[case] dense: Option<bool>,
+    #[case] gtr_iterations: usize,
+  ) -> Result<(), Report> {
+    let gtr = helpers::run_flu_20(dense, gtr_iterations)?;
+
+    pretty_assert_ulps_eq!(
+      1.0,
+      gtr.mu(),
+      max_ulps = 0,
+      "v0 sets the overall rate of an inferred model to 1: packages/legacy/treetime/treetime/treeanc.py#L1626-L1631"
+    );
     Ok(())
   }
 

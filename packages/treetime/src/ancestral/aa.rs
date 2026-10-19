@@ -6,6 +6,7 @@ use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::partition::create::Representation;
+use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
 use crate::seq::alignment::LeafSequences;
@@ -71,6 +72,7 @@ pub fn reconstruct_aa(
     let partition = reconstruct_partition(
       graph,
       &plan,
+      InferredRate::Fitted,
       alphabet,
       node_inputs,
       &branch_lengths,

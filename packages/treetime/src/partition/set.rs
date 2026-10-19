@@ -1,6 +1,7 @@
 use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::partition::create::{Representation, build_marginal_partition};
+use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
 };
@@ -24,7 +25,9 @@ pub(crate) fn build_partition_set(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<(Vec<PartitionSource>, PartitionSet), Report> {
-  let (sources, reconstructions): (Vec<_>, Vec<_>) = split_sources(sources)
+  let sources = split_sources(sources);
+  let rate = InferredRate::for_file_count(sources.len());
+  let (sources, reconstructions): (Vec<_>, Vec<_>) = sources
     .into_iter()
     .map(
       |SplitSource {
@@ -33,7 +36,7 @@ pub(crate) fn build_partition_set(
          nodes,
        }| {
         let reconstruction =
-          build_marginal_partition(representation, model, graph, alphabet, nodes, branch_lengths, log)?;
+          build_marginal_partition(representation, model, rate, graph, alphabet, nodes, branch_lengths, log)?;
         Ok((source, reconstruction))
       },
     )

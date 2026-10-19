@@ -7,6 +7,7 @@ mod tests {
   use crate::clock::clock_regression::ClockFit;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::partition::inferred_rate::InferredRate;
   use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
@@ -56,6 +57,7 @@ mod tests {
     let reconstruction = PartitionSet::from(build_marginal_partition(
       Representation::Sparse,
       GtrModelName::JC69,
+      InferredRate::Unit,
       &graph,
       alphabet,
       leaf_seq_inputs(&graph, &names, aln),

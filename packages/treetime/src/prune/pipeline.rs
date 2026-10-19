@@ -5,6 +5,7 @@ use crate::gtr::get_gtr::GtrModelName;
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::build_sparse_reconstruction;
+use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource, SplitSource, split_sources};
@@ -45,6 +46,7 @@ pub fn run(
     vec![]
   };
   let fitch_branch_lengths = branch_lengths_or_zero(&branch_lengths);
+  let rate = InferredRate::for_file_count(sources.len());
   let (sources, mut partitions): (Vec<_>, Vec<_>) = sources
     .into_iter()
     .map(
@@ -55,6 +57,7 @@ pub fn run(
        }| {
         let reconstruction = build_sparse_reconstruction(
           GtrModelName::JC69,
+          rate,
           &input.graph,
           alphabet,
           nodes,

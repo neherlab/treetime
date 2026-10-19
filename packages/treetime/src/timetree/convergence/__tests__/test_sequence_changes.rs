@@ -4,6 +4,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::GtrModelName;
   use crate::partition::create::{Representation, build_marginal_partition};
+  use crate::partition::inferred_rate::InferredRate;
   use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::seq::overlay::SeqOverlay;
@@ -155,6 +156,7 @@ mod tests {
       let reconstruction = PartitionSet::from(build_marginal_partition(
         Representation::Sparse,
         GtrModelName::JC69,
+        InferredRate::Unit,
         &graph,
         alphabet,
         leaf_seq_inputs(&graph, &names, aln),

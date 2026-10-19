@@ -2,6 +2,7 @@ use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_from_counts};
 use crate::make_internal_report;
+use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
@@ -24,6 +25,7 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   gtr: GTR,
   update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
   iterations: usize,
+  rate: InferredRate,
   pc: f64,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
@@ -43,6 +45,7 @@ pub(crate) fn refine_gtr_model<P: MarginalPasses>(
   for i in 0..=iterations {
     let counts = partition.count_transitions(&gtr, graph, branch_lengths, &node_states, &backward, &forward)?;
     gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
+    rate.apply(&mut gtr)?;
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
   }
 
