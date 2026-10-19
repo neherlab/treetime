@@ -648,10 +648,7 @@ args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
 
 [[timetree]]
 variant = "basic"
-fail.'dengue/500' = "kb/issues/H-timetree-empty-distribution-division.md"
-fail.'dengue/1000' = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
-fail.'lassa/L/20' = "kb/issues/H-timetree-backward-pass-nan-time-distribution.md"
-fail.'lassa/L/200' = "kb/issues/H-timetree-empty-distribution-division.md"
+fail.'lassa/L/200' = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]
 variant = "fixed-clock"
