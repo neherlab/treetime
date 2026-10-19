@@ -1,15 +1,13 @@
 # Convolution drops the operands' extrapolated tails
 
-`fn convolution_function_function_fine()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs) convolves grid values only. The operands' `Linear` and `HardApproach` tails beyond their grids are dropped, and `fn convolve_across_edge()` refits the result's soft tail from its outermost grid points.
+`fn convolution_function_function_fine()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L156-L219](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L156-L219) convolves grid values only. The operands' `Linear` and `HardApproach` tails beyond their grids are dropped, and `fn convolve_across_edge()` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L18](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L18) refits the result's soft tail from its outermost grid points.
 
-Branch-length distributions are windowed at $\epsilon = 5 \cdot 10^{-4}$ of the mass per side (`fn rewindow_to_mass()` in `branch_length_likelihood.rs`). For a zero-mutation branch (exponential with rate $\lambda$, grid cut at $\ln(1/\epsilon)/\lambda$) the dropped tail carries about 3% of the variance and 0.4% of the mean, so each convolution adds systematically too little variance.
+Branch-length distributions are windowed at $\epsilon = 5 \cdot 10^{-4}$ of the mass per side (`fn compute_branch_length_distribution()` calls `fn rewindow_to_mass()` [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L63](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L63), defined in [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L23-L37](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L23-L37); the left side is `Hard` or `HardApproach` and keeps its grid edge, so only the right tail is cut). For a zero-mutation branch (exponential with rate $\lambda$, grid cut at $\ln(1/\epsilon)/\lambda$) the dropped tail carries about 3% of the variance and 0.4% of the mean, so each convolution adds systematically too little variance.
 
 > [!IMPORTANT]
-> **Investigation required.** Whether the variance loss changes results: confidence-interval coverage of node dates on the validation suite for runs dominated by short branches (low mu × L), with the tails included against without.
+> **Investigation required.** Whether the variance loss changes results: confidence-interval coverage of node dates on the validation suite for runs dominated by short branches (low mu * L), with the tails included against without.
 
-Investigated 2026-10-19 (prototype extending `Linear` tails onto the grid): no gain in low-signal coverage (0.830 to
-0.817 at $L=10^3$, $\mu=3\cdot10^{-4}$), interval widths within 1% at a fixed rate; see [the proposal's
-results](../proposals/timetree-forward-pass-grid-support.md#operand-tails-issue-3).
+Investigated 2026-10-19 (prototype commit `6d06d211a`, extending `Linear` tails onto the grid): no gain in low-signal coverage (0.830 to 0.817 at $L=10^3$, $\mu=3\cdot10^{-4}$), interval widths within 1% at a fixed rate; see [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md#operand-tails-issue-3).
 
 ## Fix direction
 
