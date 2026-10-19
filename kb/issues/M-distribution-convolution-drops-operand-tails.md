@@ -7,6 +7,10 @@ Branch-length distributions are windowed at $\epsilon = 5 \cdot 10^{-4}$ of the 
 > [!IMPORTANT]
 > **Investigation required.** Whether the variance loss changes results: confidence-interval coverage of node dates on the validation suite for runs dominated by short branches (low mu × L), with the tails included against without.
 
+Investigated 2026-10-19 (prototype extending `Linear` tails onto the grid): no gain in low-signal coverage (0.830 to
+0.817 at $L=10^3$, $\mu=3\cdot10^{-4}$), interval widths within 1% at a fixed rate; see [the proposal's
+results](../proposals/timetree-forward-pass-grid-support.md#operand-tails-issue-3).
+
 ## Fix direction
 
 Options, in order of scope:
