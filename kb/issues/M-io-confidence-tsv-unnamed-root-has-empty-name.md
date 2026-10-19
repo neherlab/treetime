@@ -9,7 +9,7 @@ When the input tree leaves the root unnamed, `timetree` names it `NODE_0000000` 
 The timetree pipeline extracts the date intervals before it names the nodes:
 
 - `fn gather_results()` calls `extract_confidence_intervals()` with `state.names` and calls `assign_node_names()` only afterwards [packages/treetime/src/timetree/pipeline.rs#L455-L479](../../packages/treetime/src/timetree/pipeline.rs#L455-L479)
-- `fn extract_confidence_intervals()` takes the name as `names[&key].clone().unwrap_or_default()`, so a node without an input name gets the empty string [packages/treetime/src/timetree/confidence.rs#L90](../../packages/treetime/src/timetree/confidence.rs#L90)
+- `fn extract_confidence_intervals()` takes the name as `names[&key].clone().unwrap_or_default()`, so a node without an input name gets the empty string [packages/treetime/src/timetree/confidence.rs#L100](../../packages/treetime/src/timetree/confidence.rs#L100)
 
 Only a polytomy-resolution round that changes the topology names every node before the extraction [packages/treetime/src/timetree/round.rs#L162](../../packages/treetime/src/timetree/round.rs#L162). So the empty names occur in every run without `--resolve-polytomies` (the default), and in runs where polytomy resolution leaves the topology unchanged. The empty name applies to every node without an input name, not only the root.
 

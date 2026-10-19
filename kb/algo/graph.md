@@ -1,12 +1,20 @@
 # Graph Traversal Algorithms
 
-## Work-first Parallel Pass
+## Parallel Tree Scans
 
-The single parallel tree traversal (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]). Fitch, marginal, clock, and timetree passes arrange partition payloads in stable indexed slots and run them in one Rayon scope. Roots seed forward passes and leaves seed backward passes. Each completed node decrements an atomic prerequisite counter for its successors; a successor enters the shared work queue as soon as its counter reaches zero, so a ready node runs without waiting on a per-level barrier.
+Two parallel scans on a `TreeView` run every pass that follows the tree topology (<a id="cite-1"></a>[Leiserson and Schardl 2010](https://doi.org/10.1145/1810479.1810534) [[1](#ref-1)]): the Fitch, dense, discrete, and sparse marginal, clock regression, and timetree passes. `scan_down` visits each node after its parent (forward passes). `scan_up` visits each node after all of its children (backward passes).
 
-Workers take ownership of one mutable slot and publish it once after processing. Domain callbacks receive read-only access to completed dependency payloads and the writable current slot. Payloads are moved into and out of the pass, so scheduling does not clone sequence or probability-matrix state, while parent-before-child (forward) or child-before-parent (backward) ordering is preserved.
+Each scan takes one input per node by value. The step of a node returns the output of the node and one message: `scan_down` sends the message to every child, and `scan_up` sends it to the parent. When a pass needs the same value as output and as message, it shares the value through `Arc` and unwraps it after the scan, so the scan does not clone sequence or probability-matrix state. `join_parent_edges()` pairs each node input with the input of its parent edge, and `split_parent_edges()` splits the outputs into a node map and a parent-edge map. Each result map is bulk-built in one step from its entries in key order, which fills the map nodes; inserts in key order would leave them about half full, and the allocator would keep more freed memory.
 
-v1: [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs), scheduler in [`packages/treetime-graph/src/dependency_queue.rs`](../../packages/treetime-graph/src/dependency_queue.rs).
+The task that makes a node ready runs that node, so no task waits on a queue or on a per-level barrier:
+
+- `scan_down` runs in one `rayon::scope`. A task visits its node, spawns one task per child except the first, and continues with the first child
+- `scan_up` starts one task per worker thread, and no more tasks than leaves. Each task takes the next leaf in preorder from a shared counter over the leaf list and walks up from it: it puts its message into the slot of its child position in the inbox of the parent, the delivery that fills the last slot continues with the parent, and every other delivery ends the walk, so the task takes the next leaf
+- `scan_up` gives the step the messages of the children in the order of `TreeView::children()`, never in arrival order, so floating-point products and sums are the same for every thread count
+- The first error wins. Later visits stop, and in `scan_up` the ancestors of a failed node do not run
+- Both scans loop instead of recursing, and no task waits for another task, so stack use depends neither on the tree height nor on work stealing
+
+v1: [`packages/treetime-graph/src/tree_scan.rs`](../../packages/treetime-graph/src/tree_scan.rs), tree shape in [`packages/treetime-graph/src/tree_view.rs`](../../packages/treetime-graph/src/tree_view.rs).
 
 ---
 
@@ -62,8 +70,8 @@ v1: [`packages/treetime-graph/src/topology_order.rs`](../../packages/treetime-gr
 
 | File                                                                                                       | Algorithms                         |
 | ---------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| [`packages/treetime-graph/src/pass.rs`](../../packages/treetime-graph/src/pass.rs)                         | Work-first parallel pass           |
-| [`packages/treetime-graph/src/dependency_queue.rs`](../../packages/treetime-graph/src/dependency_queue.rs) | Work-first scheduler               |
+| [`packages/treetime-graph/src/tree_scan.rs`](../../packages/treetime-graph/src/tree_scan.rs)               | Parallel down and up tree scans    |
+| [`packages/treetime-graph/src/tree_view.rs`](../../packages/treetime-graph/src/tree_view.rs)               | Tree shape checks and child order  |
 | [`packages/treetime-graph/src/graph_traverse.rs`](../../packages/treetime-graph/src/graph_traverse.rs)     | DFS preorder/postorder, serial BFS |
 | [`packages/treetime-graph/src/reachability.rs`](../../packages/treetime-graph/src/reachability.rs)         | Forward reachability query         |
 | [`packages/treetime-graph/src/graph_ops.rs`](../../packages/treetime-graph/src/graph_ops.rs)               | Edge collapse                      |
