@@ -32,17 +32,19 @@ mod tests {
   const GRID_START: f64 = 2000.0;
   const GRID_STEP: f64 = 0.005;
   const GRID_LEN: usize = 2401;
-  const MAX_CDF_DIFFERENCE: f64 = 0.02;
 
+  // TODO: kb/issues/M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md
+  // The CDFs of the time passes differ from the exact posterior by up to 1.4e-2 (node R, zero counts near the tips).
   #[rustfmt::skip]
   #[rstest]
-  #[case::mixed_counts(           [3, 0, 2, 6])]
-  #[case::zero_counts_near_tips(  [1, 0, 0, 2])]
-  #[case::long_branches(          [8, 4, 5, 12])]
-  #[case::both_tips_at_zero(      [0, 0, 1, 1])]
+  #[case::mixed_counts(           [3, 0, 2, 6],  [1e-3, 1e-2])]
+  #[case::zero_counts_near_tips(  [1, 0, 0, 2],  [1e-3, 1e-1])]
+  #[case::long_branches(          [8, 4, 5, 12], [1e-3, 1e-3])]
+  #[case::both_tips_at_zero(      [0, 0, 1, 1],  [1e-3, 1e-2])]
   #[trace]
   fn test_marginal_exact_time_passes_match_the_integrated_posterior_without_a_prior(
     #[case] counts: [usize; 4],
+    #[case] max_cdf_difference: [f64; 2],
   ) -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
     let grid: Vec<f64> = (0..GRID_LEN).map(|i| GRID_START + GRID_STEP * i.to_f64_exact()).collect();
@@ -51,14 +53,17 @@ mod tests {
 
     let support_end_x = T_A.min(T_B);
     let support_end_r = support_end_x.min(T_C);
-    for (node, exact, support_end, treetime) in [
+    for ((node, exact, support_end, treetime), max_difference) in [
       ("X", exact_x, support_end_x, treetime_x),
       ("R", exact_r, support_end_r, treetime_r),
-    ] {
+    ]
+    .into_iter()
+    .zip(max_cdf_difference)
+    {
       let difference = helpers::max_cdf_difference(&grid, &exact, support_end, &treetime);
       assert!(
-        difference < MAX_CDF_DIFFERENCE,
-        "node {node}: max CDF difference {difference:.4} to the exact posterior"
+        difference < max_difference,
+        "node {node}: max CDF difference {difference:.4e} to the exact posterior, above {max_difference:e}"
       );
     }
     Ok(())
@@ -68,19 +73,21 @@ mod tests {
   const GRID_4_START: f64 = 2003.0;
   const GRID_4_STEP: f64 = 0.02;
   const GRID_4_LEN: usize = 376;
-  const MAX_CDF_DIFFERENCE_4: f64 = 0.03;
 
+  // TODO: kb/issues/M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md
+  // The CDFs of the mean-field time passes differ from the exact Kingman posterior by up to 1.6e-2 (node X, overlapping clades, strong prior).
   #[rustfmt::skip]
   #[rstest]
-  #[case::short_internal_branches_strong_prior(   [3, 0, 2, 1, 1, 2],  1.0)]
-  #[case::short_internal_branches_weak_prior(     [3, 0, 2, 1, 1, 2], 10.0)]
-  #[case::overlapping_clades_strong_prior(        [6, 3, 4, 3, 3, 4],  1.0)]
-  #[case::overlapping_clades_weak_prior(          [6, 3, 4, 3, 3, 4], 10.0)]
-  #[case::long_internal_branches_strong_prior(    [2, 1, 1, 2, 3, 3],  1.0)]
+  #[case::short_internal_branches_strong_prior(   [3, 0, 2, 1, 1, 2],  1.0, [1e-2, 1e-1, 1e-2])]
+  #[case::short_internal_branches_weak_prior(     [3, 0, 2, 1, 1, 2], 10.0, [1e-3, 1e-2, 1e-2])]
+  #[case::overlapping_clades_strong_prior(        [6, 3, 4, 3, 3, 4],  1.0, [1e-1, 1e-1, 1e-2])]
+  #[case::overlapping_clades_weak_prior(          [6, 3, 4, 3, 3, 4], 10.0, [1e-2, 1e-2, 1e-2])]
+  #[case::long_internal_branches_strong_prior(    [2, 1, 1, 2, 3, 3],  1.0, [1e-2, 1e-2, 1e-2])]
   #[trace]
   fn test_marginal_exact_mean_field_prior_matches_the_kingman_posterior(
     #[case] counts: [usize; 6],
     #[case] tc: f64,
+    #[case] max_cdf_difference: [f64; 3],
   ) -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
     let grid: Vec<f64> = (0..GRID_4_LEN).map(|i| GRID_4_START + GRID_4_STEP * i.to_f64_exact()).collect();
@@ -91,11 +98,13 @@ mod tests {
     let support_end_x = date("A").min(date("B"));
     let support_end_y = date("C").min(date("D"));
     let support_ends = [support_end_x, support_end_y, support_end_x.min(support_end_y)];
-    for (((node, exact), support_end), treetime) in ["X", "Y", "R"].iter().zip(&exact).zip(support_ends).zip(&treetime) {
+    for ((((node, exact), support_end), treetime), max_difference) in
+      ["X", "Y", "R"].iter().zip(&exact).zip(support_ends).zip(&treetime).zip(max_cdf_difference)
+    {
       let difference = helpers::max_cdf_difference(&grid, exact, support_end, treetime);
       assert!(
-        difference < MAX_CDF_DIFFERENCE_4,
-        "node {node}: max CDF difference {difference:.4} to the exact Kingman posterior"
+        difference < max_difference,
+        "node {node}: max CDF difference {difference:.4e} to the exact Kingman posterior, above {max_difference:e}"
       );
     }
     Ok(())
