@@ -34,3 +34,17 @@ pub fn missing_required_args<C>(missing_ids: &[&str]) -> Report {
     .join("\n  ");
   make_report!("the following required arguments were not provided:\n  {list}")
 }
+
+pub fn missing_settings(settings: &[&str], message: impl Into<String>) -> Report {
+  Report::new(MissingSettings {
+    message: message.into(),
+    settings: settings.iter().map(|setting| (*setting).to_owned()).collect(),
+  })
+}
+
+#[derive(Debug, derive_more::Display, derive_more::Error)]
+#[display("{message}")]
+pub struct MissingSettings {
+  pub message: String,
+  pub settings: Vec<String>,
+}

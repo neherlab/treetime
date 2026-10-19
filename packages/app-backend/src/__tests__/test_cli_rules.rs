@@ -36,12 +36,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::one_coalescent_prior(     AppCommand::Timetree, "tree: t.nwk\ncoalescent: 1.0\n")]
-  #[case::keep_root_alone(          AppCommand::Timetree, "tree: t.nwk\nkeep_root: true\n")]
+  #[case::one_coalescent_prior(     AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\ncoalescent: 1.0\n")]
+  #[case::keep_root_alone(          AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\nkeep_root: true\n")]
   #[case::keep_root_with_default_root(AppCommand::Clock,  "tree: t.nwk\nmetadata: m.tsv\nkeep_root: true\n")]
-  #[case::relax_with_two_values(    AppCommand::Timetree, "tree: t.nwk\nrelax: [1.0, 0.0]\n")]
-  #[case::relax_twice(              AppCommand::Timetree, "tree: t.nwk\nrelax: [1.0, 0.0, 2.0, 0.5]\n")]
-  #[case::empty_relax(              AppCommand::Timetree, "tree: t.nwk\nrelax: []\n")]
+  #[case::relax_with_two_values(    AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\nrelax: [1.0, 0.0]\n")]
+  #[case::relax_twice(              AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\nrelax: [1.0, 0.0, 2.0, 0.5]\n")]
+  #[case::empty_relax(              AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\nrelax: []\n")]
   #[case::list_setting(             AppCommand::Clock,    "tree: t.nwk\nmetadata: m.tsv\nmetadata_id_columns: [strain, name, id]\n")]
   #[trace]
   fn test_cli_rules_accept_what_the_command_line_accepts(#[case] command: AppCommand, #[case] text: &str) {

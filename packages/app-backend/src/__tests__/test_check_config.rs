@@ -2,7 +2,7 @@
 pub(crate) mod tests {
   use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
   use crate::check_inputs::{AlignmentFacts, InputFacts, TreeFacts};
-  use crate::run_checks::CheckLevel;
+  use crate::run_checks::{CheckLevel, RunCheck};
   use app_commands::command::AppCommand;
   use app_commands::config::source::{ConfigProblem, ConfigSpan};
   use app_commands::json_value::SparseConfig;
@@ -19,6 +19,12 @@ pub(crate) mod tests {
   use treetime_utils::assert_error;
   use treetime_utils::o;
 
+  const SEQUENCE_LENGTH_REQUIRED: &str =
+    "--sequence-length is required without an alignment: the time inference needs the sequence length";
+
+  const MARGINAL_NEEDS_ALIGNMENT: &str =
+    "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input";
+
   #[test]
   fn test_check_config_valid_yaml_returns_config_with_defaults() {
     let response = check_config(&CheckConfigRequest {
@@ -26,6 +32,7 @@ pub(crate) mod tests {
       text: indoc! {r#"
         "$schema": "https://example.org/input-config-timetree.schema.json"
         tree: data/zika/20/tree.nwk
+        alignment: [data/zika/20/aln.fasta.xz]
         max_iter: 4
       "#}
       .to_owned(),
@@ -53,6 +60,7 @@ pub(crate) mod tests {
       command: AppCommand::Timetree,
       text: indoc! {r#"
         tree: data/zika/20/tree.nwk
+        alignment: [data/zika/20/aln.fasta.xz]
         output_all: /home/user/results
         output_tree_nwk: /home/user/tree.nwk
       "#}
@@ -264,6 +272,41 @@ pub(crate) mod tests {
       ),
       (message.as_str(), problems.len(), rendered)
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::alignment(                   "alignment: [a.fasta]",                            None)]
+  #[case::sequence_length(             "branch_length_mode: input\nsequence_length: 1000", None)]
+  #[case::neither(                     "branch_length_mode: input",                       Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
+  #[case::zero_sequence_length(        "branch_length_mode: input\nsequence_length: 0",    Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
+  #[case::marginal_without_alignment(  "sequence_length: 1000",                           Some((["alignment", "branch_length_mode"], MARGINAL_NEEDS_ALIGNMENT)))]
+  #[trace]
+  fn test_check_config_timetree_blocks_a_run_without_sequence_length(
+    #[case] settings: &str,
+    #[case] expected: Option<([&str; 2], &str)>,
+  ) {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Timetree,
+      text: format!("tree: t.nwk\nmetadata: m.tsv\n{settings}\n"),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+    });
+    let expected = expected
+      .map(|(settings, text)| RunCheck {
+        id: o!("config-0"),
+        level: CheckLevel::Block,
+        text: o!(text),
+        settings: settings.iter().map(|setting| (*setting).to_owned()).collect(),
+        fix: None,
+      })
+      .into_iter()
+      .collect::<Vec<_>>();
+    let checks = match response {
+      CheckConfigResponse::Valid { checks, .. } | CheckConfigResponse::Invalid { checks, .. } => checks,
+    };
+    assert_eq!(expected, checks);
   }
 
   #[test]
@@ -488,7 +531,7 @@ pub(crate) mod tests {
       for input in command
         .inputs()
         .iter()
-        .filter(|input| input.need == InputNeed::Required)
+        .filter(|input| input.need != InputNeed::Optional)
       {
         let (key, value) = match input.kind {
           InputKind::Tree => ("tree", json!("t.nwk")),

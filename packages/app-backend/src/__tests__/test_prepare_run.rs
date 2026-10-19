@@ -28,7 +28,8 @@ mod tests {
     #[case] expected: Value,
   ) {
     let mut config = match command {
-      AppCommand::Timetree | AppCommand::Clock => json!({ "tree": "t.nwk", "metadata": "m.tsv" }),
+      AppCommand::Timetree => json!({ "tree": "t.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"] }),
+      AppCommand::Clock => json!({ "tree": "t.nwk", "metadata": "m.tsv" }),
       AppCommand::Mugration => json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" }),
       AppCommand::Ancestral | AppCommand::Homoplasy | AppCommand::Optimize | AppCommand::Prune => {
         json!({ "tree": "t.nwk" })

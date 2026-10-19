@@ -73,6 +73,7 @@ mod tests {
       message: "invalid configuration: ...",
       causes: &[],
       problems: &problems,
+      settings: &[],
     };
     assert_eq!(
       vec![
@@ -97,6 +98,7 @@ mod tests {
       message: "invalid --prune-short",
       causes: &causes,
       problems: &[],
+      settings: &[],
     };
     assert_eq!(
       vec!["invalid --prune-short: the value is negative"],
@@ -111,6 +113,7 @@ mod tests {
       message: "the following required arguments were not provided:\n  --tree <TREE>",
       causes: &[],
       problems: &[],
+      settings: &[],
     };
     assert_eq!(
       vec!["Add a tree file."],
@@ -125,6 +128,7 @@ mod tests {
       message: "a",
       causes: &causes,
       problems: &[],
+      settings: &[],
     };
     assert_eq!(
       (vec_of_owned!["a: b: c"], Vec::<String>::new()),
@@ -384,33 +388,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::without_rate_uncertainty(AppCommand::Timetree, json!({ "confidence": true }),                              true)]
-  #[case::with_alignment(          AppCommand::Timetree, json!({ "confidence": true, "alignment": ["a.fasta"] }),    false)]
-  #[case::with_sequence_length(    AppCommand::Timetree, json!({ "confidence": true, "sequence_length": 1000 }),     false)]
-  #[case::with_clock_std_dev(      AppCommand::Timetree, json!({ "confidence": true, "clock_std_dev": 0.0001 }),     false)]
-  #[case::without_confidence(      AppCommand::Timetree, json!({}),                                                  false)]
-  #[trace]
-  fn test_run_checks_confidence_without_rate_uncertainty(
-    #[case] command: AppCommand,
-    #[case] settings: Value,
-    #[case] warns: bool,
-  ) {
-    let mut settings = settings;
-    settings["tree"] = json!("t.nwk");
-    settings["metadata"] = json!("m.tsv");
-    let config = config(command, &settings);
-    let expected = warns.then(|| RunCheck {
-      id: o!("confidence-without-rate-uncertainty"),
-      level: CheckLevel::Warn,
-      text: o!("Date intervals need rate uncertainty: without an alignment, a sequence length or a clock rate std. dev., this run writes no intervals."),
-      settings: vec_of_owned!["confidence", "sequence_length", "clock_std_dev"],
-      fix: None,
-    });
-    assert_eq!(expected.into_iter().collect::<Vec<_>>(), checks(command, Some(&config), None, None));
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
   #[case::above_a_quarter(  AppCommand::Timetree,  3, 10, true)]
   #[case::exactly_a_quarter(AppCommand::Timetree,  2,  8, false)]
   #[case::no_exact_days(    AppCommand::Clock,     0,  0, false)]
@@ -458,6 +435,7 @@ mod tests {
       message: "invalid configuration",
       causes: &[],
       problems: &problems,
+      settings: &[],
     };
     assert_eq!(
       vec_of_owned![
@@ -466,7 +444,6 @@ mod tests {
         "config-0",
         "tips-without-metadata",
         "unreadable-dates",
-        "confidence-without-rate-uncertainty",
         "dates-on-day-1-or-15"
       ],
       checks(AppCommand::Timetree, Some(&config), Some(rejection), Some(&facts))
@@ -482,6 +459,7 @@ mod tests {
       message: "invalid configuration: could not parse config",
       causes: &[],
       problems: &[],
+      settings: &[],
     };
     assert_eq!(
       vec!["invalid configuration: could not parse config"],

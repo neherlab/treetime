@@ -12,7 +12,6 @@ use std::iter;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::string::name_list;
-use treetime_utils::vec_of_owned;
 
 const MONTH_ROUNDING_FACTOR: usize = 4;
 
@@ -20,7 +19,7 @@ const DATE_COLUMN_SETTING: &str = "date_column";
 
 const IGNORE_MISSING_SEQUENCES_SETTING: &str = "ignore_missing_alns";
 
-const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 9] = [
+const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 8] = [
   missing_inputs,
   unreadable_inputs,
   rejected_config,
@@ -28,7 +27,6 @@ const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 9] = [
   unaligned_sequences,
   tips_without_sequence,
   metadata,
-  confidence_without_rate_uncertainty,
   dates_rounded_to_the_month,
 ];
 
@@ -65,7 +63,10 @@ fn rejected_config(context: &CheckContext<'_>) -> Vec<RunCheck> {
   rejection_messages(rejection, inputs_missing)
     .into_iter()
     .enumerate()
-    .map(|(index, message)| block(format!("config-{index}"), message))
+    .map(|(index, message)| RunCheck {
+      settings: rejection.settings.to_vec(),
+      ..block(format!("config-{index}"), message)
+    })
     .collect()
 }
 
@@ -273,29 +274,6 @@ fn metadata(context: &CheckContext<'_>) -> Vec<RunCheck> {
   checks
 }
 
-fn confidence_without_rate_uncertainty(context: &CheckContext<'_>) -> Vec<RunCheck> {
-  let Some(config) = context.config.filter(|_| context.command == AppCommand::Timetree) else {
-    return vec![];
-  };
-  let setting = |key: &str| setting_ref(config, &[key.to_owned()]);
-  let confidence = setting("confidence") == Some(&Value::Bool(true));
-  let alignment = setting("alignment")
-    .and_then(Value::as_array)
-    .is_some_and(|files| !files.is_empty());
-  let sequence_length = setting("sequence_length").is_some_and(|value| !value.is_null());
-  let clock_std_dev = setting("clock_std_dev").is_some_and(|value| !value.is_null());
-  if !confidence || alignment || sequence_length || clock_std_dev {
-    return vec![];
-  }
-  vec![RunCheck {
-    id: "confidence-without-rate-uncertainty".to_owned(),
-    level: CheckLevel::Warn,
-    text: "Date intervals need rate uncertainty: without an alignment, a sequence length or a clock rate std. dev., this run writes no intervals.".to_owned(),
-    settings: vec_of_owned!["confidence", "sequence_length", "clock_std_dev"],
-    fix: None,
-  }]
-}
-
 fn dates_rounded_to_the_month(context: &CheckContext<'_>) -> Vec<RunCheck> {
   let dates = context
     .facts
@@ -333,6 +311,7 @@ pub struct ConfigRejection<'a> {
   pub message: &'a str,
   pub causes: &'a [String],
   pub problems: &'a [ConfigProblem],
+  pub settings: &'a [String],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

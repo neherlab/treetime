@@ -10,7 +10,7 @@ mod tests {
   fn test_run_config_adds_the_run_outputs_to_the_chosen_selection() {
     let response = resolve(
       AppCommand::Timetree,
-      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["nwk"], "output_all": "/elsewhere" }),
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"], "output_selection": ["nwk"], "output_all": "/elsewhere" }),
     );
     assert_eq!(
       (
@@ -89,11 +89,11 @@ mod tests {
   fn test_run_config_command_line_includes_the_run_outputs() {
     let response = resolve(
       AppCommand::Timetree,
-      json!({ "tree": "t.nwk", "metadata": "m.tsv", "output_selection": ["nwk"] }),
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"], "output_selection": ["nwk"] }),
     );
     assert_eq!(
       json!(
-        "treetime timetree \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog,clock-csv,gtr' \\\n  --output-all out"
+        "treetime timetree \\\n  --alignment a.fasta \\\n  --tree t.nwk \\\n  --metadata m.tsv \\\n  --output-selection 'nwk,auspice,tracelog,clock-csv,gtr' \\\n  --output-all out"
       ),
       response["code"]["command_line_text"]
     );

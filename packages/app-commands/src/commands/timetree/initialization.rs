@@ -7,8 +7,6 @@ use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::MissingLeafLimit;
-use treetime::make_error;
-use treetime::optimize::params::BranchLengthMode;
 use treetime::progress::LogSink;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -25,20 +23,15 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
-  let sequences = if !args.alignment.alignment.is_empty() {
+  let sequences = if args.alignment.alignment.is_empty() {
+    vec![]
+  } else {
     let settings = SourceSettings {
       alphabet: &alphabet,
       gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
       missing_leaves: MissingLeafLimit::Enforced,
     };
     read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
-  } else if args.branch_length_mode != BranchLengthMode::Input {
-    return make_error!(
-      "Alignment required when branch_length_mode is not 'input'. \
-       Provide FASTA files or use --branch-length-mode=input"
-    );
-  } else {
-    vec![]
   };
 
   let dates = args

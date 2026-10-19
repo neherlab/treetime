@@ -5,6 +5,7 @@ use crate::config::choices::{ActiveChoice, active_choices};
 use crate::config::code::{ConfigCode, config_code};
 use crate::run_checks::{CheckContext, ConfigRejection, RunCheck, rejection_messages, run_checks};
 use app_commands::command::AppCommand;
+use app_commands::commands::shared::required::MissingSettings;
 use app_commands::config::resolve_paths::resolve_config_paths_where;
 use app_commands::config::settings::has_path;
 use app_commands::config::source::{ConfigProblem, ConfigSource, InvalidConfig, parse_config_document};
@@ -106,10 +107,15 @@ fn invalid(
   let invalid = report.downcast_ref::<InvalidConfig>();
   let ReportChain { message, causes } = ReportChain::of(report);
   let problems = InvalidConfig::problems_of(report);
+  let missing_settings = report
+    .downcast_ref::<MissingSettings>()
+    .map(|missing| missing.settings.as_slice())
+    .unwrap_or_default();
   let rejection = ConfigRejection {
     message: &message,
     causes: &causes,
     problems: &problems,
+    settings: missing_settings,
   };
   let messages = rejection_messages(&rejection, false);
   let checks = run_checks(&CheckContext {

@@ -8,7 +8,7 @@ use crate::commands::shared::method_anc::MethodAncestralCli;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
-use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::required::{missing_required_args, missing_settings};
 use crate::commands::shared::reroot::RerootArgs;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
@@ -65,6 +65,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
+    check_sequence_source(&raw)?;
     Ok(Self {
       tree,
       branch_length_mode: raw.branch_length_mode.into(),
@@ -80,6 +81,25 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       raw,
     })
   }
+}
+
+fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
+  if !raw.alignment.alignment.is_empty() {
+    return Ok(());
+  }
+  if raw.branch_length_mode == BranchLengthModeCli::Marginal {
+    return Err(missing_settings(
+      &["alignment", "branch_length_mode"],
+      "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input",
+    ));
+  }
+  if raw.sequence_length.is_none_or(|length| length == 0) {
+    return Err(missing_settings(
+      &["alignment", "sequence_length"],
+      "--sequence-length is required without an alignment: the time inference needs the sequence length",
+    ));
+  }
+  Ok(())
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

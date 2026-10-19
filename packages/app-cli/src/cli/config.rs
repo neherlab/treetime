@@ -455,6 +455,7 @@ mod tests {
     use app_commands::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
     use app_commands::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
     use app_commands::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
+    use app_commands::commands::shared::alignment::AlignmentArgs;
     use app_commands::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use pretty_assertions::assert_eq;
     use treetime_utils::assert_error;
@@ -574,9 +575,12 @@ mod tests {
     }
 
     #[test]
-    fn test_config_required_timetree_with_tree_ok() {
+    fn test_config_required_timetree_with_tree_and_alignment_ok() {
       let raw = TreetimeTimetreeArgsRaw {
         tree: Some("tree.nwk".into()),
+        alignment: AlignmentArgs {
+          alignment: vec!["aln.fasta".into()],
+        },
         ..Default::default()
       };
       TreetimeTimetreeArgs::try_from(raw).unwrap();
