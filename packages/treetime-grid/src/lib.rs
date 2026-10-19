@@ -8,7 +8,6 @@ pub(crate) mod interp_nonuniform;
 pub mod max_grid_points;
 pub mod piecewise_constant_fn;
 pub mod piecewise_fn;
-pub mod piecewise_linear_fn;
 pub mod soft_tail_law;
 
 use num_traits::{Num, NumCast};

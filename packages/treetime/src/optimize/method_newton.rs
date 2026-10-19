@@ -149,40 +149,6 @@ struct Search {
   convergence: Convergence,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(super) struct SqrtInterval {
-  pub lower: f64,
-  pub upper: f64,
-}
-
-impl SqrtInterval {
-  fn narrowed(self, s: f64, slope: f64) -> Self {
-    if slope > 0.0 {
-      Self { lower: s, ..self }
-    } else if slope < 0.0 {
-      Self { upper: s, ..self }
-    } else {
-      self
-    }
-  }
-
-  fn contains(&self, s: f64) -> bool {
-    (self.lower..=self.upper).contains(&s)
-  }
-
-  fn width(&self) -> f64 {
-    self.upper - self.lower
-  }
-
-  fn bisection_away_from(&self, s: f64) -> f64 {
-    if s - self.lower >= self.upper - s {
-      f64::midpoint(self.lower, s)
-    } else {
-      f64::midpoint(s, self.upper)
-    }
-  }
-}
-
 fn is_concave_maximum(point: &SqrtPoint, tolerance: f64) -> bool {
   point.curvature < 0.0 && point.slope.abs() <= tolerance * point.curvature.abs()
 }
@@ -235,6 +201,40 @@ fn newton_step(
     })
     .filter(|&next| bracket.contains(next))
     .filter(|&next| point.curvature < 0.0 || (next - s).abs() > tolerance)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(super) struct SqrtInterval {
+  pub lower: f64,
+  pub upper: f64,
+}
+
+impl SqrtInterval {
+  fn narrowed(self, s: f64, slope: f64) -> Self {
+    if slope > 0.0 {
+      Self { lower: s, ..self }
+    } else if slope < 0.0 {
+      Self { upper: s, ..self }
+    } else {
+      self
+    }
+  }
+
+  fn contains(&self, s: f64) -> bool {
+    (self.lower..=self.upper).contains(&s)
+  }
+
+  fn width(&self) -> f64 {
+    self.upper - self.lower
+  }
+
+  fn bisection_away_from(&self, s: f64) -> f64 {
+    if s - self.lower >= self.upper - s {
+      f64::midpoint(self.lower, s)
+    } else {
+      f64::midpoint(s, self.upper)
+    }
+  }
 }
 
 #[derive(Clone, Copy, Debug)]

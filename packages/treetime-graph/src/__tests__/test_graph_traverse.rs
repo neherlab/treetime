@@ -11,8 +11,6 @@ mod tests {
   #[rstest]
   #[case::depth_first_preorder_forward( Traversal::DepthFirstPreorderForward,  vec!["root", "AB", "A", "B", "CD", "C", "D"])]
   #[case::depth_first_postorder_forward(Traversal::DepthFirstPostorderForward, vec!["A", "B", "AB", "C", "D", "CD", "root"])]
-  #[case::breadth_first_forward(        Traversal::BreadthFirstForward,        vec!["root", "AB", "CD", "A", "B", "C", "D"])]
-  #[case::breadth_first_backward(       Traversal::BreadthFirstBackward,       vec!["D", "C", "B", "A", "CD", "AB", "root"])]
   #[trace]
   fn test_graph_traverse_visits_every_node_in_order(
     #[case] traversal: Traversal,
@@ -36,10 +34,6 @@ mod tests {
   #[case::depth_first_preorder_forward_at_internal(    (Traversal::DepthFirstPreorderForward,  "AB"),   vec!["root", "AB"])]
   #[case::depth_first_postorder_forward_at_internal(   (Traversal::DepthFirstPostorderForward, "AB"),   vec!["A", "B", "AB"])]
   #[case::depth_first_postorder_forward_at_last_visit( (Traversal::DepthFirstPostorderForward, "root"), vec!["A", "B", "AB", "C", "D", "CD", "root"])]
-  #[case::breadth_first_forward_at_first_visit(        (Traversal::BreadthFirstForward,        "root"), vec!["root"])]
-  #[case::breadth_first_forward_at_internal(           (Traversal::BreadthFirstForward,        "AB"),   vec!["root", "AB"])]
-  #[case::breadth_first_backward_at_internal(          (Traversal::BreadthFirstBackward,       "AB"),   vec!["D", "C", "B", "A", "CD", "AB"])]
-  #[case::breadth_first_backward_at_last_visit(        (Traversal::BreadthFirstBackward,       "root"), vec!["D", "C", "B", "A", "CD", "AB", "root"])]
   #[trace]
   fn test_graph_traverse_stops_at_first_error(
     #[case] (traversal, failing): (Traversal, &str),
@@ -65,8 +59,6 @@ mod tests {
   #[rstest]
   #[case::depth_first_preorder_forward( Traversal::DepthFirstPreorderForward)]
   #[case::depth_first_postorder_forward(Traversal::DepthFirstPostorderForward)]
-  #[case::breadth_first_forward(        Traversal::BreadthFirstForward)]
-  #[case::breadth_first_backward(       Traversal::BreadthFirstBackward)]
   #[trace]
   fn test_graph_traverse_single_node(#[case] traversal: Traversal) -> Result<(), Report> {
     let tree = NamedGraph::new(&["root"], &[])?;
@@ -85,8 +77,6 @@ mod tests {
   #[rstest]
   #[case::depth_first_preorder_forward( Traversal::DepthFirstPreorderForward)]
   #[case::depth_first_postorder_forward(Traversal::DepthFirstPostorderForward)]
-  #[case::breadth_first_forward(        Traversal::BreadthFirstForward)]
-  #[case::breadth_first_backward(       Traversal::BreadthFirstBackward)]
   #[trace]
   fn test_graph_traverse_rejects_multiple_roots(#[case] traversal: Traversal) -> Result<(), Report> {
     let forest = NamedGraph::new(&["r1", "r2", "A", "B"], &[("r1", "A"), ("r2", "B")])?;
@@ -113,8 +103,6 @@ mod tests {
     pub(super) enum Traversal {
       DepthFirstPreorderForward,
       DepthFirstPostorderForward,
-      BreadthFirstForward,
-      BreadthFirstBackward,
     }
 
     pub(super) fn fixture_balanced() -> Result<NamedGraph, Report> {
@@ -144,8 +132,6 @@ mod tests {
         Traversal::DepthFirstPostorderForward => {
           graph.iter_depth_first_postorder_forward(|node| visit(tree.name(node.key)))
         },
-        Traversal::BreadthFirstForward => graph.iter_breadth_first_forward(|node| visit(tree.name(node.key))),
-        Traversal::BreadthFirstBackward => graph.iter_breadth_first_backward(|node| visit(tree.name(node.key))),
       }
     }
   }

@@ -8,45 +8,6 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::counted;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct EdgeSolution {
-  pub(crate) branch_length: f64,
-  pub(crate) convergence: Convergence,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Convergence {
-  Converged,
-  IterationLimit,
-  SearchBound,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct UnconvergedEdges {
-  pub(crate) iteration_limit: Vec<GraphEdgeKey>,
-  pub(crate) search_bound: Vec<GraphEdgeKey>,
-}
-
-impl UnconvergedEdges {
-  pub(crate) fn of(solutions: &[(GraphEdgeKey, EdgeSolution)]) -> Self {
-    let edges_with = |convergence: Convergence| {
-      solutions
-        .iter()
-        .filter(|(_, solution)| solution.convergence == convergence)
-        .map(|&(edge_key, _)| edge_key)
-        .collect_vec()
-    };
-    Self {
-      iteration_limit: edges_with(Convergence::IterationLimit),
-      search_bound: edges_with(Convergence::SearchBound),
-    }
-  }
-
-  fn is_empty(&self) -> bool {
-    self.iteration_limit.is_empty() && self.search_bound.is_empty()
-  }
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct ConvergenceSummary {
   rounds: usize,
@@ -106,4 +67,43 @@ impl ConvergenceSummary {
       names,
     });
   }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct UnconvergedEdges {
+  pub(crate) iteration_limit: Vec<GraphEdgeKey>,
+  pub(crate) search_bound: Vec<GraphEdgeKey>,
+}
+
+impl UnconvergedEdges {
+  pub(crate) fn of(solutions: &[(GraphEdgeKey, EdgeSolution)]) -> Self {
+    let edges_with = |convergence: Convergence| {
+      solutions
+        .iter()
+        .filter(|(_, solution)| solution.convergence == convergence)
+        .map(|&(edge_key, _)| edge_key)
+        .collect_vec()
+    };
+    Self {
+      iteration_limit: edges_with(Convergence::IterationLimit),
+      search_bound: edges_with(Convergence::SearchBound),
+    }
+  }
+
+  fn is_empty(&self) -> bool {
+    self.iteration_limit.is_empty() && self.search_bound.is_empty()
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct EdgeSolution {
+  pub(crate) branch_length: f64,
+  pub(crate) convergence: Convergence,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Convergence {
+  Converged,
+  IterationLimit,
+  SearchBound,
 }

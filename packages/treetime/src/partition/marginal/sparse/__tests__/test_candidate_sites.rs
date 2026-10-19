@@ -128,10 +128,7 @@ mod tests {
     pub(super) fn map_model(n_messages: usize, events: &[(usize, SiteSlot, bool, u8)]) -> Vec<Site> {
       let mut slots = vec![BTreeMap::new(); n_messages + 1];
       for &(pos, slot, overwrite, value) in events {
-        let index = match slot {
-          SiteSlot::State => 0,
-          SiteSlot::Reference(message) => message + 1,
-        };
+        let index = slot.index();
         let value = char(value);
         if overwrite {
           slots[index].insert(pos, value);

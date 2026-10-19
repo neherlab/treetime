@@ -71,13 +71,6 @@ pub fn run(
   })
 }
 
-pub struct ClockParams {
-  pub clock_filter: f64,
-  pub keep_root: bool,
-  pub allow_negative_rate: bool,
-  pub reroot_spec: RerootSpec,
-}
-
 pub struct ClockInput {
   pub graph: Graph,
   pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
@@ -175,4 +168,11 @@ fn estimate_clock_model_with_prefilter(
   )
   .wrap_err(failure)?;
   Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
+}
+
+pub struct ClockParams {
+  pub clock_filter: f64,
+  pub keep_root: bool,
+  pub allow_negative_rate: bool,
+  pub reroot_spec: RerootSpec,
 }

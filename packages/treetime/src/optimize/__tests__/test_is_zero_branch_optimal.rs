@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{F81Params, JC69Params, K80Params, f81, jc69, k80};
-  use crate::gtr::gtr::{GTR, Mu};
+  use crate::optimize::__tests__::test_dispatch_zero_boundary::tests::helpers::{
+    binary_contribution, mixed_decay_rate_contributions,
+  };
   use crate::optimize::indel::IndelTerm;
   use crate::optimize::likelihood::evaluate_partitions_log_lh_only;
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
@@ -346,22 +348,6 @@ mod tests {
     );
 
     assert!(!is_zero_optimal_without_indels(&contributions));
-  }
-
-  fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
-    let fast = binary_contribution(5.0, array![[0.96, 1.0]]);
-    let slow = binary_contribution(0.5, array![[-0.8, 1.0]]);
-    [fast, slow]
-  }
-
-  fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
-    let gtr = GTR::builder()
-      .n_states(2)
-      .mu(Mu::Normalized(mu))
-      .pi(array![0.5, 0.5])
-      .build()
-      .unwrap();
-    OptimizationContribution::Dense(optimize::dense::PartitionContribution::new(coefficients, gtr))
   }
 
   fn is_zero_optimal_without_indels(contributions: &[OptimizationContribution]) -> bool {

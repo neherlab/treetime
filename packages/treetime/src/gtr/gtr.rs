@@ -33,7 +33,7 @@ impl GTR {
     mu: Mu,
     W: Option<Array2<f64>>,
     pi: Array1<f64>,
-    site_rates: Option<Array1<f64>>,
+    #[builder(setters(vis = "pub(crate)"))] site_rates: Option<Array1<f64>>,
   ) -> Result<Self, Report> {
     let n = n_states;
 

@@ -11,7 +11,6 @@ pub(crate) mod iteration;
 pub mod likelihood;
 pub(super) mod method_brent;
 pub(super) mod method_newton;
-pub mod observer;
 pub mod params;
 pub mod partition_rates;
 pub mod pipeline;

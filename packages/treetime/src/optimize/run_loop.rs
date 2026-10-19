@@ -111,12 +111,6 @@ pub(crate) fn run_optimize_loop(
   })
 }
 
-struct LoopState {
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
-  convergence: ConvergenceSummary,
-}
-
 #[derive(Clone, Debug)]
 pub(crate) struct OptimizeLoopResult {
   pub partitions: PartitionSet,
@@ -256,6 +250,12 @@ fn update_branch_lengths(
     branch_lengths,
     names,
   )
+}
+
+struct LoopState {
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: BTreeMap<GraphNodeKey, Option<String>>,
+  convergence: ConvergenceSummary,
 }
 
 fn log_iteration_likelihood(iteration_number: usize, likelihood: &OptimizeIterationLikelihood) {

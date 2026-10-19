@@ -118,10 +118,6 @@ impl Graph {
     self.nodes.len()
   }
 
-  pub fn num_roots(&self) -> usize {
-    self.roots.len()
-  }
-
   pub fn num_leaves(&self) -> usize {
     self.leaves.len()
   }

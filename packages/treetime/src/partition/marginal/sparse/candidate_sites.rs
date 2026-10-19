@@ -49,10 +49,7 @@ impl CandidateSiteEvents {
   }
 
   fn push(&mut self, pos: usize, slot: SiteSlot, value: AsciiChar, overwrite: bool) {
-    let slot = match slot {
-      SiteSlot::State => 0,
-      SiteSlot::Reference(index) => index + 1,
-    };
+    let slot = slot.index();
     self.events.push(SiteEvent {
       pos,
       slot,
@@ -66,6 +63,15 @@ impl CandidateSiteEvents {
 pub(crate) enum SiteSlot {
   State,
   Reference(usize),
+}
+
+impl SiteSlot {
+  pub(crate) fn index(self) -> usize {
+    match self {
+      Self::State => 0,
+      Self::Reference(index) => index + 1,
+    }
+  }
 }
 
 #[derive(Clone, Debug)]

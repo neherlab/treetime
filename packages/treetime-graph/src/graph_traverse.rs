@@ -3,7 +3,7 @@ use crate::graph::Graph;
 use crate::node::{GraphNodeKey, Node};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::BTreeSet;
 use treetime_utils::make_internal_report;
 
 #[expect(
@@ -59,59 +59,6 @@ impl Graph {
           .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
         explorer(GraphNodeBackward::new(self, node))?;
       }
-    }
-    Ok(())
-  }
-
-  pub fn iter_breadth_first_forward<F>(&self, mut explorer: F) -> Result<(), Report>
-  where
-    F: FnMut(GraphNodeForward) -> Result<(), Report>,
-  {
-    let root_key = self
-      .get_exactly_one_root()
-      .wrap_err("Graph must have exactly one root")?
-      .key();
-    let mut queue = VecDeque::from([root_key]);
-
-    while let Some(node_key) = queue.pop_front() {
-      let node = self
-        .get_node(node_key)
-        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
-      explorer(GraphNodeForward::new(self, node))?;
-      for (child_key, _) in self.children_keys_of(node) {
-        queue.push_back(child_key);
-      }
-    }
-    Ok(())
-  }
-
-  pub fn iter_breadth_first_backward<F>(&self, mut explorer: F) -> Result<(), Report>
-  where
-    F: FnMut(GraphNodeBackward) -> Result<(), Report>,
-  {
-    let root_key = self
-      .get_exactly_one_root()
-      .wrap_err("Graph must have exactly one root")?
-      .key();
-    let mut queue = VecDeque::from([root_key]);
-    let mut order = Vec::new();
-    while let Some(node_key) = queue.pop_front() {
-      order.push(node_key);
-      let node = self
-        .get_node(node_key)
-        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
-      let mut child_keys = self
-        .children_keys_of(node)
-        .map(|(child_key, _)| child_key)
-        .collect_vec();
-      child_keys.sort_unstable();
-      queue.extend(child_keys);
-    }
-    for node_key in order.into_iter().rev() {
-      let node = self
-        .get_node(node_key)
-        .ok_or_else(|| make_internal_report!("Node not found on the graph: {node_key}"))?;
-      explorer(GraphNodeBackward::new(self, node))?;
     }
     Ok(())
   }

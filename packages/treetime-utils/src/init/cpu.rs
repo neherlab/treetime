@@ -2,6 +2,13 @@ use std::io::{self, Write};
 
 pub const CPU_FEATURES_MESSAGE: &str = cpu_features_message();
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    debug_remnants,
+    reason = "the message reaches the user before the logger exists, because the check runs first in the constructor of the binary"
+  )
+)]
 pub fn require_cpu_features() {
   if !cpu_has_build_features() {
     let code = if writeln!(io::stderr().lock(), "{CPU_FEATURES_MESSAGE}").is_ok() {
@@ -72,6 +79,13 @@ pub fn cpu_has_build_features() -> bool {
 
 #[cfg(target_arch = "x86_64")]
 mod x86 {
+  #![cfg_attr(
+    not(dylint_lib = "custom"),
+    expect(
+      unsafe_code,
+      reason = "the naked function below is unsafe assembly; the nightly toolchain of the lint libraries does not report the unsafe naked attribute"
+    )
+  )]
   #![expect(
     clippy::inline_asm_x86_intel_syntax,
     reason = "assembly, so that the compiler cannot emit an instruction of the build CPU level before the check has run"

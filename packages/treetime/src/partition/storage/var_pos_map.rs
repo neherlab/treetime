@@ -4,8 +4,6 @@ use std::iter::Map;
 use std::slice::Iter;
 use treetime_primitives::AsciiChar;
 
-type Entry = (usize, AsciiChar, SiteProfile);
-
 impl<'a> IntoIterator for &'a VarPosMap {
   type Item = (&'a usize, VarPos<'a>);
   type IntoIter = Map<Iter<'a, Entry>, fn(&'a Entry) -> (&'a usize, VarPos<'a>)>;
@@ -35,14 +33,12 @@ impl VarPosMap {
   }
 
   pub(crate) fn get(&self, pos: usize) -> Option<VarPos<'_>> {
+    let index = self.entries.partition_point(|(key, _, _)| *key < pos);
     self
       .entries
-      .binary_search_by_key(&pos, |(key, _, _)| *key)
-      .ok()
-      .map(|index| {
-        let (_, state, dis) = &self.entries[index];
-        VarPos { dis, state: *state }
-      })
+      .get(index)
+      .filter(|(key, _, _)| *key == pos)
+      .map(|(_, state, dis)| VarPos { dis, state: *state })
   }
 
   pub(crate) fn contains_key(&self, pos: usize) -> bool {
@@ -79,3 +75,5 @@ impl VarPosMap {
     self.into_iter().map(|(_, value)| value)
   }
 }
+
+type Entry = (usize, AsciiChar, SiteProfile);

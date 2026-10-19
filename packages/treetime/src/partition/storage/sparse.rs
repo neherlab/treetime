@@ -16,8 +16,6 @@ use treetime_utils::interval::range_union::range_union;
 
 pub(crate) const INLINE_STATES: usize = 4;
 
-pub(crate) type SiteProfile = SmallVec<[f64; INLINE_STATES]>;
-
 const AMBIGUOUS: u8 = 1;
 const UNKNOWN: u8 = 2;
 const GAP: u8 = 4;
@@ -164,11 +162,8 @@ pub struct FixedProfiles {
 
 impl FixedProfiles {
   pub(crate) fn get(&self, state: AsciiChar) -> Option<&FixedProfile> {
-    self
-      .entries
-      .binary_search_by_key(&state, |entry| entry.state)
-      .ok()
-      .map(|index| &self.entries[index])
+    let index = self.entries.partition_point(|entry| entry.state < state);
+    self.entries.get(index).filter(|entry| entry.state == state)
   }
 
   pub(crate) fn insert(&mut self, state: AsciiChar, count: usize, dis: SiteProfile) {
@@ -224,6 +219,8 @@ pub struct FixedProfile {
   pub(crate) count: usize,
   pub(crate) dis: SiteProfile,
 }
+
+pub(crate) type SiteProfile = SmallVec<[f64; INLINE_STATES]>;
 
 #[derive(Clone, Debug)]
 pub struct FitchNodeData {

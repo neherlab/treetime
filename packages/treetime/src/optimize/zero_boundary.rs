@@ -10,28 +10,6 @@ const GRID_SEARCH_POINTS: usize = 100;
 
 const MIN_SEARCH_UPPER_BOUND: f64 = 0.5;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ZeroLength {
-  Admissible,
-  ExcludedBySites,
-  ExcludedByIndels,
-}
-
-impl ZeroLength {
-  pub(crate) fn of_edge(contributions: &[OptimizationContribution], indels: IndelTerm) -> Self {
-    if !contributions
-      .iter()
-      .all(OptimizationContribution::all_sites_valid_at_zero)
-    {
-      Self::ExcludedBySites
-    } else if indels.requires_positive_length() {
-      Self::ExcludedByIndels
-    } else {
-      Self::Admissible
-    }
-  }
-}
-
 pub(super) fn start_branch_length(
   branch_length: f64,
   indels: IndelTerm,
@@ -155,6 +133,28 @@ pub(super) fn is_zero_better_than(
   let log_lh_zero = evaluate_with_indels_log_lh_only(contributions, indels, 0.0)?;
   let log_lh_other = evaluate_with_indels_log_lh_only(contributions, indels, branch_length)?;
   Ok(log_lh_zero > log_lh_other)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ZeroLength {
+  Admissible,
+  ExcludedBySites,
+  ExcludedByIndels,
+}
+
+impl ZeroLength {
+  pub(crate) fn of_edge(contributions: &[OptimizationContribution], indels: IndelTerm) -> Self {
+    if !contributions
+      .iter()
+      .all(OptimizationContribution::all_sites_valid_at_zero)
+    {
+      Self::ExcludedBySites
+    } else if indels.requires_positive_length() {
+      Self::ExcludedByIndels
+    } else {
+      Self::Admissible
+    }
+  }
 }
 
 fn shared_certified_decay_rate(contributions: &[OptimizationContribution]) -> Option<f64> {

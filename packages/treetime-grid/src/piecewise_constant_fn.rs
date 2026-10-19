@@ -1,5 +1,4 @@
 use crate::piecewise_fn::PiecewiseFnBase;
-use itertools::Itertools;
 use ndarray::Array1;
 use treetime_utils::array::ndarray::partition_point;
 
@@ -39,23 +38,5 @@ impl PiecewiseConstantFn {
   pub fn eval_left(&self, t: f64) -> f64 {
     let idx = partition_point(self.base.breakpoints(), |&bp| bp < t);
     self.base.values()[idx]
-  }
-
-  #[must_use]
-  pub fn zip_map(&self, other: &Self, f: impl Fn(f64, f64) -> f64) -> Self {
-    let mut breakpoints = self
-      .breakpoints()
-      .iter()
-      .chain(other.breakpoints())
-      .copied()
-      .sorted_by(f64::total_cmp)
-      .collect_vec();
-    breakpoints.dedup_by(|left, right| left.total_cmp(right).is_eq());
-
-    let values = std::iter::once(f(self.values()[0], other.values()[0]))
-      .chain(breakpoints.iter().map(|&t| f(self.eval(t), other.eval(t))))
-      .collect();
-
-    Self::new(Array1::from(breakpoints), values)
   }
 }

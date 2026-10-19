@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
   use crate::gtr::get_gtr::{GtrModelName, JC69Params, jc69};
   use crate::optimize::dispatch::optimize_edge_lengths;
   use crate::optimize::gather::gather_edge_contributions;
@@ -400,7 +400,7 @@ mod tests {
     );
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{GtrModelName, K80Params, get_gtr_by_name, k80};
@@ -481,13 +481,13 @@ mod tests {
       })
     }
 
-    pub(super) fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
+    pub(crate) fn mixed_decay_rate_contributions() -> [OptimizationContribution; 2] {
       let fast = binary_contribution(5.0, array![[0.96, 1.0]]);
       let slow = binary_contribution(0.5, array![[-0.8, 1.0]]);
       [fast, slow]
     }
 
-    fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
+    pub(crate) fn binary_contribution(mu: f64, coefficients: Array2<f64>) -> OptimizationContribution {
       let gtr = GTR::builder()
         .n_states(2)
         .mu(Mu::Normalized(mu))
