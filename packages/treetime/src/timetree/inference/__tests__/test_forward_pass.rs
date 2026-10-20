@@ -357,7 +357,8 @@ mod tests {
         .expect("the parent has a posterior");
       let branch = inputs.branches[&parent_edge_key(&graph, child)].distribution.as_deref();
       let branch = branch.expect("the branch has a distribution");
-      let subtree = inputs.backward[&child].subtree
+      let subtree = inputs.backward[&child]
+        .subtree
         .as_deref()
         .expect("the child has a subtree distribution");
       let from_parent = convolve_across_edge(
