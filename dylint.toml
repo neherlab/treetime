@@ -176,8 +176,9 @@ error_macro = "make_error"
 
 # forbidden_item: items that a crate must not use. Each entry lists the items by
 # absolute path, the crates that must not use them, and the reason that the
-# diagnostic shows. A path that does not resolve forbids nothing. Test code
-# (#[test] functions and items under #[cfg(test)]) may use the items.
+# diagnostic shows. Test code (#[test] functions and items under #[cfg(test)])
+# may use the items. A path that resolves to no item, after a rename, a move, or
+# a typo, is itself reported in each crate of its entry.
 #
 # The core algorithms of the treetime crate work on graphs: they take a
 # GraphSchedule and call require_tree() when they need a tree. The checked tree

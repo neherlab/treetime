@@ -177,7 +177,8 @@ pub struct ForbiddenItemRule {
     /// Absolute paths of the forbidden items, starting with the crate name, e.g.
     /// `"treetime_graph::schedule::TreeSchedule"` for a type or
     /// `"treetime_graph::schedule::GraphSchedule::into_tree"` for an associated
-    /// function. A path that does not resolve in the linted crate forbids nothing.
+    /// function. The lint reports a path that resolves to no item in a crate
+    /// named in `crates`.
     pub items: Vec<String>,
     /// Crates that must not use the items, by their rustc names (`-` becomes `_`).
     /// Test code of these crates may use them.

@@ -1,4 +1,12 @@
+#[macro_export]
+macro_rules! tree_of_roots {
+    ($roots:expr) => {
+        $crate::schedule::GraphSchedule::new($roots).into_tree()
+    };
+}
+
 pub mod schedule {
+    #[derive(Clone, Debug)]
     pub struct GraphSchedule<'g> {
         roots: &'g [usize],
     }
@@ -17,6 +25,7 @@ pub mod schedule {
         }
     }
 
+    #[derive(Clone, Debug)]
     pub struct TreeSchedule<'g> {
         schedule: GraphSchedule<'g>,
     }

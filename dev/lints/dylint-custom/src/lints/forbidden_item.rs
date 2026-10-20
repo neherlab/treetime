@@ -4,22 +4,25 @@
 //! which they are forbidden, and the reason that the diagnostic shows. A use is
 //! any path that resolves to a forbidden item: a type in any position
 //! (signature, field, `let` annotation, generic argument, `impl` target), an
-//! import, a call, a method call, or a function reference. The paths resolve at
-//! lint time in the dependency graph of the linted crate, so a path that does
-//! not resolve, for example to an item that its crate does not define yet,
-//! forbids nothing. Test code (`#[test]` functions and items under
-//! `#[cfg(test)]`) and the output of macros from other crates are not checked;
-//! tokens that the linted crate passes to such a macro keep their own spans and
-//! are checked. A use that a macro of the linted crate expands to is reported
-//! at the macro call, with a note at the use in the macro definition.
+//! import, a call, a method call, or a function reference. A use that a macro
+//! expands to, from this crate or another, is reported at the outermost macro
+//! call in the linted crate; for a macro of the linted crate, a note points at
+//! the use in the macro definition.
+//! Test code (`#[test]` functions and items under `#[cfg(test)]`) is not
+//! checked.
+//!
+//! The paths resolve at lint time in the dependency graph of the linted crate.
+//! A path that resolves to no item, after a rename, a move, or a typo, is
+//! reported at the crate root of every crate that the entry names, because the
+//! entry then forbids nothing there.
 
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_in_test;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::{Expr, ExprKind, HirId, Path, QPath};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
+use rustc_hir::{CRATE_HIR_ID, Expr, ExprKind, HirId, Path, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_span::Span;
 
@@ -29,7 +32,7 @@ use crate::lints::hir_refs::owning_item;
 rustc_session::declare_lint! {
     /// Flags a use of an item that a `[[forbidden_item]]` entry of `dylint.toml`
     /// forbids in the crate being linted, outside test code, and shows the
-    /// reason of the entry.
+    /// reason of the entry. Also flags an entry path that resolves to no item.
     pub FORBIDDEN_ITEM,
     Warn,
     "use of an item that `dylint.toml` forbids in this crate"
@@ -51,7 +54,7 @@ impl ForbiddenItem {
     }
 
     fn report(&mut self, cx: &LateContext<'_>, def_id: DefId, span: Span, hir_id: HirId) {
-        if span.in_external_macro(cx.sess().source_map()) || is_in_test(cx.tcx, hir_id) {
+        if is_in_test(cx.tcx, hir_id) {
             return;
         }
         let item = owning_item(cx, def_id);
@@ -70,7 +73,11 @@ impl ForbiddenItem {
             format!("`{}` is forbidden in crate `{crate_name}`", forbidden.path),
             |diag| {
                 if call_site != span {
-                    diag.span_note(span, "the macro expands to this use");
+                    if span.in_external_macro(cx.sess().source_map()) {
+                        diag.note("the macro called here, from another crate, expands to the use");
+                    } else {
+                        diag.span_note(span, "the macro expands to this use");
+                    }
                 }
                 diag.note(forbidden.reason.clone());
             },
@@ -88,13 +95,18 @@ impl<'tcx> LateLintPass<'tcx> for ForbiddenItem {
                 continue;
             }
             for path in &rule.items {
-                for ns in [PathNS::Type, PathNS::Value] {
-                    for def_id in lookup_path_str(cx.tcx, ns, path) {
-                        self.forbidden.entry(def_id).or_insert_with(|| Forbidden {
-                            path: path.clone(),
-                            reason: rule.reason.clone(),
-                        });
-                    }
+                let def_ids = [PathNS::Type, PathNS::Value]
+                    .into_iter()
+                    .flat_map(|ns| lookup_path_str(cx.tcx, ns, path))
+                    .collect::<Vec<_>>();
+                if def_ids.is_empty() {
+                    report_unresolved(cx, path);
+                }
+                for def_id in def_ids {
+                    self.forbidden.entry(def_id).or_insert_with(|| Forbidden {
+                        path: path.clone(),
+                        reason: rule.reason.clone(),
+                    });
                 }
             }
         }
@@ -130,6 +142,20 @@ impl<'tcx> LateLintPass<'tcx> for ForbiddenItem {
     }
 }
 
+fn report_unresolved(cx: &LateContext<'_>, path: &str) {
+    let crate_name = cx.tcx.crate_name(LOCAL_CRATE);
+    span_lint_hir_and_then(
+        cx,
+        FORBIDDEN_ITEM,
+        CRATE_HIR_ID,
+        cx.tcx.def_span(CRATE_DEF_ID).shrink_to_lo(),
+        format!("`{path}` resolves to no item, so its `[[forbidden_item]]` entry forbids nothing in crate `{crate_name}`"),
+        |diag| {
+            diag.help("correct the path in `dylint.toml` after a rename or move, or remove it from the entry");
+        },
+    );
+}
+
 struct Forbidden {
     path: String,
     reason: String,
@@ -144,7 +170,7 @@ mod tests {
 items = [
   "graph::schedule::TreeSchedule",
   "graph::schedule::GraphSchedule::into_tree",
-  "graph::schedule::NotDefinedYet",
+  "graph::schedule::RenamedTreeSchedule",
 ]
 crates = ["core_algorithms"]
 reason = "core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats"

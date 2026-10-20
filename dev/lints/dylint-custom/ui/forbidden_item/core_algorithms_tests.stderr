@@ -1,3 +1,12 @@
+warning: `graph::schedule::RenamedTreeSchedule` resolves to no item, so its `[[forbidden_item]]` entry forbids nothing in crate `core_algorithms`
+  --> $DIR/core_algorithms_tests.rs:4:1
+   |
+LL | extern crate graph;
+   | ^
+   |
+   = help: correct the path in `dylint.toml` after a rename or move, or remove it from the entry
+   = note: `#[warn(forbidden_item)]` on by default
+
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
   --> $DIR/core_algorithms_tests.rs:8:33
    |
@@ -5,7 +14,6 @@ LL | pub fn root_of_signature(tree: &graph::schedule::TreeSchedule<'_>) -> Optio
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
-   = note: `#[warn(forbidden_item)]` on by default
 
-warning: 1 warning emitted
+warning: 2 warnings emitted
 

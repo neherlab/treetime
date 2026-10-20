@@ -1,3 +1,12 @@
+warning: `graph::schedule::RenamedTreeSchedule` resolves to no item, so its `[[forbidden_item]]` entry forbids nothing in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:2:1
+   |
+LL | #![crate_type = "lib"]
+   | ^
+   |
+   = help: correct the path in `dylint.toml` after a rename or move, or remove it from the entry
+   = note: `#[warn(forbidden_item)]` on by default
+
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
   --> $DIR/core_algorithms.rs:6:38
    |
@@ -5,7 +14,6 @@ LL | use graph::schedule::{GraphSchedule, TreeSchedule};
    |                                      ^^^^^^^^^^^^
    |
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
-   = note: `#[warn(forbidden_item)]` on by default
 
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
   --> $DIR/core_algorithms.rs:8:33
@@ -40,7 +48,7 @@ LL |         .map(GraphSchedule::into_tree)
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
 
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
-  --> $DIR/core_algorithms.rs:30:15
+  --> $DIR/core_algorithms.rs:31:15
    |
 LL |     pub tree: TreeSchedule<'g>,
    |               ^^^^^^^^^^^^^^^^
@@ -48,7 +56,7 @@ LL |     pub tree: TreeSchedule<'g>,
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
 
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
-  --> $DIR/core_algorithms.rs:31:20
+  --> $DIR/core_algorithms.rs:32:20
    |
 LL |     pub trees: Vec<TreeSchedule<'g>>,
    |                    ^^^^^^^^^^^^^^^^
@@ -56,7 +64,7 @@ LL |     pub trees: Vec<TreeSchedule<'g>>,
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
 
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
-  --> $DIR/core_algorithms.rs:35:32
+  --> $DIR/core_algorithms.rs:36:32
    |
 LL |     pub fn root_of_tree(tree: &TreeSchedule<'_>) -> Option<usize> {
    |                                ^^^^^^^^^^^^^^^^
@@ -64,7 +72,7 @@ LL |     pub fn root_of_tree(tree: &TreeSchedule<'_>) -> Option<usize> {
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
 
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
-  --> $DIR/core_algorithms.rs:44:17
+  --> $DIR/core_algorithms.rs:45:17
    |
 LL | impl Rooted for TreeSchedule<'_> {
    |                 ^^^^^^^^^^^^^^^^
@@ -72,13 +80,13 @@ LL | impl Rooted for TreeSchedule<'_> {
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
 
 warning: `graph::schedule::GraphSchedule::into_tree` is forbidden in crate `core_algorithms`
-  --> $DIR/core_algorithms.rs:63:30
+  --> $DIR/core_algorithms.rs:64:30
    |
 LL |     let tree: tree_type!() = tree_of!(roots)?;
    |                              ^^^^^^^^^^^^^^^
    |
 note: the macro expands to this use
-  --> $DIR/core_algorithms.rs:52:36
+  --> $DIR/core_algorithms.rs:53:36
    |
 LL |         GraphSchedule::new($roots).into_tree()
    |                                    ^^^^^^^^^^^
@@ -89,13 +97,13 @@ LL |     let tree: tree_type!() = tree_of!(roots)?;
    = note: this warning originates in the macro `tree_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
-  --> $DIR/core_algorithms.rs:63:15
+  --> $DIR/core_algorithms.rs:64:15
    |
 LL |     let tree: tree_type!() = tree_of!(roots)?;
    |               ^^^^^^^^^^^^
    |
 note: the macro expands to this use
-  --> $DIR/core_algorithms.rs:58:9
+  --> $DIR/core_algorithms.rs:59:9
    |
 LL |         TreeSchedule<'_>
    |         ^^^^^^^^^^^^^^^^
@@ -105,5 +113,14 @@ LL |     let tree: tree_type!() = tree_of!(roots)?;
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
    = note: this warning originates in the macro `tree_type` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: 11 warnings emitted
+warning: `graph::schedule::GraphSchedule::into_tree` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:69:5
+   |
+LL |     graph::tree_of_roots!(roots)?.root()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the macro called here, from another crate, expands to the use
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: 13 warnings emitted
 

@@ -26,6 +26,7 @@ pub fn root_count_of_graph(roots: &[usize]) -> usize {
     GraphSchedule::new(roots).roots().len()
 }
 
+#[derive(Clone, Debug)]
 pub struct Holder<'g> {
     pub tree: TreeSchedule<'g>,
     pub trees: Vec<TreeSchedule<'g>>,
@@ -62,4 +63,8 @@ macro_rules! tree_type {
 pub fn root_of_local_macro(roots: &[usize]) -> Option<usize> {
     let tree: tree_type!() = tree_of!(roots)?;
     tree.root()
+}
+
+pub fn root_of_external_macro(roots: &[usize]) -> Option<usize> {
+    graph::tree_of_roots!(roots)?.root()
 }
