@@ -10,7 +10,6 @@ pub mod reroot;
 pub mod schedule;
 pub mod schedule_scan;
 pub mod topology_order;
-pub mod tree_view;
 
 #[cfg(test)]
 mod __tests__;
