@@ -8,5 +8,4 @@ With default flags, v1 marks more tips as clock outliers than v0, which changes 
 
 ## Related issues
 
-- [H-cli-timetree-config-disables-clock-filter.md](H-cli-timetree-config-disables-clock-filter.md): config files set the value to 0.0
 - [M-clock-filter-residual-parity.md](M-clock-filter-residual-parity.md): the residual computation itself differs

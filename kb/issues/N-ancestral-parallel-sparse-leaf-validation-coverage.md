@@ -25,4 +25,3 @@ Define the intended validation contract before adding tests. The contract should
 - [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
 - [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)
 - [N-ancestral-fitch-site-classification-parallel-scaling-unverified.md](N-ancestral-fitch-site-classification-parallel-scaling-unverified.md)
-- [kb/reports/2026-07-13_perf-report-parallel-scaling/mpox-2000-parallel-sparse-leaf-setup.md](../reports/2026-07-13_perf-report-parallel-scaling/mpox-2000-parallel-sparse-leaf-setup.md)
