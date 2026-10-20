@@ -1,9 +1,9 @@
 use itertools::izip;
 use ndarray::Array1;
 use std::collections::BTreeMap;
-use treetime::partition::storage::discrete::DiscreteStates;
+use treetime::alphabet::state_alphabet::StateAlphabet;
 
-pub(crate) fn build_confidence_map(states: &DiscreteStates, profile: &Array1<f64>) -> BTreeMap<String, f64> {
+pub(crate) fn build_confidence_map(states: &StateAlphabet, profile: &Array1<f64>) -> BTreeMap<String, f64> {
   izip!(states.iter(), profile)
     .filter(|&(_, &probability)| probability > 0.001)
     .map(|(state, &probability)| (state.to_owned(), probability))

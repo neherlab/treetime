@@ -2,8 +2,8 @@ use eyre::Report;
 use ndarray::Array1;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::alphabet::alphabet::Alphabet;
+use treetime::alphabet::state_alphabet::StateAlphabet;
 use treetime::ancestral::aa::AaNodeData;
-use treetime::partition::storage::discrete::DiscreteStates;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -84,7 +84,7 @@ pub struct TreeDates<'a> {
 #[derive(Clone, Copy)]
 pub struct TreeTraits<'a> {
   pub attribute: &'a str,
-  pub states: &'a DiscreteStates,
+  pub states: &'a StateAlphabet,
   pub values: &'a BTreeMap<GraphNodeKey, Option<String>>,
   pub profiles: &'a BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
 }

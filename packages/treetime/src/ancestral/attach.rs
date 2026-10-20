@@ -29,19 +29,16 @@ pub fn complete_alignment_for_leaves(
     .collect_vec();
 
   let n_missing = missing.len();
-  if n_missing > 0 {
-    for key in &missing {
-      let name = node_name_or_key(*key, nodes[key].name.as_deref());
-      progress_warn!(
-        log,
-        "No sequence found for leaf '{name}' in {source}; treating it as fully ambiguous (missing data)."
-      );
-    }
-    progress_warn!(
-      log,
-      "{n_missing} of {n_leaves} tips have no matching sequence in {source} and are treated as fully ambiguous."
-    );
-  }
+  warn_leaves_without_data(
+    &missing
+      .iter()
+      .map(|key| node_name_or_key(*key, nodes[key].name.as_deref()))
+      .collect_vec(),
+    n_leaves,
+    LeafData::Sequence,
+    source,
+    log,
+  );
 
   if limit.applies() && n_missing.to_f64_exact() > n_leaves.to_f64_exact() / 3.0 {
     let message = format!(
@@ -65,6 +62,44 @@ pub fn complete_alignment_for_leaves(
   }
 
   Ok(())
+}
+
+pub fn warn_leaves_without_data(
+  missing_names: &[String],
+  n_leaves: usize,
+  data: LeafData,
+  source: &str,
+  log: &dyn LogSink,
+) {
+  let noun = data.noun();
+  for name in missing_names {
+    progress_warn!(
+      log,
+      "No {noun} found for leaf '{name}' in {source}; treating it as fully ambiguous (missing data)."
+    );
+  }
+  let n_missing = missing_names.len();
+  if n_missing > 0 {
+    progress_warn!(
+      log,
+      "{n_missing} of {n_leaves} tips have no matching {noun} in {source} and are treated as fully ambiguous."
+    );
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LeafData {
+  Sequence,
+  TraitValue,
+}
+
+impl LeafData {
+  const fn noun(self) -> &'static str {
+    match self {
+      Self::Sequence => "sequence",
+      Self::TraitValue => "trait value",
+    }
+  }
 }
 
 pub fn sanitize_to_alphabet(seq: &Seq, alphabet: &Alphabet) -> (Seq, usize) {

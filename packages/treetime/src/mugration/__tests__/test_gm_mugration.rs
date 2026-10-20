@@ -120,6 +120,7 @@ mod tests {
     use treetime_io::discrete_states_csv::discrete_attrs_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_utils::io::json::json_read_file;
+    use treetime_utils::o;
 
     #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationInput {
@@ -215,6 +216,7 @@ mod tests {
       let input = MugrationInput {
         graph,
         traits,
+        traits_source: o!("metadata"),
         observed_values,
         weights,
         branch_lengths,

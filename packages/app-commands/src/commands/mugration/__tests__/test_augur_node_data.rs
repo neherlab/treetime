@@ -137,6 +137,7 @@ mod tests {
       let input = MugrationInput {
         graph,
         traits,
+        traits_source: o!("metadata 'metadata.tsv'"),
         observed_values,
         weights: None,
         branch_lengths,

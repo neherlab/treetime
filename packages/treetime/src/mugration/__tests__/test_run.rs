@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use crate::alphabet::state_alphabet::StateAlphabet;
   use crate::mugration::pipeline::{
     MugrationParams, apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, validate_weight_coverage,
   };
-  use crate::partition::storage::discrete::DiscreteStates;
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{confidence_of, mugration_params, run_mugration_case, trait_assignments_by_name};
@@ -13,7 +13,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::iter::once;
-  use treetime_utils::{o, vec_of_owned};
+  use treetime_utils::{assert_error, o, vec_of_owned};
 
   #[test]
   fn test_run_validate_weight_coverage_rejects_above_threshold() {
@@ -69,8 +69,8 @@ mod tests {
   }
 
   #[test]
-  fn test_run_compute_pi_from_weights_normalizes() {
-    let states = DiscreteStates::from_values(["usa", "germany"].into_iter(), "?");
+  fn test_run_compute_pi_from_weights_normalizes() -> Result<(), Report> {
+    let states = StateAlphabet::new(["usa", "germany"])?;
     let weights = btreemap! {
       o!("usa") => 3.0,
       o!("germany") => 1.0,
@@ -82,11 +82,12 @@ mod tests {
     assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
     assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
     assert_abs_diff_eq!(0.75, pi[1], epsilon = 1e-10);
+    Ok(())
   }
 
   #[test]
-  fn test_run_compute_pi_from_weights_uses_mean_for_missing() {
-    let states = DiscreteStates::from_values(["usa", "germany", "france"].into_iter(), "?");
+  fn test_run_compute_pi_from_weights_uses_mean_for_missing() -> Result<(), Report> {
+    let states = StateAlphabet::new(["usa", "germany", "france"])?;
     let weights = btreemap! {
       o!("usa") => 2.0,
       o!("germany") => 4.0,
@@ -100,6 +101,7 @@ mod tests {
     assert_abs_diff_eq!(3.0 / total, pi[0], epsilon = 1e-10);
     assert_abs_diff_eq!(4.0 / total, pi[1], epsilon = 1e-10);
     assert_abs_diff_eq!(2.0 / total, pi[2], epsilon = 1e-10);
+    Ok(())
   }
 
   #[test]
@@ -369,10 +371,30 @@ mod tests {
     };
 
     let result = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, &mugration_params());
-    assert!(result.is_err());
-    let err_msg = result.unwrap_err().to_string();
-    assert!(err_msg.contains("only 1 discrete attributes"));
-    assert!(err_msg.contains("At least 2 are required"));
+    assert_error!(
+      result,
+      "A discrete trait needs at least 2 different states, found 1 state: usa. \
+       Check that the trait column holds at least 2 different known values."
+    );
+  }
+
+  #[test]
+  fn test_run_mugration_imputes_leaf_missing_from_metadata() -> Result<(), Report> {
+    let traits = btreemap! {
+      o!("A") => o!("usa"),
+      o!("C") => o!("germany"),
+    };
+    let (output, names) = run_mugration_case("(A:0.1,B:0.2,C:0.3)root;", &traits, None, &mugration_params())?;
+
+    let assignments = trait_assignments_by_name(&output, &names);
+    assert_eq!(
+      vec_of_owned!["A", "B", "C", "root"],
+      assignments.keys().cloned().sorted().collect_vec()
+    );
+    let leaf_b_confidence = confidence_of(&output, &names, "B");
+    assert_abs_diff_eq!(1.0, leaf_b_confidence.sum(), epsilon = 1e-12);
+
+    Ok(())
   }
 
   #[test]
@@ -501,6 +523,7 @@ mod tests {
       let input = MugrationInput {
         graph,
         traits,
+        traits_source: o!("metadata"),
         observed_values,
         weights,
         branch_lengths,

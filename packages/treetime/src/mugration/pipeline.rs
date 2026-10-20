@@ -1,3 +1,4 @@
+use crate::alphabet::state_alphabet::StateAlphabet;
 use crate::ancestral::plan::fit_marginal;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
@@ -5,13 +6,12 @@ use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;
 use crate::gtr::gtr::{GTR, Mu};
 use crate::gtr::refinement::{GtrRefinement, RefinementRate};
+use crate::mugration::leaf_observations::leaf_observations;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::MarginalUpdate;
 use crate::partition::storage::dense::DenseNodeState;
-use crate::partition::storage::discrete::DiscreteStates;
 use crate::progress::LogSink;
-use crate::{make_error, make_report};
-use crate::{progress_info, progress_warn};
+use crate::{make_error, progress_info, progress_warn};
 use eyre::Report;
 use indexmap::IndexSet;
 use itertools::Itertools;
@@ -35,6 +35,7 @@ pub fn run(
   let MugrationInput {
     graph,
     traits,
+    traits_source,
     observed_values,
     weights,
     branch_lengths,
@@ -69,23 +70,18 @@ pub fn run(
     None => observed_values,
   };
 
-  let discrete_states = DiscreteStates::from_values(model_values.iter().map(String::as_str), &params.missing_data);
-  let n_states = discrete_states.len();
-
-  if n_states < 2 {
-    return Err(OperationError::InvalidInput(make_report!(
-      "Mugration: only {n_states} discrete attributes provided for mugration. At least 2 are required."
-    )));
-  }
+  let states = StateAlphabet::new(model_values.into_iter().filter(|value| *value != params.missing_data))
+    .map_err(OperationError::InvalidInput)?;
+  let n_states = states.len();
 
   progress_info!(
     log,
     "Mugration: found {n_states} discrete states: {}",
-    discrete_states.iter().join(", ")
+    states.iter().join(", ")
   );
 
   let pi = match weights {
-    Some(weights_map) => compute_pi_from_weights(&discrete_states, weights_map),
+    Some(weights_map) => compute_pi_from_weights(&states, weights_map),
     None => compute_pi_uniform(n_states),
   };
 
@@ -104,15 +100,24 @@ pub fn run(
     .build()
     .map_err(OperationError::classify)?;
 
-  let partition = PartitionMarginalDiscrete::new(
-    discrete_states,
+  let observations = leaf_observations(
     &graph,
     &traits,
     names,
+    &states,
+    &params.missing_data,
+    &traits_source,
+    log,
+  )
+  .map_err(OperationError::classify)?;
+  let partition = PartitionMarginalDiscrete::new(
+    states,
+    &graph,
+    &observations,
     MIN_BRANCH_LENGTH_FRACTION,
     params.filter_uninformative_root,
   )
-  .map_err(OperationError::InvalidInput)?;
+  .map_err(OperationError::classify)?;
 
   let branch_lengths = branch_lengths_or_zero(&branch_lengths);
   let refinement = GtrRefinement {
@@ -152,6 +157,7 @@ pub struct MugrationParams {
 pub struct MugrationInput {
   pub graph: Graph,
   pub traits: BTreeMap<GraphNodeKey, String>,
+  pub traits_source: String,
   pub observed_values: BTreeSet<String>,
   pub weights: Option<BTreeMap<String, f64>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -161,7 +167,7 @@ pub struct MugrationInput {
 pub struct MugrationOutput {
   pub graph: Graph,
   pub gtr: GTR,
-  pub states: DiscreteStates,
+  pub states: StateAlphabet,
   pub n_states: usize,
   pub reconstructed_traits: BTreeMap<GraphNodeKey, Option<String>>,
   pub confidences: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
@@ -225,7 +231,7 @@ pub struct WeightCoverageResult {
   pub(crate) missing_ratio: f64,
 }
 
-pub(crate) fn compute_pi_from_weights(states: &DiscreteStates, weights: &BTreeMap<String, f64>) -> Array1<f64> {
+pub(crate) fn compute_pi_from_weights(states: &StateAlphabet, weights: &BTreeMap<String, f64>) -> Array1<f64> {
   let mean_weight = weights.values().mean();
 
   let weights_arr: Array1<f64> = states

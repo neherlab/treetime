@@ -9,8 +9,8 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime::alphabet::state_alphabet::StateAlphabet;
   use treetime::gtr::gtr::{GTR, Mu};
-  use treetime::partition::storage::discrete::DiscreteStates;
   use treetime_io::csv::{CsvWriter, TableFormat};
   use treetime_utils::{assert_error, o};
 
@@ -76,7 +76,7 @@ mod tests {
       node_key(&setup.topology, "root"),
     );
     setup.topology.names.insert(a, Some(o!("A,1")));
-    setup.states = DiscreteStates::from_values(["Congo, DR", "usa"].into_iter(), "?");
+    setup.states = StateAlphabet::new(["Congo, DR", "usa"])?;
     setup.values = btreemap! { a => Some(o!("usa")), b => Some(o!("Congo, DR")), root => None };
     setup.profiles = btreemap! { a => Some(array![0.25, 0.75]), b => Some(array![1.0, 0.0]), root => None };
     let graph = mugration_graph(&setup, "country");

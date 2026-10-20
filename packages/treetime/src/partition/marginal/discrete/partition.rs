@@ -1,8 +1,8 @@
-use crate::partition::marginal::discrete::input::{missing_trait_profile, one_hot_profile, validate_trait_leaves};
+use crate::alphabet::state_alphabet::StateAlphabet;
 use crate::partition::marginal::shared::data::DenseInputs;
 use crate::partition::marginal::shared::pass::{IndexedKind, IndexedPartition};
 use crate::partition::storage::dense::DenseNodeState;
-use crate::partition::storage::discrete::DiscreteStates;
+use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use ndarray::{Array1, Array2};
 use std::collections::BTreeMap;
@@ -13,35 +13,28 @@ use treetime_utils::array::ndarray::argmax_first;
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDiscrete {
   pub(crate) inputs: DenseInputs,
-  pub(crate) states: DiscreteStates,
+  pub(crate) states: StateAlphabet,
   pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Array2<f64>>,
 }
 
 impl PartitionMarginalDiscrete {
   pub(crate) fn new(
-    states: DiscreteStates,
+    states: StateAlphabet,
     graph: &Graph,
-    traits: &BTreeMap<GraphNodeKey, String>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    observations: &BTreeMap<GraphNodeKey, StateObservation>,
     min_branch_length: f64,
     filter_uninformative_root: bool,
   ) -> Result<Self, Report> {
-    validate_trait_leaves(graph, traits, names)?;
-    let n_states = states.len();
     let obs_leaves = graph
       .get_leaves()
       .map(|leaf| {
         let leaf_key = leaf.key();
-        let profile = traits
+        let observation = observations
           .get(&leaf_key)
-          .and_then(|trait_value| states.get_index(trait_value))
-          .map_or_else(
-            || missing_trait_profile(n_states),
-            |index| one_hot_profile(index, n_states),
-          );
-        (leaf_key, profile)
+          .ok_or_else(|| make_internal_report!("Leaf {leaf_key} has no state observation"))?;
+        Ok((leaf_key, leaf_profile(*observation, states.len())?))
       })
-      .collect();
+      .collect::<Result<_, Report>>()?;
     Ok(Self {
       inputs: DenseInputs {
         min_branch_length,
@@ -64,7 +57,7 @@ impl PartitionMarginalDiscrete {
     let node = node_states.get(&node_key)?;
     let row = node.profile.dis.row(0);
     let argmax = argmax_first(&row)?;
-    Some(self.states.get_name(argmax).to_owned())
+    self.states.name(argmax).map(ToOwned::to_owned)
   }
 
   pub fn get_confidence(
@@ -86,5 +79,23 @@ impl IndexedPartition for PartitionMarginalDiscrete {
     IndexedKind::Discrete {
       leaves: &self.obs_leaves,
     }
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateObservation {
+  Known(usize),
+  Unknown,
+}
+
+fn leaf_profile(observation: StateObservation, n_states: usize) -> Result<Array2<f64>, Report> {
+  match observation {
+    StateObservation::Known(index) if index >= n_states => {
+      make_internal_error!("Observed state index {index} is outside the {n_states} states of the partition")
+    },
+    StateObservation::Known(index) => Ok(Array2::from_shape_fn((1, n_states), |(_, state)| {
+      if state == index { 1.0 } else { 0.0 }
+    })),
+    StateObservation::Unknown => Ok(Array2::ones((1, n_states))),
   }
 }

@@ -86,6 +86,7 @@ pub fn run_mugration(
   let input = MugrationInput {
     graph,
     traits,
+    traits_source: format!("metadata '{}'", mugration_args.metadata().display()),
     observed_values,
     weights,
     branch_lengths: branch_lengths.clone(),

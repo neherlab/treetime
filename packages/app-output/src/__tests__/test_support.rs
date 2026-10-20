@@ -16,8 +16,8 @@ pub(crate) mod tests {
   use std::io;
   use std::sync::LazyLock;
   use treetime::alphabet::alphabet::Alphabet;
+  use treetime::alphabet::state_alphabet::StateAlphabet;
   use treetime::ancestral::aa::AaNodeData;
-  use treetime::partition::storage::discrete::DiscreteStates;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -66,7 +66,7 @@ pub(crate) mod tests {
 
   pub(crate) struct MugrationSetup {
     pub(crate) topology: Topology,
-    pub(crate) states: DiscreteStates,
+    pub(crate) states: StateAlphabet,
     pub(crate) values: BTreeMap<GraphNodeKey, Option<String>>,
     pub(crate) profiles: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
   }
@@ -232,7 +232,7 @@ pub(crate) mod tests {
       .unzip();
     Ok(MugrationSetup {
       topology,
-      states: DiscreteStates::from_values(["CH", "US"].into_iter(), "?"),
+      states: StateAlphabet::new(["CH", "US"])?,
       values,
       profiles,
     })
