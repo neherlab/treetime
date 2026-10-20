@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{caterpillar_parents, inputs_of, ladder, run_in_pool, run_in_small_stack_pool, subtree_sizes};
+  use self::helpers::{
+    BRAID_LEVELS, BRAID_WIDTH, braid, braid_levels, caterpillar_parents, inputs_of, run_in_pool,
+    run_in_small_stack_pool, subtree_sizes,
+  };
   use super::super::test_graph_support::tests::helpers::{NamedGraph, graph_from_dag, graph_from_parents};
   use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
@@ -226,55 +229,66 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[case::one_thread(1)]
-  #[case::sixteen_threads(16)]
-  #[trace]
-  fn test_schedule_scan_up_ladder_of_100000_nodes_with_two_parents_fits_small_worker_stacks(
-    #[case] threads: usize,
-  ) -> Result<(), Report> {
-    let graph = graph_from_dag(&ladder(100_000))?;
+  #[test]
+  fn test_schedule_scan_up_braid_of_100000_nodes_runs_every_node_after_its_children_on_small_worker_stacks()
+  -> Result<(), Report> {
+    let graph = graph_from_dag(&braid(BRAID_WIDTH, BRAID_LEVELS))?;
     let schedule = GraphSchedule::new(&graph)?;
 
-    let heights = run_in_small_stack_pool(threads, || {
-      schedule
-        .scan_up(inputs_of(&graph, ()), |_, (), children: PerEdge<usize>| {
-          let height = children.iter().max().map_or(0, |height| height + 1);
-          Ok((height, height))
-        })
-        .map(ScanOutputs::into_map)
-    })?;
+    let heights = |threads| {
+      run_in_small_stack_pool(threads, || {
+        schedule
+          .scan_up(
+            inputs_of(&graph, ()),
+            |key, (), children: PerEdge<(GraphNodeKey, usize)>| {
+              let senders = children.iter().map(|&(sender, _)| sender).collect_vec();
+              let expected = schedule.children(key).iter().map(|&(child, _)| child).collect_vec();
+              if senders != expected {
+                return Err(make_report!("node {key} received {senders:?} instead of {expected:?}"));
+              }
+              let height = children.iter().map(|&(_, height)| height + 1).max().unwrap_or(0);
+              Ok((height, (key, height)))
+            },
+          )
+          .map(ScanOutputs::into_map)
+      })
+    };
 
-    let expected = (0..100_000)
-      .map(|index| (GraphNodeKey(index), 99_999 - index))
+    let expected = braid_levels()
+      .into_iter()
+      .map(|(key, level)| (key, BRAID_LEVELS - 1 - level))
       .collect::<BTreeMap<_, _>>();
-    assert_eq!(expected, heights);
+    assert_eq!((expected.clone(), expected), (heights(1)?, heights(16)?));
     Ok(())
   }
 
-  #[rstest]
-  #[case::one_thread(1)]
-  #[case::sixteen_threads(16)]
-  #[trace]
-  fn test_schedule_scan_down_ladder_of_100000_nodes_with_two_parents_fits_small_worker_stacks(
-    #[case] threads: usize,
-  ) -> Result<(), Report> {
-    let graph = graph_from_dag(&ladder(100_000))?;
+  #[test]
+  fn test_schedule_scan_down_braid_of_100000_nodes_runs_every_node_after_its_parents_on_small_worker_stacks()
+  -> Result<(), Report> {
+    let graph = graph_from_dag(&braid(BRAID_WIDTH, BRAID_LEVELS))?;
     let schedule = GraphSchedule::new(&graph)?;
 
-    let depths = run_in_small_stack_pool(threads, || {
-      schedule
-        .scan_down(inputs_of(&graph, ()), |_, (), parents: PerEdge<usize>| {
-          let depth = parents.iter().max().map_or(0, |depth| depth + 1);
-          Ok((depth, depth))
-        })
-        .map(ScanOutputs::into_map)
-    })?;
+    let depths = |threads| {
+      run_in_small_stack_pool(threads, || {
+        schedule
+          .scan_down(
+            inputs_of(&graph, ()),
+            |key, (), parents: PerEdge<(GraphNodeKey, usize)>| {
+              let senders = parents.iter().map(|&(sender, _)| sender).collect_vec();
+              let expected = schedule.parents(key).iter().map(|&(parent, _)| parent).collect_vec();
+              if senders != expected {
+                return Err(make_report!("node {key} received {senders:?} instead of {expected:?}"));
+              }
+              let depth = parents.iter().map(|&(_, depth)| depth + 1).max().unwrap_or(0);
+              Ok((depth, (key, depth)))
+            },
+          )
+          .map(ScanOutputs::into_map)
+      })
+    };
 
-    let expected = (0..100_000)
-      .map(|index| (GraphNodeKey(index), index))
-      .collect::<BTreeMap<_, _>>();
-    assert_eq!(expected, depths);
+    let expected = braid_levels();
+    assert_eq!((expected.clone(), expected), (depths(1)?, depths(16)?));
     Ok(())
   }
 
@@ -698,11 +712,12 @@ mod tests {
     use crate::node::GraphNodeKey;
     use crate::schedule::GraphSchedule;
     use eyre::Report;
-    use itertools::Itertools;
     use rayon::ThreadPoolBuilder;
     use std::collections::BTreeMap;
 
     const SMALL_WORKER_STACK_BYTES: usize = 32 * 1024;
+    pub(super) const BRAID_WIDTH: usize = 8;
+    pub(super) const BRAID_LEVELS: usize = 12_500;
 
     pub(super) fn inputs_of<N: Clone>(graph: &Graph, value: N) -> BTreeMap<GraphNodeKey, N> {
       graph.get_nodes().map(|node| (node.key(), value.clone())).collect()
@@ -740,13 +755,24 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn ladder(count: usize) -> DagSpec {
-      let rails = (1..count).map(|child| (child - 1, child));
-      let rungs = (2..count).map(|child| (child - 2, child));
+    pub(super) fn braid(width: usize, levels: usize) -> DagSpec {
+      let edges = (width..width * levels).flat_map(|child| {
+        let (level_start, column) = (child - child % width - width, child % width);
+        [
+          (level_start + column, child),
+          (level_start + (column + 1) % width, child),
+        ]
+      });
       DagSpec {
-        keys: (0..count).collect(),
-        edges: rails.interleave(rungs).collect(),
+        keys: (0..width * levels).collect(),
+        edges: edges.collect(),
       }
+    }
+
+    pub(super) fn braid_levels() -> BTreeMap<GraphNodeKey, usize> {
+      (0..BRAID_LEVELS)
+        .flat_map(|level| (0..BRAID_WIDTH).map(move |column| (GraphNodeKey(level * BRAID_WIDTH + column), level)))
+        .collect()
     }
 
     pub(super) fn subtree_sizes(schedule: &GraphSchedule<'_>) -> BTreeMap<GraphNodeKey, usize> {
