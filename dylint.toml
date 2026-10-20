@@ -173,3 +173,20 @@ style = "eyre"
 helper_macros = ["make_error", "make_report", "make_internal_error", "make_internal_report"]
 report_macro = "make_report"
 error_macro = "make_error"
+
+# forbidden_item: items that a crate must not use. Each entry lists the items by
+# absolute path, the crates that must not use them, and the reason that the
+# diagnostic shows. A path that does not resolve forbids nothing. Test code
+# (#[test] functions and items under #[cfg(test)]) may use the items.
+#
+# The core algorithms of the treetime crate work on graphs: they take a
+# GraphSchedule and call require_tree() when they need a tree. The checked tree
+# handle serves the output formats that can hold only trees (app-output,
+# treetime-io).
+[[forbidden_item]]
+items = [
+  "treetime_graph::schedule::TreeSchedule",
+  "treetime_graph::schedule::GraphSchedule::into_tree",
+]
+crates = ["treetime"]
+reason = "core algorithms take a `GraphSchedule` and call `require_tree()`; the tree handle `TreeSchedule` serves tree-only output formats"
