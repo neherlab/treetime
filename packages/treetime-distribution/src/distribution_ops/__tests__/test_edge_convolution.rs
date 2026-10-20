@@ -280,7 +280,11 @@ mod tests {
     let Distribution::Function(capped) = &capped else {
       panic!("expected a gridded Function message");
     };
-    pretty_assert_abs_diff_eq!(0.02, capped.dx(), epsilon = 1e-4);
+    let window = capped.x_max() - capped.x_min();
+    let intervals = (window / 0.02).ceil();
+    assert!(window / 299.0 > 0.02, "the window {window} needs more than 300 points at the cap");
+    assert_eq!(f64_to_usize_saturating(intervals) + 1, capped.len());
+    pretty_assert_abs_diff_eq!(window / intervals, capped.dx(), epsilon = 1e-12);
     let Distribution::Function(p) = &posterior else {
       panic!("expected a gridded Function posterior");
     };
