@@ -199,15 +199,18 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: PartitionFitch) -> Result<
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let inputs = schedule.join_parent_edges(nodes, edges)?;
-  let outputs = schedule.scan_down(inputs, |key, (node, mut edges), parents: PerEdge<FitchForwardOutput>| {
-    fitch_forward_node(
-      &alphabet,
-      key,
-      node,
-      edges.pop(),
-      parents.first().map(|parent| &parent.0),
-    )
-  })?;
+  let outputs = schedule.scan_down(
+    inputs,
+    |key, (node, mut edges), parents: PerEdge<FitchForwardOutput>| {
+      fitch_forward_node(
+        &alphabet,
+        key,
+        node,
+        edges.pop(),
+        parents.first().map(|parent| &parent.0),
+      )
+    },
+  )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
   Ok(PartitionFitch {
     alphabet,

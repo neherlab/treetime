@@ -52,9 +52,10 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
 
     let received = schedule
-      .scan_up(inputs_of(&tree.graph, ()), |key, (), children: PerEdge<&'static str>| {
-        Ok((children.into_vec(), tree.name(key)))
-      })?
+      .scan_up(
+        inputs_of(&tree.graph, ()),
+        |key, (), children: PerEdge<&'static str>| Ok((children.into_vec(), tree.name(key))),
+      )?
       .into_map();
 
     let expected = btreemap! {
@@ -96,7 +97,9 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
 
     let received = schedule
-      .scan_down(inputs_of(&tree.graph, ()), |_, (), parents: PerEdge<u8>| Ok((parents.into_vec(), 0)))?
+      .scan_down(inputs_of(&tree.graph, ()), |_, (), parents: PerEdge<u8>| {
+        Ok((parents.into_vec(), 0))
+      })?
       .into_map();
 
     assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
@@ -109,7 +112,9 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
 
     let received = schedule
-      .scan_up(inputs_of(&tree.graph, ()), |_, (), children: PerEdge<u8>| Ok((children.into_vec(), 0)))?
+      .scan_up(inputs_of(&tree.graph, ()), |_, (), children: PerEdge<u8>| {
+        Ok((children.into_vec(), 0))
+      })?
       .into_map();
 
     assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
@@ -240,7 +245,9 @@ mod tests {
         .map(ScanOutputs::into_map)
     })?;
 
-    let expected = (0..100_000).map(|index| (GraphNodeKey(index), 99_999 - index)).collect::<BTreeMap<_, _>>();
+    let expected = (0..100_000)
+      .map(|index| (GraphNodeKey(index), 99_999 - index))
+      .collect::<BTreeMap<_, _>>();
     assert_eq!(expected, heights);
     Ok(())
   }
@@ -264,7 +271,9 @@ mod tests {
         .map(ScanOutputs::into_map)
     })?;
 
-    let expected = (0..100_000).map(|index| (GraphNodeKey(index), index)).collect::<BTreeMap<_, _>>();
+    let expected = (0..100_000)
+      .map(|index| (GraphNodeKey(index), index))
+      .collect::<BTreeMap<_, _>>();
     assert_eq!(expected, depths);
     Ok(())
   }
@@ -657,7 +666,8 @@ mod tests {
       .scan_down(joined.clone(), |_, joined, _: PerEdge<()>| Ok((joined, ())))?
       .split_parent_edges()?;
 
-    let expected_joined = btreemap! { p => ("p", smallvec![]), q => ("q", smallvec![]), s => ("s", smallvec!["q-s", "p-s"]) };
+    let expected_joined =
+      btreemap! { p => ("p", smallvec![]), q => ("q", smallvec![]), s => ("s", smallvec!["q-s", "p-s"]) };
     assert_eq!(expected_joined, joined);
     assert_eq!(NodeEdgeMaps { nodes, edges }, split);
     Ok(())
