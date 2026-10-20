@@ -187,7 +187,15 @@ fn function_survival(
   for piece in pieces {
     knots.add_piece(piece);
   }
-  Ok(knots.survival)
+  let PosteriorSurvival {
+    mut t,
+    mut survival,
+    mut slope,
+  } = knots.survival;
+  t.shrink_to_fit();
+  survival.shrink_to_fit();
+  slope.shrink_to_fit();
+  Ok(PosteriorSurvival { t, survival, slope })
 }
 
 fn survival_pieces(
