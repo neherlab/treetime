@@ -1,4 +1,5 @@
 pub(super) mod helpers;
+mod test_knot_times;
 mod test_mean_field;
 mod test_population_size;
 mod test_prop_skyline_confidence;

@@ -1,4 +1,5 @@
 use crate::clock::gaussian::NodeTimeGaussian;
+use crate::coalescent::knot_times::{KnotGrid, KnotTimes};
 use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
 use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_survival};
 use eyre::{Report, WrapErr};
@@ -145,7 +146,7 @@ impl CoalescentPrior {
       Piece::After => self.rate_after * self.expectation.expected[last],
     };
     let own = match self.expectation.nodes.get(&key) {
-      Some(node) => match piece_at(&node.survival.t, side, edge) {
+      Some(node) => match node.survival.piece_at(side, edge) {
         Piece::Before => inverse_tc,
         Piece::Inside(i) => {
           let cell = match side {
@@ -191,17 +192,19 @@ impl CoalescentPrior {
     };
     let knots = &node.survival.t;
     let n = knots.len();
-    if x < knots[0] {
-      return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(knots[0]);
+    let first = knots.first();
+    if x < first {
+      return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(first);
     }
-    if x >= knots[n - 1] {
+    if x >= knots.last() {
       return integral.cumulative[n - 1];
     }
-    let i = knots.partition_point(|&tk| tk <= x) - 1;
+    let i = knots.partition_point(|tk| tk <= x) - 1;
+    let segment = node.survival.segment(i);
     let piece = KnotPiece {
-      segment: node.survival.segment(i),
-      start: knots[i],
-      end: knots[i + 1],
+      segment,
+      start: segment.t0,
+      end: knots.at(i + 1),
     };
     piece.integral_to(&self.rates(), integral.cumulative[i], x)
   }
@@ -226,7 +229,7 @@ impl OwnIntegral {
     let knots = &survival.t;
     let mut cumulative = Vec::with_capacity(knots.len());
     cumulative.push(0.0);
-    for (i, (&start, &end)) in knots.iter().tuple_windows().enumerate() {
+    for (i, (start, end)) in knots.iter().tuple_windows().enumerate() {
       let total = cumulative[i];
       let total = if start < end {
         let piece = KnotPiece {
@@ -410,17 +413,17 @@ impl LineageExpectation {
       return make_error!("Cannot build the expected lineage count: no node has a time");
     }
 
-    let t_min = weighted.iter().map(|(_, s)| s.t[0]).fold(f64::INFINITY, f64::min);
+    let t_min = weighted.iter().map(|(_, s)| s.t.first()).fold(f64::INFINITY, f64::min);
     let t_max = weighted
       .iter()
-      .map(|(_, s)| s.t[s.t.len() - 1])
+      .map(|(_, s)| s.t.last())
       .fold(f64::NEG_INFINITY, f64::max);
     let span = (t_max - t_min).max(f64::EPSILON);
     let step = span / (EXPECTATION_GRID_POINTS - 1).to_f64_exact();
     let step_times: Vec<f64> = weighted
       .iter()
       .filter(|(_, survival)| survival.is_point())
-      .map(|(_, survival)| survival.t[0])
+      .map(|(_, survival)| survival.t.first())
       .sorted_by_key(|&t| OrderedFloat(t))
       .dedup()
       .collect();
@@ -439,12 +442,12 @@ impl LineageExpectation {
     let mut variance = vec![0.0; grid.len()];
     let mut surviving_from = vec![0.0; grid.len() + 1];
     for &(weight, survival) in &weighted {
-      let first = grid.partition_point(|&g| g < survival.t[0]);
+      let first = grid.partition_point(|&g| g < survival.t.first());
       if survival.is_point() {
         surviving_from[first + 1] += weight;
         continue;
       }
-      let last = grid.partition_point(|&g| g < survival.t[survival.t.len() - 1]);
+      let last = grid.partition_point(|&g| g < survival.t.last());
       surviving_from[first] += weight;
       let values = survival.values_at_sorted(&grid[first..last]);
       for (s, expected, variance) in izip!(values, &mut expected[first..last], &mut variance[first..last]) {
@@ -565,20 +568,35 @@ struct WeightedSurvival {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NodeSurvival {
-  t: Vec<f64>,
+  t: KnotTimes,
   survival: Vec<f64>,
   slope: Vec<f64>,
 }
 
 impl NodeSurvival {
   pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
+    let grid = match distribution {
+      Distribution::Function(function) => Some(KnotGrid {
+        origin: function.x_min(),
+        step: function.dx(),
+      }),
+      _ => None,
+    };
     let survival = posterior_survival(distribution, SURVIVAL_TRIM, SURVIVAL_INTERPOLATION_ERROR)?;
-    Ok(survival.map(Self::from))
+    Ok(survival.map(|survival| Self::on_grid(survival, grid)))
+  }
+
+  fn on_grid(survival: PosteriorSurvival, grid: Option<KnotGrid>) -> Self {
+    Self {
+      t: KnotTimes::new(&survival.t, grid),
+      survival: survival.survival,
+      slope: survival.slope,
+    }
   }
 
   fn point(time: f64) -> Self {
     Self {
-      t: vec![time],
+      t: KnotTimes::listed(vec![time]),
       survival: vec![0.0],
       slope: vec![0.0],
     }
@@ -610,7 +628,11 @@ impl NodeSurvival {
     survival[0] = 1.0;
     survival[TRUNCATED_NORMAL_POINTS - 1] = 0.0;
     let slope = t.iter().map(|&x| slope(x)).collect();
-    Self { t, survival, slope }
+    Self {
+      t: KnotTimes::listed(t),
+      survival,
+      slope,
+    }
   }
 
   fn is_point(&self) -> bool {
@@ -618,34 +640,42 @@ impl NodeSurvival {
   }
 
   pub(crate) fn at(&self, x: f64) -> f64 {
-    let n = self.t.len();
-    if x < self.t[0] {
+    if x < self.t.first() {
       return 1.0;
     }
-    if x >= self.t[n - 1] {
+    if x >= self.t.last() {
       return 0.0;
     }
-    self.segment(self.t.partition_point(|&ti| ti <= x) - 1).value(x)
+    self.segment(self.t.partition_point(|ti| ti <= x) - 1).value(x)
   }
 
   fn values_at_sorted<'a>(&'a self, xs: &'a [f64]) -> impl Iterator<Item = f64> + 'a {
-    let n = self.t.len();
+    let (first, last) = (self.t.first(), self.t.last());
     xs.iter().scan(0, move |i, &x| {
-      if x < self.t[0] {
+      if x < first {
         return Some(1.0);
       }
-      if x >= self.t[n - 1] {
+      if x >= last {
         return Some(0.0);
       }
-      *i += self.t[*i + 1..].partition_point(|&ti| ti <= x);
+      *i = self.t.partition_point_from(*i + 1, |ti| ti <= x) - 1;
       Some(self.segment(*i).value(x))
     })
   }
 
+  fn piece_at(&self, side: Side, x: f64) -> Piece<usize> {
+    let i = match side {
+      Side::Left => self.t.partition_point(|ti| ti < x),
+      Side::Right => self.t.partition_point(|ti| ti <= x),
+    };
+    piece_of(i, self.t.len())
+  }
+
   fn segment(&self, i: usize) -> HermiteSegment {
+    let (t0, t1) = self.t.segment(i);
     HermiteSegment {
-      t0: self.t[i],
-      h: self.t[i + 1] - self.t[i],
+      t0,
+      h: t1 - t0,
       s0: self.survival[i],
       s1: self.survival[i + 1],
       d0: self.slope[i],
@@ -656,11 +686,7 @@ impl NodeSurvival {
 
 impl From<PosteriorSurvival> for NodeSurvival {
   fn from(survival: PosteriorSurvival) -> Self {
-    Self {
-      t: survival.t,
-      survival: survival.survival,
-      slope: survival.slope,
-    }
+    Self::on_grid(survival, None)
   }
 }
 
@@ -744,9 +770,13 @@ fn piece_at(t: &[f64], side: Side, x: f64) -> Piece<usize> {
     Side::Left => t.partition_point(|&ti| ti < x),
     Side::Right => t.partition_point(|&ti| ti <= x),
   };
+  piece_of(i, t.len())
+}
+
+fn piece_of(i: usize, len: usize) -> Piece<usize> {
   if i == 0 {
     Piece::Before
-  } else if i == t.len() {
+  } else if i == len {
     Piece::After
   } else {
     Piece::Inside(i - 1)
