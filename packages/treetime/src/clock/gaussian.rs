@@ -42,6 +42,7 @@ impl<'g> GaussianTree<'g> {
     let sequence_length = sequence_length.to_f64_exact();
     let schedule = GraphSchedule::new(graph)?;
     schedule.require_tree()?;
+    let root = schedule.roots()[0];
     let tips: BTreeMap<GraphNodeKey, Option<Message>> = graph
       .get_nodes()
       .map(|n| {
@@ -81,7 +82,7 @@ impl<'g> GaussianTree<'g> {
     if substitutions <= 0.0 {
       return make_error!("Gaussian clock needs substitutions on the dated part of the tree");
     }
-    let Some(root) = below[&graph.root_key()?].down else {
+    let Some(root) = below[&root].down else {
       return make_error!("Gaussian clock needs dated tips below the root");
     };
     let [a, b] = below
