@@ -4,9 +4,9 @@ use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use eyre::Report;
 use ndarray::{Array1, s};
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridFn, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::partition_point;
-use treetime_utils::cast::ToF64Exact;
+use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 use treetime_utils::make_error;
 
 pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
@@ -215,7 +215,10 @@ pub(crate) fn resample_to_mass_window(
     distribution_support_n_points((lo, hi), max_dx, max_points)?
   };
   let resampled = normalized.resample_range_n_points((lo, hi), n_points)?;
-  let resampled = refit_soft_tails(resampled)?;
+  let resampled = match spacing {
+    SpacingLimit::Input => refit_soft_tails(resampled)?,
+    SpacingLimit::AtMost(_) => soft_tails_at_window_edges(normalized, resampled, (lo, hi))?,
+  };
   Ok(Distribution::Function(resampled))
 }
 
@@ -235,6 +238,62 @@ pub(crate) fn refit_soft_tails(
     f
   };
   Ok(f)
+}
+
+fn soft_tails_at_window_edges(
+  input: &DistributionFunction<f64, NegLog>,
+  resampled: DistributionFunction<f64, NegLog>,
+  (lo, hi): (f64, f64),
+) -> Result<DistributionFunction<f64, NegLog>, Report> {
+  let resampled = if matches!(resampled.left_extrap(), BoundaryBehavior::Linear(_)) {
+    let law = window_edge_tail_law(input, &resampled, Side::Left, lo)?;
+    resampled.with_left_extrap(BoundaryBehavior::Linear(law))?
+  } else {
+    resampled
+  };
+  let resampled = if matches!(resampled.right_extrap(), BoundaryBehavior::Linear(_)) {
+    let law = window_edge_tail_law(input, &resampled, Side::Right, hi)?;
+    resampled.with_right_extrap(BoundaryBehavior::Linear(law))?
+  } else {
+    resampled
+  };
+  Ok(resampled)
+}
+
+fn window_edge_tail_law(
+  input: &DistributionFunction<f64, NegLog>,
+  resampled: &DistributionFunction<f64, NegLog>,
+  side: Side,
+  edge: f64,
+) -> Result<SoftTailLaw, Report> {
+  const NODE_ROUNDING: f64 = 1e-9;
+  let last = input.len() - 1;
+  let offset = (edge - input.x_min()) / input.dx();
+  let (first, end) = match side {
+    Side::Left => {
+      let first = f64_to_usize_saturating((offset - NODE_ROUNDING).ceil()).min(last);
+      (first, (first + DEFAULT_TAIL_FIT_POINTS - 1).min(last))
+    },
+    Side::Right => {
+      let end = f64_to_usize_saturating((offset + NODE_ROUNDING).floor()).min(last);
+      ((end + 1).saturating_sub(DEFAULT_TAIL_FIT_POINTS), end)
+    },
+  };
+  let finite = input
+    .y()
+    .slice(s![first..=end])
+    .iter()
+    .filter(|y| y.is_finite())
+    .count();
+  if finite < 2 {
+    return SoftTailLaw::fit(resampled.grid_fn(), side, DEFAULT_TAIL_FIT_POINTS);
+  }
+  let window_edge = GridFn::from_start_dx_values(
+    input.x_min() + first.to_f64_exact() * input.dx(),
+    input.dx(),
+    input.y().slice(s![first..=end]).to_owned(),
+  )?;
+  SoftTailLaw::fit(&window_edge, side, DEFAULT_TAIL_FIT_POINTS)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

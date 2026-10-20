@@ -213,6 +213,32 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_edge_convolution_forward_tail_continues_the_convolution_at_the_window_edge() -> Result<(), Report> {
+    let narrow_fine = gaussian_at(0.1, 0.001)?;
+    let wide_coarse = gaussian_at(1.0, 0.02)?;
+
+    let result = convolve_across_edge(
+      &narrow_fine,
+      &wide_coarse,
+      Side::Right,
+      5e-4,
+      300,
+      MaxGridPoints::default(),
+    )?;
+
+    let Distribution::Function(f) = &result else {
+      panic!("expected a gridded Function message");
+    };
+    pretty_assert_abs_diff_eq!(0.02, f.dx(), epsilon = 1e-4);
+    let BoundaryBehavior::Linear(law) = f.right_extrap() else {
+      panic!("expected a soft right tail, got {:?}", f.right_extrap());
+    };
+    let variance = 0.1 * 0.1 + 1.0 * 1.0;
+    pretty_assert_abs_diff_eq!(f.x_max() / variance, law.slope, epsilon = 1e-2);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
