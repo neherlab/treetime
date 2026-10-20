@@ -832,7 +832,12 @@ fn power_law_mass(r_edge: f64, delta_edge: f64, power: f64, delta_near: f64, wid
     }
   };
   if !fraction.is_normal() {
-    return ScaledMass::new(r_edge - (power - 1.0) * ln_ratio(), width);
+    let exponent = (power.ln() + width.ln() - delta_near.ln()).exp();
+    if !exponent.is_normal() {
+      return ScaledMass::new(r_edge - (power - 1.0) * ln_ratio(), width);
+    }
+    let ln_shape = delta_edge.ln() - power.ln() + (-(-exponent).exp_m1()).ln();
+    return ScaledMass::new(r_edge - power * ln_ratio() - ln_shape, 1.0);
   }
   let log_ratio = (-fraction).ln_1p();
   let near_share = -(power * log_ratio).exp_m1();

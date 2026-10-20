@@ -295,6 +295,30 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right((-1.0, 0.0), HARD, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard:  1.0, b: 1e308 }), (0.0, 1e-308))]
+  #[case::left( ( 0.0, 1.0), BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: -1.0, b: 1e308 }), HARD, (-1e-308, 0.0))]
+  #[trace]
+  fn test_mass_profile_subnormal_interval_at_edge_of_steep_hard_approach_tail_follows_the_power_law(
+    #[case] range: (f64, f64),
+    #[case] left: BoundaryBehavior,
+    #[case] right: BoundaryBehavior,
+    #[case] (a, b): (f64, f64),
+  ) -> Result<(), Report> {
+    let profile = MassProfile::new(&helpers::function(range, array![0.0, 0.0], left, right)?)?;
+    let expected = 6.321_205_588_285_58e-309;
+    let expected_neg_log = 709.654_883_787_553_1;
+    assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-13);
+    assert_relative_eq!(
+      expected_neg_log,
+      profile.neg_log_mass_between(a, b)?,
+      epsilon = 0.0,
+      max_relative = 1e-15
+    );
+    Ok(())
+  }
+
   #[test]
   fn test_mass_profile_interval_beyond_error_side_is_error() -> Result<(), Report> {
     let f = helpers::function((0.0, 1.0), array![0.0, 2.0], BoundaryBehavior::Error, HARD)?;
