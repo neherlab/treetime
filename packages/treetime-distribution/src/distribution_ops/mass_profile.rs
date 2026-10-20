@@ -4,7 +4,7 @@ use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::cmp::Ordering;
-use std::iter::{once, repeat_n};
+use std::iter::repeat_n;
 use std::ops::Add;
 use std::sync::OnceLock;
 use treetime_grid::{BoundaryBehavior, Side};
@@ -875,19 +875,20 @@ fn resolve_tail(law: Option<TailLaw>, policy: TailMass, side: Side, x_edge: f64)
   }
 }
 
-fn running_sums(masses: impl Iterator<Item = f64>) -> Array1<f64> {
-  once(0.0)
-    .chain(masses.scan((0.0_f64, 0.0_f64), |(sum, compensation), m| {
-      let next = *sum + m;
-      *compensation += if sum.abs() >= m.abs() {
-        (*sum - next) + m
-      } else {
-        (m - next) + *sum
-      };
-      *sum = next;
-      Some(*sum + *compensation)
-    }))
-    .collect()
+fn running_sums(masses: impl ExactSizeIterator<Item = f64>) -> Array1<f64> {
+  let mut sums = Array1::zeros(masses.len() + 1);
+  let (mut sum, mut compensation) = (0.0_f64, 0.0_f64);
+  for (slot, m) in sums.iter_mut().skip(1).zip(masses) {
+    let next = sum + m;
+    compensation += if sum.abs() >= m.abs() {
+      (sum - next) + m
+    } else {
+      (m - next) + sum
+    };
+    sum = next;
+    *slot = sum + compensation;
+  }
+  sums
 }
 
 fn growing_exponential_mass(r_near: f64, growth: f64, width: f64) -> ScaledMass {
