@@ -391,7 +391,7 @@ impl Cell {
       Cell::Empty => ScaledMass::ZERO,
       Cell::Trapezoid { ra, rb } => {
         let r_min = ra.min(rb);
-        let (qa, qb) = ((r_min - ra).exp(), (r_min - rb).exp());
+        let (qa, qb) = (scale_below(r_min, ra), scale_below(r_min, rb));
         let density = |at: Offset| {
           if at.from_left <= at.from_right {
             qa + (qb - qa) * (at.from_left / h)
@@ -427,7 +427,7 @@ impl Cell {
           Side::Right => (rb, ra),
         };
         let r_min = r_e.min(r_f);
-        let (q_e, q_f) = ((r_min - r_e).exp(), (r_min - r_f).exp());
+        let (q_e, q_f) = (scale_below(r_min, r_e), scale_below(r_min, r_f));
         let target = scaled_by_density(m, r_min);
         if target >= h * f64::midpoint(q_e, q_f) {
           return h;
@@ -676,20 +676,24 @@ impl ScaledMass {
   fn ln_mass(self) -> f64 {
     -self.neg_log()
   }
+
+  fn is_infinite(self) -> bool {
+    self.factor > 0.0 && (self.r == f64::NEG_INFINITY || (self.factor == f64::INFINITY && self.r != f64::INFINITY))
+  }
 }
 
 impl Add for ScaledMass {
   type Output = Self;
 
   fn add(self, other: Self) -> Self {
-    if self.factor == 0.0 || other.ln_mass() == f64::INFINITY {
+    if self.factor == 0.0 || other.is_infinite() {
       return other;
     }
-    if other.factor == 0.0 || self.ln_mass() == f64::INFINITY {
+    if other.factor == 0.0 || self.is_infinite() {
       return self;
     }
     let r = self.r.min(other.r);
-    let (scale, other_scale) = ((r - self.r).exp(), (r - other.r).exp());
+    let (scale, other_scale) = (scale_below(r, self.r), scale_below(r, other.r));
     if scale.is_normal() && other_scale.is_normal() {
       return Self {
         r,
@@ -827,6 +831,18 @@ fn power_law_distance_from_hard_point(fraction: f64, delta_edge: f64, power: f64
 
 fn power_law_distance_from_anchor(fraction: f64, delta_edge: f64, power: f64) -> f64 {
   (delta_edge * -((-fraction).ln_1p() / power).exp_m1()).clamp(0.0, delta_edge)
+}
+
+#[expect(
+  clippy::float_cmp,
+  reason = "r_min is the minimum of r and another ordinate, so exact equality selects the operand whose scale is exactly 1"
+)]
+fn scale_below(r_min: f64, r: f64) -> f64 {
+  if r == r_min && r.is_finite() {
+    1.0
+  } else {
+    (r_min - r).exp()
+  }
 }
 
 fn scaled_by_density(m: f64, r: f64) -> f64 {
