@@ -8,81 +8,56 @@ use treetime_utils::{make_error, make_internal_report, make_report};
 
 pub struct GraphSchedule<'g> {
   graph: &'g Graph,
-  roots: Vec<GraphNodeKey>,
-  leaves: Vec<GraphNodeKey>,
-  preorder: Vec<GraphNodeKey>,
-  postorder: Vec<GraphNodeKey>,
-  parents: Adjacency,
-  children: Adjacency,
+  index: &'g ScheduleIndex,
 }
 
 impl<'g> GraphSchedule<'g> {
   pub fn new(graph: &'g Graph) -> Result<Self, Report> {
-    let parents = Adjacency::build(graph, |node| graph.parents_keys_of(node));
-    let children = Adjacency::build(graph, |node| graph.children_keys_of(node));
-    let roots = roots_of(graph, &parents);
-    if roots.is_empty() {
-      return make_error!("The graph has no root: every node has a parent");
-    }
-    let preorder = preorder_of(graph, &roots, &parents, &children);
-    if preorder.len() != graph.get_nodes().count() {
-      return Err(cycle_error(graph, &preorder, &parents));
-    }
-    let postorder = postorder_of(graph, &roots, &children);
-    let leaves = preorder
-      .iter()
-      .copied()
-      .filter(|&key| children.of(key).is_empty())
-      .collect_vec();
     Ok(Self {
       graph,
-      roots,
-      leaves,
-      preorder,
-      postorder,
-      parents,
-      children,
+      index: graph.schedule_index()?,
     })
   }
 
-  pub fn preorder(&self) -> &[GraphNodeKey] {
-    &self.preorder
+  pub fn preorder(&self) -> &'g [GraphNodeKey] {
+    &self.index.preorder
   }
 
-  pub fn postorder(&self) -> &[GraphNodeKey] {
-    &self.postorder
+  pub fn postorder(&self) -> &'g [GraphNodeKey] {
+    &self.index.postorder
   }
 
-  pub fn parents(&self, key: GraphNodeKey) -> &[(GraphNodeKey, GraphEdgeKey)] {
-    self.parents.of(key)
+  pub fn parents(&self, key: GraphNodeKey) -> &'g [(GraphNodeKey, GraphEdgeKey)] {
+    self.index.parents.of(key)
   }
 
-  pub fn children(&self, key: GraphNodeKey) -> &[(GraphNodeKey, GraphEdgeKey)] {
-    self.children.of(key)
+  pub fn children(&self, key: GraphNodeKey) -> &'g [(GraphNodeKey, GraphEdgeKey)] {
+    self.index.children.of(key)
   }
 
-  pub fn roots(&self) -> &[GraphNodeKey] {
-    &self.roots
+  pub fn roots(&self) -> &'g [GraphNodeKey] {
+    &self.index.roots
   }
 
-  pub fn leaves(&self) -> &[GraphNodeKey] {
-    &self.leaves
+  pub fn leaves(&self) -> &'g [GraphNodeKey] {
+    &self.index.leaves
   }
 
   pub fn child_slot(&self, edge: GraphEdgeKey) -> usize {
-    self.children.slot(edge)
+    self.index.children.slot(edge)
   }
 
   pub fn parent_slot(&self, edge: GraphEdgeKey) -> usize {
-    self.parents.slot(edge)
+    self.index.parents.slot(edge)
   }
 
   pub fn require_tree(&self) -> Result<(), Report> {
-    if self.roots.len() != 1 {
+    let roots = self.roots();
+    if roots.len() != 1 {
       return make_error!(
         "The graph is not a tree: it has {} roots ({}), but a tree has one",
-        self.roots.len(),
-        self.roots.iter().map(|key| format!("node {key}")).join(", ")
+        roots.len(),
+        roots.iter().map(|key| format!("node {key}")).join(", ")
       );
     }
     if let Some(key) = self.graph.node_keys().find(|&key| self.parents(key).len() > 1) {
@@ -104,15 +79,20 @@ impl<'g> GraphSchedule<'g> {
   }
 
   pub(crate) fn contains_edge(&self, edge: GraphEdgeKey) -> bool {
-    self.parents.slots.get(edge.as_usize()).is_some_and(Option::is_some)
+    self
+      .index
+      .parents
+      .slots
+      .get(edge.as_usize())
+      .is_some_and(Option::is_some)
   }
 
   pub(crate) fn edge_count(&self) -> usize {
-    self.parents.entries.len()
+    self.index.parents.entries.len()
   }
 
   pub(crate) fn key_capacity(&self) -> usize {
-    self.graph.nodes.len()
+    self.graph.num_nodes()
   }
 }
 
@@ -122,7 +102,7 @@ pub struct TreeSchedule<'g> {
 
 impl<'g> TreeSchedule<'g> {
   pub fn root(&self) -> GraphNodeKey {
-    self.schedule.roots[0]
+    self.schedule.roots()[0]
   }
 
   pub fn parent(&self, key: GraphNodeKey) -> Option<(GraphNodeKey, GraphEdgeKey)> {
@@ -142,11 +122,50 @@ impl<'g> TreeSchedule<'g> {
   }
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) struct ScheduleIndex {
+  roots: Vec<GraphNodeKey>,
+  leaves: Vec<GraphNodeKey>,
+  preorder: Vec<GraphNodeKey>,
+  postorder: Vec<GraphNodeKey>,
+  parents: Adjacency,
+  children: Adjacency,
+}
+
+impl ScheduleIndex {
+  pub(crate) fn build(graph: &Graph) -> Result<Self, Report> {
+    let parents = Adjacency::build(graph, |node| graph.parents_keys_of(node));
+    let children = Adjacency::build(graph, |node| graph.children_keys_of(node));
+    let roots = roots_of(graph, &parents);
+    if roots.is_empty() {
+      return make_error!("The graph has no root: every node has a parent");
+    }
+    let preorder = preorder_of(graph, &roots, &parents, &children);
+    if preorder.len() != graph.get_nodes().count() {
+      return Err(cycle_error(graph, &preorder, &parents));
+    }
+    let postorder = postorder_of(graph, &roots, &children);
+    let leaves = preorder
+      .iter()
+      .copied()
+      .filter(|&key| children.of(key).is_empty())
+      .collect_vec();
+    Ok(Self {
+      roots,
+      leaves,
+      preorder,
+      postorder,
+      parents,
+      children,
+    })
+  }
+}
+
 fn roots_of(graph: &Graph, parents: &Adjacency) -> Vec<GraphNodeKey> {
   let is_root = |key: GraphNodeKey| graph.get_node(key).is_some() && parents.of(key).is_empty();
-  let mut listed = vec![false; graph.nodes.len()];
-  let mut roots = Vec::with_capacity(graph.roots.len());
-  for &key in &graph.roots {
+  let mut listed = vec![false; graph.num_nodes()];
+  let mut roots = Vec::with_capacity(graph.root_keys().len());
+  for &key in graph.root_keys() {
     if is_root(key) && !mem::replace(&mut listed[key.as_usize()], true) {
       roots.push(key);
     }
@@ -156,10 +175,10 @@ fn roots_of(graph: &Graph, parents: &Adjacency) -> Vec<GraphNodeKey> {
 }
 
 fn preorder_of(graph: &Graph, roots: &[GraphNodeKey], parents: &Adjacency, children: &Adjacency) -> Vec<GraphNodeKey> {
-  let mut waiting = (0..graph.nodes.len())
+  let mut waiting = (0..graph.num_nodes())
     .map(|index| parents.of(GraphNodeKey(index)).len())
     .collect_vec();
-  let mut order = Vec::with_capacity(graph.nodes.len());
+  let mut order = Vec::with_capacity(graph.num_nodes());
   let mut stack = roots.iter().rev().copied().collect_vec();
   while let Some(key) = stack.pop() {
     order.push(key);
@@ -175,14 +194,14 @@ fn preorder_of(graph: &Graph, roots: &[GraphNodeKey], parents: &Adjacency, child
 }
 
 fn cycle_error(graph: &Graph, preorder: &[GraphNodeKey], parents: &Adjacency) -> Report {
-  let mut visited = vec![false; graph.nodes.len()];
+  let mut visited = vec![false; graph.num_nodes()];
   for key in preorder {
     visited[key.as_usize()] = true;
   }
   let Some(mut key) = graph.node_keys().find(|key| !visited[key.as_usize()]) else {
     return make_internal_report!("The graph preorder lists a node twice");
   };
-  let mut seen = vec![false; graph.nodes.len()];
+  let mut seen = vec![false; graph.num_nodes()];
   while !mem::replace(&mut seen[key.as_usize()], true) {
     let Some(&(parent, _)) = parents.of(key).iter().find(|(parent, _)| !visited[parent.as_usize()]) else {
       return make_internal_report!("Node {key} is not in the preorder, but every parent of it is");
@@ -193,8 +212,8 @@ fn cycle_error(graph: &Graph, preorder: &[GraphNodeKey], parents: &Adjacency) ->
 }
 
 fn postorder_of(graph: &Graph, roots: &[GraphNodeKey], children: &Adjacency) -> Vec<GraphNodeKey> {
-  let mut entered = vec![false; graph.nodes.len()];
-  let mut order = Vec::with_capacity(graph.nodes.len());
+  let mut entered = vec![false; graph.num_nodes()];
+  let mut order = Vec::with_capacity(graph.num_nodes());
   let mut stack = roots.iter().rev().map(|&key| Frame::Enter(key)).collect_vec();
   while let Some(frame) = stack.pop() {
     match frame {
@@ -216,6 +235,7 @@ enum Frame {
   Exit(GraphNodeKey),
 }
 
+#[derive(Debug, PartialEq)]
 struct Adjacency {
   offsets: Vec<usize>,
   entries: Vec<(GraphNodeKey, GraphEdgeKey)>,
@@ -227,11 +247,11 @@ impl Adjacency {
   where
     I: Iterator<Item = (GraphNodeKey, GraphEdgeKey)>,
   {
-    let mut offsets = Vec::with_capacity(graph.nodes.len() + 1);
-    let mut entries = Vec::with_capacity(graph.edges.len());
-    let mut slots = vec![None; graph.edges.len()];
+    let mut offsets = Vec::with_capacity(graph.num_nodes() + 1);
+    let mut entries = Vec::with_capacity(graph.edge_slot_count());
+    let mut slots = vec![None; graph.edge_slot_count()];
     offsets.push(0);
-    for node in &graph.nodes {
+    for node in graph.node_slots() {
       if let Some(node) = node {
         for (slot, (key, edge_key)) in neighbors(node).enumerate() {
           slots[edge_key.as_usize()] = Some(slot);

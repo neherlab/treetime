@@ -2,7 +2,7 @@
 
 ## Graph Schedule
 
-`GraphSchedule::new()` indexes a graph once and gives every pass the same validated order. It works on rooted directed acyclic graphs (DAGs): a node may have several parents, and the graph may have several roots. The schedule borrows the graph, so the topology cannot change while a schedule exists.
+`GraphSchedule::new()` indexes a graph once and gives every pass the same validated order. It works on rooted directed acyclic graphs (DAGs): a node may have several parents, and the graph may have several roots. The schedule borrows the graph, so the topology cannot change while a schedule exists. The graph keeps the index of its schedule (orders and neighbor slices) until its topology changes: every pass on an unchanged graph reuses it, and every change of nodes, edges, child order, or root order drops it. A timetree run builds dozens of schedules on the same topology, so a rebuild per pass cost about 1 % of its wall time at 20 threads.
 
 - **Adjacency**: the parents of each node in `inbound()` order and the children in `outbound()` order, each with its edge key, in flat arrays indexed by node key. `parent_slot(edge)` is the position of an edge among the parents of its child, `child_slot(edge)` its position among the children of its parent. The slots belong to edges, because a shared child has a different position in each parent
 - **Validation**: the graph must have a root ("The graph has no root: every node has a parent"), and the preorder must visit every node, which holds exactly when the graph has no cycle. Otherwise the error names a node on a cycle ("The graph has a cycle through node {key}"), found by a walk from an unvisited node along unvisited parents until a node repeats

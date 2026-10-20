@@ -1,21 +1,21 @@
 use crate::edge::{Edge, GraphEdgeKey};
 use crate::node::{GraphNodeKey, Node};
+use crate::schedule::ScheduleIndex;
 use deser::Serialize;
 use eyre::Report;
 use std::fmt::{Debug, Display};
 use std::ops::Index;
+use std::sync::OnceLock;
 use treetime_utils::{make_internal_error, make_internal_report};
 
-#[expect(
-  clippy::field_scoped_visibility_modifiers,
-  reason = "graph storage stays crate-internal behind accessor methods"
-)]
 #[derive(Debug, Serialize)]
 pub struct Graph {
-  pub(crate) nodes: Vec<Option<Node>>,
-  pub(crate) edges: Vec<Option<Edge>>,
-  pub(crate) roots: Vec<GraphNodeKey>,
-  pub(crate) leaves: Vec<GraphNodeKey>,
+  nodes: Vec<Option<Node>>,
+  edges: Vec<Option<Edge>>,
+  roots: Vec<GraphNodeKey>,
+  leaves: Vec<GraphNodeKey>,
+  #[deser(skip)]
+  schedule: OnceLock<ScheduleIndex>,
 }
 
 impl Graph {
@@ -25,7 +25,67 @@ impl Graph {
       edges: Vec::new(),
       roots: vec![],
       leaves: vec![],
+      schedule: OnceLock::new(),
     }
+  }
+
+  pub(crate) fn schedule_index(&self) -> Result<&ScheduleIndex, Report> {
+    if let Some(index) = self.schedule.get() {
+      return Ok(index);
+    }
+    let index = ScheduleIndex::build(self)?;
+    Ok(self.schedule.get_or_init(|| index))
+  }
+
+  pub(crate) fn node_slots(&self) -> &[Option<Node>] {
+    &self.nodes
+  }
+
+  pub(crate) fn edge_slot_count(&self) -> usize {
+    self.edges.len()
+  }
+
+  pub(crate) fn root_keys(&self) -> &[GraphNodeKey] {
+    &self.roots
+  }
+
+  pub(crate) fn leaf_keys(&self) -> &[GraphNodeKey] {
+    &self.leaves
+  }
+
+  pub fn add_node(&mut self) -> GraphNodeKey {
+    let key = GraphNodeKey(self.nodes.len());
+    self.topology_changed().nodes.push(Some(Node::new(key)));
+    key
+  }
+
+  pub(crate) fn take_node(&mut self, key: GraphNodeKey) -> Option<Node> {
+    self.topology_changed().nodes.get_mut(key.as_usize())?.take()
+  }
+
+  pub(crate) fn push_edge(&mut self, source: GraphNodeKey, target: GraphNodeKey) -> GraphEdgeKey {
+    let key = GraphEdgeKey(self.edges.len());
+    self.topology_changed().edges.push(Some(Edge::new(key, source, target)));
+    key
+  }
+
+  pub(crate) fn take_edge(&mut self, key: GraphEdgeKey) -> Option<Edge> {
+    self.topology_changed().edges.get_mut(key.as_usize())?.take()
+  }
+
+  pub(crate) fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
+    self.topology_changed().nodes.iter_mut().flatten()
+  }
+
+  pub(crate) fn set_roots_and_leaves(&mut self, roots: Vec<GraphNodeKey>, leaves: Vec<GraphNodeKey>) {
+    let graph = self.topology_changed();
+    graph.roots = roots;
+    graph.leaves = leaves;
+  }
+
+  fn topology_changed(&mut self) -> &mut Self {
+    self.schedule.take();
+    self
   }
 
   pub fn get_node(&self, key: GraphNodeKey) -> Option<&Node> {
@@ -33,7 +93,7 @@ impl Graph {
   }
 
   pub(crate) fn get_node_mut(&mut self, key: GraphNodeKey) -> Option<&mut Node> {
-    self.nodes.get_mut(key.as_usize())?.as_mut()
+    self.topology_changed().nodes.get_mut(key.as_usize())?.as_mut()
   }
 
   pub fn get_edge(&self, key: GraphEdgeKey) -> Option<&Edge> {
@@ -41,7 +101,7 @@ impl Graph {
   }
 
   pub(crate) fn get_edge_mut(&mut self, key: GraphEdgeKey) -> Option<&mut Edge> {
-    self.edges.get_mut(key.as_usize())?.as_mut()
+    self.topology_changed().edges.get_mut(key.as_usize())?.as_mut()
   }
 
   pub(crate) fn node_mut(&mut self, key: GraphNodeKey) -> &mut Node {

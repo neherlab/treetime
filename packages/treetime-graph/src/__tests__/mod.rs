@@ -14,5 +14,6 @@ mod test_prop_tree_schedule;
 mod test_reachability;
 mod test_reroot;
 mod test_schedule;
+mod test_schedule_cache;
 mod test_schedule_scan;
 mod test_topology_order;

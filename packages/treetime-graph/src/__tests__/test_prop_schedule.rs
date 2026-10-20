@@ -105,7 +105,7 @@ mod tests {
     }
 
     fn single_root(graph: &Graph) -> GraphNodeKey {
-      let &[root] = graph.roots.as_slice() else {
+      let &[root] = graph.root_keys() else {
         panic!("the former traversals require exactly one root");
       };
       root

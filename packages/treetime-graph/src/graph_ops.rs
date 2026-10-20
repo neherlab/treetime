@@ -9,21 +9,11 @@ use treetime_utils::{make_error, make_internal_report, make_report};
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
 impl Graph {
-  pub fn add_node(&mut self) -> GraphNodeKey {
-    let node_key = GraphNodeKey(self.nodes.len());
-    self.nodes.push(Some(Node::new(node_key)));
-    node_key
-  }
-
   pub(crate) fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
     let edges_to_remove: Vec<GraphEdgeKey> = self
-      .edges
-      .iter()
-      .filter_map(|edge| {
-        edge
-          .as_ref()
-          .and_then(|edge| (edge.source() == node_key || edge.target() == node_key).then_some(edge.key()))
-      })
+      .get_edges()
+      .filter(|edge| edge.source() == node_key || edge.target() == node_key)
+      .map(Edge::key)
       .collect();
 
     let removed_edges = edges_to_remove
@@ -32,9 +22,7 @@ impl Graph {
       .collect::<Result<Vec<_>, _>>()?;
 
     let removed_node = self
-      .nodes
-      .get_mut(node_key.as_usize())
-      .and_then(Option::take)
+      .take_node(node_key)
       .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))?;
 
     Ok((removed_node, removed_edges))
@@ -66,8 +54,7 @@ impl Graph {
       );
     }
 
-    let edge_key = GraphEdgeKey(self.edges.len());
-    self.edges.push(Some(Edge::new(edge_key, source_key, target_key)));
+    let edge_key = self.push_edge(source_key, target_key);
     self.node_mut(source_key).outbound_mut().push(edge_key);
     self.node_mut(target_key).inbound_mut().push(edge_key);
 
@@ -118,21 +105,20 @@ impl Graph {
   }
 
   pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge, Report> {
-    for node in self.nodes.iter_mut().flatten() {
+    for node in self.nodes_mut() {
       node.outbound_mut().retain(|&e| e != edge_key);
       node.inbound_mut().retain(|&e| e != edge_key);
     }
 
     self
-      .edges
-      .get_mut(edge_key.as_usize())
-      .and_then(Option::take)
+      .take_edge(edge_key)
       .ok_or_else(|| make_internal_report!("Attempted to remove non-existent edge: {edge_key}"))
   }
 
   pub fn build(&mut self) -> Result<(), Report> {
-    self.roots = self.get_nodes().filter(|node| node.is_root()).map(Node::key).collect();
-    self.leaves = self.get_nodes().filter(|node| node.is_leaf()).map(Node::key).collect();
+    let roots = self.get_nodes().filter(|node| node.is_root()).map(Node::key).collect();
+    let leaves = self.get_nodes().filter(|node| node.is_leaf()).map(Node::key).collect();
+    self.set_roots_and_leaves(roots, leaves);
     Ok(())
   }
 

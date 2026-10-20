@@ -50,8 +50,7 @@ impl TopologyOrderSpec {
     for (node_key, outbound_edges) in order.outbound_edges {
       *graph.node_mut(node_key).outbound_mut() = outbound_edges;
     }
-    graph.roots = order.roots;
-    graph.leaves = order.leaves;
+    graph.set_roots_and_leaves(order.roots, order.leaves);
     Ok(())
   }
 
@@ -124,8 +123,8 @@ impl TopologyOrderPreset {
 
 fn build_order_unmodified(graph: &Graph) -> Result<TopologyOrder, Report> {
   Ok(TopologyOrder {
-    roots: graph.roots.clone(),
-    leaves: graph.leaves.clone(),
+    roots: graph.root_keys().to_vec(),
+    leaves: graph.leaf_keys().to_vec(),
     outbound_edges: graph
       .get_nodes()
       .map(|node| (node.key(), node.outbound().to_vec()))
@@ -171,8 +170,8 @@ fn build_order<K: Ord>(
   };
 
   Ok(TopologyOrder {
-    roots: sort_node_keys(&graph.roots),
-    leaves: sort_node_keys(&graph.leaves),
+    roots: sort_node_keys(graph.root_keys()),
+    leaves: sort_node_keys(graph.leaf_keys()),
     outbound_edges: graph
       .get_nodes()
       .map(|node| (node.key(), sort_edge_keys(node.outbound())))
