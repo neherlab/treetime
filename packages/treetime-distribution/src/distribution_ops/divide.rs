@@ -8,9 +8,11 @@ use crate::distribution_ops::multiply::{
 };
 use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_support_n_points};
 use crate::policy::YAxisPolicy;
+use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, Zip};
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
+use std::cmp::Ordering;
+use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, HardCell, MaxGridPoints, Side};
 use treetime_utils::make_error;
 
 pub fn distribution_division<Y: YAxisPolicy>(
@@ -126,15 +128,115 @@ fn divide_function_by_function<Y: YAxisPolicy>(
       let grid = Array1::linspace(bounds.0, bounds.1, n_points);
       let dividend_values = dividend.interp_many_stored(&grid)?;
       let divisor_values = divisor.interp_many_stored(&grid)?;
-      let values = Zip::from(&dividend_values)
+      let mut values = Zip::from(&dividend_values)
         .and(&divisor_values)
         .map_collect(|&dividend, &divisor| Y::divide(dividend, Y::safe_divisor(divisor)));
+      let last = values.len() - 1;
+      let left_end = shared_hard_end::<Y>(dividend, divisor, Side::Left, bounds.0)?;
+      let right_end = shared_hard_end::<Y>(dividend, divisor, Side::Right, bounds.1)?;
+      if let Some(end) = left_end {
+        values[0] = end.value::<Y>(values[1]);
+      }
+      if let Some(end) = right_end {
+        values[last] = end.value::<Y>(values[last - 1]);
+      }
       let function = DistributionFunction::from_range_values(bounds, values)?
         .with_amplitude(Y::divide(dividend.amplitude(), divisor.amplitude()));
       let function = apply_division_tail(function, Side::Left, dividend_domain, divisor_domain)?;
       let function = apply_division_tail(function, Side::Right, dividend_domain, divisor_domain)?;
+      let function = match left_end.and_then(SharedHardEnd::tail) {
+        Some(tail) => function.with_left_extrap(tail)?,
+        None => function,
+      };
+      let function = match right_end.and_then(SharedHardEnd::tail) {
+        Some(tail) => function.with_right_extrap(tail)?,
+        None => function,
+      };
       Ok(Distribution::Function(function))
     },
+  }
+}
+
+fn shared_hard_end<Y: YAxisPolicy>(
+  dividend: &DistributionFunction<f64, Y>,
+  divisor: &DistributionFunction<f64, Y>,
+  side: Side,
+  t: f64,
+) -> Result<Option<SharedHardEnd>, Report> {
+  if divisor.interp_stored(t)?.is_finite() {
+    return Ok(None);
+  }
+  let (Some(dividend_law), Some(divisor_law)) = (end_approach(dividend, side, t)?, end_approach(divisor, side, t)?)
+  else {
+    return Ok(None);
+  };
+  let exponent = dividend_law.exponent - divisor_law.exponent;
+  let end = match exponent.total_cmp(&0.0) {
+    Ordering::Greater => SharedHardEnd::ZeroDensity(HardApproachLaw { t_hard: t, b: exponent }),
+    Ordering::Equal => SharedHardEnd::Finite(Y::divide(dividend_law.offset, divisor_law.offset)),
+    Ordering::Less => SharedHardEnd::Flat,
+  };
+  Ok(Some(end))
+}
+
+fn end_approach<Y: YAxisPolicy>(
+  f: &DistributionFunction<f64, Y>,
+  side: Side,
+  t: f64,
+) -> Result<Option<EndApproach>, Report> {
+  let value = f.interp_stored(t)?;
+  if value.is_finite() {
+    return Ok(Some(EndApproach {
+      exponent: 0.0,
+      offset: value,
+    }));
+  }
+  let Some(last_cell) = f.len().checked_sub(2) else {
+    return Ok(None);
+  };
+  let (edge, cell) = match side {
+    Side::Left => (f.x_min(), 0),
+    Side::Right => (f.x_max(), last_cell),
+  };
+  if !ulps_eq!(edge, t, max_ulps = 4) {
+    return Ok(None);
+  }
+  let Some(HardCell { law, anchor }) = f.grid_fn().hard_cell(cell, f.left_extrap(), f.right_extrap())? else {
+    return Ok(None);
+  };
+  Ok(Some(EndApproach {
+    exponent: law.b,
+    offset: anchor.y + law.b * (anchor.t - law.t_hard).abs().ln(),
+  }))
+}
+
+#[derive(Clone, Copy, Debug)]
+struct EndApproach {
+  exponent: f64,
+  offset: f64,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum SharedHardEnd {
+  ZeroDensity(HardApproachLaw),
+  Finite(f64),
+  Flat,
+}
+
+impl SharedHardEnd {
+  fn value<Y: YAxisPolicy>(self, inner: f64) -> f64 {
+    match self {
+      SharedHardEnd::ZeroDensity(_) => Y::probability_zero(),
+      SharedHardEnd::Finite(value) => value,
+      SharedHardEnd::Flat => inner,
+    }
+  }
+
+  fn tail(self) -> Option<BoundaryBehavior> {
+    match self {
+      SharedHardEnd::ZeroDensity(law) => Some(BoundaryBehavior::HardApproach(law)),
+      SharedHardEnd::Finite(_) | SharedHardEnd::Flat => None,
+    }
   }
 }
 

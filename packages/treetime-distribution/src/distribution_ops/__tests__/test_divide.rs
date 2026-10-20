@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{DistributionVariant, distribution};
+  use self::helpers::{
+    DistributionVariant, distribution, end_index, end_tail, hard_end, power_law_to_hard_end, power_law_values,
+  };
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::__tests__::aliases::DistributionPlain;
   use crate::distribution_core::function::DistributionFunction;
@@ -10,7 +12,7 @@ mod tests {
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
-  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
+  use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   const TINY_NUMBER: f64 = 1e-10;
@@ -362,10 +364,155 @@ mod tests {
     assert_eq!(a.right_extrap(), q.right_extrap());
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right_zero_density(Side::Right, (2.0, 0.5), f64::INFINITY,                Some(1.5))]
+  #[case::right_finite(      Side::Right, (1.5, 1.5), 0.7,                          None)]
+  #[case::right_divergent(   Side::Right, (0.5, 2.0), 0.7 + 1.5 * 0.1_f64.ln(),     None)]
+  #[case::left_zero_density( Side::Left,  (2.0, 0.5), f64::INFINITY,                Some(1.5))]
+  #[case::left_finite(       Side::Left,  (1.5, 1.5), 0.7,                          None)]
+  #[case::left_divergent(    Side::Left,  (0.5, 2.0), 0.7 + 1.5 * 0.1_f64.ln(),     None)]
+  #[trace]
+  fn test_divide_function_by_function_shared_hard_end_takes_limit_of_approach_laws(
+    #[case] side: Side,
+    #[case] (dividend_exponent, divisor_exponent): (f64, f64),
+    #[case] expected_end: f64,
+    #[case] expected_exponent: Option<f64>,
+  ) {
+    let dividend = power_law_to_hard_end(side, dividend_exponent, 0.7);
+    let divisor = power_law_to_hard_end(side, divisor_exponent, 0.0);
+
+    let actual = distribution_division(
+      &DistributionNegLog::Function(dividend.clone()),
+      &DistributionNegLog::Function(divisor),
+      MaxGridPoints::default(),
+    )
+    .unwrap();
+
+    let DistributionNegLog::Function(q) = actual else {
+      panic!("expected a Function quotient, got {actual:?}");
+    };
+    let exponent = dividend_exponent - divisor_exponent;
+    let (end, mut expected) = (end_index(side), power_law_values(side, exponent, 0.7));
+    expected[end] = expected_end;
+    pretty_assert_ulps_eq!(dividend.t(), q.t(), max_ulps = 4);
+    pretty_assert_ulps_eq!(expected, q.y().clone(), max_ulps = 16);
+    let expected_tail = match expected_exponent {
+      Some(b) => BoundaryBehavior::HardApproach(HardApproachLaw {
+        t_hard: hard_end(side),
+        b,
+      }),
+      None => end_tail(&dividend, side),
+    };
+    assert_eq!(expected_tail, end_tail(&q, side));
+  }
+
+  #[test]
+  fn test_divide_function_by_function_shared_hard_end_on_different_grids_stays_defined() {
+    let dividend = power_law_to_hard_end(Side::Right, 2.0, 0.7)
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+    let t = Array1::linspace(0.3, 1.0, 8);
+    let y = t.mapv(|t: f64| if t < 1.0 { -(1.0 - t).ln() } else { f64::INFINITY });
+    let divisor = DistributionFunction::<f64, NegLog>::from_arrays(&t, y)
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+
+    let actual = distribution_division(
+      &DistributionNegLog::Function(dividend),
+      &DistributionNegLog::Function(divisor),
+      MaxGridPoints::default(),
+    )
+    .unwrap();
+
+    let DistributionNegLog::Function(q) = actual else {
+      panic!("expected a Function quotient, got {actual:?}");
+    };
+    let last = q.y().len() - 1;
+    assert!(
+      q.y().iter().take(last).all(|v| v.is_finite()),
+      "interior of the quotient must stay finite, got {:?}",
+      q.y()
+    );
+    assert!(
+      q.y()[last].is_infinite() && q.y()[last] > 0.0,
+      "the shared end must have zero density, got {}",
+      q.y()[last]
+    );
+    let BoundaryBehavior::HardApproach(law) = q.right_extrap() else {
+      panic!("expected a HardApproach right tail, got {:?}", q.right_extrap());
+    };
+    pretty_assert_ulps_eq!(1.0, law.t_hard, max_ulps = 4);
+    assert!(
+      law.b > 0.0,
+      "the quotient must approach zero density, got exponent {}",
+      law.b
+    );
+  }
+
   mod helpers {
     use crate::__tests__::aliases::DistributionPlain;
     use crate::distribution_core::formula::DistributionFormula;
-    use ndarray::array;
+    use crate::distribution_core::function::DistributionFunction;
+    use crate::policy::NegLog;
+    use ndarray::{Array1, array};
+    use treetime_grid::{BoundaryBehavior, HardApproachLaw, Side};
+    use treetime_utils::cast::ToF64Exact;
+
+    const N_POINTS: usize = 11;
+
+    pub(super) fn power_law_to_hard_end(side: Side, exponent: f64, offset: f64) -> DistributionFunction<f64, NegLog> {
+      let mut y = power_law_values(side, exponent, offset);
+      y[end_index(side)] = f64::INFINITY;
+      let law = BoundaryBehavior::HardApproach(HardApproachLaw {
+        t_hard: hard_end(side),
+        b: exponent,
+      });
+      let f = DistributionFunction::from_start_dx_values(0.0, 0.1, y).unwrap();
+      match side {
+        Side::Left => f
+          .with_left_extrap(law)
+          .unwrap()
+          .with_right_extrap(BoundaryBehavior::Hard)
+          .unwrap(),
+        Side::Right => f
+          .with_left_extrap(BoundaryBehavior::Hard)
+          .unwrap()
+          .with_right_extrap(law)
+          .unwrap(),
+      }
+    }
+
+    pub(super) fn power_law_values(side: Side, exponent: f64, offset: f64) -> Array1<f64> {
+      Array1::from_shape_fn(N_POINTS, |i| {
+        let dt = (0.1 * i.to_f64_exact() - hard_end(side)).abs();
+        offset - exponent * dt.ln()
+      })
+    }
+
+    pub(super) fn hard_end(side: Side) -> f64 {
+      match side {
+        Side::Left => 0.0,
+        Side::Right => 1.0,
+      }
+    }
+
+    pub(super) fn end_index(side: Side) -> usize {
+      match side {
+        Side::Left => 0,
+        Side::Right => N_POINTS - 1,
+      }
+    }
+
+    pub(super) fn end_tail(f: &DistributionFunction<f64, NegLog>, side: Side) -> BoundaryBehavior {
+      match side {
+        Side::Left => f.left_extrap(),
+        Side::Right => f.right_extrap(),
+      }
+    }
 
     #[derive(Clone, Copy, Debug)]
     pub(super) enum DistributionVariant {
