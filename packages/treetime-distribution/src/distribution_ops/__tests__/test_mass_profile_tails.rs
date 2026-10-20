@@ -241,6 +241,38 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::decaying_right(               Side::Right,  1e-200, 1e-200)]
+  #[case::decaying_left(                Side::Left,   1e-200, 1e-200)]
+  #[case::growing_right(                Side::Right, -1e-200, 1e-200)]
+  #[case::growing_left(                 Side::Left,  -1e-200, 1e-200)]
+  #[case::decaying_subnormal_exponent(  Side::Right,  1e-200, 1e-120)]
+  #[case::growing_subnormal_exponent(   Side::Left,  -1e-200, 1e-120)]
+  #[trace]
+  fn test_mass_profile_short_interval_in_slow_exponential_tail_keeps_its_mass(
+    #[case] side: Side,
+    #[case] decay_rate: f64,
+    #[case] width: f64,
+  ) -> Result<(), Report> {
+    let (f, (a, b)) = match side {
+      Side::Left => {
+        let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -decay_rate });
+        (helpers::function((0.0, 1.0), array![0.0, 0.0], left, HARD)?, (-width, 0.0))
+      },
+      Side::Right => {
+        let right = BoundaryBehavior::Linear(SoftTailLaw { slope: decay_rate });
+        (helpers::function((-1.0, 0.0), array![0.0, 0.0], HARD, right)?, (0.0, width))
+      },
+    };
+    let exponent = decay_rate * width;
+    let expected = width * (1.0 - exponent / 2.0);
+    let profile = MassProfile::new(&f)?;
+    assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    Ok(())
+  }
+
   #[test]
   fn test_mass_profile_interval_beyond_error_side_is_error() -> Result<(), Report> {
     let f = helpers::function((0.0, 1.0), array![0.0, 2.0], BoundaryBehavior::Error, HARD)?;

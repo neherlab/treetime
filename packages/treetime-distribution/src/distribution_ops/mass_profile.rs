@@ -549,7 +549,11 @@ impl TailLaw {
         if rate < 0.0 {
           return growing_exponential_mass(r, -rate, width);
         }
-        let decay = -(-rate * width).exp_m1();
+        let exponent = rate * width;
+        if exponent < f64::MIN_POSITIVE {
+          return ScaledMass::new(r, width);
+        }
+        let decay = -(-exponent).exp_m1();
         let factor = decay / rate;
         if factor.is_finite() {
           ScaledMass::new(r, factor)
@@ -801,11 +805,15 @@ fn growing_exponential_mass(r_near: f64, growth: f64, width: f64) -> ScaledMass 
   if width == f64::INFINITY {
     return ScaledMass::INFINITE;
   }
-  let factor = (growth * width).exp_m1() / growth;
+  let exponent = growth * width;
+  if exponent < f64::MIN_POSITIVE {
+    return ScaledMass::new(r_near, width);
+  }
+  let factor = exponent.exp_m1() / growth;
   if factor.is_finite() {
     ScaledMass::new(r_near, factor)
   } else {
-    let ln_factor = growth * width + (-(-growth * width).exp()).ln_1p() - growth.ln();
+    let ln_factor = exponent + (-(-exponent).exp()).ln_1p() - growth.ln();
     ScaledMass::new(r_near - ln_factor, 1.0)
   }
 }
