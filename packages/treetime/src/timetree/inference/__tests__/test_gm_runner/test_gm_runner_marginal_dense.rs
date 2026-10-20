@@ -9,12 +9,12 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // TODO: kb/issues/M-timetree-gm-runner-missing-internal-times.md
+  // TODO: kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md
   // These datasets differ from v0 by more than flu_h3n2_20 (largest gap with indels included, excluded):
   // #[case::dengue_20("dengue_20")]               // 14.8, 16.3 years at NODE_0000018
-  // #[case::ebola_20("ebola_20")]                 // v1 dates 8 internal nodes that v0 leaves out: kb/issues/M-timetree-dense-golden-master-node-mismatch.md
+  // #[case::ebola_20("ebola_20")]                 // v1 dates 8 internal nodes that v0 leaves out: kb/issues/N-timetree-dense-golden-master-node-mismatch.md
   // #[case::lassa_l_20("lassa_L_20")]             // 4.9, 6.7 years at NODE_0000004
-  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // exceeds the 300 s test timeout: kb/issues/M-timetree-marginal-dense-mpox-slow.md
+  // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // exceeds the 300 s test timeout
   // #[case::rsv_a_20("rsv_a_20")]                 // 1.8, 1.7 years at NODE_0000017
   // #[case::tb_20("tb_20")]                       // v1 dates 6 internal nodes that v0 leaves out; 33.9 years at NODE_0000016
   // #[case::zika_20("zika_20")]                   // the metadata has no column '#name': kb/issues/M-timetree-date-header-hash.md

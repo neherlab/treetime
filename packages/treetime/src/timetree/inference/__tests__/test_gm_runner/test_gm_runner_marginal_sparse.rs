@@ -18,7 +18,7 @@ mod tests {
 
     let sparse = marginal_node_times(dataset, SequenceMode::Sparse, indel_policy)?;
 
-    // TODO: kb/issues/M-timetree-sparse-dense-node-times-differ.md
+    // TODO: kb/issues/H-timetree-sparse-dense-node-times-differ.md
     // v1 sparse node times differ from v1 dense by up to 7.3e-4 years (NODE_0000015 of flu_h3n2_20).
     pretty_assert_map_abs_diff_eq!(&dense, &sparse, epsilon = 1e-3);
     Ok(())
