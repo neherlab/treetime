@@ -61,13 +61,7 @@ impl KnotTimes {
   }
 
   pub(crate) fn segment(&self, position: usize) -> (f64, f64) {
-    let run = self.run_of(position);
-    let next = if position + 1 < self.runs[run].end() {
-      run
-    } else {
-      run + 1
-    };
-    (self.runs[run].at(position), self.runs[next].at(position + 1))
+    self.segment_in(self.run_of(position), position)
   }
 
   pub(crate) fn iter(&self) -> impl Iterator<Item = f64> + '_ {
@@ -75,16 +69,41 @@ impl KnotTimes {
   }
 
   pub(crate) fn partition_point(&self, pred: impl Fn(f64) -> bool) -> usize {
-    self.partition_point_from(0, pred)
+    self.seek(0, 0, pred).position
   }
 
-  pub(crate) fn partition_point_from(&self, start: usize, pred: impl Fn(f64) -> bool) -> usize {
-    self
-      .runs
-      .iter()
-      .filter(|run| run.end() > start)
-      .find(|run| !pred(run.at(run.end() - 1)))
-      .map_or(self.len, |run| run.partition_point_from(start.max(run.first()), &pred))
+  pub(crate) fn advance_while(&self, cursor: KnotCursor, pred: impl Fn(f64) -> bool) -> KnotCursor {
+    let next = self.seek(cursor.run, cursor.position + 1, pred);
+    let position = next.position - 1;
+    let run = if self.runs.get(next.run).is_some_and(|run| run.first() <= position) {
+      next.run
+    } else {
+      next.run - 1
+    };
+    KnotCursor { run, position }
+  }
+
+  pub(crate) fn segment_at(&self, cursor: KnotCursor) -> (f64, f64) {
+    self.segment_in(cursor.run, cursor.position)
+  }
+
+  fn seek(&self, run: usize, start: usize, pred: impl Fn(f64) -> bool) -> KnotCursor {
+    let run = gallop(run, self.runs.len(), |run| {
+      pred(self.runs[run].at(self.runs[run].end() - 1))
+    });
+    let position = self.runs.get(run).map_or(self.len, |knots| {
+      knots.partition_point_from(start.max(knots.first()), &pred)
+    });
+    KnotCursor { run, position }
+  }
+
+  fn segment_in(&self, run: usize, position: usize) -> (f64, f64) {
+    let next = if position + 1 < self.runs[run].end() {
+      run
+    } else {
+      run + 1
+    };
+    (self.runs[run].at(position), self.runs[next].at(position + 1))
   }
 
   fn run_of(&self, position: usize) -> usize {
@@ -95,6 +114,18 @@ impl KnotTimes {
 impl PartialEq for KnotTimes {
   fn eq(&self, other: &Self) -> bool {
     self.len == other.len && self.iter().eq(other.iter())
+  }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct KnotCursor {
+  run: usize,
+  position: usize,
+}
+
+impl KnotCursor {
+  pub(crate) fn position(self) -> usize {
+    self.position
   }
 }
 
@@ -148,26 +179,7 @@ impl KnotRun {
   }
 
   fn partition_point_from(&self, start: usize, pred: impl Fn(f64) -> bool) -> usize {
-    match self {
-      Self::Listed { first, times } => start + times[start - first..].partition_point(|&time| pred(time)),
-      Self::Grid {
-        first,
-        grid,
-        start: index,
-        count,
-      } => {
-        let (mut low, mut high) = (start, first + count);
-        while low < high {
-          let mid = usize::midpoint(low, high);
-          if pred(grid.time(index + mid - first)) {
-            low = mid + 1;
-          } else {
-            high = mid;
-          }
-        }
-        low
-      },
-    }
+    gallop(start, self.end(), |position| pred(self.at(position)))
   }
 
   fn at(&self, position: usize) -> f64 {
@@ -183,4 +195,26 @@ impl KnotRun {
       Self::Grid { grid, start, count, .. } => Either::Right((*start..start + count).map(|index| grid.time(index))),
     }
   }
+}
+
+fn gallop(low: usize, high: usize, holds: impl Fn(usize) -> bool) -> usize {
+  let (mut low, mut high, mut step) = (low, high, 1);
+  while low < high {
+    let probe = (low + step - 1).min(high - 1);
+    if !holds(probe) {
+      high = probe;
+      break;
+    }
+    low = probe + 1;
+    step *= 2;
+  }
+  while low < high {
+    let mid = usize::midpoint(low, high);
+    if holds(mid) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  low
 }

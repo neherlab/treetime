@@ -1,5 +1,5 @@
 use crate::clock::gaussian::NodeTimeGaussian;
-use crate::coalescent::knot_times::{KnotGrid, KnotTimes};
+use crate::coalescent::knot_times::{KnotCursor, KnotGrid, KnotTimes};
 use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
 use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_survival};
 use eyre::{Report, WrapErr};
@@ -233,7 +233,7 @@ impl OwnIntegral {
       let total = cumulative[i];
       let total = if start < end {
         let piece = KnotPiece {
-          segment: survival.segment(i),
+          segment: survival.hermite(i, start, end),
           start,
           end,
         };
@@ -651,15 +651,16 @@ impl NodeSurvival {
 
   fn values_at_sorted<'a>(&'a self, xs: &'a [f64]) -> impl Iterator<Item = f64> + 'a {
     let (first, last) = (self.t.first(), self.t.last());
-    xs.iter().scan(0, move |i, &x| {
+    xs.iter().scan(KnotCursor::default(), move |cursor, &x| {
       if x < first {
         return Some(1.0);
       }
       if x >= last {
         return Some(0.0);
       }
-      *i = self.t.partition_point_from(*i + 1, |ti| ti <= x) - 1;
-      Some(self.segment(*i).value(x))
+      *cursor = self.t.advance_while(*cursor, |ti| ti <= x);
+      let (t0, t1) = self.t.segment_at(*cursor);
+      Some(self.hermite(cursor.position(), t0, t1).value(x))
     })
   }
 
@@ -673,6 +674,10 @@ impl NodeSurvival {
 
   fn segment(&self, i: usize) -> HermiteSegment {
     let (t0, t1) = self.t.segment(i);
+    self.hermite(i, t0, t1)
+  }
+
+  fn hermite(&self, i: usize, t0: f64, t1: f64) -> HermiteSegment {
     HermiteSegment {
       t0,
       h: t1 - t0,

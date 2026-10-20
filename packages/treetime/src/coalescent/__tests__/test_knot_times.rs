@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::knot_times::{KnotGrid, KnotTimes};
+  use crate::coalescent::knot_times::{KnotCursor, KnotGrid, KnotTimes};
   use itertools::Itertools;
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
+  use std::cell::Cell;
   use treetime_utils::cast::ToF64Exact;
 
   #[test]
@@ -35,6 +36,48 @@ mod tests {
     );
     assert_eq!(helpers::bits(&times), helpers::bits(&knots.iter().collect_vec()));
     assert_eq!((times[0], times[9]), (knots.first(), knots.last()));
+  }
+
+  #[test]
+  fn test_knot_times_partition_point_over_repeated_knots_evaluates_logarithmically() {
+    let count = 2000;
+    let knots = helpers::repeated_knots(count);
+    let limit = 4 * (usize::BITS - knots.len().leading_zeros());
+
+    let costs = (0..count)
+      .map(|k| {
+        let x = k.to_f64_exact() + 0.5;
+        let calls = Cell::new(0_u32);
+        let position = knots.partition_point(|t| {
+          calls.set(calls.get() + 1);
+          t <= x
+        });
+        (position, calls.get() <= limit)
+      })
+      .collect_vec();
+
+    assert_eq!((0..count).map(|k| (2 * k + 2, true)).collect_vec(), costs);
+  }
+
+  #[test]
+  fn test_knot_times_sorted_sweep_over_repeated_knots_evaluates_linearly() {
+    let count = 2000;
+    let knots = helpers::repeated_knots(count);
+    let calls = Cell::new(0_usize);
+
+    let positions = (0..count)
+      .scan(KnotCursor::default(), |cursor, k| {
+        let x = k.to_f64_exact() + 0.5;
+        *cursor = knots.advance_while(*cursor, |t| {
+          calls.set(calls.get() + 1);
+          t <= x
+        });
+        Some(cursor.position())
+      })
+      .collect_vec();
+
+    assert_eq!((0..count).map(|k| 2 * k + 1).collect_vec(), positions);
+    assert!(calls.get() <= 8 * count, "{} evaluations", calls.get());
   }
 
   proptest! {
@@ -69,11 +112,16 @@ mod tests {
           let x = times[0] + probe * span;
           prop_assert_eq!(times.partition_point(|&t| t <= x), knots.partition_point(|t| t <= x));
           prop_assert_eq!(times.partition_point(|&t| t < x), knots.partition_point(|t| t < x));
-          let start = times.len().div_ceil(2);
-          prop_assert_eq!(
-            start + times[start..].partition_point(|&t| t <= x),
-            knots.partition_point_from(start, |t| t <= x)
-          );
+        }
+        let probes = probes.iter().map(|&probe| times[0] + probe * span).sorted_by_key(|&x| OrderedFloat(x));
+        let mut cursor = KnotCursor::default();
+        for x in probes.filter(|&x| x >= times[0]) {
+          cursor = knots.advance_while(cursor, |t| t <= x);
+          let position = times.partition_point(|&t| t <= x) - 1;
+          prop_assert_eq!(position, cursor.position());
+          if position + 1 < times.len() {
+            prop_assert_eq!(knots.segment(position), knots.segment_at(cursor));
+          }
         }
         for &t in &times {
           prop_assert_eq!(times.partition_point(|&s| s <= t), knots.partition_point(|s| s <= t));
@@ -83,6 +131,16 @@ mod tests {
   }
 
   mod helpers {
+    use crate::coalescent::knot_times::{KnotGrid, KnotTimes};
+    use itertools::Itertools;
+    use treetime_utils::cast::ToF64Exact;
+
+    pub(super) fn repeated_knots(count: usize) -> KnotTimes {
+      let grid = KnotGrid { origin: 0.0, step: 1.0 };
+      let times = (0..=count).flat_map(|k| [k.to_f64_exact(); 2]).collect_vec();
+      KnotTimes::new(&times, Some(grid))
+    }
+
     pub(super) fn bits(times: &[f64]) -> Vec<u64> {
       times.iter().map(|t| t.to_bits()).collect()
     }
