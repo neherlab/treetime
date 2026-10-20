@@ -1,20 +1,29 @@
 use crate::partition::fitch::partition::PartitionFitch;
 use eyre::Report;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::graph_traverse::GraphNodeForward;
-use treetime_utils::collections::container::get_exactly_one;
+use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn ancestral_reconstruction_fitch(graph: &Graph, partitions: &mut [PartitionFitch]) -> Result<(), Report> {
-  graph.iter_depth_first_preorder_forward(|node| run_fitch_reconstruction(partitions, &node))
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
+  for &key in schedule.preorder() {
+    run_fitch_reconstruction(partitions, key, schedule.parents(key).first())?;
+  }
+  Ok(())
 }
 
-fn run_fitch_reconstruction(partitions: &mut [PartitionFitch], node: &GraphNodeForward) -> Result<(), Report> {
+fn run_fitch_reconstruction(
+  partitions: &mut [PartitionFitch],
+  key: GraphNodeKey,
+  parent: Option<&(GraphNodeKey, GraphEdgeKey)>,
+) -> Result<(), Report> {
   for partition in partitions.iter_mut() {
     let alphabet = partition.alphabet.clone();
 
-    let mut sequence = if !node.is_root {
-      let (parent, edge) = get_exactly_one(&node.parent_keys)?;
+    let mut sequence = if let Some((parent, edge)) = parent {
       let mut sequence = partition.nodes[parent].seq.sequence.clone();
       let edge_part = &partition.edges[edge];
 
@@ -31,13 +40,13 @@ fn run_fitch_reconstruction(partitions: &mut [PartitionFitch], node: &GraphNodeF
       }
       sequence
     } else {
-      partition.nodes[&node.key].seq.sequence.clone()
+      partition.nodes[&key].seq.sequence.clone()
     };
 
     let node_data = partition
       .nodes
-      .get_mut(&node.key)
-      .ok_or_else(|| make_internal_report!("Node {} has no Fitch data", node.key))?;
+      .get_mut(&key)
+      .ok_or_else(|| make_internal_report!("Node {key} has no Fitch data"))?;
     let seq = &mut node_data.seq;
 
     for r in &mut seq.unknown {

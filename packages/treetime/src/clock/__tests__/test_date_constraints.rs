@@ -17,6 +17,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::assert_error;
 
   #[test]
   fn test_load_date_constraints_success_three_leaves() -> Result<(), Report> {
@@ -88,6 +89,32 @@ mod tests {
       loaded("root", None),
     ];
     assert_eq!(actual, expected);
+    Ok(())
+  }
+
+  #[test]
+  fn test_load_date_constraints_counts_a_leaf_with_two_parents_once() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let internal = graph.add_node();
+    let shared = graph.add_node();
+    let leaf = graph.add_node();
+    graph.add_edge(root, internal)?;
+    graph.add_edge(root, shared)?;
+    graph.add_edge(internal, shared)?;
+    graph.add_edge(internal, leaf)?;
+    graph.build()?;
+    let dates = btreemap! {
+      shared => DateConstraint::exact(2020.0),
+      leaf => DateConstraint::exact(2021.0),
+    };
+
+    let result = load_date_constraints(&dates, &graph, &NoopProgress);
+
+    assert_error!(
+      result,
+      "Insufficient dated leaves: found 2 out of 2 (100.0% coverage, minimum 3 required). Need 1 more dated leaves."
+    );
     Ok(())
   }
 

@@ -335,18 +335,17 @@ fn clock_regression_points(
   let divergences = root_to_node_divergences(graph, |edge_key| {
     edge_length(inputs, branch_lengths, edge_key, prev_clock_rate)
   })?;
-  let mut points = vec![];
-  graph.iter_depth_first_preorder_forward(|node| {
-    if node.is_leaf {
-      points.push(ClockRegressionPoint {
-        key: node.key,
-        date: inputs.likely_time(node.key),
-        div: divergences[&node.key],
-        is_outlier: outliers.contains(&node.key),
-      });
-    }
-    Ok(())
-  })?;
+  let schedule = GraphSchedule::new(graph)?;
+  let points = schedule
+    .leaves()
+    .iter()
+    .map(|&key| ClockRegressionPoint {
+      key,
+      date: inputs.likely_time(key),
+      div: divergences[&key],
+      is_outlier: outliers.contains(&key),
+    })
+    .collect();
   Ok(points)
 }
 

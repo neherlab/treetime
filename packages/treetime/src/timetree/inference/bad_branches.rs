@@ -3,6 +3,7 @@ use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 
 pub(crate) fn bad_leaves(
   graph: &Graph,
@@ -26,17 +27,18 @@ pub(crate) fn derive_bad_branches(
   constraints: &DateConstraints,
   leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
 ) -> Result<BTreeMap<GraphNodeKey, bool>, Report> {
+  let schedule = GraphSchedule::new(graph)?;
   let mut bad_branches = BTreeMap::new();
-  graph.iter_depth_first_postorder_forward(|node| {
-    let bad = if node.is_leaf {
-      leaf_bad_branches[&node.key]
-    } else if constraints.date_constraint(node.key).is_some() {
+  for &key in schedule.postorder() {
+    let children = schedule.children(key);
+    let bad = if children.is_empty() {
+      leaf_bad_branches[&key]
+    } else if constraints.date_constraint(key).is_some() {
       false
     } else {
-      node.child_keys.iter().all(|(child_key, _)| bad_branches[child_key])
+      children.iter().all(|(child_key, _)| bad_branches[child_key])
     };
-    bad_branches.insert(node.key, bad);
-    Ok(())
-  })?;
+    bad_branches.insert(key, bad);
+  }
   Ok(bad_branches)
 }

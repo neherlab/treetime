@@ -7,6 +7,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::date::{DateConstraint, DateValue};
 use treetime_utils::cast::ToF64Exact;
 
@@ -21,27 +22,27 @@ pub fn load_date_constraints(
 
   let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
 
-  graph.iter_depth_first_postorder_forward(|node| {
-    let key = node.key;
+  let schedule = GraphSchedule::new(graph)?;
+  for &key in schedule.postorder() {
+    let is_leaf = schedule.children(key).is_empty();
 
     if let Some(constraint) = dates.get(&key) {
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
       date_constraints.insert(key, Some(dist));
 
-      if node.is_leaf {
+      if is_leaf {
         good_leaf_count += 1;
       } else {
         internal_constraint_count += 1;
       }
     } else {
       date_constraints.insert(key, None);
-      if node.is_leaf {
+      if is_leaf {
         bad_leaf_count += 1;
       }
     }
-    Ok(())
-  })?;
+  }
 
   let total_leaf_count = good_leaf_count + bad_leaf_count;
   let coverage_percent = if total_leaf_count > 0 {

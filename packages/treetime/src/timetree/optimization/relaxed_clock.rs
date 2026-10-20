@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 
 const DEFAULT_RELAX: f64 = 1.0;
 
@@ -19,28 +20,30 @@ pub(crate) fn apply_relaxed_clock(
 
   let c = 1.0 / one_mutation;
 
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
+
   let mut coeffs: BTreeMap<GraphNodeKey, RelaxedClockCoeffs> = BTreeMap::new();
 
-  graph.iter_depth_first_postorder_forward(|node| {
+  for &key in schedule.postorder() {
     let mut node_coeffs = RelaxedClockCoeffs::default();
 
-    let (opt_len, act_len) = if node.is_root {
-      (one_mutation, one_mutation)
-    } else if let Some(&edge_key) = node.parent_edge_keys.first() {
-      let opt_len = branch_lengths[&edge_key].unwrap_or(0.0);
-      let act_len = branches[&edge_key]
-        .time_length
-        .map_or(opt_len, |time_length| time_length * clock_rate);
-      (opt_len, act_len)
-    } else {
-      (one_mutation, one_mutation)
+    let (opt_len, act_len) = match schedule.parents(key).first() {
+      Some(&(_, edge_key)) => {
+        let opt_len = branch_lengths[&edge_key].unwrap_or(0.0);
+        let act_len = branches[&edge_key]
+          .time_length
+          .map_or(opt_len, |time_length| time_length * clock_rate);
+        (opt_len, act_len)
+      },
+      None => (one_mutation, one_mutation),
     };
 
     let denom = opt_len + one_mutation;
     node_coeffs.k2 = slack + c * act_len * act_len / denom;
     node_coeffs.k1 = -2.0 * (c * act_len * opt_len / denom + slack);
 
-    for (child_key, _edge_key) in &node.child_keys {
+    for (child_key, _) in schedule.children(key) {
       if let Some(child_coeffs) = coeffs.get(child_key) {
         let denom = coupling + child_coeffs.k2;
         if denom.abs() > 1e-10 {
@@ -53,40 +56,36 @@ pub(crate) fn apply_relaxed_clock(
       }
     }
 
-    coeffs.insert(node.key, node_coeffs);
-    Ok(())
-  })?;
+    coeffs.insert(key, node_coeffs);
+  }
 
   let mut gammas: BTreeMap<GraphNodeKey, f64> = BTreeMap::new();
 
-  graph.iter_depth_first_preorder_forward(|node| {
-    let node_coeffs = coeffs.get(&node.key).cloned().unwrap_or_default();
+  for &key in schedule.preorder() {
+    let node_coeffs = coeffs.get(&key).cloned().unwrap_or_default();
 
-    let gamma = if node.is_root {
-      if node_coeffs.k2.abs() > 1e-10 {
-        (-0.5 * node_coeffs.k1 / node_coeffs.k2).max(0.1)
-      } else {
-        1.0
-      }
-    } else {
-      let parent_gamma = node
-        .parent_keys
-        .first()
-        .and_then(|(parent_key, _)| gammas.get(parent_key))
-        .copied()
-        .unwrap_or(1.0);
+    let gamma = match schedule.parents(key).first() {
+      None => {
+        if node_coeffs.k2.abs() > 1e-10 {
+          (-0.5 * node_coeffs.k1 / node_coeffs.k2).max(0.1)
+        } else {
+          1.0
+        }
+      },
+      Some((parent_key, _)) => {
+        let parent_gamma = gammas.get(parent_key).copied().unwrap_or(1.0);
 
-      let denom = coupling + node_coeffs.k2;
-      if denom.abs() > 1e-10 {
-        ((coupling * parent_gamma - 0.5 * node_coeffs.k1) / denom).max(0.1)
-      } else {
-        1.0
-      }
+        let denom = coupling + node_coeffs.k2;
+        if denom.abs() > 1e-10 {
+          ((coupling * parent_gamma - 0.5 * node_coeffs.k1) / denom).max(0.1)
+        } else {
+          1.0
+        }
+      },
     };
 
-    gammas.insert(node.key, gamma);
-    Ok(())
-  })?;
+    gammas.insert(key, gamma);
+  }
 
   let edge_gammas = graph
     .get_edges()

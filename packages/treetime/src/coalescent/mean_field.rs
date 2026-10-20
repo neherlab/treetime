@@ -13,6 +13,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
+use treetime_graph::schedule::GraphSchedule;
 use treetime_grid::Side;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
@@ -344,20 +345,20 @@ impl LineageExpectation {
         .flatten()
         .filter(|_| !excluded.get(&key).copied().unwrap_or(false))
     };
+    let schedule = GraphSchedule::new(graph)?;
     let mut earliest_tip = BTreeMap::new();
-    graph.iter_depth_first_postorder_forward(|node| {
-      let earliest = if node.is_leaf {
-        tip_time(node.key).unwrap_or(f64::INFINITY)
+    for &key in schedule.postorder() {
+      let children = schedule.children(key);
+      let earliest = if children.is_empty() {
+        tip_time(key).unwrap_or(f64::INFINITY)
       } else {
-        node
-          .child_keys
+        children
           .iter()
           .map(|(child, _)| earliest_tip[child])
           .fold(f64::INFINITY, f64::min)
       };
-      earliest_tip.insert(node.key, earliest);
-      Ok(())
-    })?;
+      earliest_tip.insert(key, earliest);
+    }
     Self::from_survivals(graph, |key| {
       let is_leaf = graph.get_node(key).is_some_and(Node::is_leaf);
       let survival = if is_leaf {

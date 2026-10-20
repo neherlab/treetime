@@ -14,6 +14,7 @@ use std::str::FromStr;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::AsciiChar;
 use treetime_primitives::Seq;
 use treetime_utils::error::{report_to_string, to_eyre_error};
@@ -32,52 +33,52 @@ pub(crate) fn stream_sequence_mutations(
   edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
   mut sink: Option<&mut (dyn SeqSink + '_)>,
 ) -> Result<SequenceMutations, OperationError> {
+  let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
+  schedule.require_tree().map_err(OperationError::classify)?;
   let track = seq_track.mutation_track();
   let mut pending_parents: BTreeMap<GraphNodeKey, (Seq, usize)> = BTreeMap::new();
   let mut root_sequence = None;
   let mut edge_mutations = BTreeMap::new();
-  let mut sink_error = None;
-  graph
-    .iter_depth_first_preorder_forward(|node| {
-      let seq = node_sequence(node.key)?;
-      if let Some(sink) = sink.as_deref_mut() {
-        let item = SeqItem {
-          key: node.key,
-          track: seq_track,
-          seq: &seq,
-          emitted: include_leaves || !node.is_leaf,
-        };
-        emit_item(sink, item, &mut sink_error)?;
-      }
-      match node.parent_keys.as_slice() {
-        [] => root_sequence = Some(seq.clone()),
-        [(parent_key, edge_key)] => {
-          let (parent_seq, pending_children) = pending_parents
-            .get_mut(parent_key)
-            .ok_or_else(|| make_internal_report!("Parent {parent_key} of node {} was not visited first", node.key))?;
-          let skip_unknown = !report_unknown && node.child_edge_keys.is_empty();
-          let subs = sequence_subs(parent_seq, &seq, alphabet, skip_unknown)?;
-          *pending_children -= 1;
-          if *pending_children == 0 {
-            pending_parents.remove(parent_key);
-          }
-          edge_mutations.insert(
-            *edge_key,
-            combine_edge_mutations(subs, &edge_indels(*edge_key), &track)?,
-          );
-        },
-        _ => return make_internal_error!("Node {} has more than one parent", node.key),
-      }
-      if !node.child_edge_keys.is_empty() {
-        pending_parents.insert(node.key, (seq, node.child_edge_keys.len()));
-      }
-      Ok(())
-    })
-    .map_err(|report| {
-      sink_error
-        .take()
-        .map_or_else(|| OperationError::classify(report), OperationError::SinkFailed)
-    })?;
+  for &key in schedule.preorder() {
+    let seq = node_sequence(key).map_err(OperationError::classify)?;
+    let child_count = schedule.children(key).len();
+    if let Some(sink) = sink.as_deref_mut() {
+      let item = SeqItem {
+        key,
+        track: seq_track,
+        seq: &seq,
+        emitted: include_leaves || child_count > 0,
+      };
+      sink.emit(item).map_err(OperationError::SinkFailed)?;
+    }
+    match schedule.parents(key) {
+      [] => root_sequence = Some(seq.clone()),
+      &[(parent_key, edge_key)] => {
+        let (parent_seq, pending_children) = pending_parents.get_mut(&parent_key).ok_or_else(|| {
+          OperationError::InferenceFailed(make_internal_report!(
+            "Parent {parent_key} of node {key} was not visited first"
+          ))
+        })?;
+        let skip_unknown = !report_unknown && child_count == 0;
+        let subs = sequence_subs(parent_seq, &seq, alphabet, skip_unknown).map_err(OperationError::classify)?;
+        *pending_children -= 1;
+        if *pending_children == 0 {
+          pending_parents.remove(&parent_key);
+        }
+        let mutations =
+          combine_edge_mutations(subs, &edge_indels(edge_key), &track).map_err(OperationError::classify)?;
+        edge_mutations.insert(edge_key, mutations);
+      },
+      _ => {
+        return Err(OperationError::InferenceFailed(make_internal_report!(
+          "Node {key} has more than one parent"
+        )));
+      },
+    }
+    if child_count > 0 {
+      pending_parents.insert(key, (seq, child_count));
+    }
+  }
   let root_sequence = root_sequence
     .ok_or_else(|| OperationError::InferenceFailed(make_internal_report!("Graph traversal visited no root")))?;
   Ok(SequenceMutations {
@@ -99,31 +100,18 @@ pub(crate) fn emit_sequences(
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
   sink: &mut (dyn SeqSink + '_),
 ) -> Result<(), OperationError> {
-  let mut sink_error = None;
-  graph
-    .iter_depth_first_preorder_forward(|node| {
-      let seq = node_sequence(node.key)?;
-      let item = SeqItem {
-        key: node.key,
-        track: seq_track,
-        seq: &seq,
-        emitted: include_leaves || !node.is_leaf,
-      };
-      emit_item(sink, item, &mut sink_error)
-    })
-    .map_err(|report| {
-      sink_error
-        .take()
-        .map_or_else(|| OperationError::classify(report), OperationError::SinkFailed)
-    })
-}
-
-fn emit_item(sink: &mut (dyn SeqSink + '_), item: SeqItem<'_>, sink_error: &mut Option<Report>) -> Result<(), Report> {
-  let key = item.key;
-  sink.emit(item).map_err(|error| {
-    *sink_error = Some(error);
-    make_internal_report!("Sequence sink failed at node {key}")
-  })
+  let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
+  for &key in schedule.preorder() {
+    let seq = node_sequence(key).map_err(OperationError::classify)?;
+    let item = SeqItem {
+      key,
+      track: seq_track,
+      seq: &seq,
+      emitted: include_leaves || !schedule.children(key).is_empty(),
+    };
+    sink.emit(item).map_err(OperationError::SinkFailed)?;
+  }
+  Ok(())
 }
 
 pub(crate) fn sequence_subs(
