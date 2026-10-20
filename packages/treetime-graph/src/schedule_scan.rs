@@ -282,7 +282,17 @@ where
     }
   }
 
-  fn deliver(&self, inboxes: &[Mutex<Inbox<M>>], node: GraphNodeKey, slot: usize, message: M) -> Option<Vec<M>> {
+  fn deliver(
+    &self,
+    inboxes: &[Mutex<Inbox<M>>],
+    node: GraphNodeKey,
+    slots: usize,
+    slot: usize,
+    message: M,
+  ) -> Option<Vec<M>> {
+    if (slots, slot) == (1, 0) {
+      return Some(vec![message]);
+    }
     match inboxes[node.as_usize()].lock().deliver(node, slot, message) {
       Ok(ready) => ready,
       Err(report) => {
@@ -332,7 +342,9 @@ where
       let children = self.schedule.children(key);
       let ready = izip!(children, repeat_n(message, children.len())).filter_map(|(&(child, edge), message)| {
         let slot = self.schedule.parent_slot(edge);
-        self.deliver(inboxes, child, slot, message).map(|ready| (child, ready))
+        self
+          .deliver(inboxes, child, self.schedule.parents(child).len(), slot, message)
+          .map(|ready| (child, ready))
       });
       for (child, received) in ready {
         if current.is_none() {
@@ -354,7 +366,7 @@ where
       let ready = izip!(parents, repeat_n(message, parents.len())).filter_map(|(&(parent, edge), message)| {
         let slot = self.schedule.child_slot(edge);
         self
-          .deliver(inboxes, parent, slot, message)
+          .deliver(inboxes, parent, self.schedule.children(parent).len(), slot, message)
           .map(|ready| (parent, ready))
       });
       runnable.extend(ready);
