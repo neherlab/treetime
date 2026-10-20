@@ -23,6 +23,13 @@ The Linux builds of the CLI and the API server allocate through jemalloc with it
 - Page-fault totals differ by 2 percent (1.31 and 1.34 million), which fits retained pages and not more data
 - Inferred cause: the leaf tasks of `fn TreeView.scan_up()` [packages/treetime-graph/src/tree_scan.rs#L32-L63](../../packages/treetime-graph/src/tree_scan.rs#L32-L63) run on every worker thread, so allocations and frees spread over many arenas, and each arena keeps its freed pages for the decay time. The tree scans are also 32 percent faster on this case (wall time 10.95 to 7.47 s)
 
+### Timetree validation runs
+
+On the 36 single-threaded timetree runs of the simulated validation subset, release builds of the code with the forward-posterior trim against `rust` `d86d3eb65` (with the tree scans): 12 runs have more than 1.1 times the peak RSS of `rust`, at most 1.193 (42 to 50 MB), all small coalescent runs of 42 to 60 MB that grow by 4 to 10 MB, while the live heap at the peak of the worst run is 38.1 MB against 35.0 MB. The largest run of the subset grows from 123 to 133 MB (1.084). The maintainers accepted this residual for the trimming change ([kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md#results)); the allocator setting below remains open here.
+
+- `_RJEM_MALLOC_CONF=lg_extent_max_active_fit:8`: all 36 runs at most 1.098 times the peak RSS of `rust`, at unchanged CPU time
+- `_RJEM_MALLOC_CONF=dirty_decay_ms:200`: helps short runs only
+
 ## Fix direction
 
 Set the decay or arena configuration of jemalloc in the binaries, for example a short `dirty_decay_ms` or fewer arenas (`narenas`). Embed the setting at build time with the `_rjem_malloc_conf` symbol or `JEMALLOC_SYS_WITH_MALLOC_CONF`, so every run uses it without an environment variable.

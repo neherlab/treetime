@@ -11,7 +11,18 @@ A backward message of the time inference holds the exact convolution only near i
 - **Impossible mass**: in the untrimmed forward pass, `NODE_0000162` holds 23% of its mass below 1972.647, where its parent `NODE_0000161` holds $6.4 \cdot 10^{-6}$. In exact arithmetic a child's mass below a time is at most its parent's
 - **Dates not converged**: the untrimmed pipeline at 4800 and 9600 grid points dates the cluster nodes 3 to 8 years apart; only 32 of 196 internal nodes converge to 1% of their 90% width between these two references. A cut of the parent at its $10^{-9}$ quantile removes the mass that the child puts there ([kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md#why-trimming-is-safe-and-where-it-is-not)). In a version of the forward pass with the trim and a spacing cap without the resolution check, dates of this region moved by 8 to 11 years against the run without both (Kolmogorov distance 1.0); most of that move came from the coarse forward messages of the cap
 - **Ill-conditioned**: capping the forward spacing of a single node without a subtree distribution moves `NODE_0000138` by 0.35 of its 90% width; the uncapped 300-point run lies 0.55 to 1.4 widths away from the references on the cluster nodes
-- **Against `rust`**: at this fixed rate, `NODE_0000061`, `062`, `064`, `065`, `083` and `084` differ from the code before the trim by 0.7 to 1.4 years, in a region where the 4800- and 9600-point references differ by 0.6 to 3.0 years. With default flags (estimated rate) no node of `data/flu/h3n2/200` moves by more than 0.02 of its 90% width
+- **Against the code before the trim** (`rust` `d86d3eb65`): with default flags (estimated rate) no node of `data/flu/h3n2/200` moves by more than its 90% width (largest move 0.007 years). At the fixed rate the 13 cluster nodes `NODE_0000129` to `NODE_0000141` lie within 0.076 years (0.13 of their 90% width) of the 9600-point reference, and 6 nodes move by more than their 90% width:
+
+| Node | Move against `rust` (years) | 90% width | Trim off | Cap off | 4800 points | 9600 points |
+| --- | --- | --- | --- | --- | --- | --- |
+| `NODE_0000064` | -1.397 | 0.524 | -0.378 | -1.385 | +1.996 | +0.112 |
+| `NODE_0000065` | -1.212 | 0.713 | -0.351 | -1.204 | +0.723 | +0.121 |
+| `NODE_0000084` | -1.016 | 0.657 | -0.109 | -0.993 | +1.381 | +0.030 |
+| `NODE_0000061` | -0.962 | 0.619 | -0.861 | -0.950 | +2.800 | -0.251 |
+| `NODE_0000083` | -0.858 | 0.589 | -0.691 | -0.838 | +3.325 | +0.431 |
+| `NODE_0000062` | -0.750 | 0.671 | -0.585 | -0.739 | +1.648 | +0.082 |
+
+The last four columns are dates minus the `rust` date. For `064`, `065` and `084` the trim causes the move, about 1 year toward earlier dates and away from the 9600-point reference; `061` and `083` move with the trim off and with the cap off. The two references differ by 0.6 to 3.0 years on these nodes, so none of them has a converged date
 
 Reproduction:
 

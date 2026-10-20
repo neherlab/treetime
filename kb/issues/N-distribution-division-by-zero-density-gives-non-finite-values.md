@@ -8,7 +8,7 @@
 
 `fn divide_function_by_function()` handles a shared zero-density end point of a function dividend and divisor through `fn shared_hard_end()`, which compares the power laws of both ends. The branches above have no such rule.
 
-The forward pass divides only function posteriors by function messages ([packages/treetime/src/timetree/inference/forward_pass.rs#L199](../../packages/treetime/src/timetree/inference/forward_pass.rs#L199)), so no measured run reaches these branches.
+The forward pass divides only function posteriors by function messages ([packages/treetime/src/timetree/inference/forward_pass.rs#L200](../../packages/treetime/src/timetree/inference/forward_pass.rs#L200)), so no measured run reaches these branches.
 
 ## Fix direction
 
