@@ -140,19 +140,15 @@ impl ForwardConvolution {
   }
 }
 
-#[expect(
-  clippy::partial_pub_fields,
-  reason = "the mass profile of the posterior only serves its trimming inside this crate"
-)]
 pub struct ResolvedForward {
-  pub message: Distribution<NegLog>,
-  pub posterior: Distribution<NegLog>,
-  pub spacing: MessageSpacing,
+  message: Distribution<NegLog>,
+  posterior: Distribution<NegLog>,
+  spacing: MessageSpacing,
   profile: PosteriorProfile,
 }
 
 impl ResolvedForward {
-  pub fn trim_posterior_to_mass(self, eps: f64) -> Result<Self, Report> {
+  pub fn trim_posterior_to_mass(self, eps: f64) -> Result<ForwardPosterior, Report> {
     let Self {
       message,
       posterior,
@@ -164,13 +160,32 @@ impl ResolvedForward {
       PosteriorProfile::NotMassSizable => posterior,
       PosteriorProfile::MassSizable(profile) => trim_with_profile(posterior, &profile, eps)?,
     };
-    Ok(Self {
+    Ok(ForwardPosterior {
       message,
       posterior,
       spacing,
-      profile: PosteriorProfile::Unknown,
     })
   }
+
+  pub fn into_untrimmed(self) -> ForwardPosterior {
+    let Self {
+      message,
+      posterior,
+      spacing,
+      ..
+    } = self;
+    ForwardPosterior {
+      message,
+      posterior,
+      spacing,
+    }
+  }
+}
+
+pub struct ForwardPosterior {
+  pub message: Distribution<NegLog>,
+  pub posterior: Distribution<NegLog>,
+  pub spacing: MessageSpacing,
 }
 
 enum SpacingCheck {

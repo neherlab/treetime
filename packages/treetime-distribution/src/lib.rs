@@ -9,7 +9,8 @@ pub use distribution_core::point::DistributionPoint;
 pub use distribution_core::range::DistributionRange;
 pub use distribution_ops::divide::distribution_division;
 pub use distribution_ops::edge_convolution::{
-  ForwardConvolution, MessageSpacing, ResolvedForward, convolve_across_edge, convolve_forward_across_edge,
+  ForwardConvolution, ForwardPosterior, MessageSpacing, ResolvedForward, convolve_across_edge,
+  convolve_forward_across_edge,
 };
 pub use distribution_ops::mass_domain::rewindow_to_mass;
 pub use distribution_ops::mass_profile::{MassFractions, MassProfile, TailMass};

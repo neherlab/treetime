@@ -274,7 +274,9 @@ mod tests {
     )?;
     let posterior = gaussian_at(posterior_sigma, 0.001)?;
 
-    let resolved = forward.resolve_posterior(1e-9, |_| Ok(posterior.clone()))?;
+    let resolved = forward
+      .resolve_posterior(1e-9, |_| Ok(posterior.clone()))?
+      .into_untrimmed();
 
     let Distribution::Function(p) = &posterior else {
       panic!("expected a gridded Function posterior");
@@ -316,13 +318,12 @@ mod tests {
     )?;
     let posterior = gaussian_at(posterior_sigma, 0.001)?;
 
-    let resolved = forward.resolve_posterior(1e-6, |_| Ok(posterior.clone()))?;
-    let spacing = resolved.spacing;
-    let trimmed = resolved.trim_posterior_to_mass(1e-6)?;
+    let trimmed = forward
+      .resolve_posterior(1e-6, |_| Ok(posterior.clone()))?
+      .trim_posterior_to_mass(1e-6)?;
 
     let expected = trim_to_mass(posterior.clone(), 1e-6)?;
-    assert_eq!(expected_spacing, spacing);
-    assert_eq!(spacing, trimmed.spacing);
+    assert_eq!(expected_spacing, trimmed.spacing);
     assert!(expected != posterior, "the posterior must lose mass beyond its 1e-6 quantiles");
     assert_eq!(expected, trimmed.posterior);
     Ok(())

@@ -12,9 +12,9 @@ use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_distribution::ForwardPosterior;
 use treetime_distribution::MessageSpacing;
 use treetime_distribution::NegLog;
-use treetime_distribution::ResolvedForward;
 use treetime_distribution::convolve_forward_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
@@ -189,8 +189,9 @@ fn refine_distribution_from_parent(
 
   let Some(subtree_dist) = subtree else {
     let forward = convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)?;
-    let ResolvedForward { posterior, spacing, .. } =
-      forward.resolve_posterior(TRIM_EPS, |message| Ok(message.clone()))?;
+    let ForwardPosterior { posterior, spacing, .. } = forward
+      .resolve_posterior(TRIM_EPS, |message| Ok(message.clone()))?
+      .into_untrimmed();
     log_refinement(names, key, parent_time_dist, &posterior, spacing, &posterior);
     return Ok(ForwardRefinement::Refined(posterior));
   };
@@ -200,11 +201,10 @@ fn refine_distribution_from_parent(
     None => parent_time_dist.as_ref().clone(),
   };
   let forward = convolve_forward_across_edge(&parent_except_subtree, branch_dist, EPS, GRID_POINTS, max_points)?;
-  let ResolvedForward {
+  let ForwardPosterior {
     message: dist_from_parent,
     posterior: combined,
     spacing,
-    ..
   } = forward
     .resolve_posterior(TRIM_EPS, |message| {
       normalized_product(key, message, subtree_dist, max_points)
