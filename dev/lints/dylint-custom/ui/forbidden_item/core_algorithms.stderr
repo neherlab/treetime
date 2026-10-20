@@ -1,0 +1,75 @@
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:6:38
+   |
+LL | use graph::schedule::{GraphSchedule, TreeSchedule};
+   |                                      ^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+   = note: `#[warn(forbidden_item)]` on by default
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:8:33
+   |
+LL | pub fn root_of_signature(tree: &TreeSchedule<'_>) -> Option<usize> {
+   |                                 ^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::GraphSchedule::into_tree` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:13:60
+   |
+LL |     let tree: TreeSchedule<'_> = GraphSchedule::new(roots).into_tree()?;
+   |                                                            ^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:13:15
+   |
+LL |     let tree: TreeSchedule<'_> = GraphSchedule::new(roots).into_tree()?;
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::GraphSchedule::into_tree` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:20:14
+   |
+LL |         .map(GraphSchedule::into_tree)
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:30:15
+   |
+LL |     pub tree: TreeSchedule<'g>,
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:31:20
+   |
+LL |     pub trees: Vec<TreeSchedule<'g>>,
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:35:32
+   |
+LL |     pub fn root_of_tree(tree: &TreeSchedule<'_>) -> Option<usize> {
+   |                                ^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:44:17
+   |
+LL | impl Rooted for TreeSchedule<'_> {
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+
+warning: 9 warnings emitted
+

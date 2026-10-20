@@ -168,3 +168,20 @@ pub enum Granularity {
     /// The public associated functions of an `impl` block.
     Methods,
 }
+
+/// One `[[forbidden_item]]` entry of the `forbidden_item` lint: items that the
+/// listed crates must not use.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ForbiddenItemRule {
+    /// Absolute paths of the forbidden items, starting with the crate name, e.g.
+    /// `"treetime_graph::schedule::TreeSchedule"` for a type or
+    /// `"treetime_graph::schedule::GraphSchedule::into_tree"` for an associated
+    /// function. A path that does not resolve in the linted crate forbids nothing.
+    pub items: Vec<String>,
+    /// Crates that must not use the items, by their rustc names (`-` becomes `_`).
+    /// Test code of these crates may use them.
+    pub crates: Vec<String>,
+    /// Why the crates must not use the items; the diagnostic shows it as a note.
+    pub reason: String,
+}

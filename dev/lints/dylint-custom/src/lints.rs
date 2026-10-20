@@ -3,6 +3,7 @@ pub mod code_hygiene;
 pub mod debug_remnants;
 pub mod error_dropped_by_pattern;
 pub mod fallible_new;
+pub mod forbidden_item;
 pub mod file_length;
 pub mod handwritten_fmt;
 mod hir_refs;

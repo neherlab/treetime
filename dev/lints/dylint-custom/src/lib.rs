@@ -65,6 +65,7 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
         lints::no_comments::NO_COMMENTS,
         lints::pub_unused_in_workspace::PUB_UNUSED_IN_WORKSPACE,
         lints::json_value_in_schema::JSON_VALUE_IN_SCHEMA,
+        lints::forbidden_item::FORBIDDEN_ITEM,
     ]);
     lint_store.register_pre_expansion_pass(|| {
         Box::new(lints::bon_builder_collector::BonBuilderCollector)
@@ -111,4 +112,5 @@ pub fn register_lints(sess: &Session, lint_store: &mut LintStore) {
     });
     lint_store
         .register_late_pass(|_| Box::new(lints::json_value_in_schema::JsonValueInSchema::new()));
+    lint_store.register_late_pass(|_| Box::new(lints::forbidden_item::ForbiddenItem::new()));
 }

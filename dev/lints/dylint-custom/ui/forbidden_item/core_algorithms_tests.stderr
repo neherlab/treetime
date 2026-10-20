@@ -1,0 +1,11 @@
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms_tests.rs:8:33
+   |
+LL | pub fn root_of_signature(tree: &graph::schedule::TreeSchedule<'_>) -> Option<usize> {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+   = note: `#[warn(forbidden_item)]` on by default
+
+warning: 1 warning emitted
+
