@@ -5,6 +5,7 @@ use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::iter::{once, repeat_n};
 use std::ops::Add;
+use std::sync::OnceLock;
 use treetime_grid::{BoundaryBehavior, Side};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
@@ -25,7 +26,7 @@ pub struct MassProfile {
   hard_cells: Vec<HardCellPower>,
   prefix: Array1<f64>,
   suffix: Array1<f64>,
-  cells: CellSums,
+  cells: OnceLock<CellSums>,
   left_extrap: BoundaryBehavior,
   right_extrap: BoundaryBehavior,
   left: Option<TailLaw>,
@@ -57,8 +58,9 @@ impl MassProfile {
           .transpose()
       })
       .try_collect()?;
-    let cells = (0..n - 1).map(|j| full_cell_mass(&r, &hard_cells, dx, j)).collect_vec();
-    let masses = cells.iter().map(|cell| cell.linear()).collect_vec();
+    let masses = (0..n - 1)
+      .map(|j| full_cell_mass(&r, &hard_cells, dx, j).linear())
+      .collect_vec();
     let prefix = running_sums(masses.iter().copied());
     let mut suffix = running_sums(masses.iter().rev().copied());
     suffix.invert_axis(Axis(0));
@@ -72,7 +74,7 @@ impl MassProfile {
       hard_cells,
       prefix,
       suffix,
-      cells: CellSums::new(cells.into_iter()),
+      cells: OnceLock::new(),
       left_extrap,
       right_extrap,
       left,
@@ -226,7 +228,13 @@ impl MassProfile {
     }
     let head = self.cell(lo.j).mass_between(self.dx, lo.offset, Offset::end(self.dx));
     let tail = self.cell(hi.j).mass_between(self.dx, Offset::start(self.dx), hi.offset);
-    head + self.cells.sum(lo.j + 1, hi.j) + tail
+    head + self.cell_sums().sum(lo.j + 1, hi.j) + tail
+  }
+
+  fn cell_sums(&self) -> &CellSums {
+    self.cells.get_or_init(|| {
+      CellSums::new((0..self.r.len() - 1).map(|j| full_cell_mass(&self.r, &self.hard_cells, self.dx, j)))
+    })
   }
 
   fn grid_position_below(&self, m: f64) -> f64 {
