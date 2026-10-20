@@ -4,9 +4,10 @@ mod tests {
   use crate::*;
   use approx::assert_ulps_eq;
   use eyre::Report;
-  use ndarray::{Array1, array};
+  use ndarray::{Array1, array, s};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::ops::RangeInclusive;
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
 
@@ -238,6 +239,47 @@ mod tests {
         .unwrap();
       assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp(t)?, max_ulps = 0);
     }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right_end_reads_five_points(  array![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, f64::INFINITY], 5, Some(1..=5))]
+  #[case::right_end_stops_at_infinity(  array![0.0, f64::INFINITY, 0.0, 0.0, f64::INFINITY], 3, Some(2..=3))]
+  #[case::right_end_stops_at_grid_start(array![0.0, 0.0, f64::INFINITY],                     1, Some(0..=1))]
+  #[case::left_end_reads_five_points(   array![f64::INFINITY, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 0, Some(1..=5))]
+  #[case::left_end_stops_at_grid_end(   array![1.0, f64::INFINITY, 2.0, 3.0],                1, Some(2..=3))]
+  #[case::finite_cell(                  array![0.0, 1.0],                                    0, None)]
+  #[case::zero_cell(                    array![f64::INFINITY, f64::INFINITY],                0, None)]
+  #[trace]
+  fn test_gridfn_hard_cell_fit_range_is_the_points_the_fitted_law_reads(
+    #[case] y: Array1<f64>,
+    #[case] cell: usize,
+    #[case] expected: Option<RangeInclusive<usize>>,
+  ) -> Result<(), Report> {
+    let n = y.len().to_f64_exact();
+    let grid_fn = GridFn::from_range_values((0.0, n - 1.0), y)?;
+    assert_eq!(expected, grid_fn.hard_cell_fit_range(cell)?);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_hard_cell_law_depends_only_on_its_fit_range() -> Result<(), Report> {
+    let y = array![7.0, 30.0, 30.0, 0.0, 300.0, 0.0, f64::INFINITY];
+    let grid_fn = GridFn::from_range_values((0.0, 6.0), y.clone())?;
+    let range = grid_fn.hard_cell_fit_range(5)?.unwrap();
+    let sliced = GridFn::from_range_values((1.0, 6.0), y.slice(s![*range.start()..]).to_owned())?;
+    let full = grid_fn.hard_cell(5, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    let kept = sliced.hard_cell(4, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    assert_eq!(1..=5, range);
+    assert_eq!(full, kept);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gridfn_hard_cell_fit_range_outside_the_grid_is_error() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, f64::INFINITY])?;
+    assert_error!(grid_fn.hard_cell_fit_range(1), "Cell 1 is outside the grid of 2 points");
     Ok(())
   }
 

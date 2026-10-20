@@ -4,12 +4,14 @@ mod tests {
   use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction, trim_to_mass};
   use eyre::Report;
+  use itertools::Itertools;
   use ndarray::{Array1, array, s};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Normal};
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
-  use treetime_utils::pretty_assert_abs_diff_eq;
+  use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_array_eq};
 
   const TRIM_EPS: f64 = 5e-4;
 
@@ -141,6 +143,40 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::fit_points_below_the_cut(   array![30.0, 30.0, 30.0, 0.0, 300.0, 0.0, f64::INFINITY], 1e-9, BoundaryBehavior::Hard)]
+  #[case::stored_law_at_the_grid_edge(array![f64::INFINITY, 1.0, 0.0, 0.0, 0.0],             5e-4, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 2.0 }))]
+  #[trace]
+  fn test_mass_trim_keeps_the_law_and_mass_of_every_retained_hard_cell(
+    #[case] y: Array1<f64>,
+    #[case] eps: f64,
+    #[case] left: BoundaryBehavior,
+  ) -> Result<(), Report> {
+    let x_max = (y.len() - 1).to_f64_exact();
+    let input = DistributionFunction::from_range_values((0.0, x_max), y)?
+      .with_left_extrap(left)?
+      .with_right_extrap(BoundaryBehavior::Hard)?;
+
+    let trimmed = helpers::trim_at(input.clone(), eps)?;
+
+    let t = trimmed.t();
+    let cells = || t.iter().copied().tuple_windows::<(f64, f64)>();
+    let kept = cells()
+      .map(|(a, b)| helpers::neg_log_mass_between(&trimmed, a, b))
+      .collect::<Result<Array1<f64>, Report>>()?;
+    let original = cells()
+      .map(|(a, b)| helpers::neg_log_mass_between(&input, a, b))
+      .collect::<Result<Array1<f64>, Report>>()?;
+    pretty_assert_array_eq!(original, kept);
+    let total = helpers::total_mass(&input)?;
+    assert!(
+      (helpers::total_mass(&trimmed)? - total).abs() <= 2.0 * eps * total,
+      "the trim changes the total mass by at most the trimmed mass"
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::empty(                Distribution::empty())]
   #[case::point(                Distribution::point(2.0, 0.0))]
   #[case::range(                Distribution::range((1.0, 3.0), 0.0))]
@@ -157,10 +193,22 @@ mod tests {
     use super::*;
 
     pub(super) fn trim(input: DistributionFunction<f64, NegLog>) -> Result<DistributionFunction<f64, NegLog>, Report> {
-      match trim_to_mass(Distribution::Function(input), TRIM_EPS)? {
+      trim_at(input, TRIM_EPS)
+    }
+
+    pub(super) fn trim_at(
+      input: DistributionFunction<f64, NegLog>,
+      eps: f64,
+    ) -> Result<DistributionFunction<f64, NegLog>, Report> {
+      match trim_to_mass(Distribution::Function(input), eps)? {
         Distribution::Function(trimmed) => Ok(trimmed),
         other => Err(eyre::eyre!("trimming a function must give a function, got {other:?}")),
       }
+    }
+
+    pub(super) fn neg_log_mass_between(f: &DistributionFunction<f64, NegLog>, a: f64, b: f64) -> Result<f64, Report> {
+      let profile = MassProfile::new(f)?;
+      Ok(f.amplitude() + profile.y_peak() + profile.neg_log_mass_between(a, b)?)
     }
 
     pub(super) fn total_mass(f: &DistributionFunction<f64, NegLog>) -> Result<f64, Report> {

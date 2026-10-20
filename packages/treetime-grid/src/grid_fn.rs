@@ -11,6 +11,7 @@ use eyre::Report;
 use ndarray::Array1;
 use num::Float;
 use std::fmt::Debug;
+use std::ops::RangeInclusive;
 use treetime_utils::make_error;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,24 +163,82 @@ impl<T: InterpElem> GridFn<T> {
     T: Float,
   {
     let n = self.grid.n_points();
-    if cell + 1 >= n {
-      return make_error!("Cell {cell} is outside the grid of {n} points");
-    }
-    let (boundary, anchor, side, stored) = match (self.y[cell].is_infinite(), self.y[cell + 1].is_infinite()) {
-      (true, false) => (cell, cell + 1, Side::Left, (cell == 0).then_some(left)),
-      (false, true) => (cell + 1, cell, Side::Right, (cell + 1 == n - 1).then_some(right)),
-      (true, true) | (false, false) => return Ok(None),
+    let Some(HardCellEnds { boundary, anchor, side }) = self.hard_cell_ends(cell)? else {
+      return Ok(None);
+    };
+    let stored = match side {
+      Side::Left => (cell == 0).then_some(left),
+      Side::Right => (cell + 1 == n - 1).then_some(right),
     };
     let t_boundary: f64 = self.grid.x_at(boundary).into();
     let law = match stored {
-      Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => law,
-      _ => self.fit_hard_cell_law(t_boundary, side, anchor)?,
-    };
+      Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => Ok(law),
+      _ => self.fit_hard_cell_law(t_boundary, side, anchor),
+    }?;
     let anchor = GridEdge {
       t: self.grid.x_at(anchor).into(),
       y: self.y[anchor].into(),
     };
     Ok(Some(HardCell { law, anchor }))
+  }
+
+  pub fn hard_cell_fit_range(&self, cell: usize) -> Result<Option<RangeInclusive<usize>>, Report>
+  where
+    T: Float,
+  {
+    Ok(
+      self
+        .hard_cell_ends(cell)?
+        .map(|HardCellEnds { anchor, side, .. }| self.fit_range(anchor, side)),
+    )
+  }
+
+  fn hard_cell_ends(&self, cell: usize) -> Result<Option<HardCellEnds>, Report>
+  where
+    T: Float,
+  {
+    let n = self.grid.n_points();
+    if cell + 1 >= n {
+      return make_error!("Cell {cell} is outside the grid of {n} points");
+    }
+    Ok(match (self.y[cell].is_infinite(), self.y[cell + 1].is_infinite()) {
+      (true, false) => Some(HardCellEnds {
+        boundary: cell,
+        anchor: cell + 1,
+        side: Side::Left,
+      }),
+      (false, true) => Some(HardCellEnds {
+        boundary: cell + 1,
+        anchor: cell,
+        side: Side::Right,
+      }),
+      (true, true) | (false, false) => None,
+    })
+  }
+
+  fn fit_range(&self, anchor: usize, side: Side) -> RangeInclusive<usize>
+  where
+    T: Float,
+  {
+    let reach = DEFAULT_TAIL_FIT_POINTS - 1;
+    let finite = |i: &usize| self.y[*i].is_finite();
+    match side {
+      Side::Right => {
+        let start = (anchor.saturating_sub(reach)..=anchor)
+          .rev()
+          .take_while(finite)
+          .last()
+          .unwrap_or(anchor);
+        start..=anchor
+      },
+      Side::Left => {
+        let end = (anchor..=(anchor + reach).min(self.grid.n_points() - 1))
+          .take_while(finite)
+          .last()
+          .unwrap_or(anchor);
+        anchor..=end
+      },
+    }
   }
 
   fn edge(&self, side: Side) -> GridEdge
@@ -257,14 +316,14 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    let n = self.grid.n_points();
-    let points: Vec<(f64, f64)> = (0..DEFAULT_TAIL_FIT_POINTS)
-      .map_while(|k| match side {
-        Side::Right => anchor.checked_sub(k),
-        Side::Left => Some(anchor + k).filter(|&i| i < n),
-      })
+    let range = self.fit_range(anchor, side);
+    let indices: Vec<usize> = match side {
+      Side::Right => range.rev().collect(),
+      Side::Left => range.collect(),
+    };
+    let points: Vec<(f64, f64)> = indices
+      .into_iter()
       .map(|i| (self.grid.x_at(i).into(), self.y[i].into()))
-      .take_while(|(_, y): &(f64, f64)| y.is_finite())
       .collect();
     if points.len() < 2 {
       return Ok(HardApproachLaw::flat(t_boundary));
@@ -354,4 +413,10 @@ impl<T: InterpElem> GridFn<T> {
       .collect::<Result<Vec<T>, Report>>()?;
     Self::from_grid_array(grid, Array1::from_vec(y_new))
   }
+}
+
+struct HardCellEnds {
+  boundary: usize,
+  anchor: usize,
+  side: Side,
 }
