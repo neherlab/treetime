@@ -12,8 +12,8 @@ mod tests {
   use crate::partition::marginal::sample::SampleMode;
   use crate::seq::mutation::stream_sequence_mutations;
   use crate::seq::sink::SeqTrack;
-  use crate::test_utils::RecordingSeqSink;
   use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::{RecordingSeqSink, marginal_update_reconstruction};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -213,7 +213,7 @@ mod tests {
         &branch_lengths,
         &NoopProgress,
       )?;
-      let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths)?;
+      let (reconstruction, _) = marginal_update_reconstruction(reconstruction, &graph, &branch_lengths)?;
       Ok((graph, names, reconstruction))
     }
 

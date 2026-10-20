@@ -63,23 +63,6 @@ impl MarginalReconstruction {
     self.view().graph_log_lh(graph)
   }
 
-  pub(crate) fn marginal_update(
-    self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<(Self, LogLh), Report> {
-    Ok(match self {
-      Self::Dense(reconstruction) => {
-        let (reconstruction, log_lh) = reconstruction.marginal_update(graph, branch_lengths)?;
-        (Self::Dense(reconstruction), log_lh)
-      },
-      Self::Sparse(reconstruction) => {
-        let (reconstruction, log_lh) = reconstruction.marginal_update(graph, branch_lengths)?;
-        (Self::Sparse(reconstruction), log_lh)
-      },
-    })
-  }
-
   pub(crate) fn sample_sequences(
     &self,
     graph: &Graph,

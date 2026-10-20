@@ -23,11 +23,12 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::fasta_read;
 use treetime_io::nwk::{NwkParse, nwk_read};
-use treetime_primitives::{AlignmentRecord, Seq, seq};
+use treetime_primitives::{AlignmentRecord, LogLh, Seq, seq};
 
 pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -64,6 +65,23 @@ pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: 
   let MarginalUpdate { log_lh, .. } =
     partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &node_states)?;
   Ok(log_lh.value())
+}
+
+pub(crate) fn marginal_update_reconstruction(
+  reconstruction: MarginalReconstruction,
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> Result<(MarginalReconstruction, LogLh), Report> {
+  Ok(match reconstruction {
+    MarginalReconstruction::Dense(reconstruction) => {
+      let (reconstruction, log_lh) = reconstruction.marginal_update(graph, branch_lengths)?;
+      (MarginalReconstruction::Dense(reconstruction), log_lh)
+    },
+    MarginalReconstruction::Sparse(reconstruction) => {
+      let (reconstruction, log_lh) = reconstruction.marginal_update(graph, branch_lengths)?;
+      (MarginalReconstruction::Sparse(reconstruction), log_lh)
+    },
+  })
 }
 
 #[derive(Default)]

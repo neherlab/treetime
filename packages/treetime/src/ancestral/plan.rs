@@ -232,10 +232,7 @@ fn reconstruct_marginal(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
-  let reconstruction = match gtr_refinement {
-    None => reconstruction.marginal_update(graph, branch_lengths)?.0,
-    Some(refinement) => refine_reconstruction(reconstruction, refinement, graph, branch_lengths, log)?,
-  };
+  let reconstruction = fit_reconstruction(reconstruction, gtr_refinement, graph, branch_lengths, log)?;
   checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
   let sampled = reconstruction.sample_sequences(graph, options.sample_mode, rng)?;
   Ok(AncestralPartition::Marginal {
@@ -256,9 +253,9 @@ impl ReconstructionOptions {
   }
 }
 
-fn refine_reconstruction(
+fn fit_reconstruction(
   reconstruction: MarginalReconstruction,
-  refinement: &GtrRefinement,
+  refinement: Option<&GtrRefinement>,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
@@ -271,7 +268,7 @@ fn refine_reconstruction(
       ..
     }) => {
       let (gtr, MarginalUpdate { node_states, edges, .. }) =
-        refined_update(&partition, gtr, &node_states, refinement, graph, branch_lengths, log)?;
+        fit_marginal(&partition, gtr, &node_states, refinement, graph, branch_lengths, log)?;
       MarginalReconstruction::Sparse(SparseReconstruction {
         partition,
         gtr,
@@ -281,7 +278,7 @@ fn refine_reconstruction(
     },
     MarginalReconstruction::Dense(DenseReconstruction { partition, gtr, .. }) => {
       let (gtr, MarginalUpdate { node_states, edges, .. }) =
-        refined_update(&partition, gtr, &(), refinement, graph, branch_lengths, log)?;
+        fit_marginal(&partition, gtr, &(), refinement, graph, branch_lengths, log)?;
       MarginalReconstruction::Dense(DenseReconstruction {
         partition,
         gtr,
@@ -292,11 +289,11 @@ fn refine_reconstruction(
   })
 }
 
-fn refined_update<P: MarginalPasses>(
+pub(crate) fn fit_marginal<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   input: &P::BackwardInput,
-  refinement: &GtrRefinement,
+  refinement: Option<&GtrRefinement>,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
@@ -305,7 +302,10 @@ where
   P::Node: Clone,
 {
   let update = partition.marginal_update(&gtr, graph, branch_lengths, input)?;
-  refine_gtr(partition, gtr, update, refinement, graph, branch_lengths, log)
+  match refinement {
+    None => Ok((gtr, update)),
+    Some(refinement) => refine_gtr(partition, gtr, update, refinement, graph, branch_lengths, log),
+  }
 }
 
 fn checkpoint(cancel: &dyn Cancel, stages: &dyn StageSink, stage: &str, fraction: f64) -> Result<(), Report> {

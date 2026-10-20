@@ -6,6 +6,7 @@ mod tests {
   use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::progress::NoopProgress;
+  use crate::test_utils::marginal_update_reconstruction;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -48,7 +49,7 @@ mod tests {
       format!("{:#?}", expected_gtr(&input)?),
       format!("{:#?}", reconstruction.gtr())
     );
-    let (updated, _) = reconstruction.marginal_update(&input.graph, &input.branch_lengths)?;
+    let (updated, _) = marginal_update_reconstruction(reconstruction, &input.graph, &input.branch_lengths)?;
     assert_eq!("ACGT", updated.view().root_sequence(&input.graph)?.to_string());
     Ok(())
   }

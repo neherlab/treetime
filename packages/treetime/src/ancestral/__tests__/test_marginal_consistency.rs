@@ -13,7 +13,8 @@ mod tests {
   use crate::test_utils::get_common_length;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{
-    dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, sparse_reconstruction,
+    dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, internal_node_keys,
+    marginal_update_reconstruction, sparse_reconstruction,
   };
   use eyre::Report;
   use indoc::indoc;
@@ -90,7 +91,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
-    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    let (recon, log_lh) = marginal_update_reconstruction(recon, graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -106,7 +107,7 @@ mod tests {
     let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
     let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
-    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    let (recon, log_lh) = marginal_update_reconstruction(recon, graph, &branch_lengths_or_zero(branch_lengths))?;
     let log_lh = log_lh.value();
     Ok((log_lh, recon))
   }
@@ -320,7 +321,7 @@ mod tests {
     let x_key = find_node_key_by_name(&graph, &names, "X").expect("node X must exist");
 
     let (_, dense) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
-    let (dense, _) = dense.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (dense, _) = marginal_update_reconstruction(dense, &graph, &branch_lengths_or_zero(&branch_lengths))?;
     let (_, sparse) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
 
     let expected = "ACNNGT";

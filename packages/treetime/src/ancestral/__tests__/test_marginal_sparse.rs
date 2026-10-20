@@ -14,7 +14,8 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{
-    emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, sparse_reconstruction,
+    emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, marginal_update_reconstruction,
+    sparse_reconstruction,
   };
   use eyre::Report;
   use indoc::indoc;
@@ -168,7 +169,7 @@ mod tests {
       node_states,
     ));
 
-    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (recon, log_lh) = marginal_update_reconstruction(recon, &graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh = log_lh.value();
 
     let actual = emitted_sequences_by_name(
@@ -467,7 +468,7 @@ mod tests {
       make_nonuniform_gtr()?,
       node_states,
     ));
-    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (recon, _) = marginal_update_reconstruction(recon, &graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let actual_by_edge = {
       graph

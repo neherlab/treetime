@@ -1,12 +1,34 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::refinement::{RateRangeEdge, RefinementRate, optimize_gtr_rate, refine_gtr};
+  use crate::ancestral::plan::fit_marginal;
+  use crate::gtr::refinement::{RateRangeEdge, RefinementRate, optimize_gtr_rate};
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::progress::NoopProgress;
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_eq, pretty_assert_ulps_eq};
+
+  #[test]
+  fn test_refinement_fit_without_refinement_keeps_the_start_model() -> Result<(), Report> {
+    let input = helpers::Input::new()?;
+    let (partition, node_states) = input.sparse()?;
+    let start = partition.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
+
+    let (gtr, fitted) = fit_marginal(
+      &partition,
+      input.start_gtr.clone(),
+      &node_states,
+      None,
+      &input.graph,
+      &input.branch_lengths,
+      &NoopProgress,
+    )?;
+
+    pretty_assert_eq!(format!("{:?}", input.start_gtr), format!("{gtr:?}"));
+    pretty_assert_eq!(start.log_lh.value(), fitted.log_lh.value());
+    Ok(())
+  }
 
   #[rustfmt::skip]
   #[rstest]
@@ -17,13 +39,12 @@ mod tests {
   fn test_refinement_returns_the_update_under_the_refined_model(#[case] rate: RefinementRate) -> Result<(), Report> {
     let input = helpers::Input::new()?;
     let (partition, node_states) = input.sparse()?;
-    let start = partition.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
 
-    let (gtr, refined) = refine_gtr(
+    let (gtr, refined) = fit_marginal(
       &partition,
       input.start_gtr.clone(),
-      start,
-      &helpers::refinement(2, rate),
+      &node_states,
+      Some(&helpers::refinement(2, rate)),
       &input.graph,
       &input.branch_lengths,
       &NoopProgress,
@@ -38,21 +59,20 @@ mod tests {
   fn test_refinement_scale_multiplies_the_optimized_rate_only() -> Result<(), Report> {
     let input = helpers::Input::new()?;
     let (partition, node_states) = input.sparse()?;
-    let start = partition.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
-    let refine = |rate| {
-      refine_gtr(
+    let fit = |rate| {
+      fit_marginal(
         &partition,
         input.start_gtr.clone(),
-        start.clone(),
-        &helpers::refinement(1, rate),
+        &node_states,
+        Some(&helpers::refinement(1, rate)),
         &input.graph,
         &input.branch_lengths,
         &NoopProgress,
       )
     };
 
-    let (unscaled, _) = refine(RefinementRate::Optimize { scale: None })?;
-    let (scaled, _) = refine(RefinementRate::Optimize { scale: Some(0.5) })?;
+    let (unscaled, _) = fit(RefinementRate::Optimize { scale: None })?;
+    let (scaled, _) = fit(RefinementRate::Optimize { scale: Some(0.5) })?;
 
     pretty_assert_ulps_eq!(0.5 * unscaled.mu(), scaled.mu(), max_ulps = 4);
     pretty_assert_eq!(unscaled.pi(), scaled.pi());
@@ -64,13 +84,12 @@ mod tests {
   fn test_refinement_sparse_rate_search_ends_at_log_lh_maximum_in_mu() -> Result<(), Report> {
     let input = helpers::Input::new()?;
     let (partition, node_states) = input.sparse()?;
-    let start = partition.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
 
-    let (gtr, refined) = refine_gtr(
+    let (gtr, refined) = fit_marginal(
       &partition,
       input.start_gtr.clone(),
-      start,
-      &helpers::refinement(0, RefinementRate::Optimize { scale: None }),
+      &node_states,
+      Some(&helpers::refinement(0, RefinementRate::Optimize { scale: None })),
       &input.graph,
       &input.branch_lengths,
       &NoopProgress,
@@ -98,25 +117,22 @@ mod tests {
     let input = helpers::Input::new()?;
     let (sparse, node_states) = input.sparse()?;
     let dense = input.dense()?;
-    let sparse_start = sparse.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
-    let dense_start = dense.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &())?;
-
     let refinement = helpers::refinement(2, RefinementRate::Optimize { scale: None });
 
-    let (sparse_gtr, sparse_refined) = refine_gtr(
+    let (sparse_gtr, sparse_refined) = fit_marginal(
       &sparse,
       input.start_gtr.clone(),
-      sparse_start,
-      &refinement,
+      &node_states,
+      Some(&refinement),
       &input.graph,
       &input.branch_lengths,
       &NoopProgress,
     )?;
-    let (dense_gtr, dense_refined) = refine_gtr(
+    let (dense_gtr, dense_refined) = fit_marginal(
       &dense,
       input.start_gtr.clone(),
-      dense_start,
-      &refinement,
+      &(),
+      Some(&refinement),
       &input.graph,
       &input.branch_lengths,
       &NoopProgress,

@@ -8,7 +8,7 @@ mod tests {
   use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
   use crate::partition::marginal::sample::SampleMode;
   use crate::test_utils::leaf_seq_inputs;
-  use crate::test_utils::{emitted_sequences_by_name, node_keys};
+  use crate::test_utils::{emitted_sequences_by_name, marginal_update_reconstruction, node_keys};
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -131,7 +131,7 @@ mod tests {
       jc69(JC69Params::default())?,
       node_states,
     ));
-    let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    let (recon, _) = marginal_update_reconstruction(recon, graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
       &node_keys(graph),
@@ -149,7 +149,7 @@ mod tests {
     let partition =
       PartitionMarginalDense::new(Alphabet::default(), graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
     let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, jc69(JC69Params::default())?));
-    let (recon, _) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+    let (recon, _) = marginal_update_reconstruction(recon, graph, &branch_lengths_or_zero(branch_lengths))?;
     named_strings(
       names,
       &node_keys(graph),
