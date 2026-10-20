@@ -33,7 +33,7 @@ mod tests {
   const GRID_STEP: f64 = 0.005;
   const GRID_LEN: usize = 2401;
 
-  // TODO: kb/issues/M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md
+  // TODO: kb/issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md
   // The CDFs of the time passes differ from the exact posterior by up to 1.4e-2 (node R, zero counts near the tips).
   #[rustfmt::skip]
   #[rstest]
