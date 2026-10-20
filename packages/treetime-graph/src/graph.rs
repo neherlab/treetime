@@ -218,13 +218,6 @@ impl Graph {
     self.leaves.contains(&node_key)
   }
 
-  pub(crate) fn degree_in(&self, key: GraphNodeKey) -> Result<usize, Report> {
-    self
-      .get_node(key)
-      .map(Node::degree_in)
-      .ok_or_else(|| make_internal_report!("Node not found: {key}"))
-  }
-
   pub fn has_at_most_one_child(&self, node_key: GraphNodeKey) -> bool {
     self.get_node(node_key).is_some_and(Node::has_at_most_one_child)
   }

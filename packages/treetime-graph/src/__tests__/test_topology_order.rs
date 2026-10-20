@@ -122,7 +122,31 @@ mod tests {
     let branch_lengths = edge_branch_lengths(&graph);
     let result = TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths);
 
-    assert_error!(result, "When ordering topology: graph contains a directed cycle");
+    assert_error!(
+      result,
+      "When ordering topology: The graph has no root: every node has a parent"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn topology_order_rejects_a_cycle_below_the_root() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let a = graph.add_node();
+    let b = graph.add_node();
+
+    graph.add_edge(root, a)?;
+    graph.add_edge(a, b)?;
+    graph.add_edge(b, a)?;
+    graph.build()?;
+
+    let names = make_names(vec![(root, "root"), (a, "A"), (b, "B")]);
+    let branch_lengths = edge_branch_lengths(&graph);
+    let result = TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths);
+
+    assert_error!(result, "When ordering topology: The graph has a cycle through node 1");
 
     Ok(())
   }

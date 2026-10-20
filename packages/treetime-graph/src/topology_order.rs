@@ -2,11 +2,12 @@ use crate::assign_node_names::node_name_or_key;
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
-use eyre::Report;
+use crate::schedule::GraphSchedule;
+use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 use treetime_utils::{make_error, make_report};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,31 +37,8 @@ impl TopologyOrderSpec {
     let order = if self.preset == TopologyOrderPreset::Keep {
       build_order_unmodified(graph)
     } else {
-      let postorder = postorder_keys(graph)?;
-      let reverse = self.preset.is_reverse();
-      match self.preset {
-        TopologyOrderPreset::Keep => unreachable!(),
-        TopologyOrderPreset::DescendantCount | TopologyOrderPreset::DescendantCountReverse => {
-          let keys = compute_descendant_counts(graph, &postorder);
-          build_order(graph, &keys, reverse)
-        },
-        TopologyOrderPreset::Height | TopologyOrderPreset::HeightReverse => {
-          let keys = compute_heights(graph, &postorder);
-          build_order(graph, &keys, reverse)
-        },
-        TopologyOrderPreset::Divergence | TopologyOrderPreset::DivergenceReverse => {
-          let keys = compute_divergences(graph, &postorder, branch_lengths);
-          build_order(graph, &keys, reverse)
-        },
-        TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
-          let keys = compute_labels(graph, &postorder, names)?;
-          build_order(graph, &keys, reverse)
-        },
-        TopologyOrderPreset::TargetOrder | TopologyOrderPreset::TargetOrderReverse => {
-          let keys = compute_target_scores(graph, &postorder, names, &self.target_order, self.target_aggregate)?;
-          build_order(graph, &keys, reverse)
-        },
-      }
+      let schedule = GraphSchedule::new(graph).wrap_err("When ordering topology")?;
+      self.sorted_order(graph, schedule.postorder(), names, branch_lengths)
     }?;
 
     for &node_key in order.outbound_edges.keys() {
@@ -75,6 +53,39 @@ impl TopologyOrderSpec {
     graph.roots = order.roots;
     graph.leaves = order.leaves;
     Ok(())
+  }
+
+  pub(crate) fn sorted_order(
+    &self,
+    graph: &Graph,
+    postorder: &[GraphNodeKey],
+    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  ) -> Result<TopologyOrder, Report> {
+    let reverse = self.preset.is_reverse();
+    match self.preset {
+      TopologyOrderPreset::Keep => build_order_unmodified(graph),
+      TopologyOrderPreset::DescendantCount | TopologyOrderPreset::DescendantCountReverse => {
+        let keys = compute_descendant_counts(graph, postorder);
+        build_order(graph, &keys, reverse)
+      },
+      TopologyOrderPreset::Height | TopologyOrderPreset::HeightReverse => {
+        let keys = compute_heights(graph, postorder);
+        build_order(graph, &keys, reverse)
+      },
+      TopologyOrderPreset::Divergence | TopologyOrderPreset::DivergenceReverse => {
+        let keys = compute_divergences(graph, postorder, branch_lengths);
+        build_order(graph, &keys, reverse)
+      },
+      TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
+        let keys = compute_labels(graph, postorder, names)?;
+        build_order(graph, &keys, reverse)
+      },
+      TopologyOrderPreset::TargetOrder | TopologyOrderPreset::TargetOrderReverse => {
+        let keys = compute_target_scores(graph, postorder, names, &self.target_order, self.target_aggregate)?;
+        build_order(graph, &keys, reverse)
+      },
+    }
   }
 }
 
@@ -170,7 +181,7 @@ fn build_order<K: Ord>(
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct TopologyOrder {
+pub(crate) struct TopologyOrder {
   roots: Vec<GraphNodeKey>,
   leaves: Vec<GraphNodeKey>,
   outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
@@ -386,42 +397,4 @@ fn target_position(target_order: &BTreeMap<GraphNodeKey, usize>, key: GraphNodeK
     .get(&key)
     .copied()
     .ok_or_else(|| make_report!("When ordering topology by target order: leaf {key} is absent from target order"))
-}
-
-fn postorder_keys(graph: &Graph) -> Result<Vec<GraphNodeKey>, Report> {
-  let node_keys = graph.node_keys().collect_vec();
-
-  let mut remaining_inbound = node_keys
-    .iter()
-    .map(|node_key| Ok((*node_key, graph.degree_in(*node_key)?)))
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
-
-  let mut queue = remaining_inbound
-    .iter()
-    .filter_map(|(node_key, count)| (*count == 0).then_some(*node_key))
-    .collect::<VecDeque<_>>();
-
-  let mut ordered = Vec::with_capacity(node_keys.len());
-  while let Some(node_key) = queue.pop_front() {
-    ordered.push(node_key);
-    let node = graph
-      .get_node(node_key)
-      .ok_or_else(|| make_report!("When computing topology order: Node {node_key} not found"))?;
-    for (child_key, _) in graph.children_keys_of(node) {
-      let count = remaining_inbound
-        .get_mut(&child_key)
-        .ok_or_else(|| make_report!("When computing topology order: Node {child_key} not found"))?;
-      *count -= 1;
-      if *count == 0 {
-        queue.push_back(child_key);
-      }
-    }
-  }
-
-  if ordered.len() != node_keys.len() {
-    return make_error!("When ordering topology: graph contains a directed cycle");
-  }
-
-  ordered.reverse();
-  Ok(ordered)
 }

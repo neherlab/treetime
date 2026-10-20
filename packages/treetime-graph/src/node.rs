@@ -38,11 +38,6 @@ impl Node {
   }
 
   #[inline]
-  pub(crate) fn degree_in(&self) -> usize {
-    self.inbound().len()
-  }
-
-  #[inline]
   pub fn is_leaf(&self) -> bool {
     self.outbound().is_empty()
   }

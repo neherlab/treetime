@@ -10,6 +10,7 @@ mod test_prop_pair_by_name;
 mod test_prop_reachability;
 mod test_prop_schedule;
 mod test_prop_schedule_scan;
+mod test_prop_topology_order;
 mod test_reachability;
 mod test_reroot;
 mod test_schedule;
