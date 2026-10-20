@@ -5,7 +5,10 @@ mod tests {
   use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::mass_domain::peak_normalized_if_mass_sizable;
   use crate::policy::NegLog;
-  use crate::{Distribution, convolve_across_edge, distribution_multiplication};
+  use crate::{
+    Distribution, MassProfile, TailMass, convolve_across_edge, convolve_forward_across_edge,
+    distribution_multiplication,
+  };
   use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
@@ -250,6 +253,54 @@ mod tests {
       .expect("a convolution point below the window edge");
     let variance = 0.1 * 0.1 + 1.0 * 1.0;
     pretty_assert_abs_diff_eq!((t[edge] - 2.0 * fine.dx()) / variance, law.slope, epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::posterior_as_wide_as_the_message(2.0,  false)]
+  #[case::posterior_narrower_than_the_cap( 0.05, true )]
+  #[trace]
+  fn test_edge_convolution_forward_message_resamples_to_resolve_a_narrow_posterior(
+    #[case] posterior_sigma: f64,
+    #[case] refined: bool,
+  ) -> Result<(), Report> {
+    let forward = convolve_forward_across_edge(
+      &gaussian_at(1.0, 0.001)?,
+      &gaussian_at(1.0, 0.02)?,
+      5e-4,
+      300,
+      MaxGridPoints::default(),
+    )?;
+    let capped = forward.capped()?;
+    let posterior = gaussian_at(posterior_sigma, 0.001)?;
+
+    let resolving = forward.resampled_to_resolve(&posterior, 1e-9)?;
+
+    let Distribution::Function(capped) = &capped else {
+      panic!("expected a gridded Function message");
+    };
+    pretty_assert_abs_diff_eq!(0.02, capped.dx(), epsilon = 1e-4);
+    let Distribution::Function(p) = &posterior else {
+      panic!("expected a gridded Function posterior");
+    };
+    let profile = MassProfile::new(p)?;
+    let fractions = profile.fractions(TailMass::Required).expect("finite mass");
+    let resolving_dx = (fractions.survival_inverse(1e-9) - fractions.quantile(1e-9)) / 299.0;
+    match resolving {
+      None => {
+        assert!(!refined, "a posterior {posterior_sigma} wide must take a finer message");
+        assert!(resolving_dx >= capped.dx());
+      },
+      Some(Distribution::Function(f)) => {
+        assert!(refined, "a posterior {posterior_sigma} wide keeps the capped message");
+        let width = f.x_max() - f.x_min();
+        pretty_assert_abs_diff_eq!(capped.x_min(), f.x_min(), epsilon = 1e-12);
+        pretty_assert_abs_diff_eq!(capped.x_max(), f.x_max(), epsilon = 1e-12);
+        assert_eq!(f64_to_usize_saturating((width / resolving_dx).ceil()) + 1, f.len());
+      },
+      Some(other) => panic!("expected a gridded Function message, got {other:?}"),
+    }
     Ok(())
   }
 

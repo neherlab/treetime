@@ -12,8 +12,9 @@ use log::{Level, debug, log_enabled};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
+use treetime_distribution::ForwardConvolution;
 use treetime_distribution::NegLog;
-use treetime_distribution::convolve_across_edge;
+use treetime_distribution::convolve_forward_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
 use treetime_distribution::trim_to_mass;
@@ -21,7 +22,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::tree_view::TreeView;
-use treetime_grid::{MaxGridPoints, Side};
+use treetime_grid::MaxGridPoints;
 
 pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   graph: &Graph,
@@ -187,8 +188,15 @@ fn refine_distribution_from_parent(
   };
 
   let Some(subtree_dist) = subtree else {
-    let dist_from_parent =
-      convolve_across_edge(parent_time_dist, branch_dist, Side::Right, EPS, GRID_POINTS, max_points)?;
+    let forward = convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)?;
+    let capped = forward.capped()?;
+    let dist_from_parent = match forward.resampled_to_resolve(&capped, TRIM_EPS)? {
+      Some(resolving) => {
+        log_resolving_spacing(names, key, &resolving);
+        resolving
+      },
+      None => capped,
+    };
     log_refinement(names, key, parent_time_dist, &dist_from_parent, &dist_from_parent);
     return Ok(ForwardRefinement::Refined(dist_from_parent));
   };
@@ -197,18 +205,11 @@ fn refine_distribution_from_parent(
     Some(msg_to_parent) => distribution_division(parent_time_dist, msg_to_parent, max_points)?,
     None => parent_time_dist.as_ref().clone(),
   };
-  let dist_from_parent = convolve_across_edge(
-    &parent_except_subtree,
-    branch_dist,
-    Side::Right,
-    EPS,
-    GRID_POINTS,
-    max_points,
-  )?;
-
-  let combined = distribution_multiplication(&dist_from_parent, subtree_dist, max_points)?
-    .normalize()
-    .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))?;
+  let forward = convolve_forward_across_edge(&parent_except_subtree, branch_dist, EPS, GRID_POINTS, max_points)?;
+  let RefinedProduct {
+    dist_from_parent,
+    combined,
+  } = product_with_forward_message(names, key, &forward, subtree_dist, max_points)?;
   let combined = trim_to_mass(combined, TRIM_EPS)
     .wrap_err_with(|| format!("When trimming the time distribution of node {key} to its mass"))?;
   log_refinement(names, key, parent_time_dist, &dist_from_parent, &combined);
@@ -218,6 +219,45 @@ fn refine_distribution_from_parent(
     return Ok(ForwardRefinement::ContradictedGivenDate);
   }
   Ok(ForwardRefinement::Refined(combined))
+}
+
+fn product_with_forward_message(
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  key: GraphNodeKey,
+  forward: &ForwardConvolution,
+  subtree_dist: &Distribution<NegLog>,
+  max_points: MaxGridPoints,
+) -> Result<RefinedProduct, Report> {
+  let capped = forward.capped()?;
+  let combined = normalized_product(key, &capped, subtree_dist, max_points)?;
+  let Some(resolving) = forward.resampled_to_resolve(&combined, TRIM_EPS)? else {
+    return Ok(RefinedProduct {
+      dist_from_parent: capped,
+      combined,
+    });
+  };
+  let combined = normalized_product(key, &resolving, subtree_dist, max_points)?;
+  log_resolving_spacing(names, key, &resolving);
+  Ok(RefinedProduct {
+    dist_from_parent: resolving,
+    combined,
+  })
+}
+
+struct RefinedProduct {
+  dist_from_parent: Distribution<NegLog>,
+  combined: Distribution<NegLog>,
+}
+
+fn normalized_product(
+  key: GraphNodeKey,
+  dist_from_parent: &Distribution<NegLog>,
+  subtree_dist: &Distribution<NegLog>,
+  max_points: MaxGridPoints,
+) -> Result<Distribution<NegLog>, Report> {
+  distribution_multiplication(dist_from_parent, subtree_dist, max_points)?
+    .normalize()
+    .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))
 }
 
 #[derive(Clone, Copy)]
@@ -270,6 +310,22 @@ fn log_refinement(
     describe_grid(parent),
     describe_grid(convolved),
     describe_grid(refined)
+  );
+}
+
+fn log_resolving_spacing(
+  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  key: GraphNodeKey,
+  convolved: &Distribution<NegLog>,
+) {
+  if !log_enabled!(Level::Debug) {
+    return;
+  }
+  let name = node_label(names, key);
+  debug!(
+    "Timetree forward pass: node '{name}': the spacing cap of the message from the parent leaves the posterior \
+     with fewer than {GRID_POINTS} points across its mass, so the message takes a finer spacing: {}",
+    describe_grid(convolved)
   );
 }
 
