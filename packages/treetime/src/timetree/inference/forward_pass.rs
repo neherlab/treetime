@@ -21,7 +21,7 @@ use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_grid::MaxGridPoints;
 
 pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
@@ -31,19 +31,20 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphNodeKey, S>, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = ForwardPass {
-    tree: &tree,
+    schedule: &schedule,
     inputs,
     summarize,
   };
-  let outputs = tree
-    .scan_down(backward, |key, backward, parent| {
-      pass.node(key, backward, parent.as_ref())
+  let outputs = schedule
+    .scan_down(backward, |key, backward, parents: Vec<Posterior>| {
+      pass.node(key, backward, parents.first())
     })?
     .into_map();
 
-  for &key in tree.preorder().iter().filter(|key| outputs[key].undated) {
+  for &key in schedule.preorder().iter().filter(|key| outputs[key].undated) {
     let name = node_label(inputs.names, key);
     progress_warn!(
       log,
@@ -75,7 +76,7 @@ pub(crate) struct ForwardPassInputs<'a> {
 }
 
 struct ForwardPass<'a, F> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   inputs: &'a ForwardPassInputs<'a>,
   summarize: F,
 }
@@ -98,7 +99,7 @@ where
     } = *self.inputs;
     let date_constraint = constraints.date_constraint(key);
     let NodeBackward { subtree, to_parent } = backward;
-    let parent_edge = self.tree.parent(key).map(|(_, edge_key)| ParentEdge {
+    let parent_edge = self.schedule.parents(key).first().map(|&(_, edge_key)| ParentEdge {
       branch: &branches[&edge_key],
       msg_to_parent: to_parent.as_deref(),
     });
@@ -124,8 +125,8 @@ where
       ForwardRefinement::ContradictedGivenDate => (normalized_subtree()?, true),
     };
 
-    let is_root = self.tree.parent(key).is_none();
-    let is_leaf = self.tree.children(key).is_empty();
+    let is_root = self.schedule.parents(key).is_empty();
+    let is_leaf = self.schedule.children(key).is_empty();
     let likely_time = if is_root && !is_leaf {
       distribution
         .as_deref()

@@ -16,7 +16,7 @@ use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_grid::{MaxGridPoints, Side};
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
@@ -28,15 +28,16 @@ pub(crate) fn propagate_distributions_backward(
   branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
   max_points: MaxGridPoints,
 ) -> Result<BTreeMap<GraphNodeKey, NodeBackward>, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = BackwardPass {
-    tree: &tree,
+    schedule: &schedule,
     constraints,
     coalescent_model,
     branches,
     max_points,
   };
-  let outputs = tree.scan_up(
+  let outputs = schedule.scan_up(
     bad_branches.iter().map(|(&key, &bad_branch)| (key, bad_branch)),
     |key, bad_branch, messages| pass.node(key, bad_branch, messages),
   )?;
@@ -44,7 +45,7 @@ pub(crate) fn propagate_distributions_backward(
 }
 
 struct BackwardPass<'a> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   constraints: &'a DateConstraints,
   coalescent_model: Option<&'a CoalescentPrior>,
   branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
@@ -59,14 +60,14 @@ impl BackwardPass<'_> {
     messages: Vec<TimeDistribution>,
   ) -> Result<(NodeBackward, TimeDistribution), Report> {
     let BackwardPass {
-      tree,
+      schedule,
       constraints,
       coalescent_model,
       branches,
       max_points,
     } = *self;
     let date_constraint = constraints.date_constraint(key);
-    let n_children = tree.children(key).len();
+    let n_children = schedule.children(key).len();
     let messages = messages.into_iter().flatten().collect_vec();
     let distribution = combine_child_messages(&messages, max_points)?;
     let distribution = apply_coalescent_prior(coalescent_model, key, n_children, distribution)?;
@@ -82,9 +83,10 @@ impl BackwardPass<'_> {
       Some(Arc::new(distribution))
     };
 
-    let to_parent = tree
-      .parent(key)
-      .map(|(_, edge_key)| {
+    let to_parent = schedule
+      .parents(key)
+      .first()
+      .map(|&(_, edge_key)| {
         send_backward_message(
           bad_branch,
           subtree.as_deref(),

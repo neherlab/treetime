@@ -5,8 +5,8 @@ mod tests {
   use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
-  use crate::tree_scan::{NodeEdgeMaps, ScanOutputs};
-  use crate::tree_view::TreeView;
+  use crate::schedule::GraphSchedule;
+  use crate::schedule_scan::{NodeEdgeMaps, ScanOutputs};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -18,17 +18,17 @@ mod tests {
   use treetime_utils::{assert_error, make_report};
 
   #[test]
-  fn test_tree_scan_up_sums_subtrees() -> Result<(), Report> {
+  fn test_schedule_scan_up_sums_subtrees() -> Result<(), Report> {
     let tree = NamedGraph::new(
       &["root", "AB", "A", "B", "C"],
       &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
     )?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let weights = btreemap! {
       tree.key("root") => 100, tree.key("AB") => 10, tree.key("A") => 1, tree.key("B") => 2, tree.key("C") => 3,
     };
 
-    let sums = view
+    let sums = schedule
       .scan_up(weights, |_, weight, children: Vec<usize>| {
         let sum = weight + children.iter().sum::<usize>();
         Ok((sum, sum))
@@ -43,14 +43,14 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_up_delivers_children_in_tree_order() -> Result<(), Report> {
+  fn test_schedule_scan_up_delivers_children_in_tree_order() -> Result<(), Report> {
     let tree = NamedGraph::new(
       &["root", "AB", "A", "B", "C"],
       &[("root", "C"), ("root", "AB"), ("AB", "B"), ("AB", "A")],
     )?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
 
-    let received = view
+    let received = schedule
       .scan_up(inputs_of(&tree.graph, ()), |key, (), children: Vec<&'static str>| {
         Ok((children, tree.name(key)))
       })?
@@ -65,19 +65,19 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_down_accumulates_from_the_root() -> Result<(), Report> {
+  fn test_schedule_scan_down_accumulates_from_the_root() -> Result<(), Report> {
     let tree = NamedGraph::new(
       &["root", "AB", "A", "B", "C"],
       &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
     )?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let weights = btreemap! {
       tree.key("root") => 100, tree.key("AB") => 10, tree.key("A") => 1, tree.key("B") => 2, tree.key("C") => 3,
     };
 
-    let sums = view
-      .scan_down(weights, |_, weight, parent: Option<usize>| {
-        let sum = weight + parent.unwrap_or(0);
+    let sums = schedule
+      .scan_down(weights, |_, weight, parents: Vec<usize>| {
+        let sum = weight + parents.iter().sum::<usize>();
         Ok((sum, sum))
       })?
       .into_map();
@@ -90,24 +90,24 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_down_single_node_receives_no_message() -> Result<(), Report> {
+  fn test_schedule_scan_down_single_node_receives_no_message() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root"], &[])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
 
-    let received = view
-      .scan_down(inputs_of(&tree.graph, ()), |_, (), parent: Option<u8>| Ok((parent, 0)))?
+    let received = schedule
+      .scan_down(inputs_of(&tree.graph, ()), |_, (), parents: Vec<u8>| Ok((parents, 0)))?
       .into_map();
 
-    assert_eq!(btreemap! { tree.key("root") => None }, received);
+    assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
     Ok(())
   }
 
   #[test]
-  fn test_tree_scan_up_single_node_receives_no_messages() -> Result<(), Report> {
+  fn test_schedule_scan_up_single_node_receives_no_messages() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root"], &[])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
 
-    let received = view
+    let received = schedule
       .scan_up(inputs_of(&tree.graph, ()), |_, (), children: Vec<u8>| Ok((children, 0)))?
       .into_map();
 
@@ -119,21 +119,25 @@ mod tests {
   #[case::one_thread(1)]
   #[case::four_threads(4)]
   #[trace]
-  fn test_tree_scan_up_star_delivers_every_leaf_in_order(#[case] threads: usize) -> Result<(), Report> {
+  fn test_schedule_scan_up_star_delivers_every_leaf_in_order(#[case] threads: usize) -> Result<(), Report> {
     let graph = graph_from_parents(&vec![0; 1000])?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
 
     let received = run_in_pool(threads, || {
-      view
+      schedule
         .scan_up(inputs_of(&graph, ()), |key, (), children: Vec<GraphNodeKey>| {
           Ok((children, key))
         })
         .map(ScanOutputs::into_map)
     })?;
 
-    let leaves = view.children(view.root()).iter().map(|&(child, _)| child).collect_vec();
+    let leaves = schedule
+      .children(schedule.roots()[0])
+      .iter()
+      .map(|&(child, _)| child)
+      .collect_vec();
     assert_eq!(999, leaves.len());
-    assert_eq!(leaves, received[&view.root()]);
+    assert_eq!(leaves, received[&schedule.roots()[0]]);
     Ok(())
   }
 
@@ -141,22 +145,22 @@ mod tests {
   #[case::one_thread(1)]
   #[case::four_threads(4)]
   #[trace]
-  fn test_tree_scan_down_star_sends_the_root_message_to_every_leaf(#[case] threads: usize) -> Result<(), Report> {
+  fn test_schedule_scan_down_star_sends_the_root_message_to_every_leaf(#[case] threads: usize) -> Result<(), Report> {
     let graph = graph_from_parents(&vec![0; 1000])?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
 
     let received = run_in_pool(threads, || {
-      view
-        .scan_down(inputs_of(&graph, ()), |key, (), parent: Option<GraphNodeKey>| {
-          Ok((parent, key))
+      schedule
+        .scan_down(inputs_of(&graph, ()), |key, (), parents: Vec<GraphNodeKey>| {
+          Ok((parents, key))
         })
         .map(ScanOutputs::into_map)
     })?;
 
-    let root = view.root();
+    let root = schedule.roots()[0];
     let expected = graph
       .get_nodes()
-      .map(|node| (node.key(), (node.key() != root).then_some(root)))
+      .map(|node| (node.key(), if node.key() == root { vec![] } else { vec![root] }))
       .collect::<BTreeMap<_, _>>();
     assert_eq!(expected, received);
     Ok(())
@@ -168,15 +172,15 @@ mod tests {
   #[case::spine_first_one_thread(true, 1)]
   #[case::spine_first_sixteen_threads(true, 16)]
   #[trace]
-  fn test_tree_scan_up_caterpillar_of_100000_nodes_fits_small_worker_stacks(
+  fn test_schedule_scan_up_caterpillar_of_100000_nodes_fits_small_worker_stacks(
     #[case] spine_first: bool,
     #[case] threads: usize,
   ) -> Result<(), Report> {
     let graph = graph_from_parents(&caterpillar_parents(100_000, spine_first))?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
 
     let sizes = run_in_small_stack_pool(threads, || {
-      view
+      schedule
         .scan_up(inputs_of(&graph, ()), |_, (), children: Vec<usize>| {
           let size = 1 + children.iter().sum::<usize>();
           Ok((size, size))
@@ -184,8 +188,8 @@ mod tests {
         .map(ScanOutputs::into_map)
     })?;
 
-    assert_eq!(subtree_sizes(&view), sizes);
-    assert_eq!(100_000, sizes[&view.root()]);
+    assert_eq!(subtree_sizes(&schedule), sizes);
+    assert_eq!(100_000, sizes[&schedule.roots()[0]]);
     Ok(())
   }
 
@@ -195,17 +199,17 @@ mod tests {
   #[case::spine_first_one_thread(true, 1)]
   #[case::spine_first_sixteen_threads(true, 16)]
   #[trace]
-  fn test_tree_scan_down_caterpillar_of_100000_nodes_fits_small_worker_stacks(
+  fn test_schedule_scan_down_caterpillar_of_100000_nodes_fits_small_worker_stacks(
     #[case] spine_first: bool,
     #[case] threads: usize,
   ) -> Result<(), Report> {
     let graph = graph_from_parents(&caterpillar_parents(100_000, spine_first))?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
 
     let depths = run_in_small_stack_pool(threads, || {
-      view
-        .scan_down(inputs_of(&graph, ()), |_, (), parent: Option<usize>| {
-          let depth = parent.map_or(0, |depth| depth + 1);
+      schedule
+        .scan_down(inputs_of(&graph, ()), |_, (), parents: Vec<usize>| {
+          let depth = parents.first().map_or(0, |depth| depth + 1);
           Ok((depth, depth))
         })
         .map(ScanOutputs::into_map)
@@ -217,7 +221,7 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_up_skips_deleted_key_gaps() -> Result<(), Report> {
+  fn test_schedule_scan_up_skips_deleted_key_gaps() -> Result<(), Report> {
     let mut graph = Graph::new();
     let root = graph.add_node();
     let removed = graph.add_node();
@@ -225,9 +229,9 @@ mod tests {
     graph.add_edge(root, child)?;
     graph.remove_node(removed)?;
     graph.build()?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
 
-    let sums = view
+    let sums = schedule
       .scan_up(
         btreemap! { root => 100, child => 1 },
         |_, weight, children: Vec<usize>| {
@@ -242,13 +246,13 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_rejects_missing_input() -> Result<(), Report> {
+  fn test_schedule_scan_rejects_missing_input() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let visited = Mutex::new(0_usize);
     let inputs = btreemap! { tree.key("root") => (), tree.key("A") => () };
 
-    let result = view.scan_up(inputs, |_, (), _: Vec<()>| {
+    let result = schedule.scan_up(inputs, |_, (), _: Vec<()>| {
       *visited.lock() += 1;
       Ok(((), ()))
     });
@@ -265,23 +269,23 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_rejects_input_of_unknown_node() -> Result<(), Report> {
+  fn test_schedule_scan_rejects_input_of_unknown_node() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let unknown = GraphNodeKey(7);
     let inputs = btreemap! { tree.key("root") => (), tree.key("A") => (), unknown => () };
 
-    let result = view.scan_down(inputs, |_, (), _: Option<()>| Ok(((), ())));
+    let result = schedule.scan_down(inputs, |_, (), _: Vec<()>| Ok(((), ())));
 
     assert_error!(
       result,
-      "Scan input names node 7, which is not in the tree. This is an internal error. Please report it to developers."
+      "Scan input names node 7, which is not in the graph. This is an internal error. Please report it to developers."
     );
     Ok(())
   }
 
   #[test]
-  fn test_tree_scan_rejects_input_of_deleted_node() -> Result<(), Report> {
+  fn test_schedule_scan_rejects_input_of_deleted_node() -> Result<(), Report> {
     let mut graph = Graph::new();
     let root = graph.add_node();
     let removed = graph.add_node();
@@ -289,15 +293,15 @@ mod tests {
     graph.add_edge(root, child)?;
     graph.remove_node(removed)?;
     graph.build()?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
     let inputs = btreemap! { root => (), removed => (), child => () };
 
-    let result = view.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+    let result = schedule.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
 
     assert_error!(
       result,
       format!(
-        "Scan input names node {removed}, which is not in the tree. This is an internal error. Please report it to \
+        "Scan input names node {removed}, which is not in the graph. This is an internal error. Please report it to \
          developers."
       )
     );
@@ -305,12 +309,12 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_rejects_input_named_twice() -> Result<(), Report> {
+  fn test_schedule_scan_rejects_input_named_twice() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let inputs = [(tree.key("root"), ()), (tree.key("A"), ()), (tree.key("A"), ())];
 
-    let result = view.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+    let result = schedule.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
 
     assert_error!(
       result,
@@ -323,15 +327,15 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_up_failed_node_stops_its_ancestors() -> Result<(), Report> {
+  fn test_schedule_scan_up_failed_node_stops_its_ancestors() -> Result<(), Report> {
     let tree = NamedGraph::new(
       &["root", "AB", "A", "B", "C"],
       &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
     )?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let visited = Mutex::new(BTreeSet::new());
 
-    let result = view.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+    let result = schedule.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
       visited.lock().insert(tree.name(key));
       if tree.name(key) == "B" {
         return Err(make_report!("injected failure of node B"));
@@ -350,15 +354,15 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_down_failed_node_stops_its_descendants() -> Result<(), Report> {
+  fn test_schedule_scan_down_failed_node_stops_its_descendants() -> Result<(), Report> {
     let tree = NamedGraph::new(
       &["root", "AB", "A", "B", "C"],
       &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
     )?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let visited = Mutex::new(BTreeSet::new());
 
-    let result = view.scan_down(inputs_of(&tree.graph, ()), |key, (), _: Option<()>| {
+    let result = schedule.scan_down(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
       visited.lock().insert(tree.name(key));
       if tree.name(key) == "AB" {
         return Err(make_report!("injected failure of node AB"));
@@ -377,13 +381,13 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_up_returns_the_first_error_and_stops_later_visits() -> Result<(), Report> {
+  fn test_schedule_scan_up_returns_the_first_error_and_stops_later_visits() -> Result<(), Report> {
     let graph = graph_from_parents(&[0, 0, 0, 0])?;
-    let view = TreeView::new(&graph)?;
+    let schedule = GraphSchedule::new(&graph)?;
     let visited = Mutex::new(vec![]);
 
     let result = run_in_pool(1, || {
-      view.scan_up(inputs_of(&graph, ()), |key, (), _: Vec<()>| {
+      schedule.scan_up(inputs_of(&graph, ()), |key, (), _: Vec<()>| {
         visited.lock().push(key);
         Err::<((), ()), _>(make_report!("injected failure of node {key}"))
       })
@@ -395,18 +399,18 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_up_after_a_failed_scan_succeeds_on_the_same_view() -> Result<(), Report> {
+  fn test_schedule_scan_up_after_a_failed_scan_succeeds_on_the_same_view() -> Result<(), Report> {
     let tree = NamedGraph::new(
       &["root", "AB", "A", "B", "C"],
       &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
     )?;
-    let view = TreeView::new(&tree.graph)?;
-    let failed = view.scan_up(inputs_of(&tree.graph, 1), |_, _, _: Vec<usize>| {
+    let schedule = GraphSchedule::new(&tree.graph)?;
+    let failed = schedule.scan_up(inputs_of(&tree.graph, 1), |_, _, _: Vec<usize>| {
       Err::<(usize, usize), _>(make_report!("injected failure"))
     });
     assert_error!(failed, "injected failure");
 
-    let sizes = view
+    let sizes = schedule
       .scan_up(inputs_of(&tree.graph, 1), |_, weight, children: Vec<usize>| {
         let sum = weight + children.iter().sum::<usize>();
         Ok((sum, sum))
@@ -421,23 +425,23 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_join_and_split_parent_edges_roundtrip() -> Result<(), Report> {
+  fn test_schedule_scan_join_and_split_parent_edges_roundtrip() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let (root, a, b) = (tree.key("root"), tree.key("A"), tree.key("B"));
     let (root_a, root_b) = (tree.edge("root", "A")?, tree.edge("root", "B")?);
     let nodes = btreemap! { root => "root", a => "A", b => "B" };
     let edges = btreemap! { root_a => "root-A", root_b => "root-B" };
 
-    let joined = view
+    let joined = schedule
       .join_parent_edges(nodes.clone(), edges.clone())?
       .collect::<BTreeMap<_, _>>();
-    let split = view
-      .scan_down(joined.clone(), |_, joined, _: Option<()>| Ok((joined, ())))?
+    let split = schedule
+      .scan_down(joined.clone(), |_, joined, _: Vec<()>| Ok((joined, ())))?
       .split_parent_edges()?;
 
     let expected_joined = btreemap! {
-      root => ("root", None), a => ("A", Some("root-A")), b => ("B", Some("root-B")),
+      root => ("root", vec![]), a => ("A", vec!["root-A"]), b => ("B", vec!["root-B"]),
     };
     assert_eq!(expected_joined, joined);
     assert_eq!(NodeEdgeMaps { nodes, edges }, split);
@@ -445,13 +449,13 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_join_parent_edges_rejects_missing_edge() -> Result<(), Report> {
+  fn test_schedule_scan_join_parent_edges_rejects_missing_edge() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let nodes = inputs_of(&tree.graph, ());
     let edges = btreemap! { tree.edge("root", "A")? => () };
 
-    let result = view.join_parent_edges(nodes, edges);
+    let result = schedule.join_parent_edges(nodes, edges);
 
     assert_error!(
       result,
@@ -465,45 +469,41 @@ mod tests {
   }
 
   #[test]
-  fn test_tree_scan_join_parent_edges_rejects_edge_outside_the_tree() -> Result<(), Report> {
+  fn test_schedule_scan_join_parent_edges_rejects_edge_outside_the_tree() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let nodes = inputs_of(&tree.graph, ());
     let edges = btreemap! { tree.edge("root", "A")? => (), GraphEdgeKey(7) => () };
 
-    let result = view.join_parent_edges(nodes, edges);
+    let result = schedule.join_parent_edges(nodes, edges);
 
     assert_error!(
       result,
-      "Scan input names edge 7, which is not in the tree. This is an internal error. Please report it to developers."
+      "Scan input names edge 7, which is not in the graph. This is an internal error. Please report it to developers."
     );
     Ok(())
   }
 
-  #[test]
-  fn test_tree_scan_split_parent_edges_rejects_edge_value_at_the_root() -> Result<(), Report> {
-    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
-    let view = TreeView::new(&tree.graph)?;
-    let outputs = view.scan_up(inputs_of(&tree.graph, ()), |_, (), _: Vec<()>| Ok((((), Some(())), ())))?;
-
-    let result = outputs.split_parent_edges();
-
-    assert_error!(
-      result,
-      format!(
-        "Scan output of root {} holds a value for a parent edge. This is an internal error. Please report it to developers.",
-        tree.key("root")
-      )
-    );
-    Ok(())
-  }
-
-  #[test]
-  fn test_tree_scan_split_parent_edges_rejects_missing_edge_value() -> Result<(), Report> {
-    let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
-    let view = TreeView::new(&tree.graph)?;
-    let outputs = view.scan_up(inputs_of(&tree.graph, ()), |_, (), _: Vec<()>| {
-      Ok((((), None::<()>), ()))
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::value_at_the_root(        "r", 1, "holds 1 parent edge value for 0 parent edges")]
+  #[case::no_value_at_a_child(      "a", 0, "holds 0 parent edge values for 1 parent edge")]
+  #[case::one_value_for_two_parents("s", 1, "holds 1 parent edge value for 2 parent edges")]
+  #[trace]
+  fn test_schedule_scan_split_parent_edges_rejects_wrong_value_count(
+    #[case] wrong: &str,
+    #[case] count: usize,
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let dag = NamedGraph::new(&["r", "a", "s"], &[("r", "a"), ("r", "s"), ("a", "s")])?;
+    let schedule = GraphSchedule::new(&dag.graph)?;
+    let outputs = schedule.scan_up(inputs_of(&dag.graph, ()), |key, (), _: Vec<()>| {
+      let values = if dag.name(key) == wrong {
+        count
+      } else {
+        schedule.parents(key).len()
+      };
+      Ok((((), vec![(); values]), ()))
     })?;
 
     let result = outputs.split_parent_edges();
@@ -511,20 +511,19 @@ mod tests {
     assert_error!(
       result,
       format!(
-        "Scan output of node {} holds no value for its parent edge {}. This is an internal error. Please report it to developers.",
-        tree.key("A"),
-        tree.edge("root", "A")?
+        "Scan output of node {} {expected}. This is an internal error. Please report it to developers.",
+        dag.key(wrong)
       )
     );
     Ok(())
   }
 
   #[test]
-  fn test_tree_scan_unwrap_shared_rejects_output_with_another_holder() -> Result<(), Report> {
+  fn test_schedule_scan_unwrap_shared_rejects_output_with_another_holder() -> Result<(), Report> {
     let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
-    let view = TreeView::new(&tree.graph)?;
+    let schedule = GraphSchedule::new(&tree.graph)?;
     let shared = Arc::new(2);
-    let outputs = view.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+    let outputs = schedule.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
       let output = if key == tree.key("A") {
         Arc::clone(&shared)
       } else {
@@ -545,10 +544,99 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[case::one_thread(1)]
+  #[case::four_threads(4)]
+  #[trace]
+  fn test_schedule_scan_down_delivers_every_parent_message_in_edge_order(#[case] threads: usize) -> Result<(), Report> {
+    let dag = NamedGraph::new(&["p", "q", "x", "s"], &[("p", "x"), ("q", "s"), ("p", "s"), ("x", "s")])?;
+    let schedule = GraphSchedule::new(&dag.graph)?;
+
+    let received = run_in_pool(threads, || {
+      schedule
+        .scan_down(inputs_of(&dag.graph, ()), |key, (), parents: Vec<&'static str>| {
+          Ok((parents, dag.name(key)))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let expected = btreemap! {
+      dag.key("p") => vec![], dag.key("q") => vec![], dag.key("x") => vec!["p"], dag.key("s") => vec!["q", "p", "x"],
+    };
+    assert_eq!(expected, received);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::one_thread(1)]
+  #[case::four_threads(4)]
+  #[trace]
+  fn test_schedule_scan_up_sends_the_message_of_a_shared_child_to_every_parent(
+    #[case] threads: usize,
+  ) -> Result<(), Report> {
+    let dag = NamedGraph::new(&["p", "q", "x", "s"], &[("p", "s"), ("q", "s"), ("p", "x"), ("x", "s")])?;
+    let schedule = GraphSchedule::new(&dag.graph)?;
+
+    let received = run_in_pool(threads, || {
+      schedule
+        .scan_up(inputs_of(&dag.graph, ()), |key, (), children: Vec<&'static str>| {
+          Ok((children, dag.name(key)))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let expected = btreemap! {
+      dag.key("p") => vec!["s", "x"], dag.key("q") => vec!["s"], dag.key("x") => vec!["s"], dag.key("s") => vec![],
+    };
+    assert_eq!(expected, received);
+    Ok(())
+  }
+
+  #[test]
+  fn test_schedule_scan_join_and_split_parent_edges_roundtrip_with_two_parents() -> Result<(), Report> {
+    let dag = NamedGraph::new(&["p", "q", "s"], &[("q", "s"), ("p", "s")])?;
+    let schedule = GraphSchedule::new(&dag.graph)?;
+    let (p, q, s) = (dag.key("p"), dag.key("q"), dag.key("s"));
+    let (q_s, p_s) = (dag.edge("q", "s")?, dag.edge("p", "s")?);
+    let nodes = btreemap! { p => "p", q => "q", s => "s" };
+    let edges = btreemap! { q_s => "q-s", p_s => "p-s" };
+
+    let joined = schedule
+      .join_parent_edges(nodes.clone(), edges.clone())?
+      .collect::<BTreeMap<_, _>>();
+    let split = schedule
+      .scan_down(joined.clone(), |_, joined, _: Vec<()>| Ok((joined, ())))?
+      .split_parent_edges()?;
+
+    let expected_joined = btreemap! { p => ("p", vec![]), q => ("q", vec![]), s => ("s", vec!["q-s", "p-s"]) };
+    assert_eq!(expected_joined, joined);
+    assert_eq!(NodeEdgeMaps { nodes, edges }, split);
+    Ok(())
+  }
+
+  #[test]
+  fn test_schedule_scan_join_parent_edges_rejects_missing_edge_of_a_second_parent() -> Result<(), Report> {
+    let dag = NamedGraph::new(&["p", "q", "s"], &[("q", "s"), ("p", "s")])?;
+    let schedule = GraphSchedule::new(&dag.graph)?;
+    let edges = btreemap! { dag.edge("q", "s")? => () };
+
+    let result = schedule.join_parent_edges(inputs_of(&dag.graph, ()), edges);
+
+    assert_error!(
+      result,
+      format!(
+        "Scan input is missing edge {} above node {}. This is an internal error. Please report it to developers.",
+        dag.edge("p", "s")?,
+        dag.key("s")
+      )
+    );
+    Ok(())
+  }
+
   mod helpers {
     use crate::graph::Graph;
     use crate::node::GraphNodeKey;
-    use crate::tree_view::TreeView;
+    use crate::schedule::GraphSchedule;
     use eyre::Report;
     use rayon::ThreadPoolBuilder;
     use std::collections::BTreeMap;
@@ -591,10 +679,15 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn subtree_sizes(view: &TreeView<'_>) -> BTreeMap<GraphNodeKey, usize> {
+    pub(super) fn subtree_sizes(schedule: &GraphSchedule<'_>) -> BTreeMap<GraphNodeKey, usize> {
       let mut sizes = BTreeMap::new();
-      for &key in view.preorder().iter().rev() {
-        let size = 1 + view.children(key).iter().map(|(child, _)| sizes[child]).sum::<usize>();
+      for &key in schedule.preorder().iter().rev() {
+        let size = 1
+          + schedule
+            .children(key)
+            .iter()
+            .map(|(child, _)| sizes[child])
+            .sum::<usize>();
         sizes.insert(key, size);
       }
       sizes

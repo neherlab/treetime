@@ -20,8 +20,8 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::tree_scan::NodeEdgeMaps;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::NodeEdgeMaps;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
 use treetime_utils::{make_internal_error, make_internal_report};
@@ -92,9 +92,10 @@ pub(crate) fn indexed_backward(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = IndexedBackwardPass {
-    tree: &tree,
+    schedule: &schedule,
     gtr,
     min_branch_length: inputs.min_branch_length,
     branch_lengths,
@@ -104,7 +105,7 @@ pub(crate) fn indexed_backward(
       alphabet,
       length,
       leaves,
-    } => tree.scan_up(leaf_inputs(&tree, leaves), |key, leaf, children| {
+    } => schedule.scan_up(leaf_inputs(&schedule, leaves), |key, leaf, children| {
       pass.node(
         key,
         leaf,
@@ -113,7 +114,7 @@ pub(crate) fn indexed_backward(
         |children| backward_internal_dense(children, length),
       )
     })?,
-    IndexedKind::Discrete { leaves } => tree.scan_up(leaf_inputs(&tree, leaves), |key, leaf, children| {
+    IndexedKind::Discrete { leaves } => schedule.scan_up(leaf_inputs(&schedule, leaves), |key, leaf, children| {
       pass.node(
         key,
         leaf,
@@ -131,16 +132,16 @@ pub(crate) fn indexed_backward(
 }
 
 fn leaf_inputs<'a, L>(
-  tree: &'a TreeView<'_>,
+  schedule: &'a GraphSchedule<'_>,
   leaves: &'a BTreeMap<GraphNodeKey, L>,
 ) -> impl Iterator<Item = (GraphNodeKey, Option<&'a L>)> {
-  tree.preorder().iter().map(|&key| (key, leaves.get(&key)))
+  schedule.preorder().iter().map(|&key| (key, leaves.get(&key)))
 }
 
-type IndexedBackwardOutput = Arc<(DenseNodeState, Option<DenseEdgeBackward>)>;
+type IndexedBackwardOutput = Arc<(DenseNodeState, Vec<DenseEdgeBackward>)>;
 
 struct IndexedBackwardPass<'a> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   gtr: &'a GTR,
   min_branch_length: f64,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
@@ -155,18 +156,18 @@ impl IndexedBackwardPass<'_> {
     leaf_backward: impl Fn(&L) -> Result<(DenseNodeState, DenseSeqDistribution), Report>,
     internal_seq: impl Fn(&[&DenseNodeState]) -> DenseSeqInfo,
   ) -> Result<(IndexedBackwardOutput, IndexedBackwardOutput), Report> {
-    let (mut node, msg_to_parent) = if self.tree.children(key).is_empty() {
+    let (mut node, msg_to_parent) = if self.schedule.children(key).is_empty() {
       let leaf =
         leaf.ok_or_else(|| make_internal_report!("Leaf {key} has no observation before the marginal backward pass"))?;
       leaf_backward(leaf)?
     } else {
       let child_nodes = children.iter().map(|child| &child.0).collect_vec();
       let seq = internal_seq(&child_nodes);
-      let child_edges = izip!(self.tree.children(key), children)
-        .map(|(&(child_key, _), child)| {
+      let child_edges = izip!(self.schedule.children(key), children)
+        .map(|(&(child_key, edge_key), child)| {
           child
             .1
-            .as_ref()
+            .get(self.schedule.parent_slot(edge_key))
             .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))
         })
         .collect::<Result<Vec<_>, Report>>()?;
@@ -189,15 +190,15 @@ impl IndexedBackwardPass<'_> {
       )
     };
 
-    let parent_message = if let Some((_, edge_key)) = self.tree.parent(key) {
+    let parent_message = if let Some(&(_, edge_key)) = self.schedule.parents(key).first() {
       let branch_length = self.branch_lengths[&edge_key].max(self.min_branch_length);
-      Some(DenseEdgeBackward {
+      vec![DenseEdgeBackward {
         msg_from_child: DenseSeqDistribution {
           dis: self.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false),
           log_lh: msg_to_parent.log_lh,
         },
         msg_to_parent,
-      })
+      }]
     } else {
       let mut dis = &msg_to_parent.dis * self.gtr.pi();
       let delta_ll = normalize_inplace(&mut dis);
@@ -205,7 +206,7 @@ impl IndexedBackwardPass<'_> {
         dis,
         log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
       };
-      None
+      vec![]
     };
 
     let output = Arc::new((node, parent_message));
@@ -262,19 +263,20 @@ pub(crate) fn indexed_forward(
   node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = IndexedForwardPass {
-    tree: &tree,
+    schedule: &schedule,
     gtr,
     min_branch_length: inputs.min_branch_length,
     kind,
     branch_lengths,
   };
   let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
-  let outputs = tree.scan_down(
-    tree.join_parent_edges(node_states, backward)?,
-    |key, (node, backward), parent: Option<IndexedForwardOutput>| {
-      pass.node(key, node, backward, parent.as_deref().map(|(parent, _)| parent))
+  let outputs = schedule.scan_down(
+    schedule.join_parent_edges(node_states, backward)?,
+    |key, (node, mut backward), parents: Vec<IndexedForwardOutput>| {
+      pass.node(key, node, backward.pop(), parents.first().map(|parent| &parent.0))
     },
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
@@ -297,10 +299,10 @@ pub(crate) fn indexed_forward(
   })
 }
 
-type IndexedForwardOutput = Arc<(DenseNodeState, Option<DenseEdgeForwardOut>)>;
+type IndexedForwardOutput = Arc<(DenseNodeState, Vec<DenseEdgeForwardOut>)>;
 
 struct IndexedForwardPass<'a> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   gtr: &'a GTR,
   min_branch_length: f64,
   kind: IndexedKind<'a>,
@@ -315,8 +317,8 @@ impl IndexedForwardPass<'_> {
     backward: Option<&DenseEdgeBackward>,
     parent: Option<&DenseNodeState>,
   ) -> Result<(IndexedForwardOutput, IndexedForwardOutput), Report> {
-    let msg_to_child = match (self.tree.parent(key), backward, parent) {
-      (Some((_, edge_key)), Some(backward), Some(parent)) => {
+    let msg_to_child = match (self.schedule.parents(key).first(), backward, parent) {
+      (Some(&(_, edge_key)), Some(backward), Some(parent)) => {
         let mut dis = divide_out(&parent.profile.dis, &backward.msg_from_child.dis);
         let delta_ll = normalize_inplace(&mut dis);
         let log_lh = forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh);
@@ -342,13 +344,16 @@ impl IndexedForwardPass<'_> {
 
     let indels = match self.kind {
       IndexedKind::Dense { alphabet, .. } => {
-        forward_post_dense(self.tree.children(key).is_empty(), parent, &mut node, alphabet)?
+        forward_post_dense(self.schedule.children(key).is_empty(), parent, &mut node, alphabet)?
       },
       IndexedKind::Discrete { .. } => vec![],
     };
 
-    let edge = msg_to_child.map(|msg_to_child| DenseEdgeForwardOut { msg_to_child, indels });
-    let output = Arc::new((node, edge));
+    let edges = msg_to_child
+      .map(|msg_to_child| DenseEdgeForwardOut { msg_to_child, indels })
+      .into_iter()
+      .collect_vec();
+    let output = Arc::new((node, edges));
     Ok((Arc::clone(&output), output))
   }
 }

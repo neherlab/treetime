@@ -30,16 +30,4 @@ impl<'g> TreeView<'g> {
   pub fn children(&self, key: GraphNodeKey) -> &[(GraphNodeKey, GraphEdgeKey)] {
     self.tree.children(key)
   }
-
-  pub fn contains(&self, key: GraphNodeKey) -> bool {
-    self.tree.schedule().contains(key)
-  }
-
-  pub fn position_in_parent(&self, key: GraphNodeKey) -> usize {
-    self.parent(key).map_or(0, |(_, edge)| self.tree.schedule().child_slot(edge))
-  }
-
-  pub(crate) fn key_capacity(&self) -> usize {
-    self.tree.schedule().key_capacity()
-  }
 }

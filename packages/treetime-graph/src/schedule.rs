@@ -99,8 +99,16 @@ impl<'g> GraphSchedule<'g> {
     Ok(TreeSchedule { schedule: self })
   }
 
-  pub(crate) fn contains(&self, key: GraphNodeKey) -> bool {
+  pub fn contains(&self, key: GraphNodeKey) -> bool {
     self.graph.get_node(key).is_some()
+  }
+
+  pub(crate) fn contains_edge(&self, edge: GraphEdgeKey) -> bool {
+    self.parents.slots.get(edge.as_usize()).is_some_and(Option::is_some)
+  }
+
+  pub(crate) fn edge_count(&self) -> usize {
+    self.parents.entries.len()
   }
 
   pub(crate) fn key_capacity(&self) -> usize {

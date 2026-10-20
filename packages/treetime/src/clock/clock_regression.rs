@@ -16,8 +16,8 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootResult;
-use treetime_graph::tree_scan::NodeEdgeMaps;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::NodeEdgeMaps;
 use treetime_utils::make_internal_report;
 
 pub(crate) fn estimate_clock_model_with_reroot_policy(
@@ -221,15 +221,16 @@ fn clock_regression_backward(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = ClockRegressionPass {
-    tree: &tree,
+    schedule: &schedule,
     inputs,
     branch_lengths,
     prev_clock_rate,
   };
-  let is_outlier = tree.preorder().iter().map(|&key| (key, outliers.contains(&key)));
-  let outputs = tree.scan_up(is_outlier, |key, is_outlier, from_children| {
+  let is_outlier = schedule.preorder().iter().map(|&key| (key, outliers.contains(&key)));
+  let outputs = schedule.scan_up(is_outlier, |key, is_outlier, from_children| {
     Ok(pass.backward_node(key, is_outlier, &from_children))
   })?;
   let NodeEdgeMaps { nodes, edges } = outputs.split_parent_edges()?;
@@ -243,25 +244,27 @@ fn clock_regression_forward(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = ClockRegressionPass {
-    tree: &tree,
+    schedule: &schedule,
     inputs,
     branch_lengths,
     prev_clock_rate,
   };
   let ClockState { nodes, edges } = state;
-  let outputs = tree.scan_down(tree.join_parent_edges(nodes, edges)?, |key, (node, edge), parent| {
-    pass.forward_node(key, node, edge, parent)
-  })?;
+  let outputs = schedule.scan_down(
+    schedule.join_parent_edges(nodes, edges)?,
+    |key, (node, mut edges), mut parents| pass.forward_node(key, node, edges.pop(), parents.pop()),
+  )?;
   let NodeEdgeMaps { nodes, edges } = outputs.split_parent_edges()?;
   Ok(ClockState { nodes, edges })
 }
 
-type ClockNodeOutput = (ClockSet, Option<ClockEdgeState>);
+type ClockNodeOutput = (ClockSet, Vec<ClockEdgeState>);
 
 struct ClockRegressionPass<'a> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   inputs: &'a ClockInputs,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   prev_clock_rate: Option<f64>,
@@ -274,7 +277,7 @@ impl ClockRegressionPass<'_> {
     is_outlier: bool,
     from_children: &[ClockSet],
   ) -> (ClockNodeOutput, ClockSet) {
-    let q_to_parent = if !self.tree.children(key).is_empty() {
+    let q_to_parent = if !self.schedule.children(key).is_empty() {
       from_children.iter().fold(ClockSet::default(), |mut total, from_child| {
         total += from_child;
         total
@@ -285,8 +288,8 @@ impl ClockRegressionPass<'_> {
       ClockSet::leaf_contribution(self.inputs.likely_time(key))
     };
 
-    let Some((_, edge_key)) = self.tree.parent(key) else {
-      return ((q_to_parent, None), ClockSet::default());
+    let Some(&(_, edge_key)) = self.schedule.parents(key).first() else {
+      return ((q_to_parent, vec![]), ClockSet::default());
     };
     let clock_from_child = q_to_parent.shift(self.edge_length(edge_key));
     let edge = ClockEdgeState {
@@ -294,7 +297,7 @@ impl ClockRegressionPass<'_> {
       clock_to_child: ClockSet::default(),
       clock_from_child: clock_from_child.clone(),
     };
-    ((ClockSet::default(), Some(edge)), clock_from_child)
+    ((ClockSet::default(), vec![edge]), clock_from_child)
   }
 
   fn forward_node(
@@ -304,13 +307,13 @@ impl ClockRegressionPass<'_> {
     edge: Option<ClockEdgeState>,
     parent: Option<ClockSet>,
   ) -> Result<(ClockNodeOutput, ClockSet), Report> {
-    match (self.tree.parent(key), edge, parent) {
-      (Some((_, edge_key)), Some(mut edge), Some(parent)) => {
+    match (self.schedule.parents(key).first(), edge, parent) {
+      (Some(&(_, edge_key)), Some(mut edge), Some(parent)) => {
         edge.clock_to_child = &parent - &edge.clock_from_child;
         let node = &edge.clock_to_parent + edge.clock_to_child.shift(self.edge_length(edge_key));
-        Ok(((node.clone(), Some(edge)), node))
+        Ok(((node.clone(), vec![edge]), node))
       },
-      (None, None, None) => Ok(((node.clone(), None), node)),
+      (None, None, None) => Ok(((node.clone(), vec![]), node)),
       _ => Err(make_internal_report!(
         "Clock forward pass received an inconsistent parent edge and parent message at node {key}"
       )),

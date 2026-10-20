@@ -6,15 +6,15 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
-use treetime_graph::tree_scan::NodeEdgeMaps;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::NodeEdgeMaps;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 const MIN_PRECISION: f64 = 1e-300;
 
 pub(crate) struct GaussianTree<'g> {
-  tree: TreeView<'g>,
+  schedule: GraphSchedule<'g>,
   internal_nodes: Vec<GraphNodeKey>,
   sequence_length: f64,
   nu: BTreeMap<GraphEdgeKey, f64>,
@@ -40,7 +40,8 @@ impl<'g> GaussianTree<'g> {
       return make_error!("Gaussian clock needs a positive sequence length");
     }
     let sequence_length = sequence_length.to_f64_exact();
-    let tree = TreeView::new(graph)?;
+    let schedule = GraphSchedule::new(graph)?;
+    schedule.require_tree()?;
     let tips: BTreeMap<GraphNodeKey, Option<Message>> = graph
       .get_nodes()
       .map(|n| {
@@ -61,7 +62,7 @@ impl<'g> GaussianTree<'g> {
     let NodeEdgeMaps {
       nodes: below,
       edges: up,
-    } = backward(&tree, tips, &nu)?;
+    } = backward(&schedule, tips, &nu)?;
 
     let mut substitutions = 0.0;
     let mut internal_branches = 0_usize;
@@ -87,7 +88,7 @@ impl<'g> GaussianTree<'g> {
       .values()
       .fold([0.0; 2], |acc, node| [acc[0] + node.ab[0], acc[1] + node.ab[1]]);
     Ok(Self {
-      tree,
+      schedule,
       internal_nodes: graph.get_nodes().filter(|n| !n.is_leaf()).map(Node::key).collect(),
       sequence_length,
       nu,
@@ -107,7 +108,7 @@ impl<'g> GaussianTree<'g> {
       return make_error!("Gaussian clock needs a positive clock rate, got {clock_rate}");
     }
     let eta = self.eta(clock_rate);
-    let total = forward(&self.tree, &self.nu, &self.below, &self.up)?;
+    let total = forward(&self.schedule, &self.nu, &self.below, &self.up)?;
     let stds = rate_and_root_std(self.a, self.kappa, self.root, eta);
 
     let node_times = self
@@ -164,12 +165,12 @@ pub(crate) struct NodeTimeGaussian {
 }
 
 fn backward(
-  tree: &TreeView<'_>,
+  schedule: &GraphSchedule<'_>,
   tips: BTreeMap<GraphNodeKey, Option<Message>>,
   nu: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<NodeEdgeMaps<Below, Option<Message>>, Report> {
-  let outputs = tree.scan_up(tips, |key, tip, from_children| {
-    let (node, own) = if tree.children(key).is_empty() {
+  let outputs = schedule.scan_up(tips, |key, tip, from_children| {
+    let (node, own) = if schedule.children(key).is_empty() {
       (Below::default(), tip)
     } else {
       let messages = from_children.into_iter().flatten().collect_vec();
@@ -180,10 +181,13 @@ fn backward(
       };
       (node, node.down)
     };
-    let to_parent = tree
-      .parent(key)
-      .map(|(_, edge_key)| own.map(|m| m.toward_parent(nu[&edge_key])));
-    Ok(((node, to_parent), to_parent.flatten()))
+    let to_parents = schedule
+      .parents(key)
+      .iter()
+      .map(|&(_, edge_key)| own.map(|m| m.toward_parent(nu[&edge_key])))
+      .collect_vec();
+    let to_parent = to_parents.first().copied().flatten();
+    Ok(((node, to_parents), to_parent))
   })?;
   outputs.split_parent_edges()
 }
@@ -197,15 +201,15 @@ fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
 }
 
 fn forward(
-  tree: &TreeView<'_>,
+  schedule: &GraphSchedule<'_>,
   nu: &BTreeMap<GraphEdgeKey, f64>,
   below: &BTreeMap<GraphNodeKey, Below>,
   up: &BTreeMap<GraphEdgeKey, Option<Message>>,
 ) -> Result<BTreeMap<GraphNodeKey, Natural>, Report> {
   let down = below.iter().map(|(&key, node)| (key, node.down));
-  let totals = tree.scan_down(down, |key, down, parent_total: Option<Natural>| {
-    let outside = match (tree.parent(key), parent_total) {
-      (Some((_, edge_key)), Some(parent_total)) => {
+  let totals = schedule.scan_down(down, |key, down, parent_totals: Vec<Natural>| {
+    let outside = match (schedule.parents(key).first(), parent_totals.first()) {
+      (Some(&(_, edge_key)), Some(&parent_total)) => {
         let own_up = up
           .get(&edge_key)
           .copied()

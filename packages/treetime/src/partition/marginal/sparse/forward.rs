@@ -23,8 +23,8 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::tree_scan::NodeEdgeMaps;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::NodeEdgeMaps;
 use treetime_primitives::LogLh;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
@@ -38,18 +38,19 @@ pub(crate) fn process_forward_indexed(
   node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
   backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
 ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = SparseForwardPass {
-    tree: &tree,
+    schedule: &schedule,
     partition,
     gtr,
     branch_lengths,
   };
   let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
-  let outputs = tree.scan_down(
-    tree.join_parent_edges(node_states, backward)?,
-    |key, (node, backward), parent: Option<SparseForwardOutput>| {
-      pass.node(key, node, backward, parent.as_deref().map(|(parent, _)| parent))
+  let outputs = schedule.scan_down(
+    schedule.join_parent_edges(node_states, backward)?,
+    |key, (node, mut backward), parents: Vec<SparseForwardOutput>| {
+      pass.node(key, node, backward.pop(), parents.first().map(|parent| &parent.0))
     },
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
@@ -73,10 +74,10 @@ pub(crate) fn process_forward_indexed(
   })
 }
 
-type SparseForwardOutput = Arc<(SparseNodeState, Option<SparseEdgeForwardOut>)>;
+type SparseForwardOutput = Arc<(SparseNodeState, Vec<SparseEdgeForwardOut>)>;
 
 struct SparseForwardPass<'a> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   partition: &'a PartitionMarginalSparse,
   gtr: &'a GTR,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
@@ -91,8 +92,8 @@ impl SparseForwardPass<'_> {
     parent: Option<&SparseNodeState>,
   ) -> Result<(SparseForwardOutput, SparseForwardOutput), Report> {
     let partition = self.partition;
-    let edge = match (self.tree.parent(key), backward, parent) {
-      (Some((parent_key, edge_key)), Some(backward), Some(parent)) => {
+    let edge = match (self.schedule.parents(key).first(), backward, parent) {
+      (Some(&(parent_key, edge_key)), Some(backward), Some(parent)) => {
         Some(self.edge(key, parent_key, edge_key, &mut node, backward, parent)?)
       },
       (None, None, None) => {
@@ -107,7 +108,7 @@ impl SparseForwardPass<'_> {
         ));
       },
     };
-    let output = Arc::new((node, edge));
+    let output = Arc::new((node, edge.into_iter().collect_vec()));
     Ok((Arc::clone(&output), output))
   }
 
@@ -124,7 +125,7 @@ impl SparseForwardPass<'_> {
     let gtr = self.gtr;
     let alphabet = &partition.alphabet;
     let obs = &partition.obs_nodes[&key];
-    let is_leaf = self.tree.children(key).is_empty();
+    let is_leaf = self.schedule.children(key).is_empty();
     let edge_obs = &partition.obs_edges[&edge_key];
     let parent_obs = &partition.obs_nodes[&parent_key];
 

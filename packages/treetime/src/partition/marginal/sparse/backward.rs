@@ -17,8 +17,8 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::tree_scan::NodeEdgeMaps;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::NodeEdgeMaps;
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::make_internal_report;
@@ -30,18 +30,19 @@ pub(crate) fn process_backward_indexed(
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
 ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
-  let tree = TreeView::new(graph)?;
+  let schedule = GraphSchedule::new(graph)?;
+  schedule.require_tree()?;
   let pass = SparseBackwardPass {
-    tree: &tree,
+    schedule: &schedule,
     partition,
     gtr,
     branch_lengths,
   };
   let nodes = node_states.iter().map(|(&key, node)| (key, node)).collect();
   let edges = partition.obs_edges.iter().map(|(&key, edge)| (key, edge)).collect();
-  let outputs = tree.scan_up(
-    tree.join_parent_edges(nodes, edges)?,
-    |key, (node, edge_obs), children| pass.node(key, node, edge_obs, &children),
+  let outputs = schedule.scan_up(
+    schedule.join_parent_edges(nodes, edges)?,
+    |key, (node, mut edge_obs), children| pass.node(key, node, edge_obs.pop(), &children),
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
   Ok(MarginalBackward {
@@ -50,10 +51,10 @@ pub(crate) fn process_backward_indexed(
   })
 }
 
-type SparseBackwardOutput = Arc<(SparseNodeState, Option<SparseEdgeBackward>)>;
+type SparseBackwardOutput = Arc<(SparseNodeState, Vec<SparseEdgeBackward>)>;
 
 struct SparseBackwardPass<'a> {
-  tree: &'a TreeView<'a>,
+  schedule: &'a GraphSchedule<'a>,
   partition: &'a PartitionMarginalSparse,
   gtr: &'a GTR,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
@@ -71,15 +72,15 @@ impl SparseBackwardPass<'_> {
     let gtr = self.gtr;
     let obs = &partition.obs_nodes[&key];
 
-    let msg_to_parent = if self.tree.children(key).is_empty() {
+    let msg_to_parent = if self.schedule.children(key).is_empty() {
       leaf_message(obs, &partition.alphabet)?
     } else {
       self.combine_child_messages(key, children, obs)?
     };
 
     let sequence = Arc::clone(&node.sequence);
-    let (profile, parent_message) = match (self.tree.parent(key), edge_obs) {
-      (Some((_, edge_key)), Some(edge_obs)) => {
+    let (profile, parent_message) = match (self.schedule.parents(key).first(), edge_obs) {
+      (Some(&(_, edge_key)), Some(edge_obs)) => {
         let branch_length = fix_branch_length(partition.total_length, self.branch_lengths[&edge_key]);
         let msg_from_child = if let Some(site_rates) = gtr.site_rates() {
           propagate_raw_per_site(
@@ -99,13 +100,13 @@ impl SparseBackwardPass<'_> {
         };
         (
           SparseSeqDistribution::default(),
-          Some(SparseEdgeBackward {
+          vec![SparseEdgeBackward {
             msg_to_parent,
             msg_from_child,
-          }),
+          }],
         )
       },
-      (None, None) => (msg_to_parent, None),
+      (None, None) => (msg_to_parent, vec![]),
       _ => {
         return Err(make_internal_report!(
           "Sparse marginal backward pass received an inconsistent parent edge at node {key}"
@@ -125,14 +126,14 @@ impl SparseBackwardPass<'_> {
   ) -> Result<SparseSeqDistribution, Report> {
     let partition = self.partition;
     let alphabet = &partition.alphabet;
-    let child_keys = self.tree.children(key);
+    let child_keys = self.schedule.children(key);
     let n_children = child_keys.len();
     let mut child_messages = Vec::with_capacity(n_children);
     let mut n_events = 0;
     for (&(child_key, edge_key), child) in izip!(child_keys, children) {
       let child_backward = child
         .1
-        .as_ref()
+        .get(self.schedule.parent_slot(edge_key))
         .ok_or_else(|| make_internal_report!("Backward child {child_key} published no message for its parent edge"))?;
       n_events += 2 * partition.obs_edges[&edge_key].fitch_subs().len() + child_backward.msg_from_child.variable.len();
       child_messages.push(&child_backward.msg_from_child);
@@ -167,7 +168,7 @@ impl SparseBackwardPass<'_> {
       &child_messages,
       &sites,
       alphabet,
-      self.tree.parent(key).is_none().then_some(self.gtr.pi()),
+      self.schedule.parents(key).is_empty().then_some(self.gtr.pi()),
     )
   }
 }

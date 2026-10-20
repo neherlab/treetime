@@ -92,9 +92,6 @@ mod tests {
         let key = node.key();
         prop_assert_eq!(graph.node_parent(key).unwrap(), view.parent(key));
         prop_assert_eq!(graph.children_keys_of(node).collect_vec(), view.children(key).to_vec());
-        for (position, &(child, _)) in view.children(key).iter().enumerate() {
-          prop_assert_eq!(position, view.position_in_parent(child));
-        }
         if let Some((parent, _)) = view.parent(key) {
           let position = |target| view.preorder().iter().position(|&key| key == target);
           prop_assert!(position(parent) < position(key));
