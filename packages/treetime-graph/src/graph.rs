@@ -281,6 +281,6 @@ impl Default for Graph {
   clippy::panic,
   reason = "a key that is not in the graph is a programming error, as an absent key is for a map index"
 )]
-fn missing_key(kind: &str, key: impl Display) -> ! {
+pub(crate) fn missing_key(kind: &str, key: impl Display) -> ! {
   panic!("{kind} {key} is not in the graph")
 }

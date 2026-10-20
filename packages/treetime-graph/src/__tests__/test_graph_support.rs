@@ -1,5 +1,32 @@
 #[cfg(test)]
 pub(crate) mod tests {
+  pub(crate) mod generators {
+    use super::helpers::DagSpec;
+    use itertools::Itertools;
+    use proptest::prelude::Just;
+    use proptest::sample::subsequence;
+    use proptest::strategy::Strategy;
+
+    pub(crate) fn gen_dag(max_nodes: usize) -> impl Strategy<Value = DagSpec> {
+      (1..max_nodes)
+        .prop_flat_map(|count| {
+          let parents = (0..count)
+            .map(|node| subsequence((0..node).collect_vec(), 0..=node.min(3)))
+            .collect_vec();
+          (parents, Just((0..count).collect_vec()).prop_shuffle())
+        })
+        .prop_flat_map(|(parents, keys)| {
+          let edges = parents
+            .iter()
+            .enumerate()
+            .flat_map(|(child, parents)| parents.iter().map(move |&parent| (parent, child)))
+            .collect_vec();
+          (Just(keys), Just(edges).prop_shuffle())
+        })
+        .prop_map(|(keys, edges)| DagSpec { keys, edges })
+    }
+  }
+
   pub(crate) mod helpers {
     use crate::edge::GraphEdgeKey;
     use crate::graph::Graph;
@@ -18,6 +45,23 @@ pub(crate) mod tests {
       }
       graph.build()?;
       Ok(graph)
+    }
+
+    pub(crate) fn graph_from_dag(dag: &DagSpec) -> Result<Graph, Report> {
+      let mut graph = Graph::new();
+      let created = repeat_with(|| graph.add_node()).take(dag.keys.len()).collect_vec();
+      let key = |node: usize| created[dag.keys[node]];
+      for &(parent, child) in &dag.edges {
+        graph.add_edge(key(parent), key(child))?;
+      }
+      graph.build()?;
+      Ok(graph)
+    }
+
+    #[derive(Clone, Debug)]
+    pub(crate) struct DagSpec {
+      pub(crate) keys: Vec<usize>,
+      pub(crate) edges: Vec<(usize, usize)>,
     }
 
     pub(crate) struct NamedGraph {
