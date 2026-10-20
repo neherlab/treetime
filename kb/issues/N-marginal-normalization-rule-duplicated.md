@@ -2,7 +2,7 @@
 
 The rule that normalizes a probability vector and returns its log normalization exists in two functions, one for each sequence representation:
 
-- `fn normalize_inplace()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L6-L21](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L6-L21): dense mode, every row of an `(L, K)` profile, returns the sum of the row log norms. Callers: [packages/treetime/src/partition/marginal/shared/pass.rs#L193](../../packages/treetime/src/partition/marginal/shared/pass.rs#L193), [#L302](../../packages/treetime/src/partition/marginal/shared/pass.rs#L302), [#L309](../../packages/treetime/src/partition/marginal/shared/pass.rs#L309)
+- `fn normalize_inplace()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L6-L21](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L6-L21): dense mode, every row of an `(L, K)` profile, returns the sum of the row log norms. Callers: [packages/treetime/src/partition/marginal/shared/pass.rs#L189](../../packages/treetime/src/partition/marginal/shared/pass.rs#L189), [#L298](../../packages/treetime/src/partition/marginal/shared/pass.rs#L298), [#L305](../../packages/treetime/src/partition/marginal/shared/pass.rs#L305)
 - `fn normalize_1d_inplace()` [packages/treetime/src/partition/marginal/sparse/message.rs#L210-L219](../../packages/treetime/src/partition/marginal/sparse/message.rs#L210-L219): sparse mode, one site or fixed-state vector, returns `weight` times its log norm. Callers: `fn compute_msg_to_child()` [packages/treetime/src/partition/marginal/sparse/forward.rs#L207](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L207) and [#L220](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L220)
 
 Both apply the same rule to one vector: when its sum is positive and finite, divide by the sum and take the log of the sum; otherwise fill the vector uniformly with `1 / K` and report negative infinity. A change to the rule in one copy does not reach the other mode, and dense mode is the independent check of sparse mode, so the two copies must agree.
@@ -12,8 +12,8 @@ Both apply the same rule to one vector: when its sum is positive and finite, div
 `fn forward_log_lh_add_normalization()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43) skips a normalization of negative infinity. The two modes reach it with different granularity:
 
 - Sparse `compute_msg_to_child` passes each site and each fixed state separately, so a degenerate vector drops only its own term
-- Dense `msg_to_child` (`pass.rs#L302-L305`) passes the sum over all rows, so one degenerate row turns the sum into negative infinity and drops the log norms of every row of the message
-- Dense node profiles (`pass.rs#L193`, `#L309`) add the sum directly, so one degenerate row makes the node log-likelihood negative infinity
+- Dense `msg_to_child` (`pass.rs#L297-L300`) passes the sum over all rows, so one degenerate row turns the sum into negative infinity and drops the log norms of every row of the message
+- Dense node profiles (`pass.rs#L189`, `#L305`) add the sum directly, so one degenerate row makes the node log-likelihood negative infinity
 
 On input with a degenerate position, `msg_to_child.log_lh` therefore differs between dense and sparse mode. Which result is correct is the open question of [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md).
 
@@ -28,5 +28,5 @@ The merge keeps outputs byte-identical when the summation order of each vector s
 
 ## Related issues
 
-- [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md): the degenerate-vector semantics; its source location `marginal_core.rs:175` is stale, the function is now in `partition/marginal/shared/normalize.rs`
-- [N-ancestral-marginal-array-kernels-allocate.md](N-ancestral-marginal-array-kernels-allocate.md): allocations of the same marginal kernels
+- [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md): the degenerate-vector semantics
+- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md): allocations of the same marginal kernels

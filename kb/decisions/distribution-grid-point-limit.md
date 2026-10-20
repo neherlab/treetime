@@ -72,10 +72,10 @@ v0 (`packages/legacy/treetime`) has no grid point limit. On `data/mpox/clade-ii/
 | 200 000 | `1e-3` | limit error | 435 | 8 |
 | 200 000 | `2e-3` | limit error | 433 | 9 |
 
-Every run stays below 0.9 GB at every candidate, so the server uses the largest candidate, 1 000 000. The limit does not change the peak memory in this measurement: runs at rates up to `5e-4` finish with grids far below 200 000 points, and runs from `7e-4` stop within 10 s on node distributions that reach millions to trillions of years into the past ([kb/issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](../issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md)). Times are from a shared development machine and are approximate.
+Every run stays below 0.9 GB at every candidate, so the server uses the largest candidate, 1 000 000. The limit does not change the peak memory in this measurement: runs at rates up to `5e-4` finish with grids far below 200 000 points, and runs from `7e-4` stop within 10 s on node distributions that reach millions to trillions of years into the past ([kb/issues/M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](../issues/M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)). Times are from a shared development machine and are approximate.
 
 ## Consequences
 
 - A run that needs a grid above the limit ends with an actionable error instead of being terminated by the operating system
 - A run that today used the coarser-grid fallback of multiplication or division now stops; no measured run reached the fallback
-- The limit does not make every input succeed: the mass windows that grow beyond any limit at moderate clock rates are [kb/issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](../issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md)
+- The limit does not make every input succeed: the mass windows that grow beyond any limit at moderate clock rates are [kb/issues/M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](../issues/M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)

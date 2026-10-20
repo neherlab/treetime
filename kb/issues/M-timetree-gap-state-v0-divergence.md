@@ -13,7 +13,7 @@ v0 timetree models the gap character `-` as a fifth nucleotide state for its def
 
 ## v1 behavior
 
-- The nucleotide alphabet puts the gap in the undetermined set together with the unknown character ([packages/treetime/src/alphabet/alphabet.rs#L131](../../packages/treetime/src/alphabet/alphabet.rs#L131)), and `enum AlphabetName` has no variant with a gap state ([packages/treetime/src/alphabet/alphabet.rs#L304-L309](../../packages/treetime/src/alphabet/alphabet.rs#L304-L309))
+- The nucleotide alphabet puts the gap in the undetermined set together with the unknown character ([packages/treetime/src/alphabet/alphabet.rs#L116](../../packages/treetime/src/alphabet/alphabet.rs#L116)), and `enum AlphabetName` has no variant with a gap state ([packages/treetime/src/alphabet/alphabet.rs#L280-L285](../../packages/treetime/src/alphabet/alphabet.rs#L280-L285))
 - Gaps are tracked as indel ranges outside the substitution model; [kb/decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md](../decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md) describes how internal nodes take their gap ranges from the leaves
 - `--gap-fill` only replaces gaps by the unknown character (`fn apply_gap_fill()` in [packages/treetime/src/seq/gap_fill.rs](../../packages/treetime/src/seq/gap_fill.rs)), so no option restores the v0 model
 
@@ -23,4 +23,5 @@ v0 timetree models the gap character `-` as a fifth nucleotide state for its def
 
 ## Open question
 
-Record the four-state model with indel ranges as an intentional change in `kb/decisions/`, or add a five-state nucleotide alphabet for v0 parity.
+> [!IMPORTANT]
+> **Decision required.** v1 uses four nucleotide states with gaps as indel ranges, while v0 timetree uses a fifth gap state for its default model and for `JC69`, `F81` and `TN93`. The options: record the four-state model with indel ranges as an intentional change in `kb/decisions/`, or add a five-state nucleotide alphabet for v0 parity. Evidence: the v0 and v1 behavior above. The difference affects default runs on alignments with internal gaps.

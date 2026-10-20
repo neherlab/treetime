@@ -1,12 +1,12 @@
 # Command outcome lists output files left by earlier runs
 
-`CommandOutcome.output_files` tells the app which files a run wrote. `fn written_files()` [packages/app-commands/src/command.rs#L423-L431](../../packages/app-commands/src/command.rs#L423-L431) builds the list after the run from the output plan and the file system, not from the files the run wrote:
+`CommandOutcome.output_files` tells the app which files a run wrote. `fn written_files()` [packages/app-backend/src/command.rs#L368-L381](../../packages/app-backend/src/command.rs#L368-L381) builds the list after the run from the output plan and the file system, not from the files the run wrote:
 
 - A planned path is listed when a file exists there. An output that the run skips because it has no data (for example the GTR file under `--output-all` without a fitted model) is listed when an earlier run into the same folder wrote it
-- A per-CDS amino-acid FASTA template is listed by a folder scan in `fn existing_files()` [packages/app-commands/src/command.rs#L433-L464](../../packages/app-commands/src/command.rs#L433-L464): every file whose name starts with the text before the first placeholder and ends with the text after it. Files of CDSes that the run did not reconstruct match too
-- The scan splits the file name at the first placeholder only, so a template with both placeholders (`aa.{cds}.%GENE.fasta`) matches no written file
+- A per-CDS amino-acid FASTA template is listed by a folder scan in `fn existing_files()` [packages/app-backend/src/command.rs#L413-L446](../../packages/app-backend/src/command.rs#L413-L446): every file whose name starts with the text before the first placeholder and ends with the text after it. Files of CDSes that the run did not reconstruct match too
+- The scan splits the file name at the first CDS placeholder token it finds (`{cds}`, then `%GENE`), so a template with both tokens (`aa.{cds}.%GENE.fasta`) keeps the second token in the suffix and matches no written file
 
-The run knows the exact paths: the output plan and, for the amino-acid FASTA, the expanded per-CDS paths that the ancestral runner checks for collisions (`fn cds_output_paths()` in [packages/app-commands/src/commands/ancestral/aa_node_data.rs](../../packages/app-commands/src/commands/ancestral/aa_node_data.rs)).
+The run knows the exact paths: the output plan and, for the amino-acid FASTA, the expanded per-CDS paths that the ancestral runner checks for collisions (`fn cds_output_paths()` [packages/app-commands/src/commands/ancestral/aa_node_data.rs#L97](../../packages/app-commands/src/commands/ancestral/aa_node_data.rs#L97)).
 
 ## Fix direction
 

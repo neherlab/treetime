@@ -13,7 +13,7 @@ v0 `timetree` samples the root sequence from its posterior in every ancestral re
 
 ## What v1 does
 
-v1 `timetree` writes the sequences and mutations of the marginal reconstruction with the most likely state at every node ([packages/treetime/src/timetree/pipeline.rs#L549-L555](../../packages/treetime/src/timetree/pipeline.rs#L549-L555), `fn node_sequence()` of `enum MarginalReconstruction` in `packages/treetime/src/partition/marginal/reconstruction.rs`). Sampling from the posterior exists only in the `ancestral` command (`--sample-from-profile`). [kb/decisions/ancestral-sample-mode-default-argmax.md](../decisions/ancestral-sample-mode-default-argmax.md) approves the most-likely-state default for `ancestral` only.
+v1 `timetree` writes the sequences and mutations of the marginal reconstruction with the most likely state at every node (`fn stream_final_sequences()` [packages/treetime/src/timetree/pipeline.rs#L580-L596](../../packages/treetime/src/timetree/pipeline.rs#L580-L596), which calls `fn stream_sequences()` of `enum ReconstructionRef` [packages/treetime/src/partition/marginal/reconstruction.rs#L163](../../packages/treetime/src/partition/marginal/reconstruction.rs#L163)). Sampling from the posterior exists only in the `ancestral` command (`--sample-from-profile`). [kb/decisions/ancestral-sample-mode-default-argmax.md](../decisions/ancestral-sample-mode-default-argmax.md) approves the most-likely-state default for `ancestral` only.
 
 ## Impact
 

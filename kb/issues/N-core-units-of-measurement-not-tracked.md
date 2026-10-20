@@ -1,6 +1,6 @@
 # Units of measurement not tracked or enforced across the codebase
 
-All physical quantities are `f64` with no type-level or documentation-level distinction between units. Functions accept and return bare `f64` values where the caller must know the expected unit from context. This has already caused a concrete bug: `INITIAL_COALESCENT_TC` was set to `0.001` (a subs/site-scale value) when the coalescent model operates in calendar years (PR#851).
+All physical quantities are `f64` with no type-level or documentation-level distinction between units. Functions accept and return bare `f64` values where the caller must know the expected unit from context.
 
 ## Known quantities and their units
 
@@ -17,14 +17,13 @@ All physical quantities are `f64` with no type-level or documentation-level dist
 
 ## Known problems
 
-- `INITIAL_COALESCENT_TC` was `0.001` subs/site when it should have been approximately 5 years (fixed by PR#851)
 - Coalescent Tc coordinate convention (calendar years) not type-enforced ([N-coalescent-time-scale-coordinate-not-type-enforced.md](N-coalescent-time-scale-coordinate-not-type-enforced.md))
-- Node times, date constraints, and confidence intervals pass raw `f64` calendar dates (the coalescent's `CalendarTime` newtype, used nowhere else, was removed in phase 2)
+- Node times, date constraints, and confidence intervals pass raw `f64` calendar dates
 - Branch lengths transition from subs/site to years during clock model application with no type change at the boundary
 - Optimize command works in subs/site, timetree command works in both subs/site and years depending on pipeline stage -- the transition point is implicit
-- `fn ClockModel::clock_deviation(date: f64, div: f64)` accepts interchangeable primitives for calendar date and divergence [`packages/treetime/src/clock/clock_model.rs#L11`](../../packages/treetime/src/clock/clock_model.rs#L11).
-- `fn GTR::evolve(t: f64, ...)` calls `t` `branch length (time)`, while lower-level helpers separately distinguish branch-length space after absorbing the model rate [`packages/treetime/src/gtr/gtr.rs#L151`](../../packages/treetime/src/gtr/gtr.rs#L151) [`packages/treetime/src/gtr/gtr.rs#L185`](../../packages/treetime/src/gtr/gtr.rs#L185).
-- `TimeLength`, divergence, branch length, rate multiplier, variance, and date APIs all expose raw `f64`, so signatures cannot prevent swapping values with incompatible units.
+- `fn ClockLine::clock_deviation(date: f64, div: f64)` accepts interchangeable primitives for calendar date and divergence [`packages/treetime/src/clock/clock_model.rs#L15`](../../packages/treetime/src/clock/clock_model.rs#L15)
+- `fn GTR::evolve(profile, t: f64, return_log)` takes the branch length `t` as a bare `f64` [`packages/treetime/src/gtr/gtr.rs#L154`](../../packages/treetime/src/gtr/gtr.rs#L154)
+- Divergence, branch length, rate multiplier, variance, and date APIs all expose raw `f64`, so signatures cannot prevent swapping values with incompatible units
 
 ## Investigation scope
 

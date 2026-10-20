@@ -1,19 +1,18 @@
 # Parallel sparse leaf setup validation covers only a narrow success path
 
 > [!IMPORTANT]
-> **Investigation required.** Current evidence supports deterministic success on the exercised inputs, but broader correctness and failure behavior remain unverified.
+> **Investigation required.** Current evidence supports deterministic success on the exercised inputs, but correctness on multiple partitions, larger trees, and real datasets remains unverified.
 
 ## Current evidence
 
-`fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic()` [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L544](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L544) compares one-thread and four-thread results for a four-leaf tree with one nucleotide partition. It compares likelihood state and reconstructed node and edge data, so it exercises the parallel setup and indexed passes together.
+`fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic()` [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L499-L506](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L499-L506) compares one-thread and four-thread results for a four-leaf tree with one nucleotide partition. It compares likelihood state and reconstructed node and edge data, so it exercises the parallel setup and indexed passes together.
 
-The mpox-2000 performance report additionally records byte-identical ancestral, optimize, timetree, and mugration outputs between the baseline and changed binaries at selected thread counts. That practical check is retained as a report rather than an automated regression test.
+A failed leaf setup leaves no partial state: `fn attach_seqs_to_graph()` takes the node inputs by value, reads the graph without mutating it, and extends the partition only after every leaf succeeds [packages/treetime/src/partition/fitch/passes.rs#L52-L87](../../packages/treetime/src/partition/fitch/passes.rs#L52-L87). In production it runs only inside `fn create_fitch_partition()`, which builds a new partition and discards it on error.
 
 ## Missing coverage
 
 - Multiple partitions and larger leaf sets are not exercised directly.
-- Setup failures and partial mutation are not tested.
-- The report's real-dataset output equivalence is not represented by a stable automated oracle.
+- No automated check compares real-dataset outputs across thread counts.
 - Existing dense-sparse and sparse root-invariance defects limit the strength of broader representation properties.
 
 ## Research required

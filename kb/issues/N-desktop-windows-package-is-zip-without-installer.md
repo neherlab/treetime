@@ -15,10 +15,14 @@ The Windows package of the desktop app (`treetime-desktop-x86_64-pc-windows-gnul
 
 ## Options
 
-- A later Wine toolset of electron-builder whose Linux archive contains the Windows DLLs, then `win.target: "nsis"` in `packages/app-desktop/electron-builder.config.ts`
-- Building the Windows package on a Windows runner in CI, where NSIS needs no Wine; local builds would keep the zip
+> [!IMPORTANT]
+> **Decision required.** A Linux build of the NSIS installer needs a Wine that runs the 32-bit installer, and neither the Wine toolset of electron-builder nor the Wine of the Windows cross image can run it (see Evidence). Options:
+>
+> - **Wait for a Wine toolset of electron-builder whose Linux archive contains the Windows DLLs**, then set `win.target: "nsis"` in `packages/app-desktop/electron-builder.config.ts`; local and CI builds stay alike
+> - **Build the Windows package on a Windows runner in CI**, where NSIS needs no Wine; local builds keep the zip, so local and CI packages differ
+> - **Keep the zip archive**: no installer, no Start menu entry, no uninstaller
 
 ## Locations
 
-- `packages/app-desktop/electron-builder.config.ts`: `win.target`
+- [packages/app-desktop/electron-builder.config.ts#L31-L33](../../packages/app-desktop/electron-builder.config.ts#L31-L33): `win.target`
 - `dev/desktop/package`, `dev/desktop/start-test`: the `zip` extension and the extraction of the Windows package

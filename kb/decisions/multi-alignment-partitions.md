@@ -69,6 +69,6 @@ v0 reads one alignment into `TreeAnc` with one GTR model ([packages/legacy/treet
 
 - [kb/decisions/partition-system-architecture.md](partition-system-architecture.md)
 - [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)
-- [kb/issues/M-core-partition-init-orchestration-duplication.md](../issues/M-core-partition-init-orchestration-duplication.md)
+- [kb/issues/M-partition-site-ranges-and-per-partition-models-unsupported.md](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md)
 - [kb/issues/M-mugration-gtr-rate-restore-inconsistency.md](../issues/M-mugration-gtr-rate-restore-inconsistency.md)
 - [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md)

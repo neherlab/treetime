@@ -227,7 +227,7 @@ The tree readers and writers open files through `read_file_with()` and `write_fi
 
 - The commands read trees from Newick and Nexus only. UShER MAT, Auspice JSON and PhyloXML input need conversion to Newick (and FASTA for sequences) first
 - The commands read trees only. A structure with hybrid tags (`--tree-dialect enewick,...` or `rich,...`) reads a tag that occurs once as a tree node, and a network is an error
-- Graphviz DOT output grows with the square of the number of leaves, because of the invisible edges ([kb/issues/M-io-output-layer-scaling-naming-and-duplication.md](../issues/M-io-output-layer-scaling-naming-and-duplication.md))
+- Graphviz DOT output grows with the square of the number of leaves, because of the invisible edges ([kb/issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md](../issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md))
 
 ## Practical impact
 

@@ -12,7 +12,7 @@ This leaves the boundary behavior unverified for negative values, powers of ten,
 
 The Auspice writer already emits typed nucleotide mutations, genome annotations from the root sequence and the CDS annotations, the `entropy` panel [packages/app-output/src/auspice.rs#L101-L113](../../packages/app-output/src/auspice.rs#L101-L113) [packages/app-output/src/auspice.rs#L160-L184](../../packages/app-output/src/auspice.rs#L160-L184), and `num_date` with its confidence interval for each node [packages/app-output/src/auspice.rs#L191-L226](../../packages/app-output/src/auspice.rs#L191-L226). Whether the complete document, with annotations, panels, mutations, and dates, matches what Augur writes for the same inputs is not checked.
 
-Two Auspice gaps have their own issues: branch support ([M-io-branch-support-dropped-from-outputs.md](M-io-branch-support-dropped-from-outputs.md)) and the `confidence` and `bad_branch` attributes of `ancestral` ([N-ancestral-auspice-json-not-produced.md](N-ancestral-auspice-json-not-produced.md)).
+Two Auspice gaps have their own issues: branch support ([M-io-branch-support-dropped-from-outputs.md](M-io-branch-support-dropped-from-outputs.md)) and the `confidence` and `bad_branch` attributes of `ancestral` ([N-ancestral-auspice-missing-v0-attributes-and-default.md](N-ancestral-auspice-missing-v0-attributes-and-default.md)).
 
 ## Recommendation
 

@@ -1,8 +1,8 @@
 # Validation runner mixes execution, aggregation, and presentation
 
-`TestRunner` defines six presentation methods that only forward to `ValidationConsole`; none of its three implementations overrides them [`packages/treetime-validation/src/testing/runners/runner.rs#L19-L75`](../../packages/treetime-validation/src/testing/runners/runner.rs#L19-L75).
+`TestRunner` defines six presentation methods that only forward to `ValidationConsole`; none of its three implementations overrides them [`packages/treetime-validation/src/testing/runners/runner.rs#L157-L213`](../../packages/treetime-validation/src/testing/runners/runner.rs#L157-L213).
 
-`fn compute_all_metrics()` aggregates numerical results, applies unit conversions, and immediately formats every value as `String` [`packages/treetime-validation/src/testing/console/console_metrics.rs#L16`](../../packages/treetime-validation/src/testing/console/console_metrics.rs#L16). The runner orchestration also owns console output and plot, TSV, JSON, and summary publication.
+`fn compute_all_metrics()` aggregates numerical results, applies unit conversions, and immediately formats every value as `String` [`packages/treetime-validation/src/testing/console/console_metrics.rs#L15`](../../packages/treetime-validation/src/testing/console/console_metrics.rs#L15). The runner orchestration also owns console output and plot, TSV, JSON, and summary publication.
 
 ## Consequences
 

@@ -95,7 +95,7 @@ IQ-TREE 3 <a id="cite-5a"></a>[Wong et al. 2026](https://doi.org/10.1093/molbev/
 ### TreeTime v0 and v1
 
 - **v0** calls external programs when no tree is given. `fn tree_inference()` tries IQ-TREE, FastTree, and RAxML in that order as subprocesses ([`packages/legacy/treetime/treetime/utils.py#L410-L452`](../../packages/legacy/treetime/treetime/utils.py#L410-L452)); the IQ-TREE call uses HKY with `-ninit 2 -n 2 -me 0.05` ([`packages/legacy/treetime/treetime/utils.py#L481-L515`](../../packages/legacy/treetime/treetime/utils.py#L481-L515)). `fn assure_tree()` triggers it ([`packages/legacy/treetime/treetime/wrappers.py#L13-L22`](../../packages/legacy/treetime/treetime/wrappers.py#L13-L22))
-- **v1** requires a tree. The `timetree` arguments declare `--tree` as optional, and the conversion step returns the required-argument error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L177-L179`](../../packages/app-commands/src/commands/timetree/args.rs#L177-L179))
+- **v1** requires a tree. The `timetree` arguments declare `--tree` as optional, and the conversion step returns the required-argument error when it is missing ([`packages/app-commands/src/commands/timetree/args.rs#L64-L67`](../../packages/app-commands/src/commands/timetree/args.rs#L64-L67))
 - **Stale KB premise.** [kb/issues/M-timetree-tree-inference-unimplemented.md](../issues/M-timetree-tree-inference-unimplemented.md) states that v0 infers a tree "using neighbor-joining or other methods". The inspected v0 code only calls external programs
 
 ### What the audit shows

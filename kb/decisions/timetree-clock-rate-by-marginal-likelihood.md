@@ -106,7 +106,7 @@ At low signal the rate drifted with the number of rounds: at $L=10^3$, $\mu=3\cd
 $\lvert\ln\rvert$ rate error grew from 0.51 after two rounds to 1.26 after six, and the node date RMSE from 0.49 to
 1.1 years. The probes see the mean-field prior frozen in calendar time while the tree stretches, which tilts
 `log_lh_time` toward low rates by about 77 per unit of $\ln$ rate, round after round, without an interior maximum
-([M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md)). Following
+([M-timetree-rate-step-window-and-rate-uncertainty.md](../issues/M-timetree-rate-step-window-and-rate-uncertainty.md)). Following
 that slope to the 2-fold bound every round accumulates the tilt.
 
 Moving the rate only toward a maximum between the probes stops the drift, but alone it also stops the first round from

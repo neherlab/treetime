@@ -1,15 +1,15 @@
 # Clock reroot boolean selects incompatible workflows
 
-`fn estimate_clock_model_with_reroot_policy()` accepts `keep_root: bool` to select between backward regression alone and backward regression followed by forward regression and topology mutation [`packages/treetime/src/clock/clock_regression.rs#L22`](../../packages/treetime/src/clock/clock_regression.rs#L22).
+`fn estimate_clock_model_with_reroot_policy()` [packages/treetime/src/clock/clock_regression.rs#L21-L26](../../packages/treetime/src/clock/clock_regression.rs#L21-L26) reads the field `keep_root: bool` of `struct ClockFitParams` [packages/treetime/src/clock/clock_regression.rs#L122-L128](../../packages/treetime/src/clock/clock_regression.rs#L122-L128) to select between backward regression alone and rerooting followed by backward regression.
 
-Reroot parameters remain mandatory when `keep_root` makes them irrelevant. Call sites pass raw booleans, so the selected scientific workflow and ignored arguments are not visible at the call site.
+`reroot_params` remains mandatory when `keep_root` makes it irrelevant. Call sites set the named field, but some still pass a literal, for example `keep_root: false` in [packages/treetime/src/timetree/optimization/reroot.rs#L68](../../packages/treetime/src/timetree/optimization/reroot.rs#L68), so the selected scientific workflow and the ignored parameters are visible only through the value of that field.
 
 ## Workflow difference
 
-- Keep-root performs backward regression and returns no reroot result.
-- Optimize-root performs forward regression, searches for a root, mutates topology, and returns reroot diagnostics.
+- Keep-root runs the backward regression on the input topology and returns no reroot result
+- Optimize-root first calls `fn reroot_at_best_root()`, which searches for a root, mutates the topology, and returns reroot diagnostics; then it runs the same backward regression on the new topology [packages/treetime/src/clock/clock_regression.rs#L44-L76](../../packages/treetime/src/clock/clock_regression.rs#L44-L76)
 
-The boolean therefore controls mutation, algorithm selection, and return-state availability. It also permits invalid request shapes: reroot configuration can be supplied while rerooting is disabled, and a caller can accidentally invert a bare `true` or `false`.
+The boolean therefore controls mutation, algorithm selection, and return-state availability. It also permits invalid request shapes: reroot configuration can be supplied while rerooting is disabled, and a caller can accidentally invert a `true` or `false` literal.
 
 Represent root handling as an exhaustive policy. The keep-root state carries no reroot configuration; the optimize-root state carries the parameters required for topology mutation. Existing regression and reroot behavior must remain unchanged.
 
@@ -19,7 +19,7 @@ The result should likewise identify whether topology was retained or optimized i
 
 - Parameterized tests cover both policy variants and prove their allowed configuration differs by construction.
 - Golden-master clock and timetree outputs preserve regression estimates, selected roots, and topology.
-- A topology mutation assertion proves keep-root cannot invoke forward search.
+- A topology mutation assertion proves keep-root cannot invoke the root search.
 - Call sites contain no boolean literals selecting root policy.
 
 ## Related issues

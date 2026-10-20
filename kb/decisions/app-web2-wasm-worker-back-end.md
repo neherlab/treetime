@@ -62,7 +62,7 @@ The module has no threads, no tokio runtime, and no unwinding. The back end adap
 - [kb/issues/M-web2-offers-no-example-datasets.md](../issues/M-web2-offers-no-example-datasets.md)
 - [kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](../issues/M-web2-wasm-panic-loses-the-back-end-state.md)
 - [kb/issues/N-web2-supported-dataset-size-undocumented.md](../issues/N-web2-supported-dataset-size-undocumented.md)
-- [kb/issues/N-web2-not-built-or-tested-in-ci.md](../issues/N-web2-not-built-or-tested-in-ci.md)
+- [kb/issues/N-web2-production-build-not-in-ci.md](../issues/N-web2-production-build-not-in-ci.md)
 - [kb/issues/M-web2-not-verified-in-browsers.md](../issues/M-web2-not-verified-in-browsers.md)
 - [kb/issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md](../issues/N-web2-depends-on-experimental-wasm-bindgen-emscripten-support.md)
 - [kb/issues/M-timetree-outputs-depend-on-the-rounding-of-the-platform.md](../issues/M-timetree-outputs-depend-on-the-rounding-of-the-platform.md)

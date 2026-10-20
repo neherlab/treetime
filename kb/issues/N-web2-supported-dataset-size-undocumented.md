@@ -1,6 +1,6 @@
 # The dataset size that web2 supports is not documented
 
-The WebAssembly back end of web2 runs in a 32-bit address space without threads. The module grows its memory up to 4 GiB (`-sMAXIMUM_MEMORY=4GB` in `.cargo/config.toml`), and a run computes on one thread. Neither the documentation nor the interface tells a user which datasets fit, or that the CLI is faster on several threads.
+The WebAssembly back end of web2 runs in a 32-bit address space without threads. The module grows its memory up to 4 GiB (`-sMAXIMUM_MEMORY=4GB` in [.cargo/config.toml#L69](../../.cargo/config.toml#L69)), and a run computes on one thread. Neither the documentation nor the interface tells a user which datasets fit, or that the CLI is faster on several threads.
 
 ## Evidence
 
@@ -22,7 +22,7 @@ Measured with the release profile of `wasm32-unknown-emscripten` in Node 24, aga
 > **Investigation required.** The measurements above ran in Node, one run per instance. Measure the memory of the worker in Chrome, Firefox, and Safari, and the memory after several large runs in one session, because the linear memory never shrinks and the run store keeps every output file in memory.
 
 > [!IMPORTANT]
-> **Investigation required.** web2 applies no grid point limit of its own: `browser_config()` in `packages/app-wasm/src/backend.rs` sets no `max_grid_points` and no app settings, so a run without `max_grid_points` uses the built-in 1 000 000 points ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)). An allocation that fails in the module aborts it, and the abort loses every run of the page ([M-web2-wasm-panic-loses-the-back-end-state.md](M-web2-wasm-panic-loses-the-back-end-state.md)). Measure the peak linear memory of `mpox/clade-ii/1000` `timetree` with `--max-iter=1` at fixed clock rates from `1e-4` to `2e-3` in the module, as the decision measured the public server, and check whether any run reaches 4 GiB below the limit error. Only such a run justifies a lower default for web2. That default would fill runs without a value and accept higher values, unlike `RunLimits::Server`, which rejects them.
+> **Investigation required.** web2 applies no grid point limit of its own: `browser_config()` [packages/app-wasm/src/backend.rs#L60-L69](../../packages/app-wasm/src/backend.rs#L60-L69) sets no `max_grid_points` and no app settings, so a run without `max_grid_points` uses the built-in 1 000 000 points ([kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)). An allocation that fails in the module aborts it, and the abort loses every run of the page; [M-web2-wasm-panic-loses-the-back-end-state.md](M-web2-wasm-panic-loses-the-back-end-state.md) tracks the abort and its handling. Whether a run within the grid point limit can reach the 4 GiB memory limit is not known. Measure the peak linear memory of `mpox/clade-ii/1000` `timetree` with `--max-iter=1` at fixed clock rates from `1e-4` to `2e-3` in the module, as the decision measured the public server, and check whether any run reaches 4 GiB below the limit error. Only such a run justifies a lower default for web2. That default would fill runs without a value and accept higher values, unlike `RunLimits::Server`, which rejects them.
 
 ## Fix direction
 

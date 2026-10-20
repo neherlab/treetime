@@ -1,6 +1,6 @@
 # Cavity division cannot restore a hard bound the product already removed
 
-The forward-pass cavity is computed as `parent_posterior / msg_to_parent` (`fn refine_node()` in `packages/treetime/src/timetree/inference/forward_pass.rs`). The posterior is the product of all the parent's factors, and the message is one of them, so `divide(f, g)` recovers the product of the remaining factors. On the hard sides this recovery is exact only when the divided-out child does **not** hold the tightest hard bound.
+The forward-pass cavity is computed as `parent_posterior / msg_to_parent`: `fn refine_distribution_from_parent()` calls `distribution_division()` with the parent posterior and the message of the child ([packages/treetime/src/timetree/inference/forward_pass.rs#L151-L154](../../packages/treetime/src/timetree/inference/forward_pass.rs#L151-L154)). The posterior is the product of all the parent's factors, and the message is one of them, so `divide(f, g)` recovers the product of the remaining factors. On the hard sides this recovery is exact only when the divided-out child does **not** hold the tightest hard bound.
 
 ## Symptom and scope
 
@@ -14,9 +14,19 @@ Division operates on the aggregate posterior, which has already discarded the pe
 
 ## Fix approach
 
-Rebuild the cavity by multiplying all factors _except_ the selected child, instead of dividing the aggregate. This requires the forward pass to retain each child's contribution (the per-child factors) rather than only the combined posterior, so the "all but one" product can be reformed on demand. That restores the exact hard support and avoids the `0/0` cancellation entirely.
+Rebuild the cavity by multiplying all factors _except_ the selected child, instead of dividing the aggregate. That restores the exact hard support and avoids the `0/0` cancellation entirely.
 
-This is a forward-pass structural change (factor retention), out of scope for the division operator itself. Confirmed as the correct exact approach in prior analysis; deferred pending a decision on the memory cost of retaining per-child factors versus recomputing the product.
+The backward pass already keeps the message of every child: `TimeBackward.messages` holds one message per edge for the whole forward pass ([packages/treetime/src/timetree/inference/result.rs#L11-L15](../../packages/treetime/src/timetree/inference/result.rs#L11-L15)). The "all but one" product also needs the date constraint of the parent and the message that the parent received from its own parent. `NodePosterior` does not store that message; the forward pass multiplies it into the parent posterior and drops it ([packages/treetime/src/timetree/inference/forward_pass.rs#L156-L167](../../packages/treetime/src/timetree/inference/forward_pass.rs#L156-L167)).
+
+This is a forward-pass structural change, out of scope for the division operator itself.
+
+> [!IMPORTANT]
+> **Decision required.** The exact cavity costs grid multiplications and memory that the division does not, and the division matches v0. Options:
+>
+> - **Keep the division**: v0 parity, no extra cost. The cavity stays slightly too tight on the hard side whose tightest bound belonged to the removed child
+> - **Rebuild the cavity from factors**: keep the message from the parent of each internal node, and multiply it with the date constraint and the messages of the other children. For a node with `k` children, each cavity costs `k` multiplications instead of one division; reusing prefix and suffix products of the child messages reduces this to about three multiplications per child
+>
+> Evidence: the division at [packages/treetime/src/timetree/inference/forward_pass.rs#L151-L154](../../packages/treetime/src/timetree/inference/forward_pass.rs#L151-L154); the stored child messages above; the v0 contract and the prototype test below
 
 ## Reference
 

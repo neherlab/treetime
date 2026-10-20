@@ -527,7 +527,7 @@ Re-window deliberately leaves up to $2\epsilon$ mass in the soft tails of the di
 <details>
 <summary>K18. Related open issues 💻</summary>
 
-- [kb/issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)
+- [kb/issues/M-timetree-confidence-interval-widened-to-point-estimate.md](../issues/M-timetree-confidence-interval-widened-to-point-estimate.md)
 
 </details>
 

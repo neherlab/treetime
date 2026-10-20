@@ -23,16 +23,15 @@ The name lookup of `fn pair_by_name()` [packages/treetime-graph/src/pair_by_name
 
 ## Current behavior
 
-`ancestral` and `homoplasy` fill a leaf without a matching record with unknown characters and warn for each such leaf; they stop when more than a third of the leaves have no record, unless `--ignore-missing-alns` is set (`fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L18](../../packages/treetime/src/ancestral/attach.rs#L18)). `timetree`, `optimize` and `prune` stop at the first leaf without a record:
+Every sequence command reads each `--alignment` file through `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124). It pairs records with leaves by exact name, then `fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L15-L68](../../packages/treetime/src/ancestral/attach.rs#L15-L68) fills each leaf without a record with unknown characters. It writes one warning per such leaf (`No sequence found for leaf '<name>' in alignment '<path>'`) and one summary warning with the count. The run stops when more than a third of the leaves have no record. `ancestral` and `homoplasy` accept `--ignore-missing-alns` to continue past this limit; `timetree`, `optimize` and `prune` always enforce it.
 
-- Dense partitions: `Leaf sequence not found: '<name>'` [packages/treetime/src/partition/marginal/dense/partition.rs#L60](../../packages/treetime/src/partition/marginal/dense/partition.rs#L60)
-- Sparse partitions: `Leaf sequence not found after alignment completion: '<name>'` [packages/treetime/src/partition/fitch/passes.rs#L68](../../packages/treetime/src/partition/fitch/passes.rs#L68)
+Records whose name matches no leaf get no message. They count for the alignment length check but not for the mask.
 
-These messages give no guidance on near-matches or potential causes (case, whitespace).
+The warnings and the error give no guidance on near-matches or potential causes (case, whitespace). A leaf whose name differs from its record only in case or whitespace becomes missing data; the run continues with the per-leaf warning as long as no more than a third of the leaves are affected.
 
 ## Impact
 
-Users with mismatched names must manually edit either the tree or the FASTA file to make names match exactly. The error message does not help identify which names are close matches or suggest corrections.
+Users with mismatched names must manually edit either the tree or the FASTA file to make names match exactly. The messages do not help identify which names are close matches or suggest corrections.
 
 ## Possible improvements
 

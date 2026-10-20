@@ -222,7 +222,10 @@ Order: 1, then 2, each measured on its own; 3 after its investigation; 4 after 1
 
 ## Related
 
-- [M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](../issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md): support growth in the backward pass at high clock rates
+- [H-timetree-polytomy-resolution-blows-up-the-time-grid.md](../issues/H-timetree-polytomy-resolution-blows-up-the-time-grid.md): polytomy resolution stretches a grid back to year 0; the shared mechanism is not shown
+- [M-timetree-edge-message-regridding-limits-accuracy.md](../issues/M-timetree-edge-message-regridding-limits-accuracy.md): edge messages regridded to a fixed point count
+- [M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md): node dates at the grid argmax move when a grid changes by one point
+- [M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](../issues/M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md): support growth in the backward pass at high clock rates
 - [M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](../issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md): a narrow branch distribution passes its spacing to the forward product, which then needs millions of points
 - [M-distribution-fft-convolution-hard-edge-first-order-error.md](../issues/M-distribution-fft-convolution-hard-edge-first-order-error.md): first-order error of the FFT convolution at a hard edge
 - [exponential-branch-length-tails.md](exponential-branch-length-tails.md)

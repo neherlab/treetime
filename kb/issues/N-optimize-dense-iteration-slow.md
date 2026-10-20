@@ -6,7 +6,7 @@ Dense marginal reconstruction computes full probability profiles at every node f
 
 ## Current behavior
 
-Each optimize iteration calls `update_marginal()` (backward + forward pass over the full dense profile matrix) followed by `optimize_edge_lengths()` (per-edge Newton optimization). The marginal passes dominate wall time.
+Each optimize iteration calls `PartitionSet::marginal_update()` [packages/treetime/src/partition/set.rs#L104-L121](../../packages/treetime/src/partition/set.rs#L104-L121), which runs `MarginalPasses::marginal_update()` [packages/treetime/src/partition/marginal/shared/update.rs#L48-L71](../../packages/treetime/src/partition/marginal/shared/update.rs#L48-L71) (backward and forward pass over the full dense profile matrix) for each partition, followed by `optimize_edge_lengths()` (per-edge Brent or Newton optimization). Dense partitions run every alignment column through these passes, because dense mode has no site pattern compression. The marginal passes dominate wall time.
 
 ## Potential optimizations
 
@@ -20,7 +20,7 @@ v0 always uses dense representation. v0 mitigates the cost through column compre
 
 ## Implementation pointers
 
-Start with profiling (`cargo flamegraph` or `perf` via `./dev/docker/run`) on the mpox dataset in dense mode to confirm where time is spent. The expected hotspot is `marginal_backward`/`marginal_forward` in `marginal_dense.rs`.
+Start with profiling (`just profile` on the host: it builds the binary in the container and runs `perf` on the host, because `perf` cannot read the kernel counters inside Docker) on the mpox dataset in dense mode to confirm where time is spent. The expected hotspots are the dense kernels `fn indexed_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L92](../../packages/treetime/src/partition/marginal/shared/pass.rs#L92) and `fn indexed_forward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L240](../../packages/treetime/src/partition/marginal/shared/pass.rs#L240).
 
 Open questions for the implementer:
 
@@ -32,8 +32,7 @@ The $O(N \cdot s^2 \cdot L)$ complexity is inherent -- the question is constant 
 
 ## Related
 
-- [Command-relationships report](../reports/command-relationships/README.md)
-- [Iterative tree refinement: status and recommendations](../reports/iterative-tree-refinement/10-status-and-recommendations.md)
+- [kb/reports/iterative-tree-refinement/10-status-and-recommendations.md](../reports/iterative-tree-refinement/10-status-and-recommendations.md)
 
 ## Glossary
 

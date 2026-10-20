@@ -13,9 +13,12 @@ Taxonium can already display TreeTime's Auspice JSON. A JSONL writer adds the fo
 
 ## Open questions
 
-- The format has no schema. Which `taxoniumtools` revision defines the contract, and how is compatibility tested without running Python in the Rust tests?
-- Node layout: Taxonium JSONL stores `x_dist`, optional `x_time` and `y` per node. Does TreeTime compute the layout, or must the writer match the `taxoniumtools` layout?
-- Which commands write it: every command that writes MAT, or also `mugration` and `clock`?
+> [!IMPORTANT]
+> **Decision required.** The writer needs three choices before work can start. The format has no schema and one main maintainer, so each choice binds TreeTime to an external contract that can change:
+>
+> - Contract: which `taxoniumtools` revision defines the format, and how the Rust tests check compatibility without running Python. Options: commit reference files that `taxoniumtools` wrote at a pinned revision, or check only the documented fields
+> - Node layout: Taxonium JSONL stores `x_dist`, optional `x_time` and `y` per node. Options: TreeTime computes its own layout, or the writer reproduces the `taxoniumtools` layout
+> - Commands: every command that writes MAT, or also `mugration` and `clock`
 
 ## Related
 

@@ -9,7 +9,9 @@ Sparse and dense branch optimization have no coefficient-level oracle proving th
 
 ## Details
 
-`fn get_coefficients()` [`packages/treetime/src/partition/optimize_sparse.rs#L45-L118`](../../packages/treetime/src/partition/optimize_sparse.rs#L45-L118) uses complete probability profiles for explicit variable sites and compressed profiles plus multiplicities for fixed sites. The reference state selects the fixed profile when one side lacks an explicit variable profile.
+`fn get_coefficients()` [packages/treetime/src/partition/optimize/sparse.rs#L11-L84](../../packages/treetime/src/partition/optimize/sparse.rs#L11-L84) uses complete probability profiles for explicit variable sites and compressed profiles plus multiplicities for fixed sites. When one side lacks an explicit variable profile, the state of that side selects its fixed profile: the Fitch substitution states of the edge at that position, or else the stored `VarPos.state` of the other message [packages/treetime/src/partition/optimize/sparse.rs#L29-L55](../../packages/treetime/src/partition/optimize/sparse.rs#L29-L55).
+
+The dense-versus-sparse equivalence tests compare only results, not coefficients: log-likelihoods within 0.5 and branch lengths within 0.05 [packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs#L68](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs#L68), [packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs#L144](../../packages/treetime/src/optimize/__tests__/test_dense_sparse_equivalence/test_dense_sparse_equivalence_bounds.rs#L144) ([N-optimize-equivalence-bounds-undocumented.md](N-optimize-equivalence-bounds-undocumented.md)).
 
 Changing that key to the current posterior MAP state without rebuilding profiles, reference states, fixed counts, gaps, and unknowns together can select a fixed profile for a different state. No current failing fixture establishes that the stored reference state is stale or that this isolated substitution is valid.
 

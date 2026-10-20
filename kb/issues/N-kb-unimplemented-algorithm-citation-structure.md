@@ -3,8 +3,8 @@
 [`kb/algo/unimplemented.md`](../algo/unimplemented.md) has citation and mathematical-notation defects across multiple algorithm entries:
 
 - The document has no glossary linking technical terms to first use.
-- Reference entries are formatted as bullets rather than an ordered reference list, and the article titles use title case instead of sentence case ([kb/algo/unimplemented.md#L321-L328](../algo/unimplemented.md#L321-L328)).
-- The per-site rate variation entry uses $L_a$, $w_k$, $r_k$, $k$, $Q$, $V$, $\lambda$, and $t$ without declarations at first use ([kb/algo/unimplemented.md#L93](../algo/unimplemented.md#L93), [#L104](../algo/unimplemented.md#L104)). The same entry writes the per-site rate as both $\mu^a$ and $\mu_a$.
+- Reference entries are formatted as bullets rather than an ordered reference list, and the article titles use title case instead of sentence case ([kb/algo/unimplemented.md#L305-L310](../algo/unimplemented.md#L305-L310)).
+- The per-site rate variation entry uses $L_a$, $w_k$, $r_k$, $k$, $Q$, $V$, $\lambda$, and $t$ without declarations at first use ([kb/algo/unimplemented.md#L93](../algo/unimplemented.md#L93), [#L104](../algo/unimplemented.md#L104)). The same entry writes the per-site rate as both $\mu^a$ ([#L91](../algo/unimplemented.md#L91)) and $\mu_a$ ([#L104](../algo/unimplemented.md#L104)).
 
 These defects make the cross-algorithm inventory harder to audit but do not imply that any unimplemented algorithm is ready for implementation.
 

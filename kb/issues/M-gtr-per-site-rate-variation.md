@@ -15,13 +15,15 @@ The design document's fixed rate-vector contract is distinct from discrete-gamma
 
 ## v1 current state
 
-`struct GTR` stores scalar `mu` together with optional `site_rates`, set only through the `site_rates` builder argument of `GTR::new()`, which rejects negative and non-finite rates [`packages/treetime/src/gtr/gtr.rs#L24`](../../packages/treetime/src/gtr/gtr.rs#L24). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L151-L179`](../../packages/treetime/src/gtr/gtr.rs#L151-L179), and sparse explicit positions use it in `propagate_raw_per_site` [`packages/treetime/src/partition/marginal/sparse/message.rs#L137`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137).
+`struct GTR` stores scalar `mu` together with optional `site_rates`, set only through the `site_rates` builder argument of `GTR::new()`, which rejects negative and non-finite rates [`packages/treetime/src/gtr/gtr.rs#L24-L37`](../../packages/treetime/src/gtr/gtr.rs#L24-L37). `GTR::evolve` and `GTR::propagate_profile` apply the site-rate vector [`packages/treetime/src/gtr/gtr.rs#L154-L182`](../../packages/treetime/src/gtr/gtr.rs#L154-L182), and sparse explicit positions use it in `propagate_raw_per_site`, which reads `site_rates[pos]` [`packages/treetime/src/partition/marginal/sparse/message.rs#L137-L182`](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137-L182).
+
+The marginal backward and forward passes of dense and sparse partitions call `GTR::check_site_count()` first [`packages/treetime/src/gtr/gtr.rs#L123-L131`](../../packages/treetime/src/gtr/gtr.rs#L123-L131). It rejects a vector whose length differs from the number of sites of the partition with an error.
 
 No production path sets `site_rates`: no command passes the builder argument, and `GTR` has no deserializer. The per-site branches therefore run only in tests.
 
 The branch length objective of `optimize` and the branch likelihood of `timetree` apply one rate to all sites, while the marginal passes apply the per-site rates. Until the rate contract is decided, every branch length contribution rejects a model with site rates before it computes coefficients: `OptimizationContribution::from_dense()` and `from_sparse()` call `reject_site_rates()` [`packages/treetime/src/partition/optimize/contribution.rs#L89-L96`](../../packages/treetime/src/partition/optimize/contribution.rs#L89-L96). Both commands build their contributions through these constructors.
 
-The remaining gaps are rate-vector construction or loading, command wiring, compressed fixed-position behavior, optimizer coverage (which replaces the rejection), validation of the vector length against the sequence length of the partition, serialization, and end-to-end comparison with v0. Sparse explicit positions already index `site_rates[pos]`, so a vector shorter than the sequence panics there; this does not define how compressed fixed positions contribute to likelihood or optimization.
+The remaining gaps are rate-vector construction or loading, command wiring, compressed fixed-position behavior, optimizer coverage (which replaces the rejection), serialization, and end-to-end comparison with v0. Sparse explicit positions index `site_rates[pos]` by alignment position; this does not define how compressed fixed positions contribute to likelihood or optimization.
 
 ## v0 implementation
 
@@ -31,7 +33,7 @@ The remaining gaps are rate-vector construction or loading, command wiring, comp
 
 - Choose whether the target is a supplied fixed rate vector, discrete-gamma latent categories, v0 full site-specific inference, or separately exposed contracts, and define normalization for each approved contract.
 - Specify how compressed fixed sites contribute to propagation and optimization; explicit sparse positions already map by alignment position.
-- Define serialization, validation (including the vector length against the sequence length of each partition), and CLI behavior.
+- Define serialization, input validation, and CLI behavior.
 - Establish dense, sparse, and optimizer golden masters against v0, with independent analytical tests for any implementation strategy that differs internally.
 
 Implementation waits until these contracts are decided.

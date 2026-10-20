@@ -4,10 +4,10 @@ A run builds one partition per `--alignment` file, and all partitions take the o
 
 ## Current state
 
-- Each file becomes one partition that covers all its sites, in the order of the `--alignment` list (`fn split_sources()`, [packages/treetime/src/partition/result.rs#L62](../../packages/treetime/src/partition/result.rs#L62)). [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rule
-- Optimize and timetree build their partitions with `fn build_partition_set()` [packages/treetime/src/partition/set.rs#L19](../../packages/treetime/src/partition/set.rs#L19), which passes the same representation and model to `fn build_marginal_partition()` for every file [packages/treetime/src/optimize/pipeline.rs#L68](../../packages/treetime/src/optimize/pipeline.rs#L68) [packages/treetime/src/timetree/pipeline.rs#L330](../../packages/treetime/src/timetree/pipeline.rs#L330)
-- Ancestral calls `fn build_marginal_partition()` once per file with the same model [packages/treetime/src/ancestral/plan.rs#L156](../../packages/treetime/src/ancestral/plan.rs#L156)
-- Prune builds sparse JC69 partitions with `fn build_sparse_reconstruction()`, because it counts parsimony substitutions only [packages/treetime/src/prune/pipeline.rs#L56](../../packages/treetime/src/prune/pipeline.rs#L56)
+- Each file becomes one partition that covers all its sites, in the order of the `--alignment` list (`fn split_sources()`, [packages/treetime/src/partition/result.rs#L49](../../packages/treetime/src/partition/result.rs#L49)). [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rule
+- Optimize and timetree build their partitions with `fn build_partition_set()` [packages/treetime/src/partition/set.rs#L20](../../packages/treetime/src/partition/set.rs#L20), which passes the same representation and model to `fn build_marginal_partition()` ([packages/treetime/src/partition/create.rs#L23](../../packages/treetime/src/partition/create.rs#L23)) for every file [packages/treetime/src/optimize/pipeline.rs#L65](../../packages/treetime/src/optimize/pipeline.rs#L65) [packages/treetime/src/timetree/pipeline.rs#L327](../../packages/treetime/src/timetree/pipeline.rs#L327)
+- Ancestral calls `fn build_marginal_partition()` once per file with the same model [packages/treetime/src/ancestral/plan.rs#L158](../../packages/treetime/src/ancestral/plan.rs#L158)
+- Prune builds sparse JC69 partitions with `fn build_sparse_reconstruction()`, because it counts parsimony substitutions only [packages/treetime/src/prune/pipeline.rs#L58](../../packages/treetime/src/prune/pipeline.rs#L58)
 
 ## Impact
 

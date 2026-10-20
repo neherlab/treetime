@@ -8,9 +8,9 @@ Accepted and implemented. The `--gtr-iterations N` flag (default 0) on the ances
 
 Key implementation decisions:
 
-- The `TransitionCounting` trait in `partition/traits.rs` generalizes transition counting across all marginal partition types (dense, discrete, sparse), with each type implementing counting over its native data layout.
+- The `count_transitions()` method of the `MarginalPasses` trait in `partition/marginal/shared/update.rs` generalizes transition counting across all marginal partition types: dense and discrete share one implementation in `partition/marginal/shared/pass.rs`, and sparse counts over its own data layout in `partition/marginal/sparse/partition.rs`.
 - `MarginalData::count_transitions` provides the shared dense/discrete implementation. Sparse has its own implementation via private associated functions on `PartitionMarginalSparse`.
-- `refine_gtr_iterative` in `gtr/refinement.rs` accepts any partition implementing `TransitionCounting + PartitionMarginalPasses + HasGtr`.
+- `refine_gtr_model` in `gtr/refinement.rs` accepts any partition implementing `MarginalPasses`.
 - Rate optimization (`optimize_gtr_rate`) is configurable via `optimize_rate: bool`: mugration passes `true`, ancestral passes `false`. Per the proposal recommendation, Brent-style mu optimization is unnecessary for multi-site sequence data where `infer_gtr_from_counts` already estimates mu from large counts.
 - The refinement starts from the Fitch model of the file, which has μ = 1 after the fit as in v0 ([packages/treetime/src/partition/create.rs](../../packages/treetime/src/partition/create.rs)), and re-estimates μ with W and π from the counts of every iteration ([packages/treetime/src/gtr/refinement.rs#L18-L52](../../packages/treetime/src/gtr/refinement.rs#L18-L52)).
 - `get_branch_mutation_matrix` and `accumulate_mutation_counts` live in `gtr/infer_gtr/common.rs` alongside `MutationCounts` and `infer_gtr_from_counts`.

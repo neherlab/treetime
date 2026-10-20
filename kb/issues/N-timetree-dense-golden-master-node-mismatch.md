@@ -1,19 +1,17 @@
 # Marginal dense golden master node key mismatch on ebola_20
 
-> [!WARNING]
-> **Needs review.** The ebola_20 marginal dense runner case is gone, not commented out. Commit `3aca7de4` (refactor(treetime): remove comments) deleted the commented-out `#[case::ebola_20("ebola_20")]` lines from the marginal dense and marginal sparse test files; [test_gm_runner_marginal_dense.rs#L32](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L32) now holds the `flu_h3n2_20` case. The ebola_20 expected values remain in the fixture. Coverage for ebola_20 in both modes must be re-added, and the 11-versus-19 key count must be re-measured when it is.
+The ebola_20 `marginal_dense` golden master has a different set of internal node keys than v1 produces. It holds 11 internal nodes (`NODE_0000000`, `1`, `2`, `5`, `8`, `9`, `11`, `13`, `16`, `17`, `18`), while the ebola_20 `poisson` golden master and the rerooted tree of the same fixture hold all 19 (`NODE_0000000` to `NODE_0000018`). The `pretty_assert_map_abs_diff_eq!` macro requires an exact key match, so the test fails on key comparison before values are checked. The mismatch is in the golden master data, not in the inference results.
 
-The marginal dense runner test golden master for ebola_20 has a different set of internal node keys than v1 produces. The v0-captured golden data contains 11 internal nodes while v1's rerooting produces 19. The `pretty_assert_map_abs_diff_eq!` macro requires exact key match, so the test fails on key comparison before values are checked.
+## Cause
 
-The dense marginal pipeline runs correctly on ebola_20. The mismatch is in the golden master data captured from v0, not in the inference results.
+The capture script [packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_capture](../../packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_capture) runs both v0 modes on a copy of the same rerooted tree. The `poisson` run has no alignment and changes no topology. The `marginal_dense` run passes the alignment with `branch_length_mode="marginal"`, so v0 `TreeTime.run()` calls `optimize_tree()` with the default `prune_short=True` [packages/legacy/treetime/treetime/treetime.py#L215](../../packages/legacy/treetime/treetime/treetime.py#L215), [#L243](../../packages/legacy/treetime/treetime/treetime.py#L243). `TreeAnc.prune_short_branches()` then removes every internal node whose branch is shorter than 0.1 mutations and whose sequence matches its parent's with probability above 0.1 [packages/legacy/treetime/treetime/treeanc.py#L1475-L1495](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1495). The 8 missing internal nodes are the nodes this step removed.
 
 ## Location
 
-Test file: [test_gm_runner_marginal_dense.rs](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs) (the ebola_20 case is absent).
-
-Golden master data in [gm_runner_outputs.json](../../packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json).
+- Test files: the ebola_20 case is commented out under a `// TODO:` line in [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35-L38](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35-L38) and in [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35-L38](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35-L38). The dense test is also `#[ignore]` for a separate dense-versus-v0 discrepancy on `flu_h3n2_20` ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md))
+- Golden master data: [packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json](../../packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_outputs.json)
 
 ## Resolution options
 
-- Recapture golden master data from v0 using the same rerooted tree that v1 produces
-- Compare only the intersection of node keys (leaf nodes match, internal node naming diverges)
+> [!IMPORTANT]
+> **Decision required.** How to make the ebola_20 marginal golden master comparable with v1. Options: (a) recapture the `marginal_dense` data from v0 with `prune_short=False`, so v0 keeps the 19 internal nodes of the rerooted tree; (b) compare only the intersection of node keys, which leaves the 8 pruned nodes untested. Evidence: the `poisson` data of the same fixture already holds all 19 internal nodes.

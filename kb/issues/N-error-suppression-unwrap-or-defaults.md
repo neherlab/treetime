@@ -1,63 +1,28 @@
-# Error suppression via unwrap_or_default and silent fallbacks
+# Error suppression via defaults and silent fallbacks
 
-## Summary
+Several locations substitute a default value for data that carries meaning, or continue silently where the data is inconsistent. None of them is known to change an output today, but each one hides the cause when an upstream defect occurs.
 
-Multiple locations suppress errors by substituting default values for semantically important data, or by silently proceeding after failures that should be reported.
+## Defaults on data that carries meaning
 
-## Instances
+- [packages/treetime/src/partition/marginal/discrete/input.rs#L29](../../packages/treetime/src/partition/marginal/discrete/input.rs#L29): `validate_trait_leaves()` lists an unnamed leaf without a trait as an empty string in the "tree leaves missing from metadata" error, so the message does not identify the leaf
+- [packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L97](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L97) and [packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L207](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L207): indels default to an empty slice (`map_or(empty_indels, ..)`) when the edge has no observation. An edge without an observation has no mutations, so this default is plausibly correct; a type that cannot be absent would make that explicit
+- [packages/treetime/src/timetree/optimization/relaxed_clock.rs#L30](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L30): a missing branch length becomes 0.0. The denominator is `opt_len + one_mutation`, so no division by zero follows, but the edge silently enters the relaxed-clock fit as a zero-length branch
+- [packages/treetime/src/timetree/optimization/relaxed_clock.rs#L63](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L63): missing coefficients default to zero
 
-### Defaults on semantically important data
+## `branch_length().unwrap_or(one_mutation)` fallback
 
-- `partition/marginal/discrete/partition.rs:42:` and `partition/marginal/discrete/input.rs:30:` node name defaults to empty string
-- `optimize/topology/merge_shared_mutations.rs:100:` and `:212:` indels default to an empty slice (`map_or(empty_indels, ..)`) when the edge has no observation
-- `timetree/optimization/relaxed_clock.rs:30:` branch length defaults to 0.0
-- `timetree/optimization/relaxed_clock.rs:63:` coefficients default to zero
+[packages/treetime/src/timetree/inference/runner.rs#L268](../../packages/treetime/src/timetree/inference/runner.rs#L268): an edge without a branch length gets `one_mutation` (1 / total sites) when the Poisson branch-length distribution is built. A missing branch length can indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
 
-A default of 0.0 for branch length can produce division-by-zero downstream or silently exclude the branch from optimization. An empty node name makes the node invisible to output serialization.
+## `Composition::adjust_count` clamps negative counts
 
-### debug_assert_eq! stripped in release (compose_substitutions)
+[packages/treetime/src/seq/composition.rs#L61](../../packages/treetime/src/seq/composition.rs#L61) uses `saturating_add_signed`, which silently clamps a count to 0 on underflow. A negative composition count indicates a data integrity problem that should be reported, not masked.
 
-`packages/treetime/src/seq/mutation.rs:314:`
+## Fix
 
-`debug_assert_eq!(ps.qry(), cs.reff(), ...)` in `compose_substitutions()` is stripped in release builds. A broken substitution chain (where the query state of the parent substitution does not match the reference state of the child substitution) silently produces incorrect mutation annotations.
+Replace each default with an explicit error that names the node or edge, or with a type that makes the missing case impossible, unless the default is provably correct (then state the invariant in the type).
 
-Fix: replace the `debug_assert_eq!` with a check that runs in all builds and returns an error. `compose_substitutions()` (`packages/treetime/src/seq/mutation.rs:286:`) already returns `Result`, so the error can propagate without an API change.
+## Related issues
 
-### branch_length().unwrap_or(one_mutation) silent fallback
-
-`packages/treetime/src/timetree/inference/runner.rs:183:`
-
-Edges with no branch length get `one_mutation` (= 1.0 / total_sites) as a fallback when building Poisson branch-length distributions. A missing branch length could indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
-
-### infer_gtr_from_counts silently proceeds after non-convergence
-
-`packages/treetime/src/gtr/infer_gtr/common.rs:70-74:`
-
-Returns `Ok(...)` with a warning log (`progress_warn!`) when GTR inference does not converge. `struct InferGtrResult` (`packages/treetime/src/gtr/infer_gtr/common.rs:106:`) has no convergence flag. Callers cannot distinguish a converged model from a non-converged one without parsing log output.
-
-Fix: add a convergence flag to `InferGtrResult` so callers can detect and handle non-convergence programmatically.
-
-### Composition::adjust_count saturating_add_signed silently clamps
-
-`packages/treetime/src/seq/composition.rs:70:`
-
-Uses `saturating_add_signed` which silently clamps to 0 on underflow. A negative composition count indicates a data integrity problem that should be reported, not masked.
-
-### Empty sequence for a missing node
-
-- `partition/marginal/dense/partition.rs:170:` dense `extract_ancestral_sequence()` returns an empty sequence when the node has no marginal state
-- `partition/marginal/sparse/partition.rs:109:` sparse `extract_ancestral_sequence()` does the same
-
-A missing node state is a broken invariant. An empty sequence is written to the output as if the node had no sites.
-
-### Mass-sizing errors read as "not sizable"
-
-`packages/treetime-distribution/src/distribution_ops/mass_domain.rs:46-52:`
-
-`peak_normalized_if_mass_sizable()` discards a `fn DistributionFunction.repeak()` error (`NaN` values) and a `mass_profile()` error through `let Ok(..) else { return None; }`, so a distribution with an undeclared tail or fewer than two grid points is treated the same as one without finite total mass. Callers then take the fallback window intended for the second case.
-
-## Impact
-
-- Silent data corruption in release builds from unchecked substitution chains
-- Branch length 0.0 defaults cause division-by-zero or exclusion from optimization
-- Non-converged GTR models used without caller awareness
+- [N-seq-substitution-chain-checked-only-in-debug-builds.md](N-seq-substitution-chain-checked-only-in-debug-builds.md)
+- [N-gtr-inference-non-convergence-not-reported-to-callers.md](N-gtr-inference-non-convergence-not-reported-to-callers.md)
+- [N-partition-missing-node-state-yields-empty-sequence.md](N-partition-missing-node-state-yields-empty-sequence.md)

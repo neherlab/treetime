@@ -1,35 +1,33 @@
 # Topology cleanup in optimize loop uses Fitch substitutions instead of marginal MAP substitutions
 
-The optimize loop's topology cleanup step (`find_zero_optimal_internal_edges` + `merge_shared_mutation_branches`) uses `fitch_subs()` to decide which edges carry mutations and which sibling edges share mutations. `fitch_subs()` contains the compression-time Fitch-algorithm substitutions, not the post-marginal MAP-derived substitutions that reflect the current ancestral reconstruction.
+The topology cleanup of each optimize iteration has two steps in `fn prune_and_merge_in_loop()`: the collapse of zero-optimal internal edges, then `fn resolve_polytomies()` (sibling merge, reversion hoist, and retirement of mutation-free helper nodes). Both steps decide from `fitch_subs()`, the Fitch substitutions of the sparse edge, not from the marginal MAP substitutions of the current ancestral reconstruction.
 
-At the point where `find_zero_optimal_internal_edges` runs, `update_marginal()` has already populated `subs_ml` with the current MAP state. For non-collapsed edges, `fitch_subs()` and `subs_ml` can differ at ambiguous positions where marginal inference resolves differently than parsimony. The topology cleanup decisions are therefore based on the parsimony-era representation, not the current maximum a posteriori state.
+- `fn find_zero_optimal_internal_edges()` keeps an edge out of the collapse when any partition reports `edge_has_fitch_mutations()`, which reads `fitch_subs()` and the edge indels. Dense partitions always report no mutations
+- `fn resolve_polytomies()` groups sibling edges by shared `fitch_subs()` (`fn merge_single_polytomy()`), counts reversions from `fitch_subs()` (`fn count_child_reversions()`), and retires helper nodes whose edges have empty `fitch_subs()`
+
+The marginal MAP substitutions of a sparse partition are stored apart from the edge, in `SparseReconstruction::edges.estimates`, which the forward pass fills (`subs_ml`). At the point where `find_zero_optimal_internal_edges()` runs, the marginal update of the same iteration has filled them for every edge. `fitch_subs()` and the MAP substitutions can differ at ambiguous positions where marginal inference resolves differently than parsimony.
 
 ## Context
 
-This is the documented current behavior, not a regression. Git archaeology shows that `find_zero_optimal_internal_edges` always read the raw `subs` field (now `subs_fitch` behind the `fitch_subs()` accessor). The `edge_subs()` trait method (which performed on-demand tree traversal to derive MAP subs) was a different code path never used at this call site.
-
-In the post-collapse path, using `fitch_subs()` is unavoidable: `collapse_edge()` calls `set_fitch_subs()` which clears `subs_ml`, so `fitch_subs()` is the only available data at that point. The `merge_shared_mutation_branches()` step runs immediately after collapse and correctly uses `fitch_subs()` for all edges. The next iteration re-runs `update_marginal()`.
+`fn collapse_edge()` composes the Fitch substitutions of the removed edge onto each child edge (`chain_fitch_subs()`). A composed edge has no matching marginal estimate until the next marginal update, so polytomy resolution after a collapse can use the MAP substitutions only for edges that the collapse did not change. The next iteration runs the marginal update again on the new topology.
 
 ## Suspected problems
 
-- Pre-collapse decision on stale data: `find_zero_optimal_internal_edges` identifies mutation-free edges using `fitch_subs()`. An edge where Fitch assigned a substitution at an ambiguous position but marginal inference removed it would be excluded from zero-optimal candidates even though the current MAP state has no mutation on that edge. This is a conservative error (keeps edges that could be collapsed), not a correctness error (never collapses edges that carry current mutations).
-- Merge comparison on mixed representations: after collapse, `merge_shared_mutation_branches()` compares `fitch_subs()` across sibling edges. For the freshly composed edge (from `chain_fitch_subs`), the Fitch representation is exact. For untouched sibling edges, `fitch_subs()` may differ from the current MAP state at ambiguous sites. This could cause missed merges (shared mutations in MAP not shared in Fitch) or incorrect merges (shared in Fitch but not in MAP). The practical impact is bounded: the next iteration re-runs marginal inference and re-identifies zero-optimal edges with the updated Fitch representation.
+- Zero-optimal selection on parsimony data: an edge where Fitch assigned a substitution at an ambiguous position, but the current MAP state has none, is kept out of the collapse. This is a conservative error (keeps edges that could be collapsed), not a correctness error (never collapses edges that carry current mutations)
+- Polytomy resolution on mixed representations: for untouched sibling edges, `fitch_subs()` may differ from the MAP state at ambiguous sites. This can cause missed merges (shared in MAP, not in Fitch) or wrong merges (shared in Fitch, not in MAP), and different reversion counts for the hoist
 
 ## Investigation tasks
 
-- Determine whether using `subs_ml` (when available) for `find_zero_optimal_internal_edges` produces different zero-optimal edge sets on real datasets (compare edge sets from `fitch_subs()` vs `subs_ml` after `update_marginal()`).
-- Determine whether using `subs_ml` for `merge_shared_mutation_branches` on non-collapsed sibling edges produces different merge decisions. This requires computing shared mutations from `subs_ml` for edges where it is available and `fitch_subs()` for freshly composed edges.
-- Measure the effect on convergence speed and final topology. If Fitch-based decisions cause unnecessary iterations (conservative edge retention), switching to ML subs where available could reduce iteration count.
-- Consider a hybrid approach: use `subs_ml` for `find_zero_optimal_internal_edges` (pre-collapse, all edges have marginal data), fall back to `fitch_subs()` for `merge_shared_mutation_branches` (post-collapse, composed edges lack marginal data).
+- Determine whether reading the MAP substitutions in `find_zero_optimal_internal_edges()` produces different zero-optimal edge sets on real datasets (compare the edge sets from `fitch_subs()` and from the marginal estimates after the marginal update)
+- Determine whether reading the MAP substitutions for untouched sibling edges in `fn resolve_polytomies()` produces different merge and hoist decisions. Composed edges keep `fitch_subs()`, because they have no marginal estimate
+- Measure the effect on iteration count and final topology
 
 ## Locations
 
-- Zero-optimal edge identification: [`packages/treetime/src/optimize/run_loop.rs#L295-L319`](../../packages/treetime/src/optimize/run_loop.rs#L295-L319) (`find_zero_optimal_internal_edges`)
-- Prune and merge dispatch: [`packages/treetime/src/optimize/run_loop.rs#L321`](../../packages/treetime/src/optimize/run_loop.rs#L321) (`prune_and_merge_in_loop`)
-- Edge collapse: [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
-- Shared mutation merge: [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) (`merge_shared_mutation_branches` and helpers)
-- Fitch/ML accessors: [`packages/treetime/src/partition/sparse.rs#L112-L163`](../../packages/treetime/src/partition/sparse.rs#L112-L163) (`SparseEdgePartition`)
-
-## Related
-
-- ~~Move merge_shared_mutation_branches to shared topology_cleanup module~~ (resolved: now in `packages/treetime/src/optimize/topology/`)
+- Zero-optimal edge identification: [`packages/treetime/src/optimize/run_loop.rs#L312-L331`](../../packages/treetime/src/optimize/run_loop.rs#L312-L331) (`find_zero_optimal_internal_edges`)
+- Collapse and polytomy resolution: [`packages/treetime/src/optimize/run_loop.rs#L333-L385`](../../packages/treetime/src/optimize/run_loop.rs#L333-L385) (`prune_and_merge_in_loop`)
+- Fitch mutation check: [`packages/treetime/src/partition/marginal/reconstruction.rs#L282-L291`](../../packages/treetime/src/partition/marginal/reconstruction.rs#L282-L291) (`edge_has_fitch_mutations`)
+- Edge collapse: [`packages/treetime/src/optimize/topology/collapse.rs#L7-L43`](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)
+- Polytomy resolution: [`packages/treetime/src/optimize/topology/resolve_polytomy.rs#L17-L47`](../../packages/treetime/src/optimize/topology/resolve_polytomy.rs#L17-L47), with the sibling merge in [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) and the reversion count in [`packages/treetime/src/optimize/topology/hoist_reversions.rs#L15-L42`](../../packages/treetime/src/optimize/topology/hoist_reversions.rs#L15-L42)
+- Fitch accessors: [`packages/treetime/src/partition/storage/sparse.rs#L105-L125`](../../packages/treetime/src/partition/storage/sparse.rs#L105-L125) (`SparseEdgeObs`)
+- Marginal MAP substitutions: [`packages/treetime/src/partition/marginal/sparse/forward.rs#L58`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L58)

@@ -5,7 +5,7 @@
 
 Several command-line flags are accepted by the parser, validated, and then never read. A user who sets one of them gets no error and no effect. This is the same class of defect as a silently wrong result: the command reports success while ignoring part of its input.
 
-The command's argument struct (`Treetime<Command>ArgsRaw` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value, and no code reads it. The struct derives `Serialize` and the clap parser, which read every field, so the compiler does not report these fields; the table below is the list to keep current when a flag is wired or removed.
+The command's raw argument struct (`Treetime<Command>ArgsRaw` in `packages/app-commands/src/commands/<command>/args.rs`) stores the value. The command resolves it into `Treetime<Command>Args`, which keeps the raw struct and gives access to it through `Deref` (for example [packages/app-commands/src/commands/timetree/args.rs#L40-L84](../../packages/app-commands/src/commands/timetree/args.rs#L40-L84)). Neither the resolution nor the run reads these fields. The raw struct derives the deser `Serialize` and the clap parser, which read every field, so the compiler does not report these fields; the table below is the list to keep current when a flag is wired or removed.
 
 ## Argument fields never read
 
@@ -17,7 +17,7 @@ Flags marked _hidden_ are accepted but not listed in `--help`.
 | `clock`     | `--model`/`--gtr`, `--model-params`/`--gtr-params`, `--branch-length-mode`, `--method-anc`, `--prune-short`, `--clock-filter-method` (hidden), `--plot-rtt` (hidden), `--prune-outliers` (hidden)                                                            |
 | `timetree`  | `--model-params`/`--gtr-params`, `--tip-labels`, `--no-tip-labels`, `--n-iqd`, `--keep-polytomies`, `--zero-based`, `--aa` (hidden), `--custom-gtr` (hidden), `--clock-filter-method` (hidden) |
 
-`optimize` and `homoplasy` also accept `--model-params`/`--gtr-params` and never read it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. For example, `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
+`optimize` and `homoplasy` also accept `--model-params`/`--gtr-params` and never read it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. The `--help` text and `docs/docs/reference.md` even give a usage example (`--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`). Yet `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
 `clock` and `timetree` accept `--date-format` (config key `date_format`, default `%Y-%m-%d`) and never read it. The flag lives in the shared `DateColumnArgs` struct in `packages/app-commands/src/commands/shared/metadata.rs`. The date reader in `packages/treetime-io/src/dates_csv.rs` parses every date cell with `DateParserOptions::default()`, and `struct DateParserOptions` has no format field, so a string date in a format outside the built-in list stays unreadable whatever `--date-format` says.
 
@@ -43,9 +43,13 @@ Tracked elsewhere, with their own `expect` reasons:
 
 Decide each flag on its own against v0 behavior and its owning feature issue. The flags differ in scientific meaning, input requirements, and parity constraints, so one aggregate change would bundle unrelated decisions.
 
+## Guard against new unread flags
+
+No test checks that a parsed argument field is used. Add one test that fails when a field of a command argument struct is neither read by the command nor rejected during validation, so that a new flag cannot be added without an effect.
+
 ## Readiness
 
-Implement each flag as a separate change after its disposition is decided.
+Implement each flag as a separate change after its disposition is decided. The guard test can land first, with the current unread fields as its known exceptions.
 
 ## Related issues
 

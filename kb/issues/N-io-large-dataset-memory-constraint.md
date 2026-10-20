@@ -4,7 +4,7 @@ The current input model loads all sequences into memory before attachment, then 
 
 ## Current flow
 
-Sequence loading in `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L96-L104](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L96-L104), called once per `--alignment` file:
+Sequence loading in `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124), called once per `--alignment` file:
 
 ```rust
 let mut records = fasta_read_file(path, alphabet)?;
@@ -14,7 +14,10 @@ All records of a file must fit in memory, and the paired sequences of every file
 
 ## Memory characteristics
 
-1. Peak memory: approximately 2x sequence data (FASTA records + partition copies)
+> [!IMPORTANT]
+> **Investigation required.** The peak of twice the sequence data (FASTA records plus partition copies) is an estimate from the code structure, not a measurement. Measure the peak resident memory of a run on a large dataset (for example `data/sc2/4500` or `data/mpox/clade-ii/2000`) against the size of the decompressed alignment, for dense and sparse partitions.
+
+1. Peak memory: estimated at 2x sequence data (FASTA records + partition copies)
 2. Post-attachment: original `Vec<FastaRecord>` is dropped, partitions remain
 3. Algorithm phase: partitions must remain in memory for random access during tree traversal
 
@@ -22,7 +25,7 @@ All records of a file must fit in memory, and the paired sequences of every file
 
 True streaming (process each sequence once as it arrives) is blocked by:
 
-1. Length validation: `common_length()` in [packages/treetime/src/seq/alignment.rs](../../packages/treetime/src/seq/alignment.rs) verifies all sequences have uniform length before processing begins
+1. Length validation: `LeafSequences::common_length()` [packages/treetime/src/seq/alignment.rs#L91-L93](../../packages/treetime/src/seq/alignment.rs#L91-L93), through the free function `common_length()` [packages/treetime/src/seq/alignment.rs#L128](../../packages/treetime/src/seq/alignment.rs#L128), verifies that all sequences of a file have uniform length before processing begins
 
 2. Tree-order access: algorithms traverse the tree in topological order (postorder, then preorder). Leaf data is accessed in tree-traversal order, not FASTA file order
 
@@ -30,7 +33,7 @@ True streaming (process each sequence once as it arrives) is blocked by:
 
 ## Scale considerations
 
-| Sequences | Genome size | Raw data | Peak memory (approx) |
+| Sequences | Genome size | Raw data | Peak memory (2x estimate) |
 | --------- | ----------- | -------- | -------------------- |
 | 1,000     | 30 kb       | 30 MB    | 60 MB                |
 | 10,000    | 30 kb       | 300 MB   | 600 MB               |

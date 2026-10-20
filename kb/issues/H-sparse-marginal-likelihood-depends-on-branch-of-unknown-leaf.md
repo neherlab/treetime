@@ -43,3 +43,11 @@ The sparse value falls with $x$, so the sparse backend treats the unknown leaf a
 
 - A test asserts that the sparse marginal likelihood of the tree above does not depend on $x$ and equals the dense value
 - The loop test above runs on the sparse backend too
+
+## Related issues
+
+The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause. The tree with one unknown leaf of this issue is the smallest reproducing case, so an investigation of the others starts here.
+
+- [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md)
+- [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md)
+- [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)

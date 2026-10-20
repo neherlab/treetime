@@ -623,7 +623,7 @@ No partition access is needed: every per-node field comes from `NodeTimetree`/`E
 
 Residual parity gaps to track, not to bury under a completion claim:
 
-- `num_date_confidence`: the field mapping is correct (90% region), but v1's CI composition may differ numerically from augur's marginal HPD (tracked: [../issues/M-timetree-confidence-interval-deficiencies.md](../issues/M-timetree-confidence-interval-deficiencies.md)).
+- `num_date_confidence`: the field mapping is correct (90% region), but v1's CI composition may differ numerically from augur's marginal HPD (tracked: [../issues/M-timetree-confidence-interval-widened-to-point-estimate.md](../issues/M-timetree-confidence-interval-widened-to-point-estimate.md)).
 - `date`: `year_fraction_to_datestring` can differ from augur's `datestring_from_numeric` by up to one day at floating-point day boundaries (augur adds a `1e-10` nudge before flooring days). The field is excluded by `export v2` and never reaches auspice, so the difference is immaterial downstream.
 - `--divergence-units=mutations` (integer-count mode) is not implemented in v1; the default `mutations-per-site` mode is what the writer targets.
 - Root node: augur emits placeholder `branch_length`/`clock_length`/`mutation_length` for the root (`one_mutation`, `0.001`); v1 omits them. `export v2` sets the root divergence to 0 and never consumes the root branch fields, so this is immaterial downstream but is a byte-level difference in the node data file.

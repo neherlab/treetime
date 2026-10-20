@@ -106,7 +106,7 @@ The capture script at `packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures_
 
 Test cases in `packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs:` compare v1 output against the modified capture. All seven real datasets pass at 1e-6 tolerance. The tolerance was widened from 1e-7 to accommodate BLAS drift on mpox_clade_ii_20 (~200k positions).
 
-Because the capture script applies v1's filter rather than capturing pure v0, this golden master validates v1 against a v1-derived expectation for `root_state`, not against v0. That oracle-integrity gap is tracked in [kb/issues/N-gtr-dense-root-filter-golden-master-self-validating.md](../issues/N-gtr-dense-root-filter-golden-master-self-validating.md).
+Because the capture script applies v1's filter rather than capturing pure v0, this golden master validates v1 against a v1-derived expectation for `root_state`, not against v0. That oracle-integrity gap is tracked in [kb/issues/N-gtr-dense-golden-master-lacks-unfiltered-v0-case.md](../issues/N-gtr-dense-golden-master-lacks-unfiltered-v0-case.md).
 
 ## References
 

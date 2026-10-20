@@ -17,13 +17,18 @@ Every reconstruction inside `TreeTime._run()` passes `sample_from_profile='root'
 
 ## Impact
 
-- `clock --aln=<file>` gives the same result as `clock` without an alignment, with no warning
+- `clock --aln=<file>` gives the same result as `clock` without an alignment, with no warning. Only the `--help` text of `--alignment` states that `clock` does not read the alignment (`struct AlignmentArgs` [packages/app-commands/src/commands/shared/alignment.rs#L33-L37](../../packages/app-commands/src/commands/shared/alignment.rs#L33-L37)); `clock` still accepts the flag through `TreetimeClockArgsRaw` [packages/app-commands/src/commands/clock/args.rs#L70-L74](../../packages/app-commands/src/commands/clock/args.rs#L70-L74)
 - Without `--covariation`, v0 does not use the alignment either; with it removed from v1, the v0 behavior that the flag served has no v1 counterpart
 
 ## Potential solutions
 
-- Remove `--aln` from `clock` and record a decision that `clock` works on tree branch lengths only
-- Re-estimate the branch lengths from the sequences before the regression, as v0 does under `--covariation`, with the building blocks that `optimize` and `timetree` already use; the root sampling is a random step, so this must follow [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md)
+> [!IMPORTANT]
+> **Decision required.** `clock` accepts an alignment that it never reads, and no decision says whether `clock` works on tree branch lengths only. Options:
+>
+> - **Remove the flag**: remove `--aln` from `clock` and record a decision that `clock` works on tree branch lengths only
+> - **Use the alignment**: re-estimate the branch lengths from the sequences before the regression, as v0 does under `--covariation`, with the building blocks that `optimize` and `timetree` already use; the root sampling is a random step, so this must follow [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md)
+>
+> Evidence: v0 uses the alignment only under `--covariation`, which v1 removed (see above); the second option also gives `clock` a sequence length, which [M-clock-command-reports-no-rate-uncertainty.md](M-clock-command-reports-no-rate-uncertainty.md) needs for a rate uncertainty
 
 ## Related issues
 

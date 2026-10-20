@@ -39,11 +39,11 @@ The smoke matrix declares this run as the expected failure `variant = "grid-poin
 ## Validation
 
 - The reproduction above finishes under the default grid point limit, every node dated
-- `data/mpox/clade-ii/1000` with `--clock-rate=1e-3 --max-iter=1` (the case of [M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md)): largest grid and peak memory before and after
+- `data/mpox/clade-ii/1000` with `--clock-rate=1e-3 --max-iter=1` (the case of [M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)): largest grid and peak memory before and after
 - Dates and intervals against the current output on runs at realistic clock rates
 
 ## Related
 
 - [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)
 - [kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)
-- [M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md)
+- [M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)

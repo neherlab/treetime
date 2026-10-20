@@ -4,15 +4,20 @@ FASTA records, metadata dates, and mugration traits pair with tree nodes through
 
 | Subsystem | Call site | Node without an entry | Entry without a node |
 | --- | --- | --- | --- |
-| FASTA (`ancestral`, `homoplasy`) | `fn read_nwk_fasta()` [packages/app-commands/src/commands/shared/sequence_inputs.rs](../../packages/app-commands/src/commands/shared/sequence_inputs.rs) | warning per leaf, filled with unknown characters; error above one third without `--ignore-missing-alns` | kept for the alignment length check, left out of the mask, no message |
-| FASTA (`timetree`, `optimize`, `prune`) | `fn pair_alignment()` [packages/app-commands/src/commands/shared/alignment.rs#L47](../../packages/app-commands/src/commands/shared/alignment.rs#L47) | error at partition creation for the first leaf | no message |
-| Dates (`clock`, `timetree`) | `fn read_input_dates()` [packages/app-commands/src/commands/shared/dates_input.rs](../../packages/app-commands/src/commands/shared/dates_input.rs) | counted in the date summary; error below three dated leaves | warning with up to 10 names |
-| Mugration | `fn pair_traits()` [packages/app-commands/src/commands/mugration/run.rs](../../packages/app-commands/src/commands/mugration/run.rs) | error listing every missing leaf | warning with up to 10 names |
+| FASTA (`ancestral`, `homoplasy`, `optimize`, `prune`, `timetree`) | `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124), which calls `fn pair_alignment()` [packages/app-commands/src/commands/shared/alignment.rs#L72](../../packages/app-commands/src/commands/shared/alignment.rs#L72) | warning per leaf, filled with unknown characters; error above one third, which only `ancestral` and `homoplasy` can override with `--ignore-missing-alns` | kept for the alignment length check, left out of the mask, no message |
+| Dates (`clock`, `timetree`) | `fn read_input_dates()` [packages/app-commands/src/commands/shared/dates_input.rs#L16](../../packages/app-commands/src/commands/shared/dates_input.rs#L16) | counted in the date summary; error below three dated leaves | warning with up to 10 names |
+| Mugration | `fn pair_traits()` [packages/app-commands/src/commands/mugration/run.rs#L141](../../packages/app-commands/src/commands/mugration/run.rs#L141) | error listing every missing leaf | warning with up to 10 names |
 
 ## Impact
 
 - The same input problem gives an error in one command and a warning in another
 - Mismatch reports have different forms: one line per leaf, a capped name list, or a full list in an error
+
+> [!IMPORTANT]
+> **Decision required.** The target policy is not approved. A missing leaf has a different meaning per subsystem: a leaf without a sequence becomes missing data, a leaf without a date is left unconstrained, and mugration rejects a leaf without a trait value (see [M-mugration-tree-leaves-missing-from-metadata-rejected.md](M-mugration-tree-leaves-missing-from-metadata-rejected.md)). Options:
+>
+> - One policy for every subsystem, including one report form and one override flag
+> - Subsystem-specific handling of missing nodes, with one shared report form for mismatched names
 
 ## Related
 

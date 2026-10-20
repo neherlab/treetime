@@ -18,7 +18,7 @@ Take a distribution with density $p(t) = 1$ on the grid $[-1, 0]$, a hard right 
 ## Consumers
 
 - **Root date.** The forward pass commits the median of the root posterior as the root time: `fn propagate_distributions_forward_node()` calls `posterior_median` [packages/treetime/src/timetree/inference/forward_pass.rs#L94-L101](../../packages/treetime/src/timetree/inference/forward_pass.rs#L94-L101)
-- **Coalescent prior.** `fn LineageExpectation::from_posterior()` builds the survival function $S_u(t) = P(t_u > t)$ of each node from `posterior_survival` [packages/treetime/src/coalescent/mean_field.rs#L165-L186](../../packages/treetime/src/coalescent/mean_field.rs#L165-L186). The expected lineage counts $\bar k(t) = \sum_u w_u S_u(t)$, the merger rates of polytomy resolution, the $T_c$ fit, and the mean-field prior all read these survival functions
+- **Coalescent prior.** `fn LineageExpectation::from_posterior()` builds the survival function $S_u(t) = P(t_u > t)$ of each node from `posterior_survival` [packages/treetime/src/coalescent/mean_field.rs#L187](../../packages/treetime/src/coalescent/mean_field.rs#L187). The expected lineage counts $\bar k(t) = \sum_u w_u S_u(t)$, the merger rates of polytomy resolution, the $T_c$ fit, and the mean-field prior all read these survival functions
 - **Related.** `pub fn max_posterior_region()` also builds its region from the grid only [packages/treetime/src/timetree/max_posterior_region.rs#L10-L27](../../packages/treetime/src/timetree/max_posterior_region.rs#L10-L27), so a confidence interval leaves out the tail mass in the same way
 
 > [!IMPORTANT]

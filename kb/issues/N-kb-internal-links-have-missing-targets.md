@@ -1,62 +1,40 @@
 # Knowledge base contains internal links with missing targets
 
-A check of every relative Markdown link target in `kb/` finds links whose target file does not exist. The missing targets prevent readers and automated checks from following the KB's evidence graph. Most of them point to source files that moved during refactors.
+A check of every relative Markdown link target in `kb/` (outside `kb/_raw/`) finds links whose target file does not exist. The missing targets prevent readers and automated checks from following the KB's evidence graph. Most of them point to source files that moved during refactors.
 
 ## Removed flat `packages/treetime/src/partition/` modules
 
-The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `storage/` subdirectories. Links to the old flat files (`marginal_core.rs`, `marginal_dense.rs`, `marginal_discrete.rs`, `marginal_helpers.rs`, `marginal_passes.rs`, `marginal_sparse.rs`, `optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`, `dense.rs`, `sparse.rs`, `fitch.rs`, `timetree.rs`, `traits.rs`, `indexed_pass.rs`) are in:
+The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `storage/` subdirectories. Links to the old flat files (`marginal_core.rs`, `marginal_dense.rs`, `marginal_discrete.rs`, `marginal_helpers.rs`, `marginal_passes.rs`, `marginal_sparse.rs`, `optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`, `sparse.rs`, `fitch.rs`, `timetree.rs`, `traits.rs`) are in:
 
-- `kb/algo/ancestral.md`
 - `kb/algo/indel-models.md`
-- `kb/algo/optimization.md`
-- `kb/decisions/ancestral-iterative-gtr-refinement.md`
-- `kb/decisions/command-optimize-standalone.md`
 - `kb/decisions/mugration-root-state-filtering.md`
 - `kb/decisions/optimize-dense-initial-guess-hard-count.md`
-- `kb/issues/M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md`
-- `kb/issues/N-discrete-missing-zero-states-inf.md`
-- `kb/issues/M-mugration-tree-leaves-missing-from-metadata-rejected.md`
-- `kb/issues/N-partition-probability-profile-field-abbreviated.md`
-- `kb/issues/N-partition-sequence-state-field-stutters.md`
-- `kb/issues/M-timetree-consumers-read-unconstrained-branch-lengths.md`
-- `kb/issues/N-ancestral-deleted-position-invariant-enforced-by-scattered-guards.md`
-- `kb/issues/N-marginal-forward-zero-divisor-floor.md`
-- `kb/issues/N-optimize-sparse-state-parity-unverified.md`
-- `kb/issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md`
-- `kb/issues/N-sparse-marginal-cavity-compression-unverified.md`
 - `kb/proposals/input-name-matching-validation.md`
 - `kb/proposals/optimize-convergence-and-robustness.md`
-- `kb/reports/2026-07-13_perf-report-parallel-scaling/profiling-parallel-sparse-leaf-setup.md`
 - `kb/reports/auto-partitioning.md`
 - `kb/reports/codon-substitution-models.md`
 - `kb/reports/iterative-tree-refinement/3-tree-likelihood.md`
 - `kb/reports/iterative-tree-refinement/4-ancestral-reconstruction.md`
-- `kb/reports/optimize-dense-sparse-architecture.md`
 - `kb/reports/sparse-subs-accessors.md`
 - `kb/reports/stochastic.simulation.md`
 
 ## Other removed source files
 
-- `kb/decisions/coalescent-analytic-tc-optimization.md`, `kb/decisions/optimize-newton-raphson-per-edge.md`, `kb/reports/optimization-methods/7-audit.md`: `packages/treetime/src/coalescent/optimize_tc.rs`
-- `kb/decisions/mugration-pseudo-count-initial-pi.md`, `kb/issues/N-discrete-missing-zero-states-inf.md`: `packages/treetime/src/mugration/mugration.rs`
+- `kb/decisions/coalescent-analytic-tc-optimization.md`, `kb/reports/optimization-methods/7-audit.md`: `packages/treetime/src/coalescent/optimize_tc.rs`
+- `kb/decisions/mugration-pseudo-count-initial-pi.md`: `packages/treetime/src/mugration/mugration.rs`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`: `packages/treetime/src/gtr/jc_distance/__tests__/test_jc_distance.rs`
-- `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/` (`ancestral.rs`, `timetree.rs`)
-- `kb/issues/N-ancestral-auspice-json-not-produced.md`: `packages/treetime-io/src/graph.rs`
-- `kb/issues/N-io-auspice-trait-reader-contract-unverified.md`: `packages/treetime-io/src/auspice.rs`
+- `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/ancestral.rs`
+- `kb/reports/stochastic.simulation.md`: `packages/treetime/src/coalescent/edge_data.rs`, `packages/treetime/src/coalescent/events.rs`, `packages/treetime/src/coalescent/integration.rs`
 - `kb/reports/auto-partitioning.md`: `packages/treetime/src/gtr/gtr_site_specific.rs`, `packages/treetime/src/gtr/infer_gtr/site_specific.rs`
 - `kb/reports/dense-openblas-profiling.md`: `dev/dev`. The script no longer exists, so the report's `./dev/dev bp`, `br`, and `t` commands are stale as well
 
 ## Repository-root paths used as relative links
 
-`kb/proposals/distribution-log-space-and-hard-soft-boundaries-2.md` links to `packages/...` paths without the `../../` prefix, so the links resolve inside `kb/proposals/`. The affected targets are `distribution_core/distribution.rs`, `distribution_ops/convolve.rs`, `distribution_ops/mass_domain.rs`, `distribution_ops/multiply.rs` of `treetime-distribution`, `grid_fn.rs` of `treetime-grid`, and `backward_pass.rs`, `branch_length_likelihood.rs`, `forward_pass.rs` of `packages/treetime/src/timetree/inference/`.
+`kb/proposals/distribution-log-space-and-hard-soft-boundaries-2.md` links to `packages/...` paths without the `../../` prefix, so the links resolve inside `kb/proposals/`. The affected targets are `distribution_ops/convolve.rs`, `distribution_ops/mass_domain.rs`, `distribution_ops/multiply.rs` of `treetime-distribution`, `grid_fn.rs` of `treetime-grid`, `backward_pass.rs`, `branch_length_likelihood.rs`, `forward_pass.rs` of `packages/treetime/src/timetree/inference/`, and `packages/treetime/src/timetree/max_posterior_region.rs`.
 
 ## Missing knowledge-base entries
 
-- `kb/decisions/command-optimize-standalone.md`: `kb/issues/N-timetree-node-data-confidence-not-emitted.md`
-- `kb/decisions/timetree-no-zero-branch-collapse-in-loop.md`, `kb/issues/N-optimize-dense-iteration-slow.md`: `kb/reports/command-relationships/README.md`
-- `kb/issues/M-timetree-clock-filter-default-differs-from-v0.md`: `kb/issues/H-cli-timetree-config-disables-clock-filter.md`
-- `kb/issues/N-ancestral-fitch-site-classification-parallel-scaling-unverified.md`, `kb/reports/2026-07-29_perf-report-work-first-dag-traversal/report.md`: `kb/issues/M-benchmark-reports-mix-revisions-and-are-not-reproducible.md`
-- `kb/reports/2026-07-29_perf-report-work-first-dag-traversal/report.md`: `kb/issues/H-benchmark-compared-revision-execution-trust-undecided.md`, `kb/issues/M-clock-parallel-output-order-nondeterministic.md`
+- `kb/decisions/timetree-no-zero-branch-collapse-in-loop.md`: `kb/reports/command-relationships/README.md`
 - `kb/proposals/distribution-log-space-and-hard-soft-boundaries.md`: `kb/decisions/distribution-intersection-grid-resolution.md`, `kb/decisions/timetree-inference-pass-boundary-tails.md`
 
 ## Fix

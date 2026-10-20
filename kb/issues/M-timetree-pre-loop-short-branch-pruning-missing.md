@@ -18,7 +18,7 @@ Tree builders such as IQ-TREE, FastTree, and RAxML resolve unsupported splits in
 
 ## Current behavior
 
-The v1 pre-loop (`fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.rs#L27`](../../packages/treetime/src/timetree/pre_loop.rs#L27)) optimizes branch lengths (`fn ml_optimize()`, `fn optimize_branch_lengths()`), reroots, and filters clock outliers. None of these steps collapses an edge, and no other code in `packages/treetime/src/timetree/` collapses or prunes edges. [kb/decisions/timetree-no-zero-branch-collapse-in-loop.md](../decisions/timetree-no-zero-branch-collapse-in-loop.md) excludes collapse inside the loop only.
+The v1 pre-loop (`fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.rs#L29-L70`](../../packages/treetime/src/timetree/pre_loop.rs#L29-L70)) optimizes branch lengths (`fn ml_optimize()`, `fn optimize_branch_lengths()`), reroots, and filters clock outliers. None of these steps collapses an edge, and no other code in `packages/treetime/src/timetree/` collapses or prunes edges. [kb/decisions/timetree-no-zero-branch-collapse-in-loop.md](../decisions/timetree-no-zero-branch-collapse-in-loop.md) excludes collapse inside the loop only.
 
 ## Impact
 
@@ -37,7 +37,7 @@ The criterion is the same as in [M-optimize-short-branch-pruning-unimplemented.m
 
 ## Locations
 
-- Pre-loop: `fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.rs#L27`](../../packages/treetime/src/timetree/pre_loop.rs#L27)
+- Pre-loop: `fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.rs#L29-L70`](../../packages/treetime/src/timetree/pre_loop.rs#L29-L70)
 - Topology collapse: `fn collapse_edge()` [`packages/treetime/src/optimize/topology/collapse.rs`](../../packages/treetime/src/optimize/topology/collapse.rs)
 
 ## Validation

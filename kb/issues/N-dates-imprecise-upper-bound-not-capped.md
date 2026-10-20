@@ -1,13 +1,16 @@
 # Imprecise date upper bound not capped at present
 
-v0 [`ambiguous_date_to_date_range()`](../../packages/legacy/treetime/treetime/utils.py#L345) (`#ambiguous_date_to_date_range`) caps the upper bound of an uncertain date range at today's date (line 396). v1 [`determine_date_range()`](../../packages/treetime-utils/src/datetime/parse_uncertain_date.rs#L34) (`#determine_date_range`) returns the full calendar range without capping.
+> [!IMPORTANT]
+> **Decision required.** v1 keeps the full calendar range of an uncertain date, while v0 caps the upper bound at today. Capping matches v0 and excludes future sampling dates, but makes the result depend on the date of the run. Options are under "Approaches": cap at today (A1), cap at today with a warning (A2), reject a future upper bound (A3), keep the full range (A4), or a flag that selects the behavior (A5). Only uncertain dates whose range reaches past the date of the run are affected.
+
+v0 [`ambiguous_date_to_date_range()`](../../packages/legacy/treetime/treetime/utils.py#L345) (`#ambiguous_date_to_date_range`) caps the upper bound of an uncertain date range at today's date (line 396). v1 [`determine_date_range()`](../../packages/treetime-utils/src/datetime/parse_uncertain_date.rs#L45-L79) (`#determine_date_range`) returns the full calendar range without capping.
 
 A date like `2026-XX-XX` produces range `[2026-01-01, 2026-12-31]` in v1. If parsed before December 31, v0 would cap the upper bound at today, producing a narrower range. v1 keeps the full year.
 
 ## Affected commands
 
-- `clock` - [`assign_dates()`](../../packages/treetime/src/clock/assign_dates.rs#L9) (`#assign_dates`) uses `DateOrRange::mean()` for regression. A future upper bound shifts the midpoint forward.
-- `timetree` - [`load_date_constraints()`](../../packages/treetime/src/clock/date_constraints.rs#L23) (`#load_date_constraints`) converts range to `Distribution::range()`. A future upper bound widens the uniform prior, allowing the optimizer to place the node in the future.
+- `clock` - [`assign_dates()`](../../packages/treetime/src/clock/assign_dates.rs#L12-L28) (`#assign_dates`) uses `DateConstraint::mean()` for regression. A future upper bound shifts the midpoint forward.
+- `timetree` - [`load_date_constraints()`](../../packages/treetime/src/clock/date_constraints.rs#L13) (`#load_date_constraints`) converts the range to `Distribution::range()` ([date_constraints.rs#L84](../../packages/treetime/src/clock/date_constraints.rs#L84)). A future upper bound widens the uniform prior, allowing the optimizer to place the node in the future.
 
 ## Science background
 
@@ -19,7 +22,7 @@ For internal node date constraints (rare in practice), the argument is weaker. A
 
 ### A1. Cap at today (v0 parity)
 
-Cap the upper bound at today in [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L155) (`#read_date`) after parsing an uncertain date. Straightforward v0 parity. Introduces a non-determinism source (output depends on execution date).
+Cap the upper bound at today in [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L161-L167) (`#read_date`) after parsing an uncertain date. Straightforward v0 parity. Introduces a non-determinism source (output depends on execution date).
 
 ### A2. Cap at today with warning
 
@@ -39,4 +42,4 @@ Add a flag (e.g. `--cap-uncertain-dates`) controlling behavior. Adds complexity 
 
 ## Recommendation
 
-A2 (cap with warning) matches v0 behavior, is scientifically defensible for leaf dates, and the warning makes the non-obvious behavior visible. The implementation point is [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L155) in `dates_csv.rs`, where `DateOrRange::YearFractionRange` values from uncertain parsing can be clamped before returning.
+A2 (cap with warning) matches v0 behavior, is scientifically defensible for leaf dates, and the warning makes the non-obvious behavior visible. The implementation point is [`read_date()`](../../packages/treetime-io/src/dates_csv.rs#L161-L167) in `dates_csv.rs`, where the `DateValue::Uncertain` values from uncertain parsing can be clamped before returning.

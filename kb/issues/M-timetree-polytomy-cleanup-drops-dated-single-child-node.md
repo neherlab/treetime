@@ -1,6 +1,6 @@
 # Timetree polytomy cleanup removes single-child nodes that carry a date
 
-After polytomy resolution, `remove_single_child_nodes()` removes every node with one parent and one child, selected by degree alone ([packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L212-L236](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L212-L236)). A single-child node with a date constraint carries data: the date constrains the time of that point on the lineage. Removing the node drops the constraint without a message.
+After polytomy resolution, `fn remove_single_child_nodes()` removes every node with one parent and one child, selected by degree alone ([packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L228-L252](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L228-L252)). A single-child node with a date constraint carries data: the date constrains the time of that point on the lineage. Removing the node drops the constraint without a message.
 
 ## Scientific context
 

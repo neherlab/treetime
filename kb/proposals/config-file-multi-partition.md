@@ -79,7 +79,7 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 - [N-io-sequence-name-matching-unreliable](../issues/N-io-sequence-name-matching-unreliable.md) -- config file could include explicit name mappings
 - [N-io-large-dataset-memory-constraint](../issues/N-io-large-dataset-memory-constraint.md) -- config could specify lazy loading options
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md) -- segments with different trees cannot share a run
-- [M-core-partition-init-orchestration-duplication](../issues/M-core-partition-init-orchestration-duplication.md) -- per-partition models and site ranges
+- [M-partition-site-ranges-and-per-partition-models-unsupported](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md) -- per-partition models and site ranges
 
 ### Proposals
 

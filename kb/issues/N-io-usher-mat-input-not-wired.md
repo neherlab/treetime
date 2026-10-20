@@ -9,9 +9,12 @@
 
 ## Open questions
 
-- Where does the reference sequence come from? A MAT stores reference states only at mutated positions, so the full sequence needs a separate input
-- How are masked sites and missing data in the MAT represented in the partition?
-- Which commands accept MAT input: `timetree` and `clock` only, or every tree-reading command?
+> [!IMPORTANT]
+> **Decision required.** The input contract of a MAT reader is not approved. Open points:
+>
+> - Source of the reference sequence. A MAT stores reference states only at mutated positions, so the full sequence needs a separate input (for example a FASTA file of the reference)
+> - Representation of masked sites and missing data of the MAT in the partition
+> - Commands that accept MAT input: `timetree` and `clock` only, or every command that reads a tree
 
 ## Related
 

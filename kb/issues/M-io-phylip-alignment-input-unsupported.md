@@ -1,6 +1,6 @@
 # PHYLIP alignment input is not supported
 
-The commands read alignments only as FASTA. A PHYLIP alignment fails in the FASTA reader:
+The commands read alignments only as FASTA, through `fn fasta_read_file()` [packages/treetime-io/src/fasta.rs#L13-L15](../../packages/treetime-io/src/fasta.rs#L13-L15). A PHYLIP alignment fails in the FASTA reader:
 
 ```
 Error:
@@ -17,6 +17,10 @@ treetime ancestral --tree=data/flu/h3n2/20/tree.nwk --aln=data/flu/h3n2/20/aln.p
 
 This is the `ancestral/flu/h3n2/20/input-phylip-alignment` case of `dev/smoke`, declared an expected failure in `dev/smoke.toml`.
 
-## Decision needed
+## Open question
 
-Implement a PHYLIP reader for parity with v0, or record the reduced input set as a decision in `kb/decisions/` and remove the bundled `aln.phylip`.
+> [!IMPORTANT]
+> **Decision required.** v0 reads PHYLIP alignments and the bundled dataset ships one, but no decision covers the alignment formats of v1. Options:
+>
+> - Implement a PHYLIP reader, for parity with v0
+> - Keep FASTA as the only alignment format: record the reduced input set in `kb/decisions/` and remove the bundled `aln.phylip` and its smoke case

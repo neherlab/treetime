@@ -6,8 +6,11 @@ The per-sample difference lists map directly onto sparse partitions, so a reader
 
 ## Open questions
 
-- Dense mode: expand MAPLE input into a full alignment, or reject it and require sparse mode?
-- Which MAPLE features are in scope: nucleotide data only, or also amino-acid data, which CMAPLE accepts?
+> [!IMPORTANT]
+> **Decision required.** A MAPLE reader needs two scope choices that no decision covers:
+>
+> - Dense mode: expand MAPLE input into a full alignment, or reject MAPLE input in dense mode and require sparse mode
+> - Alphabet: read nucleotide data only, or also amino-acid data, which CMAPLE accepts
 
 ## Related
 

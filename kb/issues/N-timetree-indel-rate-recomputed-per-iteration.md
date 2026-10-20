@@ -2,15 +2,22 @@
 
 ## Summary
 
-The timetree inference runner recomputes `estimate_indel_rate()` on every call to `run_timetree`, causing the indel rate to oscillate across refinement iterations as branch lengths change.
+Every call to `run_timetree` re-estimates the per-partition indel rates from the current branch lengths, so the indel rates change across refinement iterations as branch lengths change.
 
 ## Details
 
-`packages/treetime/src/timetree/inference/runner.rs:167`
+With marginal branch lengths, `fn run_timetree()` reaches `fn compute_branch_distributions_marginal_mode()`, which calls `IndelPolicy::edge_indels(graph, partitions, branch_lengths)` ([packages/treetime/src/timetree/inference/runner.rs#L251](../../packages/treetime/src/timetree/inference/runner.rs#L251)). With `IndelPolicy::Include`, `edge_indels()` calls the private `fn estimate_indel_rate()` once per partition: total indels divided by total branch length ([packages/treetime/src/optimize/indel.rs#L24-L43](../../packages/treetime/src/optimize/indel.rs#L24-L43), [packages/treetime/src/optimize/indel.rs#L155-L179](../../packages/treetime/src/optimize/indel.rs#L155-L179)).
 
-Each refinement iteration calls `run_timetree`, which calls `compute_branch_distributions_marginal_mode()`, which calls `estimate_indel_rate(graph, &indel_counts, branch_lengths)`. The callers are the refinement rounds (`packages/treetime/src/timetree/round.rs:82`, `:146`, `:382`) and the confidence reruns (`packages/treetime/src/timetree/confidence.rs:45`). Since branch lengths change between iterations (that is the purpose of refinement), the indel rate estimate changes too, creating a feedback loop: branch length changes shift the indel rate, which shifts the Poisson indel likelihood contribution, which shifts branch length targets.
+The callers of `run_timetree` are:
 
-The optimize command hoisted indel rate estimation before its loop (PR #619), but the timetree runner still recomputes per iteration.
+- `fn initialize()` ([packages/treetime/src/timetree/init.rs#L68](../../packages/treetime/src/timetree/init.rs#L68))
+- every refinement round, through `fn refresh_times()` and `fn infer_times()` ([packages/treetime/src/timetree/round.rs#L245](../../packages/treetime/src/timetree/round.rs#L245))
+- `fn infer_final_times()` ([packages/treetime/src/timetree/round.rs#L78](../../packages/treetime/src/timetree/round.rs#L78))
+- the confidence reruns of `fn compute_rate_susceptibility()` ([packages/treetime/src/timetree/confidence.rs#L46](../../packages/treetime/src/timetree/confidence.rs#L46))
+
+Since branch lengths change between iterations (that is the purpose of refinement), the indel rate estimate changes too, creating a feedback loop: branch length changes shift the indel rate, which shifts the Poisson indel likelihood contribution, which shifts branch length targets.
+
+The optimize command estimates the rates once before its loop ([packages/treetime/src/optimize/run_loop.rs#L47](../../packages/treetime/src/optimize/run_loop.rs#L47)); `EdgeIndels::recount()` then refreshes the counts and keeps the rates ([packages/treetime/src/optimize/indel.rs#L56-L64](../../packages/treetime/src/optimize/indel.rs#L56-L64)). The timetree runner has no such split.
 
 ## Impact
 
@@ -20,4 +27,4 @@ The optimize command hoisted indel rate estimation before its loop (PR #619), bu
 
 ## Fix
 
-Hoist `estimate_indel_rate()` before the timetree refinement loop, matching the optimize command pattern. Compute once and hold fixed across iterations.
+Estimate the indel rates once before the timetree refinement loop, matching the optimize command, and pass the `EdgeIndels` into the time inference. Hold the rates fixed across iterations and recount the indels with `EdgeIndels::recount()` when the reconstruction changes.

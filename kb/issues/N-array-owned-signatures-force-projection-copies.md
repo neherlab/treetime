@@ -30,4 +30,4 @@ Use concrete view types at borrowing boundaries. Accept `ArrayView2` in `propaga
 
 ## Related
 
-- [N-ancestral-marginal-array-kernels-allocate.md](N-ancestral-marginal-array-kernels-allocate.md)
+- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md)

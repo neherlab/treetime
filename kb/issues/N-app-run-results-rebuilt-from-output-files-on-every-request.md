@@ -35,4 +35,5 @@ The web server sends a weak `ETag` with the results, the Auspice document, and t
 - Keep the built answers of finished runs in a bounded in-memory cache keyed by run id, dropped when the run is deleted or purged
 - Write the answers next to the outputs when a run ends, and serve the stored JSON
 
-The choice between the two is open. A cache keeps the answers consistent with changes to the result-building code; stored answers survive a restart but go stale when that code changes.
+> [!IMPORTANT]
+> **Decision required.** The choice between the in-memory cache and stored answers is open. A cache keeps the answers consistent with changes to the result-building code but is lost on restart; stored answers survive a restart but go stale when that code changes. Evidence: the measurements above, and the `ETag` mitigation, which covers repeated requests of one browser only.

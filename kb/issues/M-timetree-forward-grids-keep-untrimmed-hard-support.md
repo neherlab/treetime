@@ -19,7 +19,7 @@ Prototyped 2026-10-19 (commit `6d06d211a` on branch `claude-grid-trim`): trim th
 
 ## Validation
 
-- `cargo test` including the golden-master runner tests
+- `just test-rs`, including the golden-master runner tests
 - Validation suite (`validation/`, `--suite timetree`): date RMSE per (L, mu) unchanged against base; no failures; no negative branches
 - `data/mpox/clade-ii/1000`, `data/sc2/4500`, `data/ebola/362`, `data/rsv/a/100`: no node without a date, no child dated before its parent, node dates against base
 - Per-operation grid sizes and time before and after, with the measurement set-up of the proposal

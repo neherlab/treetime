@@ -12,11 +12,11 @@ Tree `(((C1,C2)P,C3)P2,((D,E)Q,F)Q2)R` with `C1`, `C2`, `C3` = `ANGT` and `D`, `
 | `C1`-`C3`   | `AAGT` | `ANGT` |
 | other nodes | `AAGT` | `AAGT` |
 
-The `dev` branch at `3905a8f1` gives the same sparse result, so the defect predates the derived-mutation output.
+The table is the output of the current code with `--dense=true` and `--dense=false`.
 
 ## Mechanism
 
-`fn reconstruct_leaf_sequence()` in [packages/treetime/src/partition/marginal/sparse/reconstruct.rs](../../packages/treetime/src/partition/marginal/sparse/reconstruct.rs) looks up the message from the parent for a fixed column by the parent's state (`fn map_state()`). At an unknown column the parent's state is `N`, the fixed message map has no `N` entry, and the loop skips the position, so the tip keeps its observed `N`. The dense backend evolves the parent message of every column and takes the argmax under the observed mask (`fn reconstruct_leaf_sequence()` in [packages/treetime/src/partition/marginal/dense/partition.rs](../../packages/treetime/src/partition/marginal/dense/partition.rs)).
+`fn reconstruct_leaf_sequence()` [packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L80-L105](../../packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L80-L105) calls `fn impute_state()` [packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L107-L125](../../packages/treetime/src/partition/marginal/sparse/reconstruct.rs#L107-L125) for each unknown and ambiguous position of the tip. For a column that is fixed in the parent message, `impute_state()` looks up the fixed message by the parent's state (`fn map_state()`). At an unknown column the parent's state is `N`, the fixed message map has no `N` entry, and `impute_state()` returns the observed character, so the tip keeps its `N`. The dense backend stores a posterior profile for every column of the tip and replaces each non-canonical, non-gap character with the argmax of that profile (`fn reconstruct_leaf_sequence()` [packages/treetime/src/partition/marginal/dense/partition.rs#L208-L220](../../packages/treetime/src/partition/marginal/dense/partition.rs#L208-L220)).
 
 ## Impact
 
@@ -25,4 +25,4 @@ The `dev` branch at `3905a8f1` gives the same sparse result, so the defect preda
 
 ## Fix direction
 
-Impute tips below an unknown parent from the message the parent passes down at that column, as the dense backend does, instead of skipping the position.
+Resolve the parent state before the fixed-message lookup in `impute_state()`, so that tips below an unknown parent are imputed from the message the parent passes down at that column, as the dense backend does. Add the tree above as a dense/sparse test.

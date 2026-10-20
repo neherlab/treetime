@@ -2,21 +2,41 @@
 
 ## Summary
 
-Systematic test coverage gaps span timetree inference, clock, coalescent, ancestral reconstruction, optimize, mugration, prune, representation, GTR, and foundation modules. Relevant golden-master, analytical, and property tests remain gated with `#[ignore]`.
+Systematic test coverage gaps span timetree inference, clock, coalescent, ancestral reconstruction, optimize, mugration, prune, representation, GTR, and foundation modules. Golden-master, property, and dense/sparse consistency tests remain gated with `#[ignore]`.
 
-## Ignored golden-master tests
+## Ignored tests
 
-- Marginal dense golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L40](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L40): `#[ignore = "golden master datasets not yet passing"]`
-- Coalescent runner golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L37](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L37): `#[ignore = "golden master datasets not yet passing"]`
-- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L12](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L12): `#[ignore]` with `max_relative=1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
-- Optimize golden master [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L70](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L70): `#[ignore]`. Related: [M-optimize-gm-per-branch-divergence.md](M-optimize-gm-per-branch-divergence.md)
+Golden masters:
+
+- Marginal dense golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L45](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L45): `#[ignore]`, dense-vs-v0 discrepancy of up to 0.070 years on `flu_h3n2_20`
+- Marginal sparse-versus-dense runner [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L45](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L45): `#[ignore]`, sparse-vs-dense discrepancy of up to 0.92 years at a root-adjacent node
+- Poisson runner golden master [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L35](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L35): `#[ignore]`, Poisson-vs-v0 discrepancy of up to 0.35 years on `flu_h3n2_20` and 0.19 years on `ebola_20`. Related: [M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md)
+- Coalescent runner [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L47](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_runner_coalescent.rs#L47): `#[ignore = "golden master datasets not yet passing"]`
+- Optimize per-branch golden master [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50): `#[ignore]`. Related: [M-optimize-gm-per-branch-divergence.md](M-optimize-gm-per-branch-divergence.md)
+- Mugration golden masters [packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L48](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L48), [packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L54](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L54), [packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L85](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L85): `#[ignore]`, marginal and confidence divergence from v0. Related: [H-mugration-iterative-gtr.md](H-mugration-iterative-gtr.md)
+
+Property, consistency, and command tests:
+
+- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L50](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L50): `#[ignore]` with `max_relative = 1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
+- Sparse root-invariance property test [packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L27](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L27): `#[ignore]`. Related: [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)
+- Sparse GTR refinement against dense [packages/treetime/src/gtr/__tests__/test_refinement.rs#L47](../../packages/treetime/src/gtr/__tests__/test_refinement.rs#L47): `#[ignore]`. Related: [M-gtr-sparse-transition-counts-diverge-from-dense.md](M-gtr-sparse-transition-counts-diverge-from-dense.md)
+- Homoplasy dense/sparse comparison [packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs#L17](../../packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs#L17): `#[ignore]`. Related: [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md)
+- Ancestral ambiguity report [packages/app-commands/src/commands/ancestral/__tests__/test_report_ambiguous.rs#L86](../../packages/app-commands/src/commands/ancestral/__tests__/test_report_ambiguous.rs#L86): `#[ignore]`. Related: [M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md](M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md)
+
+These ignored tests are the independent oracles of the project: the v0 golden masters and the comparisons of sparse with dense results. While they are ignored, a change that widens one of their gaps passes CI unnoticed.
+
+> [!IMPORTANT]
+> **Decision required.** How to guard the ignored reference comparisons until their gaps are fixed. The options are:
+>
+> - Keep them ignored, and rerun them by hand with `--run-ignored only` when a related change lands
+> - Add a regression guard beside each one that asserts the currently measured difference as an upper bound, so a gap can shrink but not grow unnoticed. The guard is not a correctness test and goes away when the issue that owns the gap is fixed; the ignored test keeps the target tolerance
 
 ## Zero-test production functions
 
 ### Timetree inference
 
 - `fn propagate_distributions_forward`: zero dedicated unit tests (forward pass tested only through GM)
-- `fn load_input_data` / `fn initialize_partitions`: no direct tests
+- `fn load_input_data`: no direct tests
 - `fn run_timetree_estimation()`: no branch coverage for input mode, confidence, skyline, rerooting, failure paths
 
 ### Clock command
@@ -24,18 +44,15 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn run_clock()`: no end-to-end CLI test
 - `fn clock_regression_forward`: no direct unit test
 - `fn load_date_constraints()`: validation failure paths untested
-- Clock model JSON output, clock CSV output, RTT chart writers: untested at serialized-output level
+- Clock model JSON output, clock CSV output: untested at serialized-output level
+- SVG and PNG root-to-tip chart writers [packages/app-commands/src/rtt_chart.rs#L21-L52](../../packages/app-commands/src/rtt_chart.rs#L21-L52): no tests of the written files; only `fn gather_points()` has tests
 
 ### Timetree optimization and output
 
-- `fn report_outliers()` and `fn collect_outlier_records()`: zero tests
 - `fn compute_rate_susceptibility()`: no integration coverage for the inferences at the upper, lower and central rates
-- `fn write_confidence_intervals()`: untested for TSV serialization
 
 ### Coalescent
 
-- `fn collect_tree_events()` error paths untested (multiple roots, missing time distributions, non-finite present time)
-- `fn collect_tree_events()`: error paths for multiple roots and missing time distributions remain untested
 - `fn optimize_skyline()`: no independent end-to-end numerical oracle
 
 ### Ancestral command
@@ -43,19 +60,18 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - CLI entrypoint and `MethodAncestral` parsing: no end-to-end coverage
 - Stdin FASTA path: no multi-record test
 - `fn common_length()` error branches: untested
-- `fn write_graph()` output files: untested for existence and parse-back
 
 ### Optimize command
 
 - `fn apply_initial_guess_mode()`: no test for finite negative branch lengths in `Never` mode
 - `fn run_optimize()`: no integration test proving negative branch lengths rejected
 - `fn OptimizationContribution::from_sparse()` and `fn get_coefficients()`: not exercised through real sparse fixtures
-- Damping guard of `fn run()` [packages/treetime/src/optimize/pipeline.rs#L42-L47](../../packages/treetime/src/optimize/pipeline.rs#L42-L47): no test that `damping >= 1.0` and `damping < 0.0` return the invalid-parameter error
+- Damping guard of `fn run()` [packages/treetime/src/optimize/pipeline.rs#L43-L48](../../packages/treetime/src/optimize/pipeline.rs#L43-L48): no test that `damping >= 1.0` and `damping < 0.0` return the invalid-parameter error
 
 ### Mugration and prune
 
 - Mugration file-I/O wrappers: no integration coverage
-- `fn optimize_gtr_rate()` and `fn refine_gtr_iterative()`: no tests for no-bracket path, backward-pass failure, rollback
+- `fn optimize_gtr_rate()`: no tests for no-bracket path, backward-pass failure, rollback
 - `fn run_prune`: no end-to-end test
 
 ### Representation module
@@ -64,7 +80,6 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 - `fn reconcile_topology()`: no tests (dense and sparse implementations)
 - `fn fix_branch_length()`: no direct tests for clamp threshold, very short branches, `seq_length == 0`
 - Sparse classification and reconstruction paths: no direct gap, unknown, ambiguity, parity, reroot-invariance tests
-- `fn gather_points`: no test
 
 ### GTR
 
@@ -76,17 +91,14 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 ### Foundation
 
 - `fn AlphabetConfig::validate()`: no direct test for `unknown` inside ambiguous value set
-- `cli::rtt_chart` SVG and PNG chart writers: no tests
 - `timetree_validation.rs` functions: no tests for overlapping, disjoint, empty-overlap maps
 - `seq::indel::InDel`: no dedicated constructor-boundary, inversion, formatting coverage
 
 ### Other
 
-- No tests for `fn Sub::from_str`, `fn parse_pos`, validators at `seq/mutation.rs`
-- No tests for `enum AlphabetName::AaNoStop` at `alphabet.rs`
-- `fn count_sequence_changes`, `fn compute_rate_susceptibility`, `fn write_confidence_intervals`: zero direct tests
+- No tests for `fn parse_pos` and the validators in `seq/mutation.rs`
+- `fn count_sequence_changes`, `fn compute_rate_susceptibility`: zero direct tests
 - `fn evaluate_site_contributions`: no direct unit test
-- `trait BranchTopology` blanket impl: untested
 - `fn propagate_raw`: not directly tested
 
 ## Cross-cutting scientific coverage gaps

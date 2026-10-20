@@ -37,3 +37,11 @@ The two datasets with the smallest and a large difference also differ in their a
 
 > [!IMPORTANT]
 > **Investigation required.** Suspected cause: the dense and sparse partitions treat gaps or ambiguous characters differently in the branch-length likelihood. Compare the optimization contributions of one `dengue_20` edge in both modes as a function of branch length, and find the first site class where they differ.
+
+## Related issues
+
+The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause. The smallest reproducing case is the tree with one unknown leaf of [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md), so an investigation of the others starts there.
+
+- [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md)
+- [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)
+- [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)

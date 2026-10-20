@@ -1,8 +1,8 @@
 # Command output ownership is scattered
 
-The shared output module owns selection, default sets, path resolution, and tree-format dispatch [`packages/app-output/src/output_plan.rs#L18`](../../packages/app-output/src/output_plan.rs#L18) [`packages/app-output/src/tree_output.rs#L53`](../../packages/app-output/src/tree_output.rs#L53). Each command runner still registers non-tree fields, checks data prerequisites, chooses projection inputs and comment providers, and writes non-tree outputs independently.
+The shared output module owns selection, default sets, path resolution, and tree-format dispatch through `fn plan()` [`packages/app-output/src/output_plan.rs#L21`](../../packages/app-output/src/output_plan.rs#L21) and `fn write_run_tree_outputs()` [`packages/app-output/src/tree_output.rs#L19`](../../packages/app-output/src/tree_output.rs#L19). Each command runner still registers non-tree fields, checks data prerequisites, calls `output_unavailable()` [`packages/app-output/src/output_plan.rs#L528`](../../packages/app-output/src/output_plan.rs#L528) when data is missing, chooses projection inputs and comment providers, and writes non-tree outputs independently.
 
-`OutputCoreArgs::resolve()` is pure, and tree projection and writing are centralized. Ownership of a complete output plan and materialization contract remains distributed across command modules.
+`OutputCoreArgs::resolve()` [`packages/app-commands/src/commands/shared/output_args.rs#L265`](../../packages/app-commands/src/commands/shared/output_args.rs#L265) is pure, and tree projection and writing are centralized. Ownership of a complete output plan and materialization contract remains distributed across command modules.
 
 ## Impact
 
@@ -21,6 +21,9 @@ Define whether output descriptors own command capability and data prerequisites,
 - Materialization receives analysis facts and chooses projection and writer behavior in one boundary.
 - In-memory projections remain testable without filesystem I/O.
 - Missing prerequisites fail before partial output is written.
+
+> [!IMPORTANT]
+> **Decision required.** When a run fails late, should it keep the output files that it already finished? One option writes each output file as soon as its data is ready, so users can salvage part of the results. The other keeps the outputs of a run transactional, as the validation below assumes, so a failed run leaves no partial result. A failed `timetree` run today leaves an empty `timetree.reconstructed-nuc.fasta`, which fits neither option.
 
 ## Validation
 

@@ -6,17 +6,17 @@
 
 ### saturating_sub clamps to 0
 
-- Sparse `fn edge_effective_length()` [packages/treetime/src/partition/marginal/sparse/partition.rs#L71-L82](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L71-L82), clamp at L81
-- Dense `fn edge_effective_length()` [packages/treetime/src/partition/marginal/dense/partition.rs#L126-L142](../../packages/treetime/src/partition/marginal/dense/partition.rs#L126-L142), clamp at L141
+- Sparse `fn edge_effective_length()` [packages/treetime/src/partition/marginal/sparse/partition.rs#L75-L86](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L75-L86), clamp at L85
+- Dense `fn edge_effective_length()` [packages/treetime/src/partition/marginal/dense/partition.rs#L129-L145](../../packages/treetime/src/partition/marginal/dense/partition.rs#L129-L145), clamp at L144
 
 `self.length.saturating_sub(non_char_positions)` returns 0 when the union of non-character ranges covers more positions than the sequence length. That state breaks the invariant that the ranges lie inside the sequence, but the caller cannot tell it apart from an edge whose positions are all gaps or unknown.
 
-The only consumer, `fn guess_initial_branch_lengths()` [packages/treetime/src/optimize/dispatch.rs#L203-L220](../../packages/treetime/src/optimize/dispatch.rs#L203-L220), guards the division `sub_count / effective_length` with `effective_length > 0`, so no division by zero occurs. For a zero length it falls back to `one_mutation` (edges with indels) or `0.1 * one_mutation`, so a broken range invariant silently produces a plausible initial branch length. `fn gather_edge_effective_lengths()` [packages/treetime/src/optimize/gather.rs#L86](../../packages/treetime/src/optimize/gather.rs#L86) collects the values for every edge.
+The only consumer, `fn guess_initial_branch_lengths()` [packages/treetime/src/optimize/dispatch.rs#L205-L219](../../packages/treetime/src/optimize/dispatch.rs#L205-L219), guards the division `sub_count / effective_length` with `effective_length > 0`, so no division by zero occurs. For a zero length it falls back to `one_mutation` (edges with indels) or `0.1 * one_mutation`, so a broken range invariant silently produces a plausible initial branch length. `fn InitialGuessEvidence::gather()` [packages/treetime/src/optimize/gather.rs#L80-L82](../../packages/treetime/src/optimize/gather.rs#L80-L82) collects the values for every edge.
 
 ### range_union clones gap vectors
 
-- Sparse call [packages/treetime/src/partition/marginal/sparse/partition.rs#L76](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L76)
-- Dense call [packages/treetime/src/partition/marginal/dense/partition.rs#L136](../../packages/treetime/src/partition/marginal/dense/partition.rs#L136)
+- Sparse call [packages/treetime/src/partition/marginal/sparse/partition.rs#L80](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L80)
+- Dense call [packages/treetime/src/partition/marginal/dense/partition.rs#L139](../../packages/treetime/src/partition/marginal/dense/partition.rs#L139)
 
 `range_union(&[parent_non_char.clone(), child_non_char.clone()])` clones both range vectors because `fn range_union()` takes a slice of owned vectors. `fn range_union_iter()` [packages/treetime-utils/src/interval/range_union.rs#L9-L15](../../packages/treetime-utils/src/interval/range_union.rs#L9-L15) takes an iterator of references and needs no clone. The function runs once per edge before optimization, so the allocation pressure grows on heavily gapped alignments.
 

@@ -1,11 +1,13 @@
 # Documentation references and source claims are not verifiable
 
-Touched algorithm documents and proposals contain orphan references, missing anchors/backlinks, and external schema/implementation claims without authoritative sources.
+Algorithm documents and proposals in `kb/` contain orphan references, references without backlinks, and claims about external formats without authoritative sources.
 
 ## Remaining work
 
-- Tree-format proposals and adapter rustdoc need pinned source links to the cloned Augur and UShER revisions, and to the PhyloXML specification, directly after each external behavior claim
-- Every retained bibliography entry needs an inline citation; orphan entries without support are removed
+- [kb/proposals/tree-format-model-embedding.md#L11-L12](../proposals/tree-format-model-embedding.md#L11-L12) states that the Auspice v2 schema and the UShER MAT protobuf have no model field and that augur keeps the model out of the Auspice JSON, without a source link. Each claim needs a pinned link to the cloned Augur, Auspice, or UShER revision directly after it
+- Reference entries without an inline citation (orphans): `kb/algo/ancestral.md` (`ref-2`, `ref-3`, `ref-6`), `kb/algo/mugration.md` (`ref-0`, `ref-5`, `ref-6`), `kb/algo/timetree.md` (`ref-8`, `ref-13`), `kb/proposals/config-file-multi-partition.md` (`ref-1` to `ref-7`). Each needs an inline citation where the document relies on it, or removal
+- Reference entries without a backlink to their citation: the orphans above, and `ref-1` to `ref-7` of `kb/proposals/graph-pure-transform-architecture.md`
+- References sections without anchors for inline citations: `kb/proposals/mugration-full-reconstruction-per-iteration.md`, `kb/proposals/optimize-convergence-and-robustness.md`, `kb/proposals/optimize-indel-rate-per-iteration-reestimation.md`
 - References need stable anchors and backlinks, numbered in first-citation order
 - Truncated source references need full project paths or pinned permalinks
 

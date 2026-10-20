@@ -4,7 +4,7 @@ A command accepts `-` as `--tree` and as an `--alignment` file in the same run. 
 
 ## Current state
 
-- `fn AlignmentArgs::paths()` rejects `-` when the `--alignment` list holds it more than once [packages/app-commands/src/commands/shared/alignment.rs#L53-L59](../../packages/app-commands/src/commands/shared/alignment.rs#L53-L59), but no check compares the alignment paths with `--tree`
+- `fn AlignmentArgs::paths()` rejects `-` when the `--alignment` list holds it more than once [packages/app-commands/src/commands/shared/alignment.rs#L55-L61](../../packages/app-commands/src/commands/shared/alignment.rs#L55-L61), but no check compares the alignment paths with `--tree`
 - `fn read_input_tree()` reads the tree through `fn tree_read_file()`, which reads `-` from standard input to its end [packages/app-commands/src/commands/shared/tree_input.rs#L25-L26](../../packages/app-commands/src/commands/shared/tree_input.rs#L25-L26) [packages/treetime-io/src/tree.rs#L11-L17](../../packages/treetime-io/src/tree.rs#L11-L17)
 - Every command that reads a tree and an alignment reads the tree first, so the alignment reads an empty standard input
 
@@ -20,8 +20,19 @@ With the zika/20 dataset (`data/zika/20/`, alignment decompressed to `aln.fasta`
 
 Reject `-` in more than one input of a run before any input is read, with one message that names the inputs, in the place that owns the input paths of a command. The same rule then covers other inputs that accept `-`.
 
-> [!IMPORTANT]
-> **Investigation required.** The reproduction covers `--tree` and `--alignment` of `optimize`. Check which other inputs accept `-` (for example the metadata and dates tables of `timetree`, `clock` and `mugration`) and whether they can collide in the same way.
+## Inputs that read `-` from standard input
+
+Every input read through `fn read_file_with()` of `treetime-utils` reads `-` from standard input, and only the `--alignment` list checks for a second `-`:
+
+- `--tree` of every command (`fn tree_read_file()`)
+- `--alignment` of `ancestral`, `optimize`, `timetree`, `prune`, `homoplasy`
+- `--metadata` of `clock`, `timetree`, `mugration`, and `--weights` of `mugration`
+- `--drms` of `homoplasy`
+- `--prune-nodes-list-file` of `prune`
+- `--topology-order-target-file` of `optimize`, `timetree`, `prune`, `mugration`, `homoplasy`
+- `--config` of every command
+
+Each pair of these inputs in one run can collide in the same way. `--annotation` and `--aa-root-sequence` of `ancestral` do not take part, because their existence check rejects `-` before the read [packages/app-commands/src/commands/ancestral/aa_node_data.rs#L47-L48](../../packages/app-commands/src/commands/ancestral/aa_node_data.rs#L47-L48).
 
 ## Related
 

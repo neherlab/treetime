@@ -9,7 +9,7 @@ For the same tree and alignment, the sparse and dense marginal backends reconstr
 | `data/rsv/a/20` | 18             | 6                 | 19                    |
 | `data/sc2/4500` | 5099           | 467               | 658                   |
 
-Examples on `data/rsv/a/20` (sparse, dense): `NODE_0000002` position 5437 `C`, `G` and positions 5444, 5458, 5467, 5479, 5488 `C`, `T`; `NODE_0000016` position 6391 `A`, `G`. Examples on `data/sc2/4500`: position 29866 `A`, `T` on `NODE_0000030` to `NODE_0000034`; position 25701 `T`, `C` on `NODE_0000040`.
+Examples on `data/rsv/a/20` (sparse, dense; positions are 0-based alignment columns): `NODE_0000002` position 5437 `C`, `G` and positions 5444, 5458, 5467, 5479, 5488 `C`, `T`; `NODE_0000016` position 6391 `A`, `G`. Examples on `data/sc2/4500`: position 29866 `A`, `T` on `NODE_0000030` to `NODE_0000034`; position 25701 `T`, `C` on `NODE_0000040`.
 
 The differences are canonical states at positions where both backends agree on gaps and unknown characters, so the dense gap rule does not cause them.
 
@@ -36,6 +36,14 @@ Not established. Leads:
 
 ## Fix approach
 
-Trace one differing position (for example `data/rsv/a/20`, `NODE_0000002`, position 5437) through both backends, compare the dense posterior with the sparse variable or fixed profile at that node, and identify which backend deviates from the marginal posterior. Add a sparse-versus-dense residue regression check on a small dataset once the cause is known.
+Trace one differing position (for example `data/rsv/a/20`, `NODE_0000002`, 0-based position 5437) through both backends, compare the dense posterior with the sparse variable or fixed profile at that node, and identify which backend deviates from the marginal posterior. Add a sparse-versus-dense residue regression check on a small dataset once the cause is known.
 
 The ignored test `test_dense_sparse_homoplasy_statistics_agree_with_gaps_and_unknown_characters` in [`packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs`](../../packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs) compares the `homoplasy` statistics of both backends on `data/rsv/a/20`, where the different residues move substitutions between branches: dense counts 3055 substitutions, 2145 of them on terminal branches; sparse counts 3054 and 2125. Enable the test once the backends agree.
+
+## Related issues
+
+The sparse backend is the default of every run ([N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)), and the dense backend is its independent oracle. These issues show the two backends disagreeing on default settings and may share one cause. The smallest reproducing case is the tree with one unknown leaf of [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md), so an investigation of the others starts there.
+
+- [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md)
+- [H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)
+- [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)

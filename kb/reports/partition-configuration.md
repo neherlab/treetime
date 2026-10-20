@@ -1,7 +1,7 @@
 # Partition Configuration for TreeTime v1
 
 > [!WARNING]
-> **Needs review.** Sections 1 and 5.1 describe the code before several alignment files became partitions. Ancestral, optimize, timetree and prune now build one partition per `--alignment` file, optimize and timetree hold them in `enum PartitionSet` ([packages/treetime/src/partition/set.rs#L49](../../packages/treetime/src/partition/set.rs#L49)) instead of a list of lock-guarded trait objects, and [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rules. Per-partition models and site ranges remain open ([kb/issues/M-core-partition-init-orchestration-duplication.md](../issues/M-core-partition-init-orchestration-duplication.md))
+> **Needs review.** Sections 1 and 5.1 describe the code before several alignment files became partitions. Ancestral, optimize, timetree and prune now build one partition per `--alignment` file, optimize and timetree hold them in `enum PartitionSet` ([packages/treetime/src/partition/set.rs#L49](../../packages/treetime/src/partition/set.rs#L49)) instead of a list of lock-guarded trait objects, and [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rules. Per-partition models and site ranges remain open ([kb/issues/M-partition-site-ranges-and-per-partition-models-unsupported.md](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md))
 
 ## 1. Current state
 
@@ -189,7 +189,7 @@ The fix is not "extract shared init helper" but "implement partition configurati
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub](../issues/N-representation-infer-dense-stub.md)
 - [kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)
-- [M-core-partition-init-orchestration-duplication](../issues/M-core-partition-init-orchestration-duplication.md)
+- [M-partition-site-ranges-and-per-partition-models-unsupported](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md)
 
 ### Proposals
 

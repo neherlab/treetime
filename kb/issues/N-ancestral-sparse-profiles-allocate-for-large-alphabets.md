@@ -1,6 +1,6 @@
 # Sparse profiles allocate for alphabets above four states
 
-Sparse marginal messages keep each site profile and each fixed profile inline in a `SmallVec` with the capacity `INLINE_STATES = 4` (`type SiteProfile` [packages/treetime/src/partition/storage/sparse.rs#L17-L19](../../packages/treetime/src/partition/storage/sparse.rs#L17-L19)), the canonical state count of the nucleotide alphabet. With an amino-acid alphabet (20 or 21 states), every profile exceeds the inline capacity and `SmallVec` moves it to the heap. Each variable site and each fixed state of a message then takes one allocation, and the list of fixed profiles (`struct FixedProfiles`, inline capacity of 4 entries) takes one more. Results are the same for every alphabet; only the allocation count differs.
+Sparse marginal messages keep each site profile and each fixed profile inline in a `SmallVec` with the capacity `INLINE_STATES = 4` (`const INLINE_STATES` [packages/treetime/src/partition/storage/sparse.rs#L17](../../packages/treetime/src/partition/storage/sparse.rs#L17), `type SiteProfile` [packages/treetime/src/partition/storage/sparse.rs#L223](../../packages/treetime/src/partition/storage/sparse.rs#L223)), the canonical state count of the nucleotide alphabet. With an amino-acid alphabet (20 or 21 states), every profile exceeds the inline capacity and `SmallVec` moves it to the heap. Each variable site and each fixed state of a message then takes one allocation, and the list of fixed profiles (`struct FixedProfiles` [packages/treetime/src/partition/storage/sparse.rs#L159-L161](../../packages/treetime/src/partition/storage/sparse.rs#L159-L161), inline capacity of 4 entries) takes one more. Results are the same for every alphabet; only the allocation count differs.
 
 A larger inline capacity is not a remedy: a capacity of 20 makes every nucleotide message 3 to 4 times larger.
 
@@ -15,4 +15,4 @@ A larger inline capacity is not a remedy: a capacity of 20 makes every nucleotid
 
 ## Related issues
 
-- [N-ancestral-marginal-array-kernels-allocate.md](N-ancestral-marginal-array-kernels-allocate.md): per-site temporaries of the marginal kernels
+- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md): per-site temporaries of the marginal kernels

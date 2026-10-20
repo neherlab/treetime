@@ -36,7 +36,7 @@ design:
 | numerics | `963c6c931` hard-approach law in boundary cells (branch `claude-hard-cell-interp`) | prerequisite |
 
 Evidence (validation suite, keep root, true topology;
-[M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md](../issues/M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md)):
+[M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md](../issues/M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md)):
 
 | | `rust` | frozen $\hat k$, 2/3 step | mean field + EM $T_c$ |
 | --- | --- | --- | --- |
@@ -369,14 +369,14 @@ over seven passes) where the peak run converged, the same slow rate drift as in 
   decision files.
 - Issues: 0a to 3 done (branch `claude-clock-exact-root`, decision
   [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)),
-  [M-timetree-rate-step-window-and-rate-prior.md](../issues/M-timetree-rate-step-window-and-rate-prior.md) (4).
+  [M-timetree-rate-step-window-and-rate-uncertainty.md](../issues/M-timetree-rate-step-window-and-rate-uncertainty.md) (4).
 - Module layout: the rerooting code spans `clock/reroot.rs`, `clock/find_best_root/` and `reroot/`; where it should
   live is left for the engineer
   ([N-reroot-modules-split-between-clock-and-reroot.md](../issues/N-reroot-modules-split-between-clock-and-reroot.md)).
 
 ## Related
 
-- [M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md](../issues/M-timetree-marginal-node-posteriors-miscalibrated-by-lineage-count-steps.md)
+- [M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md](../issues/M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md)
 - [timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md)
 - [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [timetree-root-time-at-posterior-median.md](../decisions/timetree-root-time-at-posterior-median.md)

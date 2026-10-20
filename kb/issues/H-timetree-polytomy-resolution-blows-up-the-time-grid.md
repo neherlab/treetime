@@ -3,16 +3,18 @@
 ## Symptom
 
 `treetime timetree` on `data/zika/86` with `--coalescent-opt --resolve-polytomies --seed 7 --max-iter 6` stops in
-round 4 after resolving 5, 2, 2 and 2-3 polytomies:
+round 2:
 
 ```
-Time inference needs a grid of 4141330 points, more than the limit of 1000000 (--max-grid-points).
-A grid over [0, 9120.38] with spacing 0.00220228 needs 4141330 points, more than the limit of 1000000
+When running round 2
+Timetree inference failed
+Time inference needs a grid of 1062601 points, more than the limit of 1000000 (--max-grid-points). The estimated clock rate 0.00111 may be far from the true rate, ...
+A grid over [0, 2949.41] with spacing 0.00277566 needs 1062601 points, more than the limit of 1000000
 ```
 
-The rate (1.4e-3) is plausible; a distribution reaching back to calendar year 0 is not. Both the phase-2 build and
-the build whose prior follows topology changes fail the same way, so the cause predates both. Without
-`--resolve-polytomies` the dataset runs through.
+The rate (1.1e-3) is plausible; a distribution reaching back to calendar year 0 is not, so the advice of the error
+message about the clock rate does not apply here. The same command without `--resolve-polytomies` runs through and
+writes all outputs.
 
 ## Investigation required
 
@@ -25,3 +27,11 @@ the build whose prior follows topology changes fail the same way, so the cause p
 ## Validation
 
 The reproduction completes with the default grid limit.
+
+## Related issues
+
+Other runs stop or slow down on the time grid through mass-window resampling and convolution at the finest operand spacing ([kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)). Whether this run fails through the same mechanism is not shown.
+
+- [M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)
+- [M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md)
+- [M-timetree-grid-spacing-inherits-finest-operand.md](M-timetree-grid-spacing-inherits-finest-operand.md)

@@ -26,14 +26,14 @@ After `run_optimize_loop()` and before the final marginal update:
 
 Compute $P(0)$ with the same sequence states and pattern multiplicities as `def TreeAnc.prune_short_branches()`. Do not substitute `fn is_zero_branch_optimal()`: it tests a likelihood derivative and has a different model domain.
 
-The existing `fn find_zero_optimal_internal_edges()` [packages/treetime/src/optimize/run_loop.rs#L291](../../packages/treetime/src/optimize/run_loop.rs#L291), called in every iteration of the loop, handles edges driven to exactly zero. Post-loop pruning catches edges that converged to small but nonzero values below the resolution of the alignment.
+The existing `fn find_zero_optimal_internal_edges()` [packages/treetime/src/optimize/run_loop.rs#L312-L331](../../packages/treetime/src/optimize/run_loop.rs#L312-L331), called in every iteration of the loop unless `--no-collapse-short-branches` is set, handles edges driven to exactly zero. Post-loop pruning catches edges that converged to small but nonzero values below the resolution of the alignment.
 
 ## Locations
 
-- Pipeline insertion: `run_optimize_loop()` call and final `marginal_update()` [packages/treetime/src/optimize/pipeline.rs#L134-L153](../../packages/treetime/src/optimize/pipeline.rs#L134-L153)
-- Zero-branch predicate: `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L21-L40](../../packages/treetime/src/optimize/zero_boundary.rs#L21-L40)
+- Pipeline insertion: `run_optimize_loop()` call and final `marginal_update()` [packages/treetime/src/optimize/pipeline.rs#L145-L163](../../packages/treetime/src/optimize/pipeline.rs#L145-L163)
+- Zero-branch predicate: `fn is_zero_branch_optimal()` [packages/treetime/src/optimize/zero_boundary.rs#L40-L55](../../packages/treetime/src/optimize/zero_boundary.rs#L40-L55)
 - Topology collapse: `fn collapse_edge()` [packages/treetime/src/optimize/topology/collapse.rs#L7-L43](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)
-- Partition reconciliation: `fn PartitionSet::reconcile_topology()` [packages/treetime/src/partition/set.rs#L133](../../packages/treetime/src/partition/set.rs#L133)
+- Partition reconciliation: `fn PartitionSet::reconcile_topology()` [packages/treetime/src/partition/set.rs#L136](../../packages/treetime/src/partition/set.rs#L136)
 
 ## Validation
 

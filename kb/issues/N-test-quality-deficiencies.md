@@ -1,19 +1,16 @@
 # Test quality deficiencies
 
-> [!WARNING]
-> **Needs review.** The `propagate_raw_per_site` tests no longer compute expected values through the GTR exponential: `packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L42-L67` and `#L101-L126` compare against hardcoded literals. The literals have no stated source, so whether they were captured from the SUT is unknown. The section below describes the current state.
-
 ## Summary
 
-Remaining test quality issues: unsourced and symmetric-model tests, weak assertions, and missing coverage for specific entities.
+Remaining test quality issues: unsourced and symmetric-model tests, and weak assertions.
 
 ## Instances
 
 ### propagate_raw_per_site tests use a symmetric model and unsourced expected values
 
-`packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs:14,66:`
+[packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L17), [#L73](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L73)
 
-Both test functions use JC69, whose transition matrix is symmetric ($P(t) = P(t)^T$). The forward (`transpose = false`) and backward (`transpose = true`) tests therefore produce identical expected values and cannot detect a defect in the `transpose` handling of `fn propagate_raw_per_site()` (`packages/treetime/src/partition/marginal/sparse/message.rs:146`). The expected values are hardcoded literals with no stated source.
+Both test functions use JC69 with per-site rates, whose transition matrix is symmetric ($P(t) = P(t)^T$). The forward (`transpose = false`) and backward (`transpose = true`) tests therefore produce identical expected values and cannot detect a defect in the `transpose` handling of `fn propagate_raw_per_site()` [packages/treetime/src/partition/marginal/sparse/message.rs#L137](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137). The expected values are hardcoded literals with no stated source ([#L39-L56](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L39-L56), [#L95-L112](../../packages/treetime/src/partition/marginal/sparse/__tests__/test_message.rs#L95-L112)), so whether they were captured from the system under test is unknown.
 
 Fix:
 
@@ -21,11 +18,11 @@ Fix:
 - Derive expected values from the HKY85 closed form or the v0 Python GTR, never from the v1 GTR matrix exponential, because that reintroduces a circular oracle
 - State the source of the expected values in the test
 
-### Skyline tests are runs-to-completion only
+### Skyline optimizer tests check structure only
 
-`packages/treetime/src/coalescent/__tests__/test_skyline.rs`
+[packages/treetime/src/coalescent/__tests__/test_skyline.rs](../../packages/treetime/src/coalescent/__tests__/test_skyline.rs)
 
-Assert finite/positive only, no numerical verification against known values.
+Two star-tree tests check exact values: `test_skyline_constant_tc_of_a_star_tree_is_the_kingman_estimate` compares the constant Tc and its log-likelihood with the closed-form Kingman estimate, and `test_skyline_merger_rate_and_span_of_a_star_tree_follow_the_lineage_count` checks the merger rate against the lineage count. The tests of `optimize_skyline()` assert only segment counts, finite log-likelihoods, positive Tc values, the comparison with constant Tc, and scale invariance. No test compares the multi-segment Tc trajectory with known values.
 
 ### test_gm_runner_marginal_sparse compares against dense expected (NOT A DEFECT)
 
@@ -47,15 +44,3 @@ Cross-mode validation: v0 has no sparse mode, so dense oracle is the only availa
 - `test_optimize_indel_poisson_derivative_positive_near_zero` asserts `derivative > 1e5`; the exact derivative $k/t - \mu$ is $999995$ for its inputs
 - `test_optimize_indel_poisson_second_derivative_negative` asserts only the sign of $-k/t^2$
 - `test_optimize_indel_statrs_ln_factorial` tests the third-party `statrs::function::factorial::ln_factorial` instead of project code
-
-### Error tests match message substrings
-
-These tests assert `err.to_string().contains(...)` instead of the exact message with `assert_error!`, so a changed message or a different error with the same fragment still passes:
-
-- `packages/app-commands/src/commands/ancestral/__tests__/test_aa_node_data.rs`: `test_validate_aa_args_requires_cds_placeholder`, `test_validate_aa_args_empty_cdses_no_annotation_errors`, `test_validate_aa_root_sequence_cdses_requires_every_cds`
-- `packages/treetime-io/src/__tests__/test_gff.rs`: `test_parse_gff3_cds_features_rejects_non_multiple_of_three`, `test_parse_gff3_cds_features_rejects_mixed_seqids`
-
-### Missing test coverage for specific entities
-
-- No tests for `fn Sub::from_str`, `fn parse_pos`, validators at `seq/mutation.rs`
-- No tests for `enum AlphabetName::AaNoStop` at `alphabet.rs`

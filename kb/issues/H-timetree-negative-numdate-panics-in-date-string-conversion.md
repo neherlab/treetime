@@ -29,7 +29,7 @@ The offending value is the negative `numdate` of the root.
 ## Causal chain
 
 1. The clock model places the root before 1 CE, so its `numdate` is negative
-2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node ([packages/app-output/src/augur_node_data_refine.rs#L126](../../packages/app-output/src/augur_node_data_refine.rs#L126))
+2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node ([packages/app-output/src/augur_node_data_refine.rs#L129](../../packages/app-output/src/augur_node_data_refine.rs#L129))
 3. `year_fraction_to_datestring` delegates to `year_fraction_to_date` ([packages/treetime-utils/src/datetime/year_fraction.rs#L24-L26](../../packages/treetime-utils/src/datetime/year_fraction.rs#L24-L26))
 4. `year_fraction.fract()` returns `-0.59` (sign-preserving for negative inputs)
 5. `seconds_in_year.to_f64_exact() * fraction` produces a negative number of seconds
@@ -38,8 +38,9 @@ The offending value is the negative `numdate` of the root.
 ## Affected locations
 
 - [packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47](../../packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47): `fn year_fraction_to_date`, the partial function. Its lint suppression of `Duration::from_secs_f64` names this panic
-- [packages/app-output/src/augur_node_data_refine.rs#L126](../../packages/app-output/src/augur_node_data_refine.rs#L126): the node-data writer, which converts every node date
+- [packages/app-output/src/augur_node_data_refine.rs#L129](../../packages/app-output/src/augur_node_data_refine.rs#L129): the node-data writer, which converts every node date
 - [packages/app-backend/src/results/year_date.rs#L18](../../packages/app-backend/src/results/year_date.rs#L18): the run results of the app, which convert dates the same way
+- [packages/treetime-utils/src/datetime/year_fraction.rs#L28-L33](../../packages/treetime-utils/src/datetime/year_fraction.rs#L28-L33): `fn year_fraction_days_between()`, which the run results of the app use for date differences
 - [packages/treetime-utils/src/datetime/parse_date.rs#L28](../../packages/treetime-utils/src/datetime/parse_date.rs#L28): converts input dates, which are positive
 
 ## v0 reference behavior

@@ -7,43 +7,25 @@ Systematic audit of `--help` output across all commands reveals defects affectin
 
 ## Defects
 
-### D1: `--tree` description promises fallback on required-tree commands
-
-Commands: `optimize`, `ancestral`.
-
-Description says "If none is provided, treetime will attempt to build a tree from the alignment using fasttree, iqtree, or raxml" but `--tree` is **required** (`PathBuf`, shown as `--tree <TREE>` in usage line). The fallback text is unreachable.
-
-Fix: use a different description for commands where `--tree` is required. `prune` already does this correctly ("Name of file containing the tree in newick, nexus, or phylip format" with no fallback clause).
-
-Related: [M-timetree-tree-inference-unimplemented.md](M-timetree-tree-inference-unimplemented.md) covers the `timetree`/`clock` case where `--tree` is optional but tree inference is not implemented.
-
 ### D2: `--prune-short` in `clock` has empty description and type mismatch
 
-`clock` command: `--prune-short` renders with no description at all (no doc comment on `commands/clock/args.rs:76`). It is a `bool` flag. In `prune`, the same name takes an `Option<f64>` threshold (`--prune-short <THRESHOLD>`). Same flag name, different types, different semantics.
+`clock` command: `--prune-short` renders with no description at all, because the field has no doc comment [packages/app-commands/src/commands/clock/args.rs#L143-L144](../../packages/app-commands/src/commands/clock/args.rs#L143-L144). It is a `bool` flag. In `prune`, the same name takes an `Option<f64>` threshold (`--prune-short <THRESHOLD>`). Same flag name, different types, different semantics.
 
 Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) tracks that `--prune-short` in `clock` is parsed but never wired.
 
-### D3: `--model-params` references Python source files
-
-Commands: `timetree`, `optimize`, `ancestral`, `clock`, `homoplasy`.
-
-Description: "See the exact definitions of the parameters in the GTR creation methods in treetime/nuc_models.py or treetime/aa_models.py". These are v0 Python paths that do not exist in the Rust codebase. Users of the Rust binary cannot find these files.
-
-Fix: reference the v1 Rust module paths or link to documentation.
-
 ### D4: `--n-iqd` in `timetree` is unused
 
-Defined at `commands/timetree/args.rs:184` but never read or used anywhere. The `--clock-filter` flag already controls interquartile-based outlier detection. The relationship between the two is unexplained.
+Defined at [packages/app-commands/src/commands/timetree/args.rs#L330-L332](../../packages/app-commands/src/commands/timetree/args.rs#L330-L332) but never read or used anywhere. The `--clock-filter` flag already controls interquartile-based outlier detection. The relationship between the two is unexplained.
 
 Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) lists `--n-iqd`.
 
 ### D5: `arg` shows help for an unimplemented command
 
-`arg` shows global flags only with no indication of being unimplemented.
+`treetime arg --help` shows the summary "Estimates ancestral reassortment graph (ARG)" and the global flags, with no indication that the command is unimplemented. Running it does nothing and exits with success [packages/app-cli/src/run.rs#L65](../../packages/app-cli/src/run.rs#L65).
 
-### D6: `--config` has no description
+### D7: `--alphabet` help describes detection that does not exist
 
-Commands: all. `--config <CONFIG>` renders with no help text, because `struct ConfigArgs` and its `config` field carry no doc comment [`packages/app-commands/src/commands/shared/config.rs#L11-L14`](../../packages/app-commands/src/commands/shared/config.rs#L11-L14). Users cannot learn from `--help` that the file holds the command's full configuration object, that it is parsed as YAML (so JSON also works), that explicit flags override the file and the file overrides defaults, or that a boolean enabled in the file cannot be turned off from the command line.
+The help of `--alphabet` says that the alphabet is detected from the sequence content when the flag is omitted, and the doc comment of the argument struct names `detect_alphabet` [packages/app-commands/src/commands/shared/alphabet.rs#L8-L11](../../packages/app-commands/src/commands/shared/alphabet.rs#L8-L11) [packages/app-commands/src/commands/shared/alphabet.rs#L22-L25](../../packages/app-commands/src/commands/shared/alphabet.rs#L22-L25). No such function exists: every caller uses `alphabet_name().unwrap_or_default()`, which gives `nuc`. The same text reaches the generated CLI reference, the JSON schemas, and the TypeScript types.
 
 ## Inconsistencies
 
@@ -57,7 +39,7 @@ Commands: all. `--config <CONFIG>` renders with no help text, because `struct Co
 
 ### I3: `--dense` description differs across four commands
 
-`timetree`: "store full probability distributions". `optimize`: "stores full probability vectors ... Dense is more accurate..." (extra paragraph). `ancestral`/`homoplasy`: "stores full probability vectors at each position" (extra GTR paragraph).
+`timetree`: "Use dense representation for sequences (store full probability distributions)". `optimize`: "Use dense representation of sequences on the tree", with an extra paragraph on dense and sparse mode. `ancestral`/`homoplasy`: "Use dense representation (stores full probability vectors at each position)", with an extra paragraph on `--model infer`.
 
 ### I4: `--vcf-reference` description has two phrasings
 
@@ -99,11 +81,9 @@ Description says "Default: 1.0" but no `[default: 1.0]` metadata (field is `Opti
 
 ## Style
 
-### S1: Format name capitalization
+### S1: "fasta" in lowercase
 
-"newick, nexus, or phylip" should be "Newick, Nexus, or PHYLIP" consistently.
-
-### S2: "compressed fasta" should be "compressed FASTA"
+The `--vcf-reference` description of `timetree` and `clock` says "fasta file"; other descriptions write "FASTA".
 
 ### S3: `mugration --weights` grammar error
 
@@ -125,21 +105,13 @@ No indication of expected range, units, or typical values.
 
 ### W1: Output flags appear optional but at least one is required at runtime
 
-Usage lines show all output flags as optional (`[OPTIONS]`), but `output.rs:562` errors when no output destination is provided. Users following the usage pattern get a runtime error after input loading completes. Workflow generators cannot infer that `-O`/`--output-all` or a per-file flag is required.
+Usage lines show all output flags as optional (`[OPTIONS]`), but the output plan returns `MissingOutputs::NoOutputs` when no output destination is provided [packages/app-output/src/output_plan.rs#L91-L93](../../packages/app-output/src/output_plan.rs#L91-L93). Users following the usage pattern get a runtime error after input loading completes. Workflow generators cannot infer that `-O`/`--output-all` or a per-file flag is required.
 
 ### W2: `--output-selection` accepts values that the command rejects at runtime
 
-The macro still adds the full tree-format superset to every command, while a separate availability matrix rejects unsupported values later. Per-file flags have the same drift when their writer is absent from the command matrix.
+The `command_outputs!` macro adds the full tree-format set (`nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`) to the selection enum of every command [packages/app-commands/src/commands/shared/output_args.rs#L22-L38](../../packages/app-commands/src/commands/shared/output_args.rs#L22-L38), while a separate availability matrix rejects unsupported values later. Per-file flags have the same drift when their writer is absent from the command matrix.
 
 Generate each command-specific parseable enum and visible per-file flags from its actual format set, then add parse-level rejection tests.
-
-### W3: `--alignment` says "multiple FASTA files" but does not show repeat syntax
-
-Help renders `-a, --alignment <FILEPATH>` with singular value name. No indication whether multiple files use repeated flags (`--alignment a --alignment b`), space-separated values, or comma-separated values.
-
-### W4: Stdin fallback text appears on commands where it is irrelevant
-
-Shared alignment help says "If no input files provided, the plain fasta input is read from standard input (stdin)." This appears on `clock` (metadata/tree-based, not sequence-based) and `prune` (sequence only needed for `--prune-empty`).
 
 ### W5: Root help links to Python v0 documentation
 
@@ -147,7 +119,7 @@ Root `--help` links to `https://treetime.readthedocs.io/en/stable/` and the Pyth
 
 ### W6: No usage examples in any scientific command
 
-Only `completions` includes an example. Core commands (`timetree`, `ancestral`, `clock`, `mugration`, `optimize`, `prune`) have no canonical command-line examples showing required input combinations.
+Core commands (`timetree`, `ancestral`, `clock`, `mugration`, `optimize`, `prune`) have no canonical command-line examples showing required input combinations. The help texts with examples are `completions`, `examples get` (which shows one `ancestral` run with an example config), and the `--model-params` flag (which shows `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`).
 
 ### W7: `mugration` metadata format examples are unreadable inline prose
 
@@ -159,21 +131,17 @@ Root help lists tooling commands at the same level as analysis commands with no 
 
 ## Grammar
 
-### G1: "If there's multiple input files" should be "If there are multiple input files"
-
-`commands/shared/alignment.rs:21`
-
 ### G2: "gaussian" should be "Gaussian"
 
-`commands/timetree/args.rs:102`
+[packages/app-commands/src/commands/timetree/args.rs#L215](../../packages/app-commands/src/commands/timetree/args.rs#L215)
 
 ### G3: "Higher numbers results" should be "Higher numbers result"
 
-`commands/mugration/args.rs:44`
+[packages/app-commands/src/commands/mugration/args.rs#L126](../../packages/app-commands/src/commands/mugration/args.rs#L126)
 
 ### G4: Root `ancestral` summary is a full paragraph; other summaries are one-liners
 
-`app-cli/src/cli/treetime_cli.rs:73` -- uneven length makes root help hard to scan.
+[packages/app-cli/src/cli/treetime_cli.rs#L126](../../packages/app-cli/src/cli/treetime_cli.rs#L126): uneven length makes root help hard to scan. The `clock` and `homoplasy` summaries are also several sentences long.
 
 ## Affected code
 
@@ -198,6 +166,5 @@ Each behavioral item must first select its parse/runtime contract, and already-o
 ## Related issues
 
 - [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D2 and D4)
-- [M-timetree-tree-inference-unimplemented.md](M-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D1)
 - [M-timetree-polytomy-resolution-off-by-default.md](M-timetree-polytomy-resolution-off-by-default.md): `--keep-polytomies` and `--resolve-polytomies` have no conflict guard
 - [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree
