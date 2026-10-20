@@ -6,7 +6,7 @@
 //! Shared helpers for resolving references and panic sites from HIR nodes.
 
 use clippy_utils::macros::expn_backtrace;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Body, Expr, ExprKind, HirId, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
@@ -29,6 +29,16 @@ pub fn resolve_expr_def_id(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Def
         _ => None,
     };
     def_id.map(|id| (id, expr.hir_id, expr.span))
+}
+
+/// The item a use counts for: a constructor or variant counts as its struct or
+/// enum.
+pub fn owning_item(cx: &LateContext<'_>, def_id: DefId) -> DefId {
+    match cx.tcx.def_kind(def_id) {
+        DefKind::Ctor(..) => owning_item(cx, cx.tcx.parent(def_id)),
+        DefKind::Variant => cx.tcx.parent(def_id),
+        _ => def_id,
+    }
 }
 
 /// Resolves the `DefId` of a type reference, if it refers to a named definition.

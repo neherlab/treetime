@@ -24,6 +24,8 @@ use rustc_span::{FileName, Span};
 
 use record::{CrateRecord, Def, RECORD_EXTENSION, RECORDS_DIR_ENV};
 
+use crate::lints::hir_refs::owning_item;
+
 rustc_session::declare_lint! {
     /// Finds a reachable `pub` item that no crate of the workspace uses: no
     /// lib, bin, example, bench, or build script names it, calls it, or
@@ -337,16 +339,6 @@ fn key(tcx: TyCtxt<'_>, def_id: DefId) -> String {
         tcx.crate_name(def_id.krate),
         tcx.def_path(def_id).to_string_no_crate_verbose()
     )
-}
-
-/// The item a use counts for: a constructor or variant counts as its struct or
-/// enum.
-fn owning_item(cx: &LateContext<'_>, def_id: DefId) -> DefId {
-    match cx.tcx.def_kind(def_id) {
-        DefKind::Ctor(..) => owning_item(cx, cx.tcx.parent(def_id)),
-        DefKind::Variant => cx.tcx.parent(def_id),
-        _ => def_id,
-    }
 }
 
 /// The trait or, for an inherent impl, the type an associated item belongs to.
