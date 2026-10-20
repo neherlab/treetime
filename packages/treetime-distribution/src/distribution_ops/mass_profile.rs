@@ -49,6 +49,7 @@ impl MassProfile {
     let r = f.y().mapv(|y| y - y_peak);
     let (left_extrap, right_extrap) = (f.left_extrap(), f.right_extrap());
     let hard_cells: Vec<HardCellPower> = (0..n - 1)
+      .filter(|&cell| r[cell].is_infinite() != r[cell + 1].is_infinite())
       .filter_map(|cell| {
         f.grid_fn()
           .hard_cell(cell, left_extrap, right_extrap)
