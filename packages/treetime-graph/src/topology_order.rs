@@ -240,18 +240,22 @@ fn compute_labels(
   postorder: &[GraphNodeKey],
   names: &BTreeMap<GraphNodeKey, Option<String>>,
 ) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
-  let mut labels: BTreeMap<GraphNodeKey, String> = BTreeMap::new();
+  let mut labels = graph
+    .get_nodes()
+    .filter(|node| node.is_leaf())
+    .map(|node| {
+      let key = node.key();
+      names[&key]
+        .clone()
+        .map(|name| (key, name))
+        .ok_or_else(|| make_report!("When ordering topology by labels: leaf node {key} has no name"))
+    })
+    .collect::<Result<BTreeMap<_, _>, Report>>()?;
   for &node_key in postorder {
     let node = &graph[node_key];
-    let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
-    let label = if child_keys.is_empty() {
-      names[&node_key]
-        .clone()
-        .ok_or_else(|| make_report!("When ordering topology by labels: leaf node {} has no name", node_key))?
-    } else {
-      child_keys.iter().map(|ck| labels[ck].clone()).min().unwrap_or_default()
-    };
-    labels.insert(node_key, label);
+    if let Some(label) = graph.children_keys_of(node).map(|(key, _)| labels[&key].clone()).min() {
+      labels.insert(node_key, label);
+    }
   }
   Ok(labels)
 }

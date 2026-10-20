@@ -7,9 +7,10 @@ mod tests {
   use crate::graph::Graph;
   use crate::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
   use eyre::Report;
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, o};
 
   #[test]
   fn topology_order_descendant_count_sorts_children_ascending() -> Result<(), Report> {
@@ -228,6 +229,28 @@ mod tests {
 
     assert_eq!(vec!["wide", "L", "deep"], actual);
 
+    Ok(())
+  }
+
+  #[test]
+  fn topology_order_label_names_the_unnamed_leaf_with_the_smallest_key() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let first = graph.add_node();
+    let second = graph.add_node();
+    graph.add_edge(root, second)?;
+    graph.add_edge(root, first)?;
+    graph.build()?;
+    let names = btreemap! { root => Some(o!("root")), first => None, second => None };
+    let spec = TopologyOrderSpec {
+      preset: TopologyOrderPreset::Label,
+      ..TopologyOrderSpec::default()
+    };
+
+    let branch_lengths = edge_branch_lengths(&graph);
+    let result = spec.apply(&mut graph, &names, &branch_lengths);
+
+    assert_error!(result, "When ordering topology by labels: leaf node 1 has no name");
     Ok(())
   }
 
