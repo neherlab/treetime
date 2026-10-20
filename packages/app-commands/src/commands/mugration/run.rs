@@ -10,17 +10,17 @@ use app_output::trait_tables::{write_trait_confidence_csv, write_traits_csv};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::cancel::Cancel;
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationOutput, MugrationParams};
+use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
 use treetime::progress::RunWarningKind;
 use treetime::progress::{LogSink, StageSink};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
 use treetime_utils::make_error;
 
@@ -51,9 +51,10 @@ pub fn run_mugration(
     attribute_column,
     |s| Ok(s.to_owned()),
   )?;
-  let MugrationTraits {
+  let TraitPairing {
     traits,
     observed_values,
+    ..
   } = pair_traits(rows, &graph, &names, mugration_args.metadata(), log);
 
   let weights = if let Some(weights_filepath) = &mugration_args.weights {
@@ -145,14 +146,14 @@ pub(crate) fn pair_traits(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   path: &Path,
   log: &dyn LogSink,
-) -> MugrationTraits {
-  let pairing = pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, rows);
+) -> TraitPairing {
+  let pairing = pair_trait_rows(rows, graph, names);
   warn_duplicate_names(
     log,
     RunWarningKind::DuplicateMetadataNames,
     &format!("The metadata '{}' has more than one row named", path.display()),
     "TreeTime uses the first row of each name.",
-    &pairing.duplicate_entry_names,
+    &pairing.duplicate_names,
   );
   if !pairing.unmatched.is_empty() {
     let shown = pairing
@@ -172,21 +173,7 @@ pub(crate) fn pair_traits(
       pairing.unmatched.len()
     );
   }
-  let observed_values = pairing
-    .by_node
-    .values()
-    .chain(pairing.unmatched.iter().map(|(_, value)| value))
-    .cloned()
-    .collect();
-  MugrationTraits {
-    traits: pairing.by_node,
-    observed_values,
-  }
-}
-
-pub(crate) struct MugrationTraits {
-  pub(crate) traits: BTreeMap<GraphNodeKey, String>,
-  pub(crate) observed_values: BTreeSet<String>,
+  pairing
 }
 
 fn write_mugration_trees(

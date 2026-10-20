@@ -3,7 +3,6 @@ mod clock;
 mod graph_lookup;
 mod indel;
 mod marginal;
-mod mugration;
 mod sparse;
 mod timetree;
 
@@ -22,7 +21,6 @@ pub(crate) use marginal::{
   sequence_source, sparse_reconstruction, sparse_reconstruction_mut, sparse_topology_partition,
   sparse_topology_partitions,
 };
-pub(crate) use mugration::{TraitsByNode, traits_by_node};
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
   FullPosterior, RecordingLog, constraint_expectation, empty_time_inference, full_posterior, marginal_timetree_params,

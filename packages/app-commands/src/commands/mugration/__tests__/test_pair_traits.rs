@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
-  use crate::commands::mugration::run::{MugrationTraits, pair_traits};
+  use crate::commands::mugration::run::pair_traits;
   use itertools::Itertools;
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use std::path::Path;
+  use treetime::mugration::trait_pairing::TraitPairing;
   use treetime::progress::{RunWarning, RunWarningKind};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
@@ -22,10 +23,7 @@ mod tests {
     ];
     let log = RecordingLog::default();
 
-    let MugrationTraits {
-      traits,
-      observed_values,
-    } = pair_traits(rows, &tree.graph, &names, Path::new("metadata.tsv"), &log);
+    let pairing = pair_traits(rows, &tree.graph, &names, Path::new("metadata.tsv"), &log);
 
     let leaf_keys = |name: &str| {
       tree
@@ -41,8 +39,12 @@ mod tests {
     };
     assert_eq!(
       (
-        btreemap! { a1 => o!("usa"), a2 => o!("usa"), leaf_keys("B")[0] => o!("uk") },
-        btreeset! { o!("germany"), o!("uk"), o!("usa") },
+        TraitPairing {
+          traits: btreemap! { a1 => o!("usa"), a2 => o!("usa"), leaf_keys("B")[0] => o!("uk") },
+          observed_values: btreeset! { o!("germany"), o!("uk"), o!("usa") },
+          duplicate_names: vec![o!("A")],
+          unmatched: vec![(o!("Z"), o!("germany"))],
+        },
         vec![RunWarning {
           kind: RunWarningKind::DuplicateMetadataNames,
           message: o!(
@@ -51,7 +53,7 @@ mod tests {
           names: vec![o!("A")],
         }],
       ),
-      (traits, observed_values, log.into_warnings())
+      (pairing, log.into_warnings())
     );
   }
 }

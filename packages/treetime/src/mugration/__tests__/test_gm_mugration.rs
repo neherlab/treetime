@@ -107,8 +107,8 @@ mod tests {
   mod helpers {
     use crate::cancel::NoopCancel;
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
+    use crate::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
     use crate::progress::NoopProgress;
-    use crate::test_utils::{TraitsByNode, traits_by_node};
     use deser::Deserialize;
     use eyre::Report;
     use indexmap::IndexMap;
@@ -183,10 +183,11 @@ mod tests {
         Some(fixture.attribute.as_str()),
         |s| Ok(s.to_owned()),
       )?;
-      let TraitsByNode {
+      let TraitPairing {
         traits,
         observed_values,
-      } = traits_by_node(rows, &graph, &names);
+        ..
+      } = pair_trait_rows(rows, &graph, &names);
 
       let weights = match &fixture.parameters.weights_path {
         Some(weights_path) => {

@@ -229,11 +229,11 @@ mod tests {
     use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
     use crate::gtr::gtr::{GTR, Mu};
     use crate::mugration::leaf_observations::leaf_observations;
+    use crate::mugration::trait_pairing::pair_trait_rows;
     use crate::o;
     use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
     use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
     use crate::progress::LogSink;
-    use crate::test_utils::traits_by_node;
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
     use maplit::btreemap;
@@ -260,7 +260,7 @@ mod tests {
         .mu(Mu::FromMatrix(1.0))
         .pi(Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact()))
         .build()?;
-      let traits = traits_by_node(traits.clone(), graph, names).traits;
+      let traits = pair_trait_rows(traits.clone(), graph, names).traits;
       let observations = leaf_observations(graph, &traits, names, &states, "?", "metadata", log)?;
       let partition = PartitionMarginalDiscrete::new(states, graph, &observations, MIN_BRANCH_LENGTH_FRACTION, false)?;
       Ok((partition, gtr))

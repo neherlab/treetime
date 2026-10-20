@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::mugration::run::{MugrationTraits, pair_traits};
   use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeTraits};
   use app_output::output_plan::{CommandKind, TreeWriteKind};
   use app_output::tree_output::write_tree_outputs;
@@ -8,10 +7,10 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::path::Path;
   use tempfile::TempDir;
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
+  use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
   use treetime::progress::NoopProgress;
   use treetime_io::nwk::{NwkStyle, nwk_read};
   use treetime_utils::io::fs::read_file_to_string;
@@ -36,16 +35,11 @@ mod tests {
       smooth_initial_pi: false,
       filter_uninformative_root: false,
     };
-    let MugrationTraits {
+    let TraitPairing {
       traits,
       observed_values,
-    } = pair_traits(
-      traits.into_iter().collect(),
-      &graph,
-      &names,
-      Path::new("metadata.tsv"),
-      &NoopProgress,
-    );
+      ..
+    } = pair_trait_rows(traits, &graph, &names);
     let input = MugrationInput {
       graph,
       traits,

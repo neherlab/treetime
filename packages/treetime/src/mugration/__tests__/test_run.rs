@@ -483,8 +483,8 @@ mod tests {
   mod helpers {
     use crate::cancel::NoopCancel;
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
+    use crate::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
     use crate::progress::NoopProgress;
-    use crate::test_utils::{TraitsByNode, traits_by_node};
     use eyre::Report;
     use indexmap::IndexMap;
     use ndarray::Array1;
@@ -516,10 +516,11 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
-      let TraitsByNode {
+      let TraitPairing {
         traits,
         observed_values,
-      } = traits_by_node(traits.clone(), &graph, &names);
+        ..
+      } = pair_trait_rows(traits.clone(), &graph, &names);
       let input = MugrationInput {
         graph,
         traits,
