@@ -57,11 +57,10 @@ impl MassProfile {
           .transpose()
       })
       .try_collect()?;
-    let cells = (0..n - 1)
-      .map(|j| cell_at(&r, &hard_cells, j).mass_between(dx, Offset::start(dx), Offset::end(dx)))
-      .collect_vec();
-    let prefix = running_sums(cells.iter().map(|cell| cell.linear()));
-    let mut suffix = running_sums(cells.iter().rev().map(|cell| cell.linear()));
+    let cells = (0..n - 1).map(|j| full_cell_mass(&r, &hard_cells, dx, j)).collect_vec();
+    let masses = cells.iter().map(|cell| cell.linear()).collect_vec();
+    let prefix = running_sums(masses.iter().copied());
+    let mut suffix = running_sums(masses.iter().rev().copied());
     suffix.invert_axis(Axis(0));
     let left = TailLaw::new(left_extrap, Side::Left, f.x_min(), r[0]);
     let right = TailLaw::new(right_extrap, Side::Right, f.x_max(), r[n - 1]);
@@ -757,6 +756,10 @@ fn cell_at(r: &Array1<f64>, hard_cells: &[HardCellPower], j: usize) -> Cell {
     },
     (true, true) => Cell::Empty,
   }
+}
+
+fn full_cell_mass(r: &Array1<f64>, hard_cells: &[HardCellPower], dx: f64, j: usize) -> ScaledMass {
+  cell_at(r, hard_cells, j).mass_between(dx, Offset::start(dx), Offset::end(dx))
 }
 
 fn resolve_tail(law: Option<TailLaw>, policy: TailMass, side: Side, x_edge: f64) -> Option<TailLaw> {
