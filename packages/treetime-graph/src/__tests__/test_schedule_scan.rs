@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::{caterpillar_parents, inputs_of, run_in_pool, run_in_small_stack_pool, subtree_sizes};
-  use super::super::test_graph_support::tests::helpers::{NamedGraph, graph_from_parents};
+  use self::helpers::{caterpillar_parents, inputs_of, ladder, run_in_pool, run_in_small_stack_pool, subtree_sizes};
+  use super::super::test_graph_support::tests::helpers::{NamedGraph, graph_from_dag, graph_from_parents};
   use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
@@ -218,6 +218,54 @@ mod tests {
 
     let max_depth = depths.values().copied().max();
     assert_eq!((100_000, Some(50_000)), (depths.len(), max_depth));
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::one_thread(1)]
+  #[case::sixteen_threads(16)]
+  #[trace]
+  fn test_schedule_scan_up_ladder_of_100000_nodes_with_two_parents_fits_small_worker_stacks(
+    #[case] threads: usize,
+  ) -> Result<(), Report> {
+    let graph = graph_from_dag(&ladder(100_000))?;
+    let schedule = GraphSchedule::new(&graph)?;
+
+    let heights = run_in_small_stack_pool(threads, || {
+      schedule
+        .scan_up(inputs_of(&graph, ()), |_, (), children: PerEdge<usize>| {
+          let height = children.iter().max().map_or(0, |height| height + 1);
+          Ok((height, height))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let expected = (0..100_000).map(|index| (GraphNodeKey(index), 99_999 - index)).collect::<BTreeMap<_, _>>();
+    assert_eq!(expected, heights);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::one_thread(1)]
+  #[case::sixteen_threads(16)]
+  #[trace]
+  fn test_schedule_scan_down_ladder_of_100000_nodes_with_two_parents_fits_small_worker_stacks(
+    #[case] threads: usize,
+  ) -> Result<(), Report> {
+    let graph = graph_from_dag(&ladder(100_000))?;
+    let schedule = GraphSchedule::new(&graph)?;
+
+    let depths = run_in_small_stack_pool(threads, || {
+      schedule
+        .scan_down(inputs_of(&graph, ()), |_, (), parents: PerEdge<usize>| {
+          let depth = parents.iter().max().map_or(0, |depth| depth + 1);
+          Ok((depth, depth))
+        })
+        .map(ScanOutputs::into_map)
+    })?;
+
+    let expected = (0..100_000).map(|index| (GraphNodeKey(index), index)).collect::<BTreeMap<_, _>>();
+    assert_eq!(expected, depths);
     Ok(())
   }
 
@@ -635,10 +683,12 @@ mod tests {
   }
 
   mod helpers {
+    use super::super::super::test_graph_support::tests::helpers::DagSpec;
     use crate::graph::Graph;
     use crate::node::GraphNodeKey;
     use crate::schedule::GraphSchedule;
     use eyre::Report;
+    use itertools::Itertools;
     use rayon::ThreadPoolBuilder;
     use std::collections::BTreeMap;
 
@@ -678,6 +728,15 @@ mod tests {
           }
         })
         .collect()
+    }
+
+    pub(super) fn ladder(count: usize) -> DagSpec {
+      let rails = (1..count).map(|child| (child - 1, child));
+      let rungs = (2..count).map(|child| (child - 2, child));
+      DagSpec {
+        keys: (0..count).collect(),
+        edges: rails.interleave(rungs).collect(),
+      }
     }
 
     pub(super) fn subtree_sizes(schedule: &GraphSchedule<'_>) -> BTreeMap<GraphNodeKey, usize> {
