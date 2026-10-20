@@ -71,5 +71,39 @@ LL | impl Rooted for TreeSchedule<'_> {
    |
    = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
 
-warning: 9 warnings emitted
+warning: `graph::schedule::GraphSchedule::into_tree` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:63:30
+   |
+LL |     let tree: tree_type!() = tree_of!(roots)?;
+   |                              ^^^^^^^^^^^^^^^
+   |
+note: the macro expands to this use
+  --> $DIR/core_algorithms.rs:52:36
+   |
+LL |         GraphSchedule::new($roots).into_tree()
+   |                                    ^^^^^^^^^^^
+...
+LL |     let tree: tree_type!() = tree_of!(roots)?;
+   |                              --------------- in this macro invocation
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+   = note: this warning originates in the macro `tree_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `graph::schedule::TreeSchedule` is forbidden in crate `core_algorithms`
+  --> $DIR/core_algorithms.rs:63:15
+   |
+LL |     let tree: tree_type!() = tree_of!(roots)?;
+   |               ^^^^^^^^^^^^
+   |
+note: the macro expands to this use
+  --> $DIR/core_algorithms.rs:58:9
+   |
+LL |         TreeSchedule<'_>
+   |         ^^^^^^^^^^^^^^^^
+...
+LL |     let tree: tree_type!() = tree_of!(roots)?;
+   |               ------------ in this macro invocation
+   = note: core algorithms take a `GraphSchedule`; the tree handle serves tree-only output formats
+   = note: this warning originates in the macro `tree_type` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 11 warnings emitted
 

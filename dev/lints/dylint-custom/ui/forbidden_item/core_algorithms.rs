@@ -46,3 +46,20 @@ impl Rooted for TreeSchedule<'_> {
         self.root().is_some()
     }
 }
+
+macro_rules! tree_of {
+    ($roots:expr) => {
+        GraphSchedule::new($roots).into_tree()
+    };
+}
+
+macro_rules! tree_type {
+    () => {
+        TreeSchedule<'_>
+    };
+}
+
+pub fn root_of_local_macro(roots: &[usize]) -> Option<usize> {
+    let tree: tree_type!() = tree_of!(roots)?;
+    tree.root()
+}

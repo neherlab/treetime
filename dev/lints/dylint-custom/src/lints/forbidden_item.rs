@@ -8,7 +8,10 @@
 //! lint time in the dependency graph of the linted crate, so a path that does
 //! not resolve, for example to an item that its crate does not define yet,
 //! forbids nothing. Test code (`#[test]` functions and items under
-//! `#[cfg(test)]`) and code that a macro expands are not checked.
+//! `#[cfg(test)]`) and the output of macros from other crates are not checked;
+//! tokens that the linted crate passes to such a macro keep their own spans and
+//! are checked. A use that a macro of the linted crate expands to is reported
+//! at the macro call, with a note at the use in the macro definition.
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
@@ -17,7 +20,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Expr, ExprKind, HirId, Path, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_span::Span;
 
 use crate::config::ForbiddenItemRule;
@@ -35,7 +38,7 @@ rustc_session::declare_lint! {
 pub struct ForbiddenItem {
     rules: Vec<ForbiddenItemRule>,
     forbidden: FxHashMap<DefId, Forbidden>,
-    reported: FxHashSet<Span>,
+    reported: FxHashSet<(Span, DefId)>,
 }
 
 impl ForbiddenItem {
@@ -48,22 +51,27 @@ impl ForbiddenItem {
     }
 
     fn report(&mut self, cx: &LateContext<'_>, def_id: DefId, span: Span, hir_id: HirId) {
-        if span.from_expansion() || is_in_test(cx.tcx, hir_id) {
+        if span.in_external_macro(cx.sess().source_map()) || is_in_test(cx.tcx, hir_id) {
             return;
         }
-        let Some(forbidden) = self.forbidden.get(&owning_item(cx, def_id)) else {
+        let item = owning_item(cx, def_id);
+        let Some(forbidden) = self.forbidden.get(&item) else {
             return;
         };
-        if !self.reported.insert(span) {
+        let call_site = span.source_callsite();
+        if !self.reported.insert((call_site, item)) {
             return;
         }
         let crate_name = cx.tcx.crate_name(LOCAL_CRATE);
         span_lint_and_then(
             cx,
             FORBIDDEN_ITEM,
-            span,
+            call_site,
             format!("`{}` is forbidden in crate `{crate_name}`", forbidden.path),
             |diag| {
+                if call_site != span {
+                    diag.span_note(span, "the macro expands to this use");
+                }
                 diag.note(forbidden.reason.clone());
             },
         );
