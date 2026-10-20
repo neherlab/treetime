@@ -142,52 +142,6 @@ impl<'g> TreeSchedule<'g> {
   }
 }
 
-struct Adjacency {
-  offsets: Vec<usize>,
-  entries: Vec<(GraphNodeKey, GraphEdgeKey)>,
-  slots: Vec<Option<usize>>,
-}
-
-impl Adjacency {
-  fn build<'a, I>(graph: &'a Graph, neighbors: impl Fn(&'a Node) -> I) -> Self
-  where
-    I: Iterator<Item = (GraphNodeKey, GraphEdgeKey)>,
-  {
-    let mut offsets = Vec::with_capacity(graph.nodes.len() + 1);
-    let mut entries = Vec::with_capacity(graph.edges.len());
-    let mut slots = vec![None; graph.edges.len()];
-    offsets.push(0);
-    for node in &graph.nodes {
-      if let Some(node) = node {
-        for (slot, (key, edge_key)) in neighbors(node).enumerate() {
-          slots[edge_key.as_usize()] = Some(slot);
-          entries.push((key, edge_key));
-        }
-      }
-      offsets.push(entries.len());
-    }
-    Self {
-      offsets,
-      entries,
-      slots,
-    }
-  }
-
-  fn of(&self, key: GraphNodeKey) -> &[(GraphNodeKey, GraphEdgeKey)] {
-    let index = key.as_usize();
-    &self.entries[self.offsets[index]..self.offsets[index + 1]]
-  }
-
-  fn slot(&self, edge: GraphEdgeKey) -> usize {
-    self
-      .slots
-      .get(edge.as_usize())
-      .copied()
-      .flatten()
-      .unwrap_or_else(|| missing_key("Edge", edge))
-  }
-}
-
 fn roots_of(graph: &Graph, parents: &Adjacency) -> Vec<GraphNodeKey> {
   let is_root = |key: GraphNodeKey| graph.get_node(key).is_some() && parents.of(key).is_empty();
   let mut listed = vec![false; graph.nodes.len()];
@@ -260,4 +214,50 @@ fn postorder_of(graph: &Graph, roots: &[GraphNodeKey], children: &Adjacency) -> 
 enum Frame {
   Enter(GraphNodeKey),
   Exit(GraphNodeKey),
+}
+
+struct Adjacency {
+  offsets: Vec<usize>,
+  entries: Vec<(GraphNodeKey, GraphEdgeKey)>,
+  slots: Vec<Option<usize>>,
+}
+
+impl Adjacency {
+  fn build<'a, I>(graph: &'a Graph, neighbors: impl Fn(&'a Node) -> I) -> Self
+  where
+    I: Iterator<Item = (GraphNodeKey, GraphEdgeKey)>,
+  {
+    let mut offsets = Vec::with_capacity(graph.nodes.len() + 1);
+    let mut entries = Vec::with_capacity(graph.edges.len());
+    let mut slots = vec![None; graph.edges.len()];
+    offsets.push(0);
+    for node in &graph.nodes {
+      if let Some(node) = node {
+        for (slot, (key, edge_key)) in neighbors(node).enumerate() {
+          slots[edge_key.as_usize()] = Some(slot);
+          entries.push((key, edge_key));
+        }
+      }
+      offsets.push(entries.len());
+    }
+    Self {
+      offsets,
+      entries,
+      slots,
+    }
+  }
+
+  fn of(&self, key: GraphNodeKey) -> &[(GraphNodeKey, GraphEdgeKey)] {
+    let index = key.as_usize();
+    &self.entries[self.offsets[index]..self.offsets[index + 1]]
+  }
+
+  fn slot(&self, edge: GraphEdgeKey) -> usize {
+    self
+      .slots
+      .get(edge.as_usize())
+      .copied()
+      .flatten()
+      .unwrap_or_else(|| missing_key("Edge", edge))
+  }
 }

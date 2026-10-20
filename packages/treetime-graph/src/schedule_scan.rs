@@ -15,8 +15,6 @@ use std::sync::{Arc, OnceLock};
 use treetime_utils::fmt::string::counted;
 use treetime_utils::make_internal_report;
 
-pub type PerEdge<T> = SmallVec<[T; 1]>;
-
 impl GraphSchedule<'_> {
   pub fn scan_down<N, M, Out>(
     &self,
@@ -415,6 +413,8 @@ impl<M> Inbox<M> {
       .map(Some)
   }
 }
+
+pub type PerEdge<T> = SmallVec<[T; 1]>;
 
 #[cfg(test)]
 mod tests {

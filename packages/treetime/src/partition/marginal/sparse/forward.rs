@@ -74,8 +74,6 @@ pub(crate) fn process_forward_indexed(
   })
 }
 
-type SparseForwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeForwardOut>)>;
-
 struct SparseForwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   partition: &'a PartitionMarginalSparse,
@@ -198,6 +196,8 @@ impl SparseForwardPass<'_> {
     })
   }
 }
+
+type SparseForwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeForwardOut>)>;
 
 struct SparseEdgeForwardOut {
   msg_to_child: SparseSeqDistribution,

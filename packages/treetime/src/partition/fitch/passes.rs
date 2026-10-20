@@ -220,8 +220,6 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: PartitionFitch) -> Result<
   })
 }
 
-type FitchForwardOutput = Arc<(FitchNodeData, PerEdge<SparseEdgeObs>)>;
-
 fn fitch_forward_node(
   alphabet: &Alphabet,
   key: GraphNodeKey,
@@ -305,6 +303,8 @@ fn fitch_forward_node(
   let output = Arc::new((node, edge.into_iter().collect()));
   Ok((Arc::clone(&output), output))
 }
+
+type FitchForwardOutput = Arc<(FitchNodeData, PerEdge<SparseEdgeObs>)>;
 
 fn fitch_cleanup(graph: &Graph, mut partition: PartitionFitch) -> PartitionFitch {
   for (key, node) in &mut partition.nodes {

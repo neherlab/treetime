@@ -52,8 +52,6 @@ pub(crate) fn process_backward_indexed(
   })
 }
 
-type SparseBackwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>;
-
 struct SparseBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   partition: &'a PartitionMarginalSparse,
@@ -173,6 +171,8 @@ impl SparseBackwardPass<'_> {
     )
   }
 }
+
+type SparseBackwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>;
 
 fn leaf_message(obs: &SparseNodeObs, alphabet: &Alphabet) -> Result<SparseSeqDistribution, Report> {
   let mut fixed = FixedProfiles::default();

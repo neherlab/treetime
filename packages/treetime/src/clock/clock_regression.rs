@@ -262,8 +262,6 @@ fn clock_regression_forward(
   Ok(ClockState { nodes, edges })
 }
 
-type ClockNodeOutput = (ClockSet, PerEdge<ClockEdgeState>);
-
 struct ClockRegressionPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   inputs: &'a ClockInputs,
@@ -325,6 +323,8 @@ impl ClockRegressionPass<'_> {
     edge_length(self.inputs, self.branch_lengths, edge_key, self.prev_clock_rate)
   }
 }
+
+type ClockNodeOutput = (ClockSet, PerEdge<ClockEdgeState>);
 
 fn clock_regression_points(
   graph: &Graph,

@@ -139,8 +139,6 @@ fn leaf_inputs<'a, L>(
   schedule.preorder().iter().map(|&key| (key, leaves.get(&key)))
 }
 
-type IndexedBackwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeBackward>)>;
-
 struct IndexedBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   gtr: &'a GTR,
@@ -214,6 +212,8 @@ impl IndexedBackwardPass<'_> {
     Ok((Arc::clone(&output), output))
   }
 }
+
+type IndexedBackwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeBackward>)>;
 
 fn dense_leaf_backward(
   alphabet: &Alphabet,
@@ -300,8 +300,6 @@ pub(crate) fn indexed_forward(
   })
 }
 
-type IndexedForwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeForwardOut>)>;
-
 struct IndexedForwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   gtr: &'a GTR,
@@ -358,6 +356,8 @@ impl IndexedForwardPass<'_> {
     Ok((Arc::clone(&output), output))
   }
 }
+
+type IndexedForwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeForwardOut>)>;
 
 struct DenseEdgeForwardOut {
   msg_to_child: DenseSeqDistribution,

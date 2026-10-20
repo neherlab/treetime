@@ -69,13 +69,6 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   Ok(outputs.into_iter().map(|(key, output)| (key, output.summary)).collect())
 }
 
-pub(crate) struct ForwardPassInputs<'a> {
-  pub constraints: &'a DateConstraints,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
-  pub max_points: MaxGridPoints,
-}
-
 struct ForwardPass<'a, F> {
   schedule: &'a GraphSchedule<'a>,
   inputs: &'a ForwardPassInputs<'a>,
@@ -155,6 +148,13 @@ where
     };
     Ok((output, Posterior { distribution, time }))
   }
+}
+
+pub(crate) struct ForwardPassInputs<'a> {
+  pub constraints: &'a DateConstraints,
+  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  pub max_points: MaxGridPoints,
 }
 
 struct ForwardOutput<S> {
