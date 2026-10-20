@@ -63,7 +63,6 @@ mod tests {
   const RELAX: [f64; 2] = [1.0, 1.0];
 
   #[test]
-  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_round_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
     let (state, context) = helpers::create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
@@ -130,7 +129,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "mass-sized node times break downstream invariants (positional log-lh, polytomy resolution): kb/issues/H-timetree-mass-sizing-node-times-break-downstream-invariants.md"]
   fn test_round_unchanged_topology_recomputes_missing_time() -> Result<(), Report> {
     let (state, context) = helpers::create_polytomy_state()?;
     let tc = Distribution::constant(10.0);
