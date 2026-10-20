@@ -4,11 +4,12 @@ use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
 use approx::ulps_eq;
 use eyre::Report;
+use itertools::Either;
 use ndarray::{Array1, s};
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, GridEdge, GridFn, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_internal_error};
 
 pub(crate) fn log_mass(dist: &Distribution<NegLog>) -> Result<f64, Report> {
   match dist {
@@ -52,24 +53,30 @@ pub fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distribution
   };
   let t = f.t();
   let y = f.y();
-  let lower = lower_cut(&t, y, f.left_extrap(), fractions.quantile(eps));
-  let upper = upper_cut(&t, y, f.right_extrap(), fractions.survival_inverse(eps));
+  let cuts = TrimCuts {
+    profile: &profile,
+    grid_fn: f.grid_fn(),
+    t: &t,
+    y,
+    left: f.left_extrap(),
+    right: f.right_extrap(),
+  };
+  let lower = cuts.lower(fractions.quantile(eps))?;
+  let upper = cuts.upper(fractions.survival_inverse(eps))?;
   if lower == MassCut::Kept && upper == MassCut::Kept {
     return Ok(dist);
   }
-  let last = t.len() - 1;
-  let first = lower.index().unwrap_or(0);
-  let end = upper.index().unwrap_or(last).max(first + 1).min(last);
-  let first = first.min(end - 1);
-  let (first, end) = hard_cell_fit_hull(f.grid_fn(), first, end)?;
-  let lower = edge_cut(lower, first, 0, f.left_extrap());
-  let upper = edge_cut(upper, end, last, f.right_extrap());
-  let left = cut_side(&profile, f.left_extrap(), Side::Left, lower, &t, y)?;
-  let right = cut_side(&profile, f.right_extrap(), Side::Right, upper, &t, y)?;
-  let trimmed = DistributionFunction::from_start_dx_values(t[first], f.dx(), y.slice(s![first..=end]).to_owned())?
-    .with_amplitude(f.amplitude())
-    .with_left_extrap(left)?
-    .with_right_extrap(right)?;
+  let window = cuts.settled_window(lower, upper)?;
+  let left = cuts.cut_side(Side::Left, window.lower)?;
+  let right = cuts.cut_side(Side::Right, window.upper)?;
+  let trimmed = DistributionFunction::from_start_dx_values(
+    t[window.first],
+    f.dx(),
+    y.slice(s![window.first..=window.end]).to_owned(),
+  )?
+  .with_amplitude(f.amplitude())
+  .with_left_extrap(left)?
+  .with_right_extrap(right)?;
   Ok(Distribution::Function(trimmed))
 }
 
@@ -88,35 +95,130 @@ impl MassCut {
   }
 }
 
-fn lower_cut(t: &Array1<f64>, y: &Array1<f64>, extrap: BoundaryBehavior, quantile: f64) -> MassCut {
-  let at_or_below = partition_point(t, |&x| x <= quantile);
-  let cut = at_or_below.checked_sub(1).and_then(|index| {
-    if extrap.is_soft() {
-      (0..=index).rev().find(|&i| y[i].is_finite())
-    } else {
-      Some(index)
+struct TrimCuts<'a> {
+  profile: &'a MassProfile,
+  grid_fn: &'a GridFn<f64>,
+  t: &'a Array1<f64>,
+  y: &'a Array1<f64>,
+  left: BoundaryBehavior,
+  right: BoundaryBehavior,
+}
+
+impl TrimCuts<'_> {
+  fn lower(&self, quantile: f64) -> Result<MassCut, Report> {
+    let at_or_below = partition_point(self.t, |&x| x <= quantile);
+    match at_or_below.checked_sub(1) {
+      None => Ok(MassCut::Kept),
+      Some(index) => self.outward(Side::Left, index),
     }
-  });
-  match cut {
-    None => MassCut::Kept,
-    Some(0) if extrap.is_soft() => MassCut::Kept,
-    Some(index) => MassCut::At(index),
+  }
+
+  fn upper(&self, quantile: f64) -> Result<MassCut, Report> {
+    let at_or_above = partition_point(self.t, |&x| x < quantile);
+    if at_or_above > self.last() {
+      return Ok(MassCut::Kept);
+    }
+    self.outward(Side::Right, at_or_above)
+  }
+
+  fn settled_window(&self, lower: MassCut, upper: MassCut) -> Result<TrimWindow, Report> {
+    let mut cuts = (lower, upper);
+    for _ in 0..=2 * self.t.len() {
+      let window = self.window(cuts.0, cuts.1)?;
+      let moved = (
+        self.recut(Side::Left, window.lower)?,
+        self.recut(Side::Right, window.upper)?,
+      );
+      if moved == (window.lower, window.upper) {
+        return Ok(window);
+      }
+      cuts = moved;
+    }
+    make_internal_error!(
+      "Mass trim cuts did not settle within the grid of {} points",
+      self.t.len()
+    )
+  }
+
+  fn window(&self, lower: MassCut, upper: MassCut) -> Result<TrimWindow, Report> {
+    let last = self.last();
+    let first = lower.index().unwrap_or(0);
+    let end = upper.index().unwrap_or(last).max(first + 1).min(last);
+    let first = first.min(end - 1);
+    let (first, end) = hard_cell_fit_hull(self.grid_fn, first, end)?;
+    Ok(TrimWindow {
+      first,
+      end,
+      lower: edge_cut(lower, first, 0, self.left),
+      upper: edge_cut(upper, end, last, self.right),
+    })
+  }
+
+  fn recut(&self, side: Side, cut: MassCut) -> Result<MassCut, Report> {
+    match cut {
+      MassCut::At(index) => self.outward(side, index),
+      MassCut::Kept => Ok(MassCut::Kept),
+    }
+  }
+
+  fn outward(&self, side: Side, index: usize) -> Result<MassCut, Report> {
+    if !self.extrap(side).is_soft() {
+      return Ok(MassCut::At(index));
+    }
+    let candidates = match side {
+      Side::Left => Either::Left((1..=index).rev()),
+      Side::Right => Either::Right(index..self.last()),
+    };
+    let found = candidates
+      .map(|i| self.soft_tail_at(side, i).map(|law| law.map(|_| i)))
+      .find_map(Result::transpose)
+      .transpose()?;
+    Ok(found.map_or(MassCut::Kept, MassCut::At))
+  }
+
+  fn cut_side(&self, side: Side, cut: MassCut) -> Result<BoundaryBehavior, Report> {
+    let extrap = self.extrap(side);
+    let MassCut::At(index) = cut else {
+      return Ok(extrap);
+    };
+    Ok(match extrap {
+      BoundaryBehavior::Linear(_) => match self.soft_tail_at(side, index)? {
+        Some(law) => BoundaryBehavior::Linear(law),
+        None => return make_internal_error!("Mass trim cut at grid point {index} has no representable tail"),
+      },
+      BoundaryBehavior::HardApproach(law) if ulps_eq!(law.t_hard, self.t[index], max_ulps = 4) => extrap,
+      BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => BoundaryBehavior::Hard,
+    })
+  }
+
+  fn soft_tail_at(&self, side: Side, index: usize) -> Result<Option<SoftTailLaw>, Report> {
+    let edge = GridEdge {
+      t: self.t[index],
+      y: self.y[index],
+    };
+    if !edge.y.is_finite() {
+      return Ok(None);
+    }
+    tail_with_mass_beyond(self.profile, side, edge)
+  }
+
+  fn extrap(&self, side: Side) -> BoundaryBehavior {
+    match side {
+      Side::Left => self.left,
+      Side::Right => self.right,
+    }
+  }
+
+  fn last(&self) -> usize {
+    self.t.len() - 1
   }
 }
 
-fn upper_cut(t: &Array1<f64>, y: &Array1<f64>, extrap: BoundaryBehavior, quantile: f64) -> MassCut {
-  let last = t.len() - 1;
-  let at_or_above = partition_point(t, |&x| x < quantile);
-  let cut = if extrap.is_soft() {
-    (at_or_above..=last).find(|&i| y[i].is_finite())
-  } else {
-    (at_or_above <= last).then_some(at_or_above)
-  };
-  match cut {
-    None => MassCut::Kept,
-    Some(index) if index == last && extrap.is_soft() => MassCut::Kept,
-    Some(index) => MassCut::At(index),
-  }
+struct TrimWindow {
+  first: usize,
+  end: usize,
+  lower: MassCut,
+  upper: MassCut,
 }
 
 fn hard_cell_fit_hull(grid_fn: &GridFn<f64>, first: usize, end: usize) -> Result<(usize, usize), Report> {
@@ -136,39 +238,20 @@ fn edge_cut(cut: MassCut, index: usize, edge: usize, extrap: BoundaryBehavior) -
   }
 }
 
-fn cut_side(
-  profile: &MassProfile,
-  extrap: BoundaryBehavior,
-  side: Side,
-  cut: MassCut,
-  t: &Array1<f64>,
-  y: &Array1<f64>,
-) -> Result<BoundaryBehavior, Report> {
-  let MassCut::At(index) = cut else {
-    return Ok(extrap);
-  };
-  let edge = GridEdge {
-    t: t[index],
-    y: y[index],
-  };
-  Ok(match extrap {
-    BoundaryBehavior::Linear(_) => BoundaryBehavior::Linear(tail_with_mass_beyond(profile, side, edge)?),
-    BoundaryBehavior::HardApproach(law) if ulps_eq!(law.t_hard, edge.t, max_ulps = 4) => extrap,
-    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => BoundaryBehavior::Hard,
-  })
-}
-
-fn tail_with_mass_beyond(profile: &MassProfile, side: Side, edge: GridEdge) -> Result<SoftTailLaw, Report> {
+fn tail_with_mass_beyond(profile: &MassProfile, side: Side, edge: GridEdge) -> Result<Option<SoftTailLaw>, Report> {
   let neg_log_beyond = match side {
     Side::Left => profile.neg_log_mass_between(f64::NEG_INFINITY, edge.t)?,
     Side::Right => profile.neg_log_mass_between(edge.t, f64::INFINITY)?,
   };
   let rate = (neg_log_beyond - (edge.y - profile.y_peak())).exp();
+  if !rate.is_normal() {
+    return Ok(None);
+  }
   let slope = match side {
     Side::Left => -rate,
     Side::Right => rate,
   };
-  Ok(SoftTailLaw { slope })
+  Ok(Some(SoftTailLaw { slope }))
 }
 
 #[cfg_attr(

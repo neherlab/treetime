@@ -146,6 +146,56 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::soft_right(helpers::deep_valley(Side::Right), 3.0, SoftTailLaw { slope:  0.5 })]
+  #[case::soft_left( helpers::deep_valley(Side::Left),  1.0, SoftTailLaw { slope: -0.5 })]
+  #[trace]
+  fn test_mass_trim_soft_side_cut_whose_tail_rate_underflows_moves_out_to_a_representable_rate(
+    #[case] input: DistributionFunction<f64, NegLog>,
+    #[case] cut: f64,
+    #[case] expected: SoftTailLaw,
+  ) -> Result<(), Report> {
+    let eps = 1e-9;
+    let total = 0.5 + 2.5e-10;
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&input)?, max_ulps = 4);
+
+    let trimmed = helpers::trim_at(input, eps)?;
+
+    let (edge, law) = if expected.slope > 0.0 {
+      (trimmed.x_max(), trimmed.right_extrap())
+    } else {
+      (trimmed.x_min(), trimmed.left_extrap())
+    };
+    pretty_assert_abs_diff_eq!(cut, edge, epsilon = 1e-12);
+    let law = law.soft_law().expect("a soft side at the cut");
+    pretty_assert_ulps_eq!(expected.slope, law.slope, max_ulps = 8);
+    let trimmed_total = helpers::total_mass(&trimmed)?;
+    assert!(
+      (trimmed_total - total).abs() <= 2.0 * eps * total,
+      "the trim changes the total mass by at most the trimmed mass"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_mass_trim_soft_side_without_a_representable_tail_rate_keeps_its_edge_and_law() -> Result<(), Report> {
+    let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
+    let valley = -(1e-10_f64).ln();
+    let input = DistributionFunction::from_range_values((0.0, 4.0), array![0.0, 1000.0, 1000.0, 1000.0, valley])?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(right)?;
+    let total = 0.5 + 1.5e-10;
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&input)?, max_ulps = 4);
+
+    let trimmed = helpers::trim_at(input, 1e-9)?;
+
+    pretty_assert_abs_diff_eq!(4.0, trimmed.x_max(), epsilon = 1e-12);
+    assert_eq!(right, trimmed.right_extrap());
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&trimmed)?, max_ulps = 4);
+    Ok(())
+  }
+
   #[test]
   fn test_mass_trim_soft_side_cut_at_a_zero_density_point_moves_out_to_a_positive_density() -> Result<(), Report> {
     let y = Array1::from_iter((0..16).map(|i| match i {
@@ -302,6 +352,26 @@ mod tests {
       };
       let y = Array1::from_iter((0..=20).map(|i| if peak.contains(&i) { 0.0 } else { 20.0 }));
       DistributionFunction::from_range_values((0.0, 20.0), y)
+        .and_then(|f| f.with_left_extrap(left))
+        .and_then(|f| f.with_right_extrap(right))
+        .unwrap()
+    }
+
+    pub(super) fn deep_valley(soft: Side) -> DistributionFunction<f64, NegLog> {
+      let valley = -(1e-10_f64).ln();
+      let (y, left, right) = match soft {
+        Side::Right => (
+          array![0.0, 1000.0, 1000.0, valley, valley],
+          BoundaryBehavior::Hard,
+          BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
+        ),
+        Side::Left => (
+          array![valley, valley, 1000.0, 1000.0, 0.0],
+          BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }),
+          BoundaryBehavior::Hard,
+        ),
+      };
+      DistributionFunction::from_range_values((0.0, 4.0), y)
         .and_then(|f| f.with_left_extrap(left))
         .and_then(|f| f.with_right_extrap(right))
         .unwrap()
