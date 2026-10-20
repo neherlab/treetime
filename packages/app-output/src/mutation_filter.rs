@@ -5,6 +5,7 @@ use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::AsciiChar;
 
 #[derive(Clone, Copy, Debug)]
@@ -33,24 +34,25 @@ impl UnknownMutationFilter {
     if self.report_unknown {
       return Ok(edge_mutations);
     }
+    let schedule = GraphSchedule::new(graph)?;
+    schedule.require_tree()?;
     let mut bridge = UnknownBridge::new(self.unknown);
     let mut reported = BTreeMap::new();
-    graph.iter_depth_first_preorder_forward(|node| {
-      if let [(parent_key, edge_key)] = node.parent_keys.as_slice() {
-        let mutations = edge_mutations.remove(edge_key);
+    for &key in schedule.preorder() {
+      if let &[(parent_key, edge_key)] = schedule.parents(key) {
+        let mutations = edge_mutations.remove(&edge_key);
         let present = mutations.is_some();
         let mutations = bridge.bridge_edge(
-          *parent_key,
-          node.key,
-          node.child_edge_keys.len(),
+          parent_key,
+          key,
+          schedule.children(key).len(),
           mutations.unwrap_or_default(),
         )?;
         if present {
-          reported.insert(*edge_key, mutations);
+          reported.insert(edge_key, mutations);
         }
       }
-      Ok(())
-    })?;
+    }
     Ok(reported)
   }
 
@@ -63,15 +65,17 @@ impl UnknownMutationFilter {
       mut node_aa_mutations,
       root_aa_sequences,
     } = node_data;
+    let schedule = GraphSchedule::new(graph)?;
+    schedule.require_tree()?;
     let mut bridge = UnknownBridge::new(self.unknown);
     let mut reported = BTreeMap::new();
-    graph.iter_depth_first_preorder_forward(|node| {
-      let cds_events = node_aa_mutations.remove(&node.key);
-      let [(parent_key, _)] = node.parent_keys.as_slice() else {
+    for &key in schedule.preorder() {
+      let cds_events = node_aa_mutations.remove(&key);
+      let &[(parent_key, _)] = schedule.parents(key) else {
         if let Some(cds_events) = cds_events {
-          reported.insert(node.key, cds_events);
+          reported.insert(key, cds_events);
         }
-        return Ok(());
+        continue;
       };
       let present = cds_events.is_some();
       let cds_events = cds_events.unwrap_or_default();
@@ -86,17 +90,16 @@ impl UnknownMutationFilter {
           })
         })
         .collect();
-      let mutations = bridge.bridge_edge(*parent_key, node.key, node.child_edge_keys.len(), mutations)?;
+      let mutations = bridge.bridge_edge(parent_key, key, schedule.children(key).len(), mutations)?;
       for Mutation { track, event } in mutations {
         if let MutationTrack::AminoAcid(cds) = track {
           by_cds.entry(cds).or_default().push(event);
         }
       }
       if present {
-        reported.insert(node.key, by_cds);
+        reported.insert(key, by_cds);
       }
-      Ok(())
-    })?;
+    }
     Ok(AaNodeData {
       reference,
       node_aa_mutations: reported,

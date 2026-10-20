@@ -2,7 +2,7 @@
 mod tests {
   use crate::mutation_filter::UnknownMutationFilter;
   use eyre::Report;
-  use helpers::{edge_strings, node_events, nucleotide_edges, tree};
+  use helpers::{dag_with_shared_leaf, edge_strings, node_events, nucleotide_edges, tree};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -10,7 +10,7 @@ mod tests {
   use treetime::ancestral::aa::AaNodeData;
   use treetime::seq::mutation::{AlignedMutation, MutationEvent};
   use treetime_primitives::{AsciiChar, Seq};
-  use treetime_utils::{o, vec_of_owned};
+  use treetime_utils::{assert_error, o, vec_of_owned};
 
   #[rustfmt::skip]
   #[rstest]
@@ -95,6 +95,40 @@ mod tests {
   }
 
   #[test]
+  fn test_mutation_filter_rejects_a_node_with_two_parents() -> Result<(), Report> {
+    let (graph, shared_edge, _) = dag_with_shared_leaf()?;
+    let edges =
+      btreemap! { shared_edge => helpers::events(&["C1N", "A4T"])?.into_iter().map(helpers::nucleotide).collect() };
+
+    let result =
+      UnknownMutationFilter::hiding_unknown(AsciiChar::try_new(b'N')?).reported_edge_mutations(&graph, edges);
+
+    assert_error!(
+      result,
+      "The graph is not a tree: node 2 has 2 parents, but a node of a tree has at most one"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_mutation_filter_amino_acid_rejects_a_node_with_two_parents() -> Result<(), Report> {
+    let (graph, _, shared_node) = dag_with_shared_leaf()?;
+    let node_data = AaNodeData {
+      node_aa_mutations: btreemap! { shared_node => btreemap! { o!("S") => helpers::events(&["A1X"])? } },
+      ..AaNodeData::default()
+    };
+
+    let result =
+      UnknownMutationFilter::hiding_unknown(AsciiChar::try_new(b'X')?).reported_aa_node_data(&graph, node_data);
+
+    assert_error!(
+      result,
+      "The graph is not a tree: node 2 has 2 parents, but a node of a tree has at most one"
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_mutation_filter_amino_acid_bridges_unknown_per_cds() -> Result<(), Report> {
     let (graph, names) = tree()?;
     let node_data = AaNodeData {
@@ -144,6 +178,18 @@ mod tests {
       let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)root;".as_slice())?;
       let names = parsed.names();
       Ok((parsed.graph, names))
+    }
+
+    pub(super) fn dag_with_shared_leaf() -> Result<(Graph, GraphEdgeKey, GraphNodeKey), Report> {
+      let mut graph = Graph::new();
+      let root = graph.add_node();
+      let internal = graph.add_node();
+      let shared = graph.add_node();
+      graph.add_edge(root, internal)?;
+      let shared_edge = graph.add_edge(root, shared)?;
+      graph.add_edge(internal, shared)?;
+      graph.build()?;
+      Ok((graph, shared_edge, shared))
     }
 
     pub(super) fn node_key(names: &Names, name: &str) -> GraphNodeKey {

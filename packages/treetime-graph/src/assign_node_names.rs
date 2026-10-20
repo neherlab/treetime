@@ -1,6 +1,6 @@
 use crate::graph::Graph;
-use crate::graph_traverse::GraphNodeForward;
 use crate::node::GraphNodeKey;
+use crate::schedule::GraphSchedule;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -24,7 +24,8 @@ pub fn assign_node_names(
 
   let mut internal_node_counter = 0;
 
-  graph.iter_depth_first_preorder_forward(|GraphNodeForward { key, .. }| {
+  let schedule = GraphSchedule::new(graph)?;
+  for &key in schedule.preorder() {
     if result.get(&key).is_none_or(Option::is_none) {
       let mut name = format!("NODE_{internal_node_counter:07}");
       while used.contains(&name) {
@@ -35,9 +36,7 @@ pub fn assign_node_names(
       result.insert(key, Some(name));
       internal_node_counter += 1;
     }
-
-    Ok(())
-  })?;
+  }
 
   Ok(AssignedNodeNames {
     names: result,
