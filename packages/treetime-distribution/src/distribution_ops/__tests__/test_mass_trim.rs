@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
+  use crate::distribution_ops::mass_domain::trim_to_mass;
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
   use crate::policy::NegLog;
-  use crate::{Distribution, DistributionFunction, trim_to_mass};
+  use crate::{Distribution, DistributionFunction};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, array, s};

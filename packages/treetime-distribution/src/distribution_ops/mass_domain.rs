@@ -41,11 +41,22 @@ pub fn rewindow_to_mass(
   resample_to_mass_window(&sized.normalized, lo, hi, grid_points, max_points, SpacingLimit::Input)
 }
 
-pub fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distribution<NegLog>, Report> {
+pub(crate) fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distribution<NegLog>, Report> {
   let Distribution::Function(f) = &dist else {
     return Ok(dist);
   };
   let Some(profile) = mass_sizable_profile(f) else {
+    return Ok(dist);
+  };
+  trim_with_profile(dist, &profile, eps)
+}
+
+pub(crate) fn trim_with_profile(
+  dist: Distribution<NegLog>,
+  profile: &MassProfile,
+  eps: f64,
+) -> Result<Distribution<NegLog>, Report> {
+  let Distribution::Function(f) = &dist else {
     return Ok(dist);
   };
   let Some(fractions) = profile.fractions(TailMass::Required) else {
@@ -54,7 +65,7 @@ pub fn trim_to_mass(dist: Distribution<NegLog>, eps: f64) -> Result<Distribution
   let t = f.t();
   let y = f.y();
   let cuts = TrimCuts {
-    profile: &profile,
+    profile,
     grid_fn: f.grid_fn(),
     t: &t,
     y,

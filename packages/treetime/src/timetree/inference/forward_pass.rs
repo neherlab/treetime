@@ -18,7 +18,6 @@ use treetime_distribution::ResolvedForward;
 use treetime_distribution::convolve_forward_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
-use treetime_distribution::trim_to_mass;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -205,10 +204,12 @@ fn refine_distribution_from_parent(
     message: dist_from_parent,
     posterior: combined,
     spacing,
-  } = forward.resolve_posterior(TRIM_EPS, |message| {
-    normalized_product(key, message, subtree_dist, max_points)
-  })?;
-  let combined = trim_to_mass(combined, TRIM_EPS)
+    ..
+  } = forward
+    .resolve_posterior(TRIM_EPS, |message| {
+      normalized_product(key, message, subtree_dist, max_points)
+    })?
+    .trim_posterior_to_mass(TRIM_EPS)
     .wrap_err_with(|| format!("When trimming the time distribution of node {key} to its mass"))?;
   log_refinement(names, key, parent_time_dist, &dist_from_parent, spacing, &combined);
 

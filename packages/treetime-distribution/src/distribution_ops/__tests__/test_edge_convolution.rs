@@ -3,7 +3,7 @@ mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::convolve::distribution_convolution_fine;
-  use crate::distribution_ops::mass_domain::peak_normalized_if_mass_sizable;
+  use crate::distribution_ops::mass_domain::{peak_normalized_if_mass_sizable, trim_to_mass};
   use crate::policy::NegLog;
   use crate::{
     Distribution, MassProfile, MessageSpacing, TailMass, convolve_across_edge, convolve_forward_across_edge,
@@ -295,6 +295,36 @@ mod tests {
     assert!(window / 299.0 > max_dx, "the window {window} needs more than 300 points");
     assert_eq!(f64_to_usize_saturating(intervals) + 1, f.len());
     pretty_assert_abs_diff_eq!(window / intervals, f.dx(), epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::posterior_as_wide_as_the_message(2.0,  MessageSpacing::Capped   )]
+  #[case::posterior_narrower_than_the_cap( 0.05, MessageSpacing::Resolving)]
+  #[trace]
+  fn test_edge_convolution_forward_posterior_trims_like_trim_to_mass(
+    #[case] posterior_sigma: f64,
+    #[case] expected_spacing: MessageSpacing,
+  ) -> Result<(), Report> {
+    let forward = convolve_forward_across_edge(
+      &gaussian_at(1.0, 0.001)?,
+      &gaussian_at(1.0, 0.02)?,
+      5e-4,
+      300,
+      MaxGridPoints::default(),
+    )?;
+    let posterior = gaussian_at(posterior_sigma, 0.001)?;
+
+    let resolved = forward.resolve_posterior(1e-6, |_| Ok(posterior.clone()))?;
+    let spacing = resolved.spacing;
+    let trimmed = resolved.trim_posterior_to_mass(1e-6)?;
+
+    let expected = trim_to_mass(posterior.clone(), 1e-6)?;
+    assert_eq!(expected_spacing, spacing);
+    assert_eq!(spacing, trimmed.spacing);
+    assert!(expected != posterior, "the posterior must lose mass beyond its 1e-6 quantiles");
+    assert_eq!(expected, trimmed.posterior);
     Ok(())
   }
 

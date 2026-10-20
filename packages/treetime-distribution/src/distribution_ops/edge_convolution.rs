@@ -3,8 +3,9 @@ use crate::DistributionFunction;
 use crate::distribution_ops::convolve::distribution_convolution_fine;
 use crate::distribution_ops::mass_domain::{
   SpacingLimit, mass_bounded_domain, mass_sizable_profile, peak_normalized_if_mass_sizable, resample_to_mass_window,
+  trim_to_mass, trim_with_profile,
 };
-use crate::distribution_ops::mass_profile::TailMass;
+use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
 use crate::policy::NegLog;
 use eyre::Report;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
@@ -66,6 +67,7 @@ impl ForwardConvolution {
         message,
         posterior,
         spacing: MessageSpacing::Exact,
+        profile: PosteriorProfile::Unknown,
       });
     };
     let resample = |max_dx: f64| {
@@ -79,23 +81,25 @@ impl ForwardConvolution {
       )
     };
 
-    let Some(resolving_dx) = self.finer_spacing_needed(&message, &posterior, eps, normalized.dx()) else {
-      return Ok(ResolvedForward {
-        message,
-        posterior,
-        spacing: MessageSpacing::Capped,
-      });
+    let resolving_dx = match self.finer_spacing_needed(&message, &posterior, eps, normalized.dx()) {
+      SpacingCheck::Resolved(profile) => {
+        return Ok(ResolvedForward {
+          message,
+          posterior,
+          spacing: MessageSpacing::Capped,
+          profile,
+        });
+      },
+      SpacingCheck::Finer(resolving_dx) => resolving_dx,
     };
     let message = resample(resolving_dx)?;
     let posterior = posterior_of(&message)?;
-    if self
-      .finer_spacing_needed(&message, &posterior, eps, normalized.dx())
-      .is_none()
-    {
+    if let SpacingCheck::Resolved(profile) = self.finer_spacing_needed(&message, &posterior, eps, normalized.dx()) {
       return Ok(ResolvedForward {
         message,
         posterior,
         spacing: MessageSpacing::Resolving,
+        profile,
       });
     }
 
@@ -105,6 +109,7 @@ impl ForwardConvolution {
       message,
       posterior,
       spacing: MessageSpacing::Fine,
+      profile: PosteriorProfile::Unknown,
     })
   }
 
@@ -114,23 +119,69 @@ impl ForwardConvolution {
     posterior: &Distribution<NegLog>,
     eps: f64,
     fine_dx: f64,
-  ) -> Option<f64> {
+  ) -> SpacingCheck {
     let (Distribution::Function(message), Distribution::Function(posterior)) = (message, posterior) else {
-      return None;
+      return SpacingCheck::Resolved(PosteriorProfile::Unknown);
     };
-    let profile = mass_sizable_profile(posterior)?;
-    let fractions = profile.fractions(TailMass::Required)?;
+    let Some(profile) = mass_sizable_profile(posterior) else {
+      return SpacingCheck::Resolved(PosteriorProfile::NotMassSizable);
+    };
+    let Some(fractions) = profile.fractions(TailMass::Required) else {
+      return SpacingCheck::Resolved(PosteriorProfile::Unknown);
+    };
     let mass_width = fractions.survival_inverse(eps) - fractions.quantile(eps);
     let intervals = self.grid_points.saturating_sub(1).max(1).to_f64_exact();
     let resolving_dx = fine_dx.max(mass_width / intervals);
-    (message.dx() > resolving_dx).then_some(resolving_dx)
+    if message.dx() > resolving_dx {
+      SpacingCheck::Finer(resolving_dx)
+    } else {
+      SpacingCheck::Resolved(PosteriorProfile::MassSizable(Box::new(profile)))
+    }
   }
 }
 
+#[expect(
+  clippy::partial_pub_fields,
+  reason = "the mass profile of the posterior only serves its trimming inside this crate"
+)]
 pub struct ResolvedForward {
   pub message: Distribution<NegLog>,
   pub posterior: Distribution<NegLog>,
   pub spacing: MessageSpacing,
+  profile: PosteriorProfile,
+}
+
+impl ResolvedForward {
+  pub fn trim_posterior_to_mass(self, eps: f64) -> Result<Self, Report> {
+    let Self {
+      message,
+      posterior,
+      spacing,
+      profile,
+    } = self;
+    let posterior = match profile {
+      PosteriorProfile::Unknown => trim_to_mass(posterior, eps)?,
+      PosteriorProfile::NotMassSizable => posterior,
+      PosteriorProfile::MassSizable(profile) => trim_with_profile(posterior, &profile, eps)?,
+    };
+    Ok(Self {
+      message,
+      posterior,
+      spacing,
+      profile: PosteriorProfile::Unknown,
+    })
+  }
+}
+
+enum SpacingCheck {
+  Finer(f64),
+  Resolved(PosteriorProfile),
+}
+
+enum PosteriorProfile {
+  Unknown,
+  NotMassSizable,
+  MassSizable(Box<MassProfile>),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

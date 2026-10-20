@@ -11,7 +11,7 @@ pub use distribution_ops::divide::distribution_division;
 pub use distribution_ops::edge_convolution::{
   ForwardConvolution, MessageSpacing, ResolvedForward, convolve_across_edge, convolve_forward_across_edge,
 };
-pub use distribution_ops::mass_domain::{rewindow_to_mass, trim_to_mass};
+pub use distribution_ops::mass_domain::rewindow_to_mass;
 pub use distribution_ops::mass_profile::{MassFractions, MassProfile, TailMass};
 pub use distribution_ops::multiply::distribution_multiplication;
 pub use distribution_ops::multiply_by_fn::distribution_multiply_by_fn;
