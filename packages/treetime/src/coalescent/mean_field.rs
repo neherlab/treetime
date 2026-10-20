@@ -30,6 +30,7 @@ const CURVATURE_GRID_UNIFORM_SHARE: f64 = 0.1;
 pub(crate) struct CoalescentPrior {
   expectation: Arc<LineageExpectation>,
   tc: Distribution,
+  cell_rate: Vec<f64>,
   inverse_tc_integral: Vec<f64>,
   expected_integral: Vec<f64>,
   own_integral: BTreeMap<GraphNodeKey, OwnIntegral>,
@@ -79,6 +80,7 @@ impl CoalescentPrior {
     Ok(Self {
       expectation: Arc::clone(expectation),
       tc: tc.clone(),
+      cell_rate,
       inverse_tc_integral,
       expected_integral,
       own_integral,
@@ -142,13 +144,19 @@ impl CoalescentPrior {
       Piece::Inside(slope) => slope,
       Piece::After => self.rate_after * self.expectation.expected[last],
     };
-    let own = match (self.expectation.nodes.get(&key), self.own_integral.get(&key)) {
-      (Some(node), Some(integral)) => match piece_at(&integral.t, side, edge) {
+    let own = match self.expectation.nodes.get(&key) {
+      Some(node) => match piece_at(&node.survival.t, side, edge) {
         Piece::Before => inverse_tc,
-        Piece::Inside(k) => integral.rate[k] * node.survival.segment(integral.segment[k]).value(edge),
+        Piece::Inside(i) => {
+          let cell = match side {
+            Side::Left => grid.partition_point(|&g| g < edge),
+            Side::Right => grid.partition_point(|&g| g <= edge),
+          };
+          self.rates().rate(cell) * node.survival.segment(i).value(edge)
+        },
         Piece::After => 0.0,
       },
-      _ => 0.0,
+      None => 0.0,
     };
     pairs * inverse_tc + weight * expected - weight * own_weight * own
   }
@@ -181,60 +189,84 @@ impl CoalescentPrior {
     let (Some(node), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
       return 0.0;
     };
-    let t = &integral.t;
-    let n = t.len();
-    if x < t[0] {
-      return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(t[0]);
+    let knots = &node.survival.t;
+    let n = knots.len();
+    if x < knots[0] {
+      return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(knots[0]);
     }
-    if x >= t[n - 1] {
+    if x >= knots[n - 1] {
       return integral.cumulative[n - 1];
     }
-    let k = t.partition_point(|&tk| tk <= x) - 1;
-    let segment = node.survival.segment(integral.segment[k]);
-    integral.cumulative[k] + integral.rate[k] * (segment.integral_to(x) - segment.integral_to(t[k]))
+    let i = knots.partition_point(|&tk| tk <= x) - 1;
+    let piece = KnotPiece {
+      segment: node.survival.segment(i),
+      start: knots[i],
+      end: knots[i + 1],
+    };
+    piece.integral_to(&self.rates(), integral.cumulative[i], x)
+  }
+
+  fn rates(&self) -> CellRates<'_> {
+    CellRates {
+      grid: &self.expectation.grid,
+      inside: &self.cell_rate,
+      before: self.rate_before,
+      after: self.rate_after,
+    }
   }
 }
 
 #[derive(Clone, Debug)]
 struct OwnIntegral {
-  t: Vec<f64>,
   cumulative: Vec<f64>,
-  segment: Vec<usize>,
-  rate: Vec<f64>,
 }
 
 impl OwnIntegral {
   fn new(survival: &NodeSurvival, rates: &CellRates<'_>) -> Self {
     let knots = &survival.t;
-    let grid = rates.grid;
-    let mut own = Self {
-      t: vec![knots[0]],
-      cumulative: vec![0.0],
-      segment: vec![],
-      rate: vec![],
-    };
-    let mut cell = grid.partition_point(|&g| g <= knots[0]);
-    let segments = knots.iter().tuple_windows().enumerate();
-    for (i, (&start, &end)) in segments.filter(|(_, (start, end))| start < end) {
-      let piece = survival.segment(i);
-      let first = cell + grid[cell..].partition_point(|&g| g <= start);
-      cell = first + grid[first..].partition_point(|&g| g < end);
-      let mut primitive_before = 0.0;
-      for (j, &b) in grid[first..cell].iter().chain(once(&end)).enumerate() {
-        let primitive = piece.integral_to(b);
-        own.push(b, rates.rate(first + j), primitive - primitive_before, i);
-        primitive_before = primitive;
-      }
+    let mut cumulative = Vec::with_capacity(knots.len());
+    cumulative.push(0.0);
+    for (i, (&start, &end)) in knots.iter().tuple_windows().enumerate() {
+      let total = cumulative[i];
+      let total = if start < end {
+        let piece = KnotPiece {
+          segment: survival.segment(i),
+          start,
+          end,
+        };
+        piece.integral_to(rates, total, end)
+      } else {
+        total
+      };
+      cumulative.push(total);
     }
-    own
+    Self { cumulative }
   }
+}
 
-  fn push(&mut self, t: f64, rate: f64, integral: f64, segment: usize) {
-    let total = self.cumulative[self.cumulative.len() - 1] + rate * integral;
-    self.t.push(t);
-    self.cumulative.push(total);
-    self.segment.push(segment);
-    self.rate.push(rate);
+struct KnotPiece {
+  segment: HermiteSegment,
+  start: f64,
+  end: f64,
+}
+
+impl KnotPiece {
+  fn integral_to(&self, rates: &CellRates<'_>, at_start: f64, x: f64) -> f64 {
+    let grid = rates.grid;
+    let first = grid.partition_point(|&g| g <= self.start);
+    let inside = grid[first..].iter().take_while(|&&g| g < self.end && g <= x);
+    let mut total = at_start;
+    let mut primitive_before = 0.0;
+    let mut breakpoint = self.start;
+    let mut cell = first;
+    for &g in inside {
+      let primitive = self.segment.integral_to(g);
+      total += rates.rate(cell) * (primitive - primitive_before);
+      primitive_before = primitive;
+      breakpoint = g;
+      cell += 1;
+    }
+    total + rates.rate(cell) * (self.segment.integral_to(x) - self.segment.integral_to(breakpoint))
   }
 }
 
