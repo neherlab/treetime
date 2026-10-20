@@ -18,8 +18,8 @@ use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 
 const EXPECTATION_GRID_POINTS: usize = 4001;
-const SURVIVAL_POINTS: usize = 256;
 const SURVIVAL_TRIM: f64 = 1e-9;
+const SURVIVAL_INTERPOLATION_ERROR: f64 = 1e-6;
 const MERGER_RATE_STRIDE: usize = 10;
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 const TRUNCATED_NORMAL_POINTS: usize = 1024;
@@ -477,32 +477,11 @@ pub(crate) struct NodeSurvival {
 
 impl NodeSurvival {
   pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
-    Ok(posterior_survival(distribution, SURVIVAL_TRIM)?.map(|survival| Self::compact(survival.t, survival.survival)))
-  }
-
-  fn compact(t: Vec<f64>, survival: Vec<f64>) -> Self {
-    let n = t.len();
-    if n <= 2 {
-      return Self { t, survival };
-    }
-    let first = survival
-      .iter()
-      .position(|&s| s < 1.0 - SURVIVAL_TRIM)
-      .unwrap_or(0)
-      .saturating_sub(1);
-    let last = (survival.iter().rposition(|&s| s > SURVIVAL_TRIM).unwrap_or(n - 1) + 1).min(n - 1);
-    let full = Self {
-      t: t[first..=last].to_vec(),
-      survival: survival[first..=last].to_vec(),
-    };
-    if full.t.len() <= SURVIVAL_POINTS {
-      return full;
-    }
-    let (start, end) = (full.t[0], full.t[full.t.len() - 1]);
-    let step = (end - start) / (SURVIVAL_POINTS - 1).to_f64_exact();
-    let t: Vec<f64> = (0..SURVIVAL_POINTS).map(|i| start + step * i.to_f64_exact()).collect();
-    let survival = t.iter().map(|&x| full.at(x)).collect();
-    Self { t, survival }
+    let survival = posterior_survival(distribution, SURVIVAL_TRIM, SURVIVAL_INTERPOLATION_ERROR)?;
+    Ok(survival.map(|survival| Self {
+      t: survival.t,
+      survival: survival.survival,
+    }))
   }
 
   fn point(time: f64) -> Self {

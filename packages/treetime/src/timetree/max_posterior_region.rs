@@ -16,6 +16,7 @@ use treetime_utils::{make_error, make_internal_error, make_report};
 const LEVEL_BRACKET_DOUBLINGS: usize = 64;
 const LEVEL_SOLVE_MAX_ITERS: u64 = 200;
 const REGION_MASS_ROUNDING_ULPS: f64 = 64.0;
+const SURVIVAL_MAX_PARTS: usize = 16;
 
 pub fn max_posterior_region(
   distribution: &Distribution<NegLog>,
@@ -52,6 +53,7 @@ pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Op
 pub(crate) fn posterior_survival(
   distribution: &Distribution<NegLog>,
   trim: f64,
+  max_error: f64,
 ) -> Result<Option<PosteriorSurvival>, Report> {
   match Posterior::of(distribution)? {
     Posterior::Empty => Ok(None),
@@ -63,7 +65,7 @@ pub(crate) fn posterior_survival(
       t: vec![start, end],
       survival: vec![1.0, 0.0],
     })),
-    Posterior::Function(function) => function_survival(&function, trim).map(Some),
+    Posterior::Function(function) => function_survival(&function, trim, max_error).map(Some),
   }
 }
 
@@ -130,26 +132,70 @@ fn posterior_fractions(profile: &MassProfile) -> Result<MassFractions<'_>, Repor
   }
 }
 
-fn function_survival(function: &DistributionFunction<f64, NegLog>, trim: f64) -> Result<PosteriorSurvival, Report> {
+fn function_survival(
+  function: &DistributionFunction<f64, NegLog>,
+  trim: f64,
+  max_error: f64,
+) -> Result<PosteriorSurvival, Report> {
   let profile = MassProfile::new(function)?;
   let fractions = posterior_fractions(&profile)?;
-  let (x_min, x_max) = (profile.x_min(), profile.x_max());
-  let (dx, n_points) = (function.dx(), function.y().len());
-  let earlier = tail_points(x_min - fractions.quantile(trim), dx, n_points).map(|distance| x_min - distance);
-  let grid = (0..n_points).map(|idx| x_min + dx * idx.to_f64_exact());
-  let later = tail_points(fractions.survival_inverse(trim) - x_max, dx, n_points).map(|distance| x_max + distance);
-  let t = chain!(earlier.rev(), grid, later).collect_vec();
-  let survival = t.iter().map(|&x| fractions.survival(x)).collect();
+  let start = fractions.quantile(trim);
+  let end = fractions.survival_inverse(trim).max(start);
+  let seeds = chain!(
+    once(start),
+    density_turning_points(function).filter(|&x| x > start && x < end),
+    once(end)
+  )
+  .dedup()
+  .map(|x| (x, fractions.survival(x)))
+  .collect_vec();
+  let mut points = vec![seeds[0]];
+  for (a, b) in seeds.into_iter().tuple_windows() {
+    sample_survival_between(&fractions, a, b, max_error / 2.0, &mut points);
+  }
+  let (t, survival) = points.into_iter().unzip();
   Ok(PosteriorSurvival { t, survival })
 }
 
-fn tail_points(distance: f64, dx: f64, max_points: usize) -> impl DoubleEndedIterator<Item = f64> {
-  let n_points = if distance.is_finite() && distance > 0.0 {
-    f64_to_usize_saturating((distance / dx).ceil()).clamp(1, max_points)
+fn density_turning_points(function: &DistributionFunction<f64, NegLog>) -> impl Iterator<Item = f64> + '_ {
+  let y = function.y();
+  let n = y.len();
+  (0..n)
+    .filter(move |&j| j == 0 || j == n - 1 || y[j].total_cmp(&y[j - 1]) != y[j + 1].total_cmp(&y[j]))
+    .map(move |j| function.x_min() + function.dx() * j.to_f64_exact())
+}
+
+fn sample_survival_between(
+  fractions: &MassFractions<'_>,
+  (t_a, s_a): (f64, f64),
+  (t_b, s_b): (f64, f64),
+  midpoint_tolerance: f64,
+  points: &mut Vec<(f64, f64)>,
+) {
+  let t_mid = f64::midpoint(t_a, t_b);
+  let deviation = if t_a < t_mid && t_mid < t_b {
+    (fractions.survival(t_mid) - f64::midpoint(s_a, s_b)).abs()
   } else {
-    0
+    0.0
   };
-  (1..=n_points).map(move |k| distance * (k.to_f64_exact() / n_points.to_f64_exact()))
+  if deviation.is_nan() || deviation <= midpoint_tolerance {
+    points.push((t_b, s_b));
+    return;
+  }
+  let parts = f64_to_usize_saturating((deviation / midpoint_tolerance).sqrt().ceil()).clamp(2, SURVIVAL_MAX_PARTS);
+  let knots = (0..=parts)
+    .map(|k| match k {
+      0 => (t_a, s_a),
+      k if k == parts => (t_b, s_b),
+      k => {
+        let t = t_a + (t_b - t_a) * (k.to_f64_exact() / parts.to_f64_exact());
+        (t, fractions.survival(t))
+      },
+    })
+    .collect_vec();
+  for (a, b) in knots.into_iter().tuple_windows() {
+    sample_survival_between(fractions, a, b, midpoint_tolerance, points);
+  }
 }
 
 fn function_max_posterior_region(

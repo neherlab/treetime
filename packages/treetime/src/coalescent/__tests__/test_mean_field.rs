@@ -4,15 +4,15 @@ mod tests {
   use crate::test_utils::{empty_time_inference, find_node_key_by_name, point_coalescent_prior};
   use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
   use eyre::Report;
-  use ndarray::Array1;
+  use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::sync::Arc;
-  use treetime_distribution::{Distribution, NegLog};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_grid::Side;
+  use treetime_grid::{Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
@@ -163,6 +163,70 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_mean_field_segment_statistics_read_the_exact_survival_inside_a_long_earlier_tail() -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let unit_box_with_tail_mass_one = Distribution::Function(
+      DistributionFunction::<f64, NegLog>::from_range_values((-1.0, 0.0), array![0.0, 0.0])?
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }))?
+        .with_right_extrap(BoundaryBehavior::Hard)?,
+    );
+    let expectation = helpers::expectation(
+      &graph,
+      &names,
+      &[("A", 1.0), ("B", 1.0)],
+      &[("root", unit_box_with_tail_mass_one)],
+    )?;
+
+    let SegmentStatistics { mergers, .. } = expectation.segment_statistics(&[-30.0, -2.0, 1.0]);
+
+    let mass_before_minus_2 = (-1.0_f64).exp() / 2.0;
+    pretty_assert_abs_diff_eq!(mass_before_minus_2, mergers[0], epsilon = 1e-8);
+    pretty_assert_abs_diff_eq!(1.0 - mass_before_minus_2, mergers[1], epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[test]
+  fn test_mean_field_segment_statistics_read_the_exact_survival_of_a_narrow_posterior_with_a_long_soft_tail()
+  -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let tent = Array1::linspace(0.0, 1.0, 11).mapv(|t: f64| 1.0 - 1.8 * (t - 0.5).abs());
+    let rate = 0.2;
+    let root = Distribution::Function(
+      DistributionFunction::<f64, NegLog>::from_range_values((0.0, 1.0), tent.mapv(|p| -p.ln()))?
+        .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -rate }))?
+        .with_right_extrap(BoundaryBehavior::Hard)?,
+    );
+    let expectation = helpers::expectation(&graph, &names, &[("A", 2.0), ("B", 2.0)], &[("root", root)])?;
+    let boundaries = Array1::linspace(-110.0, 1.0, 2221).to_vec();
+
+    let SegmentStatistics { mergers, .. } = expectation.segment_statistics(&boundaries);
+
+    let tail_mass = 0.1 / rate;
+    let total = tail_mass + 0.55;
+    let mass_below = |t: f64| {
+      if t <= 0.0 {
+        tail_mass * (rate * t).exp()
+      } else if t <= 0.5 {
+        tail_mass + 0.1 * t + 0.9 * t * t
+      } else {
+        tail_mass + 0.275 + (t - 0.5) - 0.9 * (t - 0.5).powi(2)
+      }
+    };
+    let read_survival = mergers.iter().scan(1.0, |survival, merger| {
+      *survival -= merger;
+      Some(*survival)
+    });
+    for (&t, survival) in boundaries[1..].iter().zip(read_survival) {
+      pretty_assert_abs_diff_eq!(1.0 - mass_below(t) / total, survival, epsilon = 1e-6);
+    }
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::far_truncation(   2000.0, 2.0, 2000.0)]
@@ -310,7 +374,7 @@ mod tests {
 
     assert_error!(
       result,
-      "When evaluating coalescent Tc at calendar time 2.000000e3: GridFn evaluated at 2000.0, below the support boundary 2000.001, but no extrapolation policy is set for that side"
+      "When evaluating coalescent Tc at calendar time 2.000000e3: GridFn evaluated at 2000.000000004, below the support boundary 2000.001, but no extrapolation policy is set for that side"
     );
     Ok(())
   }
