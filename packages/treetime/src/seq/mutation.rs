@@ -51,9 +51,9 @@ pub(crate) fn stream_sequence_mutations(
       };
       sink.emit(item).map_err(OperationError::SinkFailed)?;
     }
-    match schedule.parents(key) {
-      [] => root_sequence = Some(seq.clone()),
-      &[(parent_key, edge_key)] => {
+    match schedule.parents(key).first() {
+      None => root_sequence = Some(seq.clone()),
+      Some(&(parent_key, edge_key)) => {
         let (parent_seq, pending_children) = pending_parents.get_mut(&parent_key).ok_or_else(|| {
           OperationError::InferenceFailed(make_internal_report!(
             "Parent {parent_key} of node {key} was not visited first"
@@ -68,11 +68,6 @@ pub(crate) fn stream_sequence_mutations(
         let mutations =
           combine_edge_mutations(subs, &edge_indels(edge_key), &track).map_err(OperationError::classify)?;
         edge_mutations.insert(edge_key, mutations);
-      },
-      _ => {
-        return Err(OperationError::InferenceFailed(make_internal_report!(
-          "Node {key} has more than one parent"
-        )));
       },
     }
     if child_count > 0 {
