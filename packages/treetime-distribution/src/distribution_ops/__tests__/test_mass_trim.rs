@@ -11,7 +11,7 @@ mod tests {
   use statrs::distribution::{ContinuousCDF, Normal};
   use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
-  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_array_eq};
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_array_eq, pretty_assert_ulps_eq};
 
   const TRIM_EPS: f64 = 5e-4;
 
@@ -95,7 +95,8 @@ mod tests {
   }
 
   #[test]
-  fn test_mass_trim_soft_side_with_its_quantile_inside_the_grid_is_cut_and_refit() -> Result<(), Report> {
+  fn test_mass_trim_soft_side_with_its_quantile_inside_the_grid_holds_the_trimmed_mass_in_its_tail()
+  -> Result<(), Report> {
     let input = helpers::with_fitted_right_tail(helpers::gaussian(-50.0, 10.0, 6001)?)?;
     let profile = MassProfile::new(&input)?;
     let fractions = profile
@@ -107,11 +108,63 @@ mod tests {
       .position(|&x| x >= fractions.survival_inverse(TRIM_EPS))
       .expect("a point above the cut");
 
-    let trimmed = helpers::trim(input)?;
+    let trimmed = helpers::trim(input.clone())?;
 
     pretty_assert_abs_diff_eq!(t[last], trimmed.x_max(), epsilon = 1e-12);
-    let refit = SoftTailLaw::fit(trimmed.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
-    assert_eq!(BoundaryBehavior::Linear(refit), trimmed.right_extrap());
+    let law = trimmed.right_extrap().soft_law().expect("a soft right side");
+    let trimmed_mass = fractions.mass_between(t[last], f64::INFINITY)?;
+    pretty_assert_ulps_eq!((-input.y()[last]).exp() / trimmed_mass, law.slope, max_ulps = 8);
+    let kept = fractions.total() - fractions.mass_between(f64::NEG_INFINITY, trimmed.x_min())?;
+    pretty_assert_ulps_eq!(kept, helpers::total_mass(&trimmed)?, max_ulps = 8);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::soft_right(helpers::plateau(Side::Right), 19.0, SoftTailLaw { slope:  0.5 })]
+  #[case::soft_left( helpers::plateau(Side::Left),   1.0, SoftTailLaw { slope: -0.5 })]
+  #[trace]
+  fn test_mass_trim_soft_side_cut_on_a_plateau_gets_a_decaying_tail_with_the_trimmed_mass(
+    #[case] input: DistributionFunction<f64, NegLog>,
+    #[case] cut: f64,
+    #[case] expected: SoftTailLaw,
+  ) -> Result<(), Report> {
+    let total = 4.5 + 16.5 * (-20.0_f64).exp();
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&input)?, max_ulps = 4);
+
+    let trimmed = helpers::trim_at(input, 1e-9)?;
+
+    let (edge, law) = if expected.slope > 0.0 {
+      (trimmed.x_max(), trimmed.right_extrap())
+    } else {
+      (trimmed.x_min(), trimmed.left_extrap())
+    };
+    pretty_assert_abs_diff_eq!(cut, edge, epsilon = 1e-12);
+    let law = law.soft_law().expect("a soft side at the cut");
+    pretty_assert_ulps_eq!(expected.slope, law.slope, max_ulps = 8);
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&trimmed)?, max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_mass_trim_soft_side_cut_at_a_zero_density_point_moves_out_to_a_positive_density() -> Result<(), Report> {
+    let y = Array1::from_iter((0..16).map(|i| match i {
+      0..=4 => 0.0,
+      5 => f64::INFINITY,
+      _ => 10.0,
+    }));
+    let input = DistributionFunction::from_range_values((0.0, 15.0), y)?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?;
+    let total = 5.0 + 11.0 * (-10.0_f64).exp();
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&input)?, max_ulps = 4);
+
+    let trimmed = helpers::trim_at(input, 1e-3)?;
+
+    pretty_assert_abs_diff_eq!(10.0, trimmed.x_max(), epsilon = 1e-12);
+    let law = trimmed.right_extrap().soft_law().expect("a soft right side");
+    pretty_assert_ulps_eq!(1.0 / 6.0, law.slope, max_ulps = 8);
+    pretty_assert_ulps_eq!(total, helpers::total_mass(&trimmed)?, max_ulps = 4);
     Ok(())
   }
 
@@ -232,6 +285,26 @@ mod tests {
     ) -> Result<DistributionFunction<f64, NegLog>, Report> {
       let law = SoftTailLaw::fit(f.grid_fn(), Side::Right, DEFAULT_TAIL_FIT_POINTS)?;
       f.with_right_extrap(BoundaryBehavior::Linear(law))
+    }
+
+    pub(super) fn plateau(soft: Side) -> DistributionFunction<f64, NegLog> {
+      let (peak, left, right) = match soft {
+        Side::Right => (
+          0..=4,
+          BoundaryBehavior::Hard,
+          BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
+        ),
+        Side::Left => (
+          16..=20,
+          BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 }),
+          BoundaryBehavior::Hard,
+        ),
+      };
+      let y = Array1::from_iter((0..=20).map(|i| if peak.contains(&i) { 0.0 } else { 20.0 }));
+      DistributionFunction::from_range_values((0.0, 20.0), y)
+        .and_then(|f| f.with_left_extrap(left))
+        .and_then(|f| f.with_right_extrap(right))
+        .unwrap()
     }
 
     pub(super) fn flat_on_one_to_two(left: HardApproachLaw) -> Result<DistributionFunction<f64, NegLog>, Report> {
