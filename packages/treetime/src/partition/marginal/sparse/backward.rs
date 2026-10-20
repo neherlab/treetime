@@ -12,13 +12,14 @@ use crate::partition::storage::var_pos_map::VarPosMap;
 use eyre::Report;
 use itertools::izip;
 use ndarray::aview_mut1;
+use smallvec::smallvec;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::NodeEdgeMaps;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::make_internal_report;
@@ -51,7 +52,7 @@ pub(crate) fn process_backward_indexed(
   })
 }
 
-type SparseBackwardOutput = Arc<(SparseNodeState, Vec<SparseEdgeBackward>)>;
+type SparseBackwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeBackward>)>;
 
 struct SparseBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
@@ -100,13 +101,13 @@ impl SparseBackwardPass<'_> {
         };
         (
           SparseSeqDistribution::default(),
-          vec![SparseEdgeBackward {
+          smallvec![SparseEdgeBackward {
             msg_to_parent,
             msg_from_child,
           }],
         )
       },
-      (None, None) => (msg_to_parent, vec![]),
+      (None, None) => (msg_to_parent, PerEdge::new()),
       _ => {
         return Err(make_internal_report!(
           "Sparse marginal backward pass received an inconsistent parent edge at node {key}"

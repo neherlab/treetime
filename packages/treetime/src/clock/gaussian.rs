@@ -7,7 +7,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::NodeEdgeMaps;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
@@ -186,7 +186,7 @@ fn backward(
       .parents(key)
       .iter()
       .map(|&(_, edge_key)| own.map(|m| m.toward_parent(nu[&edge_key])))
-      .collect_vec();
+      .collect::<PerEdge<_>>();
     let to_parent = to_parents.first().copied().flatten();
     Ok(((node, to_parents), to_parent))
   })?;
@@ -208,7 +208,7 @@ fn forward(
   up: &BTreeMap<GraphEdgeKey, Option<Message>>,
 ) -> Result<BTreeMap<GraphNodeKey, Natural>, Report> {
   let down = below.iter().map(|(&key, node)| (key, node.down));
-  let totals = schedule.scan_down(down, |key, down, parent_totals: Vec<Natural>| {
+  let totals = schedule.scan_down(down, |key, down, parent_totals: PerEdge<Natural>| {
     let outside = match (schedule.parents(key).first(), parent_totals.first()) {
       (Some(&(_, edge_key)), Some(&parent_total)) => {
         let own_up = up

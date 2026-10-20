@@ -9,6 +9,7 @@ use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
 use log::debug;
+use smallvec::smallvec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::mem;
@@ -17,7 +18,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::RerootResult;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::NodeEdgeMaps;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_utils::make_internal_report;
 
 pub(crate) fn estimate_clock_model_with_reroot_policy(
@@ -261,7 +262,7 @@ fn clock_regression_forward(
   Ok(ClockState { nodes, edges })
 }
 
-type ClockNodeOutput = (ClockSet, Vec<ClockEdgeState>);
+type ClockNodeOutput = (ClockSet, PerEdge<ClockEdgeState>);
 
 struct ClockRegressionPass<'a> {
   schedule: &'a GraphSchedule<'a>,
@@ -289,7 +290,7 @@ impl ClockRegressionPass<'_> {
     };
 
     let Some(&(_, edge_key)) = self.schedule.parents(key).first() else {
-      return ((q_to_parent, vec![]), ClockSet::default());
+      return ((q_to_parent, PerEdge::new()), ClockSet::default());
     };
     let clock_from_child = q_to_parent.shift(self.edge_length(edge_key));
     let edge = ClockEdgeState {
@@ -297,7 +298,7 @@ impl ClockRegressionPass<'_> {
       clock_to_child: ClockSet::default(),
       clock_from_child: clock_from_child.clone(),
     };
-    ((ClockSet::default(), vec![edge]), clock_from_child)
+    ((ClockSet::default(), smallvec![edge]), clock_from_child)
   }
 
   fn forward_node(
@@ -311,9 +312,9 @@ impl ClockRegressionPass<'_> {
       (Some(&(_, edge_key)), Some(mut edge), Some(parent)) => {
         edge.clock_to_child = &parent - &edge.clock_from_child;
         let node = &edge.clock_to_parent + edge.clock_to_child.shift(self.edge_length(edge_key));
-        Ok(((node.clone(), vec![edge]), node))
+        Ok(((node.clone(), smallvec![edge]), node))
       },
-      (None, None, None) => Ok(((node.clone(), vec![]), node)),
+      (None, None, None) => Ok(((node.clone(), PerEdge::new()), node)),
       _ => Err(make_internal_report!(
         "Clock forward pass received an inconsistent parent edge and parent message at node {key}"
       )),

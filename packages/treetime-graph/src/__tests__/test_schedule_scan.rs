@@ -6,13 +6,14 @@ mod tests {
   use crate::graph::Graph;
   use crate::node::GraphNodeKey;
   use crate::schedule::GraphSchedule;
-  use crate::schedule_scan::{NodeEdgeMaps, ScanOutputs};
+  use crate::schedule_scan::{NodeEdgeMaps, PerEdge, ScanOutputs};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use smallvec::smallvec;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::Arc;
   use treetime_utils::{assert_error, make_report};
@@ -29,7 +30,7 @@ mod tests {
     };
 
     let sums = schedule
-      .scan_up(weights, |_, weight, children: Vec<usize>| {
+      .scan_up(weights, |_, weight, children: PerEdge<usize>| {
         let sum = weight + children.iter().sum::<usize>();
         Ok((sum, sum))
       })?
@@ -51,8 +52,8 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
 
     let received = schedule
-      .scan_up(inputs_of(&tree.graph, ()), |key, (), children: Vec<&'static str>| {
-        Ok((children, tree.name(key)))
+      .scan_up(inputs_of(&tree.graph, ()), |key, (), children: PerEdge<&'static str>| {
+        Ok((children.into_vec(), tree.name(key)))
       })?
       .into_map();
 
@@ -76,7 +77,7 @@ mod tests {
     };
 
     let sums = schedule
-      .scan_down(weights, |_, weight, parents: Vec<usize>| {
+      .scan_down(weights, |_, weight, parents: PerEdge<usize>| {
         let sum = weight + parents.iter().sum::<usize>();
         Ok((sum, sum))
       })?
@@ -95,7 +96,7 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
 
     let received = schedule
-      .scan_down(inputs_of(&tree.graph, ()), |_, (), parents: Vec<u8>| Ok((parents, 0)))?
+      .scan_down(inputs_of(&tree.graph, ()), |_, (), parents: PerEdge<u8>| Ok((parents.into_vec(), 0)))?
       .into_map();
 
     assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
@@ -108,7 +109,7 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
 
     let received = schedule
-      .scan_up(inputs_of(&tree.graph, ()), |_, (), children: Vec<u8>| Ok((children, 0)))?
+      .scan_up(inputs_of(&tree.graph, ()), |_, (), children: PerEdge<u8>| Ok((children.into_vec(), 0)))?
       .into_map();
 
     assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
@@ -125,8 +126,8 @@ mod tests {
 
     let received = run_in_pool(threads, || {
       schedule
-        .scan_up(inputs_of(&graph, ()), |key, (), children: Vec<GraphNodeKey>| {
-          Ok((children, key))
+        .scan_up(inputs_of(&graph, ()), |key, (), children: PerEdge<GraphNodeKey>| {
+          Ok((children.into_vec(), key))
         })
         .map(ScanOutputs::into_map)
     })?;
@@ -151,8 +152,8 @@ mod tests {
 
     let received = run_in_pool(threads, || {
       schedule
-        .scan_down(inputs_of(&graph, ()), |key, (), parents: Vec<GraphNodeKey>| {
-          Ok((parents, key))
+        .scan_down(inputs_of(&graph, ()), |key, (), parents: PerEdge<GraphNodeKey>| {
+          Ok((parents.into_vec(), key))
         })
         .map(ScanOutputs::into_map)
     })?;
@@ -181,7 +182,7 @@ mod tests {
 
     let sizes = run_in_small_stack_pool(threads, || {
       schedule
-        .scan_up(inputs_of(&graph, ()), |_, (), children: Vec<usize>| {
+        .scan_up(inputs_of(&graph, ()), |_, (), children: PerEdge<usize>| {
           let size = 1 + children.iter().sum::<usize>();
           Ok((size, size))
         })
@@ -208,7 +209,7 @@ mod tests {
 
     let depths = run_in_small_stack_pool(threads, || {
       schedule
-        .scan_down(inputs_of(&graph, ()), |_, (), parents: Vec<usize>| {
+        .scan_down(inputs_of(&graph, ()), |_, (), parents: PerEdge<usize>| {
           let depth = parents.first().map_or(0, |depth| depth + 1);
           Ok((depth, depth))
         })
@@ -234,7 +235,7 @@ mod tests {
     let sums = schedule
       .scan_up(
         btreemap! { root => 100, child => 1 },
-        |_, weight, children: Vec<usize>| {
+        |_, weight, children: PerEdge<usize>| {
           let sum = weight + children.iter().sum::<usize>();
           Ok((sum, sum))
         },
@@ -252,7 +253,7 @@ mod tests {
     let visited = Mutex::new(0_usize);
     let inputs = btreemap! { tree.key("root") => (), tree.key("A") => () };
 
-    let result = schedule.scan_up(inputs, |_, (), _: Vec<()>| {
+    let result = schedule.scan_up(inputs, |_, (), _: PerEdge<()>| {
       *visited.lock() += 1;
       Ok(((), ()))
     });
@@ -275,7 +276,7 @@ mod tests {
     let unknown = GraphNodeKey(7);
     let inputs = btreemap! { tree.key("root") => (), tree.key("A") => (), unknown => () };
 
-    let result = schedule.scan_down(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+    let result = schedule.scan_down(inputs, |_, (), _: PerEdge<()>| Ok(((), ())));
 
     assert_error!(
       result,
@@ -296,7 +297,7 @@ mod tests {
     let schedule = GraphSchedule::new(&graph)?;
     let inputs = btreemap! { root => (), removed => (), child => () };
 
-    let result = schedule.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+    let result = schedule.scan_up(inputs, |_, (), _: PerEdge<()>| Ok(((), ())));
 
     assert_error!(
       result,
@@ -314,7 +315,7 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
     let inputs = [(tree.key("root"), ()), (tree.key("A"), ()), (tree.key("A"), ())];
 
-    let result = schedule.scan_up(inputs, |_, (), _: Vec<()>| Ok(((), ())));
+    let result = schedule.scan_up(inputs, |_, (), _: PerEdge<()>| Ok(((), ())));
 
     assert_error!(
       result,
@@ -335,7 +336,7 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
     let visited = Mutex::new(BTreeSet::new());
 
-    let result = schedule.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+    let result = schedule.scan_up(inputs_of(&tree.graph, ()), |key, (), _: PerEdge<()>| {
       visited.lock().insert(tree.name(key));
       if tree.name(key) == "B" {
         return Err(make_report!("injected failure of node B"));
@@ -362,7 +363,7 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
     let visited = Mutex::new(BTreeSet::new());
 
-    let result = schedule.scan_down(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+    let result = schedule.scan_down(inputs_of(&tree.graph, ()), |key, (), _: PerEdge<()>| {
       visited.lock().insert(tree.name(key));
       if tree.name(key) == "AB" {
         return Err(make_report!("injected failure of node AB"));
@@ -387,7 +388,7 @@ mod tests {
     let visited = Mutex::new(vec![]);
 
     let result = run_in_pool(1, || {
-      schedule.scan_up(inputs_of(&graph, ()), |key, (), _: Vec<()>| {
+      schedule.scan_up(inputs_of(&graph, ()), |key, (), _: PerEdge<()>| {
         visited.lock().push(key);
         Err::<((), ()), _>(make_report!("injected failure of node {key}"))
       })
@@ -405,13 +406,13 @@ mod tests {
       &[("root", "AB"), ("root", "C"), ("AB", "A"), ("AB", "B")],
     )?;
     let schedule = GraphSchedule::new(&tree.graph)?;
-    let failed = schedule.scan_up(inputs_of(&tree.graph, 1), |_, _, _: Vec<usize>| {
+    let failed = schedule.scan_up(inputs_of(&tree.graph, 1), |_, _, _: PerEdge<usize>| {
       Err::<(usize, usize), _>(make_report!("injected failure"))
     });
     assert_error!(failed, "injected failure");
 
     let sizes = schedule
-      .scan_up(inputs_of(&tree.graph, 1), |_, weight, children: Vec<usize>| {
+      .scan_up(inputs_of(&tree.graph, 1), |_, weight, children: PerEdge<usize>| {
         let sum = weight + children.iter().sum::<usize>();
         Ok((sum, sum))
       })?
@@ -437,11 +438,11 @@ mod tests {
       .join_parent_edges(nodes.clone(), edges.clone())?
       .collect::<BTreeMap<_, _>>();
     let split = schedule
-      .scan_down(joined.clone(), |_, joined, _: Vec<()>| Ok((joined, ())))?
+      .scan_down(joined.clone(), |_, joined, _: PerEdge<()>| Ok((joined, ())))?
       .split_parent_edges()?;
 
     let expected_joined = btreemap! {
-      root => ("root", vec![]), a => ("A", vec!["root-A"]), b => ("B", vec!["root-B"]),
+      root => ("root", smallvec![]), a => ("A", smallvec!["root-A"]), b => ("B", smallvec!["root-B"]),
     };
     assert_eq!(expected_joined, joined);
     assert_eq!(NodeEdgeMaps { nodes, edges }, split);
@@ -497,13 +498,13 @@ mod tests {
   ) -> Result<(), Report> {
     let dag = NamedGraph::new(&["r", "a", "s"], &[("r", "a"), ("r", "s"), ("a", "s")])?;
     let schedule = GraphSchedule::new(&dag.graph)?;
-    let outputs = schedule.scan_up(inputs_of(&dag.graph, ()), |key, (), _: Vec<()>| {
+    let outputs = schedule.scan_up(inputs_of(&dag.graph, ()), |key, (), _: PerEdge<()>| {
       let values = if dag.name(key) == wrong {
         count
       } else {
         schedule.parents(key).len()
       };
-      Ok((((), vec![(); values]), ()))
+      Ok((((), smallvec![(); values]), ()))
     })?;
 
     let result = outputs.split_parent_edges();
@@ -523,7 +524,7 @@ mod tests {
     let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
     let schedule = GraphSchedule::new(&tree.graph)?;
     let shared = Arc::new(2);
-    let outputs = schedule.scan_up(inputs_of(&tree.graph, ()), |key, (), _: Vec<()>| {
+    let outputs = schedule.scan_up(inputs_of(&tree.graph, ()), |key, (), _: PerEdge<()>| {
       let output = if key == tree.key("A") {
         Arc::clone(&shared)
       } else {
@@ -554,8 +555,8 @@ mod tests {
 
     let received = run_in_pool(threads, || {
       schedule
-        .scan_down(inputs_of(&dag.graph, ()), |key, (), parents: Vec<&'static str>| {
-          Ok((parents, dag.name(key)))
+        .scan_down(inputs_of(&dag.graph, ()), |key, (), parents: PerEdge<&'static str>| {
+          Ok((parents.into_vec(), dag.name(key)))
         })
         .map(ScanOutputs::into_map)
     })?;
@@ -579,8 +580,8 @@ mod tests {
 
     let received = run_in_pool(threads, || {
       schedule
-        .scan_up(inputs_of(&dag.graph, ()), |key, (), children: Vec<&'static str>| {
-          Ok((children, dag.name(key)))
+        .scan_up(inputs_of(&dag.graph, ()), |key, (), children: PerEdge<&'static str>| {
+          Ok((children.into_vec(), dag.name(key)))
         })
         .map(ScanOutputs::into_map)
     })?;
@@ -605,10 +606,10 @@ mod tests {
       .join_parent_edges(nodes.clone(), edges.clone())?
       .collect::<BTreeMap<_, _>>();
     let split = schedule
-      .scan_down(joined.clone(), |_, joined, _: Vec<()>| Ok((joined, ())))?
+      .scan_down(joined.clone(), |_, joined, _: PerEdge<()>| Ok((joined, ())))?
       .split_parent_edges()?;
 
-    let expected_joined = btreemap! { p => ("p", vec![]), q => ("q", vec![]), s => ("s", vec!["q-s", "p-s"]) };
+    let expected_joined = btreemap! { p => ("p", smallvec![]), q => ("q", smallvec![]), s => ("s", smallvec!["q-s", "p-s"]) };
     assert_eq!(expected_joined, joined);
     assert_eq!(NodeEdgeMaps { nodes, edges }, split);
     Ok(())

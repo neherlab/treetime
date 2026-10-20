@@ -54,6 +54,7 @@ mod tests {
   mod helpers {
     use crate::node::GraphNodeKey;
     use crate::schedule::GraphSchedule;
+    use crate::schedule_scan::PerEdge;
     use eyre::Report;
     use itertools::Itertools;
     use parking_lot::Mutex;
@@ -72,7 +73,7 @@ mod tests {
       let visits = Mutex::new(vec![]);
       let inputs = schedule.preorder().iter().map(|&key| (key, ()));
       let received = ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
-        schedule.scan_up(inputs, |key, (), children: Vec<Message>| {
+        schedule.scan_up(inputs, |key, (), children: PerEdge<Message>| {
           visits.lock().push(key);
           let received = children.iter().map(|message| message.key).collect_vec();
           Ok((received, Message::new(key, &token)))
@@ -90,7 +91,7 @@ mod tests {
       let visits = Mutex::new(vec![]);
       let inputs = schedule.preorder().iter().map(|&key| (key, ()));
       let received = ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
-        schedule.scan_down(inputs, |key, (), parents: Vec<Message>| {
+        schedule.scan_down(inputs, |key, (), parents: PerEdge<Message>| {
           visits.lock().push(key);
           let received = parents.iter().map(|message| message.key).collect_vec();
           Ok((received, Message::new(key, &token)))

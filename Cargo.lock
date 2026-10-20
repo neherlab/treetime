@@ -5058,6 +5058,7 @@ dependencies = [
  "proptest",
  "rayon",
  "rstest",
+ "smallvec",
  "treetime-utils",
 ]
 

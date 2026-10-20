@@ -5,6 +5,7 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use parking_lot::Mutex;
 use rayon::{Scope, current_num_threads, scope};
+use smallvec::{SmallVec, smallvec};
 use std::collections::BTreeMap;
 use std::iter::{repeat_n, repeat_with};
 use std::marker::PhantomData;
@@ -14,11 +15,13 @@ use std::sync::{Arc, OnceLock};
 use treetime_utils::fmt::string::counted;
 use treetime_utils::make_internal_report;
 
+pub type PerEdge<T> = SmallVec<[T; 1]>;
+
 impl GraphSchedule<'_> {
   pub fn scan_down<N, M, Out>(
     &self,
     inputs: impl IntoIterator<Item = (GraphNodeKey, N)>,
-    step: impl Fn(GraphNodeKey, N, Vec<M>) -> Result<(Out, M), Report> + Sync,
+    step: impl Fn(GraphNodeKey, N, PerEdge<M>) -> Result<(Out, M), Report> + Sync,
   ) -> Result<ScanOutputs<'_, Out>, Report>
   where
     N: Send,
@@ -31,9 +34,9 @@ impl GraphSchedule<'_> {
     scope(|scope| {
       if let Some((&first, rest)) = self.roots().split_first() {
         for &root in rest {
-          scope.spawn(move |scope| scan_ref.down(scope, inboxes, root, Vec::new()));
+          scope.spawn(move |scope| scan_ref.down(scope, inboxes, root, PerEdge::new()));
         }
-        scan_ref.down(scope, inboxes, first, Vec::new());
+        scan_ref.down(scope, inboxes, first, PerEdge::new());
       }
     });
     scan.finish()
@@ -42,7 +45,7 @@ impl GraphSchedule<'_> {
   pub fn scan_up<N, M, Out>(
     &self,
     inputs: impl IntoIterator<Item = (GraphNodeKey, N)>,
-    step: impl Fn(GraphNodeKey, N, Vec<M>) -> Result<(Out, M), Report> + Sync,
+    step: impl Fn(GraphNodeKey, N, PerEdge<M>) -> Result<(Out, M), Report> + Sync,
   ) -> Result<ScanOutputs<'_, Out>, Report>
   where
     N: Send,
@@ -58,7 +61,7 @@ impl GraphSchedule<'_> {
         scope.spawn(|_| {
           let mut runnable = Vec::new();
           while let Some(&leaf) = leaves.get(next.fetch_add(1, Ordering::Relaxed)) {
-            runnable.push((leaf, Vec::new()));
+            runnable.push((leaf, PerEdge::new()));
             scan.up(&inboxes, &mut runnable);
           }
         });
@@ -71,7 +74,7 @@ impl GraphSchedule<'_> {
     &self,
     nodes: BTreeMap<GraphNodeKey, N>,
     mut edges: BTreeMap<GraphEdgeKey, E>,
-  ) -> Result<impl Iterator<Item = (GraphNodeKey, (N, Vec<E>))>, Report> {
+  ) -> Result<impl Iterator<Item = (GraphNodeKey, (N, PerEdge<E>))>, Report> {
     for &key in self.preorder() {
       if !nodes.contains_key(&key) {
         return Err(make_internal_report!("Scan input is missing node {key}"));
@@ -103,7 +106,7 @@ impl GraphSchedule<'_> {
         .parents(key)
         .iter()
         .filter_map(|(_, edge_key)| edges.remove(edge_key))
-        .collect_vec();
+        .collect();
       (key, (node, values))
     }))
   }
@@ -126,7 +129,7 @@ impl<Out> ScanOutputs<'_, Out> {
   }
 }
 
-impl<N, E> ScanOutputs<'_, (N, Vec<E>)> {
+impl<N, E> ScanOutputs<'_, (N, PerEdge<E>)> {
   pub fn split_parent_edges(self) -> Result<NodeEdgeMaps<N, E>, Report> {
     split_parent_edges(self.schedule, entries(self.outputs).map(Ok))
   }
@@ -153,7 +156,7 @@ impl<T> SharedOutputs<'_, T> {
   }
 }
 
-impl<N, E> SharedOutputs<'_, (N, Vec<E>)> {
+impl<N, E> SharedOutputs<'_, (N, PerEdge<E>)> {
   pub fn split_parent_edges(self) -> Result<NodeEdgeMaps<N, E>, Report> {
     split_parent_edges(self.schedule, unwrapped_entries(self.outputs))
   }
@@ -182,7 +185,7 @@ fn unwrapped_entries<T>(outputs: Vec<Option<Arc<T>>>) -> impl Iterator<Item = Re
 
 fn split_parent_edges<N, E>(
   schedule: &GraphSchedule<'_>,
-  entries: impl Iterator<Item = Result<(GraphNodeKey, (N, Vec<E>)), Report>>,
+  entries: impl Iterator<Item = Result<(GraphNodeKey, (N, PerEdge<E>)), Report>>,
 ) -> Result<NodeEdgeMaps<N, E>, Report> {
   let mut nodes = Vec::with_capacity(schedule.preorder().len());
   let mut edges = Vec::with_capacity(schedule.edge_count());
@@ -217,12 +220,12 @@ struct Scan<'s, 'g, N, M, Out, F> {
   outputs: Vec<OnceLock<Out>>,
   error: OnceLock<Report>,
   step: F,
-  messages: PhantomData<fn(Vec<M>) -> M>,
+  messages: PhantomData<fn(PerEdge<M>) -> M>,
 }
 
 impl<'s, 'g, N, M, Out, F> Scan<'s, 'g, N, M, Out, F>
 where
-  F: Fn(GraphNodeKey, N, Vec<M>) -> Result<(Out, M), Report>,
+  F: Fn(GraphNodeKey, N, PerEdge<M>) -> Result<(Out, M), Report>,
 {
   fn new(
     schedule: &'s GraphSchedule<'g>,
@@ -258,7 +261,7 @@ where
     })
   }
 
-  fn visit(&self, key: GraphNodeKey, received: Vec<M>) -> Option<M> {
+  fn visit(&self, key: GraphNodeKey, received: PerEdge<M>) -> Option<M> {
     if self.error.get().is_some() {
       return None;
     }
@@ -289,9 +292,9 @@ where
     slots: usize,
     slot: usize,
     message: M,
-  ) -> Option<Vec<M>> {
+  ) -> Option<PerEdge<M>> {
     if (slots, slot) == (1, 0) {
-      return Some(vec![message]);
+      return Some(smallvec![message]);
     }
     match inboxes[node.as_usize()].lock().deliver(node, slot, message) {
       Ok(ready) => ready,
@@ -331,9 +334,9 @@ where
   N: Send,
   M: Clone + Send,
   Out: Send + Sync,
-  F: Fn(GraphNodeKey, N, Vec<M>) -> Result<(Out, M), Report> + Sync,
+  F: Fn(GraphNodeKey, N, PerEdge<M>) -> Result<(Out, M), Report> + Sync,
 {
-  fn down<'s>(&'s self, scope: &Scope<'s>, inboxes: &'s [Mutex<Inbox<M>>], key: GraphNodeKey, received: Vec<M>) {
+  fn down<'s>(&'s self, scope: &Scope<'s>, inboxes: &'s [Mutex<Inbox<M>>], key: GraphNodeKey, received: PerEdge<M>) {
     let mut current = Some((key, received));
     while let Some((key, received)) = current.take() {
       let Some(message) = self.visit(key, received) else {
@@ -356,7 +359,7 @@ where
     }
   }
 
-  fn up(&self, inboxes: &[Mutex<Inbox<M>>], runnable: &mut Vec<(GraphNodeKey, Vec<M>)>) {
+  fn up(&self, inboxes: &[Mutex<Inbox<M>>], runnable: &mut Vec<(GraphNodeKey, PerEdge<M>)>) {
     while let Some((key, received)) = runnable.pop() {
       let Some(message) = self.visit(key, received) else {
         runnable.clear();
@@ -387,7 +390,7 @@ impl<M> Inbox<M> {
     }
   }
 
-  fn deliver(&mut self, node: GraphNodeKey, slot: usize, message: M) -> Result<Option<Vec<M>>, Report> {
+  fn deliver(&mut self, node: GraphNodeKey, slot: usize, message: M) -> Result<Option<PerEdge<M>>, Report> {
     if self.messages.is_empty() {
       self.messages.resize_with(self.missing, || None);
     }

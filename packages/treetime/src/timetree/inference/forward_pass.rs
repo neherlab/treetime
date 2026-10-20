@@ -22,6 +22,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::MaxGridPoints;
 
 pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
@@ -39,7 +40,7 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
     summarize,
   };
   let outputs = schedule
-    .scan_down(backward, |key, backward, parents: Vec<Posterior>| {
+    .scan_down(backward, |key, backward, parents: PerEdge<Posterior>| {
       pass.node(key, backward, parents.first())
     })?
     .into_map();

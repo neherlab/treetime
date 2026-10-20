@@ -17,6 +17,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
+use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::{MaxGridPoints, Side};
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
@@ -57,7 +58,7 @@ impl BackwardPass<'_> {
     &self,
     key: GraphNodeKey,
     bad_branch: bool,
-    messages: Vec<TimeDistribution>,
+    messages: PerEdge<TimeDistribution>,
   ) -> Result<(NodeBackward, TimeDistribution), Report> {
     let BackwardPass {
       schedule,

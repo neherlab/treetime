@@ -24,7 +24,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::NodeEdgeMaps;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::LogLh;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
@@ -49,7 +49,7 @@ pub(crate) fn process_forward_indexed(
   let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
   let outputs = schedule.scan_down(
     schedule.join_parent_edges(node_states, backward)?,
-    |key, (node, mut backward), parents: Vec<SparseForwardOutput>| {
+    |key, (node, mut backward), parents: PerEdge<SparseForwardOutput>| {
       pass.node(key, node, backward.pop(), parents.first().map(|parent| &parent.0))
     },
   )?;
@@ -74,7 +74,7 @@ pub(crate) fn process_forward_indexed(
   })
 }
 
-type SparseForwardOutput = Arc<(SparseNodeState, Vec<SparseEdgeForwardOut>)>;
+type SparseForwardOutput = Arc<(SparseNodeState, PerEdge<SparseEdgeForwardOut>)>;
 
 struct SparseForwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
@@ -108,7 +108,7 @@ impl SparseForwardPass<'_> {
         ));
       },
     };
-    let output = Arc::new((node, edge.into_iter().collect_vec()));
+    let output = Arc::new((node, edge.into_iter().collect()));
     Ok((Arc::clone(&output), output))
   }
 

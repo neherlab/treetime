@@ -15,13 +15,14 @@ use crate::seq::indel::{InDel, compute_node_ranges, resolve_indels_backward, res
 use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::Array2;
+use smallvec::smallvec;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::NodeEdgeMaps;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::LogLh;
 use treetime_utils::interval::range_union::range_union;
 use treetime_utils::{make_internal_error, make_internal_report};
@@ -138,7 +139,7 @@ fn leaf_inputs<'a, L>(
   schedule.preorder().iter().map(|&key| (key, leaves.get(&key)))
 }
 
-type IndexedBackwardOutput = Arc<(DenseNodeState, Vec<DenseEdgeBackward>)>;
+type IndexedBackwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeBackward>)>;
 
 struct IndexedBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
@@ -192,7 +193,7 @@ impl IndexedBackwardPass<'_> {
 
     let parent_message = if let Some(&(_, edge_key)) = self.schedule.parents(key).first() {
       let branch_length = self.branch_lengths[&edge_key].max(self.min_branch_length);
-      vec![DenseEdgeBackward {
+      smallvec![DenseEdgeBackward {
         msg_from_child: DenseSeqDistribution {
           dis: self.gtr.propagate_profile(&msg_to_parent.dis, branch_length, false),
           log_lh: msg_to_parent.log_lh,
@@ -206,7 +207,7 @@ impl IndexedBackwardPass<'_> {
         dis,
         log_lh: msg_to_parent.log_lh + LogLh::new(delta_ll),
       };
-      vec![]
+      PerEdge::new()
     };
 
     let output = Arc::new((node, parent_message));
@@ -275,7 +276,7 @@ pub(crate) fn indexed_forward(
   let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
   let outputs = schedule.scan_down(
     schedule.join_parent_edges(node_states, backward)?,
-    |key, (node, mut backward), parents: Vec<IndexedForwardOutput>| {
+    |key, (node, mut backward), parents: PerEdge<IndexedForwardOutput>| {
       pass.node(key, node, backward.pop(), parents.first().map(|parent| &parent.0))
     },
   )?;
@@ -299,7 +300,7 @@ pub(crate) fn indexed_forward(
   })
 }
 
-type IndexedForwardOutput = Arc<(DenseNodeState, Vec<DenseEdgeForwardOut>)>;
+type IndexedForwardOutput = Arc<(DenseNodeState, PerEdge<DenseEdgeForwardOut>)>;
 
 struct IndexedForwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
@@ -352,7 +353,7 @@ impl IndexedForwardPass<'_> {
     let edges = msg_to_child
       .map(|msg_to_child| DenseEdgeForwardOut { msg_to_child, indels })
       .into_iter()
-      .collect_vec();
+      .collect();
     let output = Arc::new((node, edges));
     Ok((Arc::clone(&output), output))
   }

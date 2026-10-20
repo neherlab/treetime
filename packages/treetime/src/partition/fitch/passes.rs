@@ -20,7 +20,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
-use treetime_graph::schedule_scan::NodeEdgeMaps;
+use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_primitives::{AlphabetLike, seq};
 use treetime_utils::interval::range_union::range_union;
 
@@ -199,7 +199,7 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: PartitionFitch) -> Result<
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let inputs = schedule.join_parent_edges(nodes, edges)?;
-  let outputs = schedule.scan_down(inputs, |key, (node, mut edges), parents: Vec<FitchForwardOutput>| {
+  let outputs = schedule.scan_down(inputs, |key, (node, mut edges), parents: PerEdge<FitchForwardOutput>| {
     fitch_forward_node(
       &alphabet,
       key,
@@ -217,7 +217,7 @@ pub(crate) fn fitch_forward(graph: &Graph, partition: PartitionFitch) -> Result<
   })
 }
 
-type FitchForwardOutput = Arc<(FitchNodeData, Vec<SparseEdgeObs>)>;
+type FitchForwardOutput = Arc<(FitchNodeData, PerEdge<SparseEdgeObs>)>;
 
 fn fitch_forward_node(
   alphabet: &Alphabet,
@@ -299,7 +299,7 @@ fn fitch_forward_node(
     edge.is_none(),
   );
 
-  let output = Arc::new((node, edge.into_iter().collect_vec()));
+  let output = Arc::new((node, edge.into_iter().collect()));
   Ok((Arc::clone(&output), output))
 }
 
