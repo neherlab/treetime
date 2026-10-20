@@ -382,9 +382,12 @@ mod tests {
     let x = f.grid_fn().x();
     let y_peak = y.iter().copied().fold(f64::INFINITY, f64::min);
     let cells: Vec<f64> = (0..y.len() - 1)
-      .map(|c| match f.grid_fn().hard_cell(c, HARD, HARD)? {
-        Some(hard) => Ok((y_peak - hard.anchor.y).exp() * f.dx() / (hard.law.b + 1.0)),
-        None => Ok(helpers::linear_density_mass(f.dx(), (y[c] - y_peak, y[c + 1] - y_peak), (0.0, f.dx()))),
+      .map(|c| {
+        let width = x[c + 1] - x[c];
+        match f.grid_fn().hard_cell(c, HARD, HARD)? {
+          Some(hard) => Ok((y_peak - hard.anchor.y).exp() * width / (hard.law.b + 1.0)),
+          None => Ok(helpers::linear_density_mass(width, (y[c] - y_peak, y[c + 1] - y_peak), (0.0, width))),
+        }
       })
       .try_collect::<_, _, Report>()?;
     for (i, k) in (0..x.len()).tuple_combinations() {
@@ -466,6 +469,22 @@ mod tests {
     let fractions = profile.fractions(TailMass::Required).unwrap();
     let total = 1.0 + 1.0 / (b + 1.0);
     pretty_assert_ulps_eq!(density / total, fractions.density(x, side), max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_mass_profile_survival_of_a_uniform_cell_at_a_calendar_time_is_linear_between_its_represented_ends()
+  -> Result<(), Report> {
+    let f = DistributionFunction::from_start_dx_values(2000.0, 1e-10, array![0.0, 0.0])?
+      .with_left_extrap(HARD)?
+      .with_right_extrap(HARD)?;
+    let profile = MassProfile::new(&f)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+    let (start, end) = (f.x_min(), f.x_max());
+    for k in 0..=64 {
+      let t = start + (end - start) * (k.to_f64_exact() / 64.0);
+      pretty_assert_abs_diff_eq!((end - t) / (end - start), fractions.survival(t), epsilon = 1e-15);
+    }
     Ok(())
   }
 

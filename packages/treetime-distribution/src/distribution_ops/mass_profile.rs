@@ -59,8 +59,9 @@ impl MassProfile {
           .transpose()
       })
       .try_collect()?;
+    let x_at = |idx: usize| f.x_min() + dx * idx.to_f64_exact();
     let masses = (0..n - 1)
-      .map(|j| full_cell_mass(&r, &hard_cells, dx, j).linear())
+      .map(|j| full_cell_mass(&r, &hard_cells, x_at(j + 1) - x_at(j), j).linear())
       .collect_vec();
     let prefix = running_sums(masses.iter().copied());
     let mut suffix = running_sums(masses.iter().rev().copied());
@@ -137,6 +138,10 @@ impl MassProfile {
     self.x_min + self.dx * idx.to_f64_exact()
   }
 
+  fn width(&self, j: usize) -> f64 {
+    self.x_at(j + 1) - self.x_at(j)
+  }
+
   fn cell(&self, j: usize) -> Cell {
     cell_at(&self.r, &self.hard_cells, j)
   }
@@ -187,45 +192,39 @@ impl MassProfile {
     } else {
       j
     };
-    let offset = if x <= self.x_at(j) {
-      Offset::start(self.dx)
-    } else if x >= self.x_at(j + 1) {
-      Offset::end(self.dx)
+    let (lo, hi) = (self.x_at(j), self.x_at(j + 1));
+    let h = hi - lo;
+    let offset = if x <= lo {
+      Offset::start(h)
+    } else if x >= hi {
+      Offset::end(h)
     } else {
-      let from_left = (x - self.x_at(j)).min(self.dx);
-      let from_right = (self.x_at(j + 1) - x).min(self.dx);
-      if from_left <= from_right {
-        Offset {
-          from_left,
-          from_right: self.dx - from_left,
-        }
-      } else {
-        Offset {
-          from_left: self.dx - from_right,
-          from_right,
-        }
+      Offset {
+        from_left: x - lo,
+        from_right: hi - x,
       }
     };
-    CellPosition { j, offset }
+    CellPosition { j, h, offset }
   }
 
   fn grid_density(&self, x: f64, side: Side) -> f64 {
     let at = self.locate(x);
     if side == Side::Left && at.j > 0 && at.offset.from_left <= 0.0 {
-      return self.cell(at.j - 1).density_at(self.dx, Offset::end(self.dx));
+      let h = self.width(at.j - 1);
+      return self.cell(at.j - 1).density_at(h, Offset::end(h));
     }
-    self.cell(at.j).density_at(self.dx, at.offset)
+    self.cell(at.j).density_at(at.h, at.offset)
   }
 
   fn grid_mass_below(&self, x: f64) -> f64 {
     let at = self.locate(x);
-    let cell = self.cell(at.j).mass_between(self.dx, Offset::start(self.dx), at.offset);
+    let cell = self.cell(at.j).mass_between(at.h, Offset::start(at.h), at.offset);
     (self.prefix[at.j] + cell.linear()).min(self.prefix[at.j + 1])
   }
 
   fn grid_mass_above(&self, x: f64) -> f64 {
     let at = self.locate(x);
-    let cell = self.cell(at.j).mass_between(self.dx, at.offset, Offset::end(self.dx));
+    let cell = self.cell(at.j).mass_between(at.h, at.offset, Offset::end(at.h));
     (self.suffix[at.j + 1] + cell.linear()).min(self.suffix[at.j])
   }
 
@@ -233,31 +232,33 @@ impl MassProfile {
     let lo = self.locate(a);
     let hi = self.locate(b);
     if lo.j == hi.j {
-      return self.cell(lo.j).mass_between(self.dx, lo.offset, hi.offset);
+      return self.cell(lo.j).mass_between(lo.h, lo.offset, hi.offset);
     }
-    let head = self.cell(lo.j).mass_between(self.dx, lo.offset, Offset::end(self.dx));
-    let tail = self.cell(hi.j).mass_between(self.dx, Offset::start(self.dx), hi.offset);
+    let head = self.cell(lo.j).mass_between(lo.h, lo.offset, Offset::end(lo.h));
+    let tail = self.cell(hi.j).mass_between(hi.h, Offset::start(hi.h), hi.offset);
     head + self.cell_sums().sum(lo.j + 1, hi.j) + tail
   }
 
   fn cell_sums(&self) -> &CellSums {
     self.cells.get_or_init(|| {
-      CellSums::new((0..self.r.len() - 1).map(|j| full_cell_mass(&self.r, &self.hard_cells, self.dx, j)))
+      CellSums::new((0..self.r.len() - 1).map(|j| full_cell_mass(&self.r, &self.hard_cells, self.width(j), j)))
     })
   }
 
   fn grid_position_below(&self, m: f64) -> f64 {
     let j = partition_point(&self.prefix.slice(s![1..]), |&p| p < m).min(self.r.len() - 2);
-    let u = self.cell(j).offset_from(self.dx, Side::Left, m - self.prefix[j]);
-    self.position_in_cell(j, u, self.dx - u)
+    let h = self.width(j);
+    let u = self.cell(j).offset_from(h, Side::Left, m - self.prefix[j]);
+    self.position_in_cell(j, u, h - u)
   }
 
   fn grid_position_above(&self, m: f64) -> f64 {
     let j = partition_point(&self.suffix, |&s| s >= m)
       .saturating_sub(1)
       .min(self.r.len() - 2);
-    let u = self.cell(j).offset_from(self.dx, Side::Right, m - self.suffix[j + 1]);
-    self.position_in_cell(j, self.dx - u, u)
+    let h = self.width(j);
+    let u = self.cell(j).offset_from(h, Side::Right, m - self.suffix[j + 1]);
+    self.position_in_cell(j, h - u, u)
   }
 
   fn position_in_cell(&self, j: usize, from_left: f64, from_right: f64) -> f64 {
@@ -536,6 +537,7 @@ impl Offset {
 
 struct CellPosition {
   j: usize,
+  h: f64,
   offset: Offset,
 }
 
@@ -854,16 +856,13 @@ fn cell_at(r: &Array1<f64>, hard_cells: &[HardCellPower], j: usize) -> Cell {
   }
 }
 
-fn full_cell_mass(r: &Array1<f64>, hard_cells: &[HardCellPower], dx: f64, j: usize) -> ScaledMass {
+fn full_cell_mass(r: &Array1<f64>, hard_cells: &[HardCellPower], h: f64, j: usize) -> ScaledMass {
   match cell_at(r, hard_cells, j) {
-    Cell::Trapezoid { ra, rb } if dx > 0.0 => {
+    Cell::Trapezoid { ra, rb } if h > 0.0 => {
       let r_min = ra.min(rb);
-      ScaledMass::new(
-        r_min,
-        dx * f64::midpoint(scale_below(r_min, ra), scale_below(r_min, rb)),
-      )
+      ScaledMass::new(r_min, h * f64::midpoint(scale_below(r_min, ra), scale_below(r_min, rb)))
     },
-    cell => cell.mass_between(dx, Offset::start(dx), Offset::end(dx)),
+    cell => cell.mass_between(h, Offset::start(h), Offset::end(h)),
   }
 }
 

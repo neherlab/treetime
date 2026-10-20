@@ -8,7 +8,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Gamma};
-  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
+  use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, NegLog, TailMass};
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
@@ -336,6 +336,30 @@ mod tests {
     for k in 0..=64 {
       let t = CALENDAR_TIME + 2.0 * STEP * (k.to_f64_exact() / 64.0);
       pretty_assert_abs_diff_eq!((end - t) / (2.0 * STEP), survival.at(t), epsilon = 1e-8);
+    }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::flat_cell(       array![0.0, 0.0]               )]
+  #[case::trapezoid_cells( array![0.0, 0.5, 0.2, 1.0, 0.3])]
+  #[trace]
+  fn test_node_survival_follows_the_mass_model_on_cells_a_few_hundred_coordinate_ulps_wide(
+    #[case] y: Array1<f64>,
+  ) -> Result<(), Report> {
+    let function = DistributionFunction::<f64, NegLog>::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Hard)?;
+    let profile = MassProfile::new(&function)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+
+    let survival = NodeSurvival::of_posterior(&Distribution::Function(function.clone()))?.unwrap();
+
+    let samples = 64 * (function.y().len() - 1);
+    for k in 0..=samples {
+      let t = function.x_min() + (function.x_max() - function.x_min()) * (k.to_f64_exact() / samples.to_f64_exact());
+      pretty_assert_abs_diff_eq!(fractions.survival(t), survival.at(t), epsilon = 1e-8);
     }
     Ok(())
   }
