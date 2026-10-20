@@ -77,8 +77,8 @@ Notation: $t$ is the branch length, $s = \sqrt{t}$, $\ell$ the log-likelihood of
 
 ### What each version does
 
-- **v0**: SciPy's Brent stops when the bracket is within $\text{tol}_1 = \text{tol} \cdot |s| + 10^{-11}$ of the current point, with $\text{tol}_i = 10^{-8} + 0.01^{i+1}$ in outer iteration $i$: $0.01000001$, then $0.00010001$, then $0.00000101$, and so on (see [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md)). The limit is 500 iterations; `success` is false when the limit is reached or the result is NaN, and v0 reads it (Axis 4)
-- **v1**: argmin's defaults `eps` $= \sqrt{\epsilon} \approx 1.49\cdot10^{-8}$ and `t` $= 10^{-5}$ give $\text{tol} = \sqrt{\epsilon}\,|s| + 10^{-5}$, the same in every outer iteration. Since $|s| \le \sqrt{\text{upper}}$, the relative part is at most $1.5\cdot10^{-7}$ for every branch up to $t = 100$, two orders of magnitude below $10^{-5}$, so the tolerance is in practice absolute: $10^{-5}$ in $s$. The limit is `BRENT_MAX_ITER = 50`; `fn brent_sqrt_minimize()` reads the termination reason, keeps the best point on `MaxItersReached`, and the optimization round raises one `branch-lengths-not-converged` run warning that names the affected edges. The returned point is within about $3\,\text{tol}$ of the local minimum (argmin documentation of `set_tolerance()`)
+- **v0**: SciPy's Brent stops when the bracket is within $\text{tol}_1 = \text{tol} \cdot |s| + 10^{-11}$ of the current point, with $\text{tol}_i = 10^{-8} + 0.01^{i+1}$ in outer iteration $i$: $0.01000001$, then $0.00010001$, then $0.00000101$, and so on. The timetree pre-step of v0 runs one outer iteration (`optimize_tree(max_iter=1)` [packages/legacy/treetime/treetime/treetime.py#L243](../../packages/legacy/treetime/treetime/treetime.py#L243)), so it uses only $\text{tol}_0 \approx 0.01$. The limit is 500 iterations; `success` is false when the limit is reached or the result is NaN, and v0 reads it (Axis 4)
+- **v1**: argmin's defaults `eps` $= \sqrt{\epsilon} \approx 1.49\cdot10^{-8}$ and `t` $= 10^{-5}$ give $\text{tol} = \sqrt{\epsilon}\,|s| + 10^{-5}$, the same in every outer iteration and in the timetree pre-step, because `fn optimize_edge_lengths()` takes no tolerance [packages/treetime/src/optimize/dispatch.rs#L22-L29](../../packages/treetime/src/optimize/dispatch.rs#L22-L29). Since $|s| \le \sqrt{\text{upper}}$, the relative part is at most $1.5\cdot10^{-7}$ for every branch up to $t = 100$, two orders of magnitude below $10^{-5}$, so the tolerance is in practice absolute: $10^{-5}$ in $s$. The limit is `BRENT_MAX_ITER = 50`; `fn brent_sqrt_minimize()` reads the termination reason, keeps the best point on `MaxItersReached`, and the optimization round raises one `branch-lengths-not-converged` run warning that names the affected edges. The returned point is within about $3\,\text{tol}$ of the local minimum (argmin documentation of `set_tolerance()`)
 
 ### Accuracy relative to the statistical error
 
@@ -146,7 +146,7 @@ Measured: `treetime optimize` with default settings on `flu/h3n2/{20,200}`, `ebo
 Each option is independent of the others. v1 reads the termination status (Axis 3) and keeps the best point at the iteration limit instead of v0's fallback to $h$, which is scientifically worse (Axis 4).
 
 1. **Accept-if-not-worse**: evaluate $\ell(t_0)$ and return $t_0$ when $\ell(\text{result}) < \ell(t_0)$, as IQ-TREE does. Removes the 875 small regressions; costs one evaluation per edge. v0 reaches the same property through its start point, but v0 starts from $h$, not from $t_0$
-2. **Tolerance**: keep the absolute tolerance in $s$ and scale it with the alignment, for example $c / (2\sqrt{L})$ through `BrentOpt::set_tolerance(eps, t)`; or copy v0's relative tolerance ($10^{-11}$ absolute part, as SciPy) and its per-iteration schedule (see [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md)). Either changes outputs at about the $10^{-6}$ level on the measured datasets. A tolerance change alone does not restore v0 parity, because the objective and the interval also differ
+2. **Tolerance**: keep the absolute tolerance in $s$ and scale it with the alignment, for example $c / (2\sqrt{L})$ through `BrentOpt::set_tolerance(eps, t)`; or copy v0's relative tolerance ($10^{-11}$ absolute part, as SciPy) and its per-iteration schedule, including the coarse first iteration that the timetree pre-step uses. Either changes outputs at about the $10^{-6}$ level on the measured datasets. A tolerance change alone does not restore v0 parity, because the objective and the interval also differ
 3. **Upper bound**: a fixed cap (v0: 4, IQ-TREE: 10, RAxML-NG: 100) instead of, or in addition to, the adaptive $1.5\,t_0 + \text{one mutation}$; depends on the investigation in Axis 1
 4. **Penalty**: keep v1 without the v0 penalty (recommended by Axis 2), or add it for parity
 
@@ -156,7 +156,6 @@ Each option is independent of the others. v1 reads the termination status (Axis 
 ## Cross-references
 
 - [N-optimize-per-edge-constants-without-provenance.md](N-optimize-per-edge-constants-without-provenance.md): `BRENT_MAX_ITER`, interval constants
-- [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md)
 - [N-optimize-zero-boundary-handled-in-several-places.md](N-optimize-zero-boundary-handled-in-several-places.md)
 - [N-optimize-grid-search-upper-bound-capped.md](N-optimize-grid-search-upper-bound-capped.md)
 - [kb/decisions/optimize-newton-raphson-per-edge.md](../decisions/optimize-newton-raphson-per-edge.md)

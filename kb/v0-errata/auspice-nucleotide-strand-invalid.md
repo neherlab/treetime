@@ -21,4 +21,4 @@ The value contains an extra colon. It is outside the Augur annotation schema and
 
 ## v1 status
 
-V1 emits nucleotide genome annotations and validates generated documents against the pinned Augur export-v2 and annotation schemas. Completeness of the annotation fields (including strand) is tracked in [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md).
+V1 emits nucleotide genome annotations and validates generated documents against the pinned Augur export-v2 and annotation schemas. No golden master compares the annotation fields (including strand) with Augur output: [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md).

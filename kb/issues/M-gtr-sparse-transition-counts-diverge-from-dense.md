@@ -26,6 +26,16 @@ On simulated alignments with a known GTR and `--gtr-iterations 3` (variant `marg
 
 Ignored red test: `test_refinement_sparse_gtr_and_rate_match_dense` in [packages/treetime/src/gtr/__tests__/test_refinement.rs](../../packages/treetime/src/gtr/__tests__/test_refinement.rs).
 
-## Related issues
+## Ambiguous leaf positions count twice
 
-- [M-gtr-sparse-transition-counts-double-count-ambiguous-leaves.md](M-gtr-sparse-transition-counts-double-count-ambiguous-leaves.md): ambiguous leaf positions probably enter the sparse counts twice
+`fn accumulate_sparse_transitions()` [packages/treetime/src/partition/marginal/sparse/count.rs#L58-L85](../../packages/treetime/src/partition/marginal/sparse/count.rs#L58-L85) sums the expected transitions of an edge over the explicit positions of `msg_to_parent` with weight 1, and over its fixed states with the weight of each fixed `count`.
+
+On a leaf edge, `msg_to_parent` is the leaf message (`fn leaf_message()` [packages/treetime/src/partition/marginal/sparse/backward.rs#L96-L119](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L96-L119)). Its explicit positions are the ambiguous positions of the leaf. Its fixed profiles cover every determined state, ambiguous states included, each with the composition count of that state in the leaf sequence, because `fn observe_seq()` puts the ambiguous positions into `variable` and also counts every character into the composition [packages/treetime/src/partition/storage/sparse.rs#L285-L316](../../packages/treetime/src/partition/storage/sparse.rs#L285-L316). An `R` position of a leaf therefore enters twice: once as an explicit position with the profile of `R`, and once in the fixed group of `R`, whose count includes it. Internal messages do not have this overlap, because their fixed counts exclude the positions that stay explicit.
+
+Both options of the decision above rewrite this counter, so the fix of the double count is part of the same change. No test covers an ambiguous leaf position yet.
+
+## Validation
+
+- `test_refinement_sparse_gtr_and_rate_match_dense` passes and loses its `#[ignore]`
+- A tree with one ambiguous leaf position gives transition counts `nij` and times per state `Ti` equal to a hand computation of the expected counts
+- `test_sparse_transition_counting_root_state_sums_to_length` asserts the sum it names

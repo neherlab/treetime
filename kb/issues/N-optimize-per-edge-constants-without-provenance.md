@@ -72,4 +72,4 @@ For each constant, record one of: a derivation, a sufficiency measurement, or an
 - [N-optimize-grid-search-resolution-unverified.md](N-optimize-grid-search-resolution-unverified.md): `GRID_SEARCH_POINTS`
 - [N-optimize-grid-search-upper-bound-capped.md](N-optimize-grid-search-upper-bound-capped.md): `MIN_SEARCH_UPPER_BOUND`
 - [N-optimize-reconcile-grid-extent-unverified.md](N-optimize-reconcile-grid-extent-unverified.md): grid bounds
-- [N-optimize-pre-step-coarse-tolerance.md](N-optimize-pre-step-coarse-tolerance.md): Brent tolerance schedule
+- [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md): Brent tolerance schedule (Axis 3)

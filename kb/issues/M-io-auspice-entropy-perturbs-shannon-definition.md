@@ -36,4 +36,4 @@ If exact Shannon entropy is approved:
 
 ## Related issues
 
-- [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md)
+- [N-io-auspice-output-missing-augur-golden-master.md](N-io-auspice-output-missing-augur-golden-master.md)

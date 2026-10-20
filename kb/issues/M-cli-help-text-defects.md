@@ -93,12 +93,6 @@ Command: `timetree`. Takes two positional-style values (`--relax 1.0 0.5`). Most
 
 Description says "Default: 1.0" but no `[default: 1.0]` metadata (field is `Option<f64>`). Automation parsers miss it.
 
-### U7: `--keep-polytomies`/`--resolve-polytomies` no conflict guard
-
-Command: `timetree`. Both are `bool` flags with no `conflicts_with`. Both can be set simultaneously.
-
-Related: [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md).
-
 ### U8: Global flags on non-analysis commands
 
 `--jobs`, `--verbosity`, `--no-progress` appear on `completions`, `schema`, `help-markdown`, `arg` where they serve no purpose.
@@ -205,5 +199,5 @@ Each behavioral item must first select its parse/runtime contract, and already-o
 
 - [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D2 and D4)
 - [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D1)
-- [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md): polytomy flag conflict (overlaps U7)
+- [M-timetree-polytomy-resolution-off-by-default.md](M-timetree-polytomy-resolution-off-by-default.md): `--keep-polytomies` and `--resolve-polytomies` have no conflict guard
 - [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree

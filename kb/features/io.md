@@ -27,7 +27,7 @@
 - [x] Graphviz DOT
 - [x] Output topology ordering
 - [ ] VCF output (v0 writes .vcf for VCF inputs: [kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))
-- [/] Auspice v2 JSON (schema-validated for all tree-writing commands; entropy perturbs the Shannon definition and inference metadata is incomplete: [kb/issues/M-io-auspice-entropy-perturbs-shannon-definition.md](../issues/M-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
+- [/] Auspice v2 JSON (schema-validated for all tree-writing commands; entropy perturbs the Shannon definition and no Augur golden master checks the document: [kb/issues/M-io-auspice-entropy-perturbs-shannon-definition.md](../issues/M-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md))
 - [ ] Skyline TSV/plot
 - [ ] Substitution rates TSV
 - [ ] Outliers TSV

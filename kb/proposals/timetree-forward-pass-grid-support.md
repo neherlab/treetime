@@ -216,7 +216,7 @@ The stored extension is expensive because its length is the distance from the cr
 1. [M-timetree-forward-grids-keep-untrimmed-hard-support.md](../issues/M-timetree-forward-grids-keep-untrimmed-hard-support.md): trim hard sides by mass
 2. [M-timetree-grid-spacing-inherits-finest-operand.md](../issues/M-timetree-grid-spacing-inherits-finest-operand.md): output spacing
 3. [M-distribution-convolution-drops-operand-tails.md](../issues/M-distribution-convolution-drops-operand-tails.md): operand tails in the convolution
-4. [M-timetree-branch-distribution-build-cost.md](../issues/M-timetree-branch-distribution-build-cost.md): the next bottleneck after 1 and 2
+4. [N-timetree-branch-grid-evaluated-one-length-at-a-time.md](../issues/N-timetree-branch-grid-evaluated-one-length-at-a-time.md): the next bottleneck after 1 and 2
 
 Order: 1, then 2, each measured on its own; 3 after its investigation; 4 after 1 and 2.
 

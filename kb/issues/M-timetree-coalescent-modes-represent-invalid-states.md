@@ -30,4 +30,4 @@ Parse CLI and transport DTOs into that type before entering the pipeline. Keep t
 
 ## Related issues
 
-- [N-timetree-polytomy-flags-no-conflict.md](N-timetree-polytomy-flags-no-conflict.md)
+- [M-timetree-polytomy-resolution-off-by-default.md](M-timetree-polytomy-resolution-off-by-default.md)

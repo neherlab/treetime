@@ -63,7 +63,7 @@
 - [ ] `--n-branches-posterior` (parsed, returns explicit error - [kb/issues/N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md))
 - [ ] Empirical skyline (v0 `skyline_empirical()` - sliding window without optimization)
 - [x] Skyline confidence bands from the full inverse Hessian ([kb/decisions/coalescent-skyline-hessian-confidence-bands.md](../decisions/coalescent-skyline-hessian-confidence-bands.md))
-- [ ] Skyline plot output ([kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))
+- [ ] Skyline plot output ([kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
 
 ## Polytomy Resolution
 
@@ -138,7 +138,7 @@
 - [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, annotated Newick and Nexus, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] Clock regression table (`--output-clock-csv`, opt-in; one row per sample with the date, date source (`input` or `inferred`), root-to-tip distance and clock-filter flag the final clock model was fitted on; new in v1, v0 has no table; app runs request it for the root-to-tip plot)
 - [x] Confidence TSV
-- [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot and the grid-points default remain, see [kb/issues/N-timetree-missing-skyline-output.md](../issues/N-timetree-missing-skyline-output.md))
+- [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot remains, see [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
 - [ ] Root sequence sampled from its posterior in every reconstruction, as v0 does; v1 takes the most likely state ([kb/issues/M-timetree-root-sequence-not-sampled.md](../issues/M-timetree-root-sequence-not-sampled.md))
 - [x] Ancestral sequences FASTA (`--output-reconstructed-nuc-fasta`, default under `--output-all`; reuses the `ancestral` marginal reconstruction, internal nodes always, tips with `--include-leaves`)
 - [ ] Branch mutations table ([kb/issues/N-timetree-branch-mutations-output-unimplemented.md](../issues/N-timetree-branch-mutations-output-unimplemented.md))
@@ -146,7 +146,7 @@
 - [ ] Sequence-evolution model text output or approved replacement ([kb/issues/N-timetree-sequence-evolution-model-text-output-undecided.md](../issues/N-timetree-sequence-evolution-model-text-output-undecided.md))
 - [ ] Node dates TSV (not implemented - [kb/issues/N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md))
 - [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
-- [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; entropy perturbs the Shannon definition and inference metadata is incomplete: [kb/issues/M-io-auspice-entropy-perturbs-shannon-definition.md](../issues/M-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/M-timetree-tree-output-inference-metadata-incomplete.md](../issues/M-timetree-tree-output-inference-metadata-incomplete.md))
+- [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; entropy perturbs the Shannon definition and no Augur golden master checks the document: [kb/issues/M-io-auspice-entropy-perturbs-shannon-definition.md](../issues/M-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)
 - [ ] Plotting (`--plot-tree`, `--plot-rtt` - parsed, return explicit error - [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))

@@ -21,7 +21,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 - `kb/issues/M-timetree-consumers-read-unconstrained-branch-lengths.md`
 - `kb/issues/N-ancestral-deleted-position-invariant-enforced-by-scattered-guards.md`
 - `kb/issues/N-marginal-forward-zero-divisor-floor.md`
-- `kb/issues/N-mugration-shared-core-alphabet-agnosticism-unguarded.md`
 - `kb/issues/N-optimize-sparse-state-parity-unverified.md`
 - `kb/issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md`
 - `kb/issues/N-sparse-marginal-cavity-compression-unverified.md`
