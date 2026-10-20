@@ -51,7 +51,7 @@ sequence(node) = root_sequence
 
 Stop storing per-node sequences. Keep the root sequence, the per-edge mutation and indel tracks, and the per-node range tracks. Materialize a sequence only where one is genuinely required, and do it transiently.
 
-The natural mechanism is a preorder traversal carrying a single mutable buffer: apply the edge's substitutions and indels on the way down, undo them on the way back up. Working memory becomes `O(L)` rather than `O(N * L)`. `ancestral_reconstruction_marginal` already traverses with `iter_depth_first_preorder_forward`, which is a genuine DFS and single-threaded.
+The natural mechanism is a preorder traversal carrying a single mutable buffer: apply the edge's substitutions and indels on the way down, undo them on the way back up. Working memory becomes `O(L)` rather than `O(N * L)`. The marginal sequence sampling `fn sample_internal_sequences()` [packages/treetime/src/partition/marginal/sequences.rs#L9-L22](../../packages/treetime/src/partition/marginal/sequences.rs#L9-L22) already visits the nodes serially in `GraphSchedule::preorder()`, a depth-first order. The preorder is a flat list without exit events, so the undo step on the way back up needs its own depth-first walk or the depth of each node.
 
 ## Design axes
 

@@ -21,7 +21,7 @@ The Linux builds of the CLI and the API server allocate through jemalloc with it
 - With freed pages returned at once, or with one arena, the tree scans need 26 to 28 percent less memory than the graph pass. Only the default configuration reverses the order
 - Over the GTR refinement loop, resident memory stays between 550 and 780 MB with the graph pass and grows from about 600 to 1150-1180 MB with the tree scans (20 ms samples)
 - Page-fault totals differ by 2 percent (1.31 and 1.34 million), which fits retained pages and not more data
-- Inferred cause: the leaf tasks of `fn TreeView.scan_up()` [packages/treetime-graph/src/tree_scan.rs#L32-L63](../../packages/treetime-graph/src/tree_scan.rs#L32-L63) run on every worker thread, so allocations and frees spread over many arenas, and each arena keeps its freed pages for the decay time. The tree scans are also 32 percent faster on this case (wall time 10.95 to 7.47 s)
+- Inferred cause: the leaf tasks of `fn GraphSchedule.scan_up()` [packages/treetime-graph/src/schedule_scan.rs#L42-L68](../../packages/treetime-graph/src/schedule_scan.rs#L42-L68) run on every worker thread, so allocations and frees spread over many arenas, and each arena keeps its freed pages for the decay time. The tree scans are also 32 percent faster on this case (wall time 10.95 to 7.47 s)
 
 ### Timetree validation runs
 

@@ -10,7 +10,7 @@ Test files declare helper functions (fixtures, builders, assertion helpers) as t
 
 ## Example
 
-[`packages/treetime-graph/src/__tests__/test_tree_view.rs`](../../packages/treetime-graph/src/__tests__/test_tree_view.rs) shows the required structure: `use self::helpers::{graph_from_parents, names};` at the top of `mod tests`, the tests, then `mod helpers` with its own explicit imports and `pub(super)` helpers.
+[`packages/treetime-graph/src/__tests__/test_schedule.rs`](../../packages/treetime-graph/src/__tests__/test_schedule.rs) shows the required structure: `use self::helpers::names;` at the top of `mod tests`, the tests, then `mod helpers` with its own explicit imports and `pub(super)` helpers.
 
 ## Locations
 
