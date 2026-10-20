@@ -22,4 +22,3 @@ Use O1 for inference and require an explicit, separately approved extrapolation 
 
 ## Related issues
 
-- [N-coalescent-skyline-grid-validation-incomplete.md](N-coalescent-skyline-grid-validation-incomplete.md)

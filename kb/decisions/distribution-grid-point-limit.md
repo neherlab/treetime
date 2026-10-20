@@ -78,4 +78,4 @@ Every run stays below 0.9 GB at every candidate, so the server uses the largest 
 
 - A run that needs a grid above the limit ends with an actionable error instead of being terminated by the operating system
 - A run that today used the coarser-grid fallback of multiplication or division now stops; no measured run reached the fallback
-- The limit does not make every input succeed: the slowdown at spacing ratios below the limit is [kb/issues/M-timetree-marginal-dense-mpox-slow.md](../issues/M-timetree-marginal-dense-mpox-slow.md), and the mass windows that grow beyond any limit at moderate clock rates are [kb/issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](../issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md)
+- The limit does not make every input succeed: the mass windows that grow beyond any limit at moderate clock rates are [kb/issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md](../issues/M-timetree-mass-window-grid-explodes-at-moderate-clock-rate.md)

@@ -62,5 +62,4 @@ O1 is the reference-parity recommendation, but implementing it through TreeIR de
 ## Related
 
 - [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md) - shared mutation, confidence, and annotation contract
-- [M-core-mutation-representation-and-format-projection-inconsistent.md](M-core-mutation-representation-and-format-projection-inconsistent.md) - typed mutation projection
 - [kb/reports/augur-node-data-json.md](../reports/augur-node-data-json.md) - node data JSON shares the same data sources (partition mutations, annotations)

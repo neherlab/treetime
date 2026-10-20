@@ -1,38 +1,33 @@
-# Owned ndarray signatures force projection and propagation copies
+# Owned ndarray signatures force transition-matrix copies
 
-> [!WARNING]
-> **Needs review.** The confidence half of this issue is partly stale. Each confidence row is now copied once per node, not twice: `fn gather_reconstruction_maps()` calls `get_confidence()` once per node [packages/treetime/src/mugration/pipeline.rs#L189-L195](../../packages/treetime/src/mugration/pipeline.rs#L189-L195) and stores the owned rows in `MugrationOutput::confidences` [packages/treetime/src/mugration/pipeline.rs#L171](../../packages/treetime/src/mugration/pipeline.rs#L171). The output writers read those stored rows. A borrowed return from `get_confidence()` only removes the copy if the output keeps the partition alive instead of owning the rows, which is the scope of [N-mugration-confidence-rows-copied-for-output.md](N-mugration-confidence-rows-copied-for-output.md).
-
-Read-only APIs accept owned ndarray references or return owned arrays even when their data already lives in a longer-lived matrix. Callers must copy confidence rows and transposed transition matrices at per-node, per-edge, or per-site frequency.
+The sparse propagation functions accept owned ndarray references even when the data already lives in a longer-lived matrix. Callers must copy the transposed transition matrix at per-edge and per-site frequency.
 
 ## Evidence
 
-- `PartitionMarginalDiscrete::get_confidence()` [packages/treetime/src/partition/marginal/discrete/partition.rs#L78-L85](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L78-L85) returns `Array1<f64>` by copying `node.profile.dis.row(0)`.
-- `fn build_confidence_map()` and `fn compute_entropy()` [packages/app-output/src/trait_profile.rs#L6-L16](../../packages/app-output/src/trait_profile.rs#L6-L16) accept `&Array1<f64>`, rejecting the row view naturally produced by the partition. Callers: [packages/app-output/src/auspice.rs#L315-L319](../../packages/app-output/src/auspice.rs#L315-L319) and [packages/app-output/src/augur_node_data_traits.rs#L82-L84](../../packages/app-output/src/augur_node_data_traits.rs#L82-L84).
 - `fn propagate_raw()` [packages/treetime/src/partition/marginal/sparse/message.rs#L106-L110](../../packages/treetime/src/partition/marginal/sparse/message.rs#L106-L110) accepts `&Array2<f64>`. Its backward caller converts the zero-copy transpose view with `.t().to_owned()` [packages/treetime/src/partition/marginal/sparse/backward.rs#L73-L77](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L73-L77).
-- `fn propagate_raw_per_site()` copies the transposed matrix once per call and once per variable site [packages/treetime/src/partition/marginal/sparse/message.rs#L137-L182](../../packages/treetime/src/partition/marginal/sparse/message.rs#L137-L182).
+- `fn propagate_raw_per_site()` copies the transposed matrix once per call and once per variable site [packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169](../../packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169).
+
+The mugration confidence rows are not part of this issue. `MugrationOutput` owns one copy of each row, and the pipeline drops the node states after the reconstruction [packages/treetime/src/mugration/pipeline.rs#L136-L173](../../packages/treetime/src/mugration/pipeline.rs#L136-L173). A borrowed return from `get_confidence()` would have to keep every node state alive, which costs more memory than one row per node.
 
 ## Options
 
-- **Concrete view types:** accept `ArrayView1`, `ArrayView2`, `ArrayViewMut1`, and `ArrayViewMut2`. Lifetimes and mutability remain explicit, and common row, slice, and transpose callers need no copy.
+- **Concrete view types:** accept `ArrayView2` and `ArrayViewMut2`. Lifetimes and mutability remain explicit, and transpose and slice callers need no copy.
 - **Generic storage bounds:** accept `ArrayBase<S, D>`. This supports owned arrays and views through one signature, but exposes more generic parameters where the function needs only a borrowed view.
 
 ## Recommendation
 
-Use concrete view types at borrowing boundaries. Return `Option<ArrayView1<'_, f64>>` from `get_confidence()`, bind it once per node during projection, and derive both confidence and entropy from it. Accept `ArrayView2` in `propagate_raw()` and the other read-only propagation boundaries where storage ownership is irrelevant, and pass transpose and sliced views directly. Keep owned return values only where the callee constructs independent data.
+Use concrete view types at borrowing boundaries. Accept `ArrayView2` in `propagate_raw()` and the other read-only propagation boundaries where storage ownership is irrelevant, and pass transpose and sliced views directly. Keep owned return values only where the callee constructs independent data.
 
 ## Required properties
 
-- Owned, contiguous-view, non-contiguous sliced-view, row-view, and transposed-view inputs produce identical values.
-- Projection obtains one borrowed confidence row per node and derives both confidence and entropy from it.
+- Owned, contiguous-view, non-contiguous sliced-view, and transposed-view inputs produce identical values.
 - Backward propagation does not allocate a copied transition matrix solely to transpose it.
 
 ## Validation
 
-- Unit cases for owned, row-view, transposed-view, and non-contiguous sliced-view inputs.
+- Unit cases for owned, transposed-view, and non-contiguous sliced-view inputs.
 - Exact output equivalence and allocation regression tests.
 
 ## Related
 
 - [N-ancestral-marginal-array-kernels-allocate.md](N-ancestral-marginal-array-kernels-allocate.md)
-- [N-mugration-confidence-rows-copied-for-output.md](N-mugration-confidence-rows-copied-for-output.md): overlaps on the borrowed `get_confidence()` return and the confidence and entropy consumers

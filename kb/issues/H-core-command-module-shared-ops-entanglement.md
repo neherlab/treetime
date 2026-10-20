@@ -23,5 +23,3 @@ Moving `commands/` waits until this boundary is decided. Scientific stage orderi
 
 - [M-core-partition-init-orchestration-duplication.md](M-core-partition-init-orchestration-duplication.md)
 - [M-command-output-ownership-is-scattered.md](M-command-output-ownership-is-scattered.md)
-- [M-mugration-analysis-interface-exposes-policy-wiring.md](M-mugration-analysis-interface-exposes-policy-wiring.md)
-- [M-output-module-mixes-topology-ordering.md](M-output-module-mixes-topology-ordering.md)

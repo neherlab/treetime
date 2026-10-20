@@ -29,4 +29,3 @@ Commit nodes and edges together only after the pass succeeds. The choice between
 
 ## Related issues
 
-- [N-ancestral-parallel-sparse-leaf-error-atomicity-unverified.md](N-ancestral-parallel-sparse-leaf-error-atomicity-unverified.md)

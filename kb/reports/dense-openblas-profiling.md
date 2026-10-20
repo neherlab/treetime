@@ -5,9 +5,8 @@ Commit: `554f3ea8` (`docs(known-issues): update dense test regression to reflect
 
 ## 1. Problem statement
 
-Dense marginal ancestral reconstruction is known to be slow. Three open known-issues document aspects of this:
+Dense marginal ancestral reconstruction is known to be slow. These known issues document aspects of this:
 
-- [M-timetree-marginal-dense-mpox-slow](../issues/M-timetree-marginal-dense-mpox-slow.md) -- 250x wall-time slowdown on mpox (20 tips, 44 min vs 7 sec for flu). Suspected cause: convolution grid spacing blow-up from low clock rate.
 - [N-optimize-dense-iteration-slow](../issues/N-optimize-dense-iteration-slow.md) -- each marginal pass costs O(N _ s^2 _ L) over the full alignment length L. v0 mitigates with column compression; v1 dense does not compress.
 - Dense Fitch compression gap (RESOLVED) -- dense now uses `PartitionFitch::compress` -> `infer_gtr` -> `into_marginal_dense`, and resolves indels via shared `fitch_indel` logic.
 
@@ -336,7 +335,6 @@ If `blas_thread_server` does not appear in the profile output, the mitigation is
 ### 6.2 Near-term investigation
 
 - Column compression for dense mode -- group identical alignment columns and weight by multiplicity. This is what v0 does. Would reduce L (and therefore wall time of marginal passes, GTR inference, and argmax) proportionally to alignment redundancy. For viral datasets, unique column count is typically 5-20% of L.
-- Profile the mpox dataset -- the 250x slowdown documented in [M-timetree-marginal-dense-mpox-slow](../issues/M-timetree-marginal-dense-mpox-slow.md) is suspected to come from convolution grid blow-up in the timetree backward pass, not from ancestral reconstruction. A separate profiling session targeting `timetree --dense=true` on mpox would confirm or refute this.
 
 ### 6.3 Longer-term
 

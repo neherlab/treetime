@@ -15,4 +15,3 @@ The coalescent API retains O1: nonconstant values use decimal calendar years. O2
 ## Related issues
 
 - [kb/algo/coalescent-contribution-refactor.md](../algo/coalescent-contribution-refactor.md)
-- [N-coalescent-skyline-grid-validation-incomplete.md](N-coalescent-skyline-grid-validation-incomplete.md)

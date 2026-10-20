@@ -22,7 +22,6 @@ Define the intended validation contract before adding tests. The contract should
 
 ## Related issues
 
-- [N-ancestral-parallel-sparse-leaf-error-atomicity-unverified.md](N-ancestral-parallel-sparse-leaf-error-atomicity-unverified.md)
 - [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
 - [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)
 - [N-ancestral-parallel-sparse-leaf-single-thread-regression.md](N-ancestral-parallel-sparse-leaf-single-thread-regression.md)

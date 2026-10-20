@@ -20,7 +20,7 @@ Largest node-time difference between the modes, in years, measured with the inpu
 | `rsv_a_20` | 0.697 | 0.722 | `NODE_0000009` |
 | `lassa_L_20` | 1.321 | 1.325 | `NODE_0000005` |
 
-- `mpox_clade_ii_20` exceeds the 300 s test timeout for the dense and the sparse run together (see [M-timetree-marginal-dense-mpox-slow.md](M-timetree-marginal-dense-mpox-slow.md))
+- `mpox_clade_ii_20` exceeds the 300 s test timeout for the dense and the sparse run together
 - `zika_20` fails while reading the dates, before inference (see [M-timetree-date-header-hash.md](M-timetree-date-header-hash.md))
 
 ## Evidence

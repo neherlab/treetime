@@ -37,4 +37,3 @@ If exact Shannon entropy is approved:
 ## Related issues
 
 - [M-timetree-tree-output-inference-metadata-incomplete.md](M-timetree-tree-output-inference-metadata-incomplete.md)
-- [N-mugration-confidence-rows-copied-for-output.md](N-mugration-confidence-rows-copied-for-output.md): changes the `compute_entropy()` input to a borrowed row view

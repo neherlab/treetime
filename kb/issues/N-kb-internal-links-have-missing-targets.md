@@ -24,7 +24,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 - `kb/issues/N-mugration-shared-core-alphabet-agnosticism-unguarded.md`
 - `kb/issues/N-optimize-sparse-state-parity-unverified.md`
 - `kb/issues/N-optimize-topology-cleanup-fitch-vs-ml-subs.md`
-- `kb/issues/N-representation-dense-sparse-partition-asymmetry.md`
 - `kb/issues/N-sparse-marginal-cavity-compression-unverified.md`
 - `kb/proposals/input-name-matching-validation.md`
 - `kb/proposals/optimize-convergence-and-robustness.md`
@@ -40,15 +39,13 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 ## Other removed source files
 
 - `kb/decisions/coalescent-analytic-tc-optimization.md`, `kb/decisions/optimize-newton-raphson-per-edge.md`, `kb/reports/optimization-methods/7-audit.md`: `packages/treetime/src/coalescent/optimize_tc.rs`
-- `kb/decisions/mugration-pseudo-count-initial-pi.md`, `kb/issues/M-discrete-missing-zero-states-inf.md`, `kb/issues/M-mugration-analysis-interface-exposes-policy-wiring.md`: `packages/treetime/src/mugration/mugration.rs`
+- `kb/decisions/mugration-pseudo-count-initial-pi.md`, `kb/issues/M-discrete-missing-zero-states-inf.md`: `packages/treetime/src/mugration/mugration.rs`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`: `packages/treetime/src/gtr/jc_distance/__tests__/test_jc_distance.rs`
-- `kb/issues/H-graph-capability-contracts-silently-discard-state.md`: `packages/treetime/src/clock/clock_graph.rs`
-- `kb/issues/M-payloads-own-format-adapters.md`, `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/` (`ancestral.rs`, `timetree.rs`)
+- `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/` (`ancestral.rs`, `timetree.rs`)
 - `kb/issues/N-ancestral-auspice-json-not-produced.md`: `packages/treetime-io/src/graph.rs`
 - `kb/issues/N-io-auspice-trait-reader-contract-unverified.md`: `packages/treetime-io/src/auspice.rs`
 - `kb/reports/auto-partitioning.md`: `packages/treetime/src/gtr/gtr_site_specific.rs`, `packages/treetime/src/gtr/infer_gtr/site_specific.rs`
 - `kb/reports/dense-openblas-profiling.md`: `dev/dev`. The script no longer exists, so the report's `./dev/dev bp`, `br`, and `t` commands are stale as well
-- `kb/issues/N-doc-treetime-readme-module-layout-stale.md`: `packages/treetime/README.md`
 
 ## Repository-root paths used as relative links
 

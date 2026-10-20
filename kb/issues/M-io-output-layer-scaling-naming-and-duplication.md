@@ -47,13 +47,6 @@ v1 reimplements it beside ancestral: its own pipeline ([packages/treetime/src/mu
 
 Required behavior: reimplement mugration on top of ancestral reconstruction. Mugration-specific code reduces to building the state alphabet and the one-site alignment from the metadata and mapping reconstructed letters back to states; reconstruction, GTR inference, confidence and entropy come from the ancestral code. The ancestral `Alphabet` ([packages/treetime/src/alphabet/alphabet.rs](../../packages/treetime/src/alphabet/alphabet.rs)) is built only from named alphabets (`AlphabetName`: nucleotide, amino acid) and needs one built from the trait states. Delete the discrete partition and the duplicated computations afterwards.
 
-## KB entries describe removed code
-
-- `kb/issues/H-graph-lock-topology-is-exposed-to-consumers.md` describes `Arc<RwLock<Node>>`; the graph has no locks now
-- `kb/issues/M-output-module-mixes-topology-ordering.md` describes the removed `commands/shared/output.rs` layout; topology-order arguments now live in `packages/app-commands/src/commands/shared/topology_order_args.rs`, apart from `packages/app-output/src/output_plan.rs`
-
-Required behavior: update each entry to the current code, or delete it when the problem it records is gone.
-
 ## Intended behavior
 
 Each output file is written as soon as its data is ready. A run that fails late keeps the files it finished, so users can salvage part of the results.
@@ -62,4 +55,3 @@ Each output file is written as soon as its data is ready. A run that fails late 
 
 - [N-clock-unnamed-root-after-reroot.md](N-clock-unnamed-root-after-reroot.md)
 - [N-io-confidence-tsv-unnamed-root-has-empty-name.md](N-io-confidence-tsv-unnamed-root-has-empty-name.md)
-- [N-mugration-confidence-rows-copied-for-output.md](N-mugration-confidence-rows-copied-for-output.md)

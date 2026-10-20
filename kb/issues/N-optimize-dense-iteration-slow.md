@@ -6,7 +6,7 @@ Dense marginal reconstruction computes full probability profiles at every node f
 
 ## Current behavior
 
-Each optimize iteration calls `update_marginal()` (backward + forward pass over the full dense profile matrix) followed by `optimize_edge_lengths()` (per-edge Newton optimization). The marginal passes dominate wall time. The mpox dataset (`M-timetree-marginal-dense-mpox-slow`) is a known slow case for dense timetree inference.
+Each optimize iteration calls `update_marginal()` (backward + forward pass over the full dense profile matrix) followed by `optimize_edge_lengths()` (per-edge Newton optimization). The marginal passes dominate wall time.
 
 ## Potential optimizations
 
@@ -32,7 +32,6 @@ The $O(N \cdot s^2 \cdot L)$ complexity is inherent -- the question is constant 
 
 ## Related
 
-- [M-timetree-marginal-dense-mpox-slow](M-timetree-marginal-dense-mpox-slow.md) -- specific dataset where dense timetree is disproportionately slow
 - [Command-relationships report](../reports/command-relationships/README.md)
 - [Iterative tree refinement: status and recommendations](../reports/iterative-tree-refinement/10-status-and-recommendations.md)
 
