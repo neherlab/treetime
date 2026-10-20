@@ -40,7 +40,8 @@ pub(crate) fn run_refinement_loop(
     let iter_fraction = 0.3 + 0.5 * ((i - 1).to_f64_exact() / max_iter.to_f64_exact());
     stages.report("Refinement loop", iter_fraction, &format!("iteration {i}/{max_iter}"));
 
-    let RoundModels { merger_rate, prior } = round_models(&mut coalescent, current.as_ref(), log)?;
+    let previous = current.take();
+    let RoundModels { merger_rate, prior } = round_models(&mut coalescent, previous, log)?;
 
     let iteration_clock = IterationClock::of(&state.clock_model);
     let (next_state, outcome) = refinement_round(
@@ -101,20 +102,21 @@ fn current_expectation(
 
 fn round_models(
   coalescent: &mut CoalescentSetup,
-  current: Option<&Arc<LineageExpectation>>,
+  previous: Option<Arc<LineageExpectation>>,
   log: &dyn LogSink,
 ) -> Result<RoundModels, Report> {
   let mode = coalescent.mode;
   let prior_wanted = coalescent.prior_wanted();
-  let (Some(lineages), Some(current)) = (&mut coalescent.lineages, current) else {
+  let (Some(lineages), Some(previous)) = (&mut coalescent.lineages, previous) else {
     return Ok(RoundModels {
       merger_rate: None,
       prior: None,
     });
   };
   if mode.is_optimized() {
-    lineages.timescale = coalescent_timescale(mode, &coalescent.skyline_params, current, log)?;
+    lineages.timescale = coalescent_timescale(mode, &coalescent.skyline_params, &previous, log)?;
   }
+  drop(previous);
   let merger_rate = lineages
     .expectation
     .merger_rate_schedule(&lineages.timescale.distribution)?;
