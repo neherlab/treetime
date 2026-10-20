@@ -439,6 +439,36 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::flat_earlier_outside(       (0.0, Side::Left ), (0.0, Side::Left ), 0.0                )]
+  #[case::flat_earlier_at_hard_point( (0.0, Side::Left ), (0.0, Side::Right), 1.0                )]
+  #[case::flat_earlier_inside(        (0.0, Side::Left ), (0.5, Side::Left ), 1.0                )]
+  #[case::flat_later_outside(         (0.0, Side::Right), (3.0, Side::Right), 0.0                )]
+  #[case::flat_later_at_hard_point(   (0.0, Side::Right), (3.0, Side::Left ), 1.0                )]
+  #[case::flat_later_inside(          (0.0, Side::Right), (2.5, Side::Right), 1.0                )]
+  #[case::sublinear_at_hard_point(    (0.5, Side::Left ), (0.0, Side::Right), 0.0                )]
+  #[case::sublinear_inside(           (0.5, Side::Left ), (0.5, Side::Left ), 0.5_f64.sqrt()     )]
+  #[case::quadratic_at_hard_point(    (2.0, Side::Right), (3.0, Side::Left ), 0.0                )]
+  #[case::quadratic_inside(           (2.0, Side::Right), (2.5, Side::Right), 0.25               )]
+  #[trace]
+  fn test_mass_profile_density_of_a_hard_approach_tail_is_its_one_sided_limit_at_the_hard_point(
+    #[case] (b, tail_side): (f64, Side),
+    #[case] (x, side): (f64, Side),
+    #[case] density: f64,
+  ) -> Result<(), Report> {
+    let (left, right) = match tail_side {
+      Side::Left => (BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b }), HARD),
+      Side::Right => (HARD, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b })),
+    };
+    let f = helpers::function((1.0, 2.0), array![0.0, 0.0], left, right)?;
+    let profile = MassProfile::new(&f)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+    let total = 1.0 + 1.0 / (b + 1.0);
+    pretty_assert_ulps_eq!(density / total, fractions.density(x, side), max_ulps = 4);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 

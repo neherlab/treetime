@@ -325,9 +325,9 @@ impl MassFractions<'_> {
       order => order == outward,
     };
     let density = if in_tail(self.profile.x_min, Ordering::Less, Side::Left) {
-      self.left.density_at(x)
+      self.left.density_at(x, side)
     } else if in_tail(self.profile.x_max(), Ordering::Greater, Side::Right) {
-      self.right.density_at(x)
+      self.right.density_at(x, side)
     } else {
       self.profile.grid_density(x, side)
     };
@@ -632,7 +632,7 @@ impl TailLaw {
     }
   }
 
-  fn density_at(self, x: f64) -> f64 {
+  fn density_at(self, x: f64, side: Side) -> f64 {
     if self.r_edge.is_infinite() || self.outward(self.x_edge, x) < 0.0 {
       return 0.0;
     }
@@ -645,7 +645,7 @@ impl TailLaw {
         power,
       } => {
         let delta = self.outward(x, t_hard);
-        if delta <= 0.0 {
+        if delta < 0.0 || (delta <= 0.0 && side == self.side) || delta_edge <= 0.0 {
           return 0.0;
         }
         (-self.r_edge).exp() * (delta / delta_edge).min(1.0).powf(power - 1.0)

@@ -15,6 +15,8 @@ mod tests {
 
   const TRIM: f64 = 1e-9;
   const MAX_ERROR: f64 = 1e-6;
+  const CALENDAR_TIME: f64 = 2000.0;
+  const STEP: f64 = 1.0 / 1_048_576.0;
 
   #[test]
   fn test_posterior_median_of_a_skewed_gamma() -> Result<(), Report> {
@@ -307,6 +309,34 @@ mod tests {
     let last = survival.t.len() - 1;
     pretty_assert_abs_diff_eq!(0.01 + (1.0 / (total * TRIM)).ln(), survival.t[last], epsilon = 1e-13);
     helpers::assert_interpolates_within_max_error(&survival, exact);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::earlier_hard_approach( CALENDAR_TIME + STEP, array![0.0, 0.0],           BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: CALENDAR_TIME, b: 0.0 }), BoundaryBehavior::Hard)]
+  #[case::later_hard_approach(   CALENDAR_TIME,        array![0.0, 0.0],           BoundaryBehavior::Hard, BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: CALENDAR_TIME + 2.0 * STEP, b: 0.0 }))]
+  #[case::interior_hard_point(   CALENDAR_TIME,        array![0.0, f64::INFINITY, 0.0], BoundaryBehavior::Hard, BoundaryBehavior::Hard)]
+  #[trace]
+  fn test_node_survival_of_a_uniform_density_that_reaches_a_flat_hard_point_is_exact(
+    #[case] start: f64,
+    #[case] y: Array1<f64>,
+    #[case] left: BoundaryBehavior,
+    #[case] right: BoundaryBehavior,
+  ) -> Result<(), Report> {
+    let distribution = Distribution::Function(
+      DistributionFunction::<f64, NegLog>::from_start_dx_values(start, STEP, y)?
+        .with_left_extrap(left)?
+        .with_right_extrap(right)?,
+    );
+
+    let survival = NodeSurvival::of_posterior(&distribution)?.unwrap();
+
+    let end = CALENDAR_TIME + 2.0 * STEP;
+    for k in 0..=64 {
+      let t = CALENDAR_TIME + 2.0 * STEP * (k.to_f64_exact() / 64.0);
+      pretty_assert_abs_diff_eq!((end - t) / (2.0 * STEP), survival.at(t), epsilon = 1e-8);
+    }
     Ok(())
   }
 
