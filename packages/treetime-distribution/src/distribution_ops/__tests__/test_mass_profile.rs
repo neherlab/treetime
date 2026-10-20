@@ -8,7 +8,7 @@ mod tests {
   use itertools::Itertools;
   use ndarray::{Array1, array};
   use rstest::rstest;
-  use treetime_grid::{HardApproachLaw, SoftTailLaw};
+  use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
@@ -391,6 +391,51 @@ mod tests {
       let expected: f64 = cells[i..k].iter().sum();
       assert_relative_eq!(expected, profile.mass_between(x[i], x[k])?, epsilon = 0.0, max_relative = 1e-15);
     }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::beyond_hard_point(        -1.5,  Side::Right, 0.0                                         )]
+  #[case::power_law_tail(           -0.5,  Side::Right, (-0.5_f64).exp() * 0.25                     )]
+  #[case::left_edge_from_tail(       0.0,  Side::Left,  (-0.5_f64).exp()                            )]
+  #[case::left_edge_from_grid(       0.0,  Side::Right, (-0.5_f64).exp()                            )]
+  #[case::rising_cell_middle(        0.5,  Side::Left,  f64::midpoint((-0.5_f64).exp(), 1.0)        )]
+  #[case::peak(                      1.0,  Side::Left,  1.0                                         )]
+  #[case::falling_cell_quarter(      1.25, Side::Right, 1.0 + (-1.5_f64).exp_m1() * 0.25             )]
+  #[case::right_edge(                2.0,  Side::Right, (-1.5_f64).exp()                            )]
+  #[case::soft_tail(                 3.0,  Side::Left,  (-1.5_f64).exp() * (-0.8_f64).exp()         )]
+  #[trace]
+  fn test_mass_profile_density_follows_the_cell_and_tail_laws(
+    #[case] x: f64,
+    #[case] side: Side,
+    #[case] density: f64,
+  ) -> Result<(), Report> {
+    let profile = MassProfile::new(&helpers::piecewise_model()?)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+    let total = helpers::piecewise_mass(-1.0, f64::INFINITY);
+    pretty_assert_ulps_eq!(density / total, fractions.density(x, side), max_ulps = 4);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::outside_left(  0.0, Side::Left,  0.0)]
+  #[case::at_hard_point( 0.0, Side::Right, 1.0)]
+  #[case::inside(        0.5, Side::Left,  1.0)]
+  #[case::inside_right(  1.0, Side::Left,  1.0)]
+  #[case::outside_right( 1.0, Side::Right, 0.0)]
+  #[trace]
+  fn test_mass_profile_density_of_a_flat_hard_cell_is_one_sided_at_its_ends(
+    #[case] x: f64,
+    #[case] side: Side,
+    #[case] density: f64,
+  ) -> Result<(), Report> {
+    let flat_at_hard_point = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 0.0 });
+    let f = helpers::function((0.0, 1.0), array![f64::INFINITY, 0.0], flat_at_hard_point, HARD)?;
+    let profile = MassProfile::new(&f)?;
+    let fractions = profile.fractions(TailMass::Required).unwrap();
+    pretty_assert_ulps_eq!(density, fractions.density(x, side), max_ulps = 4);
     Ok(())
   }
 
