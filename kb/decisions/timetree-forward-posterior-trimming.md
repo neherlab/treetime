@@ -104,7 +104,7 @@ Cost on one host, CPU time and peak memory: `data/sc2/4500` untrimmed 73.3 s and
 
 ## Results
 
-The measurements of this file come from outputs equal to those of commit `6868c7087`. A later correction of the mass model (each cell takes the width between its rounded end coordinates) moves dates of the measured ebola, flu and zika runs by at most $2.3 \cdot 10^{-10}$ of a 90% width, and on `data/sc2/4500` by up to 0.042 of a width: a one-ulp move of the parent of `USA/MN-MDH-48906/2025` turns its branch of $-1$ ulp into 0, and the later rounds spread the change.
+The measurements of this file come from outputs equal to those of commit `6868c7087`. A later correction of the mass model (each cell takes the width between its rounded end coordinates) moves dates of the measured ebola, flu and zika runs by at most $2.3 \cdot 10^{-10}$ of a 90% width, and on `data/sc2/4500` by up to 0.042 of a width: the first difference is a one-ulp move of the parent of `USA/MN-MDH-48906/2025`, and the later rounds spread it ([kb/issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md)).
 
 Release builds on one host, one thread, CPU time (user plus system) and peak resident memory, medians of three alternating rounds, against a release build of `rust` `d86d3eb65` (before this change and the mass model of [timetree-posterior-statistics-count-tail-mass.md](timetree-posterior-statistics-count-tail-mass.md)), measured on the final code including the later mass-model correction:
 

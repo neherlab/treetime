@@ -12,6 +12,11 @@ Commit `559c8697f` changed only the point count of the mass window in `fn resamp
 
 A repeat of the `zika/20` reproduction with `--coalescent-opt` on the code of 2026-10-20 (mass-model posterior statistics, forward-posterior trim) moved node dates by at most 0.0023 years, against 90% widths of 0.25 to 0.84 years, so there the moves lie far inside the stated uncertainty.
 
+The same sensitivity appears without any change of a point count. A change of the mass model that alters cell masses only by a relative $u / \Delta x$ (each cell takes the width between its rounded end coordinates instead of the stored spacing, with $u$ the unit in the last place of the coordinate) moved dates on `data/sc2/4500` by up to 0.042 of a node's 90% width, and 1491 of 10 199 nodes by more than 0.1% of their width. The first difference is a one-ulp move of the parent of the leaf `USA/MN-MDH-48906/2025` in the first round; the later rounds of the refinement loop spread it. The same change moved dates of `data/ebola/362`, `data/flu/h3n2/200` and `data/zika/86` by at most $2.3 \cdot 10^{-10}$ of a width. That branch goes from $-1$ ulp to 0, which changes the count of the warning about branches that run backward in time (`fn blended_clock_branch_lengths()`, [packages/treetime/src/timetree/inference/runner.rs#L189-L243](../../packages/treetime/src/timetree/inference/runner.rs#L189-L243)) but not the committed branch length, which is 0 in both cases.
+
+> [!IMPORTANT]
+> **Investigation required.** Which discrete step turns the one-ulp difference on `data/sc2/4500` into moves of 0.042 of a width: the argmax of `fn DistributionFunction::likely_time()`, a rounded point count, a trim cut that snaps to a grid point, or a refinement round that converges to another state. Compare the per-round node dates of the two builds and name the first step whose output differs by more than rounding.
+
 > [!IMPORTANT]
 > **Investigation required.** Whether the 0.152-year move of the original measurement stayed within that node's 90% interval or jumped between separate modes of its posterior. The repeat does not reproduce a move of that size, so the question needs the posterior of a node whose date moves by a large part of its width under a one-point grid change.
 
