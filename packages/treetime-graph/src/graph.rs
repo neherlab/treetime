@@ -222,13 +222,6 @@ impl Graph {
     self.get_node(node_key).is_some_and(Node::has_at_most_one_child)
   }
 
-  pub fn parent_inbound_edge(&self, key: GraphNodeKey) -> Result<Option<GraphEdgeKey>, Report> {
-    let node = self
-      .get_node(key)
-      .ok_or_else(|| make_internal_report!("Node not found: {key}"))?;
-    Ok(node.inbound().first().copied())
-  }
-
   pub fn edge_endpoints(&self, edge_key: GraphEdgeKey) -> Result<(GraphNodeKey, GraphNodeKey), Report> {
     let edge = self
       .get_edge(edge_key)

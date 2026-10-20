@@ -121,7 +121,7 @@ pub(crate) fn collapse_sparse_edges_from_leaf_recursive(
     collapse_edge(graph, partitions, current_edge_key, branch_lengths)?;
 
     let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
-      graph.parent_inbound_edge(parent_node_key)?
+      graph.node_parent(parent_node_key)?.map(|(_, edge_key)| edge_key)
     } else {
       None
     };

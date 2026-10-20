@@ -181,8 +181,8 @@ fn tip_group_mrca(graph: &Graph, tips: &[GraphNodeKey]) -> Result<GraphNodeKey, 
 }
 
 fn named_root_point(graph: &Graph, node_key: GraphNodeKey) -> Result<(Option<GraphEdgeKey>, f64), Report> {
-  Ok(match graph.parent_inbound_edge(node_key)? {
-    Some(edge) => (Some(edge), 0.5),
+  Ok(match graph.node_parent(node_key)? {
+    Some((_, edge)) => (Some(edge), 0.5),
     None => (None, 0.0),
   })
 }
