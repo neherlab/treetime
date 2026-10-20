@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use super::super::test_graph_support::tests::NamedGraph;
+  use super::super::test_graph_support::tests::helpers::NamedGraph;
   use crate::reroot::remove_stem_root;
   use eyre::Report;
   use pretty_assertions::assert_eq;

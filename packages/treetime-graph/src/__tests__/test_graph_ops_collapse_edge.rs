@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::{EdgeNames, edge_keys};
-  use super::super::test_graph_support::tests::NamedGraph;
+  use super::super::test_graph_support::tests::helpers::NamedGraph;
   use crate::edge::GraphEdgeKey;
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -109,7 +109,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::super::super::test_graph_support::tests::NamedGraph;
+    use super::super::super::test_graph_support::tests::helpers::NamedGraph;
     use crate::edge::GraphEdgeKey;
     use eyre::Report;
     use itertools::Itertools;

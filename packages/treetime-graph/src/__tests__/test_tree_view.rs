@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::names;
-  use super::super::test_graph_support::tests::NamedGraph;
-  use super::super::test_graph_support::tests::helpers::graph_from_parents;
+  use super::super::test_graph_support::tests::helpers::{NamedGraph, graph_from_parents};
   use crate::tree_view::TreeView;
   use eyre::Report;
   use itertools::Itertools;
@@ -180,7 +179,7 @@ mod tests {
   }
 
   mod helpers {
-    use super::super::super::test_graph_support::tests::NamedGraph;
+    use super::super::super::test_graph_support::tests::helpers::NamedGraph;
     use crate::node::GraphNodeKey;
     use itertools::Itertools;
 
