@@ -83,7 +83,7 @@ mod tests {
       (
         vec![("q", q_s), ("p", p_s), ("x", x_s)],
         vec![("x", dag.edge("p", "x")?), ("s", p_s)],
-        (1, 1, 0),
+        (1, 0, 0),
         (1, 0, 2),
         vec!["p", "q"],
         vec!["s"],
@@ -101,7 +101,7 @@ mod tests {
           .collect_vec(),
         (
           schedule.child_slot(p_s),
-          schedule.parent_slot(p_s),
+          schedule.child_slot(x_s),
           schedule.child_slot(q_s)
         ),
         (
