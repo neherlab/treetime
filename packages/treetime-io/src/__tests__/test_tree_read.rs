@@ -6,7 +6,7 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_utils::assert_error;
 
   #[rustfmt::skip]
@@ -20,7 +20,7 @@ mod tests {
     let parse = tree_read(input.as_bytes(), TREE_DIALECT_DEFAULT)?;
 
     let written = nwk_write_str(
-      &TreeView::new(&parse.graph)?,
+      &GraphSchedule::new(&parse.graph)?.into_tree()?,
       &parse.names(),
       &parse.branch_lengths,
       &NwkWriteOptions::default(),
@@ -66,7 +66,7 @@ mod tests {
     )?;
 
     let written = nwk_write_str(
-      &TreeView::new(&parse.graph)?,
+      &GraphSchedule::new(&parse.graph)?.into_tree()?,
       &parse.names(),
       &parse.branch_lengths,
       &NwkWriteOptions::default(),
@@ -95,7 +95,7 @@ mod tests {
     let parse = tree_read(b"(EPI_ISL#402124:0.3,B:0.2)root;".as_slice(), dialect)?;
 
     let written = nwk_write_str(
-      &TreeView::new(&parse.graph)?,
+      &GraphSchedule::new(&parse.graph)?.into_tree()?,
       &parse.names(),
       &parse.branch_lengths,
       &NwkWriteOptions::default(),

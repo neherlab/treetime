@@ -6,7 +6,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_graph::graph::Graph;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_read_file, nwk_write_str};
 
   #[test]
@@ -26,7 +26,7 @@ mod tests {
     assert_eq!(root_name.as_deref(), Some("root"));
 
     let output = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -73,7 +73,7 @@ mod tests {
     assert_eq!(root_name.as_deref(), Some("A"));
 
     let output = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -100,7 +100,7 @@ mod tests {
     assert_eq!(root_outbound, 3, "Root should have 3 children (polytomy)");
 
     let output = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -123,7 +123,7 @@ mod tests {
     assert_eq!(graph.get_leaves().count(), 5, "Should have 5 leaves");
 
     let output = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -151,7 +151,7 @@ mod tests {
     assert_eq!(zero_branches, 3, "Should have 3 zero-length branches");
 
     let output = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -285,7 +285,7 @@ mod tests {
     assert_eq!(graph.get_edges().count(), 2);
 
     let output = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),

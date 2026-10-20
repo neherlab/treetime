@@ -6,9 +6,10 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::pretty_assert_map_abs_diff_eq;
+  use treetime_utils::{assert_error, pretty_assert_map_abs_diff_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -50,13 +51,38 @@ mod tests {
     let names = parsed.names();
 
     let actual: BTreeMap<String, Option<f64>> =
-      root_to_node_divergences_where_known(&TreeView::new(&parsed.graph)?, &parsed.branch_lengths)
+      root_to_node_divergences_where_known(&GraphSchedule::new(&parsed.graph)?, &parsed.branch_lengths)?
         .into_iter()
         .map(|(key, div)| (names[&key].clone().unwrap(), div))
         .collect();
 
     let expected: BTreeMap<String, Option<f64>> = expected.iter().map(|(name, div)| ((*name).to_owned(), *div)).collect();
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_root_to_node_divergences_where_known_rejects_node_with_two_parents() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let left = graph.add_node();
+    let right = graph.add_node();
+    let shared = graph.add_node();
+    let edges = [
+      graph.add_edge(root, left)?,
+      graph.add_edge(root, right)?,
+      graph.add_edge(left, shared)?,
+      graph.add_edge(right, shared)?,
+    ];
+    graph.build()?;
+    let branch_lengths = edges.into_iter().map(|edge| (edge, Some(0.1))).collect();
+
+    let result = root_to_node_divergences_where_known(&GraphSchedule::new(&graph)?, &branch_lengths);
+
+    assert_error!(
+      result,
+      format!("The graph is not a tree: node {shared} has 2 parents, but a node of a tree has at most one")
+    );
     Ok(())
   }
 

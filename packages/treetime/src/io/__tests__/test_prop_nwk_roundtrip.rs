@@ -6,7 +6,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use std::thread;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
   proptest! {
@@ -34,7 +34,7 @@ mod tests {
         let parse = nwk_read(input.as_bytes())?;
         let names = parse.names();
         nwk_write_str(
-          &TreeView::new(&parse.graph)?,
+          &GraphSchedule::new(&parse.graph)?.into_tree()?,
           &names,
           &parse.branch_lengths,
           &NwkWriteOptions::default(),
@@ -54,7 +54,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_graph::tree_view::TreeView;
+    use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
     pub(super) type NameParentLength = BTreeMap<String, (Option<String>, Option<u64>)>;
@@ -86,7 +86,7 @@ mod tests {
         ..NwkWriteOptions::default()
       };
       let written = nwk_write_str(
-        &TreeView::new(&graph)?,
+        &GraphSchedule::new(&graph)?.into_tree()?,
         &names,
         &weights,
         &options,

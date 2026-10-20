@@ -7,7 +7,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
 
   #[rustfmt::skip]
   #[rstest]
@@ -110,7 +110,7 @@ mod tests {
     let mut actual = Vec::new();
     nex_write(
       &mut actual,
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -136,7 +136,7 @@ mod tests {
 
     nex_write(
       &mut actual,
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),

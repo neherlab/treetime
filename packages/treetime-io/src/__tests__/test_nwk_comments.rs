@@ -5,7 +5,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_utils::o;
 
   #[rustfmt::skip]
@@ -51,7 +51,7 @@ mod tests {
     } = parse;
 
     let actual = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -68,7 +68,7 @@ mod tests {
     use maplit::btreemap;
     use std::collections::BTreeMap;
     use treetime_graph::node::GraphNodeKey;
-    use treetime_graph::tree_view::TreeView;
+    use treetime_graph::schedule::GraphSchedule;
 
     pub(super) fn write_with_comments_on_a(
       style: NwkStyle,
@@ -84,7 +84,13 @@ mod tests {
         style,
         ..NwkWriteOptions::default()
       };
-      nwk_write_str(&TreeView::new(&graph)?, &names, &branch_lengths, &options, &comments)
+      nwk_write_str(
+        &GraphSchedule::new(&graph)?.into_tree()?,
+        &names,
+        &branch_lengths,
+        &options,
+        &comments,
+      )
     }
 
     fn find_node_key_by_name(names: &BTreeMap<GraphNodeKey, Option<String>>, name: &str) -> GraphNodeKey {

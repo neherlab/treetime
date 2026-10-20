@@ -49,7 +49,7 @@ mod tests {
     use treetime_graph::reroot::{
       apply_reroot_topology, record_merge, remove_node_if_trivial, trivial_node_branch_lengths,
     };
-    use treetime_graph::tree_view::TreeView;
+    use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
     pub(super) fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
@@ -84,7 +84,7 @@ mod tests {
         ..NwkWriteOptions::default()
       };
       nwk_write_str(
-        &TreeView::new(&graph)?,
+        &GraphSchedule::new(&graph)?.into_tree()?,
         &names,
         &branch_lengths,
         &options,

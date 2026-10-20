@@ -18,7 +18,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_utils::error::report_to_string;
@@ -111,7 +111,7 @@ mod tests {
       })
       .collect();
     let actual = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &time_lengths,
       &NwkWriteOptions::default(),

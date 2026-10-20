@@ -33,7 +33,7 @@ pub(crate) fn auspice_tree(
 ) -> Result<AuspiceTree, Report> {
   let divergences = match tree.graph().divergence {
     Divergence::CumulativeBranchLength => {
-      root_to_node_divergences_where_known(tree.tree(), tree.graph().divergence_branch_lengths)
+      root_to_node_divergences_where_known(tree.tree().schedule(), tree.graph().divergence_branch_lengths)?
     },
     Divergence::Values(values) => values.iter().map(|(&key, &div)| (key, Some(div))).collect(),
   };

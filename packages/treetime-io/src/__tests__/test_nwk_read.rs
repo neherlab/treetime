@@ -5,7 +5,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
 
   #[rustfmt::skip]
   #[rstest]
@@ -35,7 +35,7 @@ mod tests {
     } = parse;
 
     let actual = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),

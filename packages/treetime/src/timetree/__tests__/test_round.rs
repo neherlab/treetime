@@ -38,7 +38,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_grid::MaxGridPoints;
 
   use treetime_io::dates_csv::DateConstraint;
@@ -339,7 +339,7 @@ mod tests {
 
     pub(super) fn newick(state: &RoundState) -> Result<String, Report> {
       nwk_write_str(
-        &TreeView::new(&state.graph)?,
+        &GraphSchedule::new(&state.graph)?.into_tree()?,
         &state.names,
         &state.branch_lengths,
         &NwkWriteOptions::default(),

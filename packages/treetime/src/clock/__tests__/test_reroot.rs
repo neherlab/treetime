@@ -10,7 +10,7 @@ pub(crate) mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_utils::assert_error;
   use treetime_utils::pretty_assert_map_abs_diff_eq;
@@ -34,7 +34,7 @@ pub(crate) mod tests {
 
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -363,7 +363,7 @@ pub(crate) mod tests {
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::reroot::RerootResult;
-    use treetime_graph::tree_view::TreeView;
+    use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
     const TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -493,7 +493,7 @@ pub(crate) mod tests {
       let (tree, _) = reroot(fixture, reroot_params)?;
       let names = assign_node_names(names, &tree.graph)?.names;
       nwk_write_str(
-        &TreeView::new(&tree.graph)?,
+        &GraphSchedule::new(&tree.graph)?.into_tree()?,
         &names,
         &tree.branch_lengths,
         &NwkWriteOptions::default(),

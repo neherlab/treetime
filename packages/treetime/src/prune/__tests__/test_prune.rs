@@ -19,7 +19,7 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
@@ -37,7 +37,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -60,7 +60,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -83,7 +83,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -124,7 +124,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -147,7 +147,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -172,7 +172,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -308,7 +308,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -331,7 +331,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -404,7 +404,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -427,7 +427,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -450,7 +450,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -473,7 +473,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -496,7 +496,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -519,7 +519,7 @@ pub(super) mod tests {
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),

@@ -8,20 +8,20 @@ use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::tree_view::TreeView;
+use treetime_graph::schedule::{GraphSchedule, TreeSchedule};
 use treetime_primitives::Seq;
 use treetime_primitives::date::DateConstraint;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub struct AnnotatedTreeView<'a> {
   graph: &'a AnnotatedGraph<'a>,
-  tree: TreeView<'a>,
+  tree: TreeSchedule<'a>,
 }
 
 impl<'a> AnnotatedTreeView<'a> {
   pub fn new(graph: &'a AnnotatedGraph<'a>) -> Result<Self, Report> {
     Ok(Self {
-      tree: TreeView::new(graph.graph)?,
+      tree: GraphSchedule::new(graph.graph)?.into_tree()?,
       graph,
     })
   }
@@ -30,7 +30,7 @@ impl<'a> AnnotatedTreeView<'a> {
     self.graph
   }
 
-  pub fn tree(&self) -> &TreeView<'a> {
+  pub fn tree(&self) -> &TreeSchedule<'a> {
     &self.tree
   }
 }

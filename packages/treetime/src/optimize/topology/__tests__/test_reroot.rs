@@ -7,7 +7,7 @@ mod tests {
   use treetime_graph::reroot::{
     apply_reroot_topology, record_merge, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
-  use treetime_graph::tree_view::TreeView;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
   #[test]
@@ -152,7 +152,7 @@ mod tests {
 
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
@@ -205,7 +205,7 @@ mod tests {
     assert_eq!(graph.get_leaves().count(), 4);
 
     let newick = nwk_write_str(
-      &TreeView::new(&graph)?,
+      &GraphSchedule::new(&graph)?.into_tree()?,
       &names,
       &branch_lengths,
       &NwkWriteOptions {
