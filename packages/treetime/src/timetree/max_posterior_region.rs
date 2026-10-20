@@ -141,6 +141,24 @@ fn function_survival(
   let fractions = posterior_fractions(&profile)?;
   let start = fractions.quantile(trim);
   let end = fractions.survival_inverse(trim).max(start);
+  if !(start.is_finite() && end.is_finite()) {
+    let (side, tail) = if start.is_finite() {
+      (Side::Right, function.right_extrap())
+    } else {
+      (Side::Left, function.left_extrap())
+    };
+    return match tail {
+      BoundaryBehavior::Linear(law) => make_error!(
+        "Posterior on [{}, {}] has a tail of slope {:e} on the {side:?} side, which holds mass {trim:e} beyond the largest finite time",
+        function.x_min(),
+        function.x_max(),
+        law.slope
+      ),
+      BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => {
+        make_internal_error!("Posterior quantile {trim} on the {side:?} side without a soft tail is not finite")
+      },
+    };
+  }
   let seeds = chain!(
     once(start),
     density_turning_points(function).filter(|&x| x > start && x < end),

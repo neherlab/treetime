@@ -3,12 +3,13 @@ mod tests {
   use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_median, posterior_survival};
   use eyre::Report;
   use helpers::{flat_unit_function, grid};
-  use ndarray::Array1;
+  use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use statrs::distribution::{ContinuousCDF, Gamma};
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
-  use treetime_utils::pretty_assert_abs_diff_eq;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   const TRIM: f64 = 1e-9;
   const MAX_ERROR: f64 = 1e-6;
@@ -149,6 +150,27 @@ mod tests {
     pretty_assert_abs_diff_eq!(TRIM, survival.survival[last], epsilon = 1e-20);
     assert!(survival.t[last] < 2.0);
     helpers::assert_interpolates_within_max_error(&survival, exact);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right((-1.0, 0.0), array![0.0, -(1e-300_f64).ln()], BoundaryBehavior::Hard, BoundaryBehavior::Linear(SoftTailLaw { slope: 1e-310 }), "Posterior on [-1, 0] has a tail of slope 1e-310 on the Right side, which holds mass 1e-9 beyond the largest finite time")]
+  #[case::left( ( 0.0, 1.0), array![-(1e-300_f64).ln(), 0.0], BoundaryBehavior::Linear(SoftTailLaw { slope: -1e-310 }), BoundaryBehavior::Hard, "Posterior on [0, 1] has a tail of slope -1e-310 on the Left side, which holds mass 1e-9 beyond the largest finite time")]
+  #[trace]
+  fn test_posterior_survival_of_a_tail_too_slow_for_finite_times_is_error(
+    #[case] range: (f64, f64),
+    #[case] y: Array1<f64>,
+    #[case] left: BoundaryBehavior,
+    #[case] right: BoundaryBehavior,
+    #[case] message: &str,
+  ) -> Result<(), Report> {
+    let distribution = Distribution::Function(
+      DistributionFunction::<f64, NegLog>::from_range_values(range, y)?
+        .with_left_extrap(left)?
+        .with_right_extrap(right)?,
+    );
+    assert_error!(posterior_survival(&distribution, TRIM, MAX_ERROR), message);
     Ok(())
   }
 
