@@ -1,0 +1,3 @@
+# The expected stderr files end with the empty line that rustc prints after its
+# warning summary, and compiletest compares them byte for byte.
+*.stderr whitespace=-blank-at-eof
