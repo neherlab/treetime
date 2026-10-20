@@ -164,13 +164,18 @@ pub(crate) struct CoalescentReportBand {
 pub(crate) struct CoalescentSetup {
   pub mode: CoalescentMode,
   pub skyline_params: SkylineParams,
-  pub lineage_expectation: Arc<LineageExpectation>,
+  pub lineages: Option<LineageModel>,
 }
 
 impl CoalescentSetup {
   pub(crate) fn prior_wanted(&self) -> bool {
     self.mode.wants_prior()
   }
+}
+
+pub(crate) struct LineageModel {
+  pub expectation: Arc<LineageExpectation>,
+  pub timescale: CoalescentTimescale,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -184,6 +189,10 @@ pub enum CoalescentMode {
 impl CoalescentMode {
   pub(crate) fn wants_prior(self) -> bool {
     self != CoalescentMode::Disabled
+  }
+
+  pub(crate) fn reads_lineages(self, resolve_polytomies: bool) -> bool {
+    self.wants_prior() || resolve_polytomies
   }
 
   pub(crate) fn is_optimized(self) -> bool {

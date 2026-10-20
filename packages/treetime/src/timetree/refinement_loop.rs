@@ -2,30 +2,26 @@ use crate::cancel::Cancel;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
-use crate::timetree::coalescent_timescale::{CoalescentSetup, CoalescentTimescale, coalescent_timescale};
+use crate::timetree::coalescent_timescale::{CoalescentSetup, coalescent_timescale};
 use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
 use crate::timetree::optimization::marginal_clock_rate::RateWindow;
 use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
 use std::sync::Arc;
+use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::sync::random::get_random_number_generator;
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "the round inputs and state are grouped; the trace sink, cancellation, stage and log sinks are separate run services of the caller"
-)]
 pub(crate) fn run_refinement_loop(
   inputs: &RoundInputs<'_>,
   mut coalescent: CoalescentSetup,
-  mut timescale: CoalescentTimescale,
   mut state: RoundState,
   trace_sink: Option<&mut dyn TraceSink>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<(RoundState, CoalescentSetup, CoalescentTimescale), Report> {
+) -> Result<(RoundState, CoalescentSetup), Report> {
   cancel.check()?;
   stages.report("Refinement loop", 0.3, "");
   progress_info!(log, "### TreeTime: refinement loop");
@@ -37,26 +33,20 @@ pub(crate) fn run_refinement_loop(
   let max_iter = params.max_iter;
 
   let mut rng = get_random_number_generator(params.seed);
-  let mut current = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
+  let mut current = current_expectation(&coalescent, &state)?;
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
     let iter_fraction = 0.3 + 0.5 * ((i - 1).to_f64_exact() / max_iter.to_f64_exact());
     stages.report("Refinement loop", iter_fraction, &format!("iteration {i}/{max_iter}"));
 
-    if coalescent.mode.is_optimized() {
-      timescale = coalescent_timescale(coalescent.mode, &coalescent.skyline_params, &current, log)?;
-    }
-    let merger_rate = coalescent
-      .lineage_expectation
-      .merger_rate_schedule(&timescale.distribution)?;
-    let coalescent_prior = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
+    let RoundModels { merger_rate, prior } = round_models(&mut coalescent, current.as_ref(), log)?;
 
     let iteration_clock = IterationClock::of(&state.clock_model);
     let (next_state, outcome) = refinement_round(
       inputs,
-      &merger_rate,
-      coalescent.prior_wanted().then_some(&coalescent_prior),
+      merger_rate.as_ref(),
+      prior.as_ref(),
       if i == 1 {
         RateWindow::FollowSlope
       } else {
@@ -68,13 +58,16 @@ pub(crate) fn run_refinement_loop(
     )
     .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
-    current = LineageExpectation::of_inference(&state.graph, &state.time_inference)?;
-    if outcome.topology.changed() {
-      coalescent = CoalescentSetup {
-        lineage_expectation: Arc::clone(&current),
-        ..coalescent
-      };
+    current = current_expectation(&coalescent, &state)?;
+    if let (Some(lineages), Some(current), true) = (&mut coalescent.lineages, &current, outcome.topology.changed()) {
+      lineages.expectation = Arc::clone(current);
     }
+    let expected_log_lh = match (&coalescent.lineages, &current) {
+      (Some(lineages), Some(current)) if coalescent.prior_wanted() => {
+        Some(lineages.timescale.expected_log_likelihood(current))
+      },
+      _ => None,
+    };
 
     optimizer
       .record(
@@ -84,9 +77,7 @@ pub(crate) fn run_refinement_loop(
         &state.graph,
         &state.branch_model,
         &state.time_inference,
-        coalescent
-          .prior_wanted()
-          .then(|| timescale.expected_log_likelihood(&current)),
+        expected_log_lh,
         iteration_clock,
         log,
       )
@@ -94,5 +85,49 @@ pub(crate) fn run_refinement_loop(
       .wrap_err_with(|| format!("When running round {i}"))?;
   }
 
-  Ok((state, coalescent, timescale))
+  Ok((state, coalescent))
+}
+
+fn current_expectation(
+  coalescent: &CoalescentSetup,
+  state: &RoundState,
+) -> Result<Option<Arc<LineageExpectation>>, Report> {
+  coalescent
+    .lineages
+    .as_ref()
+    .map(|_| LineageExpectation::of_inference(&state.graph, &state.time_inference))
+    .transpose()
+}
+
+fn round_models(
+  coalescent: &mut CoalescentSetup,
+  current: Option<&Arc<LineageExpectation>>,
+  log: &dyn LogSink,
+) -> Result<RoundModels, Report> {
+  let mode = coalescent.mode;
+  let prior_wanted = coalescent.prior_wanted();
+  let (Some(lineages), Some(current)) = (&mut coalescent.lineages, current) else {
+    return Ok(RoundModels {
+      merger_rate: None,
+      prior: None,
+    });
+  };
+  if mode.is_optimized() {
+    lineages.timescale = coalescent_timescale(mode, &coalescent.skyline_params, current, log)?;
+  }
+  let merger_rate = lineages
+    .expectation
+    .merger_rate_schedule(&lineages.timescale.distribution)?;
+  let prior = prior_wanted
+    .then(|| CoalescentPrior::new(&lineages.expectation, &lineages.timescale.distribution))
+    .transpose()?;
+  Ok(RoundModels {
+    merger_rate: Some(merger_rate),
+    prior,
+  })
+}
+
+struct RoundModels {
+  merger_rate: Option<PiecewiseConstantFn>,
+  prior: Option<CoalescentPrior>,
 }

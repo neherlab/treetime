@@ -9,6 +9,7 @@ use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
+use crate::timetree::coalescent_timescale::coalescent_mode;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::result::{PosteriorSummaries, TimeInference, likely_times};
@@ -35,10 +36,11 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
+use treetime_utils::make_internal_error;
 
 pub(crate) fn refinement_round(
   inputs: &RoundInputs<'_>,
-  merger_rate: &PiecewiseConstantFn,
+  merger_rate: Option<&PiecewiseConstantFn>,
   prior: Option<&CoalescentPrior>,
   rate_window: RateWindow,
   state: RoundState,
@@ -127,13 +129,16 @@ fn refine_topology(
   inputs: &RoundInputs<'_>,
   state: RoundState,
   total_length: usize,
-  merger_rate: &PiecewiseConstantFn,
+  merger_rate: Option<&PiecewiseConstantFn>,
   rng: &mut dyn Rng,
   log: &dyn LogSink,
 ) -> Result<(RoundState, TopologyOutcome), Report> {
   if !inputs.params.resolve_polytomies {
     return Ok((state, TopologyOutcome::Unchanged));
   }
+  let Some(merger_rate) = merger_rate else {
+    return make_internal_error!("Polytomy resolution needs the merger rate of the expected lineage counts");
+  };
 
   let total_mutation_rate = state.clock_model.clock_rate() * total_length.to_f64_exact();
   let mut node_times = state.time_inference.node_times();
@@ -364,7 +369,7 @@ impl RoundState {
       max_grid_points: inputs.params.max_grid_points,
       posterior_summaries: PosteriorSummaries {
         regions: false,
-        lineage_survival: true,
+        lineage_survival: inputs.reads_lineages(),
       },
     }
   }
@@ -397,4 +402,12 @@ pub(crate) struct RoundInputs<'a> {
   pub context: &'a TimetreeContext,
   pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
   pub outliers: &'a BTreeSet<GraphNodeKey>,
+}
+
+impl RoundInputs<'_> {
+  pub(crate) fn reads_lineages(&self) -> bool {
+    let params = self.params;
+    coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline)
+      .reads_lineages(params.resolve_polytomies)
+  }
 }

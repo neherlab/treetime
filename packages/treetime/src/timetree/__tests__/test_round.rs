@@ -537,7 +537,7 @@ mod tests {
 
       refinement_round(
         &inputs,
-        &merger_rate,
+        Some(&merger_rate),
         prior,
         RateWindow::FollowSlope,
         state,

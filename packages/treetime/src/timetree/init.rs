@@ -4,7 +4,7 @@ use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::skyline::SkylineParams;
 use crate::progress::LogSink;
 use crate::timetree::coalescent_timescale::{
-  CoalescentSetup, CoalescentTimescale, coalescent_mode, coalescent_timescale,
+  CoalescentMode, CoalescentSetup, LineageModel, coalescent_mode, coalescent_timescale,
 };
 use crate::timetree::inference::bad_branches::bad_leaves;
 use crate::timetree::inference::result::{TimeInference, given_times};
@@ -65,31 +65,11 @@ pub(crate) fn initialize(
     n_std: params.coalescent_confidence,
     ..SkylineParams::default()
   };
-  let run = |prior: Option<&CoalescentPrior>| run_timetree(&state.time_inference_inputs(&inputs), prior, log);
-
-  let gaussian_seed = if mode.wants_prior() {
-    gaussian_seed(&inputs, &state, log)?
+  let (time_inference, lineages) = if mode.reads_lineages(params.resolve_polytomies) {
+    let (time_inference, lineages) = infer_initial_lineages(mode, &skyline_params, &inputs, &state, log)?;
+    (time_inference, Some(lineages))
   } else {
-    None
-  };
-  let (seed_expectation, prior_free) = if let Some(expectation) = gaussian_seed {
-    (expectation, None)
-  } else {
-    let time_inference = run(None)?;
-    (
-      LineageExpectation::of_inference(&state.graph, &time_inference)?,
-      Some(time_inference),
-    )
-  };
-  let timescale = coalescent_timescale(mode, &skyline_params, &seed_expectation, log)?;
-
-  let (time_inference, lineage_expectation) = if let Some(time_inference) = prior_free.filter(|_| !mode.wants_prior()) {
-    (time_inference, seed_expectation)
-  } else {
-    let prior = CoalescentPrior::new(&seed_expectation, &timescale.distribution)?;
-    let time_inference = run(Some(&prior))?;
-    let expectation = LineageExpectation::of_inference(&state.graph, &time_inference)?;
-    (time_inference, expectation)
+    (run_timetree(&state.time_inference_inputs(&inputs), None, log)?, None)
   };
 
   let state = RoundState {
@@ -103,9 +83,8 @@ pub(crate) fn initialize(
     coalescent: CoalescentSetup {
       mode,
       skyline_params,
-      lineage_expectation,
+      lineages,
     },
-    timescale,
   })
 }
 
@@ -114,7 +93,42 @@ pub(crate) struct InitialRound {
   pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
   pub outliers: BTreeSet<GraphNodeKey>,
   pub coalescent: CoalescentSetup,
-  pub timescale: CoalescentTimescale,
+}
+
+fn infer_initial_lineages(
+  mode: CoalescentMode,
+  skyline_params: &SkylineParams,
+  inputs: &RoundInputs<'_>,
+  state: &RoundState,
+  log: &dyn LogSink,
+) -> Result<(TimeInference, LineageModel), Report> {
+  let run = |prior: Option<&CoalescentPrior>| run_timetree(&state.time_inference_inputs(inputs), prior, log);
+
+  let gaussian_seed = if mode.wants_prior() {
+    gaussian_seed(inputs, state, log)?
+  } else {
+    None
+  };
+  let (seed_expectation, prior_free) = if let Some(expectation) = gaussian_seed {
+    (expectation, None)
+  } else {
+    let time_inference = run(None)?;
+    (
+      LineageExpectation::of_inference(&state.graph, &time_inference)?,
+      Some(time_inference),
+    )
+  };
+  let timescale = coalescent_timescale(mode, skyline_params, &seed_expectation, log)?;
+
+  let (time_inference, expectation) = if let Some(time_inference) = prior_free.filter(|_| !mode.wants_prior()) {
+    (time_inference, seed_expectation)
+  } else {
+    let prior = CoalescentPrior::new(&seed_expectation, &timescale.distribution)?;
+    let time_inference = run(Some(&prior))?;
+    let expectation = LineageExpectation::of_inference(&state.graph, &time_inference)?;
+    (time_inference, expectation)
+  };
+  Ok((time_inference, LineageModel { expectation, timescale }))
 }
 
 fn gaussian_seed(

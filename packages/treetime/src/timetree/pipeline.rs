@@ -22,9 +22,7 @@ use crate::seq::alignment::SequenceSource;
 use crate::seq::sink::{SeqSink, SeqTrack};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
-use crate::timetree::coalescent_timescale::{
-  CoalescentMode, CoalescentSetup, CoalescentTimescale, build_coalescent_output,
-};
+use crate::timetree::coalescent_timescale::{CoalescentSetup, build_coalescent_output};
 use crate::timetree::confidence::{
   NodeConfidenceInterval, RateSusceptibility, compute_rate_susceptibility, determine_rate_std,
   extract_confidence_intervals,
@@ -95,10 +93,9 @@ pub fn run(
     leaf_bad_branches: &initial.leaf_bad_branches,
     outliers: &initial.outliers,
   };
-  let (state, coalescent, timescale) = run_refinement_loop(
+  let (state, coalescent) = run_refinement_loop(
     &round_inputs,
     initial.coalescent,
-    initial.timescale,
     initial.state,
     trace_sink,
     cancel,
@@ -106,15 +103,13 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  report_coalescent_size(params, coalescent.mode, &timescale, log);
+  report_coalescent_size(params, &coalescent, log);
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Postprocessing", 0.85, "");
   progress_info!(log, "### TreeTime: postprocessing");
-  let final_times =
-    refine_final_times(&round_inputs, &coalescent, &timescale, state, log).map_err(OperationError::classify)?;
-  let results =
-    gather_results(params, &context, &coalescent, &timescale, final_times).map_err(OperationError::classify)?;
+  let final_times = refine_final_times(&round_inputs, &coalescent, state, log).map_err(OperationError::classify)?;
+  let results = gather_results(params, &context, &coalescent, final_times).map_err(OperationError::classify)?;
   let final_inputs = FinalInputs {
     params,
     context: &context,
@@ -338,16 +333,11 @@ fn initialize_branch_model(
   }
 }
 
-fn report_coalescent_size(
-  params: &TimetreeParams,
-  mode: CoalescentMode,
-  timescale: &CoalescentTimescale,
-  log: &dyn LogSink,
-) {
-  if mode.output_mode().is_none() {
+fn report_coalescent_size(params: &TimetreeParams, coalescent: &CoalescentSetup, log: &dyn LogSink) {
+  let (Some(_), Some(lineages)) = (coalescent.mode.output_mode(), &coalescent.lineages) else {
     return;
-  }
-  let tc_values = timescale.schedule.values();
+  };
+  let tc_values = lineages.timescale.schedule.values();
   progress_info!(
     log,
     "Coalescent effective population size (gen_per_year={:.4}, {} segment(s)):",
@@ -366,7 +356,6 @@ fn report_coalescent_size(
 fn refine_final_times(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
-  timescale: &CoalescentTimescale,
   state: RoundState,
   log: &dyn LogSink,
 ) -> Result<FinalTimes, Report> {
@@ -396,8 +385,14 @@ fn refine_final_times(
     None
   };
 
-  let final_model = CoalescentPrior::new(&coalescent.lineage_expectation, &timescale.distribution)?;
-  let final_prior = coalescent.prior_wanted().then_some(&final_model);
+  let final_model = match &coalescent.lineages {
+    Some(lineages) if coalescent.prior_wanted() => Some(CoalescentPrior::new(
+      &lineages.expectation,
+      &lineages.timescale.distribution,
+    )?),
+    _ => None,
+  };
+  let final_prior = final_model.as_ref();
 
   let (central, rate_susceptibility_dates) = if let Some(rate_std) = rate_std {
     progress_info!(log, "### Rate susceptibility analysis (rate_std={rate_std:.6e})");
@@ -441,7 +436,6 @@ fn gather_results(
   params: &TimetreeParams,
   context: &TimetreeContext,
   coalescent: &CoalescentSetup,
-  timescale: &CoalescentTimescale,
   final_times: FinalTimes,
 ) -> Result<FinalResults, Report> {
   let FinalTimes {
@@ -461,12 +455,15 @@ fn gather_results(
     })
     .transpose()?;
 
-  let coalescent_output = build_coalescent_output(
-    coalescent.mode,
-    timescale,
-    params.gen_per_year,
-    &coalescent.skyline_params,
-  )?;
+  let coalescent_output = match &coalescent.lineages {
+    Some(lineages) => build_coalescent_output(
+      coalescent.mode,
+      &lineages.timescale,
+      params.gen_per_year,
+      &coalescent.skyline_params,
+    )?,
+    None => None,
+  };
 
   let divergences = root_to_node_divergences(&state.graph, |edge_key| {
     branch_length_or_zero(&state.branch_lengths, edge_key)
