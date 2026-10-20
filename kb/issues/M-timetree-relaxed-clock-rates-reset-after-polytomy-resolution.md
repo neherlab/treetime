@@ -5,7 +5,7 @@ In each refinement round, v1 fits the relaxed-clock rate multipliers (gamma) and
 ## v1 behavior
 
 - `fn refinement_round()` calls `fn relax_clock()` (which calls `apply_relaxed_clock`) before `fn refine_topology()` ([packages/treetime/src/timetree/round.rs#L49-L53](../../packages/treetime/src/timetree/round.rs#L49-L53))
-- `fn refine_topology()` replaces the gamma map with `unit_gammas()` for the resolved tree ([packages/treetime/src/timetree/round.rs#L166](../../packages/treetime/src/timetree/round.rs#L166)). `fn unit_gammas()` sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121))
+- `fn refine_topology()` replaces the gamma map with `unit_gammas()` for the resolved tree ([packages/treetime/src/timetree/round.rs#L173](../../packages/treetime/src/timetree/round.rs#L173)). `fn unit_gammas()` sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121))
 - The next round recomputes the multipliers at its start, so the reset lasts for the rest of the round that resolved polytomies, and for the final outputs when that round is the last one
 
 ## v0 behavior

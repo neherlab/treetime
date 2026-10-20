@@ -6,7 +6,7 @@ Forward-pass grids hold a median 17-124 times more points than their mass core, 
 
 - `fn lower_edge()`, `fn upper_edge()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L145-L175](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L145-L175): a `Hard` or `HardApproach` side returns the grid edge, regardless of mass
 - `fn convolve_across_edge()` [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L31-L40](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L31-L40): the window is clipped to the result's own edge on the hard side
-- `fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L165-L174](../../packages/treetime/src/timetree/inference/forward_pass.rs#L165-L174): the posterior (forward message times subtree distribution) spans the full support intersection and is not re-windowed
+- `fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs#L207-L216](../../packages/treetime/src/timetree/inference/forward_pass.rs#L207-L216): the posterior (forward message times subtree distribution) spans the full support intersection and is not re-windowed
 
 ## Fix direction
 

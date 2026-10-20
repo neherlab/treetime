@@ -4,7 +4,7 @@ Three partition structures expose probability-profile arrays through the unexpla
 
 - `DenseSeqDistribution::dis` [`packages/treetime/src/partition/storage/dense.rs#L85`](../../packages/treetime/src/partition/storage/dense.rs#L85)
 - `FixedProfile::dis` [`packages/treetime/src/partition/storage/sparse.rs#L220`](../../packages/treetime/src/partition/storage/sparse.rs#L220), with the method `FixedProfiles::map_dis()` [`packages/treetime/src/partition/storage/sparse.rs#L189`](../../packages/treetime/src/partition/storage/sparse.rs#L189)
-- `VarPos::dis` [`packages/treetime/src/partition/storage/sparse.rs#L281`](../../packages/treetime/src/partition/storage/sparse.rs#L281)
+- `VarPos::dis` [`packages/treetime/src/partition/storage/sparse.rs#L264`](../../packages/treetime/src/partition/storage/sparse.rs#L264)
 
 ## Evidence
 

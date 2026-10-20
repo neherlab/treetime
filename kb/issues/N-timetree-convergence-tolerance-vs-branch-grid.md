@@ -1,6 +1,6 @@
 # Node-time convergence tolerance is not derived from the branch grid
 
-`NODE_TIME_TOLERANCE_YEARS = 1e-2` [packages/treetime/src/timetree/convergence/metrics.rs#L5](../../packages/treetime/src/timetree/convergence/metrics.rs#L5) is a fixed constant. Node times are quantized by the branch-length grid of `GRID_POINTS = 300` points [packages/treetime/src/timetree/inference/runner.rs#L29](../../packages/treetime/src/timetree/inference/runner.rs#L29), whose step depends on the dataset, so a fixed tolerance is above the resolvable step on some datasets and below it on others.
+`NODE_TIME_TOLERANCE_YEARS = 1e-2` [packages/treetime/src/timetree/convergence/metrics.rs#L5](../../packages/treetime/src/timetree/convergence/metrics.rs#L5) is a fixed constant. Node times are quantized by the branch-length grid of `GRID_POINTS = 300` points [packages/treetime/src/timetree/inference/runner.rs#L31](../../packages/treetime/src/timetree/inference/runner.rs#L31), whose step depends on the dataset, so a fixed tolerance is above the resolvable step on some datasets and below it on others.
 
 ## Evidence
 

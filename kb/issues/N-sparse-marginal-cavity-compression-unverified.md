@@ -9,7 +9,7 @@
 
 ## Details
 
-`fn compute_msg_to_child()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L167-L226`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L167-L226) divides and normalizes cavity profiles, then inserts them into `msg_to_child.variable` and subtracts them from the fixed counts of their states.
+`fn compute_msg_to_child()` [`packages/treetime/src/partition/marginal/sparse/forward.rs#L207-L266`](../../packages/treetime/src/partition/marginal/sparse/forward.rs#L207-L266) divides and normalizes cavity profiles, then inserts them into `msg_to_child.variable` and subtracts them from the fixed counts of their states.
 
 Let $\varepsilon$ denote a proposed probability threshold. A near-deterministic profile can retain nonzero probability outside its MAP state, so it is not identical to a fixed row. Demoting it under an $\varepsilon$ threshold would discard uncertainty and can change likelihood evaluation. The current explicit representation preserves the complete normalized profile.
 

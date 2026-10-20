@@ -20,7 +20,7 @@ v0 always uses dense representation. v0 mitigates the cost through column compre
 
 ## Implementation pointers
 
-Start with profiling (`just profile` on the host: it builds the binary in the container and runs `perf` on the host, because `perf` cannot read the kernel counters inside Docker) on the mpox dataset in dense mode to confirm where time is spent. The expected hotspots are the dense kernels `fn indexed_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L92](../../packages/treetime/src/partition/marginal/shared/pass.rs#L92) and `fn indexed_forward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L240](../../packages/treetime/src/partition/marginal/shared/pass.rs#L240).
+Start with profiling (`just profile` on the host: it builds the binary in the container and runs `perf` on the host, because `perf` cannot read the kernel counters inside Docker) on the mpox dataset in dense mode to confirm where time is spent. The expected hotspots are the dense kernels `fn indexed_backward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L88](../../packages/treetime/src/partition/marginal/shared/pass.rs#L88) and `fn indexed_forward()` [packages/treetime/src/partition/marginal/shared/pass.rs#L256](../../packages/treetime/src/partition/marginal/shared/pass.rs#L256).
 
 Open questions for the implementer:
 

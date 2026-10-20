@@ -30,10 +30,10 @@ The regression reports no covariance: OLS treats the tips as independent while t
 
 Two-pass message passing gives the regression sums for every root position in O(N) time. The backward pass (postorder) accumulates `ClockSet` sums from the leaves: each dated, non-outlier leaf contributes its date, and every node passes its sums to its parent shifted by the branch length. The forward pass (preorder) passes the complementary sums down, so that every edge holds the sums of the tips on both of its sides, from which the root search evaluates any root position without another traversal.
 
-v1: `fn clock_regression()` [packages/treetime/src/clock/clock_regression.rs#L253](../../packages/treetime/src/clock/clock_regression.rs#L253).
+v1: `fn clock_regression()` [packages/treetime/src/clock/clock_regression.rs#L206-L215](../../packages/treetime/src/clock/clock_regression.rs#L206-L215).
 v0: [`packages/legacy/treetime/treetime/treeregression.py#L192-L283`](../../packages/legacy/treetime/treetime/treeregression.py#L192-L283).
 
-Re-estimation mode: when `prev_clock_rate` is provided (during iterative timetree refinement), the regression uses solver-updated time lengths converted to divergence (`time_length * rate * gamma`) instead of input branch lengths (`fn edge_length()`, [packages/treetime/src/clock/clock_regression.rs#L384](../../packages/treetime/src/clock/clock_regression.rs#L384)).
+Re-estimation mode: when `prev_clock_rate` is provided (during iterative timetree refinement), the regression uses solver-updated time lengths converted to divergence (`time_length * rate * gamma`) instead of input branch lengths (`fn edge_length()`, [packages/treetime/src/clock/clock_regression.rs#L358-L369](../../packages/treetime/src/clock/clock_regression.rs#L358-L369)).
 
 v0 can weight the regression by branch variances (`--covariation`, `--tip-slack`); v1 removed these options ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)).
 

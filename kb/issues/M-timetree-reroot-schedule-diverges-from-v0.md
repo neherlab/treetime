@@ -1,6 +1,6 @@
 # Timetree reroot and clock-filter schedule differs from v0
 
-The order of rerooting, clock filtering, branch-length optimization and time inference before the refinement loop differs between v1 and v0. In v1, `fn run()` fits the first clock model in `fn estimate_initial_clock()` [packages/treetime/src/timetree/pipeline.rs#L277-L303](../../packages/treetime/src/timetree/pipeline.rs#L277-L303), then `fn run_pre_loop()` runs the other pre-loop steps [packages/treetime/src/timetree/pre_loop.rs#L29-L70](../../packages/treetime/src/timetree/pre_loop.rs#L29-L70). In v0, `TreeTime._run` (`packages/legacy/treetime/treetime/treetime.py`) runs all steps.
+The order of rerooting, clock filtering, branch-length optimization and time inference before the refinement loop differs between v1 and v0. In v1, `fn run()` fits the first clock model in `fn estimate_initial_clock()` [packages/treetime/src/timetree/pipeline.rs#L275-L301](../../packages/treetime/src/timetree/pipeline.rs#L275-L301), then `fn run_pre_loop()` runs the other pre-loop steps [packages/treetime/src/timetree/pre_loop.rs#L29-L70](../../packages/treetime/src/timetree/pre_loop.rs#L29-L70). In v0, `TreeTime._run` (`packages/legacy/treetime/treetime/treetime.py`) runs all steps.
 
 ## Side by side
 

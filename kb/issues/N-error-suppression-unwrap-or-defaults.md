@@ -11,7 +11,7 @@ Several locations substitute a default value for data that carries meaning, or c
 
 ## `branch_length().unwrap_or(one_mutation)` fallback
 
-[packages/treetime/src/timetree/inference/runner.rs#L268](../../packages/treetime/src/timetree/inference/runner.rs#L268): an edge without a branch length gets `one_mutation` (1 / total sites) when the Poisson branch-length distribution is built. A missing branch length can indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
+[packages/treetime/src/timetree/inference/runner.rs#L277](../../packages/treetime/src/timetree/inference/runner.rs#L277): an edge without a branch length gets `one_mutation` (1 / total sites) when the Poisson branch-length distribution is built. A missing branch length can indicate a tree-loading error or an uninitialized edge, but the fallback silently assigns a plausible value.
 
 ## `Composition::adjust_count` clamps negative counts
 

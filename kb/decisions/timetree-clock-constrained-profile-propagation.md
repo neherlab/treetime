@@ -19,8 +19,8 @@ is dimensionally a no-op, and since `use_mutation_length` is always `False`,
 hands those clock-constrained lengths to the next reconstruction.
 
 **v1 location**:
-[`blended_clock_branch_lengths`](../../packages/treetime/src/timetree/inference/runner.rs#L95),
-[`timetree_branch_lengths`](../../packages/treetime/src/timetree/inference/runner.rs#L238-L255), and
+[`blended_clock_branch_lengths`](../../packages/treetime/src/timetree/inference/runner.rs#L98),
+[`timetree_branch_lengths`](../../packages/treetime/src/timetree/inference/runner.rs#L247-L264), and
 the `clock_branch_lengths` map of `struct RoundState` in
 [`packages/treetime/src/timetree/round.rs`](../../packages/treetime/src/timetree/round.rs).
 
@@ -69,7 +69,7 @@ so the ancestral, optimize, and mugration commands are unaffected. It has two pr
   passes the map to `BranchModel::marginal_update`
   ([`packages/treetime/src/timetree/branch_model.rs#L28-L38`](../../packages/treetime/src/timetree/branch_model.rs#L28-L38))
 - `fn assemble_output` passes the map to `fn final_partition_results`
-  ([`packages/treetime/src/timetree/pipeline.rs#L152-L160`](../../packages/treetime/src/timetree/pipeline.rs#L152-L160)),
+  ([`packages/treetime/src/timetree/pipeline.rs#L150-L158`](../../packages/treetime/src/timetree/pipeline.rs#L150-L158)),
   which runs the final marginal update on the partition set directly
 
 Both reach `PartitionSet::marginal_update`

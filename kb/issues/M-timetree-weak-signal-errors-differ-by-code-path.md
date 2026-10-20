@@ -5,7 +5,7 @@
 
 ## Problem
 
-On simulated data with weak temporal signal, the same case fails with different errors, depending on the code path. One of them is internal: `Cannot divide by empty distribution` [packages/treetime-distribution/src/distribution_ops/divide.rs#L30](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L30), raised by the division that forms the cavity of a node in the forward pass [packages/treetime/src/timetree/inference/forward_pass.rs#L153](../../packages/treetime/src/timetree/inference/forward_pass.rs#L153). The same division raises a second internal error for two point distributions [packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34). None of the messages tells the user that the date signal is weak.
+On simulated data with weak temporal signal, the same case fails with different errors, depending on the code path. One of them is internal: `Cannot divide by empty distribution` [packages/treetime-distribution/src/distribution_ops/divide.rs#L30](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L30), raised by the division that forms the cavity of a node in the forward pass [packages/treetime/src/timetree/inference/forward_pass.rs#L195](../../packages/treetime/src/timetree/inference/forward_pass.rs#L195). The same division raises a second internal error for two point distributions [packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34). None of the messages tells the user that the date signal is weak.
 
 ## Related errors
 
@@ -16,7 +16,7 @@ On simulated data with weak temporal signal, the same case fails with different 
 
 ## Fix direction
 
-Unknown until the paths are traced. A node whose date the rest of the tree gives no probability gets an empty posterior; the forward pass keeps the date the node was given and warns ([packages/treetime/src/timetree/inference/forward_pass.rs#L43-L53](../../packages/treetime/src/timetree/inference/forward_pass.rs#L43-L53)).
+Unknown until the paths are traced. A node whose date the rest of the tree gives no probability gets an empty posterior; the forward pass keeps the date the node was given and warns ([packages/treetime/src/timetree/inference/forward_pass.rs#L53-L63](../../packages/treetime/src/timetree/inference/forward_pass.rs#L53-L63)).
 
 ## Validation
 

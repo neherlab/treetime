@@ -2,7 +2,7 @@
 
 `timetree` declares `--metadata` (visible alias `--dates`) as optional ([packages/app-commands/src/commands/timetree/args.rs#L142-L149](../../packages/app-commands/src/commands/timetree/args.rs#L142-L149)), and its argument conversion checks only `--tree` ([packages/app-commands/src/commands/timetree/args.rs#L64-L67](../../packages/app-commands/src/commands/timetree/args.rs#L64-L67)). The sibling `clock` command reports a missing `--metadata` with the required-arguments error ([packages/app-commands/src/commands/clock/args.rs#L42-L49](../../packages/app-commands/src/commands/clock/args.rs#L42-L49)).
 
-Without dates, `timetree` runs up to the initial clock fit ([packages/treetime/src/timetree/pipeline.rs#L298-L299](../../packages/treetime/src/timetree/pipeline.rs#L298-L299)) and fails there with a message that does not mention the missing dates:
+Without dates, `timetree` runs up to the initial clock fit ([packages/treetime/src/timetree/pipeline.rs#L296-L297](../../packages/treetime/src/timetree/pipeline.rs#L296-L297)) and fails there with a message that does not mention the missing dates:
 
 ```bash
 ./dev/docker/run just r treetime timetree \

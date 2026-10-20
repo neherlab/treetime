@@ -10,7 +10,7 @@ v1 `timetree` accepts `--allow-negative-rate` and relaxes the positive-rate requ
 ## v1
 
 - CLI flag of timetree: `allow_negative_rate` in [packages/app-commands/src/commands/timetree/args.rs#L344-L346](../../packages/app-commands/src/commands/timetree/args.rs#L344-L346)
-- Initial clock estimate: `fn estimate_initial_clock()` passes `!params.allow_negative_rate` as the positive-rate requirement ([packages/treetime/src/timetree/pipeline.rs#L285](../../packages/treetime/src/timetree/pipeline.rs#L285))
+- Initial clock estimate: `fn estimate_initial_clock()` passes `!params.allow_negative_rate` as the positive-rate requirement ([packages/treetime/src/timetree/pipeline.rs#L283](../../packages/treetime/src/timetree/pipeline.rs#L283))
 - Reroots of the pre-loop: `fn reroot()` passes the same value ([packages/treetime/src/timetree/pre_loop.rs#L136](../../packages/treetime/src/timetree/pre_loop.rs#L136)). The first reroot gives the clock fit that the outlier filter uses ([packages/treetime/src/timetree/pre_loop.rs#L43-L53](../../packages/treetime/src/timetree/pre_loop.rs#L43-L53)), so the flag also reaches the outlier filter of timetree. The pre-filter of the `clock` command requires a positive rate in every case ([packages/treetime/src/clock/pipeline.rs#L107](../../packages/treetime/src/clock/pipeline.rs#L107)), as v0 does
 - The final positive-rate check of timetree stays in place: a non-positive rate at time inference fails the run ([kb/decisions/timetree-rejects-negative-clock-rate.md](../decisions/timetree-rejects-negative-clock-rate.md))
 

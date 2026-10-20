@@ -9,7 +9,7 @@ The point/function, range/function, and function/function division kernels apply
 
 For cavity division, let $q=2$ be the quotient to recover and $d=10^{-12}$ the divisor included in the numerator. The implemented ratio $(qd)/\max(d,10^{-10})$ returns $0.02$ instead of recovering $q=2$. The fixed floor also silently turns a negative density into a positive denominator.
 
-No production path reaches the floor. The only production division is the cavity division of the timetree forward pass [`packages/treetime/src/timetree/inference/forward_pass.rs#L152-L153`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L152-L153), which runs on `Distribution<NegLog>`. `NegLog::safe_divisor()` returns its argument unchanged [`packages/treetime-distribution/src/policy.rs#L94-L96`](../../packages/treetime-distribution/src/policy.rs#L94-L96). The floor applies only to callers of `distribution_division()` with the `Plain` policy.
+No production path reaches the floor. The only production division is the cavity division of the timetree forward pass [`packages/treetime/src/timetree/inference/forward_pass.rs#L194-L195`](../../packages/treetime/src/timetree/inference/forward_pass.rs#L194-L195), which runs on `Distribution<NegLog>`. `NegLog::safe_divisor()` returns its argument unchanged [`packages/treetime-distribution/src/policy.rs#L94-L96`](../../packages/treetime-distribution/src/policy.rs#L94-L96). The floor applies only to callers of `distribution_division()` with the `Plain` policy.
 
 ## Decision required
 

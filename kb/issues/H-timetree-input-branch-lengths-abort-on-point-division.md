@@ -31,9 +31,9 @@ Input mode reconstructs no ancestral sequences, so `--output-all` skips the reco
 
 ## Mechanism
 
-`fn create_branch_distributions_input_mode()` builds every branch distribution as a degenerate `Distribution::point(time_length, 0.0)` [packages/treetime/src/timetree/inference/runner.rs#L299-L323](../../packages/treetime/src/timetree/inference/runner.rs#L299-L323). A `TODO` there names the v0 interpolator as the missing piece.
+`fn create_branch_distributions_input_mode()` builds every branch distribution as a degenerate `Distribution::point(time_length, 0.0)` [packages/treetime/src/timetree/inference/runner.rs#L308-L332](../../packages/treetime/src/timetree/inference/runner.rs#L308-L332). A `TODO` there names the v0 interpolator as the missing piece.
 
-Leaf time distributions are points at the sampling dates. The backward pass convolves each child point with the negated branch point and gets a point message for the parent. The forward pass then forms the cavity distribution: it divides the parent posterior by the message from the child [packages/treetime/src/timetree/inference/forward_pass.rs#L150-L155](../../packages/treetime/src/timetree/inference/forward_pass.rs#L150-L155). `fn distribution_division()` defines division only by a `Function` and rejects a `Point` or `Range` divisor [packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34), so the pass aborts.
+Leaf time distributions are points at the sampling dates. The backward pass convolves each child point with the negated branch point and gets a point message for the parent. The forward pass then forms the cavity distribution: it divides the parent posterior by the message from the child [packages/treetime/src/timetree/inference/forward_pass.rs#L192-L197](../../packages/treetime/src/timetree/inference/forward_pass.rs#L192-L197). `fn distribution_division()` defines division only by a `Function` and rejects a `Point` or `Range` divisor [packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34), so the pass aborts.
 
 A point product has the same weakness: `fn multiply_point_point()` returns `Empty` when the two times differ by more than `1e-9` [packages/treetime-distribution/src/distribution_ops/multiply.rs#L53-L62](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L53-L62), and floating-point accumulation through the tree gives differences of `1e-7` to `1e-5`.
 
@@ -85,7 +85,7 @@ Reimplement `create_branch_distributions_input_mode()` as v0's `BranchLenInterpo
 - Poisson (v0 lines 78-86): `log_prob = -k*L + l*L*log(k)`, with `k` the candidate branch length, `l` the observed branch length, and `L` the sequence length
 - Gaussian (v0 lines 87-102): `sigma_sq = p0*(exp(l/p0)-1)*(exp(l/p0)-p0*(exp(l/p0)-1))*one_mutation`, with `p0 = 1 - sum(Pi^2)`
 
-v1 has no production Poisson branch-length distribution. A golden-master test helper builds one: `create_poisson_branch_distributions()` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs#L125](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs#L125). The sequence length is available: without an alignment, v1 already requires `--sequence-length`, as v0 does [packages/treetime/src/timetree/pipeline.rs#L238-L250](../../packages/treetime/src/timetree/pipeline.rs#L238-L250).
+v1 has no production Poisson branch-length distribution. A golden-master test helper builds one: `create_poisson_branch_distributions()` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs#L125](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_support.rs#L125). The sequence length is available: without an alignment, v1 already requires `--sequence-length`, as v0 does [packages/treetime/src/timetree/pipeline.rs#L236-L248](../../packages/treetime/src/timetree/pipeline.rs#L236-L248).
 
 ## Validation
 

@@ -15,8 +15,8 @@ The function refitted both soft tails from the outermost grid points after it ad
 
 ## Consumers
 
-- The coalescent factor of internal nodes, `fn apply_coalescent_prior()` [packages/treetime/src/timetree/inference/backward_pass.rs#L106-L119](../../packages/treetime/src/timetree/inference/backward_pass.rs#L106-L119)
-- The coalescent factor of tips, `fn apply_leaf_coalescent_factor()` [packages/treetime/src/timetree/inference/backward_pass.rs#L135-L158](../../packages/treetime/src/timetree/inference/backward_pass.rs#L135-L158)
+- The coalescent factor of internal nodes, `fn apply_coalescent_prior()` [packages/treetime/src/timetree/inference/backward_pass.rs#L121-L134](../../packages/treetime/src/timetree/inference/backward_pass.rs#L121-L134)
+- The coalescent factor of tips, `fn apply_leaf_coalescent_factor()` [packages/treetime/src/timetree/inference/backward_pass.rs#L150-L173](../../packages/treetime/src/timetree/inference/backward_pass.rs#L150-L173)
 - Through them: the tail mass in `pub fn Distribution::log_mass()` [packages/treetime-distribution/src/distribution_core/distribution.rs#L216](../../packages/treetime-distribution/src/distribution_core/distribution.rs#L216), the log marginal likelihood of node times, and the marginal clock rate step `pub(crate) fn step_marginal_clock_rate()` [packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L18](../../packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L18), which reads the rate from a parabola through three such likelihoods
 
 ## Measurement

@@ -22,9 +22,9 @@ following an unpublished derivation and reference scripts of the maintainers (`r
   [packages/treetime/src/clock/find_best_root/](../../packages/treetime/src/clock/find_best_root/)
 - reroot driver of every command, and its date-free entry for `optimize`: `fn reroot_at_best_root()`,
   `fn reroot_undated()` [packages/treetime/src/clock/reroot.rs](../../packages/treetime/src/clock/reroot.rs)
-- Gaussian timetree: `struct GaussianTree` [packages/treetime/src/clock/gaussian.rs#L107-L121](../../packages/treetime/src/clock/gaussian.rs#L107-L121), built by `fn GaussianTree::new()`
-  [packages/treetime/src/clock/gaussian.rs#L124-L196](../../packages/treetime/src/clock/gaussian.rs#L124-L196); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L198-L226](../../packages/treetime/src/clock/gaussian.rs#L198-L226);
-  closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L228-L235](../../packages/treetime/src/clock/gaussian.rs#L228-L235); callers `fn timetree_gaussian_clock()`
+- Gaussian timetree: `struct GaussianTree` [packages/treetime/src/clock/gaussian.rs#L16-L29](../../packages/treetime/src/clock/gaussian.rs#L16-L29), built by `fn GaussianTree::new()`
+  [packages/treetime/src/clock/gaussian.rs#L32-L103](../../packages/treetime/src/clock/gaussian.rs#L32-L103); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L105-L133](../../packages/treetime/src/clock/gaussian.rs#L105-L133);
+  closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L135-L142](../../packages/treetime/src/clock/gaussian.rs#L135-L142); callers `fn timetree_gaussian_clock()`
   [packages/treetime/src/timetree/init.rs#L139-L167](../../packages/treetime/src/timetree/init.rs#L139-L167) and `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L169-L185](../../packages/treetime/src/timetree/init.rs#L169-L185)
 
 ## Decision
@@ -80,7 +80,7 @@ where:
 The elapsed time on the branch is $\mathcal N(\nu_e/\eta,\ \nu_e/\eta^2)$, the
 <a id="gloss-use-2"></a>moment match <sup>[2](#gloss-2)</sup> of its $\mathrm{Gamma}(\nu_e, \eta)$ likelihood under a flat prior on
 time, where $\eta$ is the rate of the event process. The $+1$ in $\nu_e$ is the event that ends a branch: a split,
-or the sampling of a tip ([packages/treetime/src/clock/gaussian.rs#L144-L152](../../packages/treetime/src/clock/gaussian.rs#L144-L152)).
+or the sampling of a tip ([packages/treetime/src/clock/gaussian.rs#L52-L58](../../packages/treetime/src/clock/gaussian.rs#L52-L58)).
 
 **Event rate and substitution rate.** The event process counts substitutions and branch ends, so
 
@@ -93,7 +93,7 @@ where:
 - $M$, $N$ -- number of internal and terminal branches that carry a message
 
 A branch carries a message when a dated tip that is not a clock-filter outlier lies below it
-(`fn GaussianTree::eta()` and `fn GaussianTree::mu()` [packages/treetime/src/clock/gaussian.rs#L237-L243](../../packages/treetime/src/clock/gaussian.rs#L237-L243)).
+(`fn GaussianTree::eta()` and `fn GaussianTree::mu()` [packages/treetime/src/clock/gaussian.rs#L144-L150](../../packages/treetime/src/clock/gaussian.rs#L144-L150)).
 
 **Messages.** A message about the time $t$ of a node is a triple $(S, R, W)$ that does not depend on $\eta$, with
 
@@ -101,7 +101,7 @@ $$\mathbb E[t] = S - \frac{R}{\eta}, \qquad \operatorname{var}(t) = \frac{W}{\et
 
 A dated tip sends $(t_i, 0, 0)$, its date $t_i$ known exactly. A message crosses branch $e$ toward the parent as
 $(S, R + \nu_e, W + \nu_e)$ and toward the child as $(S, R - \nu_e, W + \nu_e)$ (`fn Message::toward_parent()`,
-`fn Message::toward_child()` [packages/treetime/src/clock/gaussian.rs#L34-L58](../../packages/treetime/src/clock/gaussian.rs#L34-L58)).
+`fn Message::toward_child()` [packages/treetime/src/clock/gaussian.rs#L252-L266](../../packages/treetime/src/clock/gaussian.rs#L252-L266)).
 
 **Precision-weighted combination.** Messages $k = 1, \dots, K$ about the same time combine by summing their
 <a id="gloss-use-3"></a>natural parameters <sup>[3](#gloss-3)</sup> $(1/W_k, S_k/W_k, R_k/W_k)$:
@@ -110,7 +110,7 @@ $$\frac{1}{W} = \sum_k \frac{1}{W_k}, \qquad S = W \sum_k \frac{S_k}{W_k}, \qqua
 
 One pass toward the root and one toward the tips give every internal node $v$ the combination $(S_v, R_v, W_v)$ of
 all its messages, and its marginal time $\mathcal N(S_v - R_v/\eta,\ W_v/\eta^2)$ (`struct Natural`,
-`fn combine()` [packages/treetime/src/clock/gaussian.rs#L61-L99](../../packages/treetime/src/clock/gaussian.rs#L61-L99); `fn backward()`, `fn forward()` [packages/treetime/src/clock/gaussian.rs#L246-L312](../../packages/treetime/src/clock/gaussian.rs#L246-L312)).
+`fn combine()` [packages/treetime/src/clock/gaussian.rs#L191-L197](../../packages/treetime/src/clock/gaussian.rs#L191-L197); `fn backward()`, `fn forward()` [packages/treetime/src/clock/gaussian.rs#L166-L228](../../packages/treetime/src/clock/gaussian.rs#L166-L228)).
 
 **Likelihood of the rate.** Each combination at a node leaves $-\tfrac12 (a\eta^2 - 2b\eta + c)$ in the
 log-likelihood, with
@@ -135,7 +135,7 @@ $$\eta^* = \frac{B + \sqrt{B^2 + 4 A \kappa}}{2A}$$
 
 It exists whenever $A > 0$, that is, whenever the tip dates vary along the tree, so it is positive where the
 root-to-tip regression may give a negative slope. $\mu^*$ follows from $\eta^*$ by the conversion above
-(`fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L228-L235](../../packages/treetime/src/clock/gaussian.rs#L228-L235)).
+(`fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L135-L142](../../packages/treetime/src/clock/gaussian.rs#L135-L142)).
 
 **Rate and root uncertainty.** With the root time $t_r$ fixed, the log-likelihood is
 $\kappa \ln \eta - \tfrac12 A' \eta^2 + B' \eta - \tfrac12 C'$ with $A' = A + (t_r - S_r)^2/W_r$, where
@@ -149,7 +149,7 @@ with rows and columns $(\eta, t_r)$, and
 $$\sigma_\eta = \sqrt{\frac{I_{22}}{\det I}}, \qquad \sigma_{t_r} = \sqrt{\frac{I_{11}}{\det I}}, \qquad \sigma_\mu = \sigma_\eta \frac{D}{L (D + M + N)}$$
 
 Both are undefined unless $\det I > 0$ and $I_{11} > 0$. `rate_std` is $\sigma_\mu$ at the final clock rate
-(`fn rate_and_root_std()` [packages/treetime/src/clock/gaussian.rs#L314-L320](../../packages/treetime/src/clock/gaussian.rs#L314-L320)).
+(`fn rate_and_root_std()` [packages/treetime/src/clock/gaussian.rs#L230-L236](../../packages/treetime/src/clock/gaussian.rs#L230-L236)).
 
 ## v0 divergence
 

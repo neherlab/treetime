@@ -179,7 +179,7 @@ Used to determine appropriate grid resolution for FFT convolution and adaptive g
 Constructs per-branch likelihood distributions over evolutionary distance from an input branch length, using a Poisson approximation for short branches and a saturation-aware Gaussian approximation for longer branches. This is v0's `branch_length_mode=input` path, which avoids sequence-based marginal likelihoods.
 
 v0: `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode in [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102).
-v1: input mode currently converts each input branch length to a point distribution in [`packages/treetime/src/timetree/inference/runner.rs#L168-L192`](../../packages/treetime/src/timetree/inference/runner.rs#L168-L192); it does not implement either v0 approximation.
+v1: input mode currently converts each input branch length to a point distribution in [`packages/treetime/src/timetree/inference/runner.rs#L177-L201`](../../packages/treetime/src/timetree/inference/runner.rs#L177-L201); it does not implement either v0 approximation.
 
 ### Algorithm
 
@@ -251,7 +251,7 @@ v1: functionality exists in the optimize command but not as a GTR method.
 Enhancement to the coalescent model that uses posterior probability distributions of divergence times instead of point estimates when calculating the coalescent merger rate. Produces more accurate coalescent contributions by accounting for time uncertainty.
 
 v0: `--n-branches-posterior` flag uses posterior distributions for branch counting in merger rate computation.
-v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L405`](../../packages/app-commands/src/commands/timetree/args.rs#L405), returns error at [`packages/treetime/src/timetree/pipeline.rs#L221-L225`](../../packages/treetime/src/timetree/pipeline.rs#L221-L225).
+v1: CLI arg declared at [`packages/app-commands/src/commands/timetree/args.rs#L405`](../../packages/app-commands/src/commands/timetree/args.rs#L405), returns error at [`packages/treetime/src/timetree/pipeline.rs#L219-L223`](../../packages/treetime/src/timetree/pipeline.rs#L219-L223).
 
 ---
 
@@ -289,7 +289,7 @@ v1: not implemented.
 
 Build per-edge time likelihood distributions from partition likelihood contributions and branch-length grids, then convert their coordinates to time using the effective clock rate.
 
-v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58) and called from [`packages/treetime/src/timetree/inference/runner.rs#L118-L127`](../../packages/treetime/src/timetree/inference/runner.rs#L118-L127). Input-branch mode remains a separate gap described above.
+v1: `compute_branch_length_distribution()` is implemented at [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58`](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L23-L58) and called from [`packages/treetime/src/timetree/inference/runner.rs#L283-L291`](../../packages/treetime/src/timetree/inference/runner.rs#L283-L291). Input-branch mode remains a separate gap described above.
 
 ---
 

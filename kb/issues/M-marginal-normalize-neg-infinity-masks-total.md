@@ -19,8 +19,8 @@ log_lh = ... + finite_contributions + NEG_INFINITY = NEG_INFINITY
 
 The callers in [packages/treetime/src/partition/marginal/shared/pass.rs](../../packages/treetime/src/partition/marginal/shared/pass.rs) treat the result differently:
 
-- Forward message to a child ([pass.rs#L298-L300](../../packages/treetime/src/partition/marginal/shared/pass.rs#L298-L300)): `fn forward_log_lh_add_normalization()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43) drops a `NEG_INFINITY` normalization, so the message keeps a finite log-likelihood
-- Root profile ([pass.rs#L189-L192](../../packages/treetime/src/partition/marginal/shared/pass.rs#L189-L192)) and dense node profile ([pass.rs#L305-L309](../../packages/treetime/src/partition/marginal/shared/pass.rs#L305-L309)): the result is added directly, so one degenerate row makes the node log-likelihood `NEG_INFINITY`
+- Forward message to a child ([pass.rs#L321-L323](../../packages/treetime/src/partition/marginal/shared/pass.rs#L321-L323)): `fn forward_log_lh_add_normalization()` [packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43](../../packages/treetime/src/partition/marginal/shared/normalize.rs#L37-L43) drops a `NEG_INFINITY` normalization, so the message keeps a finite log-likelihood
+- Root profile ([pass.rs#L203-L206](../../packages/treetime/src/partition/marginal/shared/pass.rs#L203-L206)) and dense node profile ([pass.rs#L328-L332](../../packages/treetime/src/partition/marginal/shared/pass.rs#L328-L332)): the result is added directly, so one degenerate row makes the node log-likelihood `NEG_INFINITY`
 
 Convergence checks downstream see `NEG_INFINITY` even when the rest of the tree is well-determined.
 

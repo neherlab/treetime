@@ -1,13 +1,13 @@
 # Clock reroot boolean selects incompatible workflows
 
-`fn estimate_clock_model_with_reroot_policy()` [packages/treetime/src/clock/clock_regression.rs#L21-L26](../../packages/treetime/src/clock/clock_regression.rs#L21-L26) reads the field `keep_root: bool` of `struct ClockFitParams` [packages/treetime/src/clock/clock_regression.rs#L122-L128](../../packages/treetime/src/clock/clock_regression.rs#L122-L128) to select between backward regression alone and rerooting followed by backward regression.
+`fn estimate_clock_model_with_reroot_policy()` [packages/treetime/src/clock/clock_regression.rs#L23-L28](../../packages/treetime/src/clock/clock_regression.rs#L23-L28) reads the field `keep_root: bool` of `struct ClockFitParams` [packages/treetime/src/clock/clock_regression.rs#L124-L130](../../packages/treetime/src/clock/clock_regression.rs#L124-L130) to select between backward regression alone and rerooting followed by backward regression.
 
 `reroot_params` remains mandatory when `keep_root` makes it irrelevant. Call sites set the named field, but some still pass a literal, for example `keep_root: false` in [packages/treetime/src/timetree/optimization/reroot.rs#L68](../../packages/treetime/src/timetree/optimization/reroot.rs#L68), so the selected scientific workflow and the ignored parameters are visible only through the value of that field.
 
 ## Workflow difference
 
 - Keep-root runs the backward regression on the input topology and returns no reroot result
-- Optimize-root first calls `fn reroot_at_best_root()`, which searches for a root, mutates the topology, and returns reroot diagnostics; then it runs the same backward regression on the new topology [packages/treetime/src/clock/clock_regression.rs#L44-L76](../../packages/treetime/src/clock/clock_regression.rs#L44-L76)
+- Optimize-root first calls `fn reroot_at_best_root()`, which searches for a root, mutates the topology, and returns reroot diagnostics; then it runs the same backward regression on the new topology [packages/treetime/src/clock/clock_regression.rs#L46-L78](../../packages/treetime/src/clock/clock_regression.rs#L46-L78)
 
 The boolean therefore controls mutation, algorithm selection, and return-state availability. It also permits invalid request shapes: reroot configuration can be supplied while rerooting is disabled, and a caller can accidentally invert a `true` or `false` literal.
 

@@ -18,7 +18,7 @@ v0 compares `clock_length` against `mutation_length`, i.e. the constrained lengt
 one, which is the contrast $\gamma$ is meant to capture. The v1 equivalent is
 `clock_branch_length` against `branch_length`. `struct RoundState` already holds the constrained lengths in
 `clock_branch_lengths`
-([packages/treetime/src/timetree/round.rs#L339](../../packages/treetime/src/timetree/round.rs#L339)).
+([packages/treetime/src/timetree/round.rs#L346](../../packages/treetime/src/timetree/round.rs#L346)).
 
 ## Polytomy mutation counts fall back to the free length
 

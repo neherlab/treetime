@@ -11,7 +11,7 @@ v1's `clock_filter()` and v0's `residual_filter()` produce different outlier set
 
 2. Root-child exclusion: v0 skips children of the root from outlier flagging (`node.up.up is not None` check at [packages/legacy/treetime/treetime/clock_filter_methods.py#L18](../../packages/legacy/treetime/treetime/clock_filter_methods.py#L18)). v1 does not exclude any leaves based on tree position [packages/treetime/src/clock/clock_filter.rs#L64-L68](../../packages/treetime/src/clock/clock_filter.rs#L64-L68).
 
-Date handling matches: v0 uses `np.mean(node.raw_date_constraint)` for interval dates, and v1's `likely_time()` returns the node time that `assign_dates` sets to the interval mean [packages/treetime/src/clock/clock_state.rs#L88-L90](../../packages/treetime/src/clock/clock_state.rs#L88-L90) [packages/treetime/src/clock/assign_dates.rs#L31](../../packages/treetime/src/clock/assign_dates.rs#L31).
+Date handling matches: v0 uses `np.mean(node.raw_date_constraint)` for interval dates, and v1's `likely_time()` returns the node time that `assign_dates` sets to the interval mean [packages/treetime/src/clock/clock_state.rs#L84-L86](../../packages/treetime/src/clock/clock_state.rs#L84-L86) [packages/treetime/src/clock/assign_dates.rs#L31](../../packages/treetime/src/clock/assign_dates.rs#L31).
 
 ## Impact
 

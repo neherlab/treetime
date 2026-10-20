@@ -7,7 +7,7 @@ The deser derives generate more code per type than the serde derives did: beside
 Build of the `treetime` binary without the compiler cache, the same workspace with serde ("before") and with deser:
 
 > [!WARNING]
-> **Needs review.** These timings predate the commits of 2026-10-07 that removed unused deser derives and impls from most library crates (for example `treetime-io`, `treetime-utils`, `treetime-graph`, `treetime-grid`, `treetime-distribution`). The extra rebuild cost of the current workspace (deser 0.9.0, [Cargo.toml#L148-L156](../../Cargo.toml#L148-L156)) is not measured; repeat the measurements below before acting on them.
+> **Needs review.** These timings predate the commits of 2026-10-07 that removed unused deser derives and impls from most library crates (for example `treetime-io`, `treetime-utils`, `treetime-graph`, `treetime-grid`, `treetime-distribution`). The extra rebuild cost of the current workspace (deser 0.9.0, [Cargo.toml#L147-L155](../../Cargo.toml#L147-L155)) is not measured; repeat the measurements below before acting on them.
 
 | Build                                                                         | Before         | deser          |
 | ----------------------------------------------------------------------------- | -------------- | -------------- |

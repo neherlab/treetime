@@ -12,7 +12,7 @@ treetime timetree --tree=data/mpox/clade-ii/20/tree.nwk --metadata=data/mpox/cla
 
 The smoke matrix declares this run as the expected failure `variant = "grid-point-limit"` in `dev/smoke.toml`.
 
-- **`rust` of 2026-10-19**: the run stops with "A grid over [2019.14, 2022] with spacing 2.17304e-7 needs 13175607 points, more than the limit of 1000000". The backtrace shows the forward pass: `fn refine_distribution_from_parent()` calls `fn distribution_multiplication()` [packages/treetime/src/timetree/inference/forward_pass.rs#L165](../../packages/treetime/src/timetree/inference/forward_pass.rs#L165), the product of the forward message and the subtree distribution of the first refined node
+- **`rust` of 2026-10-19**: the run stops with "A grid over [2019.14, 2022] with spacing 2.17304e-7 needs 13175607 points, more than the limit of 1000000". The backtrace shows the forward pass: `fn refine_distribution_from_parent()` calls `fn distribution_multiplication()` [packages/treetime/src/timetree/inference/forward_pass.rs#L207](../../packages/treetime/src/timetree/inference/forward_pass.rs#L207), the product of the forward message and the subtree distribution of the first refined node
 - **The forward-posterior trimming prototype** (commit `6d06d211a` on branch `claude-grid-trim`, `TT_TRIM=p TT_COARSE=1`, see [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)): the run stops in the same product with 13 869 392 points over \[2019.14, 2022.45\], and before that warns that `PP852952` has an empty time distribution and gets no date. Trimming the posterior does not help, because the large grid is a product of untrimmed messages
 
 ## Mechanism

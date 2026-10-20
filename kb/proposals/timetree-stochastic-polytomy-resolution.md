@@ -94,7 +94,7 @@ about where either comes from: $\mu$ as a scalar, $\kappa$ as a function of cale
 
 $\mu$ is already computed in the caller: `clock_model.clock_rate() * total_length` is passed
 as `zero_branch_slope` at
-[packages/treetime/src/timetree/round.rs#L191](../../packages/treetime/src/timetree/round.rs#L191).
+[packages/treetime/src/timetree/round.rs#L198](../../packages/treetime/src/timetree/round.rs#L198).
 Rename the parameter `mutation_rate`; no new plumbing.
 
 $\kappa(t)$ is the per-lineage merger rate of the expected lineage counts the round's prior is built from
@@ -144,7 +144,7 @@ further back would require relocating the parent node itself and re-checking aga
 grandparent branch, i.e. mutating a second node's time inside a routine scoped to one node.
 
 Deliberately out of scope: `run_timetree` re-infers every node time immediately afterwards
-([packages/treetime/src/timetree/round.rs#L280](../../packages/treetime/src/timetree/round.rs#L280)),
+([packages/treetime/src/timetree/round.rs#L287](../../packages/treetime/src/timetree/round.rs#L287)),
 so the parent's time is not final at this point. A partially resolved polytomy gets another
 attempt on the next refinement iteration with a relocated parent, which reaches the same
 outcome without coupling two nodes' times inside the sweep.
@@ -239,7 +239,7 @@ be reproduced.
 **Signature.** `resolve_polytomies` loses `resolution_threshold`, `merge_compressed` and
 `clock_rate`; `zero_branch_slope` is renamed `mutation_rate`. `keep_polytomies` reaches
 `TimetreeParams`
-([packages/treetime/src/timetree/pipeline.rs#L61](../../packages/treetime/src/timetree/pipeline.rs#L61))
+([packages/treetime/src/timetree/pipeline.rs#L59](../../packages/treetime/src/timetree/pipeline.rs#L59))
 and is then unused, as tracked in
 [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md).
 
@@ -259,7 +259,7 @@ most often applied to.
 - **Convergence.** Once a polytomy is resolved into a binary subtree, later iterations find no
   polytomy there and do not re-randomise it, so the refinement loop still settles. Worth
   confirming empirically: resolution interacts with the convergence metrics recorded at
-  [packages/treetime/src/timetree/pipeline.rs#L321-L329](../../packages/treetime/src/timetree/pipeline.rs#L321-L329).
+  [packages/treetime/src/timetree/pipeline.rs#L319-L327](../../packages/treetime/src/timetree/pipeline.rs#L319-L327).
 
 ## Validation plan
 

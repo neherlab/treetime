@@ -6,8 +6,8 @@ The backward pass of time inference sends every edge message through `pub fn con
 
 Locations:
 
-- `pub(crate) const GRID_POINTS` and `pub(crate) const EPS` [packages/treetime/src/timetree/inference/runner.rs#L29-L36](../../packages/treetime/src/timetree/inference/runner.rs#L29-L36)
-- `fn send_backward_message()` calls `convolve_across_edge` with them [packages/treetime/src/timetree/inference/backward_pass.rs#L160-L179](../../packages/treetime/src/timetree/inference/backward_pass.rs#L160-L179)
+- `pub(crate) const GRID_POINTS` and `pub(crate) const EPS` [packages/treetime/src/timetree/inference/runner.rs#L31-L38](../../packages/treetime/src/timetree/inference/runner.rs#L31-L38)
+- `fn send_backward_message()` calls `convolve_across_edge` with them [packages/treetime/src/timetree/inference/backward_pass.rs#L175-L194](../../packages/treetime/src/timetree/inference/backward_pass.rs#L175-L194)
 - `pub fn convolve_across_edge()` and its `resample_to_mass_window` call [packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L10-L43](../../packages/treetime-distribution/src/distribution_ops/edge_convolution.rs#L10-L43)
 
 ## Affected computation

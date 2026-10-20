@@ -2,7 +2,7 @@
 
 After rerooting, the new root node has no name. v0 assigns `NODE_XXXXXXX` names to unnamed internal nodes after every reroot via `_prepare_nodes()` (`treeanc.py:471-478`), called from `prepare_tree()` at the end of the `reroot()` method. v1's `fn assign_node_names()` [packages/treetime-graph/src/assign_node_names.rs#L7](../../packages/treetime-graph/src/assign_node_names.rs#L7) runs during Newick parsing [packages/treetime-io/src/nwk.rs#L90](../../packages/treetime-io/src/nwk.rs#L90) but is not called by the reroot path itself, so a command that reroots without a later naming pass emits the unnamed root.
 
-The `timetree` command does not have this defect: it names every unnamed node after polytomy resolution [packages/treetime/src/timetree/round.rs#L162](../../packages/treetime/src/timetree/round.rs#L162) and before the final outputs [packages/treetime/src/timetree/pipeline.rs#L479](../../packages/treetime/src/timetree/pipeline.rs#L479). The `clock` command reroots and has no naming pass after the reroot.
+The `timetree` command does not have this defect: it names every unnamed node after polytomy resolution [packages/treetime/src/timetree/round.rs#L169](../../packages/treetime/src/timetree/round.rs#L169) and before the final outputs [packages/treetime/src/timetree/pipeline.rs#L474](../../packages/treetime/src/timetree/pipeline.rs#L474). The `clock` command reroots and has no naming pass after the reroot.
 
 ## Current state
 

@@ -29,7 +29,7 @@ the slope of the root-to-tip regression. Without a coalescent prior the regressi
 - The pre-loop and the initial round keep the regression, which supplies the starting rate and the rooting.
 - After the last round, a final time pass infers the node times at the rate the clock model reports, in every
   `--time-marginal` mode, so the output dates and the reported rate agree (`fn refine_final_times()`
-  [packages/treetime/src/timetree/pipeline.rs#L374](../../packages/treetime/src/timetree/pipeline.rs#L374)).
+  [packages/treetime/src/timetree/pipeline.rs#L372](../../packages/treetime/src/timetree/pipeline.rs#L372)).
 
 ## Why only with a coalescent prior
 

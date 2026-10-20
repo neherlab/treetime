@@ -10,7 +10,7 @@ Measured 2026-10-19 with the forward pass trimmed (prototype commit `6d06d211a`;
 
 ## Locations
 
-- `fn evaluate_log_lh_on_grid()` maps each grid point through `fn evaluate_with_indels_log_lh_only()` [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L94](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L94); its caller is [packages/treetime/src/timetree/inference/runner.rs#L274](../../packages/treetime/src/timetree/inference/runner.rs#L274)
+- `fn evaluate_log_lh_on_grid()` maps each grid point through `fn evaluate_with_indels_log_lh_only()` [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L94](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L94); its caller is [packages/treetime/src/timetree/inference/runner.rs#L283](../../packages/treetime/src/timetree/inference/runner.rs#L283)
 - `fn evaluate_site_contributions()` computes the exponentials of one branch length and loops over all sites [packages/treetime/src/optimize/eval.rs](../../packages/treetime/src/optimize/eval.rs)
 - `fn create_edge_contribution()` builds the per-edge contributions of the dense and sparse partitions [packages/treetime/src/partition/marginal/dense/partition.rs#L147](../../packages/treetime/src/partition/marginal/dense/partition.rs#L147) [packages/treetime/src/partition/marginal/sparse/partition.rs#L88](../../packages/treetime/src/partition/marginal/sparse/partition.rs#L88)
 
