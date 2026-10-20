@@ -49,7 +49,7 @@ mod tests {
       dataset.alignment_xz(),
       Alphabet::default(),
       SeqTrack::Nuc(1),
-      plan,
+      &plan,
       impute,
       include_leaves,
     )?;
@@ -67,7 +67,7 @@ mod tests {
       RSV_A_20_TRANSLATION_G_XZ,
       Alphabet::new(AlphabetName::Aa)?,
       SeqTrack::Aa("G"),
-      helpers::marginal(representation, GtrModelName::Infer),
+      &helpers::marginal(representation, GtrModelName::Infer),
       impute,
       true,
     )?;
@@ -84,7 +84,7 @@ mod tests {
     #[case] plan: ReconstructionPlan,
     #[values(false, true)] include_leaves: bool,
   ) -> Result<(), Report> {
-    let (mutations, sequences) = helpers::ambiguous_leaf_mutations(plan, include_leaves, false)?;
+    let (mutations, sequences) = helpers::ambiguous_leaf_mutations(&plan, include_leaves, false)?;
     assert_eq!(
       btreemap! {
         o!("A") => vec_of_owned!["G2K", "T4A", "A5N"],
@@ -107,7 +107,7 @@ mod tests {
     #[values(false, true)] include_leaves: bool,
   ) -> Result<(), Report> {
     let (mutations, sequences) = helpers::ambiguous_leaf_mutations(
-      helpers::marginal(representation, GtrModelName::JC69),
+      &helpers::marginal(representation, GtrModelName::JC69),
       include_leaves,
       true,
     )?;
@@ -152,7 +152,7 @@ mod tests {
       alignment_xz: &[u8],
       alphabet: Alphabet,
       track: SeqTrack<'_>,
-      plan: ReconstructionPlan,
+      plan: &ReconstructionPlan,
       impute: bool,
       include_leaves: bool,
     ) -> Result<EngineAndDerivedSubs, Report> {
@@ -177,7 +177,7 @@ mod tests {
       let options = ReconstructionOptions::new(impute, SampleMode::Argmax);
       let partition = reconstruct_partition(
         &parse.graph,
-        &plan,
+        plan,
         InferredRate::Unit,
         alphabet,
         node_inputs,
@@ -283,7 +283,7 @@ mod tests {
     }
 
     pub(super) fn ambiguous_leaf_mutations(
-      plan: ReconstructionPlan,
+      plan: &ReconstructionPlan,
       include_leaves: bool,
       impute: bool,
     ) -> Result<(BTreeMap<String, Vec<String>>, BTreeMap<String, String>), Report> {
@@ -298,7 +298,7 @@ mod tests {
       let node_inputs = leaf_seq_inputs(graph, &names, sequences);
       let partition = reconstruct_partition(
         graph,
-        &plan,
+        plan,
         InferredRate::Unit,
         alphabet,
         node_inputs,

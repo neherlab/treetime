@@ -3,7 +3,7 @@ use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;
 use crate::gtr::gtr::{GTR, Mu};
-use crate::gtr::refinement::refine_gtr_model_and_rate;
+use crate::gtr::refinement::{GtrRefinement, RefinementRate, refine_gtr};
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::storage::dense::DenseNodeState;
@@ -117,21 +117,17 @@ pub fn run(
   let update = partition
     .marginal_update(&gtr, &graph, &branch_lengths, &())
     .map_err(OperationError::classify)?;
-  progress_info!(log, "Mugration: initial log likelihood = {:.4}", update.log_lh.value());
 
-  let (gtr, MarginalUpdate { node_states, .. }) = refine_gtr_model_and_rate(
-    &partition,
-    gtr,
-    update,
-    params.iterations,
-    fixed_pi.as_ref(),
-    params.pc.unwrap_or(1.0),
-    params.sampling_bias_correction,
-    &graph,
-    &branch_lengths,
-    log,
-  )
-  .map_err(OperationError::classify)?;
+  let refinement = GtrRefinement {
+    iterations: params.iterations,
+    pc: params.pc.unwrap_or(1.0),
+    fixed_pi,
+    rate: RefinementRate::Optimize {
+      scale: params.sampling_bias_correction,
+    },
+  };
+  let (gtr, MarginalUpdate { node_states, .. }) =
+    refine_gtr(&partition, gtr, update, &refinement, &graph, &branch_lengths, log).map_err(OperationError::classify)?;
 
   let (reconstructed_traits, confidences) = gather_reconstruction_maps(&graph, &partition, &node_states);
 

@@ -15,54 +15,11 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "the marginal passes take the partition, model, pass results, graph and branch lengths as separate values, so the refinement forwards them"
-)]
-pub(crate) fn refine_gtr_model<P: MarginalPasses>(
+pub(crate) fn refine_gtr<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
-  iterations: usize,
-  pc: f64,
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  log: &dyn LogSink,
-) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report> {
-  let MarginalUpdate {
-    node_states,
-    edges: MarginalEdges { backward, forward, .. },
-    ..
-  } = update;
-  let options = InferGtrOptions {
-    pc,
-    ..InferGtrOptions::default()
-  };
-
-  let mut gtr = gtr;
-  for i in 0..=iterations {
-    let counts = partition.count_transitions(&gtr, graph, branch_lengths, &node_states, &backward, &forward)?;
-    gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
-    debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
-  }
-
-  let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&node_states))?;
-  log_final(&gtr, update.log_lh, log);
-  Ok((gtr, update))
-}
-
-#[expect(
-  clippy::too_many_arguments,
-  reason = "the marginal passes take the partition, model, pass results, graph and branch lengths as separate values, so the refinement forwards them"
-)]
-pub(crate) fn refine_gtr_model_and_rate<P: MarginalPasses>(
-  partition: &P,
-  gtr: GTR,
-  update: MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>,
-  iterations: usize,
-  fixed_pi: Option<&Array1<f64>>,
-  pc: f64,
-  sampling_bias_correction: Option<f64>,
+  refinement: &GtrRefinement,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
@@ -73,33 +30,39 @@ where
   let MarginalUpdate {
     node_states,
     edges: MarginalEdges { backward, forward, .. },
-    ..
+    log_lh,
   } = update;
+  progress_info!(log, "GTR refinement: initial log likelihood = {:.4}", log_lh.value());
   let options = InferGtrOptions {
-    fixed_pi: fixed_pi.cloned(),
-    pc,
+    fixed_pi: refinement.fixed_pi.clone(),
+    pc: refinement.pc,
     ..InferGtrOptions::default()
   };
 
   let mut gtr = gtr;
   let mut nodes = node_states;
   let mut backward = backward;
-  for i in 0..=iterations {
+  for i in 0..=refinement.iterations {
     let counts = partition.count_transitions(&gtr, graph, branch_lengths, &nodes, &backward, &forward)?;
     gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
-    (gtr, nodes, backward) = optimize_gtr_rate(
-      partition,
-      gtr,
-      &nodes,
-      graph,
-      branch_lengths,
-      RateRangeEdge::KeepStart,
-      log,
-    )?;
+    if let RefinementRate::Optimize { .. } = refinement.rate {
+      (gtr, nodes, backward) = optimize_gtr_rate(
+        partition,
+        gtr,
+        &nodes,
+        graph,
+        branch_lengths,
+        RateRangeEdge::KeepStart,
+        log,
+      )?;
+    }
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
   }
 
-  if let Some(correction) = sampling_bias_correction {
+  if let RefinementRate::Optimize {
+    scale: Some(correction),
+  } = refinement.rate
+  {
     gtr.set_mu(gtr.mu() * correction)?;
     progress_info!(
       log,
@@ -111,6 +74,31 @@ where
   let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&nodes))?;
   log_final(&gtr, update.log_lh, log);
   Ok((gtr, update))
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct GtrRefinement {
+  pub(crate) iterations: usize,
+  pub(crate) pc: f64,
+  pub(crate) fixed_pi: Option<Array1<f64>>,
+  pub(crate) rate: RefinementRate,
+}
+
+impl GtrRefinement {
+  pub(crate) const fn keep_rate(iterations: usize) -> Self {
+    Self {
+      iterations,
+      pc: 1.0,
+      fixed_pi: None,
+      rate: RefinementRate::Keep,
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum RefinementRate {
+  Keep,
+  Optimize { scale: Option<f64> },
 }
 
 fn infer_gtr(

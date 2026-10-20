@@ -5,6 +5,7 @@ mod tests {
   use crate::ancestral::plan::{ReconstructionPlan, resolve_plan};
   use crate::error::OperationError;
   use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::refinement::GtrRefinement;
   use crate::partition::create::Representation;
   use crate::partition::marginal::sample::SampleMode;
   use pretty_assertions::assert_eq;
@@ -35,14 +36,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::infer_with_iterations(3, GtrModelName::Infer, Some(3))]
-  #[case::infer_without_iterations(0, GtrModelName::Infer, None)]
-  #[case::named_model_with_iterations(3, GtrModelName::JC69, None)]
+  #[case::infer_with_iterations(      3, GtrModelName::Infer, Some(GtrRefinement::keep_rate(3)))]
+  #[case::infer_without_iterations(   0, GtrModelName::Infer, None                             )]
+  #[case::named_model_with_iterations(3, GtrModelName::JC69,  None                             )]
   #[trace]
   fn test_plan_marginal_gtr_refinement_gate(
     #[case] gtr_iterations: usize,
     #[case] model: GtrModelName,
-    #[case] expected: Option<usize>,
+    #[case] expected: Option<GtrRefinement>,
   ) {
     let params = AncestralParams {
       model,
