@@ -20,6 +20,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::path::PathBuf;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::schedule::GraphSchedule;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
@@ -143,12 +144,14 @@ mod tests {
 
     pub(super) fn rebuild_from_root(output: &AncestralOutput) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
       let sequences = sequences(output);
+      let schedule = GraphSchedule::new(&output.graph)?;
       let mut rebuilt: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
-      output.graph.iter_depth_first_preorder_forward(|node| {
-        let seq = if node.is_root {
+      for &key in schedule.preorder() {
+        let parents = schedule.parents(key);
+        let seq = if parents.is_empty() {
           sequences.root_sequence.clone()
         } else {
-          let (parent_key, edge_key) = get_exactly_one(&node.parent_keys)?;
+          let (parent_key, edge_key) = get_exactly_one(parents)?;
           let mut seq: Seq = rebuilt[parent_key].clone();
           for mutation in &sequences.edge_mutations[edge_key] {
             if let MutationEvent::Substitution(sub) = &mutation.event {
@@ -157,9 +160,8 @@ mod tests {
           }
           seq
         };
-        rebuilt.insert(node.key, seq);
-        Ok(())
-      })?;
+        rebuilt.insert(key, seq);
+      }
       Ok(rebuilt)
     }
   }

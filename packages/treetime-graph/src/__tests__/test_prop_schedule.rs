@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use self::helpers::positions;
+  use self::helpers::{former_postorder, former_preorder, positions};
   use super::super::test_graph_support::tests::generators::gen_dag;
   use super::super::test_graph_support::tests::helpers::{graph_from_dag, graph_from_parents};
   use crate::node::Node;
@@ -63,25 +63,53 @@ mod tests {
 
       let schedule = GraphSchedule::new(&graph).unwrap();
 
-      let mut preorder = vec![];
-      graph.iter_depth_first_preorder_forward(|node| {
-        preorder.push(node.key);
-        Ok(())
-      }).unwrap();
-      let mut postorder = vec![];
-      graph.iter_depth_first_postorder_forward(|node| {
-        postorder.push(node.key);
-        Ok(())
-      }).unwrap();
-      prop_assert_eq!(preorder, schedule.preorder().to_vec());
-      prop_assert_eq!(postorder, schedule.postorder().to_vec());
+      prop_assert_eq!(former_preorder(&graph), schedule.preorder().to_vec());
+      prop_assert_eq!(former_postorder(&graph), schedule.postorder().to_vec());
       schedule.require_tree().unwrap();
     }
   }
 
   mod helpers {
+    use crate::graph::Graph;
     use crate::node::GraphNodeKey;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
+
+    pub(super) fn former_preorder(graph: &Graph) -> Vec<GraphNodeKey> {
+      let mut order = vec![];
+      let mut stack = vec![single_root(graph)];
+      while let Some(key) = stack.pop() {
+        order.push(key);
+        stack.extend(graph.children_keys_of(&graph[key]).rev().map(|(child, _)| child));
+      }
+      order
+    }
+
+    pub(super) fn former_postorder(graph: &Graph) -> Vec<GraphNodeKey> {
+      let mut order = vec![];
+      let mut stack = vec![single_root(graph)];
+      let mut visited = BTreeSet::new();
+      while let Some(key) = stack.pop() {
+        if visited.insert(key) {
+          stack.push(key);
+          let unvisited = graph
+            .children_keys_of(&graph[key])
+            .rev()
+            .map(|(child, _)| child)
+            .filter(|child| !visited.contains(child));
+          stack.extend(unvisited);
+        } else {
+          order.push(key);
+        }
+      }
+      order
+    }
+
+    fn single_root(graph: &Graph) -> GraphNodeKey {
+      let &[root] = graph.roots.as_slice() else {
+        panic!("the former traversals require exactly one root");
+      };
+      root
+    }
 
     pub(super) fn positions(order: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
       order

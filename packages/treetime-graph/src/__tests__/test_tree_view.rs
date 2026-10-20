@@ -2,6 +2,7 @@
 mod tests {
   use self::helpers::names;
   use super::super::test_graph_support::tests::helpers::{NamedGraph, graph_from_parents};
+  use crate::schedule::GraphSchedule;
   use crate::tree_view::TreeView;
   use eyre::Report;
   use itertools::Itertools;
@@ -82,11 +83,7 @@ mod tests {
 
       let view = TreeView::new(&graph).unwrap();
 
-      let mut expected = vec![];
-      graph.iter_depth_first_preorder_forward(|node| {
-        expected.push(node.key);
-        Ok(())
-      }).unwrap();
+      let expected = GraphSchedule::new(&graph).unwrap().preorder().to_vec();
       prop_assert_eq!(&expected, &view.preorder().to_vec());
       for node in graph.get_nodes() {
         let key = node.key();
