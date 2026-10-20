@@ -7,7 +7,6 @@ use crate::distribution_ops::mass_domain::{
 use crate::distribution_ops::mass_profile::TailMass;
 use crate::policy::NegLog;
 use eyre::Report;
-use ordered_float::OrderedFloat;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, MaxGridPoints, Side};
 use treetime_utils::cast::ToF64Exact;
 
@@ -48,51 +47,98 @@ pub struct ForwardConvolution {
 }
 
 impl ForwardConvolution {
-  pub fn capped(&self) -> Result<Distribution<NegLog>, Report> {
-    self
+  pub fn resolve_posterior(
+    &self,
+    eps: f64,
+    posterior_of: impl Fn(&Distribution<NegLog>) -> Result<Distribution<NegLog>, Report>,
+  ) -> Result<ResolvedForward, Report> {
+    let message = self
       .conv
-      .resample(self.grid_points, self.max_points, OutputSpacing::Capped)
+      .resample(self.grid_points, self.max_points, OutputSpacing::Capped)?;
+    let posterior = posterior_of(&message)?;
+    let WindowedConvolution::Window {
+      normalized,
+      window: (lo, hi),
+      ..
+    } = &self.conv
+    else {
+      return Ok(ResolvedForward {
+        message,
+        posterior,
+        spacing: MessageSpacing::Exact,
+      });
+    };
+    let resample = |max_dx: f64| {
+      resample_to_mass_window(
+        normalized,
+        *lo,
+        *hi,
+        self.grid_points,
+        self.max_points,
+        SpacingLimit::AtMost(max_dx),
+      )
+    };
+
+    let Some(resolving_dx) = self.finer_spacing_needed(&message, &posterior, eps, normalized.dx()) else {
+      return Ok(ResolvedForward {
+        message,
+        posterior,
+        spacing: MessageSpacing::Capped,
+      });
+    };
+    let message = resample(resolving_dx)?;
+    let posterior = posterior_of(&message)?;
+    if self
+      .finer_spacing_needed(&message, &posterior, eps, normalized.dx())
+      .is_none()
+    {
+      return Ok(ResolvedForward {
+        message,
+        posterior,
+        spacing: MessageSpacing::Resolving,
+      });
+    }
+
+    let message = resample(normalized.dx())?;
+    let posterior = posterior_of(&message)?;
+    Ok(ResolvedForward {
+      message,
+      posterior,
+      spacing: MessageSpacing::Fine,
+    })
   }
 
-  pub fn resampled_to_resolve(
+  fn finer_spacing_needed(
     &self,
+    message: &Distribution<NegLog>,
     posterior: &Distribution<NegLog>,
     eps: f64,
-  ) -> Result<Option<Distribution<NegLog>>, Report> {
-    let (
-      WindowedConvolution::Window {
-        normalized,
-        window: (lo, hi),
-        cap: Some(cap),
-      },
-      Distribution::Function(f),
-    ) = (&self.conv, posterior)
-    else {
-      return Ok(None);
+    fine_dx: f64,
+  ) -> Option<f64> {
+    let (Distribution::Function(message), Distribution::Function(posterior)) = (message, posterior) else {
+      return None;
     };
-    let Some(profile) = mass_sizable_profile(f) else {
-      return Ok(None);
-    };
-    let Some(fractions) = profile.fractions(TailMass::Required) else {
-      return Ok(None);
-    };
-    let intervals = self.grid_points.saturating_sub(1).max(1).to_f64_exact();
-    let capped_dx = ((hi - lo) / intervals).min(*cap);
+    let profile = mass_sizable_profile(posterior)?;
+    let fractions = profile.fractions(TailMass::Required)?;
     let mass_width = fractions.survival_inverse(eps) - fractions.quantile(eps);
-    let resolving_dx = normalized.dx().max(mass_width / intervals);
-    if capped_dx <= resolving_dx {
-      return Ok(None);
-    }
-    resample_to_mass_window(
-      normalized,
-      *lo,
-      *hi,
-      self.grid_points,
-      self.max_points,
-      SpacingLimit::AtMost(resolving_dx),
-    )
-    .map(Some)
+    let intervals = self.grid_points.saturating_sub(1).max(1).to_f64_exact();
+    let resolving_dx = fine_dx.max(mass_width / intervals);
+    (message.dx() > resolving_dx).then_some(resolving_dx)
   }
+}
+
+pub struct ResolvedForward {
+  pub message: Distribution<NegLog>,
+  pub posterior: Distribution<NegLog>,
+  pub spacing: MessageSpacing,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MessageSpacing {
+  Exact,
+  Capped,
+  Resolving,
+  Fine,
 }
 
 enum WindowedConvolution {
@@ -100,7 +146,7 @@ enum WindowedConvolution {
   Window {
     normalized: DistributionFunction<f64, NegLog>,
     window: (f64, f64),
-    cap: Option<f64>,
+    cap: f64,
   },
 }
 
@@ -112,7 +158,8 @@ impl WindowedConvolution {
     eps: f64,
     max_points: MaxGridPoints,
   ) -> Result<Self, Report> {
-    let is_fft = matches!((a, b), (Distribution::Function(_), Distribution::Function(_)));
+    let cap = coarser_operand_spacing(a, b);
+    let is_fft = cap.is_some();
     let conv = distribution_convolution_fine(a, b, max_points)?;
     let conv = if is_fft || has_no_soft_law(&conv, soft) {
       conv.fit_soft_tail(soft, DEFAULT_TAIL_FIT_POINTS)?
@@ -126,9 +173,9 @@ impl WindowedConvolution {
     let Distribution::Function(conv) = conv else {
       return Ok(Self::Exact(conv));
     };
-    if !is_fft {
+    let Some(cap) = cap else {
       return Ok(Self::Exact(Distribution::Function(conv)));
-    }
+    };
     let Some(sized) = peak_normalized_if_mass_sizable(&conv) else {
       return Ok(Self::Exact(Distribution::Function(conv)));
     };
@@ -147,7 +194,7 @@ impl WindowedConvolution {
     Ok(Self::Window {
       normalized: sized.normalized,
       window,
-      cap: coarser_operand_spacing(a, b),
+      cap,
     })
   }
 
@@ -164,9 +211,9 @@ impl WindowedConvolution {
         window: (lo, hi),
         cap,
       } => {
-        let spacing = match (spacing, cap) {
-          (OutputSpacing::Capped, Some(max_dx)) => SpacingLimit::AtMost(*max_dx),
-          (OutputSpacing::Capped, None) | (OutputSpacing::Fine, _) => SpacingLimit::Input,
+        let spacing = match spacing {
+          OutputSpacing::Capped => SpacingLimit::AtMost(*cap),
+          OutputSpacing::Fine => SpacingLimit::Input,
         };
         resample_to_mass_window(normalized, *lo, *hi, grid_points, max_points, spacing)
       },
@@ -181,13 +228,10 @@ enum OutputSpacing {
 }
 
 fn coarser_operand_spacing(a: &Distribution<NegLog>, b: &Distribution<NegLog>) -> Option<f64> {
-  [a, b]
-    .into_iter()
-    .filter_map(|dist| match dist {
-      Distribution::Function(f) => Some(f.dx()),
-      Distribution::Empty | Distribution::Point(_) | Distribution::Range(_) | Distribution::Formula(_) => None,
-    })
-    .max_by_key(|dx| OrderedFloat(*dx))
+  let (Distribution::Function(a), Distribution::Function(b)) = (a, b) else {
+    return None;
+  };
+  Some(a.dx().max(b.dx()))
 }
 
 fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {

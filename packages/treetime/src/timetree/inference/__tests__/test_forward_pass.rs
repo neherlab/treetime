@@ -17,7 +17,7 @@ mod tests {
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
-  use ndarray::Array1;
+  use ndarray::{Array1, array};
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
   use rayon::ThreadPoolBuilder;
@@ -492,10 +492,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::posterior_as_wide_as_the_message(3.0, false)]
-  #[case::posterior_narrower_than_the_cap( 0.1, true )]
+  #[case::posterior_as_wide_as_the_message( 4001, 3.0, false)]
+  #[case::posterior_narrower_than_the_cap(  4001, 0.1, true )]
+  #[case::uncapped_spacing_bounds_the_count( 401, 0.1, false)]
   #[trace]
   fn test_forward_pass_message_resolves_the_posterior_despite_the_spacing_cap(
+    #[case] root_points: usize,
     #[case] subtree_sigma: f64,
     #[case] refined: bool,
   ) -> Result<(), Report> {
@@ -506,7 +508,7 @@ mod tests {
     let (root_key, node_key) = (key("root"), key("N"));
 
     let mut inputs = ForwardInputs::new(&graph);
-    set_time_distribution(&mut inputs, root_key, hard_gaussian((1998.0, 2002.0), 4001, 2000.0, 0.5)?);
+    set_time_distribution(&mut inputs, root_key, hard_gaussian((1998.0, 2002.0), root_points, 2000.0, 0.5)?);
     set_time_distribution(&mut inputs, node_key, hard_gaussian((1990.0, 2020.0), 601, 2002.0, subtree_sigma)?);
     set_branch_distribution(&graph, &mut inputs, node_key, hard_gaussian((0.0, 4.0), 401, 2.0, 0.5)?);
 
@@ -515,31 +517,70 @@ mod tests {
     let root = posterior[&root_key].distribution.as_deref().expect("the root has a posterior");
     let branch = inputs.branches[&parent_edge_key(&graph, node_key)].distribution.as_deref();
     let branch = branch.expect("the branch has a distribution");
-    let subtree = inputs.backward[&node_key].subtree.as_deref().expect("N has a subtree distribution");
     let capped = convolve_across_edge(root, branch, Side::Right, EPS, GRID_POINTS, MaxGridPoints::default())?;
-    let Distribution::Function(capped) = capped else {
-      return Err(eyre::eyre!("the capped message must be a function"));
+    let (Distribution::Function(capped), Distribution::Function(root), Distribution::Function(branch)) =
+      (capped, root, branch)
+    else {
+      return Err(eyre::eyre!("the capped message and its operands must be functions"));
     };
-    let capped_product = distribution_multiplication(&Distribution::Function(capped.clone()), subtree, MaxGridPoints::default())?;
-    let Distribution::Function(capped_product) = capped_product else {
-      return Err(eyre::eyre!("the capped posterior must be a function"));
-    };
-    let profile = MassProfile::new(&capped_product)?;
-    let fractions = profile.fractions(TailMass::Required).expect("the capped posterior has a finite mass");
-    let resolving_dx = (fractions.survival_inverse(TRIM_EPS) - fractions.quantile(TRIM_EPS)) / (GRID_POINTS - 1).to_f64_exact();
+    let fine_dx = root.dx().min(branch.dx());
+    let intervals = (GRID_POINTS - 1).to_f64_exact();
+    let uncapped_dx = ((capped.x_max() - capped.x_min()) / intervals).min(fine_dx);
     let Some(Distribution::Function(result)) = posterior[&node_key].distribution.as_deref() else {
       return Err(eyre::eyre!("N must have a function posterior"));
     };
+    let cells = ((result.x_max() - result.x_min()) / result.dx()).round();
+    let required = ((result.x_max() - result.x_min()) / uncapped_dx).floor().min(intervals);
 
     pretty_assert_abs_diff_eq!(0.01, capped.dx(), epsilon = 1e-12);
+    assert!(cells >= required, "the posterior spans {cells} cells, the uncapped path {required}");
     if refined {
-      assert!(resolving_dx < capped.dx(), "the posterior is narrower than {GRID_POINTS} capped cells");
-      assert!(result.dx() <= resolving_dx, "spacing {} above {resolving_dx}", result.dx());
-      assert!(result.dx() >= 0.001, "spacing {} below the convolution spacing", result.dx());
+      assert!(result.dx() < capped.dx(), "spacing {} not below the cap", result.dx());
+      assert!(result.dx() >= fine_dx, "spacing {} below the convolution spacing", result.dx());
     } else {
-      assert!(resolving_dx >= capped.dx(), "the posterior spans {GRID_POINTS} capped cells");
       pretty_assert_abs_diff_eq!(capped.dx(), result.dx(), epsilon = 1e-12);
     }
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::trimmed_product_with_the_subtree(Some(Distribution::range((-0.01, 2.01), 0.0)))]
+  #[case::message_without_a_subtree(       None                                         )]
+  #[trace]
+  fn test_forward_pass_message_resolves_the_posterior_it_forms_after_a_resample(
+    #[case] subtree: Option<Distribution<NegLog>>,
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(N:1.0)root;".as_slice())?;
+    let names = nwk_parsed.names();
+    let graph = nwk_parsed.graph;
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
+    let (root_key, node_key) = (key("root"), key("N"));
+
+    let mut inputs = ForwardInputs::new(&graph);
+    set_time_distribution(&mut inputs, root_key, hard_gaussian((-0.01, 0.01), 2001, 0.0, 0.001)?);
+    if let Some(subtree) = subtree {
+      set_time_distribution(&mut inputs, node_key, subtree);
+    }
+    let branch = DistributionFunction::from_start_dx_values(0.0, 1.0, array![5e7, 0.0, 5e7])?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Hard)?;
+    set_branch_distribution(&graph, &mut inputs, node_key, Distribution::Function(branch));
+
+    let posterior = run_forward_pass(&graph, &inputs, &names)?;
+
+    let Some(Distribution::Function(result)) = posterior[&node_key].distribution.as_deref() else {
+      return Err(eyre::eyre!("N must have a function posterior"));
+    };
+    let profile = MassProfile::new(result)?;
+    let fractions = profile.fractions(TailMass::Required).expect("the posterior has a finite mass");
+    let mass_width = fractions.survival_inverse(TRIM_EPS) - fractions.quantile(TRIM_EPS);
+    let cells = mass_width / result.dx();
+    assert!(
+      cells >= (GRID_POINTS - 1).to_f64_exact(),
+      "the message resolves the posterior mass window {mass_width} with {cells} cells of {}",
+      result.dx()
+    );
     Ok(())
   }
 
