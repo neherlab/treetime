@@ -14,6 +14,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::{Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   #[rustfmt::skip]
@@ -227,6 +228,41 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_mean_field_own_integral_follows_a_tc_step_inside_a_knot_interval() -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+    let names = parsed.names();
+    let graph = parsed.graph;
+    let density = [1.0, 3.0, 2.0, 4.0, 1.0];
+    let root = Distribution::Function(
+      DistributionFunction::<f64, NegLog>::from_range_values(
+        (0.0, 4.0),
+        Array1::from_iter(density.map(|p: f64| -p.ln())),
+      )?
+      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_right_extrap(BoundaryBehavior::Hard)?,
+    );
+    let step = 0.5;
+    let expectation = helpers::expectation(&graph, &names, &[("A", step), ("B", 3.0)], &[("root", root)])?;
+    let (tc_before, tc_after) = (2.0, 0.5);
+    let tc_grid = Array1::linspace(-1.0, 5.0, 6 * 2_usize.pow(14) + 1);
+    let tc = Distribution::function(
+      tc_grid.clone(),
+      tc_grid.mapv(|t| if t < step { tc_before } else { tc_after }),
+    )?;
+    let prior = CoalescentPrior::new(&expectation, &tc)?;
+    let key = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
+
+    let survival_integral = |a: f64, b: f64| helpers::trapezoid_survival_integral(&density, a, b) / 10.0;
+    let start = f64::midpoint(-1.0, (1.0 + 4e-8_f64).sqrt());
+    let own =
+      |x: f64| survival_integral(start, x.min(step)) / tc_before + survival_integral(step, x.max(step)) / tc_after;
+    for x in [0.25, 0.75, 1.5, 2.5, 3.99] {
+      pretty_assert_abs_diff_eq!(own(x), prior.own_integral_at(key, x), epsilon = 1e-12);
+    }
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::far_truncation(   2000.0, 2.0, 2000.0)]
@@ -412,6 +448,30 @@ mod tests {
     }
 
     use super::*;
+
+    pub(super) fn trapezoid_survival_integral(density: &[f64], a: f64, b: f64) -> f64 {
+      let cells = density.len() - 1;
+      let later = |cell: usize| {
+        (cell + 1..cells)
+          .map(|k| f64::midpoint(density[k], density[k + 1]))
+          .sum::<f64>()
+      };
+      let primitive = |cell: usize, u: f64| {
+        let (p0, p1) = (density[cell], density[cell + 1]);
+        (f64::midpoint(p0, p1) + later(cell)) * u - p0 * u * u / 2.0 - (p1 - p0) * u * u * u / 6.0
+      };
+      (0..cells)
+        .map(|cell| {
+          let x0 = cell.to_f64_exact();
+          let (lo, hi) = (a.max(x0), b.min(x0 + 1.0));
+          if lo < hi {
+            primitive(cell, hi - x0) - primitive(cell, lo - x0)
+          } else {
+            0.0
+          }
+        })
+        .sum()
+    }
 
     pub(super) fn expectation(
       graph: &Graph,

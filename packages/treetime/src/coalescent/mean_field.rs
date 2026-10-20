@@ -1,11 +1,11 @@
 use crate::clock::gaussian::NodeTimeGaussian;
 use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
-use crate::timetree::max_posterior_region::posterior_survival;
+use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_survival};
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
-use statrs::distribution::{ContinuousCDF, Normal};
+use statrs::distribution::{Continuous, ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::sync::Arc;
@@ -19,7 +19,7 @@ use treetime_utils::{make_error, make_internal_error};
 
 const EXPECTATION_GRID_POINTS: usize = 4001;
 const SURVIVAL_TRIM: f64 = 1e-9;
-const SURVIVAL_INTERPOLATION_ERROR: f64 = 1e-6;
+const SURVIVAL_INTERPOLATION_ERROR: f64 = 1e-8;
 const MERGER_RATE_STRIDE: usize = 10;
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 const TRUNCATED_NORMAL_POINTS: usize = 1024;
@@ -32,7 +32,7 @@ pub(crate) struct CoalescentPrior {
   tc: Distribution,
   inverse_tc_integral: Vec<f64>,
   expected_integral: Vec<f64>,
-  own_integral: BTreeMap<GraphNodeKey, Vec<f64>>,
+  own_integral: BTreeMap<GraphNodeKey, OwnIntegral>,
   rate_before: f64,
   rate_after: f64,
 }
@@ -49,33 +49,33 @@ impl CoalescentPrior {
       }
       Ok(1.0 / value)
     };
+    let cell_rate: Vec<f64> = grid
+      .iter()
+      .tuple_windows()
+      .map(|(&t0, &t1)| inverse_tc(f64::midpoint(t0, t1)))
+      .try_collect()?;
     let mut inverse_tc_integral = vec![0.0; grid.len()];
     let mut expected_integral = vec![0.0; grid.len()];
     for i in 1..grid.len() {
       let dt = grid[i] - grid[i - 1];
-      let rate = inverse_tc(f64::midpoint(grid[i - 1], grid[i]))?;
+      let rate = cell_rate[i - 1];
       inverse_tc_integral[i] = inverse_tc_integral[i - 1] + dt * rate;
       expected_integral[i] =
         expected_integral[i - 1] + dt * rate * f64::midpoint(expectation.expected[i - 1], expectation.expected[i]);
     }
+    let rate_before = inverse_tc(grid[0])?;
+    let rate_after = inverse_tc(grid[grid.len() - 1])?;
+    let rates = CellRates {
+      grid,
+      inside: &cell_rate,
+      before: rate_before,
+      after: rate_after,
+    };
     let own_integral = expectation
       .nodes
       .iter()
-      .map(|(key, node)| {
-        let survival = &node.survival;
-        let mut integral = vec![0.0; survival.t.len()];
-        for i in 1..survival.t.len() {
-          let rate = inverse_tc(f64::midpoint(survival.t[i - 1], survival.t[i]))?;
-          integral[i] = integral[i - 1]
-            + (survival.t[i] - survival.t[i - 1])
-              * rate
-              * f64::midpoint(survival.survival[i - 1], survival.survival[i]);
-        }
-        Ok((*key, integral))
-      })
-      .collect::<Result<_, Report>>()?;
-    let rate_before = inverse_tc(grid[0])?;
-    let rate_after = inverse_tc(grid[grid.len() - 1])?;
+      .map(|(key, node)| (*key, OwnIntegral::new(&node.survival, &rates)))
+      .collect();
     Ok(Self {
       expectation: Arc::clone(expectation),
       tc: tc.clone(),
@@ -133,20 +133,20 @@ impl CoalescentPrior {
     let grid = &self.expectation.grid;
     let last = grid.len() - 1;
     let inverse_tc = match piece_slope(grid, &self.inverse_tc_integral, side, edge) {
-      PieceSlope::Before => self.rate_before,
-      PieceSlope::Inside(slope) => slope,
-      PieceSlope::After => self.rate_after,
+      Piece::Before => self.rate_before,
+      Piece::Inside(slope) => slope,
+      Piece::After => self.rate_after,
     };
     let expected = match piece_slope(grid, &self.expected_integral, side, edge) {
-      PieceSlope::Before => self.rate_before * self.expectation.expected_before,
-      PieceSlope::Inside(slope) => slope,
-      PieceSlope::After => self.rate_after * self.expectation.expected[last],
+      Piece::Before => self.rate_before * self.expectation.expected_before,
+      Piece::Inside(slope) => slope,
+      Piece::After => self.rate_after * self.expectation.expected[last],
     };
     let own = match (self.expectation.nodes.get(&key), self.own_integral.get(&key)) {
-      (Some(node), Some(integral)) => match piece_slope(&node.survival.t, integral, side, edge) {
-        PieceSlope::Before => inverse_tc,
-        PieceSlope::Inside(slope) => slope,
-        PieceSlope::After => 0.0,
+      (Some(node), Some(integral)) => match piece_at(&integral.t, side, edge) {
+        Piece::Before => inverse_tc,
+        Piece::Inside(k) => integral.rate[k] * node.survival.segment(integral.segment[k]).value(edge),
+        Piece::After => 0.0,
       },
       _ => 0.0,
     };
@@ -177,19 +177,81 @@ impl CoalescentPrior {
     interpolate(grid, &self.expected_integral, x)
   }
 
-  fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
+  pub(crate) fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
     let (Some(node), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
       return 0.0;
     };
-    let t = &node.survival.t;
+    let t = &integral.t;
     let n = t.len();
     if x < t[0] {
       return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(t[0]);
     }
     if x >= t[n - 1] {
-      return integral[n - 1];
+      return integral.cumulative[n - 1];
     }
-    interpolate(t, integral, x)
+    let k = t.partition_point(|&tk| tk <= x) - 1;
+    let segment = node.survival.segment(integral.segment[k]);
+    integral.cumulative[k] + integral.rate[k] * (segment.integral_to(x) - segment.integral_to(t[k]))
+  }
+}
+
+#[derive(Clone, Debug)]
+struct OwnIntegral {
+  t: Vec<f64>,
+  cumulative: Vec<f64>,
+  segment: Vec<usize>,
+  rate: Vec<f64>,
+}
+
+impl OwnIntegral {
+  fn new(survival: &NodeSurvival, rates: &CellRates<'_>) -> Self {
+    let knots = &survival.t;
+    let grid = rates.grid;
+    let mut own = Self {
+      t: vec![knots[0]],
+      cumulative: vec![0.0],
+      segment: vec![],
+      rate: vec![],
+    };
+    let mut cell = grid.partition_point(|&g| g <= knots[0]);
+    let segments = knots.iter().tuple_windows().enumerate();
+    for (i, (&start, &end)) in segments.filter(|(_, (start, end))| start < end) {
+      let piece = survival.segment(i);
+      let first = cell + grid[cell..].partition_point(|&g| g <= start);
+      cell = first + grid[first..].partition_point(|&g| g < end);
+      let mut primitive_before = 0.0;
+      for (j, &b) in grid[first..cell].iter().chain(once(&end)).enumerate() {
+        let primitive = piece.integral_to(b);
+        own.push(b, rates.rate(first + j), primitive - primitive_before, i);
+        primitive_before = primitive;
+      }
+    }
+    own
+  }
+
+  fn push(&mut self, t: f64, rate: f64, integral: f64, segment: usize) {
+    let total = self.cumulative[self.cumulative.len() - 1] + rate * integral;
+    self.t.push(t);
+    self.cumulative.push(total);
+    self.segment.push(segment);
+    self.rate.push(rate);
+  }
+}
+
+struct CellRates<'a> {
+  grid: &'a [f64],
+  inside: &'a [f64],
+  before: f64,
+  after: f64,
+}
+
+impl CellRates<'_> {
+  fn rate(&self, cell: usize) -> f64 {
+    match cell {
+      0 => self.before,
+      cell if cell == self.grid.len() => self.after,
+      cell => self.inside[cell - 1],
+    }
   }
 }
 
@@ -352,10 +414,10 @@ impl LineageExpectation {
       }
       let last = grid.partition_point(|&g| g < survival.t[survival.t.len() - 1]);
       surviving_from[first] += weight;
-      for i in first..last {
-        let s = survival.at(grid[i]);
-        expected[i] += weight * s;
-        variance[i] += weight * weight * s * (1.0 - s);
+      let values = survival.values_at_sorted(&grid[first..last]);
+      for (s, expected, variance) in izip!(values, &mut expected[first..last], &mut variance[first..last]) {
+        *expected += weight * s;
+        *variance += weight * weight * s * (1.0 - s);
       }
     }
     let mut running = 0.0;
@@ -473,21 +535,20 @@ struct WeightedSurvival {
 pub(crate) struct NodeSurvival {
   t: Vec<f64>,
   survival: Vec<f64>,
+  slope: Vec<f64>,
 }
 
 impl NodeSurvival {
   pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
     let survival = posterior_survival(distribution, SURVIVAL_TRIM, SURVIVAL_INTERPOLATION_ERROR)?;
-    Ok(survival.map(|survival| Self {
-      t: survival.t,
-      survival: survival.survival,
-    }))
+    Ok(survival.map(Self::from))
   }
 
   fn point(time: f64) -> Self {
     Self {
       t: vec![time],
       survival: vec![0.0],
+      slope: vec![0.0],
     }
   }
 
@@ -508,18 +569,23 @@ impl NodeSurvival {
       Some(rate) => 1.0 - (-rate * (upper - t)).exp(),
       None => ((cdf_upper - normal.cdf((t - mean) / std)) / cdf_upper).clamp(0.0, 1.0),
     };
+    let slope = |t: f64| match tail_rate {
+      Some(rate) => -rate * (-rate * (upper - t)).exp(),
+      None => -normal.pdf((t - mean) / std) / (std * cdf_upper),
+    };
     let t = curvature_grid(start, end, TRUNCATED_NORMAL_POINTS, survival);
     let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
     survival[0] = 1.0;
     survival[TRUNCATED_NORMAL_POINTS - 1] = 0.0;
-    Self { t, survival }
+    let slope = t.iter().map(|&x| slope(x)).collect();
+    Self { t, survival, slope }
   }
 
   fn is_point(&self) -> bool {
     self.t.len() == 1
   }
 
-  fn at(&self, x: f64) -> f64 {
+  pub(crate) fn at(&self, x: f64) -> f64 {
     let n = self.t.len();
     if x < self.t[0] {
       return 1.0;
@@ -527,9 +593,71 @@ impl NodeSurvival {
     if x >= self.t[n - 1] {
       return 0.0;
     }
-    let i = self.t.partition_point(|&ti| ti <= x) - 1;
-    let (t0, t1) = (self.t[i], self.t[i + 1]);
-    self.survival[i] + (x - t0) / (t1 - t0) * (self.survival[i + 1] - self.survival[i])
+    self.segment(self.t.partition_point(|&ti| ti <= x) - 1).value(x)
+  }
+
+  fn values_at_sorted<'a>(&'a self, xs: &'a [f64]) -> impl Iterator<Item = f64> + 'a {
+    let n = self.t.len();
+    xs.iter().scan(0, move |i, &x| {
+      if x < self.t[0] {
+        return Some(1.0);
+      }
+      if x >= self.t[n - 1] {
+        return Some(0.0);
+      }
+      *i += self.t[*i + 1..].partition_point(|&ti| ti <= x);
+      Some(self.segment(*i).value(x))
+    })
+  }
+
+  fn segment(&self, i: usize) -> HermiteSegment {
+    HermiteSegment {
+      t0: self.t[i],
+      h: self.t[i + 1] - self.t[i],
+      s0: self.survival[i],
+      s1: self.survival[i + 1],
+      d0: self.slope[i],
+      d1: self.slope[i + 1],
+    }
+  }
+}
+
+impl From<PosteriorSurvival> for NodeSurvival {
+  fn from(survival: PosteriorSurvival) -> Self {
+    Self {
+      t: survival.t,
+      survival: survival.survival,
+      slope: survival.slope,
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct HermiteSegment {
+  t0: f64,
+  h: f64,
+  s0: f64,
+  s1: f64,
+  d0: f64,
+  d1: f64,
+}
+
+impl HermiteSegment {
+  fn value(self, x: f64) -> f64 {
+    let u = (x - self.t0) / self.h;
+    let (u2, u3) = (u * u, u * u * u);
+    self.s0
+      + (3.0 * u2 - 2.0 * u3) * (self.s1 - self.s0)
+      + self.h * ((u3 - 2.0 * u2 + u) * self.d0 + (u3 - u2) * self.d1)
+  }
+
+  fn integral_to(self, x: f64) -> f64 {
+    let u = (x - self.t0) / self.h;
+    let (u2, u3, u4) = (u * u, u * u * u, u * u * u * u);
+    self.h
+      * (self.s0 * u
+        + (u3 - u4 / 2.0) * (self.s1 - self.s0)
+        + self.h * ((u4 / 4.0 - 2.0 * u3 / 3.0 + u2 / 2.0) * self.d0 + (u4 / 4.0 - u3 / 3.0) * self.d1))
   }
 }
 
@@ -571,23 +699,31 @@ fn curvature_grid(start: f64, end: f64, n_points: usize, survival: impl Fn(f64) 
     .collect()
 }
 
-fn piece_slope(t: &[f64], values: &[f64], side: Side, x: f64) -> PieceSlope {
+fn piece_slope(t: &[f64], values: &[f64], side: Side, x: f64) -> Piece<f64> {
+  match piece_at(t, side, x) {
+    Piece::Before => Piece::Before,
+    Piece::Inside(i) => Piece::Inside((values[i + 1] - values[i]) / (t[i + 1] - t[i])),
+    Piece::After => Piece::After,
+  }
+}
+
+fn piece_at(t: &[f64], side: Side, x: f64) -> Piece<usize> {
   let i = match side {
     Side::Left => t.partition_point(|&ti| ti < x),
     Side::Right => t.partition_point(|&ti| ti <= x),
   };
   if i == 0 {
-    PieceSlope::Before
+    Piece::Before
   } else if i == t.len() {
-    PieceSlope::After
+    Piece::After
   } else {
-    PieceSlope::Inside((values[i] - values[i - 1]) / (t[i] - t[i - 1]))
+    Piece::Inside(i - 1)
   }
 }
 
-enum PieceSlope {
+enum Piece<T> {
   Before,
-  Inside(f64),
+  Inside(T),
   After,
 }
 
