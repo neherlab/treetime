@@ -15,7 +15,7 @@ Shallow posteriors occur for leaves with an ambiguous date such as `1986-XX-XX`,
 - Docstring diverges: the region should contain "the specified fraction of the probability mass" [packages/legacy/treetime/treetime/clock_tree.py#L1149-L1150](../../packages/legacy/treetime/treetime/clock_tree.py#L1149-L1150); the reported region holds all of it
 - Objective not minimized: at the returned level the objective is `0.01`, while a level with objective `0` exists
 - Adjacent correct: nodes whose posterior rises above height 10 on a side get a region with exactly 90% of the mass from the same code
-- Reproduced: leaf `KP258696` of `rsv/a/20` (date `1986-XX-XX`, side heights at most `0.17` and `0.013`) in the golden-master capture `packages/treetime/src/timetree/__tests__/__fixtures__/gm_max_posterior_region_capture`. v0 reports `[1986.0014, 1986.9986]`, the whole support
+- Reproduced: leaf `KP258696` of `rsv/a/20` (date `1986-XX-XX`, side heights at most `0.17` and `0.013`), with v0 run on the posterior of that leaf. v0 reports `[1986.0014, 1986.9986]`, the whole support
 
 ## v0 impact
 
@@ -23,4 +23,4 @@ Nodes with a shallow posterior get the whole support as their 90% region, which 
 
 ## v1 status
 
-The mass between the two level crossings is piecewise linear in `h`, so `fn highest_density_interval()` in [packages/treetime/src/timetree/max_posterior_region.rs](../../packages/treetime/src/timetree/max_posterior_region.rs) solves for the level exactly. For `KP258696`, v0's own CDF gives the v1 region 90% of the mass (`test_gm_max_posterior_region_shallow_posterior_holds_fraction_where_v0_returns_support`).
+`fn max_posterior_region()` in [packages/treetime/src/timetree/max_posterior_region.rs](../../packages/treetime/src/timetree/max_posterior_region.rs) solves for the level inside one continuous level interval and checks that the returned region holds 90% of the mass; at a plateau of the mass it ends the region inside the plateau where it holds 90% ([kb/decisions/timetree-posterior-statistics-count-tail-mass.md](../decisions/timetree-posterior-statistics-count-tail-mass.md)). A shallow posterior therefore gets a region with 90% of its mass, not its whole support.

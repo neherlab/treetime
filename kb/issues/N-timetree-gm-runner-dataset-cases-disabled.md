@@ -1,26 +1,37 @@
-# Golden-master runner cases are disabled for five datasets
+# Golden-master runner tests cover only `flu_h3n2_20`
 
-The timetree golden-master runner tests compare v1 node times with v0 fixtures. Their cases for `dengue_20`, `lassa_L_20`, `mpox_clade_ii_20`, `rsv_a_20`, and `tb_20` are commented out under `// TODO:` lines in all three test files, so these datasets have no runner coverage:
+The timetree runner tests run the marginal time inference on the inputs of the `gm_runner` fixtures (the v0-rerooted tree and clock rate of `gm_runner_outputs.json`). Both run only the case `flu_h3n2_20`:
 
-- [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L26-L33](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L26-L33)
-- [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35-L43](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35-L43)
-- [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35-L43](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35-L43)
+- `test_gm_runner_marginal_dense` compares v1 dense node times with v0 [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L9-L33](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L9-L33). It passes at `epsilon = 1e-1` (largest gap 0.070 years, [M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md)); the cases of the other seven datasets are commented out under a `// TODO:` line that cites this issue
+- `test_gm_runner_marginal_sparse_dense_consistency` compares v1 sparse with v1 dense [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25). It passes at `epsilon = 1e-3` (largest gap $7.3 \cdot 10^{-4}$ years, [H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md)); the other datasets differ by 0.07 to 1.1 years and have no case
 
-The fixtures still hold the expected values of these datasets.
+The fixtures still hold the expected values of all datasets.
 
-## Current state
+## Measured state per dataset (dense against v0, include and exclude indels)
 
-The original cause is gone. The cases were disabled because the inference produced times only for the leaves: the backward pass multiplied child messages whose finite grids were disjoint, and the product collapsed to `Empty`. The current code dates every node: a `timetree` run on `data/dengue/20` writes `numdate` for all 39 nodes.
+| Dataset | Outcome |
+| --- | --- |
+| `dengue_20` | 14.8 and 16.3 years at `NODE_0000018` |
+| `lassa_L_20` | 4.9 and 6.7 years at `NODE_0000004` |
+| `rsv_a_20` | 1.8 and 1.7 years at `NODE_0000017` |
+| `ebola_20` | v1 dates 8 internal nodes that v0 leaves out ([N-timetree-dense-golden-master-node-mismatch.md](N-timetree-dense-golden-master-node-mismatch.md)) |
+| `tb_20` | v1 dates 6 internal nodes that v0 leaves out; 33.9 years at `NODE_0000016` |
+| `mpox_clade_ii_20` | exceeds the 300 s test timeout |
+| `zika_20` | the metadata has no column `#name` ([M-timetree-date-header-hash.md](M-timetree-date-header-hash.md)) |
 
-The cases stay disabled because every remaining runner test is `#[ignore]`d for a gap to v0 that the grid resolution may cause ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md)): on `flu_h3n2_20`, the dense runner differs from v0 by up to 0.070 years and the Poisson runner by up to 0.35 years. The disabled cases may fail for further reasons once they run.
+The gaps on dengue, lassa and rsv are far above the 0.070 years of flu. No measurement separates a v1 defect from a fixture effect.
 
-The `ebola_20` cases of the dense and sparse runners are disabled for a separate fixture defect ([N-timetree-dense-golden-master-node-mismatch.md](N-timetree-dense-golden-master-node-mismatch.md)), and the `zika_20` cases for the header defect of [M-timetree-date-header-hash.md](M-timetree-date-header-hash.md).
+> [!IMPORTANT]
+> **Investigation required.** The v0 capture script `packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_runner_capture` does not reproduce the committed `marginal_dense` values on the development host: a rerun differs from the fixture by up to 0.30 years on `lassa_L_20`. Find out whether the fixture or the capture environment changed before reading the gaps above as v1 errors.
+
+> [!IMPORTANT]
+> **Investigation required.** Why the dense `mpox_clade_ii_20` case is slow. The dense timetree on `data/mpox/clade-ii/20` takes 66.8 s of wall time (410 s of CPU on all threads) against 0.62 s for `data/flu/h3n2/20`. Profile the dense run and find the operation that dominates.
 
 ## Fix
 
-- Re-enable the five dataset cases in all three runner tests after the runner tests pass at their target tolerance (`epsilon = 1e-6`)
-- Investigate each case that then fails on its own, and file a separate issue for each new cause
+- Find the cause of each dataset's gap, fix v1 or the fixture, and enable the case at the tightest passing tolerance, citing the issue that holds the remaining gap
+- File a separate issue for each new cause
 
 ## Validation
 
-The 15 runner cases (5 datasets in 3 modes) run without `#[ignore]` and pass at the target tolerance.
+The runner tests hold a case for every dataset of the fixtures, each at a tolerance of at most `1e-6` or citing the issue of its measured gap.

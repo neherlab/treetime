@@ -2,9 +2,7 @@
 
 Maintained Rust sources keep disabled parameterized test cases and an unused `Seq::splice()` sketch as commented-out code. Each block starts with a `// TODO:` line that states why the code is disabled and, where one exists, the kb issue that blocks it:
 
-- [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L35)
-- [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L35)
-- [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L26`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_poisson.rs#L26)
+- [`packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L12`](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_dense.rs#L12)
 - [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L15`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L15) and [`packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L95`](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L95)
 - [`packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs#L76`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_gm_infer_gtr_dense.rs#L76)
 - [`packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs#L33`](../../packages/treetime/src/gtr/infer_gtr/__tests__/test_contract_dense_sparse_real.rs#L33)

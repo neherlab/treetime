@@ -9,11 +9,11 @@
 
 ## Summary
 
-Confidence intervals of `timetree` combine the maximum posterior region of the marginal time posterior with the rate-susceptibility term of `--confidence`, in quadrature, clipped to the support of the posterior. They are written when `--time-marginal` is `always` or `only-final`, or when `--confidence` is set.
+Confidence intervals of `timetree` combine the maximum posterior region of the marginal time posterior with the rate-susceptibility term of `--confidence`, in quadrature, clipped to the hard sides of the node's subtree distribution. They are written when `--time-marginal` is `always` or `only-final`, or when `--confidence` is set.
 
 ## Details
 
-`fn node_confidence_interval()` ([packages/treetime/src/timetree/confidence.rs#L113-L134](../../packages/treetime/src/timetree/confidence.rs#L113-L134)) takes the bounds from `fn confidence_bounds()` and then widens them with `lower.min(date)` and `upper.max(date)` ([packages/treetime/src/timetree/confidence.rs#L124-L125](../../packages/treetime/src/timetree/confidence.rs#L124-L125)). The step does not move the point estimate. A case where the computed interval and the reported date disagree (for example the fallback region of [M-timetree-max-posterior-region-fallback-holds-less-than-fraction.md](M-timetree-max-posterior-region-fallback-holds-less-than-fraction.md), or the clip to the support of the posterior) is hidden instead of reported.
+`fn node_confidence_interval()` ([packages/treetime/src/timetree/confidence.rs#L113-L135](../../packages/treetime/src/timetree/confidence.rs#L113-L135)) takes the bounds from `fn confidence_bounds()` and then widens them with `lower.min(date)` and `upper.max(date)` ([packages/treetime/src/timetree/confidence.rs#L125-L126](../../packages/treetime/src/timetree/confidence.rs#L125-L126)). The step does not move the point estimate. A case where the computed interval and the reported date disagree (for example the clip to the hard sides of the node's subtree distribution) is hidden instead of reported.
 
 v0 has no such step: `get_confidence_interval` and `get_max_posterior_region` return the `combine_confidence` result directly ([packages/legacy/treetime/treetime/clock_tree.py#L1142-L1144](../../packages/legacy/treetime/treetime/clock_tree.py#L1142-L1144), [packages/legacy/treetime/treetime/clock_tree.py#L1228-L1230](../../packages/legacy/treetime/treetime/clock_tree.py#L1228-L1230)).
 

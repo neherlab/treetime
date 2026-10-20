@@ -25,6 +25,8 @@ treetime timetree --tree=data/zika/86/tree.nwk --metadata=data/zika/86/metadata.
 
 `timetree.auspice.json` names the root `NODE_0000000`. The interval table has one row with an empty name and no `NODE_0000000` row; every other node name agrees between the two files.
 
+A root that rerooting creates has no input name either: on `data/flu/h3n2/20` with `--reroot` set to `oldest` or `min-dev`, the interval table writes an empty name for the new root, while every other output names it `NODE_<n>`. With `--keep-root` the input root keeps its name and the table names it.
+
 ## Fix direction
 
 Assign the node names before the interval extraction.

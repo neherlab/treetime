@@ -23,8 +23,8 @@ The full Kingman density couples all node times through $k(t)$. The linear-time 
 
 `test_marginal_exact.rs` ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs)) integrates exact posteriors with JC69 branches of known substitution counts:
 
-- Without a prior, on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, the time passes match the exact posterior to within 0.02 in CDF, zero-count branches and the hard bound at B included ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L44](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L44)). Message passing and the branch-likelihood builder are exact
-- With the mean-field prior, on `((A,B)X,(C,D)Y)R` with overlapping sibling clades, the node marginals match the exact Kingman posterior to within 0.03 in CDF at $T_c = 1$ and $T_c = 10$ ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L76](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L76)). Lineage counts frozen at point times were off by 0.08-0.38 on the same tree
+- Without a prior, on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, the time passes match the exact posterior to within $1.4 \cdot 10^{-2}$ in CDF (node R, zero counts near the tips), zero-count branches and the hard bound at B included ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70)). Without a prior no mean field enters, so this difference is the discretization of the time passes on the test's 0.005-year grid; each case asserts its own limit between $10^{-4}$ and $10^{-1}$ per node
+- With the mean-field prior, on `((A,B)X,(C,D)Y)R` with overlapping sibling clades, the node marginals match the exact Kingman posterior to within $1.62 \cdot 10^{-2}$ in CDF at $T_c = 1$ and $T_c = 10$ (node X, overlapping clades, $T_c = 1$; [packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112)), with per-node limits between $10^{-3}$ and $10^{-1}$. Lineage counts frozen at point times were off by 0.08-0.38 on the same tree
 
 ### Calibration on simulated data
 
@@ -56,6 +56,8 @@ The true-$T_c$ row needs no $T_c$ fit, so it measures the mean field alone.
 
 > [!IMPORTANT]
 > **Investigation required.** The table predates two changes to the loop: the Gaussian seed of the expectation and the interior-maximum rate window, which reduced the median $\lvert\ln\rvert$ rate error at $L = 10^3$, $\mu = 3 \cdot 10^{-4}$ from 0.505 to 0.281 ([kb/decisions/timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#rate-window)). Rerun the calibration suite (`--time-marginal only-final`) on the current code for the four problems of the summary: low-signal mean PIT, old-node PIT and bias by estimated age, low-signal rate error, and the number of nodes without a posterior. The direction of the old-node bias also needs this check: by the PIT definition above, a mean PIT of 0.64-0.69 puts most posterior mass before the true date, which makes these posteriors too old, while earlier analysis described them as too young.
+
+A partial rerun on the code of 2026-10-20 (12 sets, `keep-opt-est` with `--time-marginal only-final`, mean of 2 replicates) measured the 90% coverage only: 0.797 at $L = 10^3$, $\mu = 3 \cdot 10^{-4}$ (mean interval width 0.363 years), and within 0.003 of the code before the forward-posterior trim where $\mu \ge 10^{-3}$ or $L = 10^4$. Mean PIT, the old-node bias and the nodes without a posterior are not remeasured.
 
 ## Related
 

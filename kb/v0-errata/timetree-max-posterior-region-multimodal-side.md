@@ -18,8 +18,8 @@ Example: a side walked outward from the peak with heights `0, 2, 1, 3` at positi
 
 ## v0 impact
 
-Only posteriors with a non-monotone side are affected. On every single-peaked posterior the sorted-height map equals the first crossing outward from the peak. In the golden-master capture of `ebola/20` and `rsv/a/20`, one internal node has a non-monotone side, at height 13.8 above the peak, far above the 90% level. Its region is the same in v0 and v1.
+Only posteriors with a non-monotone side are affected. On every single-peaked posterior the sorted-height map equals the first crossing outward from the peak. Among the v0 posteriors of `ebola/20` and `rsv/a/20`, one internal node has a non-monotone side, at height 13.8 above the peak, far above the 90% level. Its region is the same in v0 and v1.
 
 ## v1 status
 
-`fn highest_density_interval()` in [packages/treetime/src/timetree/max_posterior_region.rs](../../packages/treetime/src/timetree/max_posterior_region.rs) replaces the heights of each side by their running maximum outward from the peak. A level then maps to its first crossing outward from the peak, so the region is the level set connected to the peak. A level above a dip adds the mode beyond it as a whole. On monotone sides the result equals v0.
+`fn max_posterior_region()` in [packages/treetime/src/timetree/max_posterior_region.rs](../../packages/treetime/src/timetree/max_posterior_region.rs) replaces the heights of each side by their running maximum outward from the peak. A level then maps to its first crossing outward from the peak, so the region is the level set connected to the peak. A level above a dip adds the mode beyond it as a whole. On monotone sides the result equals v0, except for the mass of tail laws and hard cells, which v1 counts ([kb/decisions/timetree-posterior-statistics-count-tail-mass.md](../decisions/timetree-posterior-statistics-count-tail-mass.md)).

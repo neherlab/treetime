@@ -44,4 +44,3 @@ After the decision, represent polytomy handling as one exhaustive policy enum an
 - [M-timetree-coalescent-modes-represent-invalid-states.md](M-timetree-coalescent-modes-represent-invalid-states.md)
 - [M-timetree-polytomy-cleanup-drops-dated-single-child-node.md](M-timetree-polytomy-cleanup-drops-dated-single-child-node.md)
 - [M-timetree-relaxed-clock-rates-reset-after-polytomy-resolution.md](M-timetree-relaxed-clock-rates-reset-after-polytomy-resolution.md)
-- [H-timetree-polytomy-resolution-blows-up-the-time-grid.md](H-timetree-polytomy-resolution-blows-up-the-time-grid.md)

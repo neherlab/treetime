@@ -12,13 +12,14 @@ treetime timetree --tree=data/mpox/clade-ii/20/tree.nwk --metadata=data/mpox/cla
 
 The smoke matrix declares this run as the expected failure `variant = "grid-point-limit"` in `dev/smoke.toml`.
 
-- **`rust` of 2026-10-19**: the run stops with "A grid over [2019.14, 2022] with spacing 2.17304e-7 needs 13175607 points, more than the limit of 1000000". The backtrace shows the forward pass: `fn refine_distribution_from_parent()` calls `fn distribution_multiplication()` [packages/treetime/src/timetree/inference/forward_pass.rs#L207](../../packages/treetime/src/timetree/inference/forward_pass.rs#L207), the product of the forward message and the subtree distribution of the first refined node
+- **`rust` of 2026-10-19**: the run stops with "A grid over [2019.14, 2022] with spacing 2.17304e-7 needs 13175607 points, more than the limit of 1000000". The backtrace shows the forward pass: `fn refine_distribution_from_parent()` calls `fn distribution_multiplication()`, the product of the forward message and the subtree distribution of the first refined node
 - **The forward-posterior trimming prototype** (commit `6d06d211a` on branch `claude-grid-trim`, `TT_TRIM=p TT_COARSE=1`, see [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)): the run stops in the same product with 13 869 392 points over \[2019.14, 2022.45\], and before that warns that `PP852952` has an empty time distribution and gets no date. Trimming the posterior does not help, because the large grid is a product of untrimmed messages
+- **With the forward-posterior trim and the spacing cap** ([kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md), code of 2026-10-20): `data/mpox/clade-ii/1000` with `--name-column=accession --clock-rate=0.5 --max-iter=1` stops with a grid over \[2019.48, 2023.14\] at spacing $2.04 \cdot 10^{-7}$ years, 17 968 319 points. Which operation requests this grid is not recorded
 
 ## Mechanism
 
 - **Spacing source**: at `--clock-rate=0.5`, about 5000 times a realistic mpox rate, a branch-time distribution spans about $6.5 \cdot 10^{-5}$ years on 300 points, a spacing of $2.2 \cdot 10^{-7}$ years
-- **Convolution**: `fn convolution_function_function_fine()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L167-L175](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L167-L175) resamples both operands to the finer spacing, and `fn resample_to_mass_window()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L107-L121](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L107-L121) keeps that spacing for the result. Convolving a node distribution several years wide at this spacing needs more points than the limit (15 583 861 on an earlier base, recorded in the decision file); when the operand is narrow, the forward message is narrow but keeps the fine spacing
+- **Convolution**: `fn convolution_function_function_fine()` [packages/treetime-distribution/src/distribution_ops/convolve.rs#L271-L281](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L271-L281) resamples both operands to the finer spacing, and `fn resample_to_mass_window()` [packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L332-L368](../../packages/treetime-distribution/src/distribution_ops/mass_domain.rs#L332-L368) keeps that spacing for a backward result; a forward result keeps it when its posterior needs it. Convolving a node distribution several years wide at this spacing needs more points than the limit (15 583 861 on an earlier base, recorded in the decision file); when the operand is narrow, the forward message is narrow but keeps the fine spacing
 - **Product**: multiplication grids the support intersection of its operands at the finest operand spacing (grid intersection contract, [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md#grid-intersection-contract)). The forward message has a soft right tail and the subtree distribution a soft left tail, so the intersection reaches from the hard left edge of the forward message to the hard right edge of the subtree distribution, 2.9 years here, at the spacing of the branch
 - **Regrid stack**: on a stack of 2026-10-18 that replaced the convolution spacing with the v0 rule (`max(0.005 * one_mutation, min(FWHM_a, FWHM_b) / 150)`), the convolution needed at most 11 016 points, and the forward product of two messages 3.3 years apart needed 22 114 172 points
 - **v0**: with `--time-marginal always` v0 fails on this input with an empty product ("Unexpected behavior detected in multiply function when determining peak of function with y-values '[]'", recorded in [kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md))
@@ -39,11 +40,11 @@ The smoke matrix declares this run as the expected failure `variant = "grid-poin
 ## Validation
 
 - The reproduction above finishes under the default grid point limit, every node dated
-- `data/mpox/clade-ii/1000` with `--clock-rate=1e-3 --max-iter=1` (the case of [M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)): largest grid and peak memory before and after
+- `data/mpox/clade-ii/1000` with `--name-column=accession --clock-rate=0.5 --max-iter=1` finishes, every node dated
 - Dates and intervals against the current output on runs at realistic clock rates
 
 ## Related
 
 - [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)
 - [kb/decisions/distribution-grid-point-limit.md](../decisions/distribution-grid-point-limit.md)
-- [M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md](M-timetree-node-support-reaches-far-past-at-moderate-clock-rate.md)
+- [M-timetree-near-flat-soft-tail-stretches-the-time-grid.md](M-timetree-near-flat-soft-tail-stretches-the-time-grid.md)
