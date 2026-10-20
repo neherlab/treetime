@@ -350,6 +350,24 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::steep_narrow_cell(   999.0, 1e-20,  5e-21,   746.106_637_698_808_4)]
+  #[case::wide_cell_tiny_start(  1.0, 1e200,  2e-200, 1_380.857_908_615_867_5)]
+  #[case::flat_wide_cell(        0.0, 1e200,  2e-200,  459.823_871_418_249_2)]
+  #[trace]
+  fn test_mass_profile_hard_cell_mass_far_below_plain_scale_keeps_its_log_mass(
+    #[case] beta: f64,
+    #[case] h: f64,
+    #[case] distance: f64,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: beta });
+    let profile = MassProfile::new(&helpers::function((0.0, h), array![f64::INFINITY, 0.0], left, HARD)?)?;
+    assert_relative_eq!(expected, profile.neg_log_mass_between(0.0, distance)?, epsilon = 0.0, max_relative = 1e-15);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::infinite_first(  (2000.0, 2000.2), array![f64::INFINITY, 3.0, 4.0])]
   #[case::finite(          (2000.0, 2000.2), array![5.0, 3.0, 4.0])]
   #[case::negative_tenths( (-7.3,   -6.6  ), array![f64::INFINITY, 1.0, 2.0, 9.0, f64::INFINITY, 5.0, 6.0, 3.0])]

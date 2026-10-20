@@ -274,6 +274,28 @@ mod tests {
   }
 
   #[test]
+  fn test_mass_profile_short_interval_at_edge_of_far_reaching_hard_approach_tail_keeps_its_mass() -> Result<(), Report>
+  {
+    let (t_hard, b, width) = (1e200, 2.0, 1e-120);
+    let right = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard, b });
+    let profile = MassProfile::new(&helpers::function((-1.0, 0.0), array![0.0, 0.0], HARD, right)?)?;
+    let expected = width - width * width / t_hard + width.powi(3) / (3.0 * t_hard * t_hard);
+    assert_relative_eq!(
+      expected,
+      profile.mass_between(0.0, width)?,
+      epsilon = 0.0,
+      max_relative = 1e-15
+    );
+    assert_relative_eq!(
+      -expected.ln(),
+      profile.neg_log_mass_between(0.0, width)?,
+      epsilon = 0.0,
+      max_relative = 1e-15
+    );
+    Ok(())
+  }
+
+  #[test]
   fn test_mass_profile_interval_beyond_error_side_is_error() -> Result<(), Report> {
     let f = helpers::function((0.0, 1.0), array![0.0, 2.0], BoundaryBehavior::Error, HARD)?;
     let profile = MassProfile::new(&f)?;

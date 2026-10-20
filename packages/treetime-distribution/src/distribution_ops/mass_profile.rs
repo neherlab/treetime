@@ -567,8 +567,7 @@ impl TailLaw {
         power,
       } => {
         let delta_near = self.outward(near, t_hard).clamp(0.0, delta_edge);
-        let delta_far = self.outward(far, t_hard).clamp(0.0, delta_edge);
-        power_law_mass(self.r_edge, delta_edge, power, delta_near, delta_near - delta_far)
+        power_law_mass(self.r_edge, delta_edge, power, delta_near, width)
       },
     }
   }
@@ -822,14 +821,37 @@ fn power_law_mass(r_edge: f64, delta_edge: f64, power: f64, delta_near: f64, wid
   if delta_near <= 0.0 || width <= 0.0 {
     return ScaledMass::ZERO;
   }
-  let log_ratio = (-width.min(delta_near) / delta_near).ln_1p();
-  let shape = delta_edge / power * -(power * log_ratio).exp_m1();
+  let width = width.min(delta_near);
+  let fraction = width / delta_near;
   let ratio = delta_near / delta_edge;
+  let ln_ratio = || {
+    if ratio.is_normal() {
+      ratio.ln()
+    } else {
+      delta_near.ln() - delta_edge.ln()
+    }
+  };
+  if !fraction.is_normal() {
+    return ScaledMass::new(r_edge - (power - 1.0) * ln_ratio(), width);
+  }
+  let log_ratio = (-fraction).ln_1p();
+  let near_share = -(power * log_ratio).exp_m1();
+  let shape = delta_edge / power * near_share;
+  if !(near_share.is_normal() && shape.is_normal()) {
+    let ln_near_share = if near_share.is_normal() {
+      near_share.ln()
+    } else {
+      power.ln() + (-log_ratio).ln()
+    };
+    let ln_shape = delta_edge.ln() - power.ln() + ln_near_share;
+    return ScaledMass::new(r_edge - power * ln_ratio() - ln_shape, 1.0);
+  }
   let scale = ratio.powf(power);
-  if scale.is_normal() {
-    ScaledMass::new(r_edge, scale * shape)
+  let factor = scale * shape;
+  if ratio.is_normal() && scale.is_normal() && factor.is_normal() {
+    ScaledMass::new(r_edge, factor)
   } else {
-    ScaledMass::new(r_edge - power * ratio.ln(), shape)
+    ScaledMass::new(r_edge - power * ln_ratio(), shape)
   }
 }
 
