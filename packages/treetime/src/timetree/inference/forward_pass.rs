@@ -163,12 +163,6 @@ struct ForwardOutput<S> {
   contradicted: bool,
 }
 
-#[derive(Clone)]
-struct Posterior {
-  distribution: TimeDistribution,
-  time: Option<f64>,
-}
-
 fn refine_distribution_from_parent(
   names: &BTreeMap<GraphNodeKey, Option<String>>,
   key: GraphNodeKey,
@@ -257,6 +251,12 @@ fn commit_node_time(
     parent.and_then(|parent| parent.time)
   };
   likely_time.map(|likely_time| committed_time(likely_time, parent_time))
+}
+
+#[derive(Clone)]
+struct Posterior {
+  distribution: TimeDistribution,
+  time: Option<f64>,
 }
 
 fn has_exact_date(date_constraint: Option<&Arc<Distribution<NegLog>>>) -> bool {
