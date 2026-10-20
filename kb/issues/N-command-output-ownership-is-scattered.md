@@ -31,4 +31,4 @@ Define whether output descriptors own command capability and data prerequisites,
 
 ## Related issues
 
-- [H-core-command-module-shared-ops-entanglement.md](H-core-command-module-shared-ops-entanglement.md)
+- [N-core-command-module-shared-ops-entanglement.md](N-core-command-module-shared-ops-entanglement.md)

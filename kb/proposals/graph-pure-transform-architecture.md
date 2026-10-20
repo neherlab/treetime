@@ -232,7 +232,7 @@ Preserving behavior is an acceptance requirement, not a consequence of calling t
 - [kb/decisions/partition-system-architecture.md](../decisions/partition-system-architecture.md): separation of topology from per-partition state and trait-based dispatch
 - [kb/decisions/sequence-representation-dense-sparse.md](../decisions/sequence-representation-dense-sparse.md): dense and sparse duality and trait-object interchangeability
 - [kb/algo/graph.md](../algo/graph.md): traversal algorithms, path finding, edge contraction
-- [kb/issues/H-core-command-module-shared-ops-entanglement.md](../issues/H-core-command-module-shared-ops-entanglement.md): cross-command coupling that cleaner data flow would reduce
+- [kb/issues/N-core-command-module-shared-ops-entanglement.md](../issues/N-core-command-module-shared-ops-entanglement.md): cross-command coupling that cleaner data flow would reduce
 - [kb/proposals/optimize-convergence-and-robustness.md](optimize-convergence-and-robustness.md): the refinement loop where graph and partition data flow bidirectionally
 - [kb/proposals/parallelize-multi-partition-marginal-reconstruction.md](parallelize-multi-partition-marginal-reconstruction.md): multi-partition parallelism, relevant to the nested-parallelism concern
 

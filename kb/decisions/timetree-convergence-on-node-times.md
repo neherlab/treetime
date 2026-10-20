@@ -67,5 +67,5 @@ Iteration 3: max_dt=0.0064, rms_dt=0.0018, n_diff=0, n_resolved=0  [converged]
 
 - [timetree-clock-constrained-profile-propagation.md](timetree-clock-constrained-profile-propagation.md)
   — without it there is no movement to measure
-- [M-timetree-convergence-metric-deficiencies.md](../issues/M-timetree-convergence-metric-deficiencies.md)
+- [N-timetree-convergence-metric-deficiencies.md](../issues/N-timetree-convergence-metric-deficiencies.md)
   — the remaining defects in the metric set

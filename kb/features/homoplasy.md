@@ -1,7 +1,7 @@
 # Homoplasy Analysis
 
 - [x] **Homoplasy command** (`treetime homoplasy`), with the divergences of [kb/decisions/homoplasy-mutation-mapping-and-counting.md](../decisions/homoplasy-mutation-mapping-and-counting.md)
-- [x] Tree input from `--tree` (required; v0 tree building is not ported, [kb/issues/H-timetree-tree-inference-unimplemented.md](../issues/H-timetree-tree-inference-unimplemented.md))
+- [x] Tree input from `--tree` (required; v0 tree building is not ported, [kb/issues/M-timetree-tree-inference-unimplemented.md](../issues/M-timetree-tree-inference-unimplemented.md))
 - [x] Alignment input from `--alignment`
 - [ ] VCF input with `--vcf-reference` ([kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))
 

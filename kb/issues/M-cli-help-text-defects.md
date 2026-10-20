@@ -15,7 +15,7 @@ Description says "If none is provided, treetime will attempt to build a tree fro
 
 Fix: use a different description for commands where `--tree` is required. `prune` already does this correctly ("Name of file containing the tree in newick, nexus, or phylip format" with no fallback clause).
 
-Related: [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md) covers the `timetree`/`clock` case where `--tree` is optional but tree inference is not implemented.
+Related: [M-timetree-tree-inference-unimplemented.md](M-timetree-tree-inference-unimplemented.md) covers the `timetree`/`clock` case where `--tree` is optional but tree inference is not implemented.
 
 ### D2: `--prune-short` in `clock` has empty description and type mismatch
 
@@ -198,6 +198,6 @@ Each behavioral item must first select its parse/runtime contract, and already-o
 ## Related issues
 
 - [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D2 and D4)
-- [H-timetree-tree-inference-unimplemented.md](H-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D1)
+- [M-timetree-tree-inference-unimplemented.md](M-timetree-tree-inference-unimplemented.md): tree inference fallback not implemented (overlaps D1)
 - [M-timetree-polytomy-resolution-off-by-default.md](M-timetree-polytomy-resolution-off-by-default.md): `--keep-polytomies` and `--resolve-polytomies` have no conflict guard
 - [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree

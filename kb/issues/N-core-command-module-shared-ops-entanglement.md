@@ -22,4 +22,4 @@ Moving `commands/` waits until this boundary is decided. Scientific stage orderi
 ## Related issues
 
 - [M-core-partition-init-orchestration-duplication.md](M-core-partition-init-orchestration-duplication.md)
-- [M-command-output-ownership-is-scattered.md](M-command-output-ownership-is-scattered.md)
+- [N-command-output-ownership-is-scattered.md](N-command-output-ownership-is-scattered.md)

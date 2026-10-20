@@ -25,5 +25,5 @@ The opposite direction (metadata names absent from the tree) was fixed to warn-a
 ## Related
 
 - [N-io-missing-name-policy-differs-across-subsystems.md](N-io-missing-name-policy-differs-across-subsystems.md) -- each subsystem applies its own missing-data policy after the shared pairing
-- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) -- broader name-matching reliability
+- [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) -- broader name-matching reliability
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) -- shared `reconcile_names` function; its cross-site table records this mugration missing-leaf hard-error as the strictest policy

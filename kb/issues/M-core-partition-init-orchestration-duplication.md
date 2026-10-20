@@ -19,6 +19,6 @@ A partition configuration layer consumes complete partition descriptions: the so
 
 ## Related issues
 
-- [H-core-command-module-shared-ops-entanglement.md](H-core-command-module-shared-ops-entanglement.md)
+- [N-core-command-module-shared-ops-entanglement.md](N-core-command-module-shared-ops-entanglement.md)
 - [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub.md](N-representation-infer-dense-stub.md)

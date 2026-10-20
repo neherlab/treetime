@@ -44,7 +44,7 @@ Per-site $\mu$ (rate only): shared eigendecomposition, scaled eigenvalues. Compu
 
 Per-site $\pi$ (equilibrium frequencies): per-site eigendecomposition. Computational cost: $O(n \cdot L \cdot s^2)$ or $O(n \cdot L \cdot s^3)$ depending on caching. The symmetrization trick ($\tilde{Q} = D^{-1} Q D$ where $D = \text{diag}(\sqrt{\pi})$) must be applied per site.
 
-v1 has no implementation of per-site $\pi$ (tracked in [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md)).
+v1 has no implementation of per-site $\pi$ (tracked in [M-gtr-site-specific-model-not-implemented.md](M-gtr-site-specific-model-not-implemented.md)).
 
 Context-dependent substitution models where both rates and equilibrium frequencies vary by position are described by <a id="cite-2"></a>[Siepel and Haussler 2004](https://doi.org/10.1093/molbev/msh039) [[2](#ref-2)].
 
@@ -55,7 +55,7 @@ These are two independent decisions:
 
 ## Related
 
-- [N-gtr-site-specific-model-not-implemented.md](N-gtr-site-specific-model-not-implemented.md) - full site-specific GTR (per-site $\pi$) is not implemented
+- [M-gtr-site-specific-model-not-implemented.md](M-gtr-site-specific-model-not-implemented.md) - full site-specific GTR (per-site $\pi$) is not implemented
 
 ## Glossary
 

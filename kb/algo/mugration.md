@@ -107,7 +107,7 @@ v0 implementation (see [Iterative GTR for Discrete Traits](unimplemented.md#iter
 - 5 iterations of `infer_gtr()` + `optimize_gtr_rate()` re-estimation
 - Final reconstruction with refined model
 
-Both v0 and v1 perform iterative GTR refinement. v1's implementation includes two intentional improvements (pseudo-count smoothing on initial pi, root state uniform-threshold filtering) that shift posterior probabilities at ambiguous internal nodes. Remaining parity differences tracked in [Mugration golden master parity with v0](../issues/M-mugration-iterative-gtr.md).
+Both v0 and v1 perform iterative GTR refinement. v1's implementation includes two intentional improvements (pseudo-count smoothing on initial pi, root state uniform-threshold filtering) that shift posterior probabilities at ambiguous internal nodes. Remaining parity differences tracked in [Mugration golden master parity with v0](../issues/H-mugration-iterative-gtr.md).
 
 ---
 
@@ -150,7 +150,7 @@ After forward-backward, `fn get_confidence` [packages/treetime/src/partition/mar
 
 ## Known Issues
 
-- [Mugration golden master parity with v0](../issues/M-mugration-iterative-gtr.md) - iterative GTR implemented but two intentional v1 improvements cause argmax divergence at ambiguous internal nodes for 5/7 test datasets
+- [Mugration golden master parity with v0](../issues/H-mugration-iterative-gtr.md) - iterative GTR implemented but two intentional v1 improvements cause argmax divergence at ambiguous internal nodes for 5/7 test datasets
 - [Mugration count_transitions lacks direct unit test](../issues/N-mugration-count-transitions-untested.md)
 
 ---

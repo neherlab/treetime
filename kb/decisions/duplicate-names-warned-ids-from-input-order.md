@@ -30,5 +30,5 @@ v0 has no duplicate check. `TreeAnc` looks leaves up in a dictionary keyed by na
 
 ## Related
 
-- [kb/issues/M-io-sequence-name-matching-unreliable.md](../issues/M-io-sequence-name-matching-unreliable.md)
+- [kb/issues/N-io-sequence-name-matching-unreliable.md](../issues/N-io-sequence-name-matching-unreliable.md)
 - [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md)

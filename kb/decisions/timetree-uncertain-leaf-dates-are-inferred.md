@@ -156,7 +156,7 @@ branch grid already imposes on node times, and below the 1e-2 y the loop calls c
 
 - [M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md)
   — the projection this rule selects nodes for
-- [M-clock-date-interval-collapsed-to-mean.md](../issues/M-clock-date-interval-collapsed-to-mean.md)
+- [N-clock-date-interval-collapsed-to-mean.md](../issues/N-clock-date-interval-collapsed-to-mean.md)
   — the clock regression still weights an interval as if it were its midpoint
 - [distribution-tails-and-arithmetic.md](distribution-tails-and-arithmetic.md)
   — the tail policy the forward message carries into the leaf's posterior

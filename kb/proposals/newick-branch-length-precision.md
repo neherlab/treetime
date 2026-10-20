@@ -24,7 +24,7 @@ The standalone `util-newick` crate's `fn format_float()` [[src](https://github.c
 
 ## Ecosystem survey
 
-All tools inspected from source at commit SHAs listed below. Claims in the original issue file ([kb/issues/N-io-nwk-writer-3-sigfig-default-truncates-precision.md](../issues/N-io-nwk-writer-3-sigfig-default-truncates-precision.md)) that DendroPy uses `%.10e` by default are incorrect -- DendroPy defaults to Python's `str(float)` (full precision).
+All tools inspected from source at commit SHAs listed below. Claims in the original issue file ([kb/issues/M-io-nwk-writer-3-sigfig-default-truncates-precision.md](../issues/M-io-nwk-writer-3-sigfig-default-truncates-precision.md)) that DendroPy uses `%.10e` by default are incorrect -- DendroPy defaults to Python's `str(float)` (full precision).
 
 ### Full-precision defaults
 
@@ -190,6 +190,6 @@ format_weight(weight, &NwkWriteOptions {
 
 ## Related
 
-- Source issue: [kb/issues/N-io-nwk-writer-3-sigfig-default-truncates-precision.md](../issues/N-io-nwk-writer-3-sigfig-default-truncates-precision.md)
+- Source issue: [kb/issues/M-io-nwk-writer-3-sigfig-default-truncates-precision.md](../issues/M-io-nwk-writer-3-sigfig-default-truncates-precision.md)
 - Newick annotation dialects report: [kb/reports/newick-annotation-dialects.md](../reports/newick-annotation-dialects.md)
 - Output format selection (implemented): [kb/proposals/output-format-selection.md](output-format-selection.md)

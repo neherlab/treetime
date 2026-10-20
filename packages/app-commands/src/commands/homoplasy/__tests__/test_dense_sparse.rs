@@ -14,7 +14,7 @@ mod tests {
     Ok(())
   }
 
-  #[ignore = "dense and sparse reconstruct different internal residues on rsv/a/20, see kb/issues/M-ancestral-sparse-dense-internal-residues-diverge.md"]
+  #[ignore = "dense and sparse reconstruct different internal residues on rsv/a/20, see kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md"]
   #[test]
   fn test_dense_sparse_homoplasy_statistics_agree_with_gaps_and_unknown_characters() -> Result<(), Report> {
     assert_eq!(run("rsv/a/20", true)?, run("rsv/a/20", false)?);

@@ -1,7 +1,7 @@
 # Mugration optimize_gtr_rate restores mu without restoring profiles
 
 > [!IMPORTANT]
-> **Decision required.** The current behavior is v0 parity, and the fix below diverges from v0. v0's `optimize_gtr_rate()` restores `old_mu` after a failed bracket but keeps the profiles of the last cost evaluation ([packages/legacy/treetime/treetime/treeanc.py#L1679-L1708](../../packages/legacy/treetime/treetime/treeanc.py#L1679-L1708)). The rate-optimizer evaluation point is also a candidate cause of the open v0 parity gap in [M-mugration-iterative-gtr.md](M-mugration-iterative-gtr.md), so a change here interacts with that issue. The options are:
+> **Decision required.** The current behavior is v0 parity, and the fix below diverges from v0. v0's `optimize_gtr_rate()` restores `old_mu` after a failed bracket but keeps the profiles of the last cost evaluation ([packages/legacy/treetime/treetime/treeanc.py#L1679-L1708](../../packages/legacy/treetime/treetime/treeanc.py#L1679-L1708)). The rate-optimizer evaluation point is also a candidate cause of the open v0 parity gap in [H-mugration-iterative-gtr.md](H-mugration-iterative-gtr.md), so a change here interacts with that issue. The options are:
 >
 > - Keep v0 parity and record the inconsistency as v0 behavior
 > - Recompute the backward pass at the restored `mu`, as described under Fix, and record the divergence from v0

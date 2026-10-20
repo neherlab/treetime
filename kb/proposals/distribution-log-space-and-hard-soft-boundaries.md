@@ -72,7 +72,7 @@ Switch timetree time distributions from `Plain` to `NegLog` (`packages/treetime-
 ### What it closes
 
 - Backward-pass child fold: the per-step `normalize()` existed only to stop `(peak)^N` plain-space underflow. Under `NegLog` the fold is addition, so the underflow and the per-step normalize both disappear.
-- [M-distribution-plain-division-fixed-floor.md](../issues/M-distribution-plain-division-fixed-floor.md) — division is subtraction; `NegLog::safe_divisor` is already the identity.
+- [N-distribution-plain-division-fixed-floor.md](../issues/N-distribution-plain-division-fixed-floor.md) — division is subtraction; `NegLog::safe_divisor` is already the identity.
 
 The coalescent contribution also stops round-tripping: `distribution_multiply_by_fn` already computes in neg-log and becomes plain addition.
 

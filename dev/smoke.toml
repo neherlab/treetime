@@ -233,7 +233,7 @@ args = "--method-anc=marginal --gtr-iterations=3"
 variant = "site-specific-gtr"
 datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal --dense=true --site-specific-gtr"
-fail = "kb/issues/N-gtr-site-specific-model-not-implemented.md"
+fail = "kb/issues/M-gtr-site-specific-model-not-implemented.md"
 
 [[ancestral]]
 variant = "sample-root"

@@ -45,13 +45,13 @@ mod tests {
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: residual ~1e-3 marginal divergence tips argmax at ambiguous nodes (kb/issues/M-mugration-iterative-gtr.md)"]
+  #[ignore = "v0 parity: marginal divergence tips argmax at ambiguous nodes (kb/issues/H-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
     test_gm_mugration_outputs(case)
   }
 
   #[test]
-  #[ignore = "v0 parity: residual ~1e-3 marginal-confidence divergence (kb/issues/M-mugration-iterative-gtr.md)"]
+  #[ignore = "v0 parity: marginal-confidence divergence from v0 (kb/issues/H-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -82,7 +82,7 @@ mod tests {
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/M-mugration-iterative-gtr.md)"]
+  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/H-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();

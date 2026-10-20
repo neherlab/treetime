@@ -443,7 +443,7 @@ The questions below are independent unless a coupling is stated.
 - [kb/issues/N-io-nextclade-ndjson-input-unsupported.md](../issues/N-io-nextclade-ndjson-input-unsupported.md): missing Nextclade NDJSON reader
 - [kb/issues/N-io-large-dataset-memory-constraint.md](../issues/N-io-large-dataset-memory-constraint.md): memory of dense alignment loading
 - [kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md): partitions per segment
-- [kb/issues/H-timetree-tree-inference-unimplemented.md](../issues/H-timetree-tree-inference-unimplemented.md): missing tree inference
+- [kb/issues/M-timetree-tree-inference-unimplemented.md](../issues/M-timetree-tree-inference-unimplemented.md): missing tree inference
 - [feat-tree-infer.md](feat-tree-infer.md): tree-building methods and open decisions for an end-to-end pipeline
 - [indel-models/2-gap-treatment.md](indel-models/2-gap-treatment.md): gap treatment and the Poisson indel term
 - [codon-substitution-models.md](codon-substitution-models.md): disagreement between translation paths

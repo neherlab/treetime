@@ -32,8 +32,8 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20")]
-  // TODO: enable these datasets when their golden-master gaps are fixed: kb/issues/M-timetree-gm-runner-missing-internal-times.md,
-  // kb/issues/M-timetree-dense-golden-master-node-mismatch.md, kb/issues/M-timetree-date-header-hash.md
+  // TODO: enable these datasets when their golden-master gaps are fixed: kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md,
+  // kb/issues/N-timetree-dense-golden-master-node-mismatch.md, kb/issues/M-timetree-date-header-hash.md
   // #[case::dengue_20("dengue_20")]       // TODO: missing internal node times, leaf dates not refined
   // #[case::ebola_20("ebola_20")]         // TODO: golden master node key mismatch (v0 captures 11 internal nodes, v1 rerooting produces 19)
   // #[case::lassa_l_20("lassa_L_20")]     // TODO: missing internal node times, leaf dates not refined

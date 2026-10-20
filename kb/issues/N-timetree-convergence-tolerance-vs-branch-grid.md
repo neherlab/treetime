@@ -33,10 +33,10 @@ extra rounds do not move the answer, and `--max-iter` bounds the cost.
   take the maximum of the two.
 - Switch the criterion to the objective, with time movement as a guard rather than the primary
   test. This depends on
-  [M-timetree-convergence-metric-deficiencies.md](M-timetree-convergence-metric-deficiencies.md),
+  [N-timetree-convergence-metric-deficiencies.md](N-timetree-convergence-metric-deficiencies.md),
   since the reported total is not currently comparable across rounds.
 
 ## Related issues
 
 - [M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md)
-- [M-timetree-convergence-metric-deficiencies.md](M-timetree-convergence-metric-deficiencies.md)
+- [N-timetree-convergence-metric-deficiencies.md](N-timetree-convergence-metric-deficiencies.md)

@@ -1,21 +1,28 @@
 # Mugration golden master parity with v0
 
-v1 implements iterative GTR inference for mugration, matching v0's `reconstruct_discrete_traits()` ([packages/legacy/treetime/treetime/wrappers.py#L653-L811](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811)) algorithm structure. With the default (v0) inference policy, v1 reproduces v0 trait assignments for zika, zika-with-weights, and lassa. The remaining datasets (dengue, tb, rsv, mpox) still diverge at a few ambiguous internal nodes, and all confidence profiles diverge from v0 by ~1e-3.
+v1 implements iterative GTR inference for mugration, matching v0's `reconstruct_discrete_traits()` ([packages/legacy/treetime/treetime/wrappers.py#L653-L811](../../packages/legacy/treetime/treetime/wrappers.py#L653-L811)) algorithm structure. With the default (v0) inference policy, v1 reproduces v0 trait assignments for zika, zika-with-weights, and lassa. The remaining datasets (dengue, tb, rsv, mpox) still diverge at a few ambiguous internal nodes, and the confidence profiles of every dataset diverge from v0, by up to 3.5e-2.
 
 ## Resolved contributors
 
 - GTR rate-optimizer regression: the rate optimizer briefly used argmin `BrentOpt` (golden-section seeded), which converged to a different rate than v0's interior-seeded scipy `brent` and flipped assignments at ambiguous nodes. Fixed by `BrentBracketed` at [packages/treetime/src/gtr/brent_bracketed.rs](../../packages/treetime/src/gtr/brent_bracketed.rs).
 - D1 (initial-pi pseudo-count) and D2 (uninformative-root filtering) are now opt-in flags defaulting to v0 (`--smooth-initial-pi`, `--filter-uninformative-root`). They no longer perturb the default reconstruction.
 
-## Remaining divergence: residual ~1e-3 marginal-confidence difference
+## Remaining divergence: marginal-confidence difference
 
-The unresolved cause is a ~1e-3 difference in v1's marginal confidence profiles relative to v0, present even for unweighted, informative-root datasets where D1 and D2 are no-ops. Example (zika_20_country root `NODE_0000000`): v0 `0.4812`, v1 `0.4800`. This small difference is below the old ~1.34e-2 figure but still tips the argmax at near-tied nodes, which is why dengue/tb/rsv/mpox assignments differ. The origin (marginal/GTR numerics) is not yet localized.
+v1's marginal confidence profiles differ from v0, also for unweighted, informative-root datasets where D1 and D2 are no-ops. A run of the ignored golden-master tests on `rust` at `3825359a2` (`--run-ignored only`) fails in all 11 cases:
+
+- zika_20_country root `NODE_0000000`: v0 `0.4812`, v1 `0.4800`
+- dengue_20_country: up to 3.5e-2 at one node (v0 `0.938`, v1 `0.903`)
+- mpox_clade_ii_20_country: v0 `0.068`, v1 `0.073` in one profile
+- lassa_L_20_country: differences of about 1e-8 in a profile near 1
+
+The difference tips the argmax at near-tied nodes, so the trait assignments of dengue, tb, rsv, and mpox differ from v0. The origin is not yet localized.
 
 Per project rules, numerical error > 1e-6 against the v0 oracle is a defect. This remains open.
 
 ## Candidate causes (not yet tested against the golden masters)
 
-- **Stale forward messages**: v0 runs a full marginal pass under the first fitted GTR before its rate-and-GTR iterations (`infer_ancestral_sequences` calls `_ml_anc` after `infer_gtr`, [packages/legacy/treetime/treetime/treeanc.py#L564-L566](../../packages/legacy/treetime/treetime/treeanc.py#L564-L566)). v1 `refine_gtr_model_and_rate` ([packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) refreshes the backward messages through the rate optimization but keeps the forward messages from the initial GTR for every iteration. The claim in [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md) that v1 matches v0 here does not hold
+- **Stale forward messages**: v1 counts transitions in every iteration with the forward messages of the initial uniform model, while v0 counts with forward messages of the first fitted GTR. This is a verified divergence with its own issue: [M-mugration-gtr-refinement-counts-with-forward-messages-of-the-initial-model.md](M-mugration-gtr-refinement-counts-with-forward-messages-of-the-initial-model.md)
 - **Rate-optimizer evaluation point**: v0's `optimize_gtr_rate` sets the rate to the optimum without a new backward pass, so its subtree messages come from the last Brent evaluation; v1 recomputes them at the optimum
 - **GTR numerics**: the exchangeability matrix `W` and its eigendecomposition
 - **Branch-length-to-GTR mapping**: the branch length the marginal passes and the transition counts pass to `expQt`
@@ -43,3 +50,4 @@ Discrete leaves keep their observed trait as evidence in every pass ([packages/t
 
 - [kb/proposals/mugration-full-reconstruction-per-iteration.md](../proposals/mugration-full-reconstruction-per-iteration.md)
 - [M-mugration-gtr-rate-restore-inconsistency.md](M-mugration-gtr-rate-restore-inconsistency.md)
+- [M-mugration-gtr-refinement-counts-with-forward-messages-of-the-initial-model.md](M-mugration-gtr-refinement-counts-with-forward-messages-of-the-initial-model.md)

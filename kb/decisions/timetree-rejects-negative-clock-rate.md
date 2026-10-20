@@ -33,7 +33,7 @@ The `clock` command reports the root-to-tip regression without performing time i
 ## v0 Reference
 
 - `packages/legacy/treetime/treetime/wrappers.py:984`: `myTree.reroot(params.reroot, force_positive=not params.allow_negative_rate)` belongs to the v0 `clock` command (`fn estimate_clock_model()`), the only v0 command with `--allow-negative-rate` (`packages/legacy/treetime/treetime/argument_parser.py:447-458`); it applies the flag to the reroot search only, and v0 then proceeds with whatever rate results.
-- v0 timetree has no `--allow-negative-rate`: `fn TreeTime.run()` reroots with `fn TreeTime.reroot()`, whose default is `force_positive=True` (`packages/legacy/treetime/treetime/treetime.py:542`, calls at `:260` and `:279`), so its reroots always require a positive rate. The v1 timetree flag has no v0 counterpart; see [kb/issues/N-timetree-allow-negative-rate-has-no-v0-counterpart.md](../issues/N-timetree-allow-negative-rate-has-no-v0-counterpart.md).
+- v0 timetree has no `--allow-negative-rate`: `fn TreeTime.run()` reroots with `fn TreeTime.reroot()`, whose default is `force_positive=True` (`packages/legacy/treetime/treetime/treetime.py:542`, calls at `:260` and `:279`), so its reroots always require a positive rate. The v1 timetree flag has no v0 counterpart; see [kb/issues/M-timetree-allow-negative-rate-has-no-v0-counterpart.md](../issues/M-timetree-allow-negative-rate-has-no-v0-counterpart.md).
 - `packages/legacy/treetime/treetime/treeregression.py:437-439`: `optimal_reroot` raises `Rerooting failed!` only when no acceptable root is found under `force_positive`, which v1 mirrors for the default path.
 
 ## v1 Implementation

@@ -36,7 +36,7 @@
 
 ## Additional Features
 
-- [x] Iterative GTR inference ([golden master parity tracked](../issues/M-mugration-iterative-gtr.md))
+- [x] Iterative GTR inference ([golden master parity tracked](../issues/H-mugration-iterative-gtr.md))
 - [x] Sampling bias correction (`--sampling-bias-correction`)
 - [x] Confidence CSV output (`--confidence`)
 - [x] `--pc` pseudo-counts

@@ -42,4 +42,4 @@ When multiple columns contain `"date"`, the leftmost column wins (v0 behavior, a
 ## Related issues
 
 - [M-timetree-date-header-hash.md](M-timetree-date-header-hash.md) - `#`-stripping interaction with the `--name-column` argument
-- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) - related name matching defects in metadata readers
+- [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) - related name matching defects in metadata readers

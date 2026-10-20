@@ -16,6 +16,6 @@ FASTA records, metadata dates, and mugration traits pair with tree nodes through
 
 ## Related
 
-- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) -- user-facing name-matching defects
+- [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) -- user-facing name-matching defects
 - [M-mugration-tree-leaves-missing-from-metadata-rejected.md](M-mugration-tree-leaves-missing-from-metadata-rejected.md) -- the strictest of these policies
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) (Architecture section, Option B: shared function)

@@ -18,4 +18,4 @@ The negative tests cover one duplicate target label in the middle of the order w
 
 ## Related issues
 
-- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md)
+- [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md)

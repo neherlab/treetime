@@ -29,4 +29,4 @@ Keep v1 behavior for the name column (error on no match). For the attribute colu
 
 ## Related issues
 
-- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) - related name matching defects in metadata readers
+- [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) - related name matching defects in metadata readers

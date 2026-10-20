@@ -12,7 +12,7 @@
 
 ## Marginal Reconstruction (Dense)
 
-- [/] Backward pass (impossible-factor multiplicity is not preserved by the cavity sentinel: [kb/issues/H-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md](../issues/H-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md))
+- [/] Backward pass (impossible-factor multiplicity is not preserved by the cavity sentinel: [kb/issues/M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md](../issues/M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md))
 - [x] Forward pass (parent-child message propagation)
 - [x] Root equilibrium frequency weighting
 - [x] Log-space normalization (logsumexp)
@@ -33,7 +33,7 @@
 - [x] Sparse compression before GTR selection
 - [x] Per-partition GTR assignment after dummy JC69 bootstrap
 - [x] Single `update_marginal()` pass after final GTR assignment
-- [/] Fitch passes leave the partition without nodes when a pass returns an error ([kb/issues/M-inference-fallible-parallel-passes-partially-commit.md](../issues/M-inference-fallible-parallel-passes-partially-commit.md))
+- [/] Fitch passes leave the partition without nodes when a pass returns an error ([kb/issues/N-inference-fallible-parallel-passes-partially-commit.md](../issues/N-inference-fallible-parallel-passes-partially-commit.md))
 
 ## Several Alignment Files
 

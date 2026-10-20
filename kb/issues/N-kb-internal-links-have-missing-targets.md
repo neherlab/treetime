@@ -13,11 +13,11 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 - `kb/decisions/command-optimize-standalone.md`
 - `kb/decisions/mugration-root-state-filtering.md`
 - `kb/decisions/optimize-dense-initial-guess-hard-count.md`
-- `kb/issues/H-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md`
-- `kb/issues/M-discrete-missing-zero-states-inf.md`
+- `kb/issues/M-marginal-cavity-sentinel-loses-impossible-factor-multiplicity.md`
+- `kb/issues/N-discrete-missing-zero-states-inf.md`
 - `kb/issues/M-mugration-tree-leaves-missing-from-metadata-rejected.md`
-- `kb/issues/M-partition-probability-profile-field-abbreviated.md`
-- `kb/issues/M-partition-sequence-state-field-stutters.md`
+- `kb/issues/N-partition-probability-profile-field-abbreviated.md`
+- `kb/issues/N-partition-sequence-state-field-stutters.md`
 - `kb/issues/M-timetree-consumers-read-unconstrained-branch-lengths.md`
 - `kb/issues/N-ancestral-deleted-position-invariant-enforced-by-scattered-guards.md`
 - `kb/issues/N-marginal-forward-zero-divisor-floor.md`
@@ -38,7 +38,7 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 ## Other removed source files
 
 - `kb/decisions/coalescent-analytic-tc-optimization.md`, `kb/decisions/optimize-newton-raphson-per-edge.md`, `kb/reports/optimization-methods/7-audit.md`: `packages/treetime/src/coalescent/optimize_tc.rs`
-- `kb/decisions/mugration-pseudo-count-initial-pi.md`, `kb/issues/M-discrete-missing-zero-states-inf.md`: `packages/treetime/src/mugration/mugration.rs`
+- `kb/decisions/mugration-pseudo-count-initial-pi.md`, `kb/issues/N-discrete-missing-zero-states-inf.md`: `packages/treetime/src/mugration/mugration.rs`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`: `packages/treetime/src/gtr/jc_distance/__tests__/test_jc_distance.rs`
 - `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/` (`ancestral.rs`, `timetree.rs`)
 - `kb/issues/N-ancestral-auspice-json-not-produced.md`: `packages/treetime-io/src/graph.rs`

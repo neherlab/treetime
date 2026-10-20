@@ -20,7 +20,7 @@ Run TreeTime once per segment with the tree of that segment.
 
 ### Known issues
 
-- [M-io-sequence-name-matching-unreliable.md](M-io-sequence-name-matching-unreliable.md) -- name matching affects multi-segment attachment
+- [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) -- name matching affects multi-segment attachment
 - [N-io-large-dataset-memory-constraint.md](N-io-large-dataset-memory-constraint.md) -- memory constraints compound with multiple segments
 - [M-core-partition-init-orchestration-duplication.md](M-core-partition-init-orchestration-duplication.md) -- per-partition models and site ranges
 
