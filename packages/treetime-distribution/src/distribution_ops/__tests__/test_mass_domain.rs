@@ -197,6 +197,40 @@ mod tests {
     }
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right(Side::Right)]
+  #[case::left( Side::Left )]
+  #[trace]
+  fn test_mass_domain_capped_window_tail_is_the_sample_fit_slope_at_the_mean_fit_position(#[case] side: Side) {
+    let h = 0.01;
+    let t = Array1::linspace(-6.0, 6.0, 1201);
+    let f = DistributionFunction::from_arrays(&t, t.mapv(|ti| 0.5 * ti * ti))
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: -6.0 }))
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 6.0 }))
+      .unwrap();
+    let (lo, hi) = (-3.2345, 3.2345);
+
+    let windowed = helpers::as_function(
+      resample_to_mass_window(&f, lo, hi, GRID_POINTS, MaxGridPoints::default(), SpacingLimit::AtMost(0.02)).unwrap(),
+    );
+
+    let (law, mean_fit_position) = match side {
+      Side::Right => {
+        let edge = t.iter().rposition(|&x| x <= hi).unwrap();
+        (windowed.right_extrap(), t[edge] - 2.0 * h)
+      },
+      Side::Left => {
+        let edge = t.iter().position(|&x| x >= lo).unwrap();
+        (windowed.left_extrap(), t[edge] + 2.0 * h)
+      },
+    };
+    let law = law.soft_law().expect("a soft side");
+    pretty_assert_abs_diff_eq!(mean_fit_position, law.slope, epsilon = 1e-12);
+  }
+
   mod helpers {
     use super::*;
 

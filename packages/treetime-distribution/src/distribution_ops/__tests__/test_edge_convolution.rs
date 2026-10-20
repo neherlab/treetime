@@ -2,6 +2,7 @@
 mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
+  use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::mass_domain::peak_normalized_if_mass_sizable;
   use crate::policy::NegLog;
   use crate::{Distribution, convolve_across_edge, distribution_multiplication};
@@ -214,9 +215,14 @@ mod tests {
   }
 
   #[test]
-  fn test_edge_convolution_forward_tail_continues_the_convolution_at_the_window_edge() -> Result<(), Report> {
+  fn test_edge_convolution_forward_tail_is_the_gaussian_slope_at_the_mean_fit_position() -> Result<(), Report> {
     let narrow_fine = gaussian_at(0.1, 0.001)?;
     let wide_coarse = gaussian_at(1.0, 0.02)?;
+    let Distribution::Function(fine) =
+      distribution_convolution_fine(&narrow_fine, &wide_coarse, MaxGridPoints::default())?
+    else {
+      panic!("expected a gridded convolution");
+    };
 
     let result = convolve_across_edge(
       &narrow_fine,
@@ -230,12 +236,20 @@ mod tests {
     let Distribution::Function(f) = &result else {
       panic!("expected a gridded Function message");
     };
-    pretty_assert_abs_diff_eq!(0.02, f.dx(), epsilon = 1e-4);
-    let BoundaryBehavior::Linear(law) = f.right_extrap() else {
-      panic!("expected a soft right tail, got {:?}", f.right_extrap());
-    };
+    let width = f.x_max() - f.x_min();
+    assert!(
+      width / 299.0 > 0.02,
+      "the window of {width} needs more than 300 points at the cap"
+    );
+    assert_eq!(f64_to_usize_saturating((width / 0.02).ceil()) + 1, f.len());
+    let law = f.right_extrap().soft_law().expect("a soft right tail");
+    let t = fine.t();
+    let edge = t
+      .iter()
+      .rposition(|&x| x <= f.x_max())
+      .expect("a convolution point below the window edge");
     let variance = 0.1 * 0.1 + 1.0 * 1.0;
-    pretty_assert_abs_diff_eq!(f.x_max() / variance, law.slope, epsilon = 1e-2);
+    pretty_assert_abs_diff_eq!((t[edge] - 2.0 * fine.dx()) / variance, law.slope, epsilon = 1e-8);
     Ok(())
   }
 
