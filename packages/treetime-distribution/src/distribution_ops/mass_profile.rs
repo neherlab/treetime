@@ -855,7 +855,16 @@ fn cell_at(r: &Array1<f64>, hard_cells: &[HardCellPower], j: usize) -> Cell {
 }
 
 fn full_cell_mass(r: &Array1<f64>, hard_cells: &[HardCellPower], dx: f64, j: usize) -> ScaledMass {
-  cell_at(r, hard_cells, j).mass_between(dx, Offset::start(dx), Offset::end(dx))
+  match cell_at(r, hard_cells, j) {
+    Cell::Trapezoid { ra, rb } if dx > 0.0 => {
+      let r_min = ra.min(rb);
+      ScaledMass::new(
+        r_min,
+        dx * f64::midpoint(scale_below(r_min, ra), scale_below(r_min, rb)),
+      )
+    },
+    cell => cell.mass_between(dx, Offset::start(dx), Offset::end(dx)),
+  }
 }
 
 fn resolve_tail(law: Option<TailLaw>, policy: TailMass, side: Side, x_edge: f64) -> Option<TailLaw> {
