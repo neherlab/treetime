@@ -143,9 +143,18 @@ before the last step. The final time pass (see [Method](#method)) has since made
 
 ## Accepted limitations
 
-- The coalescent prior's lineage counts are frozen
-  ([timetree-frozen-lineage-counts-for-coalescent-prior.md](timetree-frozen-lineage-counts-for-coalescent-prior.md)),
-  which biases the rate at low signal and makes the curvature of `log_lh_time` an overconfident rate uncertainty.
+- The coalescent prior holds the mean-field expectation of the lineage counts fixed in calendar time between
+  rebuilds ([timetree-frozen-lineage-counts-for-coalescent-prior.md](timetree-frozen-lineage-counts-for-coalescent-prior.md)).
+  The expectation is seeded from the Gaussian timetree (or from a time pass without a prior when the Gaussian timetree
+  is not available), rebuilt once from the posteriors of the first time pass under the prior, and rebuilt again only
+  after a round in which polytomy resolution changed the topology
+  ([packages/treetime/src/timetree/init.rs#L70-L93](../../packages/treetime/src/timetree/init.rs#L70-L93),
+  [packages/treetime/src/timetree/refinement_loop.rs#L71-L77](../../packages/treetime/src/timetree/refinement_loop.rs#L71-L77)).
+  At low signal the tree stretches under this fixed prior, which tilts `log_lh_time` toward low rates (see
+  [Rate window](#rate-window)) and biases the rate low.
+- The step gives no rate uncertainty. `rate_std` comes from `--clock-std-dev` or from the Gaussian approximation of the
+  timetree, and it undercovers where the rate is biased
+  ([M-timetree-rate-step-window-and-rate-uncertainty.md](../issues/M-timetree-rate-step-window-and-rate-uncertainty.md)).
 
 ## Related
 
