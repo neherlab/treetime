@@ -1,0 +1,86 @@
+#[cfg(test)]
+mod tests {
+  use crate::tc_schedule::TcSchedule;
+  use eyre::Report;
+  use rstest::rstest;
+  use std::f64::consts::E;
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::constant_at_zero(      TcSchedule::constant(10.0),                                   0.0, 0.0)]
+  #[case::constant(              TcSchedule::constant(10.0),                                   3.0, 0.3)]
+  #[case::constant_far(          TcSchedule::constant(10.0),                                  25.0, 2.5)]
+  #[case::exponential_one_scale( TcSchedule::exponential(10.0, 5.0),                           5.0, 0.5 * (E - 1.0))]
+  #[case::exponential_two_scales(TcSchedule::exponential(10.0, 5.0),                          10.0, 0.5 * (E * E - 1.0))]
+  #[case::piecewise_first(       TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  2.0, 0.2)]
+  #[case::piecewise_second(      TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  5.5, 1.0)]
+  #[case::piecewise_last(        TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  9.0, 2.5)]
+  #[trace]
+  fn test_tc_schedule_cumulative_hazard_matches_closed_form(
+    #[case] schedule: Result<TcSchedule, Report>,
+    #[case] tau: f64,
+    #[case] expected: f64,
+  ) {
+    let actual = schedule.unwrap().cumulative_hazard(tau);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 1);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::first_segment( 4.0, 10.0)]
+  #[case::first_break(   5.0,  1.0)]
+  #[case::second_segment(5.5,  1.0)]
+  #[case::second_break(  6.0,  3.0)]
+  #[case::last_segment(  9.0,  3.0)]
+  #[trace]
+  fn test_tc_schedule_piecewise_tc_is_right_continuous(#[case] tau: f64, #[case] expected: f64) {
+    let schedule = TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]).unwrap();
+    let actual = schedule.tc(tau);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_tc_decays_with_scale() {
+    let schedule = TcSchedule::exponential(10.0, 5.0).unwrap();
+    let expected = 10.0 / E;
+    let actual = schedule.tc(5.0);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 1);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::first_break_from_below( 5.0, -1)]
+  #[case::first_break_from_above( 5.0,  1)]
+  #[case::second_break_from_below(6.0, -1)]
+  #[case::second_break_from_above(6.0,  1)]
+  #[trace]
+  fn test_tc_schedule_cumulative_hazard_is_continuous_at_breaks(#[case] tau: f64, #[case] side: i32) {
+    let schedule = TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]).unwrap();
+    let neighbor = if side < 0 { tau.next_down() } else { tau.next_up() };
+    let at_break = schedule.cumulative_hazard(tau);
+    let next_to_break = schedule.cumulative_hazard(neighbor);
+    pretty_assert_abs_diff_eq!(at_break, next_to_break, epsilon = 1e-15);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zero_tc(              TcSchedule::constant(0.0),                                      "Coalescent time scale Tc must be finite and positive, got 0")]
+  #[case::negative_tc(          TcSchedule::constant(-1.0),                                     "Coalescent time scale Tc must be finite and positive, got -1")]
+  #[case::infinite_tc(          TcSchedule::constant(f64::INFINITY),                            "Coalescent time scale Tc must be finite and positive, got inf")]
+  #[case::nan_piecewise_value(  TcSchedule::piecewise(vec![1.0], vec![1.0, f64::NAN]),         "Coalescent time scale Tc must be finite and positive, got NaN")]
+  #[case::zero_exponential_tc0( TcSchedule::exponential(0.0, 1.0),                              "Coalescent time scale Tc must be finite and positive, got 0")]
+  #[case::zero_scale(           TcSchedule::exponential(1.0, 0.0),                              "Time scale of an exponential Tc schedule must be finite and positive, got 0")]
+  #[case::infinite_scale(       TcSchedule::exponential(1.0, f64::INFINITY),                    "Time scale of an exponential Tc schedule must be finite and positive, got inf")]
+  #[case::unsorted_breaks(      TcSchedule::piecewise(vec![6.0, 5.0], vec![1.0, 2.0, 3.0]),     "Breaks of a piecewise Tc schedule must be strictly increasing, got [6.0, 5.0]")]
+  #[case::repeated_break(       TcSchedule::piecewise(vec![5.0, 5.0], vec![1.0, 2.0, 3.0]),     "Breaks of a piecewise Tc schedule must be strictly increasing, got [5.0, 5.0]")]
+  #[case::nan_break(            TcSchedule::piecewise(vec![f64::NAN], vec![1.0, 2.0]),          "Breaks of a piecewise Tc schedule must be finite, got NaN")]
+  #[case::infinite_break(       TcSchedule::piecewise(vec![f64::INFINITY], vec![1.0, 2.0]),     "Breaks of a piecewise Tc schedule must be finite, got inf")]
+  #[case::too_few_values(       TcSchedule::piecewise(vec![5.0], vec![10.0]),                   "A piecewise Tc schedule with 1 break needs 2 values, got 1")]
+  #[case::too_many_values(      TcSchedule::piecewise(vec![5.0], vec![10.0, 1.0, 3.0]),         "A piecewise Tc schedule with 1 break needs 2 values, got 3")]
+  #[case::no_values(            TcSchedule::piecewise(vec![], vec![]),                          "A piecewise Tc schedule with 0 breaks needs 1 value, got 0")]
+  #[trace]
+  fn test_tc_schedule_rejects_invalid_input(#[case] schedule: Result<TcSchedule, Report>, #[case] expected: &str) {
+    assert_error!(schedule, expected);
+  }
+}

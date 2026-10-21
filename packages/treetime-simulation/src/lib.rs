@@ -7,6 +7,9 @@ pub mod tc_schedule;
 pub const FALSE_FAIL_RATE: f64 = 1e-3;
 
 #[cfg(test)]
+mod __tests__;
+
+#[cfg(test)]
 mod tests {
   use ctor::ctor;
   use treetime_utils::init::global::global_init;
