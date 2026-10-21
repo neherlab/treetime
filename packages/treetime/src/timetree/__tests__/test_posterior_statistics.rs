@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::coalescent::mean_field::NodeSurvival;
+  use crate::coalescent::mean_field::survival_levels;
   use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_median, posterior_survival};
   use eyre::Report;
   use helpers::{flat_unit_function, grid};
@@ -10,11 +11,10 @@ mod tests {
   use statrs::distribution::{ContinuousCDF, Gamma};
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, MassProfile, NegLog, TailMass};
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
-  use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
+  use treetime_utils::cast::ToF64Exact;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   const TRIM: f64 = 1e-9;
-  const MAX_ERROR: f64 = 1e-6;
   const CALENDAR_TIME: f64 = 2000.0;
   const STEP: f64 = 1.0 / 1_048_576.0;
 
@@ -85,7 +85,7 @@ mod tests {
       BoundaryBehavior::Hard,
     )?;
 
-    let survival = posterior_survival(&unit_box_with_tail_mass_one, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&unit_box_with_tail_mass_one, &survival_levels())?.unwrap();
 
     let exact = |t: f64| {
       if t < -1.0 {
@@ -95,11 +95,10 @@ mod tests {
       }
     };
     let last = survival.t.len() - 1;
-    pretty_assert_abs_diff_eq!(-1.0 + (2.0 * TRIM).ln(), survival.t[0], epsilon = 1e-14);
-    pretty_assert_abs_diff_eq!(1.0 - TRIM, survival.survival[0], epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(-1.0 + (2.0 * TRIM).ln(), survival.t[0], epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(-2.0 * TRIM, survival.t[last], epsilon = 1e-15);
-    pretty_assert_abs_diff_eq!(TRIM, survival.survival[last], epsilon = 1e-15);
-    helpers::assert_interpolates_within_max_error(&survival, exact);
+    helpers::assert_knots_at_levels(&survival, exact);
+    helpers::assert_interpolates_within_level_spacing(&survival, exact);
     Ok(())
   }
 
@@ -112,7 +111,7 @@ mod tests {
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let total = 1.0 + 1.0 / rate;
     let exact = |t: f64| {
@@ -125,9 +124,9 @@ mod tests {
     let tail_end = 1.0 + (1.0 / (rate * total * TRIM)).ln() / rate;
     let last = survival.t.len() - 1;
     pretty_assert_abs_diff_eq!(TRIM * total, survival.t[0], epsilon = 1e-15);
-    pretty_assert_abs_diff_eq!(tail_end, survival.t[last], epsilon = 1e-15);
-    pretty_assert_abs_diff_eq!(TRIM, survival.survival[last], epsilon = 1e-20);
-    helpers::assert_interpolates_within_max_error(&survival, exact);
+    pretty_assert_abs_diff_eq!(tail_end, survival.t[last], epsilon = 1e-12);
+    helpers::assert_knots_at_levels(&survival, exact);
+    helpers::assert_interpolates_within_level_spacing(&survival, exact);
     Ok(())
   }
 
@@ -139,7 +138,7 @@ mod tests {
       BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 2.0, b: 1.0 }),
     )?;
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let total = 1.5;
     let exact = |t: f64| {
@@ -150,60 +149,10 @@ mod tests {
       }
     };
     let last = survival.t.len() - 1;
-    pretty_assert_abs_diff_eq!(2.0 - (2.0 * total * TRIM).sqrt(), survival.t[last], epsilon = 1e-15);
-    pretty_assert_abs_diff_eq!(TRIM, survival.survival[last], epsilon = 1e-20);
+    pretty_assert_abs_diff_eq!(2.0 - (2.0 * total * TRIM).sqrt(), survival.t[last], epsilon = 1e-12);
     assert!(survival.t[last] < 2.0);
-    helpers::assert_interpolates_within_max_error(&survival, exact);
-    Ok(())
-  }
-
-  #[test]
-  fn test_posterior_survival_is_exact_inside_regular_cells_with_knots_only_at_grid_points() -> Result<(), Report> {
-    let density = [1.0, 3.0, 2.0, 4.0, 1.0];
-    let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(
-        (0.0, 4.0),
-        Array1::from_iter(density.map(|p: f64| -p.ln())),
-      )?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?,
-    );
-
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
-
-    let cell_mass_above = |cell: usize, t: f64| {
-      let at = density[cell] + (density[cell + 1] - density[cell]) * (t - cell.to_f64_exact());
-      (cell.to_f64_exact() + 1.0 - t) * f64::midpoint(at, density[cell + 1])
-    };
-    let exact = |t: f64| {
-      let cell = f64_to_usize_saturating(t.floor()).min(3);
-      let later: f64 = (cell + 1..4)
-        .map(|later| cell_mass_above(later, later.to_f64_exact()))
-        .sum();
-      (cell_mass_above(cell, t) + later) / 10.0
-    };
-    assert_eq!(vec![1.0, 2.0, 3.0], survival.t[1..4].to_vec());
-    assert_eq!(5, survival.t.len());
-    helpers::assert_interpolates_to_rounding(&survival, exact);
-    Ok(())
-  }
-
-  #[test]
-  fn test_posterior_survival_is_exact_across_flat_hard_cells_around_an_interior_gap() -> Result<(), Report> {
-    let distribution = Distribution::Function(
-      DistributionFunction::<f64, NegLog>::from_range_values(
-        (0.0, 5.0),
-        array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0],
-      )?
-      .with_left_extrap(BoundaryBehavior::Hard)?
-      .with_right_extrap(BoundaryBehavior::Hard)?,
-    );
-
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
-
-    let exact = |t: f64| ((2.0 - t).max(0.0) + (5.0 - t.max(3.0))) / 4.0;
-    assert_eq!(vec![1.0, 2.0, 2.0, 3.0, 3.0, 4.0], survival.t[1..7].to_vec());
-    helpers::assert_interpolates_to_rounding(&survival, exact);
+    helpers::assert_knots_at_levels(&survival, exact);
+    helpers::assert_interpolates_within_level_spacing(&survival, exact);
     Ok(())
   }
 
@@ -219,7 +168,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b }))?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let power = b + 1.0;
     let total = 2.0 + 1.0 / power;
@@ -234,57 +183,29 @@ mod tests {
     pretty_assert_abs_diff_eq!(
       3.0 - (power * total * TRIM).powf(power.recip()),
       survival.t[last],
-      epsilon = 1e-14
+      epsilon = 1e-12
     );
-    helpers::assert_interpolates_within_max_error(&survival, exact);
+    helpers::assert_knots_at_levels(&survival, exact);
+    helpers::assert_interpolates_within_level_spacing(&survival, exact);
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::below_linear(   0.5)]
-  #[case::between_2_and_3(2.5)]
-  #[trace]
-  fn test_posterior_survival_follows_the_power_law_at_hard_points_inside_the_window(#[case] b: f64) -> Result<(), Report> {
-    let edge = -b * 2.0_f64.ln();
+  #[test]
+  fn test_posterior_survival_is_flat_across_an_interior_gap_only_up_to_the_level_spacing() -> Result<(), Report> {
     let distribution = Distribution::Function(
       DistributionFunction::<f64, NegLog>::from_range_values(
         (0.0, 5.0),
-        array![edge, 0.0, f64::INFINITY, f64::INFINITY, 0.0, edge],
+        array![0.0, 0.0, f64::INFINITY, f64::INFINITY, 0.0, 0.0],
       )?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
-    let (p_edge, power) = (2.0_f64.powf(b), b + 1.0);
-    let trapezoid = f64::midpoint(p_edge, 1.0);
-    let total = 2.0 * (trapezoid + 1.0 / power);
-    let mass_above = |t: f64| {
-      if t <= 1.0 {
-        let u = 1.0 - t;
-        u * f64::midpoint(1.0 + (p_edge - 1.0) * u, 1.0) + 1.0 / power + total / 2.0
-      } else if t <= 2.0 {
-        (2.0 - t).powf(power) / power + total / 2.0
-      } else if t <= 3.0 {
-        total / 2.0
-      } else if t <= 4.0 {
-        trapezoid + (1.0 - (t - 3.0).powf(power)) / power
-      } else {
-        let u = 5.0 - t;
-        u * f64::midpoint(p_edge + (1.0 - p_edge) * u, p_edge)
-      }
-    };
-    let near_hard_points = (0..=40).flat_map(|k| {
-      let distance = 10.0_f64.powf(-k.to_f64_exact() / 4.0);
-      [2.0 - distance, 2.0 + distance, 3.0 - distance, 3.0 + distance]
-    });
-    let interpolant = NodeSurvival::from(survival.clone());
-    for t in near_hard_points.filter(|&t| t > 1.0 && t < 4.0) {
-      pretty_assert_abs_diff_eq!(mass_above(t) / total, interpolant.at(t), epsilon = 1e-6);
-    }
-    helpers::assert_interpolates_within_max_error(&survival, |t| mass_above(t) / total);
+    let exact = |t: f64| ((2.0 - t).max(0.0) + (5.0 - t.max(3.0))) / 4.0;
+    helpers::assert_knots_at_levels(&survival, exact);
+    helpers::assert_interpolates_within_level_spacing(&survival, exact);
     Ok(())
   }
 
@@ -296,7 +217,7 @@ mod tests {
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let total = 1.01;
     let exact = |t: f64| {
@@ -307,8 +228,9 @@ mod tests {
       }
     };
     let last = survival.t.len() - 1;
-    pretty_assert_abs_diff_eq!(0.01 + (1.0 / (total * TRIM)).ln(), survival.t[last], epsilon = 1e-13);
-    helpers::assert_interpolates_within_max_error(&survival, exact);
+    pretty_assert_abs_diff_eq!(0.01 + (1.0 / (total * TRIM)).ln(), survival.t[last], epsilon = 1e-12);
+    helpers::assert_knots_at_levels(&survival, exact);
+    helpers::assert_interpolates_within_level_spacing(&survival, exact);
     Ok(())
   }
 
@@ -335,7 +257,7 @@ mod tests {
     let end = CALENDAR_TIME + 2.0 * STEP;
     for k in 0..=64 {
       let t = CALENDAR_TIME + 2.0 * STEP * (k.to_f64_exact() / 64.0);
-      pretty_assert_abs_diff_eq!((end - t) / (2.0 * STEP), survival.at(t), epsilon = 1e-8);
+      pretty_assert_abs_diff_eq!((end - t) / (2.0 * STEP), survival.at(t), epsilon = 1e-6);
     }
     Ok(())
   }
@@ -354,13 +276,10 @@ mod tests {
     let profile = MassProfile::new(&function)?;
     let fractions = profile.fractions(TailMass::Required).unwrap();
 
-    let survival = NodeSurvival::of_posterior(&Distribution::Function(function.clone()))?.unwrap();
+    let survival = posterior_survival(&Distribution::Function(function), &survival_levels())?.unwrap();
 
-    let samples = 64 * (function.y().len() - 1);
-    for k in 0..=samples {
-      let t = function.x_min() + (function.x_max() - function.x_min()) * (k.to_f64_exact() / samples.to_f64_exact());
-      pretty_assert_abs_diff_eq!(fractions.survival(t), survival.at(t), epsilon = 1e-8);
-    }
+    helpers::assert_knots_at_levels(&survival, |t| fractions.survival(t));
+    helpers::assert_interpolates_within_level_spacing(&survival, |t| fractions.survival(t));
     Ok(())
   }
 
@@ -381,7 +300,7 @@ mod tests {
         .with_left_extrap(left)?
         .with_right_extrap(right)?,
     );
-    assert_error!(posterior_survival(&distribution, TRIM, MAX_ERROR), message);
+    assert_error!(posterior_survival(&distribution, &survival_levels()), message);
     Ok(())
   }
 
@@ -390,25 +309,21 @@ mod tests {
     let point = PosteriorSurvival {
       t: vec![2015.5],
       survival: vec![0.0],
-      slope: vec![0.0],
     };
     let range = PosteriorSurvival {
       t: vec![2015.0, 2017.0],
       survival: vec![1.0, 0.0],
-      slope: vec![-0.5, -0.5],
     };
+    let levels = survival_levels();
     assert_eq!(
       Some(point),
-      posterior_survival(&Distribution::<NegLog>::point(2015.5, 0.0), TRIM, MAX_ERROR)?
+      posterior_survival(&Distribution::<NegLog>::point(2015.5, 0.0), &levels)?
     );
     assert_eq!(
       Some(range),
-      posterior_survival(&Distribution::<NegLog>::range((2015.0, 2017.0), 3.0), TRIM, MAX_ERROR)?
+      posterior_survival(&Distribution::<NegLog>::range((2015.0, 2017.0), 3.0), &levels)?
     );
-    assert_eq!(
-      None,
-      posterior_survival(&Distribution::<NegLog>::Empty, TRIM, MAX_ERROR)?
-    );
+    assert_eq!(None, posterior_survival(&Distribution::<NegLog>::Empty, &levels)?);
     Ok(())
   }
 
@@ -422,26 +337,26 @@ mod tests {
     use treetime_utils::cast::ToF64Exact;
     use treetime_utils::pretty_assert_abs_diff_eq;
 
-    pub(super) fn assert_interpolates_within_max_error(survival: &PosteriorSurvival, exact: impl Fn(f64) -> f64) {
-      for_each_interpolated(survival, |x, interpolated| {
-        pretty_assert_abs_diff_eq!(exact(x), interpolated, epsilon = 1e-6);
-      });
+    pub(super) fn assert_knots_at_levels(survival: &PosteriorSurvival, exact: impl Fn(f64) -> f64) {
+      let last = survival.t.len() - 1;
+      assert!(survival.t.iter().tuple_windows().all(|(a, b)| a < b));
+      assert_eq!((1.0, 0.0), (survival.survival[0], survival.survival[last]));
+      assert!(survival.survival.iter().tuple_windows().all(|(a, b)| a > b));
+      for (&t, &value) in survival.t[1..last].iter().zip(&survival.survival[1..last]) {
+        pretty_assert_abs_diff_eq!(exact(t), value, epsilon = 1e-12);
+      }
     }
 
-    pub(super) fn assert_interpolates_to_rounding(survival: &PosteriorSurvival, exact: impl Fn(f64) -> f64) {
-      for_each_interpolated(survival, |x, interpolated| {
-        pretty_assert_abs_diff_eq!(exact(x), interpolated, epsilon = 1e-15);
-      });
-    }
-
-    fn for_each_interpolated(survival: &PosteriorSurvival, mut check: impl FnMut(f64, f64)) {
-      let t = &survival.t;
-      assert!(t.iter().tuple_windows().all(|(a, b)| a <= b));
+    pub(super) fn assert_interpolates_within_level_spacing(survival: &PosteriorSurvival, exact: impl Fn(f64) -> f64) {
       let interpolant = NodeSurvival::from(survival.clone());
-      for (t0, t1) in t.iter().tuple_windows() {
-        for k in 0..16 {
+      for (i, (t0, t1)) in survival.t.iter().tuple_windows().enumerate() {
+        let spacing = (survival.survival[i] - survival.survival[i + 1]).abs() + 1e-12;
+        for k in 0..=16 {
           let x = t0 + (t1 - t0) * (k.to_f64_exact() / 16.0);
-          check(x, interpolant.at(x));
+          assert!(
+            (exact(x) - interpolant.at(x)).abs() <= spacing,
+            "interpolation at {x} off by more than {spacing}"
+          );
         }
       }
     }
