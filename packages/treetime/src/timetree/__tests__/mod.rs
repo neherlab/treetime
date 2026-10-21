@@ -12,4 +12,5 @@ mod test_pre_loop;
 mod test_prop_timetree_simulated;
 mod test_prop_timetree_weak_signal;
 mod test_round;
+mod test_sim_timetree_relations;
 mod test_time_inference;
