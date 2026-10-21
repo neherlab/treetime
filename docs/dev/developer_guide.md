@@ -423,7 +423,7 @@ Every dependency release must be at least seven days old before the project adop
 
 Rust dependencies are pinned exactly in the workspace `Cargo.toml`, JavaScript dependencies exactly in the manifests, with shared packages in the Bun catalog of the root `package.json`. The React packages stay on 19.x, because Auspice runs in-process and each React major needs its own check of the Auspice modules TreeTime imports; `just lint-ts` enforces this.
 
-The dependency recipes run in the main checkout only. `just audit` checks both dependency graphs against the security advisory databases.
+`just deps-update` changes `Cargo.lock` in any checkout: after a new dependency in `Cargo.toml`, `just deps-update --workspace` adds it to the lockfile without updating the other entries. The upgrade recipes `just deps-upgrade` and `just deps-upgrade-ts` run in the main checkout only. `just audit` checks both dependency graphs against the security advisory databases.
 
 ## Cross-compilation and releases
 

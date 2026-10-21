@@ -619,10 +619,10 @@ profile *args:
 why crate *args:
     cargo tree --locked --invert "$@"
 
-# Update Cargo.lock within the manifest ranges to releases at least 7 days old (main checkout only)
+# Update Cargo.lock within the manifest ranges to releases at least 7 days old; after adding a dependency: just deps-update --workspace
 [confirm("Update Cargo.lock?")]
 [group("deps")]
-deps-update *args: _main-checkout
+deps-update *args:
     {{ cargo_min_age }} update "$@"
     just deps-age
 
