@@ -5,6 +5,7 @@ mod gtr_generators;
 mod indel;
 mod marginal;
 mod progress;
+mod simulation;
 mod sparse;
 mod timetree;
 
@@ -25,6 +26,12 @@ pub(crate) use marginal::{
   sparse_topology_partition, sparse_topology_partitions,
 };
 pub(crate) use progress::RecordingLog;
+pub(crate) use simulation::{
+  CaseSpec, MeanCheck, ModelFamily, SimulatedCase, TIMETREE_CELL_LENGTH, TIMETREE_CELL_MU, TIMETREE_CELL_TC,
+  ancestral_input, arb_simulated_case, decrease_check, exact_tip_dates, first_columns, gtr_from_model,
+  match_internal_nodes, optimize_input, recovery_check, require_passed, run_replicates, simulated_sequence_source,
+  timetree_cell, timetree_cell_params, timetree_input, upper_recovery_check,
+};
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
   FullPosterior, constraint_expectation, empty_time_inference, full_posterior, marginal_timetree_params,
