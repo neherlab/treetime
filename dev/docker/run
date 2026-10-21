@@ -22,6 +22,7 @@
 #   TREETIME_DOCKER_CPUS    CPUs that one container may use (default 8, at most
 #                           the CPUs of the Docker daemon); scripts that start
 #                           containers in parallel divide it between them
+#                           (CARGO_BUILD_JOBS defaults to its whole CPUs)
 #   KACHE_STORE             Host directory of the optional kache compiler cache;
 #                           mounted at the same path when set (see .env.example)
 #   TREETIME_CARGO_HOME     Absolute host directory mounted as the cargo home
@@ -143,6 +144,10 @@ if ! docker image inspect "${image}" >/dev/null 2>&1; then
 fi
 
 cpus="$(docker_cpu_budget)"
+# Cargo runs one job per whole CPU of the budget. Its jobserver then bounds the
+# compiler work, also of compilers that a host daemon such as ananicy moves out
+# of the container cgroup, where the CPU quota no longer applies.
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-$(awk -v c="${cpus}" 'BEGIN { j = int(c); if (j < 1) j = 1; print j }')}"
 run_flags=(
   --rm
   --interactive
