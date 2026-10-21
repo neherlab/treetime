@@ -15,6 +15,10 @@ mod tests {
   #[case::zika_20_country(          "zika_20_country")]
   #[case::zika_20_country_weights(  "zika_20_country_weights")]
   #[case::lassa_l_20_country(       "lassa_L_20_country")]
+  #[case::dengue_20_country(        "dengue_20_country")]
+  #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
   fn test_gm_mugration_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
@@ -32,18 +36,6 @@ mod tests {
     assert_eq!(expected_trait_assignments, actual_trait_assignments);
 
     Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::dengue_20_country(        "dengue_20_country")]
-  #[case::tb_20_cluster(            "tb_20_cluster")]
-  #[case::rsv_a_20_country(         "rsv_a_20_country")]
-  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
-  #[trace]
-  #[ignore = "v0 parity: marginal divergence tips argmax at ambiguous nodes (kb/issues/H-mugration-iterative-gtr.md)"]
-  fn test_gm_mugration_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
-    test_gm_mugration_outputs(case)
   }
 
   #[test]
@@ -70,14 +62,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::zika_20_country_weights(  "zika_20_country_weights")]
-  #[case::lassa_l_20_country(       "lassa_L_20_country")]
   #[case::dengue_20_country(        "dengue_20_country")]
   #[case::tb_20_cluster(            "tb_20_cluster")]
-  #[case::rsv_a_20_country(         "rsv_a_20_country")]
-  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
-  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/H-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();
@@ -99,6 +86,18 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
+  #[case::lassa_l_20_country(       "lassa_L_20_country")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[trace]
+  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/H-mugration-iterative-gtr.md)"]
+  fn test_gm_mugration_confidence_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
+    test_gm_mugration_confidence_outputs(case)
+  }
+
   mod helpers {
     use crate::cancel::NoopCancel;
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
@@ -107,15 +106,21 @@ mod tests {
     use deser::Deserialize;
     use eyre::Report;
     use indexmap::IndexMap;
+    use itertools::Itertools;
     use ndarray::Array1;
-    use std::collections::BTreeMap;
+    use regex::Regex;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::path::PathBuf;
+    use std::sync::LazyLock;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::csv::default_name_candidates;
     use treetime_io::discrete_states_csv::discrete_attrs_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_utils::io::json::json_read_file;
-    use treetime_utils::o;
+    use treetime_utils::{make_error, make_report, o};
+
+    static GENERATED_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^NODE_\d{7}$").unwrap());
 
     #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationInput {
@@ -160,7 +165,7 @@ mod tests {
 
     pub(super) fn run_gm_mugration_case(
       fixture: &GmMugrationInput,
-    ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, String>), Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
 
       let tree_path = project_root.join(&fixture.tree_path);
@@ -218,7 +223,8 @@ mod tests {
         branch_lengths,
       };
       let output = run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())?;
-      Ok((output, names))
+      let v0_names = v0_node_names(&output.graph, &names)?;
+      Ok((output, v0_names))
     }
 
     pub(super) fn states_vec(output: &MugrationOutput) -> Vec<String> {
@@ -227,33 +233,89 @@ mod tests {
 
     pub(super) fn trait_assignments_by_name(
       output: &MugrationOutput,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &BTreeMap<GraphNodeKey, String>,
     ) -> BTreeMap<String, String> {
-      output
-        .graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
-          let state = output.states.name(output.posteriors[&key].state()).unwrap();
-          (name, state.to_owned())
+      names
+        .iter()
+        .map(|(key, name)| {
+          let state = output.states.name(output.posteriors[key].state()).unwrap();
+          (name.clone(), state.to_owned())
         })
         .collect()
     }
 
     pub(super) fn confidence_by_name(
       output: &MugrationOutput,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &BTreeMap<GraphNodeKey, String>,
     ) -> BTreeMap<String, Array1<f64>> {
-      output
-        .graph
-        .get_nodes()
-        .map(|node| {
-          let key = node.key();
-          let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
-          (name, output.posteriors[&key].profile().clone())
-        })
+      names
+        .iter()
+        .map(|(key, name)| (name.clone(), output.posteriors[key].profile().clone()))
         .collect()
+    }
+
+    fn v0_node_names(
+      graph: &Graph,
+      names: &BTreeMap<GraphNodeKey, Option<String>>,
+    ) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
+      let mut v0_names = BTreeMap::new();
+      for node in graph.get_nodes().filter(|node| node.is_leaf()) {
+        let name = names[&node.key()]
+          .clone()
+          .ok_or_else(|| make_report!("Leaf {} has no name", node.key()))?;
+        v0_names.insert(node.key(), name);
+      }
+      for node in graph.get_nodes().filter(|node| !node.is_leaf()) {
+        let name = names[&node.key()].as_deref().unwrap_or_default();
+        if !GENERATED_NAME.is_match(name) {
+          return make_error!(
+            "Internal node label '{name}': the v0 node names of the harness need a tree without internal labels"
+          );
+        }
+      }
+
+      let mut used: BTreeSet<String> = v0_names.values().cloned().collect();
+      let mut order = vec![];
+      ladderized_internal_preorder(graph, graph.get_exactly_one_root()?.key(), &mut order);
+      let mut internal_node_count = 0;
+      for key in order {
+        let mut name = format!("NODE_{internal_node_count:07}");
+        while used.contains(&name) {
+          internal_node_count += 1;
+          name = format!("NODE_{internal_node_count:07}");
+        }
+        used.insert(name.clone());
+        v0_names.insert(key, name);
+        internal_node_count += 1;
+      }
+      Ok(v0_names)
+    }
+
+    fn ladderized_internal_preorder(graph: &Graph, key: GraphNodeKey, order: &mut Vec<GraphNodeKey>) {
+      let node = graph.get_node(key).unwrap();
+      if node.is_leaf() {
+        return;
+      }
+      order.push(key);
+      let children = graph
+        .children_keys_of(node)
+        .map(|(child, _)| child)
+        .sorted_by_key(|&child| leaf_count(graph, child));
+      for child in children {
+        ladderized_internal_preorder(graph, child, order);
+      }
+    }
+
+    fn leaf_count(graph: &Graph, key: GraphNodeKey) -> usize {
+      let node = graph.get_node(key).unwrap();
+      if node.is_leaf() {
+        1
+      } else {
+        graph
+          .children_keys_of(node)
+          .map(|(child, _)| leaf_count(graph, child))
+          .sum()
+      }
     }
   }
 }
