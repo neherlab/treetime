@@ -1,3 +1,4 @@
+mod test_clades;
 mod test_edge;
 mod test_graph_ops;
 mod test_graph_ops_collapse_edge;
