@@ -19,6 +19,8 @@ mod tests {
   #[case::tb_20_cluster(            "tb_20_cluster")]
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[case::zika_20_missing_values(   "zika_20_country_missing_values")]
+  #[case::zika_20_missing_rows(     "zika_20_country_missing_rows")]
   #[trace]
   fn test_gm_mugration_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
@@ -47,6 +49,8 @@ mod tests {
   #[case::tb_20_cluster(            "tb_20_cluster")]
   #[case::rsv_a_20_country(         "rsv_a_20_country")]
   #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
+  #[case::zika_20_missing_values(   "zika_20_country_missing_values")]
+  #[case::zika_20_missing_rows(     "zika_20_country_missing_rows")]
   #[trace]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();

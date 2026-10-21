@@ -98,6 +98,8 @@ normalization = "parsed JSON compared with per-assertion float tolerance in the 
 files = [
   "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_inputs.json",
   "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_outputs.json",
+  "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_zika_20_missing_rows.tsv",
+  "packages/treetime/src/mugration/__tests__/__fixtures__/gm_mugration_zika_20_missing_values.tsv",
 ]
 
 [[reference]]
