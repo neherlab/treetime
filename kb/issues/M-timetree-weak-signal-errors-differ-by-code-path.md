@@ -7,7 +7,19 @@
 
 On simulated data with weak temporal signal, the same case fails with different errors, depending on the code path. One of them is internal: `Cannot divide by empty distribution` [packages/treetime-distribution/src/distribution_ops/divide.rs#L30](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L30), raised by the division that forms the cavity of a node in the forward pass [packages/treetime/src/timetree/inference/forward_pass.rs#L195](../../packages/treetime/src/timetree/inference/forward_pass.rs#L195). The same division raises a second internal error for two point distributions [packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L31-L34). None of the messages tells the user that the date signal is weak.
 
+## Reproduction
+
+The property test `test_prop_timetree_weak_signal_succeeds_or_rejects_the_input` [packages/treetime/src/timetree/__tests__/test_prop_timetree_weak_signal.rs](../../packages/treetime/src/timetree/__tests__/test_prop_timetree_weak_signal.rs) reproduces one weak-signal failure. The test is ignored until this issue is resolved; run it with `just test-rs --run-ignored only test_prop_timetree_weak_signal`. Its regression file `packages/treetime/proptest-regressions/timetree/__tests__/test_prop_timetree_weak_signal.txt` replays the case first.
+
+- Case: the standard timetree cell of `fn timetree_cell()` (constant $T_c = 5$, 5 batches of 4 tips at $\tau = 0, 0.5, 1, 1.5, 2$, random GTR) with seed `1654128765928366562`, $\mu = 10^{-4}$ and $L = 221$; `realized` branch lengths, exact tip dates, an estimated clock rate, `coalescent_opt: true`, `keep_root: true`, `max_iter: 2`
+- Result: `OperationError::InferenceFailed` with `The root-to-tip regression gives no positive clock rate, and the Gaussian timetree none either: Gaussian clock needs substitutions on the dated part of the tree`
+- Path: the regression rate is not positive, so `fn ClockReroot.into_clock_fit_or()` [packages/treetime/src/clock/clock_regression.rs#L151-L162](../../packages/treetime/src/clock/clock_regression.rs#L151-L162) calls the fallback `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L182-L192](../../packages/treetime/src/timetree/init.rs#L182-L192). The Gaussian tree fails with a plain report [packages/treetime/src/clock/gaussian.rs#L82-L84](../../packages/treetime/src/clock/gaussian.rs#L82-L84), and `fn OperationError::classify()` [packages/treetime/src/error.rs#L38-L46](../../packages/treetime/src/error.rs#L38-L46) maps every report without `InputError` or `NoPositiveRateRoot` to `InferenceFailed`. The fallback runs at the start clock [packages/treetime/src/timetree/pipeline.rs#L293-L294](../../packages/treetime/src/timetree/pipeline.rs#L293-L294) and in every round [packages/treetime/src/timetree/round.rs#L306-L307](../../packages/treetime/src/timetree/round.rs#L306-L307); the message does not tell which one failed
+- Expected: the run succeeds, or returns `OperationError::InvalidInput` with a message that names the weak date signal, as `NoPositiveRateRoot` does for the regression alone. The message here names the cause, but the error kind reports an internal failure
+- Frequency: 1 of 8 cases of the test's strategy ($L$ from 200 to 500, $\mu$ from $\{10^{-4}, 3 \cdot 10^{-4}\}$)
+
 ## Related errors
+
+- `Gaussian clock needs substitutions on the dated part of the tree`: the fallback start rate on data without substitutions on the dated part of the tree, classified as an internal error (see Reproduction)
 
 - `Cannot divide by empty distribution`: division by an empty distribution
 - `Cannot divide point by point: operation not well-defined`: division of two point distributions. Every run with `--branch-length-mode=input` fails with it, see [H-timetree-input-branch-lengths-abort-on-point-division.md](H-timetree-input-branch-lengths-abort-on-point-division.md)
