@@ -22,6 +22,24 @@ The differences are canonical states at positions where both backends agree on g
 
 Compare `ancestral.reconstructed-nuc.fasta` of the two runs position by position.
 
+## Measurement on simulated data
+
+The property test `test_prop_marginal_dense_sparse_simulated_agree_on_states` [packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs#L12](../../packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs#L12) reconstructs data from the simulation generator (`arb_simulated_case()`: coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites, no gaps or unknown characters) with the true GTR and the exact branch lengths. It asserts that the most likely state of every internal node is the same in both backends at every site where the two largest dense posterior probabilities differ by more than `1e-3`. It runs 64 cases and is `#[ignore]`d because of this issue.
+
+Measurement: 1000 cases of `arb_simulated_case()` from a deterministic proptest runner compared 9950657 node sites. 3 cases (0.3%) have one differing most likely state each, so about 17% of the 64-case runs fail. One more site differs among the excluded near-tie sites. Posteriors in the order `A`, `C`, `G`, `T`:
+
+- `node_0006` position 851, dense posterior gap 0.99984: dense `[7.2e-8, 4.5e-8, 7.8e-5, 0.99992]` (`T`), sparse `[2.5e-11, 2.1e-11, 0.99999999995, 2.3e-12]` (`G`). Both backends are almost certain of different states, so this site is not a near tie. Case `CaseSpec { seed: 12108743558584770418, sampling: [SampleBatch { tau: 0.0, count: 4 }, SampleBatch { tau: 1.0, count: 4 }, SampleBatch { tau: 2.0, count: 3 }], schedule: Piecewise(PiecewiseTc { breaks: [2.5, 3.0], values: [5.0, 0.5, 1.5] }), model: RandomGtr, mu: 0.003, length: 1276 }`
+- `node_root` position 1024, dense posterior gap 0.0039: dense `[0.0145, 0.0153, 0.4832, 0.4870]` (`T`), sparse `[0.0146, 0.0154, 0.4859, 0.4842]` (`G`). Case `CaseSpec { seed: 17675809652389760864, sampling: [SampleBatch { tau: 0.0, count: 4 }, SampleBatch { tau: 0.5, count: 3 }, SampleBatch { tau: 1.0, count: 4 }, SampleBatch { tau: 1.5, count: 4 }, SampleBatch { tau: 2.0, count: 3 }], schedule: Piecewise(PiecewiseTc { breaks: [2.5, 3.0], values: [5.0, 0.5, 1.5] }), model: RandomGtr, mu: 0.01, length: 1139 }`
+- `node_root` position 1115, dense posterior gap 0.011: dense `[0.0011, 0.5042, 0.0016, 0.4932]` (`C`), sparse `[0.0011, 0.4975, 0.0016, 0.4999]` (`T`). Case `CaseSpec { seed: 4645121287748719626, sampling: [SampleBatch { tau: 0.0, count: 4 }, SampleBatch { tau: 1.0, count: 3 }, SampleBatch { tau: 2.0, count: 3 }], schedule: Piecewise(PiecewiseTc { breaks: [2.5, 3.0], values: [5.0, 0.5, 1.5] }), model: RandomGtr, mu: 0.003, length: 1368 }`
+
+The two root sites move the posterior by about 0.003 to 0.007 across a near tie. The site of `node_0006` reverses a posterior of 0.9999, which a small numerical difference cannot explain. This case and the regression case below reproduce the issue without gaps or unknown characters, so they are starting points for the fix approach below.
+
+The regression file [packages/treetime/proptest-regressions/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.txt](../../packages/treetime/proptest-regressions/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.txt) keeps a failing case of a random run. At position 928, `node_0004` and `node_0009` have a dense `G` (posterior about 0.60, `A` about 0.40) and a sparse `A` (posterior about 0.996):
+
+```text
+CaseSpec { seed: 15242536588371401067, sampling: [SampleBatch { tau: 0.0, count: 3 }, SampleBatch { tau: 0.6666666666666666, count: 3 }, SampleBatch { tau: 1.3333333333333333, count: 3 }, SampleBatch { tau: 2.0, count: 4 }], schedule: Piecewise(PiecewiseTc { breaks: [2.5, 3.0], values: [5.0, 0.5, 1.5] }), model: RandomGtr, mu: 0.003, length: 956 }
+```
+
 ## Impact and scope
 
 The sparse backend is the default. Dense and sparse are independent representations of the same model, so a differing residue means that at least one of them deviates from the marginal maximum a posteriori state. Downstream consumers see different internal sequences and mutations depending on `--dense`.

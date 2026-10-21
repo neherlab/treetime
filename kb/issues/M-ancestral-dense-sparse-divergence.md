@@ -3,7 +3,7 @@
 Dense and sparse marginal reconstruction produce different log-likelihoods beyond rounding. How often depends on the input:
 
 - Small random inputs (4 taxa, 10 gap-free sites, random GTR parameters): about 2.5% of the cases differ beyond rounding, about 97.5% agree to a few ULPs (measurement below)
-- Simulated data (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites, true GTR and exact branch lengths): every one of 64 cases differs beyond rounding, with relative differences from 1.2e-9 to 5.3e-6 (see Measurement on simulated data)
+- Simulated data (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites, true GTR and exact branch lengths): 9 of 1000 cases (0.9%) differ by more than the relative tolerance `1e-5`, with a median relative difference of 2.5e-7 and a largest one of 1.0e-4 (see Measurement on simulated data)
 
 The property test `test_prop_marginal_dense_sparse_gap_free_consistency` [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21) detects two distinct populations on the small random inputs. The test is `#[ignore]`d, so CI does not run this comparison. The cause is unknown.
 
@@ -25,11 +25,24 @@ The test uses `max_relative = 1e-5` to accommodate the worst observed case (7.6e
 
 ## Measurement on simulated data
 
-`test_prop_marginal_dense_sparse_simulated_agree_on_states_and_likelihood` [packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs](../../packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs) runs both representations on data from the simulation generator (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites), with the true GTR and the exact branch lengths. It asserts the relative tolerance `1e-5` above. One run of its 64 cases measured:
+The property test `test_prop_marginal_dense_sparse_simulated_agree_on_likelihood` [packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs#L29](../../packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs#L29) runs both representations on data from the simulation generator (`arb_simulated_case()`: coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites), with the true GTR and the exact branch lengths. It asserts the relative tolerance `1e-5` above (`epsilon = 0.0`) over 64 cases, and it is `#[ignore]`d because of this issue. The states comparison of the same file is a separate test, which [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md) covers.
 
-- Every case differs by more than rounding: relative differences of the log-likelihoods from 1.2e-9 to 5.3e-6. On realistic data the two populations above do not separate; all cases fall into population 2
-- The most likely states of the internal nodes agree at all 564950 compared node sites (dense posterior gap above `1e-3`), and at every excluded near-tie site
-- The calibration of the posteriors is equal for both representations on one simulated tree of 40 tips and 5000 sites: the mean of wrong most likely states minus their posterior error probability per site is -0.0209 for dense and -0.0210 for sparse, with p-values 0.490 and 0.487 against a mean of 0 ([packages/treetime/src/ancestral/__tests__/test_sim_ancestral_calibration.rs](../../packages/treetime/src/ancestral/__tests__/test_sim_ancestral_calibration.rs)). The divergence of the log-likelihoods therefore does not show in the calibration of the posteriors at this size
+Measurement: 1000 cases of `arb_simulated_case()` from a deterministic proptest runner, with the relative difference `|dense - sparse| / max(|dense|, |sparse|)` of the log-likelihoods:
+
+- 9 of 1000 cases (0.9%) are above `1e-5`. With 64 cases per run, about 44% of the runs contain one such case
+- Median 2.5e-7, 90th percentile 6.5e-7, 99th percentile 8.4e-6, largest 1.0e-4
+- 7 cases agree to rounding (below 1e-12, smallest 8.1e-16), and 3 more are below 1e-9. The two populations of the small random inputs therefore also occur on simulated data, but most simulated cases fall into population 2
+- Largest case: dense -596.3121422628079, sparse -596.3741350729575, for `CaseSpec { seed: 1315641483007467270, sampling: [SampleBatch { tau: 0.0, count: 2 }, SampleBatch { tau: 0.5, count: 3 }, SampleBatch { tau: 1.0, count: 2 }, SampleBatch { tau: 1.5, count: 3 }, SampleBatch { tau: 2.0, count: 4 }], schedule: Exponential(ExponentialTc { tc0: 5.0, scale: 2.5 }), model: RandomGtr, mu: 0.003, length: 356 }`
+
+A failing case of the routine test run, kept in the regression file [packages/treetime/proptest-regressions/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.txt](../../packages/treetime/proptest-regressions/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.txt), gives dense -1139.3036028844738 and sparse -1139.8773205007508 (relative difference 5.0e-4), with no differing most likely state:
+
+```text
+CaseSpec { seed: 16728650536634984346, sampling: [SampleBatch { tau: 0.0, count: 3 }, SampleBatch { tau: 0.6666666666666666, count: 3 }, SampleBatch { tau: 1.3333333333333333, count: 4 }, SampleBatch { tau: 2.0, count: 2 }], schedule: Exponential(ExponentialTc { tc0: 5.0, scale: 2.5 }), model: RandomGtr, mu: 0.003, length: 761 }
+```
+
+The generator does not cause the difference: the generator before its numerical fixes (commit `eb110bac3`) gives the same two log-likelihoods for this case up to the last digits (-1139.303602884453 and -1139.877320500729).
+
+The calibration of the posteriors is equal for both representations on one simulated tree of 40 tips and 5000 sites: the mean of wrong most likely states minus their posterior error probability per site is -0.0209 for dense and -0.0210 for sparse, with p-values 0.490 and 0.487 against a mean of 0 ([packages/treetime/src/ancestral/__tests__/test_sim_ancestral_calibration.rs](../../packages/treetime/src/ancestral/__tests__/test_sim_ancestral_calibration.rs)). The divergence of the log-likelihoods therefore does not show in the calibration of the posteriors at this size
 
 ## Investigation leads
 
