@@ -11,7 +11,7 @@ pub(crate) mod nwk_comments;
 pub mod output_plan;
 pub mod table_output;
 pub mod timetree_trace;
-pub(crate) mod trait_profile;
+pub(crate) mod trait_annotations;
 pub mod trait_tables;
 pub mod tree_output;
 pub(crate) mod usher_mat;

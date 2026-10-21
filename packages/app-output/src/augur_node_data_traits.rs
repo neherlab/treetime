@@ -1,6 +1,6 @@
 use crate::annotated_graph::{AnnotatedTreeView, TreeTraits};
 use crate::auspice::ensure_finite;
-use crate::trait_profile::{build_confidence_map, trait_change};
+use crate::trait_annotations::{build_confidence_map, trait_change};
 use deser_value::{Value, to_value};
 use eyre::Report;
 use itertools::{Itertools, izip};
