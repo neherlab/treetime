@@ -103,7 +103,24 @@ function run_one_distro() {
   local -a command_args=()
   read -r -a command_args <<<"${args}"
   printf "Running %s\n" "'${args}' on '${distro}'"
-  docker pull -q "$distro" >/dev/null
+  # Many distribution images exist for x86_64 only. On a host of another
+  # architecture (the arm64 compat jobs), report them by name and skip them;
+  # the x86_64 jobs run them.
+  local host_arch pull_output image_arch
+  host_arch="$(docker version --format '{{.Server.Arch}}')"
+  if ! pull_output="$(docker pull -q "${distro}" 2>&1)"; then
+    if [[ "${host_arch}" != "amd64" && "${pull_output}" == *"no matching manifest"* ]]; then
+      printf "Skipped '%s': no image for %s\n" "${distro}" "${host_arch}"
+      return 0
+    fi
+    printf "Failed pulling '%s': %s\n" "${distro}" "${pull_output}" >&2
+    exit 1
+  fi
+  image_arch="$(docker image inspect --format '{{.Architecture}}' "${distro}")"
+  if [[ "${image_arch}" != "${host_arch}" ]]; then
+    printf "Skipped '%s': no image for %s (only %s)\n" "${distro}" "${host_arch}" "${image_arch}"
+    return 0
+  fi
   if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" >/dev/null; then
     printf "Failed running '%s' on '%s'\n" "${args}" "${distro}" >&2
     exit 1

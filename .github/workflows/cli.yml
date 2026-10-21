@@ -89,14 +89,22 @@ jobs:
   compat-linux:
     name: "Compat test (${{ matrix.target }})"
     needs: [build-cli]
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-24.04
             script: dev/test-linux-distros-gnu
           - target: x86_64-unknown-linux-musl
+            runner: ubuntu-24.04
+            script: dev/test-linux-distros-musl
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            script: dev/test-linux-distros-gnu
+          - target: aarch64-unknown-linux-musl
+            runner: ubuntu-24.04-arm
             script: dev/test-linux-distros-musl
     steps:
       - name: "Check out"
