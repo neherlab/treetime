@@ -88,6 +88,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-io-graphviz-dot-branch-length-precision.md](issues/N-io-graphviz-dot-branch-length-precision.md)**: approve the display precision of the DOT edge labels
 - **[kb/issues/N-io-maple-alignment-input-unsupported.md](issues/N-io-maple-alignment-input-unsupported.md)**: expand MAPLE input to a full alignment in dense mode or require sparse mode, and read nucleotide data only or also amino acids
 - **[kb/issues/N-io-missing-name-policy-differs-across-subsystems.md](issues/N-io-missing-name-policy-differs-across-subsystems.md)**: approve one policy for leaves without a sequence, a date, or a trait value
+- **[kb/issues/N-io-mugration-probabilities-written-with-three-precisions.md](issues/N-io-mugration-probabilities-written-with-three-precisions.md)**: write full precision in the confidence CSV only (v0 parity), or in every output and record the divergence of the Auspice JSON from `augur export v2`
 - **[kb/issues/N-io-multi-segment-genome-input.md](issues/N-io-multi-segment-genome-input.md)**: share each parameter of a run with several trees (clock rate, coalescent model) across the trees, or fit it per tree
 - **[kb/issues/N-io-nextclade-ndjson-input-unsupported.md](issues/N-io-nextclade-ndjson-input-unsupported.md)**: support Nextclade NDJSON as a sparse alignment input, or support only MAPLE or VCF for this use
 - **[kb/issues/N-io-phyloxml-crate-unused.md](issues/N-io-phyloxml-crate-unused.md)**: use the PhyloXML crate in the tree input and output paths, or remove it
@@ -195,6 +196,7 @@ These issues give wrong results or failures under specific settings, or block ca
 
 These issues cover parity gaps, robustness, performance, tests, and tooling, and do not change results on default settings.
 
+- **[kb/issues/M-mugration-runtime-grows-with-cube-of-state-count.md](issues/M-mugration-runtime-grows-with-cube-of-state-count.md)**: propagate one-row messages of the discrete partition in the eigenbasis, after measuring how far the discrete outputs move
 - **[kb/issues/N-timetree-indel-rate-recomputed-per-iteration.md](issues/N-timetree-indel-rate-recomputed-per-iteration.md)**: estimate the indel rates once before the timetree loop, as optimize does
 - **[kb/issues/M-timetree-coalescent-modes-represent-invalid-states.md](issues/M-timetree-coalescent-modes-represent-invalid-states.md)**: parse the coalescent settings into one `CoalescentMode` at the boundary and reject conflicts
 - **[kb/issues/M-grid-invalid-numeric-domain.md](issues/M-grid-invalid-numeric-domain.md)**: reject NaN endpoints and non-increasing spacing in the grid constructors
@@ -208,7 +210,6 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/N-timetree-node-dates-output-unimplemented.md](issues/N-timetree-node-dates-output-unimplemented.md)**: write a node dates table on every timetree run
 - **[kb/issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md](issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md)**: stop writing the invisible edges between every pair of leaves in DOT output
 - **[kb/issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md](issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md)**: reconstruct sequences only for outputs that read mutations or sequences
-- **[kb/issues/N-io-mugration-probabilities-written-with-three-precisions.md](issues/N-io-mugration-probabilities-written-with-three-precisions.md)**: write mugration probabilities and entropy at full precision in every output
 - **[kb/issues/N-output-vocabulary-spelled-out-in-six-places.md](issues/N-output-vocabulary-spelled-out-in-six-places.md)**: derive every output list from one table of outputs
 - **[kb/issues/N-io-gtr-json-omits-state-alphabet.md](issues/N-io-gtr-json-omits-state-alphabet.md)**: write the alphabet states into each sequence model of the GTR JSON
 - **[kb/issues/N-timetree-dates-not-required.md](issues/N-timetree-dates-not-required.md)**: stop early with a clear error when `timetree` gets no dates

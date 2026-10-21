@@ -12,7 +12,7 @@ Key implementation decisions:
 - `MarginalData::count_transitions` provides the shared dense/discrete implementation. Sparse has its own implementation via private associated functions on `PartitionMarginalSparse`.
 - `refine_gtr` in `gtr/refinement.rs` accepts any partition implementing `MarginalPasses`.
 - Rate optimization (`optimize_gtr_rate`) is selected by `enum RefinementRate` of `struct GtrRefinement`: mugration passes `RefinementRate::Optimize`, ancestral passes `RefinementRate::Keep`. Per the proposal recommendation, Brent-style mu optimization is unnecessary for multi-site sequence data where `infer_gtr_from_counts` already estimates mu from large counts.
-- The refinement starts from the Fitch model of the file, which has μ = 1 after the fit as in v0 ([packages/treetime/src/partition/create.rs](../../packages/treetime/src/partition/create.rs)), and re-estimates μ with W and π from the counts of every iteration ([packages/treetime/src/gtr/refinement.rs#L18-L95](../../packages/treetime/src/gtr/refinement.rs#L18-L95)).
+- The refinement starts from the Fitch model of the file, which has μ = 1 after the fit as in v0 ([packages/treetime/src/partition/create.rs](../../packages/treetime/src/partition/create.rs)), and re-estimates μ with W and π from the counts of every iteration ([packages/treetime/src/gtr/refinement.rs#L17-L88](../../packages/treetime/src/gtr/refinement.rs#L17-L88)).
 - `get_branch_mutation_matrix` and `accumulate_mutation_counts` live in `gtr/infer_gtr/common.rs` alongside `MutationCounts` and `infer_gtr_from_counts`.
 
 ## Current behavior

@@ -10,7 +10,7 @@ Each command declares `--tree` as `Option<PathBuf>`, but its argument conversion
 - `clock`: [`packages/app-commands/src/commands/clock/args.rs#L42-L49`](../../packages/app-commands/src/commands/clock/args.rs#L42-L49)
 - `ancestral`: [`packages/app-commands/src/commands/ancestral/args.rs#L64-L67`](../../packages/app-commands/src/commands/ancestral/args.rs#L64-L67)
 - `homoplasy`: [`packages/app-commands/src/commands/homoplasy/args.rs#L55-L58`](../../packages/app-commands/src/commands/homoplasy/args.rs#L55-L58)
-- `mugration`: [`packages/app-commands/src/commands/mugration/args.rs#L40-L59`](../../packages/app-commands/src/commands/mugration/args.rs#L40-L59)
+- `mugration`: [`packages/app-commands/src/commands/mugration/args.rs#L41-L60`](../../packages/app-commands/src/commands/mugration/args.rs#L41-L60)
 - `optimize`: [`packages/app-commands/src/commands/optimize/args.rs#L74-L77`](../../packages/app-commands/src/commands/optimize/args.rs#L74-L77)
 - `prune`: [`packages/app-commands/src/commands/prune/args.rs#L36-L39`](../../packages/app-commands/src/commands/prune/args.rs#L36-L39)
 

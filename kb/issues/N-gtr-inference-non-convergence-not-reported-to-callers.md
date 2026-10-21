@@ -1,6 +1,6 @@
 # GTR inference does not report non-convergence to its callers
 
-`infer_gtr_from_counts()` returns `Ok(...)` with a warning log (`progress_warn!`) when the GTR inference does not converge [packages/treetime/src/gtr/infer_gtr/common.rs#L69-L79](../../packages/treetime/src/gtr/infer_gtr/common.rs#L69-L79). `struct InferGtrResult` [packages/treetime/src/gtr/infer_gtr/common.rs#L111](../../packages/treetime/src/gtr/infer_gtr/common.rs#L111) has no convergence flag, so callers cannot tell a converged model from a non-converged one without parsing the log.
+`infer_gtr_from_counts()` returns `Ok(...)` with a warning log (`progress_warn!`) when the GTR inference does not converge [packages/treetime/src/gtr/infer_gtr/common.rs#L71-L81](../../packages/treetime/src/gtr/infer_gtr/common.rs#L71-L81). `struct InferGtrResult` [packages/treetime/src/gtr/infer_gtr/common.rs#L113](../../packages/treetime/src/gtr/infer_gtr/common.rs#L113) has no convergence flag, so callers cannot tell a converged model from a non-converged one without parsing the log.
 
 ## Fix
 

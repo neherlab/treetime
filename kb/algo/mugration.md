@@ -84,7 +84,7 @@ This is analogous to `--reconstruct-tip-states` in the ancestral command but app
 
 Supporting references for missing data treatment:
 
-- <a id="cite-2"></a>[Felsenstein 2003](https://doi.org/10.1007/978-0-387-21337-7) [[2](#ref-2)], p. 255: ambiguous states receive likelihood 1.0 for all possibilities
+- <a id="cite-2"></a>[Felsenstein 2003](https://openlibrary.org/books/OL8127124M/Inferring_Phylogenies) [[2](#ref-2)], p. 255: ambiguous states receive likelihood 1.0 for all possibilities
 - PastML (<a id="cite-3"></a>[Ishikawa et al. 2019](https://doi.org/10.1093/molbev/msz131) [[3](#ref-3)]): "unknown states can be omitted and will be estimated during analysis"
 - BEAST UTM model (<a id="cite-4"></a>[Vaiente and Scotch 2020](https://doi.org/10.1016/j.meegid.2020.104501) [[4](#ref-4)]): extends to prior probability distributions over uncertain tip states
 
@@ -94,13 +94,13 @@ Supporting references for missing data treatment:
 
 The discrete partition (`struct PartitionMarginalDiscrete`) implements the shared `trait MarginalPasses` [packages/treetime/src/partition/marginal/shared/update.rs#L10](../../packages/treetime/src/partition/marginal/shared/update.rs#L10). Its passes call the shared `fn indexed_backward` and `fn indexed_forward` with `IndexedKind::Discrete` [packages/treetime/src/partition/marginal/discrete/partition.rs#L76-L80](../../packages/treetime/src/partition/marginal/discrete/partition.rs#L76-L80). Discrete traits are `Array2(1, n_states)` profiles stored in the same `DenseNodeState` type as dense sequence inference. A discrete leaf reads its observed profile in `fn discrete_leaf_backward` [packages/treetime/src/partition/marginal/shared/pass.rs#L233-L240](../../packages/treetime/src/partition/marginal/shared/pass.rs#L233-L240). The forward pass skips the indel and sequence step for the discrete kind [packages/treetime/src/partition/marginal/shared/pass.rs#L344-L349](../../packages/treetime/src/partition/marginal/shared/pass.rs#L344-L349).
 
-Mugration is an ancestral reconstruction of one discrete trait. `fn run()` ([packages/treetime/src/mugration/pipeline.rs#L26-L145](../../packages/treetime/src/mugration/pipeline.rs#L26-L145)) builds only what is specific to traits: the state alphabet from the observed values and the weight keys, the weight coverage check, `pi`, the start GTR, the leaf observations, and the partition. It then calls the marginal fit of ancestral reconstruction, `fn fit_marginal()` ([packages/treetime/src/ancestral/plan.rs#L292-L309](../../packages/treetime/src/ancestral/plan.rs#L292-L309)), which the dense and sparse sequence paths also call: a marginal update under the start model, then the optional GTR refinement. Last, it reads the state posteriors. `struct MugrationOutput { graph, gtr, states, posteriors }` carries the result to the writers.
+Mugration is an ancestral reconstruction of one discrete trait. `fn run()` ([packages/treetime/src/mugration/pipeline.rs#L28-L150](../../packages/treetime/src/mugration/pipeline.rs#L28-L150)) builds only what is specific to traits: the state alphabet from the observed values and the weight keys, the weight coverage check, `pi`, the start GTR, the leaf observations, and the partition. It then calls the marginal fit of ancestral reconstruction, `fn fit_marginal()` ([packages/treetime/src/ancestral/plan.rs#L292-L309](../../packages/treetime/src/ancestral/plan.rs#L292-L309)), which the dense and sparse sequence paths also call: a marginal update under the start model, then the optional GTR refinement. Last, it reads the state posteriors. `struct MugrationOutput { graph, gtr, states, posteriors }` carries the result to the writers.
 
 The ancestral command types (`enum MarginalReconstruction`, `enum AncestralPartition`, `struct PartitionResult`) stay sequence-only: the discrete partition reaches the shared code through the generic `fit_marginal()`, as the amino-acid path reaches the ancestral plan.
 
-GTR refinement lives in `fn refine_gtr()` ([packages/treetime/src/gtr/refinement.rs#L18-L95](../../packages/treetime/src/gtr/refinement.rs#L18-L95)), one routine generic over `MarginalPasses` for ancestral `--gtr-iterations` and mugration. A `struct GtrRefinement { iterations, pc, fixed_pi, rate }` selects the run; `enum RefinementRate` is `Keep` (ancestral) or `Optimize { scale }` (mugration).
+GTR refinement lives in `fn refine_gtr()` ([packages/treetime/src/gtr/refinement.rs#L17-L88](../../packages/treetime/src/gtr/refinement.rs#L17-L88)), one routine generic over `MarginalPasses` for ancestral `--gtr-iterations` and mugration. A `struct GtrRefinement { iterations, inference, rate }` selects the run; `enum RefinementRate` is `Keep` (ancestral) or `Optimize { scale }` (mugration).
 
-The writers of every output (traits CSV, confidence CSV, augur node data, Auspice JSON, Newick and Nexus comments) read the state posteriors through `struct TreeTraits { attribute, states, posteriors }` ([packages/app-output/src/annotated_graph.rs#L86-L91](../../packages/app-output/src/annotated_graph.rs#L86-L91)) and compute no argmax or entropy. The branch transition label (`parent → child`) has one owner, `fn trait_change()` ([packages/app-output/src/trait_profile.rs#L16-L27](../../packages/app-output/src/trait_profile.rs#L16-L27)), and the confidence filter (`> 0.001`) has one owner, `fn build_confidence_map()` ([packages/app-output/src/trait_profile.rs#L9-L14](../../packages/app-output/src/trait_profile.rs#L9-L14)).
+The writers of every output (traits CSV, confidence CSV, augur node data, Auspice JSON, Newick and Nexus comments) read the state posteriors through `struct TreeTraits { attribute, states, posteriors }` ([packages/app-output/src/annotated_graph.rs#L86-L91](../../packages/app-output/src/annotated_graph.rs#L86-L91)) and compute no argmax or entropy. The branch transition label (`parent → child`) has one owner, `fn trait_change()` ([packages/app-output/src/trait_annotations.rs#L16-L27](../../packages/app-output/src/trait_annotations.rs#L16-L27)), and the confidence filter (`> 0.001`) has one owner, `fn build_confidence_map()` ([packages/app-output/src/trait_annotations.rs#L9-L14](../../packages/app-output/src/trait_annotations.rs#L9-L14)).
 
 ---
 
@@ -108,19 +108,19 @@ The writers of every output (traits CSV, confidence CSV, augur node data, Auspic
 
 Constructs a GTR-like transition model for discrete traits.
 
-v1: `fn run` [packages/treetime/src/mugration/pipeline.rs#L83-L130](../../packages/treetime/src/mugration/pipeline.rs#L83-L130).
+v1: `fn run` [packages/treetime/src/mugration/pipeline.rs#L85-L135](../../packages/treetime/src/mugration/pipeline.rs#L85-L135).
 
 Start model:
 
 - Equilibrium frequencies `pi`: uniform (1/n_states) or from the weights file (fixed during refinement); optional pseudo-count smoothing with `--smooth-initial-pi`
 - Exchangeability matrix `W`: uniform (all transitions equally likely), rate `Mu::FromMatrix(1.0)`
 
-Refinement spec: `GtrRefinement { iterations: --iterations, pc: --pc (default 1.0), fixed_pi: pi of the weights, rate: Optimize { scale: --sampling-bias-correction } }`.
+Refinement spec: `GtrRefinement { iterations: --iterations, inference: InferGtrOptions { pc: --pc (default 1.0), fixed_pi: pi of the weights }, rate: Optimize { scale: --sampling-bias-correction } }`.
 
 Refinement order of `fn refine_gtr()` with `RefinementRate::Optimize`, the order of v0's `reconstruct_discrete_traits()` ([packages/legacy/treetime/treetime/wrappers.py#L785-L811](../../packages/legacy/treetime/treetime/wrappers.py#L785-L811)):
 
 1. A marginal update under the start model (in `fit_marginal()`), and the first fit from it
-2. A full marginal update under the first fitted model ([packages/treetime/src/gtr/refinement.rs#L55-L62](../../packages/treetime/src/gtr/refinement.rs#L55-L62)), then the first rate step (`fn optimize_gtr_rate()`, backward passes only, `RateRangeEdge::KeepStart`)
+2. A full marginal update under the first fitted model ([packages/treetime/src/gtr/refinement.rs#L48-L55](../../packages/treetime/src/gtr/refinement.rs#L48-L55)), then the first rate step (`fn optimize_gtr_rate()`, backward passes only, `RateRangeEdge::KeepStart`)
 3. For each of the `iterations`: a fit, then a rate step. Each fit counts with the forward messages and the root state of the update of step 2, and with the backward messages of the last rate step, as v0's `infer_gtr()` reuses its existing marginal reconstruction
 4. The sampling-bias scale, then a final marginal update under the final model
 
@@ -178,7 +178,7 @@ The confidence profiles are compared with v0 at an absolute tolerance of 1e-7. B
 
 - <a id="ref-0"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042
 - <a id="ref-1"></a>Felsenstein, Joseph. 1981. "Evolutionary Trees from DNA Sequences: A Maximum Likelihood Approach." _Journal of Molecular Evolution_ 17(6):368-376. https://doi.org/10.1007/BF01734359 [↩](#cite-1)
-- <a id="ref-2"></a>Felsenstein, Joseph. 2003. _Inferring Phylogenies._ Sinauer Associates. ISBN 978-0-87893-177-4. [↩](#cite-2)
+- <a id="ref-2"></a>Felsenstein, Joseph. 2003. _Inferring Phylogenies._ Sinauer Associates. ISBN 978-0-87893-177-4. https://openlibrary.org/books/OL8127124M/Inferring_Phylogenies [↩](#cite-2)
 - <a id="ref-3"></a>Ishikawa, Sohta A., Anna Zhukova, Wataru Iwasaki, and Olivier Gascuel. 2019. "A Fast Likelihood Method to Reconstruct and Visualize Ancestral Scenarios." _Molecular Biology and Evolution_ 36(9):2069-2085. https://doi.org/10.1093/molbev/msz131 [↩](#cite-3)
 - <a id="ref-4"></a>Vaiente, Mara A., and Matthew Scotch. 2020. "Going Back to the Roots: Evaluating Bayesian Phylogeographic Models with Discrete Trait Uncertainty." _Infection, Genetics and Evolution_ 85:104501. https://doi.org/10.1016/j.meegid.2020.104501 [↩](#cite-4)
 - <a id="ref-5"></a>Lemey, Philippe, Andrew Rambaut, Alexei J. Drummond, and Marc A. Suchard. 2009. "Bayesian Phylogeography Finds Its Roots." _PLoS Computational Biology_ 5(9):e1000520. https://doi.org/10.1371/journal.pcbi.1000520

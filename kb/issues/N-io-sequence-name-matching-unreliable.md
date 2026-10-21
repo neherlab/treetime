@@ -19,11 +19,11 @@ Names that differ only in whitespace or encoding are treated as distinct:
 
 ### Case sensitivity
 
-The name lookup of `fn pair_by_name()` [packages/treetime-graph/src/pair_by_name.rs#L27](../../packages/treetime-graph/src/pair_by_name.rs#L27), which every command uses to pair FASTA records with leaves, is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
+The name lookup of `fn pair_by_name()` [packages/treetime-graph/src/pair_by_name.rs#L28](../../packages/treetime-graph/src/pair_by_name.rs#L28), which every command uses to pair FASTA records, metadata dates, and trait values with nodes, is case-sensitive. `"USA"` and `"usa"` are treated as different names with no standard convention for which is correct.
 
 ## Current behavior
 
-Every sequence command reads each `--alignment` file through `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124). It pairs records with leaves by exact name, then `fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L15-L65](../../packages/treetime/src/ancestral/attach.rs#L15-L65) fills each leaf without a record with unknown characters. It writes one warning per such leaf (`No sequence found for leaf '<name>' in alignment '<path>'`) and one summary warning with the count. The run stops when more than a third of the leaves have no record. `ancestral` and `homoplasy` accept `--ignore-missing-alns` to continue past this limit; `timetree`, `optimize` and `prune` always enforce it.
+Every sequence command reads each `--alignment` file through `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124). It pairs records with leaves by exact name, then `fn complete_alignment_for_leaves()` [packages/treetime/src/ancestral/attach.rs#L14-L61](../../packages/treetime/src/ancestral/attach.rs#L14-L61) fills each leaf without a record with unknown characters. It writes one warning per such leaf (`No sequence found for leaf '<name>' in alignment '<path>'`) and one summary warning with the count. The run stops when more than a third of the leaves have no record. `ancestral` and `homoplasy` accept `--ignore-missing-alns` to continue past this limit; `timetree`, `optimize` and `prune` always enforce it.
 
 Records whose name matches no leaf get no message. They count for the alignment length check but not for the mask.
 
@@ -35,10 +35,9 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 
 ## Possible improvements
 
-1. Build a name index upfront and report all mismatches at once (not one at a time)
-2. Provide fuzzy matching suggestions for near-misses
-3. Support explicit name mapping via config file (see [config-file-multi-partition proposal](../proposals/config-file-multi-partition.md))
-4. Support case-insensitive matching as an option
+1. Show the closest names of the other input for each unmatched name (axis 1 of [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md))
+2. Opt-in case-insensitive and underscore-space matching (axis 2 of the same proposal)
+3. Explicit name mapping in a config file (see [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md))
 
 ## Related issues
 
@@ -49,5 +48,5 @@ Users with mismatched names must manually edit either the tree or the FASTA file
 ## Related
 
 - [N-io-missing-name-policy-differs-across-subsystems.md](N-io-missing-name-policy-differs-across-subsystems.md) - reconciliation logic duplicated across subsystems
-- Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) - ecosystem survey, four design axes, architecture analysis
-- [Configuration file format for multi-partition analysis](../proposals/config-file-multi-partition.md) - could include explicit name mappings
+- Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) - ecosystem survey, suggestions for unmatched names, name normalization
+- [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md) - could include explicit name mappings

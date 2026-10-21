@@ -9,7 +9,7 @@ let value_column_idx = get_col_name(&headers, &[], value_column)?;
 
 [`get_col_name()`](../../packages/treetime-io/src/csv.rs#L138) returns an error when no candidate matches. The value column is queried with an empty candidate list, so it errors unless a column name is given.
 
-The CLI never reaches that error for the value column: `--attribute` is a required argument, and argument validation rejects a run without it before the metadata file is read ([packages/app-commands/src/commands/mugration/args.rs#L37-L60](../../packages/app-commands/src/commands/mugration/args.rs#L37-L60)). A positional fallback for the attribute column therefore also means making `--attribute` optional.
+The CLI never reaches that error for the value column: `--attribute` is a required argument, and argument validation rejects a run without it before the metadata file is read ([packages/app-commands/src/commands/mugration/args.rs#L38-L61](../../packages/app-commands/src/commands/mugration/args.rs#L38-L61)). A positional fallback for the attribute column therefore also means making `--attribute` optional.
 
 ## Affected command
 

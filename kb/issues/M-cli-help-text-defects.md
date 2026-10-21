@@ -71,10 +71,6 @@ Command: `optimize`. The description and possible value descriptions contain `$\
 
 Command: `timetree`. Takes two positional-style values (`--relax 1.0 0.5`). Most CLIs use separate flags or comma-separated values.
 
-### U6: `--pc` in `mugration` default not shown in metadata
-
-Description says "Default: 1.0" but no `[default: 1.0]` metadata (field is `Option<f64>`). Automation parsers miss it.
-
 ### U8: Global flags on non-analysis commands
 
 `--jobs`, `--verbosity`, `--no-progress` appear on `completions`, `schema`, `help-markdown`, `arg` where they serve no purpose.
@@ -134,10 +130,6 @@ Root help lists tooling commands at the same level as analysis commands with no 
 ### G2: "gaussian" should be "Gaussian"
 
 [packages/app-commands/src/commands/timetree/args.rs#L215](../../packages/app-commands/src/commands/timetree/args.rs#L215)
-
-### G3: "Higher numbers results" should be "Higher numbers result"
-
-[packages/app-commands/src/commands/mugration/args.rs#L126](../../packages/app-commands/src/commands/mugration/args.rs#L126)
 
 ### G4: Root `ancestral` summary is a full paragraph; other summaries are one-liners
 
