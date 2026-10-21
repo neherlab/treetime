@@ -116,11 +116,47 @@ impl ExponentialTc {
     if duration <= 0.0 {
       return 0.0;
     }
-    self.scale / self.tc0 * (from / self.scale).exp() * (duration / self.scale).exp_m1()
+    let growth_exponent = duration / self.scale;
+    let growth = if growth_exponent == 0.0 {
+      1.0
+    } else {
+      growth_exponent.exp_m1() / growth_exponent
+    };
+    let hazard_at_constant_rate = duration / self.tc0;
+    let rate_ratio = (from / self.scale).exp();
+    let factor = rate_ratio * growth;
+    if hazard_at_constant_rate.is_normal() && rate_ratio.is_normal() && factor.is_finite() {
+      return hazard_at_constant_rate * factor;
+    }
+    let log_growth = if growth_exponent > 1.0 {
+      growth_exponent + (-(-growth_exponent).exp()).ln_1p() - growth_exponent.ln()
+    } else {
+      growth.ln()
+    };
+    (duration.ln() - self.tc0.ln() + from / self.scale + log_growth).exp()
   }
 
   fn time_after_hazard(&self, from: f64, hazard: f64) -> f64 {
-    from + self.scale * (hazard * self.tc0 * (-from / self.scale).exp() / self.scale).ln_1p()
+    if hazard <= 0.0 {
+      return from;
+    }
+    let tc_ratio = self.tc0 / self.scale;
+    let decay = (-from / self.scale).exp();
+    let scaled_hazard = hazard * tc_ratio;
+    let growth = scaled_hazard * decay;
+    if tc_ratio.is_normal() && decay.is_normal() && scaled_hazard.is_normal() && growth.is_normal() {
+      return from + self.scale * growth.ln_1p();
+    }
+    let log_duration_at_constant_rate = hazard.ln() + self.tc0.ln() - from / self.scale;
+    let log_growth = log_duration_at_constant_rate - self.scale.ln();
+    let duration = if log_growth > 0.0 {
+      self.scale * (log_growth + (-log_growth).exp().ln_1p())
+    } else {
+      let growth = log_growth.exp();
+      let damping = if growth == 0.0 { 1.0 } else { growth.ln_1p() / growth };
+      log_duration_at_constant_rate.exp() * damping
+    };
+    from + duration
   }
 }
 

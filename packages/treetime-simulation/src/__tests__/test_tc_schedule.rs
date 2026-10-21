@@ -3,7 +3,7 @@ mod tests {
   use crate::tc_schedule::TcSchedule;
   use eyre::Report;
   use rstest::rstest;
-  use std::f64::consts::E;
+  use std::f64::consts::{E, LN_10};
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
@@ -45,6 +45,46 @@ mod tests {
     let schedule = TcSchedule::exponential(10.0, 5.0).unwrap();
     let expected = 10.0 / E;
     let actual = schedule.tc(5.0);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 1);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_hazard_over_no_time_is_zero_when_scale_over_tc0_overflows() {
+    let schedule = TcSchedule::exponential(1e-300, 1e300).unwrap();
+    let expected = 0.0;
+    let actual = schedule.hazard_between(0.0, 0.0);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_hazard_is_finite_when_scale_over_tc0_overflows() {
+    let schedule = TcSchedule::exponential(1e-300, 1e300).unwrap();
+    let expected = 1.0 / 1e-300;
+    let actual = schedule.hazard_between(0.0, 1.0);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_time_after_hazard_is_finite_when_hazard_times_tc0_overflows() {
+    let schedule = TcSchedule::exponential(1e308, 1e308).unwrap();
+    let expected = 1e308 * 3.0_f64.ln();
+    let actual = schedule.time_after_hazard(0.0, 2.0);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_hazard_is_finite_when_the_rate_at_the_start_overflows() {
+    let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
+    let expected = 750.0 + (E - 1.0).ln() - 300.0 * LN_10;
+    let actual = schedule.hazard_between(750.0, 751.0).ln();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_time_after_hazard_is_finite_when_the_rate_at_the_start_overflows() {
+    let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
+    let expected = 751.0;
+    let actual = schedule.time_after_hazard(750.0, schedule.hazard_between(750.0, 751.0));
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 1);
   }
 

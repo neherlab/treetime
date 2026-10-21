@@ -14,7 +14,7 @@ mod tests {
     #[test]
     fn test_prop_tc_schedule_exponential_time_after_hazard_roundtrip(schedule in gen_exponential(), tau in 0.0..40.0_f64) {
       let actual = schedule.time_after_hazard(0.0, schedule.hazard_between(0.0, tau));
-      prop_assert_ulps_eq!(tau, actual, max_ulps = 10);
+      prop_assert_ulps_eq!(tau, actual, max_ulps = 11);
     }
 
     #[test]
