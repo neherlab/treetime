@@ -3353,10 +3353,10 @@
         "pc": {
           "anyOf": [
             {
-              "description": "Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.",
+              "description": "Pseudo-count of the substitution model fit. Higher values give flatter models.",
               "type": "number",
               "format": "double",
-              "x-unset": true
+              "default": 1.0
             },
             {
               "type": "string",

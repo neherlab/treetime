@@ -246,7 +246,7 @@ mod tests {
       &traits,
       Some(weights),
       &MugrationParams {
-        pc: Some(1.0),
+        pc: 1.0,
         ..mugration_params()
       },
     )?;
@@ -276,7 +276,7 @@ mod tests {
       &traits,
       Some(weights),
       &MugrationParams {
-        pc: Some(1.0),
+        pc: 1.0,
         smooth_initial_pi: true,
         ..mugration_params()
       },
@@ -472,6 +472,7 @@ mod tests {
 
   mod helpers {
     use crate::cancel::NoopCancel;
+    use crate::gtr::infer_gtr::common::DEFAULT_PSEUDO_COUNT;
     use crate::mugration::pipeline::{MugrationInput, MugrationOutput, MugrationParams, run};
     use crate::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
     use crate::progress::NoopProgress;
@@ -487,7 +488,7 @@ mod tests {
     pub(super) fn mugration_params() -> MugrationParams {
       MugrationParams {
         missing_data: o!("?"),
-        pc: None,
+        pc: DEFAULT_PSEUDO_COUNT,
         missing_weights_threshold: 0.5,
         iterations: 5,
         sampling_bias_correction: None,

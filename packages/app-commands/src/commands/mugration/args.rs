@@ -12,6 +12,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
+use treetime::gtr::infer_gtr::common::DEFAULT_PSEUDO_COUNT;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -123,9 +124,13 @@ pub struct TreetimeMugrationArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_confidence_csv: Option<PathBuf>,
 
-  /// Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Substitution model"))]
-  pub pc: Option<f64>,
+  /// Pseudo-count of the substitution model fit. Higher values give flatter models.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, default_value_t = DEFAULT_PSEUDO_COUNT, help_heading = "Substitution model")
+  )]
+  #[default(DEFAULT_PSEUDO_COUNT)]
+  pub pc: f64,
 
   /// String indicating missing data
   #[cfg_attr(feature = "clap", clap(long, default_value = "?", help_heading = "Input data"))]

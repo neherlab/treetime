@@ -7,6 +7,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use serde_json::Value;
   use treetime::cancel::NoopCancel;
+  use treetime::gtr::infer_gtr::common::DEFAULT_PSEUDO_COUNT;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
   use treetime::progress::NoopProgress;
@@ -148,7 +149,7 @@ mod tests {
       let branch_lengths = nwk_parsed.branch_lengths;
       let params = MugrationParams {
         missing_data: o!("?"),
-        pc: None,
+        pc: DEFAULT_PSEUDO_COUNT,
         missing_weights_threshold: 0.5,
         iterations: 5,
         sampling_bias_correction: None,

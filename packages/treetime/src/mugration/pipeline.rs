@@ -5,6 +5,7 @@ use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;
 use crate::gtr::gtr::{GTR, Mu};
+use crate::gtr::infer_gtr::common::InferGtrOptions;
 use crate::gtr::refinement::{GtrRefinement, RefinementRate};
 use crate::mugration::leaf_observations::leaf_observations;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
@@ -89,7 +90,7 @@ pub fn run(
   let fixed_pi = weights.map(|_| pi.clone());
 
   let pi = if params.smooth_initial_pi {
-    apply_pseudo_counts(pi, params.pc.unwrap_or(1.0))
+    apply_pseudo_counts(pi, params.pc)
   } else {
     pi
   };
@@ -123,8 +124,11 @@ pub fn run(
   let branch_lengths = branch_lengths_or_zero(&branch_lengths);
   let refinement = GtrRefinement {
     iterations: params.iterations,
-    pc: params.pc.unwrap_or(1.0),
-    fixed_pi,
+    inference: InferGtrOptions {
+      fixed_pi,
+      pc: params.pc,
+      ..InferGtrOptions::default()
+    },
     rate: RefinementRate::Optimize {
       scale: params.sampling_bias_correction,
     },
@@ -147,7 +151,7 @@ pub fn run(
 
 pub struct MugrationParams {
   pub missing_data: String,
-  pub pc: Option<f64>,
+  pub pc: f64,
   pub missing_weights_threshold: f64,
   pub iterations: usize,
   pub sampling_bias_correction: Option<f64>,

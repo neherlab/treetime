@@ -1544,7 +1544,9 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 * `--output-confidence-csv <OUTPUT_CONFIDENCE_CSV>` [alias: `confidence`] — Path to output state-probability-profile CSV.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--pc <PC>` — Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0
+* `--pc <PC>` — Pseudo-count of the substitution model fit. Higher values give flatter models
+
+  Default value: `1`
 * `--missing-data <MISSING_DATA>` — String indicating missing data
 
   Default value: `?`

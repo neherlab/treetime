@@ -8,7 +8,6 @@ use crate::{progress_info, progress_warn};
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
 use log::debug;
-use ndarray::Array1;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -32,12 +31,6 @@ where
     "GTR refinement: initial log likelihood = {:.4}",
     update.log_lh.value()
   );
-  let options = InferGtrOptions {
-    fixed_pi: refinement.fixed_pi.clone(),
-    pc: refinement.pc,
-    ..InferGtrOptions::default()
-  };
-
   let mut gtr = gtr;
   let mut counted = update;
   let mut rated: Option<RatedMessages<P>> = None;
@@ -51,7 +44,7 @@ where
       backward,
       &counted.edges.forward,
     )?;
-    gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
+    gtr = infer_gtr(&counts, &refinement.inference, gtr.pi().len(), log)?;
     if let RefinementRate::Optimize { .. } = refinement.rate {
       if rated.is_none() {
         counted = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&counted.node_states))?;
@@ -97,17 +90,15 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GtrRefinement {
   pub(crate) iterations: usize,
-  pub(crate) pc: f64,
-  pub(crate) fixed_pi: Option<Array1<f64>>,
+  pub(crate) inference: InferGtrOptions,
   pub(crate) rate: RefinementRate,
 }
 
 impl GtrRefinement {
-  pub(crate) const fn keep_rate(iterations: usize) -> Self {
+  pub(crate) fn keep_rate(iterations: usize) -> Self {
     Self {
       iterations,
-      pc: 1.0,
-      fixed_pi: None,
+      inference: InferGtrOptions::default(),
       rate: RefinementRate::Keep,
     }
   }

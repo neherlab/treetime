@@ -303,21 +303,16 @@ mod tests {
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
 
-    pub(super) const fn refinement(iterations: usize, rate: RefinementRate) -> GtrRefinement {
+    pub(super) fn refinement(iterations: usize, rate: RefinementRate) -> GtrRefinement {
       GtrRefinement {
         iterations,
-        pc: 1.0,
-        fixed_pi: None,
+        inference: InferGtrOptions::default(),
         rate,
       }
     }
 
     pub(super) fn fitted_gtr(counts: &MutationCounts) -> Result<GTR, Report> {
-      let options = InferGtrOptions {
-        pc: 1.0,
-        ..InferGtrOptions::default()
-      };
-      let result = infer_gtr_from_counts(counts, &options, &NoopProgress)?;
+      let result = infer_gtr_from_counts(counts, &InferGtrOptions::default(), &NoopProgress)?;
       GTR::builder()
         .n_states(result.pi.len())
         .mu(result.mu)

@@ -4334,7 +4334,7 @@ export type MugrationConfig = {
    */
   output_confidence_csv?: string;
   /**
-   * Pseudo-counts. Higher numbers results in 'flatter' models. Default: 1.0.
+   * Pseudo-count of the substitution model fit. Higher values give flatter models.
    */
   pc?: number;
   /**

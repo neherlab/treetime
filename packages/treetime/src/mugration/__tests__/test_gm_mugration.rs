@@ -110,7 +110,7 @@ mod tests {
     #[derive(Debug, Deserialize)]
     pub(super) struct GmMugrationParameters {
       missing_data: String,
-      pc: Option<f64>,
+      pc: f64,
       sampling_bias_correction: Option<f64>,
       weights_path: Option<String>,
       iterations: usize,

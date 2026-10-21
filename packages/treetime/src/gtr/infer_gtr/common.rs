@@ -7,6 +7,8 @@ use smart_default::SmartDefault;
 use treetime_utils::array::ndarray::{is_max_above, outer};
 use treetime_utils::cast::ToF64Exact;
 
+pub const DEFAULT_PSEUDO_COUNT: f64 = 1.0;
+
 const TINY_NUMBER: f64 = 1e-12;
 
 pub(crate) fn infer_gtr_from_counts(
@@ -93,11 +95,11 @@ pub struct MutationCounts {
   pub(crate) root_state: Array1<f64>,
 }
 
-#[derive(Clone, Debug, SmartDefault)]
+#[derive(Clone, Debug, PartialEq, SmartDefault)]
 pub struct InferGtrOptions {
   pub(crate) fixed_pi: Option<Array1<f64>>,
 
-  #[default = 1.0]
+  #[default(DEFAULT_PSEUDO_COUNT)]
   pub(crate) pc: f64,
 
   #[default = 1e-5]
