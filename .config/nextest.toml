@@ -20,10 +20,13 @@ slow-timeout = { period = "60s", terminate-after = 5 }
 path = "junit.xml"
 
 # Slow tier: only the tests with a `test_sim_` path segment, run by
-# `just test-slow-rs`. Terminate a test after 20 minutes.
+# `just test-slow-rs`. Each test is designed to finish within 10 minutes
+# on an unloaded host. On a shared, loaded build host the same tests take
+# several times longer, so the safety stop terminates a test only after
+# 40 minutes.
 [profile.slow]
 default-filter = 'test(/(^|::)test_sim_/)'
-slow-timeout = { period = "60s", terminate-after = 20 }
+slow-timeout = { period = "60s", terminate-after = 40 }
 
 # Each simulation test runs its replicates on its own rayon pool of
 # `REPLICATE_THREADS` threads (`packages/treetime/src/test_utils/simulation.rs`).
