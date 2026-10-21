@@ -25,6 +25,27 @@ $$
 
 with $m_v$ the mergers at $v$. `CoalescentPrior::node_contribution` evaluates it; the backward pass combines every child message first, then applies the contribution on the completed distribution's coordinates through `distribution_multiply_by_fn` in negative-log space. A leaf contribution affects only the temporary message sent to its parent.
 
+### Normalization
+
+The node factors carry the first-order part of the linearization. Their product leaves out two terms that do not depend on the node times:
+
+- **Linearization constant.** Around the expectations, $S_uS_v \approx \bar S_uS_v + S_u\bar S_v - \bar S_u\bar S_v$, so the pair term of the Kingman exponent is $\sum_v w_v\int \bar k_{-v}S_v/T_c - P$ with $P=\int \tfrac12\big(\bar k^2-\sum_v w_v^2\bar S_v^2\big)/T_c\,dt$. The factors carry the first part; each pair interaction enters the factors of both of its nodes.
+- **Own-survival offset.** The integrals of $T_c^{-1}$ and $\bar k/T_c$ start at the first point $g_0$ of the lineage grid, but the own-survival integral of node $v$ starts at the first knot of its survival. Starting it at $g_0$ adds $-w_v^2\,H(t^{\text{first}}_v)$ per node, with $H=\int_{g_0}T_c^{-1}$; the factors leave out the sum $R=\sum_v w_v^2 H(t^{\text{first}}_v)$.
+
+Without $P+R$, the log of the factor product carries an offset of about $N_{\text{internal}}\,H(g_0)$. Before the root, every $\bar S_v=1$ and $\bar k=\sum_v w_v=1$, so the integrand of $P$ is $\tfrac12(1-\sum_v w_v^2)$, which is $-N_{\text{internal}}$ on a binary tree. That cancels the pair term $\tfrac12 w_v(w_v-1)H$ of the internal nodes, and with $P+R$ the result no longer depends on where the integrals start. `CoalescentPrior::log_normalization` computes $P+R$ once per prior. `fn log_marginal_likelihood()` adds it, so `log_lh_time` and the rate probes approximate the Kingman log marginal likelihood to first order in the deviation of the node times from the frozen expectation. Inference is unchanged: the constant cancels in the posteriors and in the rate step.
+
+At point-mass posteriors the linearization is exact, and the normalized product equals the Kingman density (`test_mean_field_normalized_prior_at_its_point_times_is_the_kingman_density`, a binary tree and a polytomy).
+
+Before the normalization, `log_lh_time` depended on the rate at which the lineage counts were frozen. An estimated-rate run starts from the regression rate, a run with `--clock-rate` from the given rate, and the two put $g_0$ at different times. On 30 `const` validation sets, the two runs at the same final rate differed by the medians below; the gap that remains is the second-order dependence on the frozen expectation:
+
+| Set | Median gap before | Median gap after | Largest gap after |
+| --- | --- | --- | --- |
+| $L=10^4$, $\mu=3\cdot10^{-4}$ | 165 | 0.5 | 5.3 |
+| $L=10^3$, $\mu=10^{-3}$ | 461 | 0.4 | 8.1 |
+| $L=10^3$, $\mu=3\cdot10^{-4}$ | 985 | 31 | 79 |
+
+The gaps are $\lvert\log Z_{\text{est}}-\log Z_{\text{fixed}}\rvert$ in nats, with `--coalescent 10 --keep-root --clock-filter 0 --max-iter 4` on the `realized` input tree.
+
 ## Coalescent statistics
 
 For segments $i$ of $T_c$, the expected pair-rate integral and merger count are
