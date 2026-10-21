@@ -12,8 +12,9 @@ mod tests {
   use statrs::distribution::{Discrete, Poisson};
   use statrs::stats_tests::ttest_onesample::ttest_onesample;
   use statrs::stats_tests::{Alternative, NaNPolicy};
-  use std::iter::repeat_with;
+  use std::iter::{once, repeat_with};
   use treetime_utils::cast::{ToF64Exact, usize_to_u64};
+  use treetime_utils::o;
   use treetime_utils::sync::random::get_random_number_generator;
 
   const DRAW_COUNT: usize = 100_000;
@@ -113,7 +114,7 @@ mod tests {
   }
 
   #[test]
-  fn test_stat_evolve_sequences_tip_patterns_match_jc69_likelihood() {
+  fn test_stat_evolve_sequences_tip_patterns_and_edge_transitions_match_jc69() {
     let tree = three_tip_tree();
     let durations = btreemap! { tree.root_inner => 0.2, tree.root_c => 0.6, tree.inner_a => 0.1, tree.inner_b => 0.9 };
     let model = SubstitutionModel::jc69(1.0).unwrap();
@@ -137,13 +138,13 @@ mod tests {
         })
         .collect_vec()
     };
+    let pi = model.pi().clone();
+    let transition = |from, to, duration| f81_transition(&pi, from, to, duration);
+
     let pattern_counts = izip!(state_of(tree.tip_a), state_of(tree.tip_b), state_of(tree.tip_c)).counts();
     let observed = iproduct!(0..4, 0..4, 0..4)
       .map(|pattern| pattern_counts.get(&pattern).copied().unwrap_or(0))
       .collect_vec();
-
-    let pi = model.pi().clone();
-    let transition = |from, to, duration| f81_transition(&pi, from, to, duration);
     let probabilities = iproduct!(0..4, 0..4, 0..4)
       .map(|(a, b, c)| {
         iproduct!(0..4, 0..4)
@@ -157,10 +158,32 @@ mod tests {
           .sum::<f64>()
       })
       .collect_vec();
-    let p_value = chisquare_p_value(&observed, &probabilities);
+    let tip_check = (o!("tip patterns"), chisquare_p_value(&observed, &probabilities));
+
+    let edge_checks = tree.graph.get_edges().map(|edge| {
+      let duration = durations[&edge.key()];
+      let pair_counts = izip!(state_of(edge.source()), state_of(edge.target())).counts();
+      let observed = iproduct!(0..4, 0..4)
+        .map(|pair| pair_counts.get(&pair).copied().unwrap_or(0))
+        .collect_vec();
+      let probabilities = iproduct!(0..4, 0..4)
+        .map(|(parent, child)| pi[parent] * transition(parent, child, duration))
+        .collect_vec();
+      (
+        format!("state pairs of edge {} of duration {duration}", edge.key()),
+        chisquare_p_value(&observed, &probabilities),
+      )
+    });
+
+    let p_values = once(tip_check).chain(edge_checks).collect_vec();
+    let threshold = FALSE_FAIL_RATE / p_values.len().to_f64_exact();
+    let failed = p_values
+      .iter()
+      .filter(|(_, p_value)| *p_value <= threshold)
+      .collect_vec();
     assert!(
-      p_value > FALSE_FAIL_RATE,
-      "chi-square test of {SITE_COUNT} tip patterns against the JC69 likelihood: p = {p_value}"
+      failed.is_empty(),
+      "chi-square tests over {SITE_COUNT} sites against the JC69 probabilities with p <= {threshold}: {failed:?}"
     );
   }
 
