@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <bin> [target]
+#
+# Run a cross-compiled Linux binary from .out/ under QEMU on the oldest CPU of
+# its baseline (dev/lib/dist-flags.sh), so that an instruction above the
+# baseline in our code or in a prebuilt archive fails here instead of on a
+# user's machine:
+#
+# - read the alignment and write the outputs in every compression format
+#   (plain, gz, bz2, xz, zst) and compare the decompressed outputs with the
+#   plain run
+# - write xz output with 1 and 2 threads; the bytes must not depend on the
+#   thread count
+# - run the commands of a pipeline (optimize, ancestral, timetree)
+#
+# On x86_64, also run the binary on a CPU below the baseline, where it must stop
+# with its CPU message. Runs in the cross image of the target:
+#
+#   CROSS_COMPILE=x86_64-unknown-linux-gnu dev/docker/run dev/cross/check-cpus treetime
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+cd "${root}"
+
+bin="${1:?binary name}"
+target="${2:-${CROSS_COMPILE:?target}}"
+
+# The oldest CPU model of QEMU at the baseline of each target, and a model
+# below it where one exists (Core 2 lacks SSE4.2 and POPCNT).
+case "${target}" in
+x86_64-*-linux-*)
+  oldest="Nehalem"
+  below="core2duo"
+  ;;
+aarch64-*-linux-*)
+  oldest="cortex-a53"
+  below=""
+  ;;
+*)
+  printf 'No CPU check for %s: QEMU runs only the Linux binaries\n' "${target}" >&2
+  exit 1
+  ;;
+esac
+
+data="data/flu/h3n2/20"
+work="tmp/check-cpus/${target}"
+rm -rf "${work}"
+mkdir -p "${work}/in"
+
+xz -dc "${data}/aln.fasta.xz" >"${work}/in/aln.fasta"
+gzip -c "${work}/in/aln.fasta" >"${work}/in/aln.fasta.gz"
+bzip2 -c "${work}/in/aln.fasta" >"${work}/in/aln.fasta.bz2"
+xz -c "${work}/in/aln.fasta" >"${work}/in/aln.fasta.xz"
+zstd -q -c "${work}/in/aln.fasta" >"${work}/in/aln.fasta.zst"
+
+failed=0
+
+# Run the binary on a CPU model, print a line for the case, and record a
+# failure.
+run_on() {
+  local cpu="${1}" name="${2}"
+  shift 2
+  local status=0
+  QEMU_CPU="${cpu}" dev/cross/run "${bin}" "${target}" "$@" >"${work}/${name}.out" 2>&1 || status=$?
+  if ((status != 0)); then
+    printf 'FAIL %s on %s: exit %s\n' "${name}" "${cpu}" "${status}" >&2
+    tail -n 5 "${work}/${name}.out" >&2
+    failed=1
+    return 1
+  fi
+  printf 'ok   %s on %s\n' "${name}" "${cpu}"
+}
+
+decompress() {
+  case "${1}" in
+  *.gz) gzip -dc "${1}" ;;
+  *.bz2) bzip2 -dc "${1}" ;;
+  *.xz) xz -dc "${1}" ;;
+  *.zst) zstd -q -dc "${1}" ;;
+  *) cat "${1}" ;;
+  esac
+}
+
+# Compare the decompressed outputs of a case with those of the plain run.
+compare_with_plain() {
+  local name="${1}" ext="${2}" file
+  for file in rec.fasta tree.nwk; do
+    if ! cmp -s <(decompress "${work}/${name}/${file}${ext}") "${work}/plain/${file}"; then
+      printf 'FAIL %s: %s%s differs from the plain run\n' "${name}" "${file}" "${ext}" >&2
+      failed=1
+    fi
+  done
+}
+
+ancestral_case() {
+  local name="${1}" ext="${2}" jobs="${3}"
+  run_on "${oldest}" "${name}" -j "${jobs}" ancestral --method-anc=marginal \
+    --tree="${data}/tree.nwk" --alignment="${work}/in/aln.fasta${ext}" \
+    --output-reconstructed-nuc-fasta="${work}/${name}/rec.fasta${ext}" \
+    --output-tree-nwk="${work}/${name}/tree.nwk${ext}" || return 0
+  if [[ "${name}" != plain ]]; then
+    compare_with_plain "${name}" "${ext}"
+  fi
+}
+
+ancestral_case plain "" 2
+for ext in gz bz2 xz zst; do
+  ancestral_case "${ext}" ".${ext}" 2
+done
+ancestral_case xz-1-thread .xz 1
+if ! cmp -s "${work}/xz/rec.fasta.xz" "${work}/xz-1-thread/rec.fasta.xz"; then
+  printf 'FAIL xz output differs between 1 and 2 threads\n' >&2
+  failed=1
+fi
+
+run_on "${oldest}" pipeline -j 2 pipeline --config data/zika/20/pipeline.yaml --output-all "${work}/pipeline" || true # the failure is recorded
+
+if [[ -n "${below}" ]]; then
+  status=0
+  output="$(QEMU_CPU="${below}" dev/cross/run "${bin}" "${target}" --help 2>&1)" || status=$?
+  if ((status != 1)) || [[ "${output}" != *"TreeTime needs a 64-bit"* ]]; then
+    printf 'FAIL on %s below the baseline: exit %s instead of 1 with the CPU message:\n%s\n' "${below}" "${status}" "${output}" >&2
+    failed=1
+  else
+    printf 'ok   CPU message on %s\n' "${below}"
+  fi
+fi
+
+exit "${failed}"

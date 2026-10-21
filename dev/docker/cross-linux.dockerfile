@@ -29,6 +29,7 @@ RUN set -euxo pipefail >/dev/null \
 && dpkg --add-architecture "${CROSS_ARCH_DEBIAN}" \
 && apt-get update -qq \
 && apt-get install --no-install-recommends --yes -qq \
+  bzip2 \
   ca-certificates \
   curl \
   file \

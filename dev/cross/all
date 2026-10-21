@@ -17,8 +17,10 @@
 #   --lib               Build shared libraries of packages instead of binaries
 #   --target=<triple>   Build this target only (repeatable)
 #   --serial            Build one target after another, with output streamed
-#   --run               Run each binary with `--help` after building (QEMU, Wine);
-#                       macOS and aarch64 Windows binaries are only built and checked
+#   --run               Run each binary with `--help` after building (QEMU, Wine),
+#                       and run each Linux binary on the oldest CPU of its baseline
+#                       (dev/cross/check-cpus); macOS and aarch64 Windows binaries
+#                       are only built and checked
 #
 # Examples:
 #   $0 treetime
@@ -54,7 +56,7 @@ build_one() {
       CROSS_COMPILE="${target}" dev/docker/run env QEMU_PAGESIZE=65536 dev/cross/run "${bin}" "${target}" --help >/dev/null
     fi
     if [[ "${target}" == *-linux-* ]]; then
-      check_old_cpu "${bin}" "${target}"
+      CROSS_COMPILE="${target}" dev/docker/run dev/cross/check-cpus "${bin}" "${target}"
     fi
   done
 }
@@ -66,25 +68,6 @@ no_run_reason() {
   *-apple-darwin) printf 'macOS programs do not run on Linux\n' ;;
   aarch64-*-windows-*) printf 'Wine runs only x86_64 Windows programs\n' ;;
   esac
-}
-
-# On a CPU below the build level (Haswell, Armv8.2), the binary must stop with
-# its message instead of crashing on an illegal instruction.
-check_old_cpu() {
-  local bin="${1}"
-  local target="${2}"
-  local cpu
-  case "${target}" in
-  x86_64-*) cpu="Nehalem" ;;
-  aarch64-*) cpu="cortex-a72" ;;
-  *) return 0 ;;
-  esac
-  local output status=0
-  output="$(CROSS_COMPILE="${target}" dev/docker/run env QEMU_CPU="${cpu}" dev/cross/run "${bin}" "${target}" --help 2>&1)" || status=$?
-  if ((status != 1)) || [[ "${output}" != *"TreeTime needs a 64-bit"* ]]; then
-    printf 'ERROR: %s on a %s CPU exited with %s instead of 1 with the CPU message:\n%s\n' "${bin}" "${cpu}" "${status}" "${output}" >&2
-    return 1
-  fi
 }
 
 main() {
