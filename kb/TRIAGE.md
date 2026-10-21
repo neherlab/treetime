@@ -187,7 +187,6 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-dates-date-column-requires-exact-header-match.md](issues/M-dates-date-column-requires-exact-header-match.md)**: detect the date column as v0 does (leftmost header that contains `date`)
 - **[kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)**: derive the optimize mutations from the emitted sequences, as ancestral and timetree do
 - **[kb/issues/M-timetree-date-header-hash.md](issues/M-timetree-date-header-hash.md)**: strip `#` from requested column names as from the headers, then re-enable the `zika_20` runner cases
-- **[kb/issues/M-io-confidence-tsv-unnamed-root-has-empty-name.md](issues/M-io-confidence-tsv-unnamed-root-has-empty-name.md)**: assign node names before the confidence intervals are extracted
 - **[kb/issues/M-config-file-values-skip-cli-conflict-rules.md](issues/M-config-file-values-skip-cli-conflict-rules.md)**: move `cli_rule_diagnostics()` into `app-commands` and call it when a config file is loaded
 - **[kb/issues/M-io-stdin-tree-and-alignment-read-twice.md](issues/M-io-stdin-tree-and-alignment-read-twice.md)**: reject `-` on more than one input path of a command
 - **[kb/issues/N-test-approx-assertions-keep-the-default-absolute-epsilon.md](issues/N-test-approx-assertions-keep-the-default-absolute-epsilon.md)**: make the shared approximate assertions require an explicit tolerance, then fix the tests that fail
@@ -208,11 +207,9 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/M-ancestral-genbank-annotation-unsupported.md](issues/M-ancestral-genbank-annotation-unsupported.md)**: read GenBank files for `--annotation`
 - **[kb/issues/N-timetree-node-dates-output-unimplemented.md](issues/N-timetree-node-dates-output-unimplemented.md)**: write a node dates table on every timetree run
 - **[kb/issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md](issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md)**: stop writing the invisible edges between every pair of leaves in DOT output
-- **[kb/issues/M-io-unnamed-nodes-named-differently-by-each-writer.md](issues/M-io-unnamed-nodes-named-differently-by-each-writer.md)**: name every node once, at parsing or creation, so that all writers use the same name
 - **[kb/issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md](issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md)**: reconstruct sequences only for outputs that read mutations or sequences
 - **[kb/issues/N-io-mugration-probabilities-written-with-three-precisions.md](issues/N-io-mugration-probabilities-written-with-three-precisions.md)**: write mugration probabilities and entropy at full precision in every output
 - **[kb/issues/N-output-vocabulary-spelled-out-in-six-places.md](issues/N-output-vocabulary-spelled-out-in-six-places.md)**: derive every output list from one table of outputs
-- **[kb/issues/N-clock-unnamed-root-after-reroot.md](issues/N-clock-unnamed-root-after-reroot.md)**: name new nodes in the clock pipeline after rerooting
 - **[kb/issues/N-io-gtr-json-omits-state-alphabet.md](issues/N-io-gtr-json-omits-state-alphabet.md)**: write the alphabet states into each sequence model of the GTR JSON
 - **[kb/issues/N-timetree-dates-not-required.md](issues/N-timetree-dates-not-required.md)**: stop early with a clear error when `timetree` gets no dates
 - **[kb/issues/N-array-owned-signatures-force-projection-copies.md](issues/N-array-owned-signatures-force-projection-copies.md)**: pass transposed views to `propagate_raw()` instead of copied matrices

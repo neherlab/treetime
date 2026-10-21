@@ -38,7 +38,7 @@ The input trees of `data/ebola/362` and `data/flu/h3n2/{20,200,500}` carry suppo
 
 ## Current state in v1
 
-- **Parsing**: `fn graph_from_newick()` ([packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs)) discards the support value of each node. An internal node whose label was a support value has no name, so `fn assign_node_names()` gives it a `NODE_` name, as v0 does
+- **Parsing**: `fn graph_from_newick()` ([packages/treetime-io/src/nwk.rs](../../packages/treetime-io/src/nwk.rs)) discards the support value of each node. An internal node whose label was a support value has no name, so `NodeNames::from_input()` gives it a `NODE_` name, as v0 does
 - **Outputs**: no output writes support: no Auspice `confidence` node attribute or coloring, no `confidence` field in augur node data, no labels or comments in Newick and Nexus
 - **Computation**: no step of the core reads support values. They do not affect any inferred value
 
