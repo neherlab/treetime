@@ -6,11 +6,11 @@ fail-fast = false
 # Warn when a test runs longer than one period, and hard-terminate it after
 # five periods (5 minutes), so a hung test cannot stall the run indefinitely.
 slow-timeout = { period = "60s", terminate-after = 5 }
-# Test functions whose names start with `test_sim_` (simulation recovery tests
-# with many replicates) belong to the slow tier, with all their rstest cases:
-# only the `slow` profile runs them. A command-line filter narrows this set
-# further.
-default-filter = 'not test(/::test_sim_[^:]*(::case_[^:]*)?$/)'
+# Tests with a path segment that starts with `test_sim_` (simulation tests with
+# many replicates: the test function, every rstest case below it, and every
+# test of a `test_sim_` module) belong to the slow tier: only the `slow`
+# profile runs them. A command-line filter narrows this set further.
+default-filter = 'not test(/(^|::)test_sim_/)'
 
 # CI profile: emit a JUnit report under $CARGO_TARGET_DIR/nextest/ci/.
 [profile.ci]
@@ -19,8 +19,8 @@ slow-timeout = { period = "60s", terminate-after = 5 }
 [profile.ci.junit]
 path = "junit.xml"
 
-# Slow tier: only the `test_sim_` test functions, run by `just test-slow-rs`.
-# Terminate a test after 20 minutes.
+# Slow tier: only the tests with a `test_sim_` path segment, run by
+# `just test-slow-rs`. Terminate a test after 20 minutes.
 [profile.slow]
-default-filter = 'test(/::test_sim_[^:]*(::case_[^:]*)?$/)'
+default-filter = 'test(/(^|::)test_sim_/)'
 slow-timeout = { period = "60s", terminate-after = 20 }
