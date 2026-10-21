@@ -31,9 +31,10 @@ aarch64 ^crc32_arch_optimized$
 # Rust crates that select their AVX, AVX2, FMA, or PCLMULQDQ code with
 # is_x86_feature_detected! or cpufeatures before the first call: rustfft
 # (FftPlannerAvx), memchr and aho-corasick (the AVX2 searchers), matrixmultiply
-# (its FMA and AVX2 kernels), crc32fast, simdutf8, uuid-simd, chacha20, and
-# bytecount (runtime-dispatch-simd).
-x86_64 ^<?(rustfft|memchr|aho_corasick|matrixmultiply|crc32fast|simdutf8|uuid_simd|chacha20|bytecount)::
+# (its FMA and AVX2 kernels), crc32fast, simdutf8, uuid-simd, chacha20,
+# bytecount (runtime-dispatch-simd), and zlib-rs (the gzip backend of flate2 and
+# gzp, through cpu_features::is_enabled_avx2_and_bmi2).
+x86_64 ^<?(rustfft|memchr|aho_corasick|matrixmultiply|crc32fast|simdutf8|uuid_simd|chacha20|bytecount|zlib_rs)::
 
 # ring (TLS of the examples download): the assembly routines that its CPU
 # feature flags (OPENSSL_ia32cap_P) select.
@@ -47,3 +48,7 @@ aarch64 ^__aarch64_(cas|casp|swp|ldadd|ldclr|ldeor|ldset)[0-9]+_(relax|acq|rel|a
 
 # crc32fast: the CRC32 code that is_aarch64_feature_detected!("crc") selects.
 aarch64 ^crc32fast::specialized::aarch64::
+
+# zlib-rs: the CRC32 code that cpu_features::is_enabled_crc() selects with
+# is_aarch64_feature_detected!("crc").
+aarch64 ^zlib_rs::crc32::acle::
