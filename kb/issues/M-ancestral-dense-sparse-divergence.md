@@ -1,6 +1,11 @@
 # Dense-sparse log-likelihood divergence
 
-Dense and sparse marginal reconstruction produce different log-likelihoods for ~2.5% of random gap-free GTR configurations. The property test `test_prop_marginal_dense_sparse_gap_free_consistency` [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21) detects two distinct populations. The test is `#[ignore]`d, so CI does not run this comparison. The cause is unknown.
+Dense and sparse marginal reconstruction produce different log-likelihoods beyond rounding. How often depends on the input:
+
+- Small random inputs (4 taxa, 10 gap-free sites, random GTR parameters): about 2.5% of the cases differ beyond rounding, about 97.5% agree to a few ULPs (measurement below)
+- Simulated data (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites, true GTR and exact branch lengths): every one of 64 cases differs beyond rounding, with relative differences from 1.2e-9 to 5.3e-6 (see Measurement on simulated data)
+
+The property test `test_prop_marginal_dense_sparse_gap_free_consistency` [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21) detects two distinct populations on the small random inputs. The test is `#[ignore]`d, so CI does not run this comparison. The cause is unknown.
 
 - Population 1 (~97.5%): agrees to 0-3 ULPs, `rel_diff < 5e-16` (floating-point rounding from a different order of operations)
 - Population 2 (~2.5%): relative differences up to 7.6e-6 (billions of ULPs); these are algorithmic differences, not rounding
