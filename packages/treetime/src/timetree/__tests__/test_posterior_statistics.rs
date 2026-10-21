@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::coalescent::mean_field::NodeSurvival;
+  use crate::coalescent::mean_field::survival_levels;
   use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_median, posterior_survival};
   use eyre::Report;
   use helpers::{flat_unit_function, grid};
@@ -14,7 +15,6 @@ mod tests {
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
   const TRIM: f64 = 1e-9;
-  const MAX_ERROR: f64 = 1e-6;
   const CALENDAR_TIME: f64 = 2000.0;
   const STEP: f64 = 1.0 / 1_048_576.0;
 
@@ -85,7 +85,7 @@ mod tests {
       BoundaryBehavior::Hard,
     )?;
 
-    let survival = posterior_survival(&unit_box_with_tail_mass_one, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&unit_box_with_tail_mass_one, &survival_levels())?.unwrap();
 
     let exact = |t: f64| {
       if t < -1.0 {
@@ -112,7 +112,7 @@ mod tests {
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let total = 1.0 + 1.0 / rate;
     let exact = |t: f64| {
@@ -139,7 +139,7 @@ mod tests {
       BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 2.0, b: 1.0 }),
     )?;
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let total = 1.5;
     let exact = |t: f64| {
@@ -169,7 +169,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let cell_mass_above = |cell: usize, t: f64| {
       let at = density[cell] + (density[cell + 1] - density[cell]) * (t - cell.to_f64_exact());
@@ -199,7 +199,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let exact = |t: f64| ((2.0 - t).max(0.0) + (5.0 - t.max(3.0))) / 4.0;
     assert_eq!(vec![1.0, 2.0, 2.0, 3.0, 3.0, 4.0], survival.t[1..7].to_vec());
@@ -219,7 +219,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 3.0, b }))?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let power = b + 1.0;
     let total = 2.0 + 1.0 / power;
@@ -256,7 +256,7 @@ mod tests {
       .with_right_extrap(BoundaryBehavior::Hard)?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let (p_edge, power) = (2.0_f64.powf(b), b + 1.0);
     let trapezoid = f64::midpoint(p_edge, 1.0);
@@ -296,7 +296,7 @@ mod tests {
         .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }))?,
     );
 
-    let survival = posterior_survival(&distribution, TRIM, MAX_ERROR)?.unwrap();
+    let survival = posterior_survival(&distribution, &survival_levels())?.unwrap();
 
     let total = 1.01;
     let exact = |t: f64| {
@@ -381,7 +381,7 @@ mod tests {
         .with_left_extrap(left)?
         .with_right_extrap(right)?,
     );
-    assert_error!(posterior_survival(&distribution, TRIM, MAX_ERROR), message);
+    assert_error!(posterior_survival(&distribution, &survival_levels()), message);
     Ok(())
   }
 
@@ -390,24 +390,22 @@ mod tests {
     let point = PosteriorSurvival {
       t: vec![2015.5],
       survival: vec![0.0],
-      slope: vec![0.0],
     };
     let range = PosteriorSurvival {
       t: vec![2015.0, 2017.0],
       survival: vec![1.0, 0.0],
-      slope: vec![-0.5, -0.5],
     };
     assert_eq!(
       Some(point),
-      posterior_survival(&Distribution::<NegLog>::point(2015.5, 0.0), TRIM, MAX_ERROR)?
+      posterior_survival(&Distribution::<NegLog>::point(2015.5, 0.0), &survival_levels())?
     );
     assert_eq!(
       Some(range),
-      posterior_survival(&Distribution::<NegLog>::range((2015.0, 2017.0), 3.0), TRIM, MAX_ERROR)?
+      posterior_survival(&Distribution::<NegLog>::range((2015.0, 2017.0), 3.0), &survival_levels())?
     );
     assert_eq!(
       None,
-      posterior_survival(&Distribution::<NegLog>::Empty, TRIM, MAX_ERROR)?
+      posterior_survival(&Distribution::<NegLog>::Empty, &survival_levels())?
     );
     Ok(())
   }
