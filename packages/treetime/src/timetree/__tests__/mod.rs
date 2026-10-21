@@ -9,5 +9,6 @@ mod test_pipeline;
 mod test_pipeline_partitions;
 mod test_posterior_statistics;
 mod test_pre_loop;
+mod test_prop_timetree_simulated;
 mod test_round;
 mod test_time_inference;
