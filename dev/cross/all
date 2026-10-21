@@ -6,6 +6,8 @@
 # Cross-compile shipped (dist profile) binaries for every target in
 # dev/cross/targets, each in its cross image, in parallel. Output goes to
 # .out/<bin>-<target>, one log per target to tmp/cross/<target>.log.
+# Parallel builds divide the CPU budget of dev/docker/run (TREETIME_DOCKER_CPUS)
+# between the targets, so all targets together use at most that many CPUs.
 #
 # With --lib, build the shared library of each package instead (the Node addon
 # of the desktop app, package app-napi) for every target in
@@ -32,6 +34,9 @@ shopt -s inherit_errexit
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "${root}"
+# shellcheck source=../lib/env.sh
+source "${root}/dev/lib/env.sh"
+load_env_file "${root}/.env"
 
 build_one() {
   local target="${1}"
@@ -114,12 +119,16 @@ main() {
     return
   fi
 
+  local budget
+  budget="$(docker_cpu_budget)"
+  TREETIME_DOCKER_CPUS="$(docker_cpu_share "${budget}" "${#targets[@]}")"
+  export TREETIME_DOCKER_CPUS
   local pids=() failed=() i
   for target in "${targets[@]}"; do
     build_one "${target}" >"tmp/cross/${target}.log" 2>&1 &
     pids+=("$!")
   done
-  printf 'Building %s targets in parallel; logs in tmp/cross/\n' "${#targets[@]}" >&2
+  printf 'Building %s targets in parallel with %s CPUs each; logs in tmp/cross/\n' "${#targets[@]}" "${TREETIME_DOCKER_CPUS}" >&2
   for i in "${!pids[@]}"; do
     if wait "${pids[${i}]}"; then
       printf 'PASS %s\n' "${targets[${i}]}" >&2

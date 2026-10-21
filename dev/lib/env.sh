@@ -53,3 +53,22 @@ hash_files() {
     done
   } | "${sha[@]}" | cut -c1-16
 }
+
+# Print the CPU budget of the containers of dev/docker/run: TREETIME_DOCKER_CPUS,
+# default 8, lowered to the CPU count of the Docker daemon, because `docker run
+# --cpus` rejects a value above it.
+docker_cpu_budget() {
+  local budget="${TREETIME_DOCKER_CPUS:-8}" available
+  if ! [[ "${budget}" =~ ^[0-9]+([.][0-9]+)?$ ]] || ! awk -v b="${budget}" 'BEGIN { exit !(b > 0) }'; then
+    printf 'TREETIME_DOCKER_CPUS must be a positive number of CPUs, got: %s\n' "${budget}" >&2
+    return 1
+  fi
+  available="$(docker info --format '{{.NCPU}}' 2>/dev/null)" || available=""
+  awk -v b="${budget}" -v a="${available}" 'BEGIN { if (a > 0 && b > a) b = a; print b }'
+}
+
+# Print the share of a CPU budget for one of several containers that run at the
+# same time, with two decimals and at least the 0.01 CPUs that Docker accepts.
+docker_cpu_share() {
+  awk -v b="${1:?}" -v n="${2:?}" 'BEGIN { c = b / n; if (c < 0.01) c = 0.01; printf "%.2f\n", c }'
+}

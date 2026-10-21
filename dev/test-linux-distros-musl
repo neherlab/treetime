@@ -13,6 +13,10 @@ set -euo pipefail
 printf "Docker version:\n"
 docker version
 
+# shellcheck source=lib/env.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/env.sh"
+load_env_file "$(dirname "${BASH_SOURCE[0]}")/../.env"
+
 export args="${*:?}"
 
 distros=(
@@ -102,11 +106,19 @@ function run_one_distro() {
     printf "Skipped '%s': no image for %s (only %s)\n" "${distro}" "${host_arch}" "${image_arch}"
     return 0
   fi
-  if ! docker run -i --rm -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" >/dev/null; then
+  if ! docker run -i --rm \
+    --name="treetime-distro-$(printf '%s' "${distro}" | tr '/:@' '---')-$(date +%Y%m%d-%H%M%S)-$$" --cpus="${cpus}" \
+    -v "$(pwd):/workdir" -w /workdir "$distro" "${command_args[@]}" >/dev/null; then
     printf "Failed running '%s' on '%s'\n" "${args}" "${distro}" >&2
     exit 1
   fi
 }
 export -f run_one_distro
+
+# The containers divide the CPU budget of dev/docker/run (TREETIME_DOCKER_CPUS)
+# between them.
+budget="$(docker_cpu_budget)"
+cpus="$(docker_cpu_share "${budget}" "${#distros[@]}")"
+export cpus
 
 parallel --jobs="${#distros[@]}" run_one_distro ::: "${distros[@]}"

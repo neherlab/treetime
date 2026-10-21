@@ -19,6 +19,9 @@
 #   TREETIME_DOCKER_X11=1   Share the host X11 display (desktop app development)
 #   TREETIME_DOCKER_PUSH=1  Push the built image and its layer cache to the
 #                           registry (CI on the base branch only)
+#   TREETIME_DOCKER_CPUS    CPUs that one container may use (default 8, at most
+#                           the CPUs of the Docker daemon); scripts that start
+#                           containers in parallel divide it between them
 #   KACHE_STORE             Host directory of the optional kache compiler cache;
 #                           mounted at the same path when set (see .env.example)
 #   TREETIME_CARGO_HOME     Absolute host directory mounted as the cargo home
@@ -139,10 +142,16 @@ if ! docker image inspect "${image}" >/dev/null 2>&1; then
   fi
 fi
 
+cpus="$(docker_cpu_budget)"
 run_flags=(
   --rm
   --interactive
   --init
+  # The name shows the project, the image, and the start time in `docker ps`;
+  # the process id keeps containers that start in the same second apart.
+  --name="treetime-${kind}-$(date +%Y%m%d-%H%M%S)-$$"
+  # The CPU budget of dev/lib/env.sh leaves the other CPUs of the host free.
+  --cpus="${cpus}"
   --platform="${platform}"
   --network=host
   --cap-drop=ALL
