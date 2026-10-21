@@ -6,20 +6,20 @@ mod tests {
 
   proptest! {
     #[test]
-    fn test_prop_tc_schedule_constant_inverse_cumulative_hazard_roundtrip(schedule in gen_constant(), tau in 0.0..40.0_f64) {
-      let actual = schedule.inverse_cumulative_hazard(schedule.cumulative_hazard(tau));
+    fn test_prop_tc_schedule_constant_time_after_hazard_roundtrip(schedule in gen_constant(), tau in 0.0..40.0_f64) {
+      let actual = schedule.time_after_hazard(0.0, schedule.hazard_between(0.0, tau));
       prop_assert_ulps_eq!(tau, actual, max_ulps = 2);
     }
 
     #[test]
-    fn test_prop_tc_schedule_exponential_inverse_cumulative_hazard_roundtrip(schedule in gen_exponential(), tau in 0.0..40.0_f64) {
-      let actual = schedule.inverse_cumulative_hazard(schedule.cumulative_hazard(tau));
+    fn test_prop_tc_schedule_exponential_time_after_hazard_roundtrip(schedule in gen_exponential(), tau in 0.0..40.0_f64) {
+      let actual = schedule.time_after_hazard(0.0, schedule.hazard_between(0.0, tau));
       prop_assert_ulps_eq!(tau, actual, max_ulps = 10);
     }
 
     #[test]
-    fn test_prop_tc_schedule_piecewise_inverse_cumulative_hazard_roundtrip(schedule in gen_piecewise(), tau in 0.0..40.0_f64) {
-      let actual = schedule.inverse_cumulative_hazard(schedule.cumulative_hazard(tau));
+    fn test_prop_tc_schedule_piecewise_time_after_hazard_roundtrip(schedule in gen_piecewise(), tau in 0.0..40.0_f64) {
+      let actual = schedule.time_after_hazard(0.0, schedule.hazard_between(0.0, tau));
       prop_assert_ulps_eq!(tau, actual, max_ulps = 81);
     }
   }

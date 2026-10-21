@@ -51,31 +51,21 @@ impl TcSchedule {
     }
   }
 
-  pub fn cumulative_hazard(&self, tau: f64) -> f64 {
+  pub fn hazard_between(&self, from: f64, to: f64) -> f64 {
     match self {
       Self::Piecewise(piecewise) => piecewise
-        .segments()
-        .take_while(|segment| segment.start < tau)
-        .map(|segment| (tau.min(segment.end) - segment.start) / segment.tc)
+        .segments_from(from)
+        .take_while(|segment| segment.start < to)
+        .map(|segment| (to.min(segment.end) - segment.start) / segment.tc)
         .sum(),
-      Self::Exponential(exponential) => exponential.scale / exponential.tc0 * (tau / exponential.scale).exp_m1(),
+      Self::Exponential(exponential) => exponential.hazard_between(from, to),
     }
   }
 
-  pub fn inverse_cumulative_hazard(&self, hazard: f64) -> f64 {
+  pub fn time_after_hazard(&self, from: f64, hazard: f64) -> f64 {
     match self {
-      Self::Piecewise(piecewise) => {
-        let mut hazard_before = 0.0;
-        for segment in piecewise.segments() {
-          let segment_hazard = (segment.end - segment.start) / segment.tc;
-          if hazard <= hazard_before + segment_hazard {
-            return segment.start + (hazard - hazard_before) * segment.tc;
-          }
-          hazard_before += segment_hazard;
-        }
-        f64::INFINITY
-      },
-      Self::Exponential(exponential) => exponential.scale * (hazard * exponential.tc0 / exponential.scale).ln_1p(),
+      Self::Piecewise(piecewise) => piecewise.time_after_hazard(from, hazard),
+      Self::Exponential(exponential) => exponential.time_after_hazard(from, hazard),
     }
   }
 }
@@ -87,13 +77,27 @@ pub struct PiecewiseTc {
 }
 
 impl PiecewiseTc {
-  fn segments(&self) -> impl Iterator<Item = Segment> + '_ {
+  fn time_after_hazard(&self, from: f64, hazard: f64) -> f64 {
+    self
+      .segments_from(from)
+      .scan(0.0, |hazard_after, segment| {
+        let hazard_before = *hazard_after;
+        *hazard_after += (segment.end - segment.start) / segment.tc;
+        Some((segment, hazard_before, *hazard_after))
+      })
+      .find(|&(_, _, hazard_after)| hazard <= hazard_after)
+      .map_or(f64::NAN, |(segment, hazard_before, _)| {
+        segment.start + (hazard - hazard_before) * segment.tc
+      })
+  }
+
+  fn segments_from(&self, from: f64) -> impl Iterator<Item = Segment> + '_ {
     let starts = once(f64::NEG_INFINITY).chain(self.breaks.iter().copied());
     let ends = self.breaks.iter().copied().chain([f64::INFINITY]);
     izip!(starts, ends, self.values.iter().copied())
-      .filter(|&(_, end, _)| end > 0.0)
-      .map(|(start, end, tc)| Segment {
-        start: start.max(0.0),
+      .filter(move |&(_, end, _)| end > from)
+      .map(move |(start, end, tc)| Segment {
+        start: start.max(from),
         end,
         tc,
       })
@@ -104,6 +108,20 @@ impl PiecewiseTc {
 pub struct ExponentialTc {
   tc0: f64,
   scale: f64,
+}
+
+impl ExponentialTc {
+  fn hazard_between(&self, from: f64, to: f64) -> f64 {
+    let duration = to - from;
+    if duration <= 0.0 {
+      return 0.0;
+    }
+    self.scale / self.tc0 * (from / self.scale).exp() * (duration / self.scale).exp_m1()
+  }
+
+  fn time_after_hazard(&self, from: f64, hazard: f64) -> f64 {
+    from + self.scale * (hazard * self.tc0 * (-from / self.scale).exp() / self.scale).ln_1p()
+  }
 }
 
 fn validate_tc(tc: f64) -> Result<(), Report> {

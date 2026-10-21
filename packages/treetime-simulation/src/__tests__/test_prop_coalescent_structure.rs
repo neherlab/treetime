@@ -50,7 +50,7 @@ mod tests {
     }
 
     #[test]
-    fn test_prop_coalescent_parents_are_older_than_children(
+    fn test_prop_coalescent_parents_are_strictly_older_than_children(
       schedule in gen_schedule(),
       sampling in gen_sampling(),
       seed in 0..u64::MAX,
@@ -63,12 +63,12 @@ mod tests {
         .get_edges()
         .map(|edge| (edge.key(), tree.tau[&edge.source()] - tree.tau[&edge.target()]))
         .collect();
-      let negative_durations = durations
+      let invalid_durations = durations
         .iter()
-        .filter(|(_, duration)| **duration < 0.0)
+        .filter(|(_, duration)| !(duration.is_finite() && **duration > 0.0))
         .map(|(edge, _)| *edge)
         .collect_vec();
-      prop_assert_eq!((tau_differences, vec![]), (durations, negative_durations));
+      prop_assert_eq!((tau_differences, vec![]), (durations, invalid_durations));
     }
   }
 

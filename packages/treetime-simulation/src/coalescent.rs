@@ -39,9 +39,7 @@ pub fn simulate_coalescent(
 
     let pair_count = active.len().to_f64_exact() * (active.len() - 1).to_f64_exact() * 0.5;
     let exp1: f64 = Exp1.sample(rng);
-    let merger_time = schedule
-      .inverse_cumulative_hazard(schedule.cumulative_hazard(time) + exp1 / pair_count)
-      .max(time);
+    let merger_time = schedule.time_after_hazard(time, exp1 / pair_count);
 
     if let Some(batch) = pending.next_if(|batch| batch.tau <= merger_time) {
       time = batch.tau;

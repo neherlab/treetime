@@ -17,12 +17,12 @@ mod tests {
   #[case::piecewise_second(      TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  5.5, 1.0)]
   #[case::piecewise_last(        TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  9.0, 2.5)]
   #[trace]
-  fn test_tc_schedule_cumulative_hazard_matches_closed_form(
+  fn test_tc_schedule_hazard_from_zero_matches_closed_form(
     #[case] schedule: Result<TcSchedule, Report>,
     #[case] tau: f64,
     #[case] expected: f64,
   ) {
-    let actual = schedule.unwrap().cumulative_hazard(tau);
+    let actual = schedule.unwrap().hazard_between(0.0, tau);
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 1);
   }
 
@@ -55,11 +55,11 @@ mod tests {
   #[case::second_break_from_below(6.0, -1)]
   #[case::second_break_from_above(6.0,  1)]
   #[trace]
-  fn test_tc_schedule_cumulative_hazard_is_continuous_at_breaks(#[case] tau: f64, #[case] side: i32) {
+  fn test_tc_schedule_hazard_from_zero_is_continuous_at_breaks(#[case] tau: f64, #[case] side: i32) {
     let schedule = TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]).unwrap();
     let neighbor = if side < 0 { tau.next_down() } else { tau.next_up() };
-    let at_break = schedule.cumulative_hazard(tau);
-    let next_to_break = schedule.cumulative_hazard(neighbor);
+    let at_break = schedule.hazard_between(0.0, tau);
+    let next_to_break = schedule.hazard_between(0.0, neighbor);
     pretty_assert_abs_diff_eq!(at_break, next_to_break, epsilon = 1e-15);
   }
 

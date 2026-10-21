@@ -7,7 +7,7 @@ mod tests {
   use helpers::{first_merger_pair, merger_hazards};
   use itertools::Itertools;
   use rstest::rstest;
-  use statrs::distribution::Uniform;
+  use statrs::distribution::{Exp, Uniform};
   use statrs::stats_tests::NaNPolicy;
   use statrs::stats_tests::chisquare::chisquare;
   use statrs::stats_tests::ks_test::{KSOneSampleAlternativeMethod, ks_onesample};
@@ -16,6 +16,7 @@ mod tests {
 
   const TREE_COUNT: usize = 1000;
   const PAIR_TREE_COUNT: usize = 12_000;
+  const WAIT_TREE_COUNT: usize = 10_000;
 
   #[rustfmt::skip]
   #[rstest]
@@ -73,6 +74,31 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_stat_coalescent_merger_after_a_large_accumulated_hazard_waits_exp1_from_the_batch() {
+    let schedule = TcSchedule::piecewise(vec![1.0], vec![1e-20, 1.0]).unwrap();
+    let sampling = [SampleBatch { tau: 0.0, count: 1 }, SampleBatch { tau: 2.0, count: 1 }];
+    let mut rng = get_random_number_generator(22);
+    let waits = repeat_with(|| {
+      let tree = simulate_coalescent(&schedule, &sampling, &mut rng).unwrap();
+      tree.tau[&tree.graph.root_key().unwrap()] - 2.0
+    })
+    .take(WAIT_TREE_COUNT)
+    .collect_vec();
+
+    let (_, p_value) = ks_onesample(
+      waits,
+      &Exp::new(1.0).unwrap(),
+      KSOneSampleAlternativeMethod::TwoSidedAsymptotic,
+      NaNPolicy::Error,
+    )
+    .unwrap();
+    assert!(
+      p_value > FALSE_FAIL_RATE,
+      "KS test of {WAIT_TREE_COUNT} merger waits after the batch at time 2, where one pair has hazard 1 / Tc = 1, against Exp(1): p = {p_value}"
+    );
+  }
+
   mod helpers {
     use crate::coalescent::{SampleBatch, SimulatedTree};
     use crate::tc_schedule::TcSchedule;
@@ -114,7 +140,7 @@ mod tests {
             .tuple_windows()
             .map(|(&from, &to)| {
               let lineages = (arrived_by(from) - merged_before).to_f64_exact();
-              lineages * (lineages - 1.0) * 0.5 * (schedule.cumulative_hazard(to) - schedule.cumulative_hazard(from))
+              lineages * (lineages - 1.0) * 0.5 * schedule.hazard_between(from, to)
             })
             .sum();
           start = end;
