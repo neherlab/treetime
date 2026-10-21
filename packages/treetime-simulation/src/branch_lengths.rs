@@ -1,3 +1,4 @@
+use crate::evolve::validate_edge_duration;
 use crate::substitution_model::SubstitutionModel;
 use eyre::Report;
 use itertools::izip;
@@ -11,10 +12,16 @@ use treetime_primitives::Seq;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_report};
 
-pub fn exact(durations: &BTreeMap<GraphEdgeKey, f64>, model: &SubstitutionModel) -> BTreeMap<GraphEdgeKey, f64> {
+pub fn exact(
+  durations: &BTreeMap<GraphEdgeKey, f64>,
+  model: &SubstitutionModel,
+) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
   durations
     .iter()
-    .map(|(&edge, &duration)| (edge, model.mu() * duration))
+    .map(|(&edge, &duration)| {
+      validate_edge_duration(edge, duration)?;
+      Ok((edge, model.mu() * duration))
+    })
     .collect()
 }
 

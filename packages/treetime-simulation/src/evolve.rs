@@ -52,7 +52,7 @@ pub fn evolve_sequences(
     let Some(&duration) = durations.get(&key) else {
       return make_error!("Edge {key} has no duration");
     };
-    validate_duration(duration, &format!("Duration of edge {key}"))?;
+    validate_edge_duration(key, duration)?;
   }
 
   let mut states: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
@@ -102,6 +102,10 @@ impl SimulatedSequences {
       })
       .collect()
   }
+}
+
+pub(crate) fn validate_edge_duration(edge: GraphEdgeKey, duration: f64) -> Result<(), Report> {
+  validate_duration(duration, &format!("Duration of edge {edge}"))
 }
 
 fn validate_duration(duration: f64, what: &str) -> Result<(), Report> {

@@ -113,7 +113,7 @@ mod tests {
           length,
         };
         let case = spec.simulate()?;
-        let exact = exact(&case.tree.edge_durations(), &case.model);
+        let exact = exact(&case.tree.edge_durations(), &case.model)?;
         let start = perturbed(&exact, START_PERTURBATION_SIGMA, &mut rng)?;
         Ok(Self { case, exact, start })
       }

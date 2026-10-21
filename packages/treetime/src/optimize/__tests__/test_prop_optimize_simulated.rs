@@ -74,7 +74,7 @@ mod tests {
     pub(super) fn optimize_simulated(spec: &CaseSpec, perturbation_seed: u64) -> Result<OptimizeRun, Report> {
       let case = spec.simulate()?;
       let tree = &case.tree;
-      let exact_lengths = exact(&tree.edge_durations(), &case.model);
+      let exact_lengths = exact(&tree.edge_durations(), &case.model)?;
       let start_lengths = perturbed(
         &exact_lengths,
         START_PERTURBATION_SIGMA,

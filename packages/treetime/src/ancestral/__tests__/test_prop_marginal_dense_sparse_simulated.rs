@@ -49,7 +49,7 @@ mod tests {
     pub(super) fn compare_dense_sparse(case: &SimulatedCase) -> Result<Comparison, Report> {
       let graph = &case.tree.graph;
       let names = &case.tree.names;
-      let lengths: BTreeMap<GraphEdgeKey, Option<f64>> = exact(&case.tree.edge_durations(), &case.model)
+      let lengths: BTreeMap<GraphEdgeKey, Option<f64>> = exact(&case.tree.edge_durations(), &case.model)?
         .into_iter()
         .map(|(edge, length)| (edge, Some(length)))
         .collect();

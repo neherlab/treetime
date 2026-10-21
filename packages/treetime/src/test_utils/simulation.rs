@@ -601,7 +601,7 @@ mod tests {
     }
     .simulate()?;
     let sequences = &case.sequences.sequences;
-    let lengths = exact(&case.tree.edge_durations(), &case.model);
+    let lengths = exact(&case.tree.edge_durations(), &case.model)?;
 
     let timetree = timetree_input(&case.tree, sequences, &lengths)?;
     let optimize = optimize_input(&case.tree, sequences, &lengths)?;

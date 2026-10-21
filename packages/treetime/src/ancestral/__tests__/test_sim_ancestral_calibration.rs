@@ -133,7 +133,7 @@ pub(crate) mod tests {
     impl Calibration {
       pub(super) fn simulate() -> Result<Self, Report> {
         let case = ancestral_case(CALIBRATION_SEED, CALIBRATION_LENGTH)?.simulate()?;
-        let lengths = exact(&case.tree.edge_durations(), &case.model);
+        let lengths = exact(&case.tree.edge_durations(), &case.model)?;
         let records = case.sequences.leaf_records(&case.tree.graph, &case.tree.names);
         let internal_nodes = case.tree.graph.get_internal_nodes().map(|node| node.key()).collect();
         Ok(Self {

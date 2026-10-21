@@ -17,8 +17,22 @@ mod tests {
     let durations = btreemap! { tree.root_inner => 0.25, tree.root_c => 1.5, tree.inner_a => 0.0, tree.inner_b => 3.0 };
     let expected =
       btreemap! { tree.root_inner => 0.125, tree.root_c => 0.75, tree.inner_a => 0.0, tree.inner_b => 1.5 };
-    let actual = exact(&durations, &model);
+    let actual = exact(&durations, &model).unwrap();
     assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::negative(-1.0,          "Duration of edge 1 must be finite and non-negative, got -1")]
+  #[case::nan(     f64::NAN,      "Duration of edge 1 must be finite and non-negative, got NaN")]
+  #[case::infinite(f64::INFINITY, "Duration of edge 1 must be finite and non-negative, got inf")]
+  #[trace]
+  fn test_branch_lengths_exact_rejects_invalid_durations(#[case] duration: f64, #[case] expected: &str) {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(0.5).unwrap();
+    let durations = btreemap! { tree.root_inner => 0.25, tree.root_c => duration, tree.inner_a => 0.0, tree.inner_b => 3.0 };
+    let result = exact(&durations, &model);
+    assert_error!(result, expected);
   }
 
   #[test]

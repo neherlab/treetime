@@ -58,7 +58,7 @@ mod tests {
     }
 
     fn log_ratios(case: &SimulatedCase) -> Result<LogRatios, Report> {
-      let lengths = exact(&case.tree.edge_durations(), &case.model);
+      let lengths = exact(&case.tree.edge_durations(), &case.model)?;
       let few = gtr_errors(case, &lengths, FEW_SITES)?;
       let all = gtr_errors(case, &lengths, ALL_SITES)?;
       Ok(LogRatios {
