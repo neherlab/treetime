@@ -235,6 +235,33 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::rising(  0.5)]
+  #[case::peak(    1.0)]
+  #[case::falling( 2.5)]
+  #[trace]
+  fn test_convolution_function_function_hard_edges_converge_at_second_order(#[case] t: f64) -> Result<(), Report> {
+    let (a, b) = (1.5_f64, 4.0_f64);
+    let exponential = |rate: f64, cells: usize| -> Result<DistributionNegLog, Report> {
+      let f = function_on((0.0, 4.0), cells + 1, |x| rate * x - rate.ln())?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Linear(SoftTailLaw { slope: rate }))?;
+      Ok(DistributionNegLog::Function(f))
+    };
+    let errors: Vec<f64> = [32, 64, 128, 256]
+      .iter()
+      .map(|&cells| {
+        let actual = distribution_convolution(&exponential(a, cells)?, &exponential(b, cells)?, MaxGridPoints::default())?;
+        helpers::assert_grid_point(&actual, t);
+        let expected = a * b / (b - a) * ((-a * t).exp() - (-b * t).exp());
+        Ok((-actual.eval(t)?).exp() - expected)
+      })
+      .try_collect::<_, _, Report>()?;
+    assert_second_order(&errors);
+    Ok(())
+  }
+
   #[test]
   fn test_convolution_range_function_carries_both_amplitudes() -> Result<(), Report> {
     let f = function_on((0.0, 3.0), 7, |t| t)?
