@@ -187,7 +187,7 @@ where
   };
 
   let (cost_lo, at_lo) = evaluate(lo);
-  let (cost_mid, _) = evaluate(sqrt_old_mu);
+  let (cost_mid, at_mid) = evaluate(sqrt_old_mu);
   let (cost_hi, at_hi) = evaluate(hi);
 
   if cost_mid < cost_lo && cost_mid < cost_hi {
@@ -213,7 +213,7 @@ where
     Ok((gtr, nodes, backward))
   } else {
     match range_edge {
-      RateRangeEdge::KeepStart => keep_start_rate(partition, gtr, at_hi, nodes, graph, branch_lengths),
+      RateRangeEdge::KeepStart => keep_start_rate(partition, gtr, at_mid, nodes, graph, branch_lengths),
       RateRangeEdge::LowerCostEnd => {
         let (cost_end, at_end) = if cost_lo <= cost_hi {
           (cost_lo, at_lo)
@@ -242,14 +242,14 @@ pub(crate) enum RateRangeEdge {
 fn keep_start_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
-  at_hi: Option<GtrRateCandidate<P>>,
+  at_start: Option<GtrRateCandidate<P>>,
   nodes: &BTreeMap<GraphNodeKey, P::Node>,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
 ) -> Result<RateStepResult<P>, Report> {
   let old_mu = gtr.mu();
   let (mut restored_gtr, restored_nodes, restored_backward) =
-    if let Some(GtrRateCandidate { gtr, nodes, backward }) = at_hi {
+    if let Some(GtrRateCandidate { gtr, nodes, backward }) = at_start {
       (gtr, nodes, backward)
     } else {
       let MarginalBackward { node_states, backward } =

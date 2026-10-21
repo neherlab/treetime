@@ -14,6 +14,12 @@ For each dataset:
 2. Run v0 reconstruct_discrete_traits() with exact parameters from inputs
 3. Extract per-node trait assignments and confidence profiles at full precision
 
+Every rate step of v0 is followed by v0's own backward pass at the rate the step
+keeps (see optimize_gtr_rate_with_messages_at_kept_rate). v0 leaves the messages
+of the last cost evaluation in place, which after a failed bracket belong to 100
+times the start rate; v1 counts the next fit with messages at the kept rate
+(kb/decisions/mugration-rate-step-without-bracket-keeps-start-messages.md).
+
 This capture script matches the canonical v0 mugration behavior from wrappers.py.
 It does not reimplement metadata parsing or taxon-name resolution locally.
 
@@ -28,6 +34,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from treetime.treeanc import TreeAnc
 from treetime.wrappers import reconstruct_discrete_traits
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[6]
@@ -36,8 +43,18 @@ FIXTURES_DIR: Path = Path(__file__).parent
 SEED = 1010336213
 
 
+V0_OPTIMIZE_GTR_RATE = TreeAnc.optimize_gtr_rate
+
+
 class CaptureError(Exception):
     """Raised when capture fails for a case."""
+
+
+def optimize_gtr_rate_with_messages_at_kept_rate(treeanc: TreeAnc) -> None:
+    """Run the v0 rate step, then the v0 backward pass at the rate it keeps."""
+    V0_OPTIMIZE_GTR_RATE(treeanc)
+    treeanc.postorder_traversal_marginal()
+    treeanc.total_LH_and_root_sequence(sample_from_profile=False, assign_sequence=False)
 
 
 def resolve_taxon_column(
@@ -191,6 +208,7 @@ def capture_dataset(name: str, config: dict) -> dict:
 
 
 def main() -> int:
+    TreeAnc.optimize_gtr_rate = optimize_gtr_rate_with_messages_at_kept_rate
     random.seed(SEED)
     np.random.seed(SEED)
 

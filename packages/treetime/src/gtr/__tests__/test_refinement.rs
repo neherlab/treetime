@@ -186,6 +186,49 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::sparse(false)]
+  #[case::dense( true )]
+  #[trace]
+  fn test_refinement_rate_step_without_bracket_keeps_the_start_rate_with_its_messages(
+    #[case] dense: bool,
+  ) -> Result<(), Report> {
+    let input = helpers::Input::without_change()?;
+    let (gtr, log_lh, fresh_log_lh) = if dense {
+      let partition = input.dense()?;
+      let (gtr, nodes, _) = optimize_gtr_rate(
+        &partition,
+        input.start_gtr.clone(),
+        &BTreeMap::new(),
+        &input.graph,
+        &input.branch_lengths,
+        RateRangeEdge::KeepStart,
+        &NoopProgress,
+      )?;
+      let fresh = partition.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &())?;
+      let log_lh = partition.root_log_lh(&input.graph, &nodes)?;
+      (gtr, log_lh, fresh.log_lh)
+    } else {
+      let (partition, node_states) = input.sparse()?;
+      let (gtr, nodes, _) = optimize_gtr_rate(
+        &partition,
+        input.start_gtr.clone(),
+        &node_states,
+        &input.graph,
+        &input.branch_lengths,
+        RateRangeEdge::KeepStart,
+        &NoopProgress,
+      )?;
+      let fresh = partition.marginal_update(&input.start_gtr, &input.graph, &input.branch_lengths, &node_states)?;
+      let log_lh = partition.root_log_lh(&input.graph, &nodes)?;
+      (gtr, log_lh, fresh.log_lh)
+    };
+    pretty_assert_eq!(input.start_gtr.mu(), gtr.mu());
+    pretty_assert_abs_diff_eq!(fresh_log_lh.value(), log_lh.value(), epsilon = 1e-10);
+    Ok(())
+  }
+
   mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
