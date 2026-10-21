@@ -291,8 +291,10 @@ fn convolution_function_function_fine(
   }
   let amplitude = a.amplitude() + b.amplitude();
 
-  let (pa, peak_a) = to_peak_normalized_plain(a.y());
-  let (pb, peak_b) = to_peak_normalized_plain(b.y());
+  let (mut pa, peak_a) = to_peak_normalized_plain(a.y());
+  let (mut pb, peak_b) = to_peak_normalized_plain(b.y());
+  halve_end_samples(&mut pa);
+  halve_end_samples(&mut pb);
   if !(peak_a.is_finite() && peak_b.is_finite()) {
     let a_domain = conv_operand_domain(peak_a.is_finite());
     let b_domain = conv_operand_domain(peak_b.is_finite());
@@ -301,7 +303,8 @@ fn convolution_function_function_fine(
 
   let result_range = (a.x_min() + b.x_min(), a.x_max() + b.x_max());
   max_points.point_count((a.len() + b.len() - 1).to_f64_exact(), result_range, dx)?;
-  let conv = convolve_fft(dx, &pa, &pb)?;
+  let mut conv = convolve_fft(dx, &pa, &pb)?;
+  trapezoid_overlap_ends(&mut conv, &pa, &pb, dx);
 
   let Some(reconstructed) = reconstruct_neg_log_tails(&conv, dx)? else {
     let a_domain = conv_operand_domain(true);
@@ -340,6 +343,23 @@ pub(super) fn coarsen_convolution(
     return Ok(Distribution::Function(conv_distr));
   }
   Ok(Distribution::Function(conv_distr.resample_dx(coarse_dx, max_points)?))
+}
+
+fn trapezoid_overlap_ends(conv: &mut Array1<f64>, a: &Array1<f64>, b: &Array1<f64>, dx: f64) {
+  if a.len() < 2 || b.len() < 2 {
+    return;
+  }
+  let (last_a, last_b) = (a.len() - 1, b.len() - 1);
+  conv[last_b] += dx * a[0] * b[last_b];
+  conv[last_a] += dx * a[last_a] * b[0];
+}
+
+fn halve_end_samples(values: &mut Array1<f64>) {
+  let n = values.len();
+  if n > 1 {
+    values[0] *= 0.5;
+    values[n - 1] *= 0.5;
+  }
 }
 
 fn to_peak_normalized_plain(neg_log: &Array1<f64>) -> (Array1<f64>, f64) {

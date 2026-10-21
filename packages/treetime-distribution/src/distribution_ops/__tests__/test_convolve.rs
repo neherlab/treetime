@@ -448,7 +448,7 @@ mod tests {
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default())?;
 
     assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
-    pretty_assert_abs_diff_eq!(neg_log(&array![1.0, 4.0, 5.0, 2.0]), actual.y()?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(neg_log(&array![0.25, 2.0, 2.5, 0.5]), actual.y()?, epsilon = 1e-15);
     Ok(())
   }
 
@@ -487,7 +487,7 @@ mod tests {
     let actual = distribution_convolution(&a, &b, MaxGridPoints::default())?;
 
     assert_eq!(array![0.0, 1.0, 2.0, 3.0], actual.t());
-    pretty_assert_abs_diff_eq!(neg_log(&array![0.5, 2.0, 2.0, 0.5]), actual.y()?, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(neg_log(&array![0.125, 1.5, 1.5, 0.125]), actual.y()?, epsilon = 1e-12);
     Ok(())
   }
 
@@ -530,7 +530,7 @@ mod tests {
 
     assert_eq!(array![2011.0, 2011.5, 2012.0, 2012.5, 2013.0], actual.t());
     pretty_assert_abs_diff_eq!(
-      neg_log(&array![0.03, 0.13, 0.18, 0.13, 0.03]),
+      neg_log(&array![0.0075, 0.065, 0.15, 0.065, 0.0075]),
       actual.y()?,
       epsilon = 1e-12
     );
