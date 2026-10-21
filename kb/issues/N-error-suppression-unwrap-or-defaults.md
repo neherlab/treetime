@@ -4,7 +4,6 @@ Several locations substitute a default value for data that carries meaning, or c
 
 ## Defaults on data that carries meaning
 
-- [packages/treetime/src/partition/marginal/discrete/input.rs#L29](../../packages/treetime/src/partition/marginal/discrete/input.rs#L29): `validate_trait_leaves()` lists an unnamed leaf without a trait as an empty string in the "tree leaves missing from metadata" error, so the message does not identify the leaf
 - [packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L97](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L97) and [packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L207](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs#L207): indels default to an empty slice (`map_or(empty_indels, ..)`) when the edge has no observation. An edge without an observation has no mutations, so this default is plausibly correct; a type that cannot be absent would make that explicit
 - [packages/treetime/src/timetree/optimization/relaxed_clock.rs#L30](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L30): a missing branch length becomes 0.0. The denominator is `opt_len + one_mutation`, so no division by zero follows, but the edge silently enters the relaxed-clock fit as a zero-length branch
 - [packages/treetime/src/timetree/optimization/relaxed_clock.rs#L63](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L63): missing coefficients default to zero

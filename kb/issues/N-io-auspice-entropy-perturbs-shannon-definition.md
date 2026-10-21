@@ -8,7 +8,7 @@
 
 Entropy is computed with an added `TINY` inside every logarithm. This changes every positive term and gives a deterministic distribution such as $(1,0)$ a nonzero entropy.
 
-`fn compute_entropy()` applies $p\ln(p+10^{-12})$ to every state [packages/app-output/src/trait_profile.rs#L13-L16](../../packages/app-output/src/trait_profile.rs#L13-L16). Both the traits node-data JSON [packages/app-output/src/augur_node_data_traits.rs#L82](../../packages/app-output/src/augur_node_data_traits.rs#L82) and the Auspice tree-output entropy [packages/app-output/src/auspice.rs#L308](../../packages/app-output/src/auspice.rs#L308) consume this function.
+`StatePosterior::new()` applies $p\ln(p+10^{-12})$ to every state [packages/treetime/src/partition/marginal/discrete/state_posterior.rs#L23-L26](../../packages/treetime/src/partition/marginal/discrete/state_posterior.rs#L23-L26). Both the traits node-data JSON [packages/app-output/src/augur_node_data_traits.rs#L80](../../packages/app-output/src/augur_node_data_traits.rs#L80) and the Auspice tree-output entropy [packages/app-output/src/auspice.rs#L311](../../packages/app-output/src/auspice.rs#L311) read the entropy of this struct.
 
 For state probabilities $p_i$, Shannon entropy is
 
@@ -18,7 +18,7 @@ where $H$ is entropy, $p_i$ is the probability of state $i$, and a zero-probabil
 
 ## Potential solutions
 
-- O1. Use `ndarray-stats::EntropyExt` with explicit invalid-input errors. `ndarray-stats` is a workspace dependency of `treetime`; `app-output` must add it.
+- O1. Use `ndarray-stats::EntropyExt` with explicit invalid-input errors. `ndarray-stats` is a workspace dependency of `treetime`, which computes the entropy.
 - O2. Implement the $p_i=0$ limit directly in project code. This duplicates a maintained dependency already in use.
 
 ## Fix

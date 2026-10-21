@@ -10,7 +10,7 @@
 
 ## Problem
 
-GTR refinement (`--gtr-iterations` of `treetime ancestral`, and `fn refine_gtr_model_and_rate` in [packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) fits the model to expected transition counts. On the same gap-free input, the sparse and dense representations produce different counts, so the refined GTR and rate differ. Dense and sparse marginal log-likelihoods agree to about 1e-14 at the same GTR, so the difference comes from the counting step, `fn count_transitions_sparse` [packages/treetime/src/partition/marginal/sparse/count.rs#L16-L56](../../packages/treetime/src/partition/marginal/sparse/count.rs#L16-L56).
+GTR refinement (`--gtr-iterations` of `treetime ancestral`, both through `fn refine_gtr` in [packages/treetime/src/gtr/refinement.rs](../../packages/treetime/src/gtr/refinement.rs)) fits the model to expected transition counts. On the same gap-free input, the sparse and dense representations produce different counts, so the refined GTR and rate differ. Dense and sparse marginal log-likelihoods agree to about 1e-14 at the same GTR, so the difference comes from the counting step, `fn count_transitions_sparse` [packages/treetime/src/partition/marginal/sparse/count.rs#L16-L56](../../packages/treetime/src/partition/marginal/sparse/count.rs#L16-L56).
 
 Measured on 4 leaves, 16 gap-free sites, JC69 start, 2 iterations: dense gives mu 0.63528, sparse gives mu 0.62844.
 
@@ -24,7 +24,7 @@ Measured on 4 leaves, 16 gap-free sites, JC69 start, 2 iterations: dense gives m
 
 On simulated alignments with a known GTR and `--gtr-iterations 3` (variant `marginal-gtr3` of the ancestral suite in [validation/README.md](../../validation/README.md)), with alignment length $L$ and simulated substitution rate $\mu_{\text{true}}$, the inferred sparse rate collapses to about $1/(L \mu_{\text{true}})$ and the equilibrium frequencies drift toward uniform. Two defects of `fn count_transitions_sparse` [packages/treetime/src/partition/marginal/sparse/count.rs#L16-L56](../../packages/treetime/src/partition/marginal/sparse/count.rs#L16-L56) explain it: it pairs the fixed groups of the two messages of a branch by character ([packages/treetime/src/partition/marginal/sparse/count.rs#L74-L84](../../packages/treetime/src/partition/marginal/sparse/count.rs#L74-L84)), so it never counts a substitution at a site that is fixed on both sides, and it reduces the root composition to one count.
 
-Ignored red test: `test_refinement_sparse_gtr_and_rate_match_dense` [packages/treetime/src/gtr/__tests__/test_refinement.rs#L46-L48](../../packages/treetime/src/gtr/__tests__/test_refinement.rs#L46-L48).
+Ignored red test: `test_refinement_sparse_gtr_and_rate_match_dense` [packages/treetime/src/gtr/__tests__/test_refinement.rs#L201-L203](../../packages/treetime/src/gtr/__tests__/test_refinement.rs#L201-L203).
 
 ## Ambiguous leaf positions count twice
 

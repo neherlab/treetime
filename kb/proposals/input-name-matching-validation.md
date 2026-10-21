@@ -12,7 +12,7 @@ Six call sites perform name reconciliation. Three have known defects:
 | ------------------------------------------------------------------------------------------------------------ | --------------------------- | ---------------------- | --------------------- |
 | `fitch.rs:54-101` [[src](../../packages/treetime/src/partition/fitch/passes.rs#L53-L88)]                           | linear scan O(n\*m)         | no (first miss aborts) | no                    |
 | `marginal_dense.rs:319-351` [[src](../../packages/treetime/src/partition/marginal_dense.rs#L319-L351)]       | linear scan O(n\*m)         | no (first miss aborts) | no                    |
-| `attach.rs:28-89` [[src](../../packages/treetime/src/ancestral/attach.rs#L28-L89)]                           | `BTreeSet` O(n log n)       | warnings + count       | no                    |
+| `attach.rs:15-65` [[src](../../packages/treetime/src/ancestral/attach.rs#L15-L65)]                           | `BTreeSet` O(n log n)       | warnings + count       | no                    |
 | `date_constraints.rs:21-90` [[src](../../packages/treetime/src/clock/date_constraints.rs#L21-L90)]           | `BTreeMap::get` O(log n)    | warnings               | n/a (map keys unique) |
 | `marginal_discrete.rs:214-247` [[src](../../packages/treetime/src/partition/marginal_discrete.rs#L214-L247)] | `IndexSet::difference` O(n) | bidirectional batch    | n/a (map keys unique) |
 | `marginal_discrete.rs:47-90` [[src](../../packages/treetime/src/partition/marginal_discrete.rs#L47-L90)]     | `BTreeMap::get` O(log n)    | via validate above     | n/a                   |
@@ -138,7 +138,7 @@ One test generator (`prop_generators/alignment.rs:94`) asserts positional orderi
 The FASTA data flows through three stages:
 
 1. `fasta_read()` (`treetime-io/src/fasta.rs` [[src](../../packages/treetime-io/src/fasta.rs)]) produces `Vec<FastaRecord>`
-2. `complete_alignment_for_leaves()` (`attach.rs:28-89` [[src](../../packages/treetime/src/ancestral/attach.rs#L28-L89)]) checks for missing leaves (builds a temporary `BTreeSet` of names internally), appends synthetic ambiguous records for missing tips, returns `Vec<FastaRecord>`
+2. `complete_alignment_for_leaves()` (`attach.rs:15-65` [[src](../../packages/treetime/src/ancestral/attach.rs#L15-L65)]) checks for missing leaves (builds a temporary `BTreeSet` of names internally), appends synthetic ambiguous records for missing tips, returns `Vec<FastaRecord>`
 3. `attach_seqs_to_graph()` / `attach_sequences()` iterates leaves, does the linear `.find()` lookup
 
 ##### Option A: Index at attachment boundary

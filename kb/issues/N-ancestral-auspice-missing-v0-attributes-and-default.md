@@ -9,7 +9,7 @@ V0's ancestral Auspice JSON contains `node_attrs.div` (cumulative `mutation_leng
 
 V1 writes `div`, the nucleotide branch mutations, and `meta.genome_annotations.nuc`. Two parts remain:
 
-- **Missing node attributes**: v1 writes no `confidence` attribute, and writes `bad_branch` only when the graph carries dates [packages/app-output/src/auspice.rs#L227-L230](../../packages/app-output/src/auspice.rs#L227-L230), which `ancestral` never does
+- **Missing node attributes**: v1 writes no `confidence` attribute, and writes `bad_branch` only when the graph carries dates [packages/app-output/src/auspice.rs#L233-L236](../../packages/app-output/src/auspice.rs#L233-L236), which `ancestral` never does
 - **Not in the defaults**: `fn CommandKind.default_outputs()` [packages/app-output/src/output_plan.rs#L597-L616](../../packages/app-output/src/output_plan.rs#L597-L616) adds Auspice to the tree defaults only for `timetree`, so `--output-all` without a selection writes no Auspice file for `ancestral`. The file is written only when the user selects it
 
 This is a standalone visualization convenience for viewing ancestral reconstruction results in auspice without going through `augur export v2`. The augur pipeline path is covered by node data JSON output.

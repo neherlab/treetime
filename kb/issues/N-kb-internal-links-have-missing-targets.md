@@ -7,7 +7,6 @@ A check of every relative Markdown link target in `kb/` (outside `kb/_raw/`) fin
 The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `storage/` subdirectories. Links to the old flat files (`marginal_core.rs`, `marginal_dense.rs`, `marginal_discrete.rs`, `marginal_helpers.rs`, `marginal_passes.rs`, `marginal_sparse.rs`, `optimize_dense.rs`, `optimize_sparse.rs`, `optimization_contribution.rs`, `sparse.rs`, `fitch.rs`, `timetree.rs`, `traits.rs`) are in:
 
 - `kb/algo/indel-models.md`
-- `kb/decisions/mugration-root-state-filtering.md`
 - `kb/decisions/optimize-dense-initial-guess-hard-count.md`
 - `kb/proposals/input-name-matching-validation.md`
 - `kb/proposals/optimize-convergence-and-robustness.md`
@@ -21,7 +20,6 @@ The partition code moved into the `fitch/`, `marginal/`, `optimize/`, and `stora
 ## Other removed source files
 
 - `kb/decisions/coalescent-analytic-tc-optimization.md`, `kb/reports/optimization-methods/7-audit.md`: `packages/treetime/src/coalescent/optimize_tc.rs`
-- `kb/decisions/mugration-pseudo-count-initial-pi.md`: `packages/treetime/src/mugration/mugration.rs`
 - `kb/decisions/prune-merge-jukes-cantor-branch-length.md`: `packages/treetime/src/gtr/jc_distance/__tests__/test_jc_distance.rs`
 - `kb/reports/sparse-subs-accessors.md`: `packages/treetime/src/payload/ancestral.rs`
 - `kb/reports/stochastic.simulation.md`: `packages/treetime/src/coalescent/edge_data.rs`, `packages/treetime/src/coalescent/events.rs`, `packages/treetime/src/coalescent/integration.rs`

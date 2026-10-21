@@ -36,7 +36,7 @@ The sparse value falls with $x$, so the sparse backend treats the unknown leaf a
 ## Consequences
 
 - Sparse branch lengths and likelihoods are biased for datasets with leaves that have long unknown ranges
-- The default path produces such leaves: `fn complete_alignment_for_leaves()` fills every tip without a sequence with unknown characters and only warns, as long as no more than a third of the tips lack a sequence [packages/treetime/src/ancestral/attach.rs#L15-L56](../../packages/treetime/src/ancestral/attach.rs#L15-L56). Sparse is the default representation, so default runs of every sequence command are affected whenever a tip has no sequence
+- The default path produces such leaves: `fn complete_alignment_for_leaves()` fills every tip without a sequence with unknown characters and only warns, as long as no more than a third of the tips lack a sequence [packages/treetime/src/ancestral/attach.rs#L15-L53](../../packages/treetime/src/ancestral/attach.rs#L15-L53). Sparse is the default representation, so default runs of every sequence command are affected whenever a tip has no sequence
 - `test_run_optimize_loop_returns_first_iteration_when_likelihood_declines_from_start` in `packages/treetime/src/optimize/__tests__/test_run_optimize_loop.rs` uses leaves without data and therefore runs on the dense backend only
 
 ## Validation

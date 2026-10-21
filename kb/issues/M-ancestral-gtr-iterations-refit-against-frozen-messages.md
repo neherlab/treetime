@@ -4,9 +4,9 @@
 
 ## v1 behavior
 
-- `fn refine_gtr_model` [packages/treetime/src/gtr/refinement.rs#L22-L52](../../packages/treetime/src/gtr/refinement.rs#L22-L52) destructures the backward and forward messages once, then runs `count_transitions` and `infer_gtr` `N + 1` times (`0..=iterations`) against those same messages, followed by one `marginal_update`
+- `fn refine_gtr` [packages/treetime/src/gtr/refinement.rs#L18-L95](../../packages/treetime/src/gtr/refinement.rs#L18-L95) with `RefinementRate::Keep` (`GtrRefinement::keep_rate()`) takes the backward and forward messages of the start-model update once, then runs `count_transitions` and `infer_gtr` `N + 1` times (`0..=iterations`) against those same messages, followed by one `marginal_update`
 - Each fit changes the GTR through the edge transition matrices, so the iterations are not trivial, but the fixed point depends on the starting messages and is not a stationary point of the tree likelihood. There is no convergence or likelihood check
-- The gate is `gtr_iterations > 0 && model == Infer` in [packages/treetime/src/ancestral/plan.rs#L51-L52](../../packages/treetime/src/ancestral/plan.rs#L51-L52)
+- The gate is `gtr_iterations > 0 && model == Infer` in [packages/treetime/src/ancestral/plan.rs#L51-L52](../../packages/treetime/src/ancestral/plan.rs#L51-L52), and the refinement runs through `fn fit_marginal()` [packages/treetime/src/ancestral/plan.rs#L292-L309](../../packages/treetime/src/ancestral/plan.rs#L292-L309)
 
 ## v0 behavior
 
@@ -26,4 +26,4 @@
 > - Remove the flag: one GTR fit, as v0 does
 > - Replace the loop with a real EM that re-runs the marginal passes each iteration and stops on likelihood change, as the unused v0 `infer_gtr_iterative` does
 >
-> Evidence: the v1 and v0 behavior above. Mugration uses a separate loop, `fn refine_gtr_model_and_rate()` [packages/treetime/src/gtr/refinement.rs#L58](../../packages/treetime/src/gtr/refinement.rs#L58), and is outside this question.
+> Evidence: the v1 and v0 behavior above. Mugration uses the same routine with `RefinementRate::Optimize` (v0 order, with a rate step after each fit) and is outside this question.

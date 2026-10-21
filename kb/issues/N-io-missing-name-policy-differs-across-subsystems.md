@@ -6,7 +6,7 @@ FASTA records, metadata dates, and mugration traits pair with tree nodes through
 | --- | --- | --- | --- |
 | FASTA (`ancestral`, `homoplasy`, `optimize`, `prune`, `timetree`) | `fn read_sequence_source()` [packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124](../../packages/app-commands/src/commands/shared/sequence_inputs.rs#L84-L124), which calls `fn pair_alignment()` [packages/app-commands/src/commands/shared/alignment.rs#L72](../../packages/app-commands/src/commands/shared/alignment.rs#L72) | warning per leaf, filled with unknown characters; error above one third, which only `ancestral` and `homoplasy` can override with `--ignore-missing-alns` | kept for the alignment length check, left out of the mask, no message |
 | Dates (`clock`, `timetree`) | `fn read_input_dates()` [packages/app-commands/src/commands/shared/dates_input.rs#L16](../../packages/app-commands/src/commands/shared/dates_input.rs#L16) | counted in the date summary; error below three dated leaves | warning with up to 10 names |
-| Mugration | `fn pair_traits()` [packages/app-commands/src/commands/mugration/run.rs#L141](../../packages/app-commands/src/commands/mugration/run.rs#L141) | error listing every missing leaf | warning with up to 10 names |
+| Mugration | `fn pair_traits()` [packages/app-commands/src/commands/mugration/run.rs#L143](../../packages/app-commands/src/commands/mugration/run.rs#L143), which calls `fn pair_trait_rows()` [packages/treetime/src/mugration/trait_pairing.rs#L6](../../packages/treetime/src/mugration/trait_pairing.rs#L6) | warning per leaf and a count warning (`fn warn_leaves_without_data()`, shared with FASTA), filled with the unknown observation; no limit, as in v0 | warning with up to 10 names |
 
 ## Impact
 
@@ -14,7 +14,7 @@ FASTA records, metadata dates, and mugration traits pair with tree nodes through
 - Mismatch reports have different forms: one line per leaf, a capped name list, or a full list in an error
 
 > [!IMPORTANT]
-> **Decision required.** The target policy is not approved. A missing leaf has a different meaning per subsystem: a leaf without a sequence becomes missing data, a leaf without a date is left unconstrained, and mugration rejects a leaf without a trait value (see [M-mugration-tree-leaves-missing-from-metadata-rejected.md](M-mugration-tree-leaves-missing-from-metadata-rejected.md)). Options:
+> **Decision required.** The target policy is not approved. A missing leaf has a different meaning per subsystem: a leaf without a sequence or a trait value becomes missing data (only the sequence commands stop above one third), and a leaf without a date is left unconstrained. Options:
 >
 > - One policy for every subsystem, including one report form and one override flag
 > - Subsystem-specific handling of missing nodes, with one shared report form for mismatched names
@@ -22,5 +22,4 @@ FASTA records, metadata dates, and mugration traits pair with tree nodes through
 ## Related
 
 - [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) -- user-facing name-matching defects
-- [M-mugration-tree-leaves-missing-from-metadata-rejected.md](M-mugration-tree-leaves-missing-from-metadata-rejected.md) -- the strictest of these policies
 - Design: [kb/proposals/input-name-matching-validation.md](../proposals/input-name-matching-validation.md) (Architecture section, Option B: shared function)

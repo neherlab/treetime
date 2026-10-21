@@ -26,7 +26,7 @@ The marginal MAP substitutions of a sparse partition are stored apart from the e
 
 - Zero-optimal edge identification: [`packages/treetime/src/optimize/run_loop.rs#L312-L331`](../../packages/treetime/src/optimize/run_loop.rs#L312-L331) (`find_zero_optimal_internal_edges`)
 - Collapse and polytomy resolution: [`packages/treetime/src/optimize/run_loop.rs#L333-L385`](../../packages/treetime/src/optimize/run_loop.rs#L333-L385) (`prune_and_merge_in_loop`)
-- Fitch mutation check: [`packages/treetime/src/partition/marginal/reconstruction.rs#L282-L291`](../../packages/treetime/src/partition/marginal/reconstruction.rs#L282-L291) (`edge_has_fitch_mutations`)
+- Fitch mutation check: [`packages/treetime/src/partition/marginal/reconstruction.rs#L265-L274`](../../packages/treetime/src/partition/marginal/reconstruction.rs#L265-L274) (`edge_has_fitch_mutations`)
 - Edge collapse: [`packages/treetime/src/optimize/topology/collapse.rs#L7-L43`](../../packages/treetime/src/optimize/topology/collapse.rs#L7-L43)
 - Polytomy resolution: [`packages/treetime/src/optimize/topology/resolve_polytomy.rs#L17-L47`](../../packages/treetime/src/optimize/topology/resolve_polytomy.rs#L17-L47), with the sibling merge in [`packages/treetime/src/optimize/topology/merge_shared_mutations.rs`](../../packages/treetime/src/optimize/topology/merge_shared_mutations.rs) and the reversion count in [`packages/treetime/src/optimize/topology/hoist_reversions.rs#L15-L42`](../../packages/treetime/src/optimize/topology/hoist_reversions.rs#L15-L42)
 - Fitch accessors: [`packages/treetime/src/partition/storage/sparse.rs#L105-L125`](../../packages/treetime/src/partition/storage/sparse.rs#L105-L125) (`SparseEdgeObs`)

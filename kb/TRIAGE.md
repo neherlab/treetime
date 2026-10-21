@@ -165,7 +165,7 @@ These issues give wrong scientific results or crashes on default settings or exa
 - **[kb/issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)**: find why the sparse message of a tip without sequence data depends on its branch length, starting in the sparse leaf message
 - **[kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md](issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md)**: compute dates before year 1 with signed calendar arithmetic, as v0 does, instead of panicking
 - **[kb/issues/M-timetree-clock-filter-default-differs-from-v0.md](issues/M-timetree-clock-filter-default-differs-from-v0.md)**: set the `--clock-filter` default of `clock` and `timetree` to 4.0, as in v0
-- **[kb/issues/H-mugration-iterative-gtr.md](issues/H-mugration-iterative-gtr.md)**: run one full marginal update after the first GTR fit, as v0 does ([kb/issues/M-mugration-gtr-refinement-counts-with-forward-messages-of-the-initial-model.md](issues/M-mugration-gtr-refinement-counts-with-forward-messages-of-the-initial-model.md)), then rerun the ignored golden masters
+- **[kb/issues/H-mugration-iterative-gtr.md](issues/H-mugration-iterative-gtr.md)**: localize the remaining confidence differences of four golden-master datasets (3.0e-10 to 2.5e-8), starting with `zika_20_country_weights`, then fold the ignored cases into the confidence test
 
 ## Next
 
@@ -183,7 +183,6 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md](issues/H-timetree-input-branch-lengths-abort-on-point-division.md)**: build input-mode branch distributions with the v0 Poisson or Gaussian interpolator
 - **[kb/issues/M-distribution-multiply-touching-hard-domains-error-instead-of-point.md](issues/M-distribution-multiply-touching-hard-domains-error-instead-of-point.md)**: return a point when two range domains touch, in `fn multiply_range_range()`
 - **[kb/issues/M-sparse-marginal-zero-multiplicity-nan.md](issues/M-sparse-marginal-zero-multiplicity-nan.md)**: skip zero-weight terms before the multiplication that gives NaN
-- **[kb/issues/M-mugration-tree-leaves-missing-from-metadata-rejected.md](issues/M-mugration-tree-leaves-missing-from-metadata-rejected.md)**: give tips without metadata the missing-trait profile and warn, as v0 does
 - **[kb/issues/M-timetree-method-anc-ignored.md](issues/M-timetree-method-anc-ignored.md)**: implement parsimony in timetree or remove `--method-anc` from it
 - **[kb/issues/M-optimize-short-branch-pruning-unimplemented.md](issues/M-optimize-short-branch-pruning-unimplemented.md)**: add the v0 post-loop short-branch pruning to optimize
 - **[kb/issues/M-dates-date-column-requires-exact-header-match.md](issues/M-dates-date-column-requires-exact-header-match.md)**: detect the date column as v0 does (leftmost header that contains `date`)
@@ -214,7 +213,6 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md](issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md)**: reconstruct sequences only for outputs that read mutations or sequences
 - **[kb/issues/N-io-mugration-probabilities-written-with-three-precisions.md](issues/N-io-mugration-probabilities-written-with-three-precisions.md)**: write mugration probabilities and entropy at full precision in every output
 - **[kb/issues/N-output-vocabulary-spelled-out-in-six-places.md](issues/N-output-vocabulary-spelled-out-in-six-places.md)**: derive every output list from one table of outputs
-- **[kb/issues/N-mugration-duplicates-ancestral-reconstruction.md](issues/N-mugration-duplicates-ancestral-reconstruction.md)**: rebuild mugration on ancestral reconstruction with an alphabet of trait states
 - **[kb/issues/N-clock-unnamed-root-after-reroot.md](issues/N-clock-unnamed-root-after-reroot.md)**: name new nodes in the clock pipeline after rerooting
 - **[kb/issues/N-io-gtr-json-omits-state-alphabet.md](issues/N-io-gtr-json-omits-state-alphabet.md)**: write the alphabet states into each sequence model of the GTR JSON
 - **[kb/issues/N-timetree-dates-not-required.md](issues/N-timetree-dates-not-required.md)**: stop early with a clear error when `timetree` gets no dates

@@ -186,7 +186,7 @@ tree at all.
 
 Use the substitution count of the edge from the marginal reconstruction,
 `fn ReconstructionRef::edge_sub_count`
-([packages/treetime/src/partition/marginal/reconstruction.rs#L242-L247](../../packages/treetime/src/partition/marginal/reconstruction.rs#L242-L247)),
+([packages/treetime/src/partition/marginal/reconstruction.rs#L212-L217](../../packages/treetime/src/partition/marginal/reconstruction.rs#L212-L217)),
 summed over the partitions of a run by `fn PartitionSet::edge_sub_count`
 ([packages/treetime/src/partition/set.rs#L94-L99](../../packages/treetime/src/partition/set.rs#L94-L99)).
 This is exact, and better than v0's `round(mutation_length * L)`

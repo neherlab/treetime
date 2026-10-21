@@ -5,7 +5,7 @@
 
 ## Current evidence
 
-`fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic()` [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L499-L506](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L499-L506) compares one-thread and four-thread results for a four-leaf tree with one nucleotide partition. It compares likelihood state and reconstructed node and edge data, so it exercises the parallel setup and indexed passes together.
+`fn test_marginal_sparse_parallel_pipeline_is_thread_count_deterministic()` [packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L500-L507](../../packages/treetime/src/ancestral/__tests__/test_marginal_sparse.rs#L500-L507) compares one-thread and four-thread results for a four-leaf tree with one nucleotide partition. It compares likelihood state and reconstructed node and edge data, so it exercises the parallel setup and indexed passes together.
 
 A failed leaf setup leaves no partial state: `fn attach_seqs_to_graph()` takes the node inputs by value, reads the graph without mutating it, and extends the partition only after every leaf succeeds [packages/treetime/src/partition/fitch/passes.rs#L53-L88](../../packages/treetime/src/partition/fitch/passes.rs#L53-L88). In production it runs only inside `fn create_fitch_partition()`, which builds a new partition and discards it on error.
 

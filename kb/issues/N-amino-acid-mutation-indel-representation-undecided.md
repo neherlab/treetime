@@ -8,7 +8,7 @@ The nucleotide mutation output is substitution-only, matching augur node-data. T
 ## Evidence
 
 - Amino-acid node-data chains substitutions with range-based indels: `fn collect_aa_cds_node_data()` [`packages/treetime/src/ancestral/aa.rs#L158-L204`](../../packages/treetime/src/ancestral/aa.rs#L158-L204) and `fn aa_mutation_strings()` [`packages/app-output/src/augur_node_data_ancestral.rs#L139-L147`](../../packages/app-output/src/augur_node_data_ancestral.rs#L139-L147). The substitution diff excludes gap positions, `fn is_reportable_sub()` [`packages/treetime/src/ancestral/aa.rs#L231-L234`](../../packages/treetime/src/ancestral/aa.rs#L231-L234), so gaps reach output only via the indel track.
-- The Auspice writer drops indels for the nucleotide track but not amino-acid tracks: `fn group_mutations()` [`packages/app-output/src/auspice.rs#L266-L280`](../../packages/app-output/src/auspice.rs#L266-L280).
+- The Auspice writer drops indels for the nucleotide track but not amino-acid tracks: `fn group_mutations()` [`packages/app-output/src/auspice.rs#L272-L286`](../../packages/app-output/src/auspice.rs#L272-L286).
 - `fn mutation_event_strings()` [`packages/treetime/src/seq/mutation.rs#L217-L233`](../../packages/treetime/src/seq/mutation.rs#L217-L233) expands a deletion into one `{state}{pos}-` token per residue (1-based), which is augur's positional gap-substitution form (`K100-`). An insertion becomes `-{pos}{state}` tokens.
 
 ## Open question
