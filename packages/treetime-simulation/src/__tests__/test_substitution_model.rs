@@ -20,8 +20,8 @@ mod tests {
   }
 
   #[test]
-  fn test_substitution_model_random_pi_sums_to_one_within_rounding_at_a_seed_three_ulps_below_one() {
-    let model = SubstitutionModel::random(1.0, &mut get_random_number_generator(15_997_397_837_458_979_626)).unwrap();
+  fn test_substitution_model_random_pi_sums_to_one_within_rounding_at_a_seed_four_ulps_below_one() {
+    let model = SubstitutionModel::random(1.0, &mut get_random_number_generator(4_508_739)).unwrap();
 
     pretty_assert_ulps_eq!(1.0, model.pi().sum(), max_ulps = 7);
   }
