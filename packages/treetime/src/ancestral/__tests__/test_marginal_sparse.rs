@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::alphabet::alphabet::Alphabet;
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, Mu};
@@ -12,11 +12,11 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::seq::composition::Composition;
   use crate::seq::mutation::Sub;
-  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{
     emitted_sequences_by_name, find_node_key_by_name, internal_node_keys, marginal_update_reconstruction,
     sparse_reconstruction,
   };
+  use crate::test_utils::{leaf_seq_inputs, make_nonuniform_gtr, run_sparse_marginal};
   use eyre::Report;
   use indoc::indoc;
   use ndarray::aview1;
@@ -79,32 +79,6 @@ mod tests {
         );
       }
     }
-  }
-
-  fn make_nonuniform_gtr() -> Result<GTR, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let n_states = alphabet.n_canonical();
-    GTR::builder()
-      .n_states(n_states)
-      .mu(Mu::FromMatrix(1.0))
-      .pi(array![0.2, 0.3, 0.15, 0.35])
-      .build()
-  }
-
-  fn run_sparse_marginal(
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &NodeNames,
-    aln: &[AlignmentRecord],
-    gtr: GTR,
-  ) -> Result<(f64, SparseReconstruction), Report> {
-    let alphabet = Alphabet::default();
-    let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
   }
 
   fn run_sparse_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {

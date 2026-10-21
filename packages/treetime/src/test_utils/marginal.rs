@@ -3,13 +3,12 @@ use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use crate::ancestral::mask::create_mask;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::gtr::get_gtr::{JC69Params, jc69};
-use crate::gtr::gtr::GTR;
+use crate::gtr::gtr::{GTR, Mu};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
 };
-use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::set::PartitionSet;
 use crate::partition::storage::sparse::SparseNodeState;
@@ -20,6 +19,7 @@ use crate::seq::alignment::{
 use crate::seq::sink::{SeqItem, SeqSink};
 use eyre::Report;
 use itertools::Itertools;
+use ndarray::array;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::LazyLock;
@@ -33,39 +33,78 @@ use treetime_primitives::{AlignmentRecord, LogLh, Seq, seq};
 
 pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
-pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
-  let nwk_parsed = nwk_read(newick.as_bytes())?;
-  let names = nwk_parsed.names;
-  let graph = nwk_parsed.graph;
-  let branch_lengths = nwk_parsed.branch_lengths;
-  let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
-    .into_iter()
-    .map(AlignmentRecord::from)
-    .collect();
+pub(crate) fn run_dense_marginal(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &NodeNames,
+  aln: &[AlignmentRecord],
+  gtr: GTR,
+) -> Result<(f64, DenseReconstruction), Report> {
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-  let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-  let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &())?;
-  Ok(log_lh.value())
+  let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
+  let (reconstruction, log_lh) =
+    DenseReconstruction::seeded(partition, gtr).marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+  Ok((log_lh.value(), reconstruction))
 }
 
-pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
-  let nwk_parsed = nwk_read(newick.as_bytes())?;
-  let names = nwk_parsed.names;
-  let graph = nwk_parsed.graph;
-  let branch_lengths = nwk_parsed.branch_lengths;
-  let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
-    .into_iter()
-    .map(AlignmentRecord::from)
-    .collect();
+pub(crate) fn run_sparse_marginal(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &NodeNames,
+  aln: &[AlignmentRecord],
+  gtr: GTR,
+) -> Result<(f64, SparseReconstruction), Report> {
   let alphabet = Alphabet::new(AlphabetName::Nuc)?;
+  let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
+  let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
+  let (reconstruction, log_lh) = SparseReconstruction::seeded(partition, gtr, node_states)
+    .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
+  Ok((log_lh.value(), reconstruction))
+}
 
-  let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
-  let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
+pub(crate) fn run_dense_marginal_with_newick(
+  newick: &str,
+  aln_str: &str,
+  gtr: &GTR,
+) -> Result<(f64, DenseReconstruction), Report> {
+  let NwkParse {
+    graph,
+    branch_lengths,
+    names,
+    ..
+  } = nwk_read(newick.as_bytes())?;
+  run_dense_marginal(&graph, &branch_lengths, &names, &nuc_records(aln_str)?, gtr.clone())
+}
 
-  let MarginalUpdate { log_lh, .. } =
-    partition.marginal_update(gtr, &graph, &branch_lengths_or_zero(&branch_lengths), &node_states)?;
-  Ok(log_lh.value())
+pub(crate) fn run_sparse_marginal_with_newick(
+  newick: &str,
+  aln_str: &str,
+  gtr: &GTR,
+) -> Result<(f64, SparseReconstruction), Report> {
+  let NwkParse {
+    graph,
+    branch_lengths,
+    names,
+    ..
+  } = nwk_read(newick.as_bytes())?;
+  run_sparse_marginal(&graph, &branch_lengths, &names, &nuc_records(aln_str)?, gtr.clone())
+}
+
+pub(crate) fn make_nonuniform_gtr() -> Result<GTR, Report> {
+  GTR::builder()
+    .n_states(NUC_ALPHABET.n_canonical())
+    .mu(Mu::FromMatrix(1.0))
+    .pi(array![0.2, 0.3, 0.15, 0.35])
+    .build()
+}
+
+fn nuc_records(aln_str: &str) -> Result<Vec<AlignmentRecord>, Report> {
+  Ok(
+    fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
+      .into_iter()
+      .map(AlignmentRecord::from)
+      .collect(),
+  )
 }
 
 pub(crate) fn marginal_update_reconstruction(

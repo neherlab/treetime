@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use super::super::test_marginal_analytical_support::tests::{
-    analytical_star_tree_likelihood, run_dense_marginal_get_log_lh, state_index,
-  };
+  use super::super::test_marginal_analytical_support::tests::{analytical_star_tree_likelihood, state_index};
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, Mu};
   use crate::pretty_assert_ulps_eq;
+  use crate::test_utils::run_dense_marginal_with_newick;
   use eyre::Report;
   use ndarray::array;
 
@@ -21,7 +20,7 @@ mod tests {
 
     let newick = "(A:0.1,B:0.1,C:0.1,D:0.1)root;";
     let aln = ">A\nA\n>B\nA\n>C\nA\n>D\nA\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -38,7 +37,7 @@ mod tests {
 
     let newick = "(A:0.2,B:0.2,C:0.2,D:0.2)root;";
     let aln = ">A\nA\n>B\nC\n>C\nG\n>D\nT\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -62,7 +61,7 @@ mod tests {
 
     let newick = "(A:0.15,B:0.15,C:0.15,D:0.15)root;";
     let aln = ">A\nT\n>B\nT\n>C\nG\n>D\nC\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())

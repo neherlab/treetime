@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
+  use crate::ancestral::__tests__::prop_marginal_support::tests::{
+    run_dense_marginal_for_input, run_sparse_marginal_for_input,
+  };
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
@@ -47,7 +49,7 @@ TCGGCCGTGTRTTG--
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (_, recon) = run_dense_marginal(&input)?;
+    let (_, recon) = run_dense_marginal_for_input(&input)?;
 
     let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();
@@ -66,7 +68,7 @@ TCGGCCGTGTRTTG--
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
-    let (_, recon) = run_sparse_marginal(&input)?;
+    let (_, recon) = run_sparse_marginal_for_input(&input)?;
 
     let (recon, log_lh_first) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let log_lh_first = log_lh_first.value();

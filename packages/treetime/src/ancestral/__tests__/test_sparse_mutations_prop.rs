@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::arb_marginal_input;
-  use crate::ancestral::__tests__::prop_marginal_support::tests::run_sparse_marginal;
+  use crate::ancestral::__tests__::prop_marginal_support::tests::run_sparse_marginal_for_input;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
   use crate::seq::mutation::{MutationTrack, stream_sequence_mutations};
@@ -20,7 +20,7 @@ mod tests {
       report_unknown in any::<bool>(),
     ) {
       let graph = nwk_read(input.newick.as_bytes()).unwrap().graph;
-      let (_, mut sparse) = run_sparse_marginal(&input).unwrap();
+      let (_, mut sparse) = run_sparse_marginal_for_input(&input).unwrap();
       if without_edge_fitch_subs {
         sparse.partition.obs_edges.values_mut().for_each(|edge| edge.set_fitch_subs(vec![]));
       }

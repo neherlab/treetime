@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::{arb_marginal_input, arb_marginal_input_small};
-  use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
+  use crate::ancestral::__tests__::prop_marginal_support::tests::{
+    run_dense_marginal_for_input, run_sparse_marginal_for_input,
+  };
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use ndarray::{Array2, aview1};
   use proptest::prelude::*;
@@ -57,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_prop_marginal_normalization_dense(input in arb_marginal_input_small()) {
-      let (log_lh, partitions) = run_dense_marginal(&input).unwrap();
+      let (log_lh, partitions) = run_dense_marginal_for_input(&input).unwrap();
 
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
@@ -77,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_prop_marginal_normalization_sparse(input in arb_marginal_input_small()) {
-      let (log_lh, partitions) = run_sparse_marginal(&input).unwrap();
+      let (log_lh, partitions) = run_sparse_marginal_for_input(&input).unwrap();
 
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be <= 0: {log_lh}");
@@ -93,14 +95,14 @@ mod tests {
 
     #[test]
     fn test_prop_marginal_normalization_dense_log_lh_finite(input in arb_marginal_input()) {
-      let (log_lh, _) = run_dense_marginal(&input).unwrap();
+      let (log_lh, _) = run_dense_marginal_for_input(&input).unwrap();
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
     }
 
     #[test]
     fn test_prop_marginal_normalization_sparse_log_lh_finite(input in arb_marginal_input()) {
-      let (log_lh, _) = run_sparse_marginal(&input).unwrap();
+      let (log_lh, _) = run_sparse_marginal_for_input(&input).unwrap();
       prop_assert!(log_lh.is_finite(), "Log-likelihood non-finite: {log_lh}");
       prop_assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
     }

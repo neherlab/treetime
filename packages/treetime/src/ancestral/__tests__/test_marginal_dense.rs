@@ -5,21 +5,18 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, Mu};
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction};
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::sample::SampleMode;
   use crate::pretty_assert_ulps_eq;
-  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{emitted_sequences_by_name, internal_node_keys};
+  use crate::test_utils::{make_nonuniform_gtr, run_dense_marginal};
   use eyre::Report;
   use indoc::indoc;
   use ndarray::prelude::*;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node_names::NodeNames;
 
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -42,31 +39,6 @@ mod tests {
         assert!(val >= -1e-15, "Row {row_idx}, col {col_idx} has negative value: {val}");
       }
     }
-  }
-
-  fn make_nonuniform_gtr() -> Result<GTR, Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let n_states = alphabet.n_canonical();
-    GTR::builder()
-      .n_states(n_states)
-      .mu(Mu::FromMatrix(1.0))
-      .pi(array![0.2, 0.3, 0.15, 0.35])
-      .build()
-  }
-
-  fn run_dense_marginal(
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &NodeNames,
-    aln: &[AlignmentRecord],
-    gtr: GTR,
-  ) -> Result<(f64, DenseReconstruction), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let recon = DenseReconstruction::seeded(partition, gtr);
-    let (recon, log_lh) = recon.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
   }
 
   fn run_dense_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {

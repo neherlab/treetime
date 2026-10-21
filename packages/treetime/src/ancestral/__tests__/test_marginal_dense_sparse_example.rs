@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
+  use crate::ancestral::__tests__::prop_marginal_support::tests::{
+    run_dense_marginal_for_input, run_sparse_marginal_for_input,
+  };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
   use eyre::Report;
@@ -39,8 +41,8 @@ ACGTACGTACGTACGC
   #[test]
   fn test_marginal_dense_sparse_example_gap_free_consistency() -> Result<(), Report> {
     let input = example_gap_free_input()?;
-    let (dense_log_lh, _) = run_dense_marginal(&input)?;
-    let (sparse_log_lh, _) = run_sparse_marginal(&input)?;
+    let (dense_log_lh, _) = run_dense_marginal_for_input(&input)?;
+    let (sparse_log_lh, _) = run_sparse_marginal_for_input(&input)?;
 
     pretty_assert_ulps_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-10);
     Ok(())

@@ -4,18 +4,16 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, Mu};
-  use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
+  use crate::partition::marginal::reconstruction::MarginalReconstruction;
   use crate::partition::marginal::sample::SampleMode;
   use crate::pretty_assert_ulps_eq;
   use crate::seq::mutation::Sub;
   use crate::test_utils::get_common_length;
-  use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{
     dense_reconstruction, emitted_sequences_by_name, find_node_key_by_name, internal_node_keys,
     marginal_update_reconstruction, sparse_reconstruction,
   };
+  use crate::test_utils::{run_dense_marginal, run_sparse_marginal};
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
@@ -82,35 +80,26 @@ mod tests {
     )
   }
 
-  fn run_dense_marginal(
+  fn run_dense_marginal_reconstruction(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, MarginalReconstruction), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let recon = MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr));
-    let (recon, log_lh) = marginal_update_reconstruction(recon, graph, &branch_lengths_or_zero(branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
+    let (log_lh, reconstruction) = run_dense_marginal(graph, branch_lengths, names, aln, gtr)?;
+    Ok((log_lh, MarginalReconstruction::Dense(reconstruction)))
   }
 
-  fn run_sparse_marginal(
+  fn run_sparse_marginal_reconstruction(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, MarginalReconstruction), Report> {
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-    let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(graph)?;
-    let recon = MarginalReconstruction::Sparse(SparseReconstruction::seeded(partition, gtr, node_states));
-    let (recon, log_lh) = marginal_update_reconstruction(recon, graph, &branch_lengths_or_zero(branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
+    let (log_lh, reconstruction) = run_sparse_marginal(graph, branch_lengths, names, aln, gtr)?;
+    Ok((log_lh, MarginalReconstruction::Sparse(reconstruction)))
   }
 
   #[test]
@@ -131,8 +120,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, _) = run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, _) = run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
@@ -157,8 +146,8 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (_, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
-    let (_, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
+    let (_, dense_partition) = run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (_, sparse_partition) = run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").ok_or_else(|| make_report!("Root node not found"))?;
     let ab_key = find_node_key_by_name(&graph, &names, "AB").ok_or_else(|| make_report!("AB node not found"))?;
@@ -215,8 +204,10 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, dense_partition) =
+      run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, sparse_partition) =
+      run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
@@ -280,8 +271,10 @@ mod tests {
       ..JC69Params::default()
     })?;
 
-    let (log_lh_dense, dense_partition) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
-    let (log_lh_sparse, sparse_partition) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
+    let (log_lh_dense, dense_partition) =
+      run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_dense)?;
+    let (log_lh_sparse, sparse_partition) =
+      run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_sparse)?;
 
     pretty_assert_ulps_eq!(log_lh_dense, log_lh_sparse, epsilon = 1e-10);
 
@@ -321,9 +314,11 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let x_key = find_node_key_by_name(&graph, &names, "X").expect("node X must exist");
 
-    let (_, dense) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
+    let (_, dense) =
+      run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
     let (dense, _) = marginal_update_reconstruction(dense, &graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let (_, sparse) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
+    let (_, sparse) =
+      run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, jc69(JC69Params::default())?)?;
 
     let expected = "ACNNGT";
     let dense_x = dense.node_sequence(&graph, false, x_key)?;
@@ -426,10 +421,7 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect();
 
-    let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, gtr);
-
-    let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
+    let (_, recon) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr)?;
 
     for (node_key, node_data) in &recon.node_states {
       if node_data.profile.dis.is_empty() {
@@ -462,7 +454,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (log_lh_scalar, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
+    let (log_lh_scalar, _) = run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
     let gtr_uniform = GTR::builder()
       .n_states(4)
@@ -470,7 +462,7 @@ mod tests {
       .pi(Array1::ones(4))
       .site_rates(Array1::ones(seq_len))
       .build()?;
-    let (log_lh_uniform, _) = run_sparse_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
+    let (log_lh_uniform, _) = run_sparse_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 
@@ -491,7 +483,7 @@ mod tests {
       alphabet: AlphabetName::Nuc,
       ..JC69Params::default()
     })?;
-    let (log_lh_scalar, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
+    let (log_lh_scalar, _) = run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_scalar)?;
 
     let gtr_uniform = GTR::builder()
       .n_states(4)
@@ -499,7 +491,7 @@ mod tests {
       .pi(Array1::ones(4))
       .site_rates(Array1::ones(seq_len))
       .build()?;
-    let (log_lh_uniform, _) = run_dense_marginal(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
+    let (log_lh_uniform, _) = run_dense_marginal_reconstruction(&graph, &branch_lengths, &names, &aln, gtr_uniform)?;
 
     pretty_assert_ulps_eq!(log_lh_scalar, log_lh_uniform, epsilon = 1e-10);
 
@@ -508,8 +500,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::dense( run_dense_marginal)]
-  #[case::sparse(run_sparse_marginal)]
+  #[case::dense( run_dense_marginal_reconstruction)]
+  #[case::sparse(run_sparse_marginal_reconstruction)]
   #[trace]
   fn test_marginal_site_rates_rejected_by_branch_length_contribution(#[case] #[notrace] run: MarginalRunner) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
@@ -538,10 +530,10 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::dense_longer( run_dense_marginal,  17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
-  #[case::dense_single( run_dense_marginal,  1,  "Number of site rates (1) differs from the number of sites in the partition (16)")]
-  #[case::sparse_longer(run_sparse_marginal, 17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
-  #[case::sparse_shorter(run_sparse_marginal, 15, "Number of site rates (15) differs from the number of sites in the partition (16)")]
+  #[case::dense_longer( run_dense_marginal_reconstruction,  17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
+  #[case::dense_single( run_dense_marginal_reconstruction,  1,  "Number of site rates (1) differs from the number of sites in the partition (16)")]
+  #[case::sparse_longer(run_sparse_marginal_reconstruction, 17, "Number of site rates (17) differs from the number of sites in the partition (16)")]
+  #[case::sparse_shorter(run_sparse_marginal_reconstruction, 15, "Number of site rates (15) differs from the number of sites in the partition (16)")]
   #[trace]
   fn test_marginal_site_rates_length_must_match_alignment(
     #[case] #[notrace] run: MarginalRunner,

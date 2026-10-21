@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
+  use crate::ancestral::__tests__::prop_marginal_support::tests::{
+    run_dense_marginal_for_input, run_sparse_marginal_for_input,
+  };
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -64,7 +66,7 @@ ACGTACGC
   fn test_marginal_normalization_example_dense() -> Result<(), Report> {
     let input = example_input()?;
     assert_example_alignment_shape(&input.alignment)?;
-    let (log_lh, partitions) = run_dense_marginal(&input)?;
+    let (log_lh, partitions) = run_dense_marginal_for_input(&input)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
@@ -97,7 +99,7 @@ ACGTACGC
   #[test]
   fn test_marginal_normalization_example_sparse() -> Result<(), Report> {
     let input = example_input()?;
-    let (log_lh, partitions) = run_sparse_marginal(&input)?;
+    let (log_lh, partitions) = run_sparse_marginal_for_input(&input)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 

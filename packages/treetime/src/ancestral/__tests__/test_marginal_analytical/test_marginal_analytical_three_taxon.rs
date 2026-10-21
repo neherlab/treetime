@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use super::super::test_marginal_analytical_support::tests::{
-    analytical_three_taxon_likelihood, run_dense_marginal_get_log_lh, state_index,
-  };
+  use super::super::test_marginal_analytical_support::tests::{analytical_three_taxon_likelihood, state_index};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::pretty_assert_ulps_eq;
+  use crate::test_utils::run_dense_marginal_with_newick;
   use eyre::Report;
 
   #[test]
@@ -25,7 +24,7 @@ mod tests {
 
     let newick = "((A:0.1,B:0.2)AB:0.15,C:0.25)root;";
     let aln = ">A\nA\n>B\nC\n>C\nG\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -55,7 +54,7 @@ mod tests {
 
           let newick = "((A:0.1,B:0.2)AB:0.15,C:0.25)root;";
           let aln = format!(">A\n{state_a}\n>B\n{state_b}\n>C\n{state_c}\n");
-          let actual_log_lh = run_dense_marginal_get_log_lh(newick, &aln, gtr.clone())?;
+          let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, &aln, &gtr)?;
 
           if (expected_log_lh - actual_log_lh).abs() >= 1e-7 {
             mismatch = Some((state_a, state_b, state_c, expected_log_lh, actual_log_lh));

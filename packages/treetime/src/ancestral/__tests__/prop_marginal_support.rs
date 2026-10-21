@@ -1,54 +1,30 @@
 #[cfg(test)]
 pub(super) mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::__tests__::prop_generators::input::MarginalTestInput;
-  use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
-  use crate::test_utils::get_common_length;
-  use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::{run_dense_marginal, run_sparse_marginal};
   use eyre::Report;
-  use treetime_graph::graph::Graph;
-  use treetime_io::nwk::nwk_read;
+  use treetime_io::nwk::{NwkParse, nwk_read};
 
-  pub(crate) fn run_dense_marginal(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
-    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-
-    let partition = PartitionMarginalDense::new(
-      alphabet,
-      &graph,
-      &leaf_seq_inputs(&graph, &names, input.alignment.clone()),
-    )?;
-    let recon = DenseReconstruction::seeded(partition, input.gtr.clone());
-    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
+  pub(crate) fn run_dense_marginal_for_input(input: &MarginalTestInput) -> Result<(f64, DenseReconstruction), Report> {
+    let NwkParse {
+      graph,
+      branch_lengths,
+      names,
+      ..
+    } = nwk_read(input.newick.as_bytes())?;
+    run_dense_marginal(&graph, &branch_lengths, &names, &input.alignment, input.gtr.clone())
   }
 
-  pub(crate) fn run_sparse_marginal(input: &MarginalTestInput) -> Result<(f64, SparseReconstruction), Report> {
-    let nwk_parsed = nwk_read(input.newick.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let alphabet = Alphabet::default();
-    let _ = get_common_length(&input.alignment)?;
-
-    let fitch = create_fitch_partition(
-      &graph,
-      alphabet,
-      leaf_seq_inputs(&graph, &names, input.alignment.clone()),
-    )?;
-    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let recon = SparseReconstruction::seeded(partition, input.gtr.clone(), node_states);
-    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
+  pub(crate) fn run_sparse_marginal_for_input(
+    input: &MarginalTestInput,
+  ) -> Result<(f64, SparseReconstruction), Report> {
+    let NwkParse {
+      graph,
+      branch_lengths,
+      names,
+      ..
+    } = nwk_read(input.newick.as_bytes())?;
+    run_sparse_marginal(&graph, &branch_lengths, &names, &input.alignment, input.gtr.clone())
   }
 }

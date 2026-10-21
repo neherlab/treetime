@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use super::super::test_marginal_analytical_support::tests::{
-    analytical_two_taxon_likelihood, run_dense_marginal_get_log_lh, state_index,
-  };
+  use super::super::test_marginal_analytical_support::tests::{analytical_two_taxon_likelihood, state_index};
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::gtr::gtr::{GTR, Mu};
   use crate::pretty_assert_ulps_eq;
+  use crate::test_utils::run_dense_marginal_with_newick;
   use eyre::Report;
   use ndarray::array;
 
@@ -21,7 +20,7 @@ mod tests {
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nA\n>B\nA\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -38,7 +37,7 @@ mod tests {
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nA\n>B\nT\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -62,7 +61,7 @@ mod tests {
 
     let newick = "(A:0.15,B:0.25)root;";
     let aln = ">A\nA\n>B\nC\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -88,7 +87,7 @@ mod tests {
 
     let newick = "(A:0.1,B:0.2)root;";
     let aln = ">A\nACG\n>B\nTCA\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())
@@ -105,7 +104,7 @@ mod tests {
 
     let newick = "(A:0.01,B:1.0)root;";
     let aln = ">A\nG\n>B\nG\n";
-    let actual_log_lh = run_dense_marginal_get_log_lh(newick, aln, gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_log_lh, actual_log_lh, epsilon = 1e-7);
     Ok(())

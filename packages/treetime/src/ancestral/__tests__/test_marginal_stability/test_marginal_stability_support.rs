@@ -1,25 +1,10 @@
 #[cfg(test)]
 pub(super) mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::gtr::GTR;
-  use crate::partition::fitch::passes::create_fitch_partition;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::{DenseReconstruction, SparseReconstruction};
   use crate::partition::storage::dense::DenseSeqDistribution;
   use crate::partition::storage::sparse::SparseSeqDistribution;
   use crate::pretty_assert_ulps_eq;
-  use crate::test_utils::leaf_seq_inputs;
-  use eyre::Report;
   use ndarray::aview1;
-  use std::sync::LazyLock;
-  use treetime_graph::graph::Graph;
-  use treetime_io::fasta::fasta_read;
-  use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlignmentRecord;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
-
-  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   pub(crate) fn assert_dense_profile_stable(profile: &DenseSeqDistribution, max_ulps: u32) {
     assert!(
@@ -52,52 +37,5 @@ pub(super) mod tests {
       pretty_assert_array_nonneg!(aview1(fixed_dis), epsilon = 1e-15);
       pretty_assert_ulps_eq!(aview1(fixed_dis).sum(), 1.0, max_ulps = max_ulps);
     }
-  }
-
-  pub(crate) fn run_dense_marginal_with_partitions(
-    newick: &str,
-    aln_str: &str,
-    gtr: GTR,
-  ) -> Result<(f64, DenseReconstruction), Report> {
-    let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-
-    let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, gtr);
-    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
-  }
-
-  pub(crate) fn run_sparse_marginal_with_partitions(
-    newick: &str,
-    aln_str: &str,
-    gtr: GTR,
-  ) -> Result<(f64, SparseReconstruction), Report> {
-    let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-
-    let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
-    let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
-    let recon = SparseReconstruction::seeded(partition, gtr, node_states);
-    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok((log_lh, recon))
   }
 }

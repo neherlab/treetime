@@ -16,7 +16,7 @@ mod tests {
 
     let newick = format!("(A:{t},B:{t})root;");
     let aln = ">A\nA\n>B\nT\n";
-    let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = 1e-6);
     Ok(())
@@ -30,7 +30,7 @@ mod tests {
 
     let newick = format!("(A:{t},B:{t})root;");
     let aln = ">A\nA\n>B\nT\n";
-    let actual_log_lh = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
+    let (actual_log_lh, _) = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = 1e-6);
     Ok(())
@@ -51,7 +51,7 @@ mod tests {
 
     let newick = format!("(A:{t},B:{t})root;");
     let aln = ">A\nA\n>B\nG\n";
-    let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = 1e-6);
     Ok(())
@@ -65,7 +65,7 @@ mod tests {
 
     let newick = format!("(A:{t},B:{t})root;");
     let aln = ">A\nACG\n>B\nTCA\n";
-    let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = 1e-6);
     Ok(())
@@ -79,7 +79,7 @@ mod tests {
 
     let newick = format!("(A:{t},B:{t},C:{t},D:{t})root;");
     let aln = ">A\nA\n>B\nC\n>C\nG\n>D\nT\n";
-    let actual_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let (actual_log_lh, _) = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
 
     pretty_assert_ulps_eq!(expected_equilibrium_log_lh, actual_log_lh, epsilon = 1e-6);
     Ok(())
@@ -92,7 +92,7 @@ mod tests {
 
     let newick = format!("(A:{t},B:{t})root;");
     let aln = ">A\nA\n>B\nA\n";
-    let log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+    let (log_lh, _) = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
 
     assert!(log_lh.is_finite(), "Log-likelihood should be finite at t={t}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive at t={t}");
@@ -116,8 +116,8 @@ mod tests {
       .map(|t| {
         let newick = format!("(A:{t},B:{t})root;");
         let aln = ">A\nACGTACGT\n>B\nTGCATGCA\n";
-        let dense_log_lh = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
-        let sparse_log_lh = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
+        let (dense_log_lh, _) = run_dense_marginal_with_newick(&newick, aln, &gtr)?;
+        let (sparse_log_lh, _) = run_sparse_marginal_with_newick(&newick, aln, &gtr)?;
         Ok::<_, Report>((*t, dense_log_lh, sparse_log_lh))
       })
       .collect::<Result<Vec<_>, _>>()?

@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::ancestral::__tests__::prop_generators::input::{MarginalTestInput, arb_marginal_input_no_gaps};
-  use crate::ancestral::__tests__::prop_marginal_support::tests::{run_dense_marginal, run_sparse_marginal};
+  use crate::ancestral::__tests__::prop_marginal_support::tests::{
+    run_dense_marginal_for_input, run_sparse_marginal_for_input,
+  };
   use proptest::prelude::*;
 
   proptest! {
@@ -14,9 +16,9 @@ mod tests {
     ) {
       let rerooted_newick = helpers::reroot_at_internal_node(&input.newick, node_idx).unwrap();
 
-      let lh1 = run_dense_marginal(&input).unwrap().0;
+      let lh1 = run_dense_marginal_for_input(&input).unwrap().0;
       let input2 = MarginalTestInput { newick: rerooted_newick, ..input };
-      let lh2 = run_dense_marginal(&input2).unwrap().0;
+      let lh2 = run_dense_marginal_for_input(&input2).unwrap().0;
 
       let diff = (lh1 - lh2).abs();
       prop_assert!(diff < 1e-6,
@@ -31,9 +33,9 @@ mod tests {
     ) {
       let rerooted_newick = helpers::reroot_at_internal_node(&input.newick, node_idx).unwrap();
 
-      let lh1 = run_sparse_marginal(&input).unwrap().0;
+      let lh1 = run_sparse_marginal_for_input(&input).unwrap().0;
       let input2 = MarginalTestInput { newick: rerooted_newick, ..input };
-      let lh2 = run_sparse_marginal(&input2).unwrap().0;
+      let lh2 = run_sparse_marginal_for_input(&input2).unwrap().0;
 
       let diff = (lh1 - lh2).abs();
       prop_assert!(diff < 1e-6,

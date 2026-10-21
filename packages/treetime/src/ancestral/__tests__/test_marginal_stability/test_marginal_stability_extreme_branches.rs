@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use super::super::test_marginal_stability_support::tests::{
-    assert_dense_profile_stable, assert_sparse_profile_stable, run_dense_marginal_with_partitions,
-    run_sparse_marginal_with_partitions,
+    assert_dense_profile_stable, assert_sparse_profile_stable,
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::test_utils::{run_dense_marginal_with_newick, run_sparse_marginal_with_newick};
   use eyre::Report;
 
   #[test]
@@ -13,7 +13,7 @@ mod tests {
     let newick = "(A:1e-10,B:1e-10)root;";
     let aln = ">A\nACGT\n>B\nACGT\n";
 
-    let (log_lh, partitions) = run_dense_marginal_with_partitions(newick, aln, gtr)?;
+    let (log_lh, partitions) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
@@ -30,7 +30,7 @@ mod tests {
     let newick = "(A:1e-10,B:1e-10)root;";
     let aln = ">A\nACGT\n>B\nACGT\n";
 
-    let (log_lh, partitions) = run_sparse_marginal_with_partitions(newick, aln, gtr)?;
+    let (log_lh, partitions) = run_sparse_marginal_with_newick(newick, aln, &gtr)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
@@ -47,7 +47,7 @@ mod tests {
     let newick = "(A:10.0,B:10.0)root;";
     let aln = ">A\nACGT\n>B\nTGCA\n";
 
-    let (log_lh, partitions) = run_dense_marginal_with_partitions(newick, aln, gtr)?;
+    let (log_lh, partitions) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
@@ -64,7 +64,7 @@ mod tests {
     let newick = "(A:10.0,B:10.0)root;";
     let aln = ">A\nACGT\n>B\nTGCA\n";
 
-    let (log_lh, partitions) = run_sparse_marginal_with_partitions(newick, aln, gtr)?;
+    let (log_lh, partitions) = run_sparse_marginal_with_newick(newick, aln, &gtr)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
@@ -81,7 +81,7 @@ mod tests {
     let newick = "(A:1e-10,B:10.0)root;";
     let aln = ">A\nACGT\n>B\nACGT\n";
 
-    let (log_lh, partitions) = run_dense_marginal_with_partitions(newick, aln, gtr)?;
+    let (log_lh, partitions) = run_dense_marginal_with_newick(newick, aln, &gtr)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 
@@ -98,7 +98,7 @@ mod tests {
     let newick = "(A:1e-10,B:10.0)root;";
     let aln = ">A\nACGT\n>B\nACGT\n";
 
-    let (log_lh, partitions) = run_sparse_marginal_with_partitions(newick, aln, gtr)?;
+    let (log_lh, partitions) = run_sparse_marginal_with_newick(newick, aln, &gtr)?;
     assert!(log_lh.is_finite(), "Log-likelihood is not finite: {log_lh}");
     assert!(log_lh <= 0.0, "Log-likelihood should be non-positive: {log_lh}");
 

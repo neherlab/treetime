@@ -1,19 +1,6 @@
 #[cfg(test)]
 pub(super) mod tests {
-  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::gtr::GTR;
-  use crate::partition::marginal::dense::partition::PartitionMarginalDense;
-  use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::test_utils::leaf_seq_inputs;
-  use eyre::Report;
-  use std::sync::LazyLock;
-  use treetime_graph::graph::Graph;
-  use treetime_io::fasta::fasta_read;
-  use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlignmentRecord;
-
-  static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
   pub(crate) fn analytical_two_taxon_likelihood(gtr: &GTR, obs_a: usize, obs_b: usize, t1: f64, t2: f64) -> f64 {
     let exp_qt1 = gtr.expQt(t1);
@@ -77,24 +64,5 @@ pub(super) mod tests {
       'T' => 3,
       _ => unreachable!("Invalid nucleotide: {c}"),
     }
-  }
-
-  pub(crate) fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
-    let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let graph = nwk_parsed.graph;
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let graph: Graph = graph;
-    let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
-      .into_iter()
-      .map(AlignmentRecord::from)
-      .collect();
-    let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-
-    let partition = PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?;
-    let recon = DenseReconstruction::seeded(partition, gtr);
-    let (recon, log_lh) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let log_lh = log_lh.value();
-    Ok(log_lh)
   }
 }
