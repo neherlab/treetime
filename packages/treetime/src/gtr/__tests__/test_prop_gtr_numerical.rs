@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::__tests__::generators::tests::generators::{arb_branch_len, arb_gtr_nuc, arb_profile_nuc};
   use crate::gtr::__tests__::prop_support::prop_assert_rows_sum_to;
+  use crate::test_utils::{arb_branch_len, arb_gtr_nuc, arb_profile_nuc};
   use proptest::prelude::*;
   use treetime_utils::{prop_assert_array_finite, prop_assert_array_nonneg};
 

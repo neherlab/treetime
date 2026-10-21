@@ -1,4 +1,3 @@
-mod generators;
 mod prop_support;
 mod rate_matrix;
 mod test_gm_gtr;

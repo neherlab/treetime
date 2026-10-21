@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::gtr::__tests__::generators::tests::generators::arb_gtr_nuc;
+  use crate::test_utils::arb_gtr_nuc;
   use ndarray::Array2;
   use proptest::prelude::*;
   use treetime_utils::{prop_assert_array_abs_diff_eq, prop_assert_array_upper_bounded};

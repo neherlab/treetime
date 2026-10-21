@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
-  use crate::gtr::__tests__::generators::tests::generators::{arb_gtr_nuc, arb_pi_nuc, arb_w_nuc};
   use crate::gtr::__tests__::prop_support::{prop_assert_columns_sum_to, prop_assert_detailed_balance};
   use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::gtr::{GTR, Mu};
+  use crate::test_utils::{arb_gtr_nuc, arb_pi_nuc, arb_w_nuc};
   use proptest::prelude::*;
   use treetime_utils::{
     prop_assert_abs_diff_eq, prop_assert_array_abs_diff_eq, prop_assert_array_diag_nonpositive,

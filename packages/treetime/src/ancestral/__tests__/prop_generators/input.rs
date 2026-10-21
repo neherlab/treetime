@@ -1,52 +1,12 @@
-use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::__tests__::prop_generators::alignment::{arb_alignment, arb_alignment_no_gaps};
 use crate::ancestral::__tests__::prop_generators::tree::{arb_tree_topology, taxa_names};
-use crate::gtr::gtr::{GTR, Mu};
-use ndarray::{Array1, Array2};
+use crate::gtr::gtr::GTR;
+use crate::test_utils::arb_gtr_nuc;
 use proptest::prelude::*;
 use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
 use treetime_io::nwk::nwk_read;
 use treetime_primitives::AlignmentRecord;
-
-fn arb_pi_nuc() -> impl Strategy<Value = Array1<f64>> {
-  prop::collection::vec(0.0_f64..0.5, 4).prop_map(|offsets| {
-    let bases = [0.5, 0.75, 1.0, 1.25];
-    let raw: Vec<f64> = bases.iter().zip(offsets.iter()).map(|(b, o)| b + o).collect();
-    let sum: f64 = raw.iter().sum();
-    Array1::from_vec(raw.iter().map(|x| x / sum).collect())
-  })
-}
-
-fn arb_w_nuc() -> impl Strategy<Value = Array2<f64>> {
-  prop::collection::vec(0.0_f64..1.0, 6).prop_map(|offsets| {
-    let bases = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5];
-    let mut w = Array2::zeros((4, 4));
-    let mut idx = 0;
-    for i in 0..4 {
-      for j in (i + 1)..4 {
-        w[[i, j]] = bases[idx] + offsets[idx];
-        w[[j, i]] = w[[i, j]];
-        idx += 1;
-      }
-    }
-    w
-  })
-}
-
-fn arb_gtr_nuc() -> impl Strategy<Value = GTR> {
-  (arb_pi_nuc(), arb_w_nuc(), 0.1_f64..5.0).prop_map(|(pi, w, mu)| {
-    let alphabet = Alphabet::new(AlphabetName::Nuc).expect("Nuc alphabet should be valid");
-    let n_states = alphabet.n_canonical();
-    GTR::builder()
-      .n_states(n_states)
-      .mu(Mu::FromMatrix(mu))
-      .W(w)
-      .pi(pi)
-      .build()
-      .expect("GTR construction should succeed with valid parameters")
-  })
-}
 
 #[derive(Debug, Clone)]
 pub(crate) struct MarginalTestInput {

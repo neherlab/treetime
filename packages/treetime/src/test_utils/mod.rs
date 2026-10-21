@@ -1,6 +1,7 @@
 mod alignment;
 mod clock;
 mod graph_lookup;
+mod gtr_generators;
 mod indel;
 mod marginal;
 mod sparse;
@@ -12,6 +13,7 @@ pub(crate) use alignment::{
 };
 pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name, node_keys_named};
+pub(crate) use gtr_generators::{arb_branch_len, arb_gtr_nuc, arb_pi_nuc, arb_profile_nuc, arb_w_nuc};
 pub(crate) use indel::{deletion, insertion};
 pub(crate) use marginal::{
   NUC_ALPHABET, ReconstructionMut, RecordingSeqSink, SingleReconstruction, ancestral_input_for_tree,
