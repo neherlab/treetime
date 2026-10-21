@@ -42,6 +42,41 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::binary(
+    "((A:1,B:1)N:1,C:1)root;",
+    &[("A", 2010.0), ("B", 2009.0), ("C", 2012.0), ("N", 2005.0), ("root", 2000.0)],
+    (1.0 + 4.0 * 3.0 + 5.0) / 3.0 + 2.0 * 3.0_f64.ln(),
+  )]
+  #[case::polytomy(
+    "(A:1,B:1,C:1)root;",
+    &[("A", 2010.0), ("B", 2009.0), ("C", 2012.0), ("root", 2000.0)],
+    (1.0 + 9.0 * 3.0) / 3.0 + 2.0 * 3.0_f64.ln(),
+  )]
+  #[trace]
+  fn test_mean_field_normalized_prior_at_its_point_times_is_the_kingman_density(
+    #[case] tree: &str,
+    #[case] times: &[(&str, f64)],
+    #[case] kingman_neg_log_density: f64,
+  ) -> Result<(), Report> {
+    let parsed = nwk_read(tree.as_bytes())?;
+    let names = parsed.names.clone();
+    let graph = parsed.graph;
+    let prior = point_coalescent_prior(&graph, &names, times, 3.0)?;
+
+    let mut factors = 0.0;
+    for &(name, time) in times {
+      let node = graph
+        .get_node(find_node_key_by_name(&graph, &names, name).expect("node must exist"))
+        .expect("node must exist");
+      factors += prior.node_contribution(node.key(), node.outbound().len(), time)?;
+    }
+
+    pretty_assert_abs_diff_eq!(kingman_neg_log_density, factors - prior.log_normalization(), epsilon = 1e-9);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::root(   "root", 2, (-0.5, 0.5))]
   #[case::leaf(   "A",    0, ( 0.0, 0.0))]
   #[trace]
