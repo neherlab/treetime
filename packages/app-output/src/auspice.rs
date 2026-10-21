@@ -303,16 +303,13 @@ fn node_trait(traits: &TreeTraits<'_>, key: GraphNodeKey, node_name: &str) -> Re
   for (state, probability) in izip!(traits.states.iter(), posterior.profile()) {
     ensure_finite(*probability, node_name, &format!("trait state '{state}' probability"))?;
   }
-  let confidence: BTreeMap<String, f64> = build_confidence_map(traits.states, posterior.profile())
-    .into_iter()
-    .map(|(state, probability)| (state, format_number(probability, 3)))
-    .collect();
+  let confidence = build_confidence_map(traits.states, posterior.profile());
   let entropy = posterior.entropy();
   ensure_finite(entropy, node_name, "trait entropy")?;
   if !confidence.is_empty() {
     fields.insert("confidence", to_value(&confidence)?);
   }
-  fields.insert("entropy", format_number(entropy, 3));
+  fields.insert("entropy", entropy);
   Ok((traits.attribute.to_owned(), Value::from(fields)))
 }
 

@@ -1,7 +1,9 @@
 use crate::annotated_graph::{AnnotatedTreeView, TreeTraits};
 use crate::output_plan::OutputSelection;
 use crate::table_output::table_create;
+use deser::Serialize;
 use eyre::Report;
+use itertools::Itertools;
 use std::io::Write;
 use std::iter::once;
 use std::path::Path;
@@ -26,8 +28,7 @@ pub(crate) fn write_traits_rows<W: Write>(tree: &AnnotatedTreeView<'_>, csv: &mu
   csv.write_record(["node", traits.attribute])?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    let name = graph.names[key].to_owned();
-    csv.write_record([name.as_str(), traits.state_name(key)?])
+    csv.write_record([&graph.names[key], traits.state_name(key)?])
   })
 }
 
@@ -40,10 +41,23 @@ pub(crate) fn write_trait_confidence_rows<W: Write>(
   csv.write_record(once("node").chain(traits.states.iter()))?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    let name = graph.names[key].to_owned();
     let profile = traits.posteriors[&key].profile();
-    csv.write_record(once(name).chain(profile.iter().map(|probability| format!("{probability:.6}"))))
+    let row = once(ConfidenceField::Name(&graph.names[key]))
+      .chain(
+        profile
+          .iter()
+          .map(|&probability| ConfidenceField::Probability(probability)),
+      )
+      .collect_vec();
+    csv.write_row(&row)
   })
+}
+
+#[derive(Serialize)]
+#[deser(untagged)]
+enum ConfidenceField<'a> {
+  Name(&'a str),
+  Probability(f64),
 }
 
 fn tree_traits<'a>(tree: &'a AnnotatedTreeView<'_>) -> Result<&'a TreeTraits<'a>, Report> {

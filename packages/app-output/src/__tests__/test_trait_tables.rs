@@ -84,8 +84,8 @@ mod tests {
 
     let expected = "\
       node,\"Congo, DR\",usa\n\
-      \"A,1\",0.250000,0.750000\n\
-      B,1.000000,0.000000\n\
+      \"A,1\",0.25,0.75\n\
+      B,1.0,0.0\n\
     ";
     assert_eq!(expected, String::from_utf8(buf)?);
     Ok(())

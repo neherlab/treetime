@@ -14,6 +14,7 @@ pub(super) mod tests {
   use deser_value::Map;
   use eyre::{Report, WrapErr};
   use maplit::{btreemap, btreeset};
+  use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::json;
@@ -22,6 +23,7 @@ pub(super) mod tests {
   use std::num::NonZeroUsize;
   use std::path::PathBuf;
   use tempfile::TempDir;
+  use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
   use treetime::progress::NoopProgress;
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
@@ -388,6 +390,27 @@ pub(super) mod tests {
     let expected = Map::from_iter([("confidence", country_trait.expect("the country trait is written"))]);
     let actual = &auspice_child(&confidence, "A").node_attrs.other;
     assert_eq!(&expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_auspice_writes_trait_probabilities_and_entropy_at_full_precision() -> Result<(), Report> {
+    let mut setup = mugration_setup()?;
+    let a = node_key(&setup.topology, "A");
+    let posterior = StatePosterior::new(array![0.123456789012, 0.876543210988])?;
+    let entropy = posterior.entropy();
+    setup.posteriors.insert(a, posterior);
+    let tree = auspice_tree_of(&mugration_graph(&setup, "country"), CommandKind::Mugration)?;
+
+    let actual = to_json_value(&auspice_child(&tree, "A").node_attrs.other)?;
+    let expected = json!({
+      "country": {
+        "value": "US",
+        "confidence": { "CH": 0.123456789012, "US": 0.876543210988 },
+        "entropy": entropy,
+      },
+    });
+    assert_eq!(expected, actual);
     Ok(())
   }
 
