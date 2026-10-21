@@ -24,6 +24,8 @@ For $x \ge 10$ the integrand is far from the jump, and the result is exact up to
 
 On the stack, the test asserts first-order convergence of the left error and a bound of `1e-1` at the finest grid; the bound is looser than `1e-6` and cites this issue in a `TODO` line. A test of this kind on `rust` needs the closed form, `fn gaussian_exponential_convolution_grid()` of `treetime-analytical`, as a dev-dependency of `treetime-distribution`.
 
+Fixed for the convolution of two functions on 2026-10-21 (`cc1693af9`, trapezoid rule over each overlap); this error was the main source of the low-signal clock rate bias, see [timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md). The divergence from v0 still needs the decision below.
+
 ## Fix direction
 
 > [!IMPORTANT]
