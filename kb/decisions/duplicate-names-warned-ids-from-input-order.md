@@ -1,17 +1,18 @@
 # Duplicate names are warned about, and identity comes from input order
 
-Sample and node names repeat in real-world input. TreeTime treats such input as degraded: it warns where detection is cheap, runs as if names were unique, and never uses names for internal identity.
+Sample and node names repeat in real-world input. TreeTime treats such input as degraded: it warns where detection is cheap, runs as if names were unique, never uses names for internal identity, and writes a unique name for every node of a tree.
 
 **Type**: Design rule for v1.
 
-**Status**: Approved on 2026-10-06.
+**Status**: Approved on 2026-10-06. Unique node names in the outputs approved on 2026-10-21.
 
 ## Rule
 
 - **Identity**: code identifies every entry by an ID derived from its input order: the order of records in a FASTA file, the order of nodes in a Newick tree. Code never identifies an entry by its name
-- **Names**: names are metadata. They pass from input to output unchanged, through a mapping from ID to name, and have no internal use. Outputs and screen reports restore names from IDs where they need them
-- **Pairing across inputs**: inputs that can only be paired by name (tree leaves, FASTA records, metadata rows) pair once, at the input of each command. The first entry of a name in a file wins, later entries of that name are dropped, and every node with that name receives the kept entry, so nodes that share a name share its data
-- **Names in arguments**: a name that the user types resolves to the first matching node in input order. `--reroot-tips` names resolve among leaves, because a reroot can remove internal nodes; other typed names, such as the prune lists, resolve among all nodes. Leaves that share a name share its position in the topology target order
+- **Names**: names are metadata, kept in a mapping from ID to name, and have no internal use. Outputs and screen reports restore names from IDs where they need them. Sample names in other inputs pass to the outputs unchanged
+- **Repeated node names**: the tree reader keeps the name of the first node of a repeated name in input order and gives each later node `<name>_<k>`, where `<k>` is the occurrence of the name, 2 for the second node, raised past every name already in use. Every output, log message and typed name uses these unique names, because outputs keyed by name, such as augur node data JSON and Auspice JSON, cannot hold two nodes with the same name
+- **Pairing across inputs**: inputs that can only be paired by name (tree leaves, FASTA records, metadata rows) pair once, at the input of each command. The first entry of a name in a file wins, later entries of that name are dropped, and every node with that input name receives the kept entry, so nodes that share an input name share its data, also after the reader renamed them
+- **Names in arguments**: a name that the user types resolves to the node with that unique name, so the input name resolves to the first node of that name in input order, and `<name>_<k>` to a renamed node. `--reroot-tips` names resolve among leaves, because a reroot can remove internal nodes; other typed names, such as the prune lists, resolve among all nodes. Leaves that share an input name share its position in the topology target order
 - **Detection cost**: TreeTime adds no search for duplicates that costs time or memory on every run. It warns only where a format, a pairing or an algorithm finds a duplicate at no or small cost, for example while it builds an index that it needs anyway
 - **Warning form**: the run result carries each warning as a typed entry, so the web and desktop apps show it as a notice next to the results, and the run log and the CLI show the same text
 - **Processing**: algorithms assume unique names, except where they can detect duplicates cheaply and avoid the corruption that duplicates cause
@@ -22,7 +23,7 @@ Sample and node names repeat in real-world input. TreeTime treats such input as 
 - Duplicates are a data error of the user, but they are inevitable in real-world data, so TreeTime expects them and handles them where it can
 - Data with duplicates is less reliable: duplicates often show a lack of attention to detail and come with other data problems, so the user must see a warning when TreeTime finds them
 - Good data must not pay for bad data. An exhaustive search for duplicates costs every user time and memory, also users whose data has none. A user who gives data whose samples cannot be resolved uniquely bears the result: output that can be wrong or corrupted
-- Identity by input order keeps a duplicate from corrupting the computation itself. Formats keyed by name, such as augur node data JSON, cannot hold two entries with the same name, so there the warning is the only remedy
+- Identity by input order keeps a duplicate from corrupting the computation itself. Unique node names keep it from corrupting the outputs: with repeated names, augur node data JSON keeps one entry per name and Auspice gives the repeats random suffixes
 
 ## v0 behavior
 
