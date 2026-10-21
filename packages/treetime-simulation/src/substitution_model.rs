@@ -4,6 +4,7 @@ use rand::Rng;
 use rand::distr::weighted::WeightedIndex;
 use rand_distr::{Distribution, Open01};
 use treetime_primitives::AsciiChar;
+use treetime_utils::array::ndarray::max_or;
 use treetime_utils::{make_error, make_report};
 
 pub const NUCLEOTIDES: [AsciiChar; 4] = [
@@ -53,6 +54,8 @@ impl SubstitutionModel {
       return make_error!("Substitution rate (mu) must be finite and non-negative, got {mu}");
     }
 
+    let pi_max = max_or(&pi, 0.0);
+    let pi = pi / pi_max;
     let pi_sum = pi.sum();
     let pi = pi / pi_sum;
     if !pi.iter().all(|value| value.is_finite() && *value > 0.0) {

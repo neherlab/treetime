@@ -4,6 +4,7 @@ mod tests {
   use eyre::Report;
   use helpers::{asymmetric, off_diagonal_ones, uniform_pi, with_pair};
   use ndarray::{Array1, Array2, array};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
@@ -33,6 +34,13 @@ mod tests {
     let expected_w = Array2::from_shape_fn((4, 4), |(row, column)| if row == column { 0.0 } else { off_diagonal });
     pretty_assert_ulps_eq!(expected_pi, model.pi().clone(), max_ulps = 1);
     pretty_assert_ulps_eq!(expected_w, model.w().clone(), max_ulps = 2);
+  }
+
+  #[test]
+  fn test_substitution_model_f81_accepts_weights_whose_sum_overflows() {
+    let expected = SubstitutionModel::jc69(1.0).unwrap();
+    let actual = SubstitutionModel::f81(array![1e308, 1e308, 1e308, 1e308], 1.0).unwrap();
+    assert_eq!(expected, actual);
   }
 
   #[rustfmt::skip]
