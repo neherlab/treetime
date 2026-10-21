@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 58f1f45732808456c12de4880f1a9654bbdca6ded909d66f35c65ea3841d9de0 # shrinks to spec = CaseSpec { seed: 16728650536634984346, sampling: [SampleBatch { tau: 0.0, count: 3 }, SampleBatch { tau: 0.6666666666666666, count: 3 }, SampleBatch { tau: 1.3333333333333333, count: 4 }, SampleBatch { tau: 2.0, count: 2 }], schedule: Exponential(ExponentialTc { tc0: 5.0, scale: 2.5 }), model: RandomGtr, mu: 0.003, length: 761 }
+cc ba4137bc61cfc4da72606476f02d573f989e8a2fba04d0a5a804636ef21807a3 # shrinks to spec = CaseSpec { seed: 15242536588371401067, sampling: [SampleBatch { tau: 0.0, count: 3 }, SampleBatch { tau: 0.6666666666666666, count: 3 }, SampleBatch { tau: 1.3333333333333333, count: 3 }, SampleBatch { tau: 2.0, count: 4 }], schedule: Piecewise(PiecewiseTc { breaks: [2.5, 3.0], values: [5.0, 0.5, 1.5] }), model: RandomGtr, mu: 0.003, length: 956 }
