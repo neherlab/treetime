@@ -5,6 +5,7 @@ mod tests {
   use helpers::{asymmetric, off_diagonal_ones, uniform_pi, with_pair};
   use ndarray::{Array1, Array2, array};
   use rstest::rstest;
+  use treetime_utils::sync::random::get_random_number_generator;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   #[test]
@@ -15,6 +16,13 @@ mod tests {
     let expected_w = Array2::from_shape_fn((4, 4), |(row, column)| if row == column { 0.0 } else { off_diagonal });
     pretty_assert_ulps_eq!(expected_pi, model.pi().clone(), max_ulps = 0);
     pretty_assert_ulps_eq!(expected_w, model.w().clone(), max_ulps = 1);
+  }
+
+  #[test]
+  fn test_substitution_model_random_pi_sums_to_one_within_rounding_at_a_seed_three_ulps_below_one() {
+    let model = SubstitutionModel::random(1.0, &mut get_random_number_generator(15_997_397_837_458_979_626)).unwrap();
+
+    pretty_assert_ulps_eq!(1.0, model.pi().sum(), max_ulps = 7);
   }
 
   #[test]

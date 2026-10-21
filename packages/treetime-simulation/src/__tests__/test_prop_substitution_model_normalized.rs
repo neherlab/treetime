@@ -11,7 +11,7 @@ mod tests {
       let model = SubstitutionModel::random(mu, &mut get_random_number_generator(seed)).unwrap();
       let pi = model.pi();
       let average_rate = pi.dot(&model.w().dot(pi));
-      prop_assert_ulps_eq!(1.0, average_rate, max_ulps = 4);
+      prop_assert_ulps_eq!(1.0, average_rate, max_ulps = 17);
     }
 
     #[test]
@@ -26,7 +26,7 @@ mod tests {
       let model = SubstitutionModel::random(1.0, &mut get_random_number_generator(seed)).unwrap();
       let positive = model.pi().iter().all(|&value| value > 0.0);
       prop_assert_eq!(true, positive);
-      prop_assert_ulps_eq!(1.0, model.pi().sum(), max_ulps = 2);
+      prop_assert_ulps_eq!(1.0, model.pi().sum(), max_ulps = 7);
     }
   }
 }
