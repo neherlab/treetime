@@ -5,13 +5,14 @@ mod tests {
   use helpers::run_and_serialize;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
+  use serde_json::Value;
   use treetime::cancel::NoopCancel;
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
   use treetime::progress::NoopProgress;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::io::json::{JsonPretty, json_read_str, json_value_read_str, json_write_str, to_json_value};
-  use treetime_utils::o;
+  use treetime_utils::{o, pretty_assert_ulps_eq};
   use util_augur_node_data_json::AugurNodeDataJsonTraits;
 
   #[test]
@@ -45,31 +46,31 @@ mod tests {
     "root": {{
       "country": "usa",
       "country_confidence": {{
-        "germany": 0.31787306601445664,
-        "usa": 0.6821269339855435
+        "germany": 0.3219171495641157,
+        "usa": 0.6780828504358842
       }},
-      "country_entropy": 0.6252558275846285
+      "country_entropy": 0.6283061142879484
     }}
   }},
   "models": {{
     "country": {{
-      "rate": 1.9605478705568704,
+      "rate": 1.5295225032725375,
       "alphabet": [
         "germany",
         "usa",
         "?"
       ],
       "equilibrium_probabilities": [
-        0.40794069765038415,
-        0.5920593023496159
+        0.41863862983617267,
+        0.5813613701638274
       ],
       "transition_matrix": [
         [
           0.0,
-          2.0701783432087786
+          2.054397761926173
         ],
         [
-          2.0701783432087786,
+          2.054397761926173,
           0.0
         ]
       ]
@@ -92,6 +93,37 @@ mod tests {
     );
 
     assert_eq!(expected, actual.trim());
+  }
+
+  #[test]
+  fn test_augur_node_data_mugration_model_and_root_match_v0() {
+    let actual = json_value_read_str(run_and_serialize(
+      "(A:0.1,B:0.2)root;",
+      &btreemap! { o!("A") => o!("usa"), o!("B") => o!("germany") },
+    ))
+    .unwrap();
+    let model = &actual["models"]["country"];
+    let root = &actual["nodes"]["root"]["country_confidence"];
+    let number = |value: &Value| value.as_f64().unwrap();
+
+    pretty_assert_ulps_eq!(1.5295225032725375, number(&model["rate"]), max_ulps = 2);
+    pretty_assert_ulps_eq!(
+      0.4186386298361726,
+      number(&model["equilibrium_probabilities"][0]),
+      max_ulps = 2
+    );
+    pretty_assert_ulps_eq!(
+      0.5813613701638275,
+      number(&model["equilibrium_probabilities"][1]),
+      max_ulps = 2
+    );
+    pretty_assert_ulps_eq!(
+      2.0543977619261726,
+      number(&model["transition_matrix"][0][1]),
+      max_ulps = 2
+    );
+    pretty_assert_ulps_eq!(0.3219171495641157, number(&root["germany"]), max_ulps = 2);
+    pretty_assert_ulps_eq!(0.6780828504358842, number(&root["usa"]), max_ulps = 2);
   }
 
   #[test]
