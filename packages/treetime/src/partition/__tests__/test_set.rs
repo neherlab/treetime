@@ -93,6 +93,7 @@ mod tests {
     use indoc::indoc;
     use itertools::Itertools;
     use std::collections::BTreeMap;
+    use treetime_graph::clades::{TipIds, graph_clade_keys};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
@@ -210,11 +211,17 @@ mod tests {
       })
     }
 
-    pub(super) fn clade_edge_log_lh(polytomy: &PolytomySet) -> Result<BTreeMap<(Vec<String>, u8), f64>, Report> {
+    pub(super) fn clade_edge_log_lh(polytomy: &PolytomySet) -> Result<BTreeMap<(Vec<&str>, u8), f64>, Report> {
       let PolytomySet { graph, names, set, .. } = polytomy;
+      let mut ids = TipIds::default();
+      let keys = graph_clade_keys(graph, names, &mut ids)?;
       let mut values = BTreeMap::new();
       for edge in graph.get_edges() {
-        let clade = leaf_names_below(graph, names, edge.target());
+        let clade = keys[&edge.target()]
+          .iter()
+          .map(|&id| ids.name(id))
+          .sorted()
+          .collect_vec();
         for (index, branch_length) in [(0_u8, 0.001), (1, 0.01), (2, 0.1)] {
           let log_lh = set.with_edge(edge.key(), |contributions| {
             evaluate_with_indels_log_lh_only(contributions, IndelTerm::new(0, 0.0), branch_length)
@@ -223,19 +230,6 @@ mod tests {
         }
       }
       Ok(values)
-    }
-
-    fn leaf_names_below(graph: &Graph, names: &NodeNames, key: GraphNodeKey) -> Vec<String> {
-      let node = &graph[key];
-      if node.is_leaf() {
-        return vec![names[key].to_owned()];
-      }
-      node
-        .outbound()
-        .iter()
-        .flat_map(|&edge_key| leaf_names_below(graph, names, graph[edge_key].target()))
-        .sorted()
-        .collect()
     }
 
     pub(super) fn updated_set(

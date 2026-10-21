@@ -42,7 +42,7 @@ mod tests {
     let [first, second] = split_at_gap_free_column(&whole)?;
     let whole = run_prune(dataset.tree(), &[whole])?;
     let split = run_prune(dataset.tree(), &[first, second])?;
-    assert_eq!(clades(&whole), clades(&split));
+    assert_eq!(clades(&whole)?, clades(&split)?);
     pretty_assert_map_abs_diff_eq!(
       branch_lengths_or_zero(&whole.branch_lengths),
       branch_lengths_or_zero(&split.branch_lengths),
@@ -59,9 +59,9 @@ mod tests {
     assert_eq!(
       (
         btreeset! {btreeset! {"A", "B"}, btreeset! {"A", "B", "C", "D"}},
-        clades(&forward)
+        clades(&forward)?
       ),
-      (clades(&forward), clades(&backward))
+      (clades(&forward)?, clades(&backward)?)
     );
     Ok(())
   }
@@ -75,7 +75,7 @@ mod tests {
     use eyre::Report;
     use maplit::btreeset;
     use std::collections::BTreeSet;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::clades::{TipIds, graph_clade_keys};
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, Seq};
 
@@ -128,23 +128,16 @@ mod tests {
       run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
     }
 
-    pub(super) fn clades(output: &PruneOutput) -> BTreeSet<BTreeSet<&str>> {
-      output
-        .graph
-        .get_internal_nodes()
-        .map(|node| leaf_names_below(output, node.key()))
-        .collect()
-    }
-
-    fn leaf_names_below(output: &PruneOutput, node_key: GraphNodeKey) -> BTreeSet<&str> {
-      if output.graph.is_leaf(node_key) {
-        return BTreeSet::from([&output.names[node_key]]);
-      }
-      output
-        .graph
-        .children_keys_of(&output.graph[node_key])
-        .flat_map(|(child, _)| leaf_names_below(output, child))
-        .collect()
+    pub(super) fn clades(output: &PruneOutput) -> Result<BTreeSet<BTreeSet<&str>>, Report> {
+      let mut ids = TipIds::default();
+      let keys = graph_clade_keys(&output.graph, &output.names, &mut ids)?;
+      Ok(
+        output
+          .graph
+          .get_internal_nodes()
+          .map(|node| keys[&node.key()].iter().map(|&id| ids.name(id)).collect())
+          .collect(),
+      )
     }
 
     pub(super) fn run_prune_empty(files: &[&[(&str, &str)]]) -> Result<PruneOutput, Report> {
