@@ -4,6 +4,7 @@ mod graph_lookup;
 mod gtr_generators;
 mod indel;
 mod marginal;
+mod progress;
 mod sparse;
 mod timetree;
 
@@ -23,8 +24,9 @@ pub(crate) use marginal::{
   run_sparse_marginal_with_newick, sequence_source, sparse_reconstruction, sparse_reconstruction_mut,
   sparse_topology_partition, sparse_topology_partitions,
 };
+pub(crate) use progress::RecordingLog;
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
-  FullPosterior, RecordingLog, constraint_expectation, empty_time_inference, full_posterior, marginal_timetree_params,
+  FullPosterior, constraint_expectation, empty_time_inference, full_posterior, marginal_timetree_params,
   parent_edge_key, point_coalescent_prior, point_date_constraints, unknown_branches,
 };
