@@ -47,10 +47,10 @@ mod tests {
     "root": {{
       "country": "usa",
       "country_confidence": {{
-        "germany": 0.3219171495641157,
+        "germany": 0.32191714956411566,
         "usa": 0.6780828504358842
       }},
-      "country_entropy": 0.6283061142879484
+      "country_entropy": 0.6283061142879482
     }}
   }},
   "models": {{

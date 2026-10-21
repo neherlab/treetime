@@ -9,5 +9,6 @@ mod test_jc_distance;
 mod test_prop_gtr_eigen;
 mod test_prop_gtr_expqt;
 mod test_prop_gtr_numerical;
+mod test_prop_gtr_propagate;
 mod test_prop_gtr_q;
 mod test_refinement;

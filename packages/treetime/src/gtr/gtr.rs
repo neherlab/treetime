@@ -2,7 +2,7 @@ use crate::make_error;
 use bon::bon;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
-use ndarray::prelude::*;
+use ndarray::{Array1, Array2, ArrayView1, ArrayView2, Axis};
 use ndarray_linalg::Eigh;
 use ndarray_linalg::UPLO::Lower;
 use num_traits::abs;
@@ -153,30 +153,40 @@ impl GTR {
 
   pub(crate) fn evolve(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let res = match &self.site_rates {
-      None => {
-        let Qt = self.expQt(t);
-        profile.dot(&Qt.t())
-      },
       Some(rates) => {
-        let transformed = profile.dot(&self.v_inv.t());
-        let scaled = &transformed * &self.exp_site_rate_eigvals(rates, t);
-        clamp_min(&scaled.dot(&self.v.t()), 0.0)
+        let exp_lt = self.exp_site_rate_eigvals(rates, t);
+        in_eigenbasis(profile, &self.v_inv.t(), &exp_lt.view(), &self.v.t())
       },
+      None if profile.nrows() < self.eigvals.len() => {
+        let exp_lt = self.exp_rate_eigvals(1.0, t);
+        in_eigenbasis(
+          profile,
+          &self.v_inv.t(),
+          &exp_lt.view().insert_axis(Axis(0)),
+          &self.v.t(),
+        )
+      },
+      None => profile.dot(&self.expQt(t).t()),
     };
     if return_log { res.mapv(f64::ln) } else { res }
   }
 
   pub(crate) fn propagate_profile(&self, profile: &Array2<f64>, t: f64, return_log: bool) -> Array2<f64> {
     let res = match &self.site_rates {
-      None => {
-        let Qt = self.expQt(t);
-        profile.dot(&Qt)
-      },
       Some(rates) => {
-        let transformed = profile.dot(&self.v);
-        let scaled = &transformed * &self.exp_site_rate_eigvals(rates, t);
-        clamp_min(&scaled.dot(&self.v_inv), 0.0)
+        let exp_lt = self.exp_site_rate_eigvals(rates, t);
+        in_eigenbasis(profile, &self.v.view(), &exp_lt.view(), &self.v_inv.view())
       },
+      None if profile.nrows() < self.eigvals.len() => {
+        let exp_lt = self.exp_rate_eigvals(1.0, t);
+        in_eigenbasis(
+          profile,
+          &self.v.view(),
+          &exp_lt.view().insert_axis(Axis(0)),
+          &self.v_inv.view(),
+        )
+      },
+      None => profile.dot(&self.expQt(t)),
     };
     if return_log { res.mapv(f64::ln) } else { res }
   }
@@ -244,6 +254,16 @@ fn has_equal_positive_exchangeabilities(W: &Array2<f64>) -> bool {
   off_diagonal
     .next()
     .is_some_and(|first| first > 0.0 && off_diagonal.all(|w| w == first))
+}
+
+fn in_eigenbasis(
+  profile: &Array2<f64>,
+  into_eigenbasis: &ArrayView2<'_, f64>,
+  exp_lt: &ArrayView2<'_, f64>,
+  out_of_eigenbasis: &ArrayView2<'_, f64>,
+) -> Array2<f64> {
+  let scaled = profile.dot(into_eigenbasis) * exp_lt;
+  clamp_min(&scaled.dot(out_of_eigenbasis), 0.0)
 }
 
 #[expect(
