@@ -30,6 +30,8 @@ Three sets of the simulated validation subset (`const` coalescent), log marginal
 
 Find the first-order source by refining one part of the backward pass at a time (FFT spacing, message grid, the hard edges of branch distributions near zero length, the coalescent factor), then fix it there. Raising `GRID_POINTS` alone is expensive: the untrimmed pipeline at 4800 points takes 1851 s of CPU and 7.9 GB on `data/sc2/4500`, against 164 s and 1.0 GB at 300 points.
 
+Source found on 2026-10-21: the Riemann sum of the FFT convolution at grid ends with large density, fixed in `cc1693af9`; see [timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md). The measurements above predate the fix.
+
 > [!IMPORTANT]
 > **Investigation required.** Which operation contributes the first-order term. The tests of the marginal likelihood and of the clock rate step pass at $10^{-6}$ against closed forms on small fixtures with fine branch grids, so the source appears with the coarse 300-point messages of real runs.
 
