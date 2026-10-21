@@ -3781,26 +3781,6 @@
           "more": ""
         },
         {
-          "key": "gtr_iterations",
-          "label": "GTR iterations",
-          "flag": "--gtr-iterations",
-          "group": "Substitution model",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 0,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "GTR_ITERATIONS"
-          ],
-          "conflicts": [],
-          "help": "Number of outer GTR refinement iterations.",
-          "more": "Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior. Mugration uses 5 by default."
-        },
-        {
           "key": "site_specific_gtr",
           "label": "Site specific GTR",
           "flag": "--site-specific-gtr",
@@ -3881,7 +3861,7 @@
           ],
           "conflicts": [],
           "help": "Use dense representation (stores full probability vectors at each position)",
-          "more": "When combined with `--model infer`, marginal reconstruction runs twice: once to populate profiles for GTR inference, and again with the inferred GTR."
+          "more": ""
         },
         {
           "key": "gap_fill",
@@ -4912,26 +4892,6 @@
           "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
-          "key": "gtr_iterations",
-          "label": "GTR iterations",
-          "flag": "--gtr-iterations",
-          "group": "Substitution model",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 0,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "GTR_ITERATIONS"
-          ],
-          "conflicts": [],
-          "help": "Number of outer GTR refinement iterations.",
-          "more": "Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior."
-        },
-        {
           "key": "site_specific_gtr",
           "label": "Site specific GTR",
           "flag": "--site-specific-gtr",
@@ -4994,7 +4954,7 @@
           ],
           "conflicts": [],
           "help": "Use dense representation (stores full probability vectors at each position)",
-          "more": "When combined with `--model infer`, marginal reconstruction runs twice: once to populate profiles for GTR inference, and again with the inferred GTR."
+          "more": ""
         },
         {
           "key": "gap_fill",

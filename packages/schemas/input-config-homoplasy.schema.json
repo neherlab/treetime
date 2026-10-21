@@ -69,7 +69,7 @@
       "x-cli-flag": "--method-anc"
     },
     "dense": {
-      "description": "Use dense representation (stores full probability vectors at each position)\n\nWhen combined with `--model infer`, marginal reconstruction runs twice: once to populate\nprofiles for GTR inference, and again with the inferred GTR.",
+      "description": "Use dense representation (stores full probability vectors at each position)",
       "type": "boolean",
       "x-unset": true,
       "x-cli-flag": "--dense"
@@ -103,14 +103,6 @@
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--ignore-missing-alns"
-    },
-    "gtr_iterations": {
-      "description": "Number of outer GTR refinement iterations.\n\nRe-estimates the rate matrix from marginal posterior profiles after each\nreconstruction pass. Only effective with `--model infer`. Default 0 preserves\nthe current single-pass behavior.",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 0,
-      "default": 0,
-      "x-cli-flag": "--gtr-iterations"
     },
     "site_specific_gtr": {
       "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",

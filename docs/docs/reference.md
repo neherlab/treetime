@@ -907,8 +907,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
 * `--dense <DENSE>` — Use dense representation (stores full probability vectors at each position)
 
-   When combined with `--model infer`, marginal reconstruction runs twice: once to populate profiles for GTR inference, and again with the inferred GTR.
-
   Possible values: `true`, `false`
 
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
@@ -1076,11 +1074,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Possible values: `mean`, `median`
 
-* `--gtr-iterations <GTR_ITERATIONS>` — Number of outer GTR refinement iterations.
-
-   Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior. Mugration uses 5 by default.
-
-  Default value: `0`
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
@@ -1348,8 +1341,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 * `--dense <DENSE>` — Use dense representation (stores full probability vectors at each position)
 
-   When combined with `--model infer`, marginal reconstruction runs twice: once to populate profiles for GTR inference, and again with the inferred GTR.
-
   Possible values: `true`, `false`
 
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
@@ -1369,11 +1360,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
    Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
-* `--gtr-iterations <GTR_ITERATIONS>` — Number of outer GTR refinement iterations.
-
-   Re-estimates the rate matrix from marginal posterior profiles after each reconstruction pass. Only effective with `--model infer`. Default 0 preserves the current single-pass behavior.
-
-  Default value: `0`
 * `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
 
    'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere. 'all': sample from the posterior at every node.

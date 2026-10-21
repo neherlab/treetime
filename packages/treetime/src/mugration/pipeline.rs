@@ -1,12 +1,11 @@
 use crate::alphabet::state_alphabet::StateAlphabet;
-use crate::ancestral::plan::fit_marginal;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::error::OperationError;
 use crate::gtr::gtr::{GTR, Mu};
 use crate::gtr::infer_gtr::common::InferGtrOptions;
-use crate::gtr::refinement::{GtrRefinement, RefinementRate};
+use crate::gtr::refinement::{GtrRefinement, refine_gtr};
 use crate::mugration::leaf_observations::leaf_observations;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
 use crate::partition::marginal::discrete::state_posterior::StatePosterior;
@@ -129,13 +128,10 @@ pub fn run(
       pc: params.pc,
       ..InferGtrOptions::default()
     },
-    rate: RefinementRate::Optimize {
-      scale: params.sampling_bias_correction,
-    },
+    sampling_bias_correction: params.sampling_bias_correction,
   };
   let (gtr, MarginalUpdate { node_states, .. }) =
-    fit_marginal(&partition, gtr, &(), Some(&refinement), &graph, &branch_lengths, log)
-      .map_err(OperationError::classify)?;
+    refine_gtr(&partition, gtr, &(), &refinement, &graph, &branch_lengths, log).map_err(OperationError::classify)?;
 
   let posteriors = partition
     .state_posteriors(&graph, &node_states)

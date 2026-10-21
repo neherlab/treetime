@@ -5,7 +5,6 @@ mod tests {
   use crate::ancestral::plan::{ReconstructionPlan, resolve_plan};
   use crate::error::OperationError;
   use crate::gtr::get_gtr::GtrModelName;
-  use crate::gtr::refinement::GtrRefinement;
   use crate::partition::create::Representation;
   use crate::partition::marginal::sample::SampleMode;
   use pretty_assertions::assert_eq;
@@ -32,28 +31,6 @@ mod tests {
       panic!("marginal method must resolve to a marginal plan");
     };
     assert_eq!(expected_dense, matches!(representation, Representation::Dense));
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::infer_with_iterations(      3, GtrModelName::Infer, Some(GtrRefinement::keep_rate(3)))]
-  #[case::infer_without_iterations(   0, GtrModelName::Infer, None                             )]
-  #[case::named_model_with_iterations(3, GtrModelName::JC69,  None                             )]
-  #[trace]
-  fn test_plan_marginal_gtr_refinement_gate(
-    #[case] gtr_iterations: usize,
-    #[case] model: GtrModelName,
-    #[case] expected: Option<GtrRefinement>,
-  ) {
-    let params = AncestralParams {
-      model,
-      gtr_iterations,
-      ..helpers::params(MethodAncestral::Marginal)
-    };
-    let Ok(ReconstructionPlan::Marginal { gtr_refinement, .. }) = resolve_plan(&params) else {
-      panic!("marginal method must resolve to a marginal plan");
-    };
-    assert_eq!(expected, gtr_refinement);
   }
 
   #[test]
@@ -111,7 +88,6 @@ mod tests {
         include_leaves: false,
         report_ambiguous: true,
         impute_missing_data: false,
-        gtr_iterations: 0,
         site_specific_gtr: false,
         seed: 0,
         sample_from_profile: SampleMode::Argmax,

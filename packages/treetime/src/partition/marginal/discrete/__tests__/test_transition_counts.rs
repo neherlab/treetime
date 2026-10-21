@@ -75,7 +75,7 @@ mod tests {
     use crate::gtr::gtr::{GTR, Mu};
     use crate::gtr::infer_gtr::common::MutationCounts;
     use crate::partition::marginal::discrete::partition::{PartitionMarginalDiscrete, StateObservation};
-    use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
+    use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate, TransitionCounts};
     use crate::test_utils::find_node_key_by_name;
     use eyre::Report;
     use itertools::{iproduct, izip};

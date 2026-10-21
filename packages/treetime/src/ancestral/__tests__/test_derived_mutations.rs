@@ -141,11 +141,7 @@ mod tests {
     }
 
     pub(super) const fn marginal(representation: Representation, model: GtrModelName) -> ReconstructionPlan {
-      ReconstructionPlan::Marginal {
-        representation,
-        model,
-        gtr_refinement: None,
-      }
+      ReconstructionPlan::Marginal { representation, model }
     }
 
     pub(super) fn engine_and_derived_subs(

@@ -11,22 +11,19 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::fitch(       MethodAncestral::Parsimony, None,        0)]
-  #[case::dense(       MethodAncestral::Marginal,  Some(true),  0)]
-  #[case::sparse(      MethodAncestral::Marginal,  Some(false), 0)]
-  #[case::dense_refit( MethodAncestral::Marginal,  Some(true),  2)]
-  #[case::sparse_refit(MethodAncestral::Marginal,  Some(false), 2)]
+  #[case::fitch( MethodAncestral::Parsimony, None       )]
+  #[case::dense( MethodAncestral::Marginal,  Some(true) )]
+  #[case::sparse(MethodAncestral::Marginal,  Some(false))]
   #[trace]
   fn test_ancestral_two_alignments_equal_two_separate_runs(
     #[case] method: MethodAncestral,
     #[case] dense: Option<bool>,
-    #[case] gtr_iterations: usize,
   ) -> Result<(), Report> {
     let blocks = column_blocks()?;
-    let (joint, joint_tracks) = reconstruct(method, dense, gtr_iterations, &blocks)?;
+    let (joint, joint_tracks) = reconstruct(method, dense, &blocks)?;
     let separate = blocks
       .iter()
-      .map(|block| reconstruct(method, dense, gtr_iterations, slice::from_ref(block)))
+      .map(|block| reconstruct(method, dense, slice::from_ref(block)))
       .collect::<Result<Vec<_>, Report>>()?;
 
     assert_eq!(
@@ -110,7 +107,6 @@ mod tests {
     pub(super) fn reconstruct(
       method: MethodAncestral,
       dense: Option<bool>,
-      gtr_iterations: usize,
       blocks: &[Block],
     ) -> Result<(AncestralOutput, Vec<usize>), Report> {
       let alphabet = Alphabet::default();
@@ -127,7 +123,6 @@ mod tests {
         include_leaves: true,
         report_ambiguous: true,
         impute_missing_data: false,
-        gtr_iterations,
         site_specific_gtr: false,
         seed: 0,
         sample_from_profile: SampleMode::Argmax,

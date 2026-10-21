@@ -9,7 +9,7 @@ mod tests {
   #[case::words_of_the_key(  "clock_rate",            "Clock rate")]
   #[case::fixed_label(       "clock_std_dev",         "Clock rate std. dev.")]
   #[case::abbreviation(      "output_tree_nwk",       "Output tree Newick")]
-  #[case::leading_acronym(   "gtr_iterations",        "GTR iterations")]
+  #[case::leading_acronym(   "vcf_reference",         "VCF reference")]
   #[trace]
   fn test_setting_label(#[case] key: &str, #[case] expected: &str) {
     assert_eq!(expected, setting_label(key));

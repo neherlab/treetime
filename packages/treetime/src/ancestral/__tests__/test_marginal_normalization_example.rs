@@ -111,7 +111,7 @@ ACGTACGC
         "Sparse node profile log-lh is not finite: {}",
         profile.log_lh.value()
       );
-      for var_pos in profile.variable.values() {
+      for (_, var_pos) in &profile.variable {
         pretty_assert_array_finite!(aview1(var_pos.dis));
         pretty_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-14);
         assert_abs_diff_eq!(1.0, aview1(var_pos.dis).sum(), epsilon = 1e-8);
@@ -129,7 +129,7 @@ ACGTACGC
         "Sparse edge message log-lh is not finite: {}",
         profile.log_lh.value()
       );
-      for var_pos in profile.variable.values() {
+      for (_, var_pos) in &profile.variable {
         pretty_assert_array_finite!(aview1(var_pos.dis));
         pretty_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-14);
         assert_abs_diff_eq!(1.0, aview1(var_pos.dis).sum(), epsilon = 1e-8);

@@ -13,7 +13,7 @@ mod tests {
   };
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::shared::update::MarginalPasses;
+  use crate::partition::marginal::shared::update::TransitionCounts;
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;

@@ -33,7 +33,6 @@ def available_cpus():
 # variant -> (input tree, extra flags)
 ANCESTRAL = {
     'marginal': ('exact', []),
-    'marginal-gtr3': ('exact', ['--gtr-iterations', '3']),
     'parsimony': ('exact', ['--method-anc', 'parsimony']),
 }
 KEEP_TOPOLOGY = ['--no-collapse-short-branches', '--no-merge-siblings', '--no-flip-parent-child']

@@ -3626,9 +3626,6 @@ export type AncestralConfig = {
   method_anc?: MethodAncestral;
   /**
    * Use dense representation (stores full probability vectors at each position)
-   *
-   * When combined with `--model infer`, marginal reconstruction runs twice: once to populate
-   * profiles for GTR inference, and again with the inferred GTR.
    */
   dense?: boolean;
   /**
@@ -3915,14 +3912,6 @@ export type AncestralConfig = {
    */
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
   /**
-   * Number of outer GTR refinement iterations.
-   *
-   * Re-estimates the rate matrix from marginal posterior profiles after each
-   * reconstruction pass. Only effective with `--model infer`. Default 0 preserves
-   * the current single-pass behavior. Mugration uses 5 by default.
-   */
-  gtr_iterations?: number;
-  /**
    * Use site-specific GTR model with per-site equilibrium frequencies.
    *
    * Requires `--model infer` and `--dense true`. Incompatible with sequence compression
@@ -4020,9 +4009,6 @@ export type HomoplasyConfig = {
   method_anc?: MethodAncestral;
   /**
    * Use dense representation (stores full probability vectors at each position)
-   *
-   * When combined with `--model infer`, marginal reconstruction runs twice: once to populate
-   * profiles for GTR inference, and again with the inferred GTR.
    */
   dense?: boolean;
   /**
@@ -4060,14 +4046,6 @@ export type HomoplasyConfig = {
    * TreeTime v0.
    */
   ignore_missing_alns?: boolean;
-  /**
-   * Number of outer GTR refinement iterations.
-   *
-   * Re-estimates the rate matrix from marginal posterior profiles after each
-   * reconstruction pass. Only effective with `--model infer`. Default 0 preserves
-   * the current single-pass behavior.
-   */
-  gtr_iterations?: number;
   /**
    * Use site-specific GTR model with per-site equilibrium frequencies.
    *

@@ -26,7 +26,7 @@ COALS = ['const', 'exp', 'piecewise']
 # own marker and a legend). Colors follow the entity: a prior keeps its color in every figure.
 BLUE, ORANGE, AQUA = '#2a78d6', '#eb6834', '#1baf7a'
 PRIOR_STYLE = {'none': (BLUE, 'o'), 'opt': (ORANGE, 's'), 'skyline': (AQUA, '^')}
-ANC_STYLE = {'marginal': (BLUE, 'o'), 'marginal-gtr3': (ORANGE, 's'), 'parsimony': (AQUA, '^')}
+ANC_STYLE = {'marginal': (BLUE, 'o'), 'parsimony': (AQUA, '^')}
 L_STYLE = {1000: (BLUE, 'o'), 10000: (ORANGE, 's')}
 INK, INK2, GRID, SURFACE = '#0b0b0b', '#52514e', '#e6e5e0', '#fcfcfb'
 # Ordinal blue ramp (steps 250/400/550/700, validated --ordinal): substitution rate, light = low.

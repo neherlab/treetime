@@ -6,7 +6,7 @@ use crate::partition::marginal::shared::data::{DenseInputs, count_transitions_de
 use crate::partition::marginal::shared::normalize::{
   divide_out, forward_log_lh_add_normalization, forward_log_lh_remove_child, normalize_from_log, normalize_inplace,
 };
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, TransitionCounts};
 use crate::partition::storage::dense::{
   DenseEdgeBackward, DenseEdgeEstimate, DenseEdgeForward, DenseLeafObs, DenseNodeState, DenseSeqDistribution,
   DenseSeqInfo,
@@ -64,7 +64,9 @@ impl<P: IndexedPartition> MarginalPasses for P {
     gtr.check_site_count(kind.site_count())?;
     indexed_forward(self.inputs(), gtr, kind, graph, branch_lengths, node_states, backward)
   }
+}
 
+impl<P: IndexedPartition> TransitionCounts for P {
   fn count_transitions(
     &self,
     gtr: &GTR,

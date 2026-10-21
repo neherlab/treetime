@@ -9,7 +9,7 @@ mod tests {
   use crate::partition::fitch::passes::create_fitch_partition;
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
-  use crate::partition::marginal::shared::update::MarginalPasses;
+  use crate::partition::marginal::shared::update::TransitionCounts;
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;

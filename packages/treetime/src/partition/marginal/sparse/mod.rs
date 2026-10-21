@@ -3,7 +3,6 @@ mod __tests__;
 
 pub(crate) mod backward;
 pub(crate) mod candidate_sites;
-pub(crate) mod count;
 pub(crate) mod forward;
 pub(crate) mod message;
 pub(crate) mod mutations;

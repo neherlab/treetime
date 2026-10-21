@@ -26,7 +26,7 @@ pub(super) mod tests {
       profile.log_lh.value()
     );
 
-    for var_pos in profile.variable.values() {
+    for (_, var_pos) in &profile.variable {
       pretty_assert_array_finite!(aview1(var_pos.dis));
       pretty_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-15);
       pretty_assert_ulps_eq!(aview1(var_pos.dis).sum(), 1.0, max_ulps = max_ulps);

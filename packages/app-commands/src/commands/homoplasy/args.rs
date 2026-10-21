@@ -31,7 +31,6 @@ pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> An
     include_leaves: false,
     report_ambiguous: true,
     impute_missing_data: args.impute_missing_data,
-    gtr_iterations: args.gtr_iterations,
     site_specific_gtr: args.site_specific_gtr,
     seed,
     sample_from_profile: args.sample_from_profile,
@@ -121,9 +120,6 @@ pub struct TreetimeHomoplasyArgsRaw {
   pub method_anc: MethodAncestralCli,
 
   /// Use dense representation (stores full probability vectors at each position)
-  ///
-  /// When combined with `--model infer`, marginal reconstruction runs twice: once to populate
-  /// profiles for GTR inference, and again with the inferred GTR.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   pub dense: Option<bool>,
 
@@ -154,17 +150,6 @@ pub struct TreetimeHomoplasyArgsRaw {
   /// TreeTime v0.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub ignore_missing_alns: bool,
-
-  /// Number of outer GTR refinement iterations.
-  ///
-  /// Re-estimates the rate matrix from marginal posterior profiles after each
-  /// reconstruction pass. Only effective with `--model infer`. Default 0 preserves
-  /// the current single-pass behavior.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value_t = 0, help_heading = "Substitution model")
-  )]
-  pub gtr_iterations: usize,
 
   /// Use site-specific GTR model with per-site equilibrium frequencies.
   ///

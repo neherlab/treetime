@@ -6,8 +6,6 @@ use crate::ancestral::partition::AncestralPartition;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::gtr::gtr::GTR;
-use crate::gtr::refinement::{GtrRefinement, refine_gtr};
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
@@ -48,8 +46,6 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
     MethodAncestral::Marginal => Ok(ReconstructionPlan::Marginal {
       representation: Representation::resolve(params.dense),
       model: params.model,
-      gtr_refinement: (params.gtr_iterations > 0 && params.model == GtrModelName::Infer)
-        .then(|| GtrRefinement::keep_rate(params.gtr_iterations)),
     }),
   }
 }
@@ -149,11 +145,7 @@ pub(crate) fn reconstruct_partition(
     )?
     .pop()
     .ok_or_else(|| make_internal_report!("Fitch reconstruction lost its partition")),
-    ReconstructionPlan::Marginal {
-      representation,
-      model,
-      gtr_refinement,
-    } => {
+    ReconstructionPlan::Marginal { representation, model } => {
       checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
       let reconstruction = build_marginal_partition(
         *representation,
@@ -166,17 +158,7 @@ pub(crate) fn reconstruct_partition(
         log,
       )?;
       checkpoint(cancel, stages, "Marginal reconstruction", 0.4)?;
-      reconstruct_marginal(
-        graph,
-        reconstruction,
-        gtr_refinement.as_ref(),
-        branch_lengths,
-        options,
-        rng,
-        cancel,
-        stages,
-        log,
-      )
+      reconstruct_marginal(graph, reconstruction, branch_lengths, options, rng, cancel, stages, log)
     },
   }
 }
@@ -187,7 +169,6 @@ pub(crate) enum ReconstructionPlan {
   Marginal {
     representation: Representation,
     model: GtrModelName,
-    gtr_refinement: Option<GtrRefinement>,
   },
 }
 
@@ -224,7 +205,6 @@ fn reconstruct_fitch(
 fn reconstruct_marginal(
   graph: &Graph,
   reconstruction: MarginalReconstruction,
-  gtr_refinement: Option<&GtrRefinement>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   options: &ReconstructionOptions,
   rng: &mut dyn Rng,
@@ -232,7 +212,7 @@ fn reconstruct_marginal(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
-  let reconstruction = fit_reconstruction(reconstruction, gtr_refinement, graph, branch_lengths, log)?;
+  let reconstruction = fit_reconstruction(reconstruction, graph, branch_lengths)?;
   checkpoint(cancel, stages, "Reconstructing sequences", 0.6)?;
   let sampled = reconstruction.sample_sequences(graph, options.sample_mode, rng)?;
   Ok(AncestralPartition::Marginal {
@@ -255,10 +235,8 @@ impl ReconstructionOptions {
 
 fn fit_reconstruction(
   reconstruction: MarginalReconstruction,
-  refinement: Option<&GtrRefinement>,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
   Ok(match reconstruction {
     MarginalReconstruction::Sparse(SparseReconstruction {
@@ -267,8 +245,8 @@ fn fit_reconstruction(
       node_states,
       ..
     }) => {
-      let (gtr, MarginalUpdate { node_states, edges, .. }) =
-        fit_marginal(&partition, gtr, &node_states, refinement, graph, branch_lengths, log)?;
+      let MarginalUpdate { node_states, edges, .. } =
+        partition.marginal_update(&gtr, graph, branch_lengths, &node_states)?;
       MarginalReconstruction::Sparse(SparseReconstruction {
         partition,
         gtr,
@@ -277,8 +255,7 @@ fn fit_reconstruction(
       })
     },
     MarginalReconstruction::Dense(DenseReconstruction { partition, gtr, .. }) => {
-      let (gtr, MarginalUpdate { node_states, edges, .. }) =
-        fit_marginal(&partition, gtr, &(), refinement, graph, branch_lengths, log)?;
+      let MarginalUpdate { node_states, edges, .. } = partition.marginal_update(&gtr, graph, branch_lengths, &())?;
       MarginalReconstruction::Dense(DenseReconstruction {
         partition,
         gtr,
@@ -287,25 +264,6 @@ fn fit_reconstruction(
       })
     },
   })
-}
-
-pub(crate) fn fit_marginal<P: MarginalPasses>(
-  partition: &P,
-  gtr: GTR,
-  input: &P::BackwardInput,
-  refinement: Option<&GtrRefinement>,
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  log: &dyn LogSink,
-) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report>
-where
-  P::Node: Clone,
-{
-  let update = partition.marginal_update(&gtr, graph, branch_lengths, input)?;
-  match refinement {
-    None => Ok((gtr, update)),
-    Some(refinement) => refine_gtr(partition, gtr, update, refinement, graph, branch_lengths, log),
-  }
 }
 
 fn checkpoint(cancel: &dyn Cancel, stages: &dyn StageSink, stage: &str, fraction: f64) -> Result<(), Report> {

@@ -35,16 +35,6 @@ pub trait MarginalPasses {
     backward: &BTreeMap<GraphEdgeKey, Self::Backward>,
   ) -> Result<MarginalForward<Self::Node, Self::Forward, Self::Estimate>, Report>;
 
-  fn count_transitions(
-    &self,
-    gtr: &GTR,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, Self::Node>,
-    backward: &BTreeMap<GraphEdgeKey, Self::Backward>,
-    forward: &BTreeMap<GraphEdgeKey, Self::Forward>,
-  ) -> Result<MutationCounts, Report>;
-
   fn marginal_update(
     &self,
     gtr: &GTR,
@@ -80,6 +70,18 @@ pub trait MarginalPasses {
     let root_key = graph.get_exactly_one_root()?.key();
     Ok(self.get_log_lh(node_states, root_key))
   }
+}
+
+pub trait TransitionCounts: MarginalPasses {
+  fn count_transitions(
+    &self,
+    gtr: &GTR,
+    graph: &Graph,
+    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    node_states: &BTreeMap<GraphNodeKey, Self::Node>,
+    backward: &BTreeMap<GraphEdgeKey, Self::Backward>,
+    forward: &BTreeMap<GraphEdgeKey, Self::Forward>,
+  ) -> Result<MutationCounts, Report>;
 }
 
 #[derive(Clone, Debug)]

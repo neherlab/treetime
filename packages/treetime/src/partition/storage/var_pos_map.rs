@@ -70,10 +70,6 @@ impl VarPosMap {
   pub(crate) fn keys(&self) -> impl Iterator<Item = &usize> {
     self.entries.iter().map(|(pos, _, _)| pos)
   }
-
-  pub(crate) fn values(&self) -> impl Iterator<Item = VarPos<'_>> {
-    self.into_iter().map(|(_, value)| value)
-  }
 }
 
 type Entry = (usize, AsciiChar, SiteProfile);

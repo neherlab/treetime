@@ -2160,7 +2160,7 @@
         "dense": {
           "anyOf": [
             {
-              "description": "Use dense representation (stores full probability vectors at each position)\n\nWhen combined with `--model infer`, marginal reconstruction runs twice: once to populate\nprofiles for GTR inference, and again with the inferred GTR.",
+              "description": "Use dense representation (stores full probability vectors at each position)",
               "type": "boolean",
               "x-unset": true
             },
@@ -2547,21 +2547,6 @@
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
         },
-        "gtr_iterations": {
-          "anyOf": [
-            {
-              "description": "Number of outer GTR refinement iterations.\n\nRe-estimates the rate matrix from marginal posterior profiles after each\nreconstruction pass. Only effective with `--model infer`. Default 0 preserves\nthe current single-pass behavior. Mugration uses 5 by default.",
-              "type": "integer",
-              "format": "uint",
-              "minimum": 0,
-              "default": 0
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
         "site_specific_gtr": {
           "anyOf": [
             {
@@ -2806,7 +2791,7 @@
         "dense": {
           "anyOf": [
             {
-              "description": "Use dense representation (stores full probability vectors at each position)\n\nWhen combined with `--model infer`, marginal reconstruction runs twice: once to populate\nprofiles for GTR inference, and again with the inferred GTR.",
+              "description": "Use dense representation (stores full probability vectors at each position)",
               "type": "boolean",
               "x-unset": true
             },
@@ -2866,21 +2851,6 @@
               "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)\ninstead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching\nTreeTime v0.",
               "type": "boolean",
               "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "gtr_iterations": {
-          "anyOf": [
-            {
-              "description": "Number of outer GTR refinement iterations.\n\nRe-estimates the rate matrix from marginal posterior profiles after each\nreconstruction pass. Only effective with `--model infer`. Default 0 preserves\nthe current single-pass behavior.",
-              "type": "integer",
-              "format": "uint",
-              "minimum": 0,
-              "default": 0
             },
             {
               "type": "string",

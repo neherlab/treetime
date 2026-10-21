@@ -64,7 +64,6 @@ pub fn reconstruct_aa(
     let plan = ReconstructionPlan::Marginal {
       representation,
       model: gtr_model,
-      gtr_refinement: None,
     };
     let partition = reconstruct_partition(
       graph,

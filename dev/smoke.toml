@@ -225,11 +225,6 @@ datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--method-anc=marginal --impute-missing-data"
 
 [[ancestral]]
-variant = "gtr-iterations-3"
-datasets = ["flu/h3n2/20", "rsv/a/20"]
-args = "--method-anc=marginal --gtr-iterations=3"
-
-[[ancestral]]
 variant = "site-specific-gtr"
 datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal --dense=true --site-specific-gtr"

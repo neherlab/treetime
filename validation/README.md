@@ -82,8 +82,8 @@ Inputs (`inputs.py`, written to `data/.../inputs/`) are divergence trees on the 
 `realized` (true parent-child differences / L), `rate` (realized times lognormal(0, 0.25) per branch) and `perturbed`
 (exact times lognormal(0, 0.3) per branch).
 
-- `ancestral`: `exact` tree; marginal, marginal with `--gtr-iterations 3`, parsimony. Metrics: per-site error of
-  internal sequences (by node age), error of pi, W and mu of the inferred GTR.
+- `ancestral`: `exact` tree; marginal, parsimony. Metrics: per-site error of internal sequences (by node age), error
+  of pi, W and mu of the inferred GTR.
 - `timetree`: `realized` tree, alignment, `--clock-filter 0`; core variants `<root>-<prior>-<clock>` with root
   `keep`/`reroot`, coalescent prior `none`/`opt`/`skyline`, clock rate `est`/`fixed` (true mu). Metrics: clock rate,
   root date, internal-node date bias and RMSE (by node age), root recovery, Tc error and coverage, 90% CI coverage

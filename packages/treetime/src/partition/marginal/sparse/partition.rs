@@ -1,10 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
-use crate::gtr::infer_gtr::common::MutationCounts;
 use crate::partition::marginal::sample::{Resolve, SampleMode};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
-use crate::partition::marginal::sparse::count::count_transitions_sparse;
 use crate::partition::marginal::sparse::reconstruct::{
   map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
 };
@@ -261,26 +259,6 @@ impl MarginalPasses for PartitionMarginalSparse {
   ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
     gtr.check_site_count(self.length)?;
     forward::process_forward_indexed(self, gtr, graph, branch_lengths, node_states, backward)
-  }
-
-  fn count_transitions(
-    &self,
-    gtr: &GTR,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
-  ) -> Result<MutationCounts, Report> {
-    count_transitions_sparse(
-      gtr,
-      self.total_length,
-      graph,
-      branch_lengths,
-      node_states,
-      backward,
-      forward,
-    )
   }
 }
 
