@@ -1,6 +1,6 @@
 # Grids near the coordinate resolution break mass and survival invariants
 
-Time distributions live on calendar coordinates, where the unit in the last place (ulp) of a date near 2000 is $u = 2^{-42} \approx 2.3 \cdot 10^{-13}$ years. When a grid spacing or a tail decay scale comes close to this resolution, the mass model (`struct MassProfile` in `packages/treetime-distribution/src/distribution_ops/mass_profile.rs`) and the survival functions of the coalescent prior lose three invariants. Each cell of the mass model has the width between its end coordinates as the grid stores them after rounding ([packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L62](../../packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L62)). This rule makes the cubic Hermite survival exact in regular cells, and it causes two of the three defects below.
+Time distributions live on calendar coordinates, where the unit in the last place (ulp) of a date near 2000 is $u = 2^{-42} \approx 2.3 \cdot 10^{-13}$ years. When a grid spacing or a tail decay scale comes close to this resolution, the mass model (`struct MassProfile` in `packages/treetime-distribution/src/distribution_ops/mass_profile.rs`) and the survival functions of the coalescent prior lose three invariants. Each cell of the mass model has the width between its end coordinates as the grid stores them after rounding ([packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L62](../../packages/treetime-distribution/src/distribution_ops/mass_profile.rs#L62)). This rule causes two of the three defects below.
 
 ## Zero-width cells
 
@@ -14,7 +14,7 @@ When the grid spacing is below half an ulp, neighboring grid points round to the
 - the exact survival there is $1 / (1 + 10^{15} H) = 9.995 \cdot 10^{-6}$
 - the upper quantile lies $9.2 \cdot 10^{-15}$ past the end point, which rounds to the end point, and the interpolant reads 0 there
 
-The error is about $10^{-5}$, far above the bound `SURVIVAL_INTERPOLATION_ERROR` $= 10^{-8}$.
+The error is about $10^{-5}$. Since 2026-10-21 the survival functions interpolate linearly between fixed probability levels, with an error bound of the step between levels ($\ge 2 \cdot 10^{-9}$ in the far tails), so the error here no longer exceeds the stated bound by orders of magnitude, but the cutoff still omits the mass beyond the rounded end.
 
 ## Mass changes under negation and translation
 
