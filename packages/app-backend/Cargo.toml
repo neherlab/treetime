@@ -22,6 +22,7 @@ app-commands = { workspace = true, features = ["clap"] }
 app-datasets = { workspace = true }
 app-output = { workspace = true }
 treetime = { workspace = true }
+treetime-graph = { workspace = true }
 treetime-grid = { workspace = true }
 treetime-io = { workspace = true }
 treetime-primitives = { workspace = true }

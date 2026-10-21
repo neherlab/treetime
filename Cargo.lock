@@ -171,6 +171,7 @@ dependencies = [
  "strum_macros",
  "tempfile",
  "treetime",
+ "treetime-graph",
  "treetime-grid",
  "treetime-io",
  "treetime-primitives",

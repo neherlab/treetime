@@ -12,15 +12,16 @@ use itertools::Itertools;
 use schemars::JsonSchema;
 use std::collections::BTreeMap;
 use std::path::Path;
+use treetime_graph::clades::{CladeNode, TipIds, clade_keys, first_node_by_key};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 
 pub fn matched_ancestors(first: &ResultTree, second: &ResultTree) -> Vec<(usize, usize)> {
   let mut ids = TipIds::default();
-  let first_keys = clade_keys(first, &mut ids);
-  let second_keys = clade_keys(second, &mut ids);
-  let second_nodes = first_node_by_key(&second_keys);
-  first_node_by_key(&first_keys)
+  let first_keys = result_clade_keys(first, &mut ids);
+  let second_keys = result_clade_keys(second, &mut ids);
+  let second_nodes = first_node_by_index(&second_keys);
+  first_node_by_index(&first_keys)
     .into_iter()
     .filter(|&(_, index)| !first.nodes[index].is_tip())
     .filter_map(|(key, index)| {
@@ -141,51 +142,26 @@ pub fn clade_in_trees<'a>(
   others: impl IntoIterator<Item = &'a ResultTree>,
 ) -> Vec<Option<usize>> {
   let mut ids = TipIds::default();
-  let keys = clade_keys(tree, &mut ids);
+  let keys = result_clade_keys(tree, &mut ids);
   others
     .into_iter()
     .map(|other| {
-      let other_keys = clade_keys(other, &mut ids);
-      first_node_by_key(&other_keys).get(keys[node].as_slice()).copied()
+      let other_keys = result_clade_keys(other, &mut ids);
+      first_node_by_index(&other_keys).get(keys[node].as_slice()).copied()
     })
     .collect()
 }
 
-pub fn clade_keys(tree: &ResultTree, ids: &mut TipIds) -> Vec<Vec<usize>> {
-  let mut keys = vec![vec![]; tree.nodes.len()];
-  for index in (0..tree.nodes.len()).rev() {
-    let node = &tree.nodes[index];
-    let mut key = if node.is_tip() {
-      vec![ids.id(&node.name)]
-    } else {
-      node
-        .children
-        .iter()
-        .flat_map(|&child| keys[child].iter().copied())
-        .collect()
-    };
-    key.sort_unstable();
-    keys[index] = key;
-  }
-  keys
+fn result_clade_keys<'a>(tree: &'a ResultTree, ids: &mut TipIds<'a>) -> Vec<Vec<usize>> {
+  let nodes = tree.nodes.iter().map(|node| CladeNode {
+    parent: node.parent,
+    tip: node.is_tip().then_some(node.name.as_str()),
+  });
+  clade_keys(nodes, ids)
 }
 
-#[derive(Default)]
-pub struct TipIds(BTreeMap<String, usize>);
-
-impl TipIds {
-  fn id(&mut self, name: &str) -> usize {
-    let next = self.0.len();
-    *self.0.entry(name.to_owned()).or_insert(next)
-  }
-}
-
-pub fn first_node_by_key(keys: &[Vec<usize>]) -> BTreeMap<&[usize], usize> {
-  let mut first = BTreeMap::new();
-  for (index, key) in keys.iter().enumerate() {
-    first.entry(key.as_slice()).or_insert(index);
-  }
-  first
+fn first_node_by_index(keys: &[Vec<usize>]) -> BTreeMap<&[usize], usize> {
+  first_node_by_key(keys.iter().map(Vec::as_slice).enumerate())
 }
 
 fn read_result_tree(out_dir: &Path, output_files: &[OutputFile]) -> Result<Option<ResultTree>, Report> {
