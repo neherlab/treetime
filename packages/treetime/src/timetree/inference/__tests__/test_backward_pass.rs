@@ -95,7 +95,7 @@ mod tests {
 
     let d: f64 = (2015.0 - 3.0) - (2014.0 - 2.5);
     let expected = 0.5 * (std::f64::consts::PI / BRANCH_PRECISION).ln() - BRANCH_PRECISION * d * d / 4.0 - 0.3 - 0.7;
-    let actual = log_marginal_likelihood(&backward, graph.root_key()?)?.expect("root has a distribution");
+    let actual = log_marginal_likelihood(&backward, graph.root_key()?, None)?.expect("root has a distribution");
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())
   }

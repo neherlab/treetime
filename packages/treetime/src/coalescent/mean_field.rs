@@ -38,6 +38,7 @@ pub(crate) struct CoalescentPrior {
   own_integral: BTreeMap<GraphNodeKey, OwnIntegral>,
   rate_before: f64,
   rate_after: f64,
+  log_normalization: f64,
 }
 
 impl CoalescentPrior {
@@ -59,12 +60,14 @@ impl CoalescentPrior {
       .try_collect()?;
     let mut inverse_tc_integral = vec![0.0; grid.len()];
     let mut expected_integral = vec![0.0; grid.len()];
+    let mut pair_integral = 0.0;
     for i in 1..grid.len() {
       let dt = grid[i] - grid[i - 1];
       let rate = cell_rate[i - 1];
       inverse_tc_integral[i] = inverse_tc_integral[i - 1] + dt * rate;
       expected_integral[i] =
         expected_integral[i - 1] + dt * rate * f64::midpoint(expectation.expected[i - 1], expectation.expected[i]);
+      pair_integral += dt * rate * f64::midpoint(expectation.expected_pairs[i - 1], expectation.expected_pairs[i]);
     }
     let rate_before = inverse_tc(grid[0])?;
     let rate_after = inverse_tc(grid[grid.len() - 1])?;
@@ -79,7 +82,7 @@ impl CoalescentPrior {
       .iter()
       .map(|(key, node)| (*key, OwnIntegral::new(&node.survival, &rates)))
       .collect();
-    Ok(Self {
+    let prior = Self {
       expectation: Arc::clone(expectation),
       tc: tc.clone(),
       cell_rate,
@@ -88,7 +91,21 @@ impl CoalescentPrior {
       own_integral,
       rate_before,
       rate_after,
+      log_normalization: pair_integral,
+    };
+    let own_offset: f64 = expectation
+      .nodes
+      .values()
+      .map(|node| node.weight.powi(2) * prior.inverse_tc_integral_at(node.survival.t.first()))
+      .sum();
+    Ok(Self {
+      log_normalization: pair_integral + own_offset,
+      ..prior
     })
+  }
+
+  pub(crate) fn log_normalization(&self) -> f64 {
+    self.log_normalization
   }
 
   pub(crate) fn with_topology(
@@ -295,6 +312,7 @@ impl CellRates<'_> {
 pub(crate) struct LineageExpectation {
   grid: Vec<f64>,
   expected: Vec<f64>,
+  expected_pairs: Vec<f64>,
   variance: Vec<f64>,
   expected_before: f64,
   step: f64,
@@ -441,32 +459,48 @@ impl LineageExpectation {
 
     let mut expected = vec![always_surviving; grid.len()];
     let mut variance = vec![0.0; grid.len()];
+    let mut own_squares = vec![0.0; grid.len()];
     let mut surviving_from = vec![0.0; grid.len() + 1];
+    let mut squares_from = vec![0.0; grid.len() + 1];
     for &(weight, survival) in &weighted {
       let first = grid.partition_point(|&g| g < survival.t.first());
       if survival.is_point() {
         surviving_from[first + 1] += weight;
+        squares_from[first + 1] += weight * weight;
         continue;
       }
       let last = grid.partition_point(|&g| g < survival.t.last());
       surviving_from[first] += weight;
+      squares_from[first] += weight * weight;
       let values = survival.values_at_sorted(&grid[first..last]);
-      for (s, expected, variance) in izip!(values, &mut expected[first..last], &mut variance[first..last]) {
+      for (s, expected, variance, own_square) in izip!(
+        values,
+        &mut expected[first..last],
+        &mut variance[first..last],
+        &mut own_squares[first..last]
+      ) {
         *expected += weight * s;
         *variance += weight * weight * s * (1.0 - s);
+        *own_square += (weight * s).powi(2);
       }
     }
-    let mut running = 0.0;
+    let (mut running, mut running_squares) = (0.0, 0.0);
     for i in (0..grid.len()).rev() {
       running += surviving_from[i + 1];
+      running_squares += squares_from[i + 1];
       expected[i] += running;
+      own_squares[i] += running_squares;
     }
+    let expected_pairs = izip!(&expected, &own_squares)
+      .map(|(k, own_square)| 0.5 * (k * k - own_square))
+      .collect();
     let expected_before = always_surviving + weighted.iter().map(|(w, _)| w).sum::<f64>();
     drop(weighted);
 
     Ok(Arc::new(Self {
       grid,
       expected,
+      expected_pairs,
       variance,
       expected_before,
       step,
