@@ -20,14 +20,23 @@ export_dist_flags() {
     c_arch="-mcpu=apple-m1"
     rust_arch="-C target-cpu=apple-m1"
     ;;
-  aarch64-*)
-    # Features of -C target-feature=+v8.2a, which is unstable, listed explicitly.
-    c_arch="-march=armv8.2-a"
-    rust_arch="-C target-cpu=generic -C target-feature=+crc,+dpb,+lor,+lse,+neon,+pan,+ras,+rdm,+vh"
+  aarch64-*-linux-*)
+    # Armv8.0, so the binaries also run on Cortex-A53 and Cortex-A72 cores
+    # (Raspberry Pi 3 and 4). Atomic operations go through the outline atomics
+    # helpers, which use LSE instructions when the CPU has them; rustc enables
+    # them by default for these targets, and -moutline-atomics does the same for
+    # the C dependencies.
+    c_arch="-march=armv8-a -moutline-atomics"
+    rust_arch="-C target-cpu=generic"
     # jemalloc fixes its page size at build time and aborts at startup on a
     # kernel with larger pages. 64K pages also work on kernels with 4K and 16K
     # pages (Raspberry Pi 5, Asahi Linux, Arm servers with 64K kernels).
     export JEMALLOC_SYS_WITH_LG_PAGE=16
+    ;;
+  aarch64-*)
+    # Features of -C target-feature=+v8.2a, which is unstable, listed explicitly.
+    c_arch="-march=armv8.2-a"
+    rust_arch="-C target-cpu=generic -C target-feature=+crc,+dpb,+lor,+lse,+neon,+pan,+ras,+rdm,+vh"
     ;;
   x86_64-win7-*)
     # Windows 7 runs on many CPUs older than Haswell.
