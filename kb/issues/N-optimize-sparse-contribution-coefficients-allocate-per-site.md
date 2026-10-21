@@ -11,4 +11,3 @@ Keep the coefficients inline, as the sparse marginal messages keep their profile
 ## Related issues
 
 - [N-optimize-edge-contribution-copies-gtr.md](N-optimize-edge-contribution-copies-gtr.md): the same function copies the GTR model for every edge
-- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md): per-site temporaries of the marginal kernels

@@ -2,9 +2,9 @@
 
 By default v1 matches v0: the initial mugration GTR model is built from the raw equilibrium frequencies, and the pseudo-count is reserved for `infer_gtr` regularization. v0 passes raw weights directly to `GTR.custom(pi=weights, ...)` at [packages/legacy/treetime/treetime/wrappers.py#L766](../../packages/legacy/treetime/treetime/wrappers.py#L766).
 
-v1 offers an opt-in `--smooth-initial-pi` flag. When set, it applies `apply_pseudo_counts(pi, pc)` to the equilibrium frequencies before constructing the initial GTR model at [packages/treetime/src/mugration/pipeline.rs#L92-L96](../../packages/treetime/src/mugration/pipeline.rs#L92-L96), producing a flatter prior for the first reconstruction pass. The flag uses the same `--pc` value as the refinement path, so the two pi-smoothing paths stay consistent.
+v1 offers an opt-in `--smooth-initial-pi` flag. When set, it applies `apply_pseudo_counts(pi, pc)` to the equilibrium frequencies before constructing the initial GTR model at [packages/treetime/src/mugration/pipeline.rs#L91-L95](../../packages/treetime/src/mugration/pipeline.rs#L91-L95), producing a flatter prior for the first reconstruction pass. The flag uses the same `--pc` value as the refinement path, so the two pi-smoothing paths stay consistent.
 
-`fixed_pi` (the weight-derived equilibrium pinned through refinement) is always captured from the raw frequencies at [packages/treetime/src/mugration/pipeline.rs#L90](../../packages/treetime/src/mugration/pipeline.rs#L90), before any smoothing. With smoothing off (the default) the initial pi equals `fixed_pi`, matching v0 exactly.
+`fixed_pi` (the weight-derived equilibrium pinned through refinement) is always captured from the raw frequencies at [packages/treetime/src/mugration/pipeline.rs#L89](../../packages/treetime/src/mugration/pipeline.rs#L89), before any smoothing. With smoothing off (the default) the initial pi equals `fixed_pi`, matching v0 exactly.
 
 ## Impact
 

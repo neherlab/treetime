@@ -29,4 +29,3 @@ The merge keeps outputs byte-identical when the summation order of each vector s
 ## Related issues
 
 - [M-marginal-normalize-neg-infinity-masks-total.md](M-marginal-normalize-neg-infinity-masks-total.md): the degenerate-vector semantics
-- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md): allocations of the same marginal kernels

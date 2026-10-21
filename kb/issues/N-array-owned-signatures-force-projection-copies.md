@@ -7,7 +7,7 @@ The sparse propagation functions accept owned ndarray references even when the d
 - `fn propagate_raw()` [packages/treetime/src/partition/marginal/sparse/message.rs#L106-L110](../../packages/treetime/src/partition/marginal/sparse/message.rs#L106-L110) accepts `&Array2<f64>`. Its backward caller converts the zero-copy transpose view with `.t().to_owned()` [packages/treetime/src/partition/marginal/sparse/backward.rs#L94-L98](../../packages/treetime/src/partition/marginal/sparse/backward.rs#L94-L98).
 - `fn propagate_raw_per_site()` copies the transposed matrix once per call and once per variable site [packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169](../../packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169).
 
-The mugration confidence rows are not part of this issue. `MugrationOutput` owns one `StatePosterior` per node with a copy of its row, and the pipeline drops the node states after the readout [packages/treetime/src/mugration/pipeline.rs#L139-L148](../../packages/treetime/src/mugration/pipeline.rs#L139-L148). A borrowed profile would have to keep every node state alive, which costs more memory than one row per node.
+The mugration confidence rows are not part of this issue. `MugrationOutput` owns one `StatePosterior` per node with a copy of its row, and the pipeline drops the node states after the readout [packages/treetime/src/mugration/pipeline.rs#L136-L145](../../packages/treetime/src/mugration/pipeline.rs#L136-L145). A borrowed profile would have to keep every node state alive, which costs more memory than one row per node.
 
 ## Options
 
@@ -30,4 +30,3 @@ Use concrete view types at borrowing boundaries. Accept `ArrayView2` in `propaga
 
 ## Related
 
-- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md)

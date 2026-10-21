@@ -15,4 +15,3 @@ A larger inline capacity is not a remedy: a capacity of 20 makes every nucleotid
 
 ## Related issues
 
-- [N-ancestral-sparse-transition-count-allocates-per-site.md](N-ancestral-sparse-transition-count-allocates-per-site.md): per-site temporaries of the marginal kernels

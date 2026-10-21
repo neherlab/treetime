@@ -37,9 +37,7 @@ substitution estimates.
 ## Not affected
 
 The transition counts of GTR inference (`fn count_transitions_dense()` in
-[packages/treetime/src/partition/marginal/shared/data.rs#L15](../../packages/treetime/src/partition/marginal/shared/data.rs#L15)
-and `fn count_transitions_sparse()` in
-[packages/treetime/src/partition/marginal/sparse/count.rs#L16](../../packages/treetime/src/partition/marginal/sparse/count.rs#L16))
+[packages/treetime/src/partition/marginal/shared/data.rs#L15](../../packages/treetime/src/partition/marginal/shared/data.rs#L15))
 also read the ML length. That is unobservable: GTR inference runs only before the refinement loop,
 so the two lengths are equal at every point where the counts are used. It becomes a real choice only
 if GTR re-estimation moves into the loop.

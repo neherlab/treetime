@@ -146,7 +146,7 @@
 - [ ] Sequence-evolution model text output or approved replacement ([kb/issues/N-timetree-sequence-evolution-model-text-output-undecided.md](../issues/N-timetree-sequence-evolution-model-text-output-undecided.md))
 - [ ] Node dates TSV (not implemented - [kb/issues/N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md))
 - [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
-- [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; entropy perturbs the Shannon definition and no Augur golden master checks the document: [kb/issues/N-io-auspice-entropy-perturbs-shannon-definition.md](../issues/N-io-auspice-entropy-perturbs-shannon-definition.md), [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md))
+- [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; no Augur golden master checks the document: [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)
 - [ ] Plotting (`--plot-tree`, `--plot-rtt` - parsed, return explicit error - [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
