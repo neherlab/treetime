@@ -89,7 +89,7 @@ pub fn run(
   let fixed_pi = weights.map(|_| pi.clone());
 
   let pi = if params.smooth_initial_pi {
-    apply_pseudo_counts(pi, Some(params.pc.unwrap_or(1.0)))
+    apply_pseudo_counts(pi, params.pc.unwrap_or(1.0))
   } else {
     pi
   };
@@ -221,13 +221,8 @@ pub(crate) fn compute_pi_uniform(n_states: usize) -> Array1<f64> {
   Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact())
 }
 
-pub(crate) fn apply_pseudo_counts(pi: Array1<f64>, pc: Option<f64>) -> Array1<f64> {
-  match pc {
-    Some(pc_val) => {
-      let pi = &pi + pc_val;
-      let sum = pi.sum();
-      pi / sum
-    },
-    None => pi,
-  }
+pub(crate) fn apply_pseudo_counts(pi: Array1<f64>, pc: f64) -> Array1<f64> {
+  let pi = pi + pc;
+  let sum = pi.sum();
+  pi / sum
 }

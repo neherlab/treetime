@@ -117,9 +117,9 @@ mod tests {
   }
 
   #[test]
-  fn test_run_apply_pseudo_counts_with_value() {
+  fn test_run_apply_pseudo_counts_adds_count_and_renormalizes() {
     let pi = array![0.25, 0.75];
-    let pc = Some(0.5);
+    let pc = 0.5;
 
     let result = apply_pseudo_counts(pi, pc);
 
@@ -130,19 +130,9 @@ mod tests {
   }
 
   #[test]
-  fn test_run_apply_pseudo_counts_without_value() {
-    let pi = array![0.25, 0.75];
-    let pc = None;
-
-    let result = apply_pseudo_counts(pi.clone(), pc);
-
-    assert_abs_diff_eq!(pi, result, epsilon = 1e-10);
-  }
-
-  #[test]
   fn test_run_apply_pseudo_counts_preserves_normalization() {
     let pi = array![0.1, 0.2, 0.3, 0.4];
-    let pc = Some(1.0);
+    let pc = 1.0;
 
     let result = apply_pseudo_counts(pi, pc);
 
