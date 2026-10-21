@@ -21,6 +21,13 @@
 #   headers)
 # - macOS: libraries in /usr/lib and frameworks in /System/Library
 #
+# It also fails when a macOS binary names another minimum macOS version than the
+# deployment target of its image, and when a Linux binary contains instructions
+# above the CPU baseline of its target (dev/lib/dist-flags.sh) outside the
+# functions of dev/cross/isa-allowlist, which run only after a check of the CPU
+# at run time. Windows binaries carry no function names to attribute
+# instructions to, and macOS arm64 builds for the oldest Apple CPU.
+#
 set -euo pipefail
 shopt -s inherit_errexit
 
@@ -90,6 +97,58 @@ windows8_imports() {
     awk 'NR == FNR {denied[$1] = 1; next} $2 in denied' "${WINDOWS8_FUNCTIONS:?the Windows 7 image names the list of the functions of Windows 8 or later}" -
 }
 
+# Print the minimum macOS version that a binary names.
+macos_min_version() {
+  local otool
+  otool="$(printenv "OTOOL_${target_safe}" || printenv "OTOOL" || echo "otool")"
+  "${otool}" -l "${1}" | awk '
+    $1 == "cmd" { cmd = $2 }
+    cmd == "LC_BUILD_VERSION" && $1 == "minos" { print $2; exit }
+    cmd == "LC_VERSION_MIN_MACOSX" && $1 == "version" { print $2; exit }
+  '
+}
+
+# Print the instructions above the CPU baseline of the target, which
+# dev/lib/dist-flags.sh sets, as <count> <function>, except in the functions of
+# dev/cross/isa-allowlist. x86_64 (x86-64-v2): VEX and EVEX instructions and
+# the BMI, LZCNT, MOVBE, and ADX instructions; TZCNT is left out, because CPUs
+# without BMI run its encoding as BSF, and compilers use it on purpose for
+# generic code. aarch64 Linux (Armv8.0): LSE atomics, RDM, the dot product,
+# LDAPR, JSCVT, CRC32, and SVE.
+isa_above_baseline() {
+  local file="${1}" pattern allow
+  case "${target}" in
+  x86_64-*-linux-*)
+    pattern='^(v[a-z0-9]+|(andn|bextr|blsi|blsmsk|blsr|bzhi|mulx|pdep|pext|rorx|sarx|shlx|shrx|lzcnt|movbe|adcx|adox)[bwlq]?)$|%[yz]mm'
+    allow="x86_64"
+    ;;
+  aarch64-*-linux-*)
+    pattern='^((ldadd|ldclr|ldeor|ldset|ldsmax|ldsmin|ldumax|ldumin|swp|cas|casp)[albh]*|sqrdmlah|sqrdmlsh|sdot|udot|usdot|sudot|ldapr[bh]?|fjcvtzs|crc32c?[bhwx])$| z[0-9]+\.| p[0-9]+[./]'
+    allow="aarch64"
+    ;;
+  *) return 0 ;;
+  esac
+  /opt/llvm/bin/llvm-objdump -d --no-show-raw-insn --demangle "${file}" |
+    pattern="${pattern}" awk '
+      /^[0-9a-f]+ <.*>:$/ { fn = substr($0, index($0, "<") + 1); sub(/>:$/, "", fn); next }
+      $2 ~ ENVIRON["pattern"] || $0 ~ ENVIRON["pattern"] { count[fn]++ }
+      END { for (f in count) print count[f], f }
+    ' |
+    awk -v arch="${allow}" '
+      NR == FNR {
+        if ($0 ~ /^[[:space:]]*(#|$)/) next
+        split($0, field, /[[:space:]]+/)
+        if (field[1] == arch || field[1] == "any") allowed[++n] = substr($0, length(field[1]) + 2)
+        next
+      }
+      {
+        name = substr($0, index($0, " ") + 1)
+        for (i = 1; i <= n; i++) if (name ~ allowed[i]) next
+        print
+      }
+    ' dev/cross/isa-allowlist - | sort -rn
+}
+
 # Print the glibc symbol versions above the oldest supported glibc.
 glibc_too_new() {
   local objdump version
@@ -142,6 +201,23 @@ if [[ "${target}" == *-linux-gnu ]]; then
     while IFS= read -r version; do
       printf '  * %s\n' "${version}" >&2
     done <<<"${too_new}"
+    failed=1
+  fi
+fi
+if [[ "${target}" == *-apple-darwin ]]; then
+  minos="$(macos_min_version "${file}")"
+  if [[ "${minos}" != "${MACOSX_DEPLOYMENT_TARGET:?the macOS images set the deployment target}" ]]; then
+    printf '%s names macOS %s as its minimum version instead of the deployment target %s\n' "${file}" "${minos:-(none)}" "${MACOSX_DEPLOYMENT_TARGET}" >&2
+    failed=1
+  fi
+fi
+if [[ "${target}" == *-linux-* ]]; then
+  above="$(isa_above_baseline "${file}")"
+  if [[ -n "${above}" ]]; then
+    printf '%s has instructions above the CPU baseline of %s outside dev/cross/isa-allowlist (count, function):\n' "${file}" "${target}" >&2
+    while IFS= read -r entry; do
+      printf '  * %s\n' "${entry}" >&2
+    done <<<"${above}"
     failed=1
   fi
 fi

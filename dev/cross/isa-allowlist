@@ -1,0 +1,49 @@
+# Functions of the Linux release binaries that may contain instructions above
+# the CPU baseline of their target (dev/lib/dist-flags.sh), because they run
+# only after a check of the CPU at run time. dev/cross/check reports every other
+# function with such instructions.
+#
+# Format: <arch> <extended regular expression>, matched against the demangled
+# function name. <arch> is x86_64, aarch64, or any. Add an entry only after
+# reading the code that selects the function by the CPU at run time, and name
+# that code in the comment above the entry.
+
+# OpenBLAS (DYNAMIC_ARCH): the kernels of each CPU type, which
+# driver/others/dynamic.c and dynamic_arm64.c select by CPUID or MIDR_EL1.
+x86_64 _(HASWELL|SKYLAKEX|COOPERLAKE|SAPPHIRERAPIDS|ZEN|EXCAVATOR|STEAMROLLER|PILEDRIVER|BULLDOZER|SANDYBRIDGE)$
+# The static helpers inside those kernel files, which keep no core suffix.
+x86_64 ^[cdsz](axpy|dot|scal|gemv|symv)_kernel_
+x86_64 ^[cdsz]trsm_[LR][NT]_solve_opt$
+x86_64 ^(dtrmm_kernel_4x8|add_y|init_parameter|COMPUTE_EDGE_1_nchunk)$
+aarch64 _(NEOVERSEN1|NEOVERSEN2|NEOVERSEV1|A64FX|CORTEXA53|CORTEXA55|CORTEXA57|CORTEXA72|CORTEXA73|FALKOR|THUNDERX|THUNDERX2T99|THUNDERX3T110|TSV110|EMAG8180)$
+aarch64 ^(sbgemv_kernel_[nt]|init_parameter)$
+
+# zstd: the BMI2 variants that DYNAMIC_BMI2 selects with ZSTD_cpuid_bmi2(), and
+# the fast Huffman decoders, which huf_decompress.c calls only when BMI2 is
+# available at run time.
+x86_64 _bmi2(\.|$)
+x86_64 ^_?HUF_decompress4X[12]_usingDTable_internal_fast
+
+# liblzma: the CRC32 instructions of crc32_arch_optimized, which
+# crc32_set_func selects at startup from getauxval(AT_HWCAP).
+aarch64 ^crc32_arch_optimized$
+
+# Rust crates that select their AVX, AVX2, FMA, or PCLMULQDQ code with
+# is_x86_feature_detected! or cpufeatures before the first call: rustfft
+# (FftPlannerAvx), memchr and aho-corasick (the AVX2 searchers), matrixmultiply
+# (its FMA and AVX2 kernels), crc32fast, simdutf8, uuid-simd, chacha20, and
+# bytecount (runtime-dispatch-simd).
+x86_64 ^<?(rustfft|memchr|aho_corasick|matrixmultiply|crc32fast|simdutf8|uuid_simd|chacha20|bytecount)::
+
+# ring (TLS of the examples download): the assembly routines that its CPU
+# feature flags (OPENSSL_ia32cap_P) select.
+x86_64 ^ring_core_[0-9_]+_
+x86_64 ^(_aesni_ctr32_6x|_aesni_ctr32_ghash_6x|mulx4x_internal|__bn_postx4x_internal|__bn_sqrx8x_reduction|__ecp_nistz256_(mul|sqr)_montx)$
+
+# The outline atomics helpers of compiler-builtins and libgcc: they run the LSE
+# instruction only after the startup check of AT_HWCAP has set their flag, and
+# the load-exclusive loop of Armv8.0 otherwise.
+aarch64 ^__aarch64_(cas|casp|swp|ldadd|ldclr|ldeor|ldset)[0-9]+_(relax|acq|rel|acq_rel)$
+
+# crc32fast: the CRC32 code that is_aarch64_feature_detected!("crc") selects.
+aarch64 ^crc32fast::specialized::aarch64::
