@@ -6,8 +6,17 @@ use bzip2::write::BzEncoder;
 use color_eyre::{Help, SectionExt};
 use eyre::{Report, WrapErr};
 use flate2::read::MultiGzDecoder;
+#[cfg(target_family = "wasm")]
 use flate2::write::GzEncoder;
+#[cfg(not(target_family = "wasm"))]
+use gzp::deflate::Gzip;
+#[cfg(not(target_family = "wasm"))]
+use gzp::par::compress::ParCompress;
+#[cfg(not(target_family = "wasm"))]
+use gzp::{GzpError, ZWriter};
 use liblzma::read::XzDecoder;
+#[cfg(not(target_family = "wasm"))]
+use liblzma::stream::{Check, MtStreamBuilder};
 use liblzma::write::XzEncoder;
 use log::{debug, error};
 use num::Integer;
@@ -17,6 +26,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 const DEFAULT_COMPRESSION_LEVEL: u8 = 2;
+
+const ZSTD_WINDOW_LOG: u32 = 27;
 
 // TODO: keep an eye on alternative crates that don't rely on C, and replace when they are stable enough.
 
@@ -84,27 +95,35 @@ impl<W: Write + Send> Encoder for zstd::Encoder<'_, W> {
   }
 }
 
+#[cfg(target_family = "wasm")]
 impl<W: Write + Send> Encoder for GzEncoder<W> {
   fn finish_encoding(self: Box<Self>) -> io::Result<()> {
     self.finish()?.flush()
   }
 }
 
-pub struct Compressor<'w> {
-  encoder: Option<Box<dyn Encoder + 'w>>,
+#[cfg(not(target_family = "wasm"))]
+impl<W: Write + Send + 'static> Encoder for ParCompress<'static, Gzip, W> {
+  fn finish_encoding(mut self: Box<Self>) -> io::Result<()> {
+    self.finish().map_err(gzp_to_io_error)?.flush()
+  }
+}
+
+pub struct Compressor {
+  encoder: Option<Box<dyn Encoder>>,
   compression_type: CompressionType,
   filepath: Option<String>,
 }
 
-impl<'w> Compressor<'w> {
-  pub fn new<W: 'w + Write + Send>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
-    let encoder: Box<dyn Encoder + 'w> = match compression_type {
+impl Compressor {
+  pub fn new<W: Write + Send + 'static>(writer: W, compression_type: &CompressionType) -> Result<Self, Report> {
+    let encoder: Box<dyn Encoder> = match compression_type {
       CompressionType::Bzip2 => Box::new(BzEncoder::new(writer, bzip2::Compression::new(get_comp_level("BZ2")?))),
-      CompressionType::Xz => Box::new(XzEncoder::new(writer, get_comp_level("XZ")?)),
+      CompressionType::Xz => xz_encoder(writer, get_comp_level("XZ")?)?,
       CompressionType::Zstandard => {
-        Box::new(zstd::Encoder::new(writer, get_comp_level("ZST")?).wrap_err("When creating the Zstandard encoder")?)
+        zstd_encoder(writer, get_comp_level("ZST")?).wrap_err("When creating the Zstandard encoder")?
       },
-      CompressionType::Gzip => Box::new(GzEncoder::new(writer, flate2::Compression::new(get_comp_level("GZ")?))),
+      CompressionType::Gzip => gzip_encoder(writer, get_comp_level("GZ")?)?,
       CompressionType::None => Box::new(Uncompressed(writer)),
     };
 
@@ -115,7 +134,7 @@ impl<'w> Compressor<'w> {
     })
   }
 
-  pub fn from_path<W: 'w + Write + Send>(writer: W, filepath: impl AsRef<Path>) -> Result<Self, Report> {
+  pub fn from_path<W: Write + Send + 'static>(writer: W, filepath: impl AsRef<Path>) -> Result<Self, Report> {
     let filepath = filepath.as_ref();
     let (compression_type, _) = guess_compression_from_filepath(filepath);
     let mut compressor = Self::new(writer, &compression_type)?;
@@ -130,7 +149,7 @@ impl<'w> Compressor<'w> {
     }
   }
 
-  fn encoder(&mut self) -> io::Result<&mut Box<dyn Encoder + 'w>> {
+  fn encoder(&mut self) -> io::Result<&mut Box<dyn Encoder>> {
     self
       .encoder
       .as_mut()
@@ -151,7 +170,7 @@ impl<'w> Compressor<'w> {
   }
 }
 
-impl Write for Compressor<'_> {
+impl Write for Compressor {
   fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
     let result = self.encoder().and_then(|encoder| encoder.write(buf));
     self
@@ -167,7 +186,7 @@ impl Write for Compressor<'_> {
   }
 }
 
-impl Drop for Compressor<'_> {
+impl Drop for Compressor {
   fn drop(&mut self) {
     if let Some(encoder) = self.encoder.take()
       && let Err(e) = self.with_context(encoder.finish_encoding(), "While finishing compressed file")
@@ -231,6 +250,59 @@ pub enum CompressionType {
   Zstandard,
   Gzip,
   None,
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn xz_encoder<W: Write + Send + 'static>(writer: W, level: u32) -> Result<Box<dyn Encoder>, Report> {
+  let stream = MtStreamBuilder::new()
+    .preset(level)
+    .check(Check::Crc64)
+    .threads(u32::try_from(encoder_threads()).wrap_err("When choosing the number of xz encoder threads")?)
+    .encoder()
+    .wrap_err("When creating the xz encoder")?;
+  Ok(Box::new(XzEncoder::new_stream(writer, stream)))
+}
+
+#[cfg(target_family = "wasm")]
+fn xz_encoder<W: Write + Send + 'static>(writer: W, level: u32) -> Result<Box<dyn Encoder>, Report> {
+  Ok(Box::new(XzEncoder::new(writer, level)))
+}
+
+fn zstd_encoder<W: Write + Send + 'static>(writer: W, level: i32) -> io::Result<Box<dyn Encoder>> {
+  let mut encoder = zstd::Encoder::new(writer, level)?;
+  encoder.long_distance_matching(true)?;
+  encoder.window_log(ZSTD_WINDOW_LOG)?;
+  #[cfg(not(target_family = "wasm"))]
+  encoder.multithread(u32::try_from(encoder_threads()).map_err(io::Error::other)?)?;
+  Ok(Box::new(encoder))
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn gzip_encoder<W: Write + Send + 'static>(writer: W, level: u32) -> Result<Box<dyn Encoder>, Report> {
+  let encoder = ParCompress::<Gzip, W>::builder()
+    .num_threads(encoder_threads())
+    .wrap_err("When creating the gzip encoder")?
+    .compression_level(flate2::Compression::new(level))
+    .from_writer(writer);
+  Ok(Box::new(encoder))
+}
+
+#[cfg(target_family = "wasm")]
+fn gzip_encoder<W: Write + Send + 'static>(writer: W, level: u32) -> Result<Box<dyn Encoder>, Report> {
+  Ok(Box::new(GzEncoder::new(writer, flate2::Compression::new(level))))
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn encoder_threads() -> usize {
+  rayon::current_num_threads()
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn gzp_to_io_error(error: GzpError) -> io::Error {
+  match error {
+    GzpError::Io(error) => error,
+    error => io::Error::other(error),
+  }
 }
 
 fn get_comp_level<I>(ext: &str) -> Result<I, Report>

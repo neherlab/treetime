@@ -52,6 +52,11 @@ smart-default = { workspace = true }
 strum_macros = { workspace = true }
 zstd = { workspace = true }
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+gzp = { workspace = true }
+liblzma = { workspace = true, features = ["parallel"] }
+zstd = { workspace = true, features = ["zstdmt"] }
+
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }
 
