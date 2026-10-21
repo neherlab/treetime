@@ -13,7 +13,7 @@ mod tests {
   const EDGE_COUNT: usize = 10_000;
 
   #[test]
-  fn test_sim_branch_lengths_perturbed_log_ratios_are_normal() {
+  fn test_stat_branch_lengths_perturbed_log_ratios_are_normal() {
     let sigma = 0.3;
     let lengths: BTreeMap<GraphEdgeKey, f64> = (0..EDGE_COUNT).map(|edge| (GraphEdgeKey(edge), 0.02)).collect();
     let perturbed_lengths = perturbed(&lengths, sigma, &mut get_random_number_generator(40)).unwrap();

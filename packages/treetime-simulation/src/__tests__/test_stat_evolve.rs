@@ -25,7 +25,7 @@ mod tests {
   #[case::f81_from_c(      array![0.1, 0.2, 0.3, 0.4],     1, 0.5)]
   #[case::f81_from_t_long( array![0.1, 0.2, 0.3, 0.4],     3, 2.0)]
   #[trace]
-  fn test_sim_evolve_site_end_states_match_f81_transition_probabilities(
+  fn test_stat_evolve_site_end_states_match_f81_transition_probabilities(
     #[case] pi: Array1<f64>,
     #[case] start: usize,
     #[case] duration: f64,
@@ -45,7 +45,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sim_evolve_site_jc69_jump_counts_are_poisson() {
+  fn test_stat_evolve_site_jc69_jump_counts_are_poisson() {
     let (mu, duration) = (1.0, 2.0);
     let model = SubstitutionModel::jc69(mu).unwrap();
     let mut rng = get_random_number_generator(31);
@@ -71,7 +71,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sim_evolve_site_gtr_mean_jump_count_from_pi_is_rate_times_duration() {
+  fn test_stat_evolve_site_gtr_mean_jump_count_from_pi_is_rate_times_duration() {
     let mut rng = get_random_number_generator(32);
     let (mu, duration) = (1.5, 0.8);
     let model = SubstitutionModel::random(mu, &mut rng).unwrap();
@@ -94,7 +94,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sim_evolve_site_gtr_keeps_pi_stationary() {
+  fn test_stat_evolve_site_gtr_keeps_pi_stationary() {
     let mut rng = get_random_number_generator(33);
     let model = SubstitutionModel::random(1.0, &mut rng).unwrap();
     let end_states = repeat_with(|| {
@@ -113,7 +113,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sim_evolve_sequences_tip_patterns_match_jc69_likelihood() {
+  fn test_stat_evolve_sequences_tip_patterns_match_jc69_likelihood() {
     let tree = three_tip_tree();
     let durations = btreemap! { tree.root_inner => 0.2, tree.root_c => 0.6, tree.inner_a => 0.1, tree.inner_b => 0.9 };
     let model = SubstitutionModel::jc69(1.0).unwrap();

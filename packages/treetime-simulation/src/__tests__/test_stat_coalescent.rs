@@ -23,7 +23,7 @@ mod tests {
   #[case::exponential(TcSchedule::exponential(10.0, 5.0))]
   #[case::piecewise(  TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]))]
   #[trace]
-  fn test_sim_coalescent_merger_hazards_are_uniform_after_time_change(#[case] schedule: Result<TcSchedule, Report>) {
+  fn test_stat_coalescent_merger_hazards_are_uniform_after_time_change(#[case] schedule: Result<TcSchedule, Report>) {
     let schedule = schedule.unwrap();
     let sampling = [
       SampleBatch { tau: 2.0, count: 4 },
@@ -54,7 +54,7 @@ mod tests {
   }
 
   #[test]
-  fn test_sim_coalescent_first_merger_joins_each_pair_equally_often() {
+  fn test_stat_coalescent_first_merger_joins_each_pair_equally_often() {
     let schedule = TcSchedule::constant(1.0).unwrap();
     let sampling = [SampleBatch { tau: 0.0, count: 4 }];
     let mut rng = get_random_number_generator(21);
