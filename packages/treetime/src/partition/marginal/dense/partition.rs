@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
+use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::sample::{Resolve, SampleMode, resolve_profile};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::data::DenseInputs;
@@ -22,7 +23,6 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
-use treetime_utils::array::ndarray::argmax_first;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::interval::range_union::range_union;
@@ -92,8 +92,8 @@ impl PartitionMarginalDense {
     let mut subs = Vec::new();
 
     for (pos, parent, child) in izip!(0..parent_profile.nrows(), parent_profile.rows(), child_profile.rows()) {
-      let parent_state = self.alphabet.char(argmax_first(&parent).unwrap_or(0));
-      let child_state = self.alphabet.char(argmax_first(&child).unwrap_or(0));
+      let parent_state = self.alphabet.char(most_likely_state(&parent).unwrap_or(0));
+      let child_state = self.alphabet.char(most_likely_state(&child).unwrap_or(0));
       if parent_state == child_state {
         continue;
       }
@@ -211,7 +211,7 @@ impl PartitionMarginalDense {
       for pos in 0..seq.len() {
         let ch = seq[pos];
         if !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch) {
-          if let Some(idx) = argmax_first(&seq_info.profile.dis.row(pos)) {
+          if let Some(idx) = most_likely_state(&seq_info.profile.dis.row(pos)) {
             seq[pos] = self.alphabet.char(idx);
           }
         }

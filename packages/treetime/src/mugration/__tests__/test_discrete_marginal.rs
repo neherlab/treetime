@@ -3,6 +3,7 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::gtr::gtr::{GTR, Mu};
   use crate::o;
+  use crate::partition::marginal::posterior_states::most_likely_state;
   use crate::partition::marginal::shared::update::{MarginalBackward, MarginalForward, MarginalPasses, MarginalUpdate};
   use crate::progress::NoopProgress;
   use crate::test_utils::RecordingLog;
@@ -14,7 +15,6 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::array::ndarray::argmax_first;
   use treetime_utils::assert_error;
 
   #[test]
@@ -126,7 +126,7 @@ mod tests {
     let actual = helpers::leaf_observations_by_name(&graph, &names, &partition, &leaf_refs)
       .into_iter()
       .map(|(leaf, profile)| {
-        let state = argmax_first(&profile.view())
+        let state = most_likely_state(&profile)
           .and_then(|index| partition.states.name(index))
           .map(ToOwned::to_owned);
         (leaf, state, profile)

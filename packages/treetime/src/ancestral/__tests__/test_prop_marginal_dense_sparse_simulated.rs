@@ -41,6 +41,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::partition::marginal::posterior_states::most_likely_state;
     use crate::test_utils::{SimulatedCase, gtr_from_model, run_dense_marginal, run_sparse_marginal};
     use eyre::Report;
     use itertools::Itertools;
@@ -50,7 +51,6 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_simulation::branch_lengths::exact;
-    use treetime_utils::array::ndarray::argmax_first;
     use treetime_utils::make_report;
 
     pub(super) const MIN_POSTERIOR_GAP: f64 = 1e-3;
@@ -126,7 +126,7 @@ mod tests {
     }
 
     fn most_likely(posterior: &ArrayView1<'_, f64>, node: &str, pos: usize) -> Result<usize, Report> {
-      argmax_first(posterior).ok_or_else(|| make_report!("Posterior of node {node} at position {pos} is empty"))
+      most_likely_state(posterior).ok_or_else(|| make_report!("Posterior of node {node} at position {pos} is empty"))
     }
 
     fn top_two_gap(posterior: &ArrayView1<'_, f64>) -> f64 {

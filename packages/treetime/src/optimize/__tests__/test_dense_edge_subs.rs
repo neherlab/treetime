@@ -225,9 +225,9 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
+    use crate::partition::marginal::posterior_states::most_likely_state;
     use crate::partition::storage::dense::DenseNodeState;
     use crate::seq::mutation::Sub;
-    use treetime_utils::array::ndarray::argmax_first;
 
     pub(super) fn diff_map_states(
       alphabet: &Alphabet,
@@ -248,8 +248,8 @@ mod tests {
           continue;
         }
 
-        let parent_state = alphabet.char(argmax_first(&parent_row).unwrap_or(0));
-        let child_state = alphabet.char(argmax_first(&child_row).unwrap_or(0));
+        let parent_state = alphabet.char(most_likely_state(&parent_row).unwrap_or(0));
+        let child_state = alphabet.char(most_likely_state(&child_row).unwrap_or(0));
         if parent_state != child_state && alphabet.is_canonical(parent_state) && alphabet.is_canonical(child_state) {
           subs.push(Sub::new(parent_state, pos, child_state).unwrap());
         }

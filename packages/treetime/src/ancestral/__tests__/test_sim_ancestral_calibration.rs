@@ -54,6 +54,7 @@ pub(crate) mod tests {
     use crate::cancel::NoopCancel;
     use crate::gtr::get_gtr::GtrModelName;
     use crate::gtr::gtr::GTR;
+    use crate::partition::marginal::posterior_states::most_likely_state;
     use crate::partition::marginal::sample::SampleMode;
     use crate::progress::NoopProgress;
     use crate::seq::sink::SeqStream;
@@ -74,7 +75,6 @@ pub(crate) mod tests {
     use treetime_simulation::branch_lengths::exact;
     use treetime_simulation::coalescent::SampleBatch;
     use treetime_simulation::tc_schedule::TcSchedule;
-    use treetime_utils::array::ndarray::argmax_first;
     use treetime_utils::cast::ToF64Exact;
     use treetime_utils::{make_error, make_report};
 
@@ -267,7 +267,7 @@ pub(crate) mod tests {
             .zip_eq(truth.iter())
             .enumerate()
           {
-            let most_likely = argmax_first(&row).ok_or_else(|| {
+            let most_likely = most_likely_state(&row).ok_or_else(|| {
               make_report!(
                 "Posterior of node {} at position {pos} is empty",
                 &self.case.tree.names[node]

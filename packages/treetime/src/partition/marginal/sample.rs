@@ -1,7 +1,7 @@
+use crate::partition::marginal::posterior_states::most_likely_state;
 use ndarray::ArrayView1;
 use rand::{Rng, RngExt};
 use smart_default::SmartDefault;
-use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault)]
 pub enum SampleMode {
@@ -27,7 +27,7 @@ impl SampleMode {
 )]
 pub(crate) fn resolve_profile(profile: ArrayView1<f64>, resolve: &mut Resolve) -> usize {
   match resolve {
-    Resolve::Argmax => argmax_first(&profile).unwrap_or(0),
+    Resolve::Argmax => most_likely_state(&profile).unwrap_or(0),
     Resolve::Sample(rng) => sample_from_profile(profile, &mut **rng),
   }
 }

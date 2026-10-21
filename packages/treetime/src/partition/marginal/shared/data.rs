@@ -3,6 +3,7 @@ use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{
   MutationCounts, accumulate_mutation_counts, get_branch_mutation_matrix, is_profile_informative,
 };
+use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
 use eyre::Report;
 use ndarray::prelude::*;
@@ -10,7 +11,6 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::array::ndarray::argmax_first;
 
 pub(crate) fn count_transitions_dense(
   inputs: &DenseInputs,
@@ -44,7 +44,7 @@ pub(crate) fn count_transitions_dense(
   let mut root_state = Array1::zeros(n_states);
   for row in root_profile.rows() {
     if !inputs.filter_uninformative_root || is_profile_informative(row, n_states) {
-      if let Some(root_idx) = argmax_first(&row) {
+      if let Some(root_idx) = most_likely_state(&row) {
         root_state[root_idx] += 1.0;
       }
     }

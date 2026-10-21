@@ -75,6 +75,7 @@ mod tests {
     use crate::gtr::gtr::{GTR, Mu};
     use crate::gtr::infer_gtr::common::MutationCounts;
     use crate::partition::marginal::discrete::partition::{PartitionMarginalDiscrete, StateObservation};
+    use crate::partition::marginal::posterior_states::most_likely_state;
     use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate, TransitionCounts};
     use crate::test_utils::find_node_key_by_name;
     use eyre::Report;
@@ -83,7 +84,6 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
-    use treetime_utils::array::ndarray::argmax_first;
     use treetime_utils::cast::ToF64Exact;
 
     pub(super) const NODES: [&str; 5] = ["root", "inner", "A", "B", "C"];
@@ -149,7 +149,7 @@ mod tests {
 
     pub(super) fn one_hot_root_state(root_posterior: &Array1<f64>) -> Array1<f64> {
       let n = root_posterior.len();
-      let most_likely = argmax_first(&root_posterior.view()).expect("root posterior is not empty");
+      let most_likely = most_likely_state(root_posterior).expect("root posterior is not empty");
       assert!(
         root_posterior[most_likely] > 1.0 / n.to_f64_exact() + 1e-10,
         "case must have an informative root posterior: {root_posterior}"

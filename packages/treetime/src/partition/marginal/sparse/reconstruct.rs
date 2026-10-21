@@ -1,11 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
+use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use crate::seq::overlay::SeqOverlay;
-use ndarray::aview1;
+use ndarray::{Array1, aview1};
 use std::sync::Arc;
 use treetime_primitives::{AsciiChar, Seq};
-use treetime_utils::array::ndarray::argmax_first;
 
 pub(crate) fn parsimony_seq(
   parent_seq: &Seq,
@@ -111,22 +111,38 @@ pub(crate) fn impute_state(
   parent: &SparseNodeState,
   alphabet: &Alphabet,
 ) -> AsciiChar {
-  let posterior = down.variable.get(pos).map(|var| var.dis).or_else(|| {
+  leaf_posterior(observed, pos, down, parent, alphabet)
+    .and_then(|posterior| most_likely_state(&posterior))
+    .map_or(observed, |idx| alphabet.char(idx))
+}
+
+fn leaf_posterior(
+  observed: AsciiChar,
+  pos: usize,
+  down: &SparseSeqDistribution,
+  parent: &SparseNodeState,
+  alphabet: &Alphabet,
+) -> Option<Array1<f64>> {
+  let from_parent = down.variable.get(pos).map(|var| var.dis).or_else(|| {
     down
       .fixed
       .get(map_state(parent, pos, alphabet))
       .map(|fixed| fixed.dis.as_slice())
-  });
-  let (Some(posterior), Ok(mask)) = (posterior, alphabet.get_profile(observed)) else {
-    return observed;
+  })?;
+  let Ok(mask) = alphabet.get_profile(observed) else {
+    return None;
   };
-  let combined = &aview1(posterior) * mask;
-  argmax_first(&combined.view()).map_or(observed, |idx| alphabet.char(idx))
+  let mut posterior = &aview1(from_parent) * mask;
+  let total = posterior.sum();
+  if total > 0.0 && total.is_finite() {
+    posterior /= total;
+  }
+  Some(posterior)
 }
 
 pub(crate) fn map_state(node: &SparseNodeState, pos: usize, alphabet: &Alphabet) -> AsciiChar {
   match node.profile.variable.get(pos) {
-    Some(var) => alphabet.char(argmax_first(&aview1(var.dis)).unwrap_or(0)),
+    Some(var) => alphabet.char(most_likely_state(&aview1(var.dis)).unwrap_or(0)),
     None => node.sequence.get(pos).copied().unwrap_or_else(|| alphabet.char(0)),
   }
 }
