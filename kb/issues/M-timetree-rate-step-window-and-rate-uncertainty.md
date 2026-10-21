@@ -8,7 +8,7 @@ The rate step probes $\log Z$ at $\mu/1.25$ and $1.25\mu$, with the target cappe
 
 ## One source for `rate_std`
 
-`rate_std` comes from `--clock-std-dev` when given, else from the Gaussian approximation of the timetree (`fn timetree_gaussian_clock()`, called at [packages/treetime/src/timetree/pipeline.rs#L375](../../packages/treetime/src/timetree/pipeline.rs#L375); `fn determine_rate_std()` at [packages/treetime/src/timetree/confidence.rs#L205-L211](../../packages/treetime/src/timetree/confidence.rs#L205-L211)).
+`rate_std` comes from `--clock-std-dev` when given, else from the Gaussian approximation of the timetree (`fn timetree_gaussian_clock()`, called at [packages/treetime/src/timetree/pipeline.rs#L364](../../packages/treetime/src/timetree/pipeline.rs#L364); `fn determine_rate_std()` at [packages/treetime/src/timetree/confidence.rs#L208-L214](../../packages/treetime/src/timetree/confidence.rs#L208-L214)).
 
 - The Gaussian `rate_std` undercovers where the rate is biased: $\lvert z\rvert < 1.645$ for 0.21 and 0.00 of the runs at $L=10^3$, $\mu \le 10^{-3}$, against 0.77-0.83 with signal (proposal, phase 0b result)
 - The bias, not the width, limits date coverage: `--confidence` raised the 90% coverage only from 0.885 to 0.887 overall and from 0.854 to 0.866 for nodes older than 10 years, while the low-signal set stays at 0.83
@@ -18,7 +18,7 @@ The low-signal marginal likelihood is not flat: at $L=10^3$, $\mu=3\cdot10^{-4}$
 
 ## Cheaper rate term of `--confidence`
 
-The rate susceptibility of `--confidence` reruns the time passes at $\mu + \sigma$, $\mu - \sigma$ and $\mu$ (`fn compute_rate_susceptibility()`, [packages/treetime/src/timetree/confidence.rs#L23-L78](../../packages/treetime/src/timetree/confidence.rs#L23-L78)) for little gain. The Gaussian passes give $\partial m_v/\partial\mu$, so the rate term of a node's variance, $(\partial m_v/\partial\mu)^2 \operatorname{var}(\mu)$, is available without the reruns. Compare coverage and run time.
+The rate susceptibility of `--confidence` reruns the time passes at $\mu + \sigma$, $\mu - \sigma$ and $\mu$ (`fn compute_rate_susceptibility()`, [packages/treetime/src/timetree/confidence.rs#L24-L79](../../packages/treetime/src/timetree/confidence.rs#L24-L79)) for little gain. The Gaussian passes give $\partial m_v/\partial\mu$, so the rate term of a node's variance, $(\partial m_v/\partial\mu)^2 \operatorname{var}(\mu)$, is available without the reruns. Compare coverage and run time.
 
 ## Follow-up
 
