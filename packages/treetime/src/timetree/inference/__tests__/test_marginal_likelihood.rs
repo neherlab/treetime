@@ -43,7 +43,7 @@ mod tests {
       branches,
       MaxGridPoints::default(),
     )?;
-    let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?)?.expect("root has a distribution");
+    let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?, None)?.expect("root has a distribution");
     let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
     pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())

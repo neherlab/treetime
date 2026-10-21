@@ -106,7 +106,7 @@ fn infer_times(
     max_grid_points,
   )?;
 
-  let log_lh_time = log_marginal_likelihood(&backward, graph.root_key()?)?.map(LogLh::new);
+  let log_lh_time = log_marginal_likelihood(&backward, graph.root_key()?, coalescent)?.map(LogLh::new);
   if let Some(log_lh) = log_lh_time {
     progress_info!(log, "**Log marginal likelihood of node times:** {:.4}", log_lh.value());
   }

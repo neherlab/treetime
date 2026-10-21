@@ -1,5 +1,5 @@
 use crate::clock::date_constraints::DateConstraints;
-use crate::coalescent::mean_field::NodeSurvival;
+use crate::coalescent::mean_field::{CoalescentPrior, NodeSurvival};
 use crate::timetree::confidence::CI_FRACTION;
 use crate::timetree::max_posterior_region::{MaxPosteriorRegion, max_posterior_region};
 use eyre::{Report, WrapErr};
@@ -20,11 +20,13 @@ pub struct NodeBackward {
 pub(crate) fn log_marginal_likelihood(
   backward: &BTreeMap<GraphNodeKey, NodeBackward>,
   root: GraphNodeKey,
+  coalescent: Option<&CoalescentPrior>,
 ) -> Result<Option<f64>, Report> {
+  let normalization = coalescent.map_or(0.0, CoalescentPrior::log_normalization);
   backward
     .get(&root)
     .and_then(|node| node.subtree.as_deref())
-    .map(Distribution::log_mass)
+    .map(|subtree| Ok(subtree.log_mass()? + normalization))
     .transpose()
 }
 
