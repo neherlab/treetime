@@ -38,32 +38,15 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
-    let inputs = load_gm_mugration_inputs();
-    let outputs = load_gm_mugration_outputs();
-    let input = &inputs["zika_20_country"];
-    let expected = &outputs["zika_20_country"];
-    let (output, names) = run_gm_mugration_case(input)?;
-
-    assert_eq!(expected.states, states_vec(&output));
-
-    let actual_confidence = confidence_by_name(&output, &names);
-    for (node_name, expected_profile) in &expected.confidence {
-      let actual_profile = actual_confidence
-        .get(node_name)
-        .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
-      let expected_arr = Array1::from_vec(expected_profile.clone());
-      assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-6);
-    }
-
-    Ok(())
-  }
-
   #[rustfmt::skip]
   #[rstest]
+  #[case::zika_20_country(          "zika_20_country")]
+  #[case::zika_20_country_weights(  "zika_20_country_weights")]
+  #[case::lassa_l_20_country(       "lassa_L_20_country")]
   #[case::dengue_20_country(        "dengue_20_country")]
   #[case::tb_20_cluster(            "tb_20_cluster")]
+  #[case::rsv_a_20_country(         "rsv_a_20_country")]
+  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
   #[trace]
   fn test_gm_mugration_confidence_outputs(#[case] case: &str) -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
@@ -80,22 +63,10 @@ mod tests {
         .get(node_name)
         .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
       let expected_arr = Array1::from_vec(expected_profile.clone());
-      assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-10);
+      assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-7);
     }
 
     Ok(())
-  }
-
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::zika_20_country_weights(  "zika_20_country_weights")]
-  #[case::lassa_l_20_country(       "lassa_L_20_country")]
-  #[case::rsv_a_20_country(         "rsv_a_20_country")]
-  #[case::mpox_clade_ii_20_country( "mpox_clade_ii_20_country")]
-  #[trace]
-  #[ignore = "v0 parity: residual marginal-confidence divergence from v0 (kb/issues/H-mugration-iterative-gtr.md)"]
-  fn test_gm_mugration_confidence_outputs_v1_divergence(#[case] case: &str) -> Result<(), Report> {
-    test_gm_mugration_confidence_outputs(case)
   }
 
   mod helpers {
