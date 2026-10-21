@@ -26,6 +26,7 @@ if [[ -t 0 && -t 1 ]]; then
 fi
 
 exec docker run --rm --interactive "${tty_flag[@]+"${tty_flag[@]}"}" \
+  --name="treetime-logo-$(date +%Y%m%d-%H%M%S)-$$" \
   --network="${NETWORK:-none}" \
   --cap-drop=ALL \
   --security-opt=no-new-privileges \
