@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub mod ambiguity_outputs;
 pub mod annotated_graph;
 pub mod augur_node_data_ancestral;
 pub mod augur_node_data_refine;

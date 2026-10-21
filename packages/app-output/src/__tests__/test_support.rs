@@ -1,15 +1,16 @@
 #[cfg(test)]
 pub(crate) mod tests {
+  use crate::ambiguity_outputs::AmbiguityOutputs;
   use crate::annotated_graph::{
     AnnotatedGraph, AnnotatedTreeView, Divergence, TreeAminoAcids, TreeDates, TreeSequences, TreeTraits,
   };
   use crate::auspice::auspice_tree;
-  use crate::output_plan::CommandKind;
+  use crate::output_plan::{CommandKind, OutputSelection};
   use crate::usher_mat::mat_tree;
   use eyre::Report;
   use jsonschema::{Retrieve, Uri, Validator};
   use maplit::btreemap;
-  use ndarray::Array1;
+  use ndarray::{Array1, array};
   use serde_json::Value;
   use std::collections::{BTreeMap, BTreeSet};
   use std::error::Error;
@@ -19,6 +20,7 @@ pub(crate) mod tests {
   use treetime::alphabet::state_alphabet::StateAlphabet;
   use treetime::ancestral::aa::AaNodeData;
   use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
+  use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -259,9 +261,40 @@ pub(crate) mod tests {
         attribute,
         states: &setup.states,
         posteriors: &setup.posteriors,
+        ambiguity: None,
       }),
       ..annotated(&setup.topology)
     }
+  }
+
+  pub(crate) fn mugration_graph_with_ambiguity<'a>(
+    setup: &'a MugrationSetup,
+    attribute: &'a str,
+    ambiguity: &'a AmbiguityOutputs,
+  ) -> AnnotatedGraph<'a> {
+    let graph = mugration_graph(setup, attribute);
+    AnnotatedGraph {
+      traits: graph.traits.map(|traits| TreeTraits {
+        ambiguity: Some(ambiguity),
+        ..traits
+      }),
+      ..graph
+    }
+  }
+
+  pub(crate) fn ambiguity_for(outputs: &[OutputSelection], threshold: f64) -> Result<AmbiguityOutputs, Report> {
+    Ok(AmbiguityOutputs::new(
+      AmbiguityThreshold::new(threshold)?,
+      &BTreeSet::new(),
+      outputs.iter().copied(),
+    ))
+  }
+
+  pub(crate) fn ambiguous_mugration_setup() -> Result<MugrationSetup, Report> {
+    let mut setup = mugration_setup()?;
+    let root = node_key(&setup.topology, "root");
+    setup.posteriors.insert(root, StatePosterior::new(array![0.45, 0.55])?);
+    Ok(setup)
   }
 
   pub(crate) fn dated_setup() -> Result<DatedSetup, Report> {
@@ -328,6 +361,13 @@ pub(crate) mod tests {
     let mugration = mugration_setup()?;
     let mugration = auspice_tree_of(&mugration_graph(&mugration, "country"), CommandKind::Mugration)?;
 
+    let ambiguous = ambiguous_mugration_setup()?;
+    let ambiguity = ambiguity_for(&[OutputSelection::Auspice], 0.125)?;
+    let ambiguous = auspice_tree_of(
+      &mugration_graph_with_ambiguity(&ambiguous, "country", &ambiguity),
+      CommandKind::Mugration,
+    )?;
+
     let timetree = dated_setup()?;
     let timetree = auspice_tree_of(&dated_graph(&timetree, None), CommandKind::Timetree)?;
 
@@ -337,6 +377,7 @@ pub(crate) mod tests {
       "prune" => to_json_value(&prune)?,
       "clock" => to_json_value(&clock)?,
       "mugration" => to_json_value(&mugration)?,
+      "mugration-ambiguity" => to_json_value(&ambiguous)?,
       "timetree" => to_json_value(&timetree)?,
     })
   }

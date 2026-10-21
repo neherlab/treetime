@@ -1,9 +1,12 @@
+use crate::ambiguity_outputs::AmbiguityOutputs;
+use crate::output_plan::OutputSelection;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::alphabet::state_alphabet::StateAlphabet;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
+use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -88,6 +91,7 @@ pub struct TreeTraits<'a> {
   pub attribute: &'a str,
   pub states: &'a StateAlphabet,
   pub posteriors: &'a BTreeMap<GraphNodeKey, StatePosterior>,
+  pub ambiguity: Option<&'a AmbiguityOutputs>,
 }
 
 impl<'a> TreeTraits<'a> {
@@ -97,5 +101,31 @@ impl<'a> TreeTraits<'a> {
       .states
       .name(state)
       .ok_or_else(|| make_internal_report!("Most likely state {state} of node {key} is not a trait state"))
+  }
+
+  pub(crate) fn ambiguity_key(&self, output: OutputSelection) -> Option<String> {
+    self
+      .ambiguity_threshold(output)
+      .map(|_| format!("{}_ambiguous", self.attribute))
+  }
+
+  pub(crate) fn ambiguous_states(&self, key: GraphNodeKey, output: OutputSelection) -> Result<Option<String>, Report> {
+    let Some(threshold) = self.ambiguity_threshold(output) else {
+      return Ok(None);
+    };
+    let names = threshold
+      .plausible_states(self.posteriors[&key].profile())
+      .map(|state| {
+        self
+          .states
+          .name(state)
+          .ok_or_else(|| make_internal_report!("Plausible state {state} of node {key} is not a trait state"))
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+    Ok((names.len() > 1).then(|| names.join("|")))
+  }
+
+  fn ambiguity_threshold(&self, output: OutputSelection) -> Option<AmbiguityThreshold> {
+    self.ambiguity.and_then(|ambiguity| ambiguity.threshold_for(output))
   }
 }

@@ -1,11 +1,12 @@
 use crate::annotated_graph::{AnnotatedTreeView, Divergence, TreeSequences, TreeTraits};
-use crate::output_plan::CommandKind;
+use crate::output_plan::{CommandKind, OutputSelection};
 use crate::trait_annotations::{build_confidence_map, trait_change};
 use deser_value::{Map, Value, to_value};
 use eyre::{Report, WrapErr};
 use itertools::izip;
 use maplit::btreemap;
 use std::collections::BTreeMap;
+use std::iter::once;
 use treetime::clock::divergence::root_to_node_divergences_where_known;
 use treetime::homoplasy::classify::MutationClass;
 use treetime::homoplasy::site_branches::sites_by_branch_count;
@@ -202,7 +203,7 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
     .transpose()?;
   let (traits, labels) = match &graph.traits {
     Some(traits) => (
-      Some(node_trait(traits, key, &name)?),
+      node_trait_attrs(traits, key, &name)?,
       tree
         .tree()
         .parent(key)
@@ -215,7 +216,7 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
           other: Map::from_iter([(traits.attribute, Value::from(transition))]),
         }),
     ),
-    None => (None, None),
+    None => (vec![], None),
   };
   Ok(AuspiceTreeNode {
     branch_attrs: AuspiceTreeBranchAttrs {
@@ -294,6 +295,23 @@ fn auspice_track_name(track: &str) -> Result<&str, Report> {
   } else {
     make_error!("Auspice v2 cannot represent amino-acid mutation track '{track}'")
   }
+}
+
+fn node_trait_attrs(
+  traits: &TreeTraits<'_>,
+  key: GraphNodeKey,
+  node_name: &str,
+) -> Result<Vec<(String, Value)>, Report> {
+  let ambiguous = traits
+    .ambiguity_key(OutputSelection::Auspice)
+    .zip(traits.ambiguous_states(key, OutputSelection::Auspice)?)
+    .map(|(ambiguity_key, ambiguous)| {
+      (
+        ambiguity_key,
+        Value::from(Map::from_iter([("value", Value::from(ambiguous))])),
+      )
+    });
+  Ok(once(node_trait(traits, key, node_name)?).chain(ambiguous).collect())
 }
 
 fn node_trait(traits: &TreeTraits<'_>, key: GraphNodeKey, node_name: &str) -> Result<(String, Value), Report> {

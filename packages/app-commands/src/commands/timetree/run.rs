@@ -19,6 +19,7 @@ use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
 use treetime::clock::find_best_root::params::RerootSpec;
 use treetime::optimize::params::BranchLengthMode;
+use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
@@ -51,6 +52,8 @@ pub fn run_timetree_estimation(
   let input_leaf_order = input_data.input_leaf_order.clone();
 
   let resolved = args.resolve_outputs()?;
+  let ambiguity = &args.ambiguity_outputs;
+  ambiguity.warn_unwritten(&resolved, log);
   let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, args.branch_length_mode, log)?;
   let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
   if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
@@ -86,6 +89,7 @@ pub fn run_timetree_estimation(
     .then(|| {
       Ok::<_, Report>(ReconstructedNucSink {
         writers: NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs)?,
+        ambiguity: ambiguity.threshold_for(OutputSelection::ReconstructedNucFasta),
       })
     })
     .transpose()?;
@@ -412,17 +416,24 @@ fn mutation_divergences(
 
 struct ReconstructedNucSink {
   writers: NucFastaWriters,
+  ambiguity: Option<AmbiguityThreshold>,
 }
 
 impl SeqSink for ReconstructedNucSink {
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     match item.track {
       SeqTrack::Nuc(_) if !item.emitted => Ok(()),
-      SeqTrack::Nuc(partition) => self.writers.write(partition, item.key, item.name, item.seq),
+      SeqTrack::Nuc(partition) => self
+        .writers
+        .write(partition, item.key, item.name, &item.seq_with_ambiguity()),
       SeqTrack::Aa(cds) => {
         make_internal_error!("Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'")
       },
     }
+  }
+
+  fn ambiguity(&self) -> Option<AmbiguityThreshold> {
+    self.ambiguity
   }
 }
 

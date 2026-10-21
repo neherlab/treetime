@@ -403,6 +403,19 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `clock-model`, `clock-csv`, `confidence-tsv`, `tracelog`, `coalescent-tsv`, `coalescent-csv`, `coalescent-json`
 
+* `--ambiguity-threshold <AMBIGUITY_THRESHOLD>` — Report every state whose posterior probability is at most this far below the probability of the most likely state.
+
+   The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.
+
+   The reconstructed FASTA writes a position with more than one reported state as the IUPAC code of these states, or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes.
+* `--ambiguity-outputs <AMBIGUITY_OUTPUTS>` — Comma-separated list of the outputs that carry the ambiguity report.
+
+   Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`.
+
+  Possible values:
+  - `reconstructed-nuc-fasta`:
+    Reconstructed nucleotide FASTA
+
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
   Possible values: `none`, `ascending`, `descending`
@@ -1055,6 +1068,23 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `reconstructed-nuc-fasta`, `reconstructed-aa-fasta`
 
+* `--ambiguity-threshold <AMBIGUITY_THRESHOLD>` — Report every state whose posterior probability is at most this far below the probability of the most likely state.
+
+   The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.
+
+   A sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior.
+* `--ambiguity-outputs <AMBIGUITY_OUTPUTS>` — Comma-separated list of the outputs that carry the ambiguity report.
+
+   Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`.
+
+  Possible values:
+  - `reconstructed-nuc-fasta`:
+    Reconstructed nucleotide FASTA
+  - `reconstructed-aa-fasta`:
+    Reconstructed amino-acid FASTA of each CDS
+  - `augur-node-data`:
+    Node sequences in the augur node data
+
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 
   Possible values: `none`, `ascending`, `descending`
@@ -1655,6 +1685,23 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
    A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`, `confidence-csv`, `traits-csv`
+
+* `--ambiguity-threshold <AMBIGUITY_THRESHOLD>` — Report every state whose posterior probability is at most this far below the probability of the most likely state.
+
+   The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.
+
+   A trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits CSV and no field in the JSON outputs.
+* `--ambiguity-outputs <AMBIGUITY_OUTPUTS>` — Comma-separated list of the outputs that carry the ambiguity report.
+
+   Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`.
+
+  Possible values:
+  - `traits-csv`:
+    Extra column `<attribute>_ambiguous` in the traits CSV
+  - `augur-node-data`:
+    Extra node field `<attribute>_ambiguous` in the augur node data
+  - `auspice`:
+    Extra node attribute `<attribute>_ambiguous` in the Auspice JSON
 
 * `--ladderize <LADDERIZE>` — Order tree topology before writing output files
 

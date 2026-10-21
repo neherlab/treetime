@@ -3,6 +3,7 @@ use crate::commands::shared::gtr_output::{trait_model, write_gtr_output};
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
+use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
 use app_output::augur_node_data_traits::write_augur_node_data_traits;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
@@ -40,6 +41,8 @@ pub fn run_mugration(
   let branch_lengths = parse.branch_lengths;
 
   let resolved = mugration_args.resolve_outputs()?;
+  let ambiguity = &mugration_args.ambiguity_outputs;
+  ambiguity.warn_unwritten(&resolved, log);
 
   let attribute_column = Some(mugration_args.attribute());
 
@@ -120,6 +123,7 @@ pub fn run_mugration(
     &branch_lengths,
     mugration_args.attribute(),
     &resolved,
+    ambiguity,
     log,
   )?;
 
@@ -182,6 +186,7 @@ fn write_mugration_trees(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   attribute: &str,
   resolved: &ResolvedOutputs,
+  ambiguity: &AmbiguityOutputs,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let annotated = AnnotatedGraph {
@@ -196,6 +201,7 @@ fn write_mugration_trees(
       attribute,
       states: &output.states,
       posteriors: &output.posteriors,
+      ambiguity: Some(ambiguity),
     }),
   };
   write_graph_outputs(&annotated, &resolved.tree_outputs)?;

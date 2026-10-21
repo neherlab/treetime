@@ -1,5 +1,6 @@
 use crate::annotated_graph::{AnnotatedTreeView, TreeTraits};
 use crate::auspice::ensure_finite;
+use crate::output_plan::OutputSelection;
 use crate::trait_annotations::{build_confidence_map, trait_change};
 use deser_value::{Value, to_value};
 use eyre::Report;
@@ -66,6 +67,7 @@ fn trait_nodes(
   let graph = tree.graph();
   let confidence_key = format!("{}_confidence", traits.attribute);
   let entropy_key = format!("{}_entropy", traits.attribute);
+  let ambiguity_key = traits.ambiguity_key(OutputSelection::AugurNodeData);
   let mut nodes = BTreeMap::new();
   for node in graph.graph.get_nodes() {
     let key = node.key();
@@ -83,6 +85,12 @@ fn trait_nodes(
       fields.insert(confidence_key.clone(), to_value(&confidence)?);
     }
     fields.insert(entropy_key.clone(), Value::from(entropy));
+    if let (Some(ambiguity_key), Some(ambiguous)) = (
+      &ambiguity_key,
+      traits.ambiguous_states(key, OutputSelection::AugurNodeData)?,
+    ) {
+      fields.insert(ambiguity_key.clone(), Value::from(ambiguous));
+    }
     nodes.insert(name, AugurNodeDataJsonTraitsNode { fields });
   }
   Ok(nodes)

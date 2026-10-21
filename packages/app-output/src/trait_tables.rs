@@ -4,6 +4,7 @@ use crate::table_output::table_create;
 use deser::Serialize;
 use eyre::Report;
 use itertools::Itertools;
+use std::borrow::Cow;
 use std::io::Write;
 use std::iter::once;
 use std::path::Path;
@@ -25,10 +26,20 @@ pub fn write_trait_confidence_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> 
 pub(crate) fn write_traits_rows<W: Write>(tree: &AnnotatedTreeView<'_>, csv: &mut CsvWriter<W>) -> Result<(), Report> {
   let traits = tree_traits(tree)?;
   let graph = tree.graph();
-  csv.write_record(["node", traits.attribute])?;
+  let ambiguity_key = traits.ambiguity_key(OutputSelection::TraitsCsv);
+  csv.write_record(["node", traits.attribute].into_iter().chain(ambiguity_key.as_deref()))?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    csv.write_record([&graph.names[key], traits.state_name(key)?])
+    let ambiguous = ambiguity_key
+      .is_some()
+      .then(|| traits.ambiguous_states(key, OutputSelection::TraitsCsv))
+      .transpose()?
+      .map(Option::unwrap_or_default);
+    csv.write_record(
+      [Cow::Borrowed(&graph.names[key]), Cow::Borrowed(traits.state_name(key)?)]
+        .into_iter()
+        .chain(ambiguous.map(Cow::Owned)),
+    )
   })
 }
 

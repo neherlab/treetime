@@ -1,6 +1,7 @@
 use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::ambiguity::AncestralAmbiguityArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::method_anc::MethodAncestralCli;
@@ -11,6 +12,7 @@ use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
+use app_output::ambiguity_outputs::AmbiguityOutputs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -48,6 +50,7 @@ pub struct TreetimeAncestralArgs {
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
   pub(crate) sample_from_profile: SampleMode,
+  pub(crate) ambiguity_outputs: AmbiguityOutputs,
 }
 
 impl TreetimeAncestralArgs {
@@ -70,6 +73,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       include_leaves: raw.include_leaves || raw.reconstruct_tip_states,
       impute_missing_data: raw.impute_missing_data || raw.reconstruct_tip_states,
       sample_from_profile: raw.sample_from_profile.into(),
+      ambiguity_outputs: raw.ambiguity.resolve()?,
       raw,
     })
   }
@@ -281,6 +285,11 @@ pub struct TreetimeAncestralArgsRaw {
     clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
   )]
   pub output_selection: Vec<AncestralOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub ambiguity: AncestralAmbiguityArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

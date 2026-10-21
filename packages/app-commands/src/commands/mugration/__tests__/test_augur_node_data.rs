@@ -183,6 +183,7 @@ mod tests {
           attribute: "country",
           states: &output.states,
           posteriors: &output.posteriors,
+          ambiguity: None,
         }),
       };
       let data = build_augur_node_data_traits(&AnnotatedTreeView::new(&annotated).unwrap(), &output.gtr).unwrap();

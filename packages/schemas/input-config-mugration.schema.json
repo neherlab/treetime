@@ -228,6 +228,23 @@
       "default": [],
       "x-cli-flag": "--output-selection"
     },
+    "ambiguity_threshold": {
+      "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits CSV and no field in the JSON outputs.",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "x-unset": true,
+      "x-cli-flag": "--ambiguity-threshold"
+    },
+    "ambiguity_outputs": {
+      "description": "Comma-separated list of the outputs that carry the ambiguity report.\n\nWithout this list, every output of the run that can carry the report carries it. Requires\n`--ambiguity-threshold`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/MugrationAmbiguityOutput"
+      },
+      "default": [],
+      "x-cli-flag": "--ambiguity-outputs"
+    },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
       "$ref": "#/$defs/LadderizeArg",
@@ -290,6 +307,25 @@
         "gtr",
         "confidence-csv",
         "traits-csv"
+      ]
+    },
+    "MugrationAmbiguityOutput": {
+      "oneOf": [
+        {
+          "description": "Extra column `<attribute>_ambiguous` in the traits CSV",
+          "type": "string",
+          "const": "traits-csv"
+        },
+        {
+          "description": "Extra node field `<attribute>_ambiguous` in the augur node data",
+          "type": "string",
+          "const": "augur-node-data"
+        },
+        {
+          "description": "Extra node attribute `<attribute>_ambiguous` in the Auspice JSON",
+          "type": "string",
+          "const": "auspice"
+        }
       ]
     },
     "LadderizeArg": {

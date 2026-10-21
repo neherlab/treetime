@@ -541,6 +541,23 @@
       "default": [],
       "x-cli-flag": "--output-selection"
     },
+    "ambiguity_threshold": {
+      "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nThe reconstructed FASTA writes a position with more than one reported state as the IUPAC code of these states, or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes.",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "x-unset": true,
+      "x-cli-flag": "--ambiguity-threshold"
+    },
+    "ambiguity_outputs": {
+      "description": "Comma-separated list of the outputs that carry the ambiguity report.\n\nWithout this list, every output of the run that can carry the report carries it. Requires\n`--ambiguity-threshold`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TimetreeAmbiguityOutput"
+      },
+      "default": [],
+      "x-cli-flag": "--ambiguity-outputs"
+    },
     "ladderize": {
       "description": "Order tree topology before writing output files.",
       "$ref": "#/$defs/LadderizeArg",
@@ -732,6 +749,15 @@
         "coalescent-tsv",
         "coalescent-csv",
         "coalescent-json"
+      ]
+    },
+    "TimetreeAmbiguityOutput": {
+      "oneOf": [
+        {
+          "description": "Reconstructed nucleotide FASTA",
+          "type": "string",
+          "const": "reconstructed-nuc-fasta"
+        }
       ]
     },
     "LadderizeArg": {

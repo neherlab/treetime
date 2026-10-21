@@ -1,9 +1,11 @@
+use crate::commands::shared::ambiguity::MugrationAmbiguityArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::MetadataIdArgs;
 use crate::commands::shared::output_args::{MugrationOutputSelection, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
+use app_output::ambiguity_outputs::AmbiguityOutputs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -23,6 +25,7 @@ pub struct TreetimeMugrationArgs {
   pub(crate) tree: PathBuf,
   pub(crate) metadata: PathBuf,
   pub(crate) attribute: String,
+  pub(crate) ambiguity_outputs: AmbiguityOutputs,
 }
 
 impl TreetimeMugrationArgs {
@@ -41,6 +44,7 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
   fn try_from(raw: TreetimeMugrationArgsRaw) -> Result<Self, Report> {
     match (raw.tree.clone(), raw.metadata.clone(), raw.attribute.clone()) {
       (Some(tree), Some(metadata), Some(attribute)) => Ok(Self {
+        ambiguity_outputs: raw.ambiguity.resolve()?,
         raw,
         tree,
         metadata,
@@ -219,6 +223,11 @@ pub struct TreetimeMugrationArgsRaw {
     clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
   )]
   pub output_selection: Vec<MugrationOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub ambiguity: MugrationAmbiguityArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

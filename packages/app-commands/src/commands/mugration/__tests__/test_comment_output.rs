@@ -62,6 +62,7 @@ mod tests {
         attribute: "country",
         states: &output.states,
         posteriors: &output.posteriors,
+        ambiguity: None,
       }),
     };
     let dir = TempDir::new()?;

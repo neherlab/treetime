@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::ambiguity::TimetreeAmbiguityArgs;
 use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
@@ -13,6 +14,7 @@ use crate::commands::shared::reroot::RerootArgs;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::TreeDialectArgs;
+use app_output::ambiguity_outputs::AmbiguityOutputs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -49,6 +51,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) max_grid_points: MaxGridPoints,
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
+  pub(crate) ambiguity_outputs: AmbiguityOutputs,
 }
 
 impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
@@ -78,6 +81,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
       include_leaves: raw.include_leaves || raw.reconstruct_tip_states,
       impute_missing_data: raw.impute_missing_data || raw.reconstruct_tip_states,
+      ambiguity_outputs: raw.ambiguity.resolve()?,
       raw,
     })
   }
@@ -523,6 +527,11 @@ pub struct TreetimeTimetreeArgsRaw {
     clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
   )]
   pub output_selection: Vec<TimetreeOutputSelection>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub ambiguity: TimetreeAmbiguityArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

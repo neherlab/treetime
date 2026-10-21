@@ -150,6 +150,7 @@ pub(super) mod tests {
         attribute: "country",
         states: &mugration.states,
         posteriors: &mugration.posteriors,
+        ambiguity: None,
       }),
       ..dated_graph(&dated, None)
     };
@@ -199,6 +200,7 @@ pub(super) mod tests {
         attribute: "country",
         states: &mugration.states,
         posteriors: &mugration.posteriors,
+        ambiguity: None,
       }),
       ..annotated(&dated.topology)
     };
@@ -481,6 +483,23 @@ pub(super) mod tests {
     assert_eq!(json!(["tree"]), document["meta"]["panels"]);
     assert_eq!(None, document["meta"].get("genome_annotations"));
 
+    Ok(())
+  }
+
+  #[test]
+  fn test_tree_output_auspice_writes_ambiguous_trait_states_as_node_attribute() -> Result<(), Report> {
+    let document = &all_auspice_documents()?["mugration-ambiguity"];
+
+    let root = &document["tree"];
+    let children = root["children"].as_array().expect("the Auspice root has children");
+    let expected = json!([{ "value": "CH|US" }, null, null, null]);
+    let actual = json!(
+      once(root)
+        .chain(children)
+        .map(|node| node["node_attrs"].get("country_ambiguous").cloned())
+        .collect::<Vec<_>>()
+    );
+    assert_eq!(expected, actual);
     Ok(())
   }
 

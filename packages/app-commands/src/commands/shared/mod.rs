@@ -1,5 +1,6 @@
 pub mod alignment;
 pub mod alphabet;
+pub mod ambiguity;
 pub mod ancestral_trees;
 pub mod branch_length_mode;
 pub mod config;

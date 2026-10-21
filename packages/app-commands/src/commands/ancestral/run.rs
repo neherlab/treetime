@@ -12,6 +12,7 @@ use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::shared::sequence_inputs::{
   AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources,
 };
+use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::augur_node_data_ancestral::AncestralNodeSequences;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, output_unavailable};
@@ -22,8 +23,10 @@ use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::sanitize_to_alphabet;
+use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
+use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
@@ -83,8 +86,17 @@ pub fn run_ancestral_reconstruction(
       .resolve_topology_order(&input.graph, &names, None, args.tree_dialect.dialect())?;
 
   let resolved = args.resolve_outputs()?;
+  let ambiguity = &args.ambiguity_outputs;
+  ambiguity.warn_unwritten(&resolved, log);
+  if args.method_anc == MethodAncestral::Parsimony && ambiguity.is_requested() {
+    progress_warn!(
+      log,
+      "--ambiguity-threshold has no effect with --method-anc=parsimony: Fitch parsimony computes no posterior to \
+       report ambiguous states from."
+    );
+  }
   let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
-  let mut seq_sink = AncestralSeqSink::new(&resolved, descs)?;
+  let mut seq_sink = AncestralSeqSink::new(&resolved, descs, ambiguity)?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
   let seed = args.seed_args.resolve(random_step, log);
@@ -105,6 +117,7 @@ pub fn run_ancestral_reconstruction(
   let AncestralSeqSink {
     fasta,
     mut node_sequences,
+    ..
   } = seq_sink;
   if let Some(fasta) = fasta {
     fasta.finish()?;
@@ -116,8 +129,9 @@ pub fn run_ancestral_reconstruction(
     branch_lengths: &branch_lengths,
     seed,
   };
+  let aa_ambiguity = ambiguity.threshold_for(OutputSelection::ReconstructedAaFasta);
   let aa_result = aa_plan
-    .map(|plan| run_aa_reconstructions(args, plan, &aa_inputs, cancel, stages, log))
+    .map(|plan| run_aa_reconstructions(args, plan, &aa_inputs, aa_ambiguity, cancel, stages, log))
     .transpose()?;
 
   let maps = results
@@ -214,24 +228,36 @@ fn planned_aa_fasta_paths(
 
 struct AncestralSeqSink {
   fasta: Option<NucFastaWriters>,
+  fasta_ambiguity: Option<AmbiguityThreshold>,
   node_sequences: BTreeMap<usize, BTreeMap<GraphNodeKey, Seq>>,
+  node_data_ambiguity: Option<AmbiguityThreshold>,
 }
 
 impl AncestralSeqSink {
   fn new(
     resolved: &ResolvedOutputs,
     descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
+    ambiguity: &AmbiguityOutputs,
   ) -> Result<Self, Report> {
     let fasta_paths = resolved.partition_paths(OutputSelection::ReconstructedNucFasta);
     let fasta = (!fasta_paths.is_empty())
       .then(|| NucFastaWriters::create(fasta_paths, descs))
       .transpose()?;
-    let node_sequences = resolved
+    let node_sequences: BTreeMap<_, _> = resolved
       .partition_paths(OutputSelection::AugurNodeData)
       .into_keys()
       .map(|partition| (partition, BTreeMap::new()))
       .collect();
-    Ok(Self { fasta, node_sequences })
+    Ok(Self {
+      fasta_ambiguity: fasta
+        .as_ref()
+        .and_then(|_| ambiguity.threshold_for(OutputSelection::ReconstructedNucFasta)),
+      fasta,
+      node_data_ambiguity: (!node_sequences.is_empty())
+        .then(|| ambiguity.threshold_for(OutputSelection::AugurNodeData))
+        .flatten(),
+      node_sequences,
+    })
   }
 }
 
@@ -241,12 +267,23 @@ impl SeqSink for AncestralSeqSink {
       return make_internal_error!("Nucleotide reconstructed FASTA sink received an amino-acid track");
     };
     if let (Some(fasta), true) = (self.fasta.as_mut(), item.emitted) {
-      fasta.write(partition, item.key, item.name, item.seq)?;
+      match self.fasta_ambiguity {
+        Some(_) => fasta.write(partition, item.key, item.name, &item.seq_with_ambiguity())?,
+        None => fasta.write(partition, item.key, item.name, item.seq)?,
+      }
     }
     if let Some(node_sequences) = self.node_sequences.get_mut(&partition) {
-      node_sequences.insert(item.key, item.seq.clone());
+      let seq = match self.node_data_ambiguity {
+        Some(_) => item.seq_with_ambiguity().into_owned(),
+        None => item.seq.clone(),
+      };
+      node_sequences.insert(item.key, seq);
     }
     Ok(())
+  }
+
+  fn ambiguity(&self) -> Option<AmbiguityThreshold> {
+    self.fasta_ambiguity.or(self.node_data_ambiguity)
   }
 }
 
@@ -254,6 +291,7 @@ fn run_aa_reconstructions(
   ancestral_args: &TreetimeAncestralArgs,
   plan: AaPlan<'_>,
   inputs: &AaRunInputs<'_>,
+  ambiguity: Option<AmbiguityThreshold>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -305,7 +343,7 @@ fn run_aa_reconstructions(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let mut seq_sink = fasta_paths.map(AaFastaSink::new);
+  let mut seq_sink = fasta_paths.map(|paths| AaFastaSink::new(paths, ambiguity));
 
   let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
     .iter()
@@ -378,12 +416,17 @@ struct AaRunInputs<'a> {
 
 struct AaFastaSink {
   paths: BTreeMap<String, PathBuf>,
+  ambiguity: Option<AmbiguityThreshold>,
   pending: Option<(String, BTreeMap<GraphNodeKey, (String, Seq)>)>,
 }
 
 impl AaFastaSink {
-  fn new(paths: BTreeMap<String, PathBuf>) -> Self {
-    Self { paths, pending: None }
+  fn new(paths: BTreeMap<String, PathBuf>, ambiguity: Option<AmbiguityThreshold>) -> Self {
+    Self {
+      paths,
+      ambiguity,
+      pending: None,
+    }
   }
 
   fn finish(mut self) -> Result<(), Report> {
@@ -413,11 +456,19 @@ impl SeqSink for AaFastaSink {
     if self.pending.as_ref().is_some_and(|(pending, _)| pending != cds) {
       self.write_pending()?;
     }
+    let seq = match self.ambiguity {
+      Some(_) => item.seq_with_ambiguity().into_owned(),
+      None => item.seq.clone(),
+    };
     self
       .pending
       .get_or_insert_with(|| (cds.to_owned(), BTreeMap::new()))
       .1
-      .insert(item.key, (item.name.to_owned(), item.seq.clone()));
+      .insert(item.key, (item.name.to_owned(), seq));
     Ok(())
+  }
+
+  fn ambiguity(&self) -> Option<AmbiguityThreshold> {
+    self.ambiguity
   }
 }

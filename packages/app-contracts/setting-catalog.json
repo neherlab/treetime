@@ -1988,6 +1988,49 @@
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
+          "key": "ambiguity_threshold",
+          "label": "Ambiguity threshold",
+          "flag": "--ambiguity-threshold",
+          "group": "Output",
+          "role": "setting",
+          "kind": "number",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "AMBIGUITY_THRESHOLD"
+          ],
+          "conflicts": [],
+          "help": "Report every state whose posterior probability is at most this far below the probability of the most likely state.",
+          "more": "The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.\n\nThe reconstructed FASTA writes a position with more than one reported state as the IUPAC code of these states, or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes."
+        },
+        {
+          "key": "ambiguity_outputs",
+          "label": "Ambiguity outputs",
+          "flag": "--ambiguity-outputs",
+          "group": "Output",
+          "role": "setting",
+          "kind": "enum-list",
+          "nullable": false,
+          "options": [
+            {
+              "value": "reconstructed-nuc-fasta",
+              "help": "Reconstructed nucleotide FASTA"
+            }
+          ],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "AMBIGUITY_OUTPUTS"
+          ],
+          "conflicts": [],
+          "help": "Comma-separated list of the outputs that carry the ambiguity report.",
+          "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
+        },
+        {
           "key": "ladderize",
           "label": "Ladderize",
           "flag": "--ladderize",
@@ -4380,6 +4423,57 @@
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
+          "key": "ambiguity_threshold",
+          "label": "Ambiguity threshold",
+          "flag": "--ambiguity-threshold",
+          "group": "Output",
+          "role": "setting",
+          "kind": "number",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "AMBIGUITY_THRESHOLD"
+          ],
+          "conflicts": [],
+          "help": "Report every state whose posterior probability is at most this far below the probability of the most likely state.",
+          "more": "The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.\n\nA sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior."
+        },
+        {
+          "key": "ambiguity_outputs",
+          "label": "Ambiguity outputs",
+          "flag": "--ambiguity-outputs",
+          "group": "Output",
+          "role": "setting",
+          "kind": "enum-list",
+          "nullable": false,
+          "options": [
+            {
+              "value": "reconstructed-nuc-fasta",
+              "help": "Reconstructed nucleotide FASTA"
+            },
+            {
+              "value": "reconstructed-aa-fasta",
+              "help": "Reconstructed amino-acid FASTA of each CDS"
+            },
+            {
+              "value": "augur-node-data",
+              "help": "Node sequences in the augur node data"
+            }
+          ],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "AMBIGUITY_OUTPUTS"
+          ],
+          "conflicts": [],
+          "help": "Comma-separated list of the outputs that carry the ambiguity report.",
+          "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
+        },
+        {
           "key": "ladderize",
           "label": "Ladderize",
           "flag": "--ladderize",
@@ -6212,6 +6306,57 @@
           "conflicts": [],
           "help": "Comma-separated list of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+        },
+        {
+          "key": "ambiguity_threshold",
+          "label": "Ambiguity threshold",
+          "flag": "--ambiguity-threshold",
+          "group": "Output",
+          "role": "setting",
+          "kind": "number",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "AMBIGUITY_THRESHOLD"
+          ],
+          "conflicts": [],
+          "help": "Report every state whose posterior probability is at most this far below the probability of the most likely state.",
+          "more": "The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.\n\nA trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits CSV and no field in the JSON outputs."
+        },
+        {
+          "key": "ambiguity_outputs",
+          "label": "Ambiguity outputs",
+          "flag": "--ambiguity-outputs",
+          "group": "Output",
+          "role": "setting",
+          "kind": "enum-list",
+          "nullable": false,
+          "options": [
+            {
+              "value": "traits-csv",
+              "help": "Extra column `<attribute>_ambiguous` in the traits CSV"
+            },
+            {
+              "value": "augur-node-data",
+              "help": "Extra node field `<attribute>_ambiguous` in the augur node data"
+            },
+            {
+              "value": "auspice",
+              "help": "Extra node attribute `<attribute>_ambiguous` in the Auspice JSON"
+            }
+          ],
+          "item_kind": "string",
+          "default_value": [],
+          "examples": [],
+          "value_names": [
+            "AMBIGUITY_OUTPUTS"
+          ],
+          "conflicts": [],
+          "help": "Comma-separated list of the outputs that carry the ambiguity report.",
+          "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
         },
         {
           "key": "pc",

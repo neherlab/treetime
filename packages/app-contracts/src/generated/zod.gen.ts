@@ -1354,6 +1354,11 @@ export const zTimetreeOutputSelection = z.enum([
   'coalescent-json'
 ]);
 
+/**
+ * Reconstructed nucleotide FASTA
+ */
+export const zTimetreeAmbiguityOutput = z.literal('reconstructed-nuc-fasta');
+
 export const zLadderizeArg = z.enum([
   'none',
   'ascending',
@@ -1476,6 +1481,8 @@ export const zTimetreeConfig = z.strictObject({
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
   output_selection: z.array(zTimetreeOutputSelection).optional(),
+  ambiguity_threshold: z.number().gte(0).lte(1).optional(),
+  ambiguity_outputs: z.array(zTimetreeAmbiguityOutput).optional(),
   ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
@@ -1596,6 +1603,12 @@ export const zAncestralOutputSelection = z.enum([
   'reconstructed-aa-fasta'
 ]);
 
+export const zAncestralAmbiguityOutput = z.union([
+  z.literal('reconstructed-nuc-fasta'),
+  z.literal('reconstructed-aa-fasta'),
+  z.literal('augur-node-data')
+]);
+
 export const zSampleMode = z.enum([
   'argmax',
   'root',
@@ -1660,6 +1673,8 @@ export const zAncestralConfig = z.strictObject({
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
   output_selection: z.array(zAncestralOutputSelection).optional(),
+  ambiguity_threshold: z.number().gte(0).lte(1).optional(),
+  ambiguity_outputs: z.array(zAncestralAmbiguityOutput).optional(),
   ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
@@ -1763,6 +1778,12 @@ export const zMugrationOutputSelection = z.enum([
   'traits-csv'
 ]);
 
+export const zMugrationAmbiguityOutput = z.union([
+  z.literal('traits-csv'),
+  z.literal('augur-node-data'),
+  z.literal('auspice')
+]);
+
 /**
  * Newick dialect of the tree inputs, shared by every command that reads a tree.
  */
@@ -1808,6 +1829,8 @@ export const zMugrationConfig = z.strictObject({
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
   output_selection: z.array(zMugrationOutputSelection).optional(),
+  ambiguity_threshold: z.number().gte(0).lte(1).optional(),
+  ambiguity_outputs: z.array(zMugrationAmbiguityOutput).optional(),
   ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),

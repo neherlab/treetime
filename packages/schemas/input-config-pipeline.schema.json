@@ -1100,6 +1100,29 @@
           },
           "default": []
         },
+        "ambiguity_threshold": {
+          "anyOf": [
+            {
+              "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nThe reconstructed FASTA writes a position with more than one reported state as the IUPAC code of these states, or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "ambiguity_outputs": {
+          "description": "Comma-separated list of the outputs that carry the ambiguity report.\n\nWithout this list, every output of the run that can carry the report carries it. Requires\n`--ambiguity-threshold`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TimetreeAmbiguityOutput"
+          },
+          "default": []
+        },
         "ladderize": {
           "description": "Order tree topology before writing output files.",
           "$ref": "#/$defs/LadderizeArg",
@@ -1428,6 +1451,23 @@
         {
           "type": "string",
           "pattern": "\\{\\{.*\\}\\}"
+        }
+      ]
+    },
+    "TimetreeAmbiguityOutput": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "description": "Reconstructed nucleotide FASTA",
+              "type": "string",
+              "const": "reconstructed-nuc-fasta"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
         }
       ]
     },
@@ -2513,6 +2553,29 @@
           },
           "default": []
         },
+        "ambiguity_threshold": {
+          "anyOf": [
+            {
+              "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "ambiguity_outputs": {
+          "description": "Comma-separated list of the outputs that carry the ambiguity report.\n\nWithout this list, every output of the run that can carry the report carries it. Requires\n`--ambiguity-threshold`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AncestralAmbiguityOutput"
+          },
+          "default": []
+        },
         "ladderize": {
           "description": "Order tree topology before writing output files.",
           "$ref": "#/$defs/LadderizeArg",
@@ -2676,6 +2739,49 @@
         {
           "type": "string",
           "pattern": "\\{\\{.*\\}\\}"
+        }
+      ]
+    },
+    "AncestralAmbiguityOutput": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "description": "Reconstructed nucleotide FASTA",
+              "type": "string",
+              "const": "reconstructed-nuc-fasta"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "description": "Reconstructed amino-acid FASTA of each CDS",
+              "type": "string",
+              "const": "reconstructed-aa-fasta"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "description": "Node sequences in the augur node data",
+              "type": "string",
+              "const": "augur-node-data"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
         }
       ]
     },
@@ -3586,6 +3692,29 @@
           },
           "default": []
         },
+        "ambiguity_threshold": {
+          "anyOf": [
+            {
+              "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits CSV and no field in the JSON outputs.",
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "ambiguity_outputs": {
+          "description": "Comma-separated list of the outputs that carry the ambiguity report.\n\nWithout this list, every output of the run that can carry the report carries it. Requires\n`--ambiguity-threshold`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MugrationAmbiguityOutput"
+          },
+          "default": []
+        },
         "ladderize": {
           "description": "Order tree topology before writing output files.",
           "$ref": "#/$defs/LadderizeArg",
@@ -3645,6 +3774,49 @@
         {
           "type": "string",
           "pattern": "\\{\\{.*\\}\\}"
+        }
+      ]
+    },
+    "MugrationAmbiguityOutput": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "description": "Extra column `<attribute>_ambiguous` in the traits CSV",
+              "type": "string",
+              "const": "traits-csv"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "description": "Extra node field `<attribute>_ambiguous` in the augur node data",
+              "type": "string",
+              "const": "augur-node-data"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "description": "Extra node attribute `<attribute>_ambiguous` in the Auspice JSON",
+              "type": "string",
+              "const": "auspice"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
         }
       ]
     },

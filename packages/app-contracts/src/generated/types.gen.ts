@@ -2649,6 +2649,11 @@ export type NwkStyleArg = 'plain' | 'beast' | 'nhx';
 
 export type TimetreeOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'reconstructed-nuc-fasta' | 'clock-model' | 'clock-csv' | 'confidence-tsv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json';
 
+/**
+ * Reconstructed nucleotide FASTA
+ */
+export type TimetreeAmbiguityOutput = 'reconstructed-nuc-fasta';
+
 export type LadderizeArg = 'none' | 'ascending' | 'descending';
 
 export type TopologyOrderArg = 'keep' | 'descendant-count' | 'descendant-count-reverse' | 'height' | 'height-reverse' | 'divergence' | 'divergence-reverse' | 'label' | 'label-reverse' | 'target-order' | 'target-order-reverse';
@@ -3197,6 +3202,24 @@ export type TimetreeConfig = {
    */
   output_selection?: Array<TimetreeOutputSelection>;
   /**
+   * Report every state whose posterior probability is at most this far below the probability of the most likely
+   * state.
+   *
+   * The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with
+   * the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.
+   * The report is off when the value is not set.
+   *
+   * The reconstructed FASTA writes a position with more than one reported state as the IUPAC code of these states, or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes.
+   */
+  ambiguity_threshold?: number;
+  /**
+   * Comma-separated list of the outputs that carry the ambiguity report.
+   *
+   * Without this list, every output of the run that can carry the report carries it. Requires
+   * `--ambiguity-threshold`.
+   */
+  ambiguity_outputs?: Array<TimetreeAmbiguityOutput>;
+  /**
    * Order tree topology before writing output files.
    */
   ladderize?: LadderizeArg;
@@ -3563,6 +3586,8 @@ export type AaModelName = 'infer' | 'jtt92';
 
 export type AncestralOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta';
 
+export type AncestralAmbiguityOutput = 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'augur-node-data';
+
 export type SampleMode = 'argmax' | 'root' | 'all';
 
 /**
@@ -3891,6 +3916,24 @@ export type AncestralConfig = {
    * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<AncestralOutputSelection>;
+  /**
+   * Report every state whose posterior probability is at most this far below the probability of the most likely
+   * state.
+   *
+   * The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with
+   * the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.
+   * The report is off when the value is not set.
+   *
+   * A sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior.
+   */
+  ambiguity_threshold?: number;
+  /**
+   * Comma-separated list of the outputs that carry the ambiguity report.
+   *
+   * Without this list, every output of the run that can carry the report carries it. Requires
+   * `--ambiguity-threshold`.
+   */
+  ambiguity_outputs?: Array<AncestralAmbiguityOutput>;
   /**
    * Order tree topology before writing output files.
    */
@@ -4287,6 +4330,8 @@ export type HomoplasyConfig = {
 
 export type MugrationOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'confidence-csv' | 'traits-csv';
 
+export type MugrationAmbiguityOutput = 'traits-csv' | 'augur-node-data' | 'auspice';
+
 /**
  * Newick dialect of the tree inputs, shared by every command that reads a tree.
  */
@@ -4538,6 +4583,24 @@ export type MugrationConfig = {
    * the substitution model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<MugrationOutputSelection>;
+  /**
+   * Report every state whose posterior probability is at most this far below the probability of the most likely
+   * state.
+   *
+   * The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with
+   * the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.
+   * The report is off when the value is not set.
+   *
+   * A trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits CSV and no field in the JSON outputs.
+   */
+  ambiguity_threshold?: number;
+  /**
+   * Comma-separated list of the outputs that carry the ambiguity report.
+   *
+   * Without this list, every output of the run that can carry the report carries it. Requires
+   * `--ambiguity-threshold`.
+   */
+  ambiguity_outputs?: Array<MugrationAmbiguityOutput>;
   /**
    * Order tree topology before writing output files.
    */
