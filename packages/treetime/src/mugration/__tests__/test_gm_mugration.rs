@@ -47,7 +47,6 @@ mod tests {
   }
 
   #[test]
-  #[ignore = "v0 parity: marginal-confidence divergence from v0 (kb/issues/H-mugration-iterative-gtr.md)"]
   fn test_gm_mugration_confidence_zika() -> Result<(), Report> {
     let inputs = load_gm_mugration_inputs();
     let outputs = load_gm_mugration_outputs();

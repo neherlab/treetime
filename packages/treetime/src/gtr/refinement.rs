@@ -2,7 +2,7 @@ use crate::gtr::brent_bracketed::BrentBracketed;
 use crate::gtr::gtr::GTR;
 use crate::gtr::infer_gtr::common::{InferGtrOptions, InferGtrResult, MutationCounts, infer_gtr_from_counts};
 use crate::make_internal_report;
-use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalPasses, MarginalUpdate};
+use crate::partition::marginal::shared::update::{MarginalBackward, MarginalPasses, MarginalUpdate};
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use argmin::core::{CostFunction, Error, Executor};
@@ -27,12 +27,11 @@ pub(crate) fn refine_gtr<P: MarginalPasses>(
 where
   P::Node: Clone,
 {
-  let MarginalUpdate {
-    node_states,
-    edges: MarginalEdges { backward, forward, .. },
-    log_lh,
-  } = update;
-  progress_info!(log, "GTR refinement: initial log likelihood = {:.4}", log_lh.value());
+  progress_info!(
+    log,
+    "GTR refinement: initial log likelihood = {:.4}",
+    update.log_lh.value()
+  );
   let options = InferGtrOptions {
     fixed_pi: refinement.fixed_pi.clone(),
     pc: refinement.pc,
@@ -40,21 +39,39 @@ where
   };
 
   let mut gtr = gtr;
-  let mut nodes = node_states;
-  let mut backward = backward;
+  let mut counted = update;
+  let mut rated: Option<RatedMessages<P>> = None;
   for i in 0..=refinement.iterations {
-    let counts = partition.count_transitions(&gtr, graph, branch_lengths, &nodes, &backward, &forward)?;
+    let backward = rated.as_ref().map_or(&counted.edges.backward, |rated| &rated.backward);
+    let counts = partition.count_transitions(
+      &gtr,
+      graph,
+      branch_lengths,
+      &counted.node_states,
+      backward,
+      &counted.edges.forward,
+    )?;
     gtr = infer_gtr(&counts, &options, gtr.pi().len(), log)?;
     if let RefinementRate::Optimize { .. } = refinement.rate {
-      (gtr, nodes, backward) = optimize_gtr_rate(
+      if rated.is_none() {
+        counted = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&counted.node_states))?;
+        debug!(
+          "GTR refinement: log likelihood under the first fitted model = {:.4}",
+          counted.log_lh.value()
+        );
+      }
+      let nodes = rated.as_ref().map_or(&counted.node_states, |rated| &rated.nodes);
+      let (rated_gtr, nodes, backward) = optimize_gtr_rate(
         partition,
         gtr,
-        &nodes,
+        nodes,
         graph,
         branch_lengths,
         RateRangeEdge::KeepStart,
         log,
       )?;
+      gtr = rated_gtr;
+      rated = Some(RatedMessages { nodes, backward });
     }
     debug!("GTR refinement: iteration {i}, mu = {:.6}", gtr.mu());
   }
@@ -71,7 +88,8 @@ where
     );
   }
 
-  let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(&nodes))?;
+  let nodes = rated.as_ref().map_or(&counted.node_states, |rated| &rated.nodes);
+  let update = partition.marginal_update(&gtr, graph, branch_lengths, P::backward_input(nodes))?;
   log_final(&gtr, update.log_lh, log);
   Ok((gtr, update))
 }
@@ -99,6 +117,11 @@ impl GtrRefinement {
 pub(crate) enum RefinementRate {
   Keep,
   Optimize { scale: Option<f64> },
+}
+
+struct RatedMessages<P: MarginalPasses> {
+  nodes: BTreeMap<GraphNodeKey, P::Node>,
+  backward: BTreeMap<GraphEdgeKey, P::Backward>,
 }
 
 fn infer_gtr(

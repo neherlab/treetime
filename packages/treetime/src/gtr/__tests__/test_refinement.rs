@@ -5,6 +5,7 @@ mod tests {
   use crate::partition::marginal::shared::update::MarginalPasses;
   use crate::progress::NoopProgress;
   use eyre::Report;
+  use helpers::fitted_gtr;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_eq, pretty_assert_ulps_eq};
@@ -52,6 +53,92 @@ mod tests {
 
     let fresh = partition.marginal_update(&gtr, &input.graph, &input.branch_lengths, &node_states)?;
     pretty_assert_abs_diff_eq!(fresh.log_lh.value(), refined.log_lh.value(), epsilon = 1e-10);
+    Ok(())
+  }
+
+  #[test]
+  fn test_refinement_keep_rate_counts_every_fit_with_the_start_update() -> Result<(), Report> {
+    let input = helpers::Input::new()?;
+    let partition = input.dense()?;
+    let (graph, branch_lengths) = (&input.graph, &input.branch_lengths);
+
+    let start = partition.marginal_update(&input.start_gtr, graph, branch_lengths, &())?;
+    let count_with_start = |gtr| {
+      partition.count_transitions(
+        gtr,
+        graph,
+        branch_lengths,
+        &start.node_states,
+        &start.edges.backward,
+        &start.edges.forward,
+      )
+    };
+    let first_fit = fitted_gtr(&count_with_start(&input.start_gtr)?)?;
+    let expected = fitted_gtr(&count_with_start(&first_fit)?)?;
+
+    let (actual, _) = fit_marginal(
+      &partition,
+      input.start_gtr.clone(),
+      &(),
+      Some(&helpers::refinement(1, RefinementRate::Keep)),
+      graph,
+      branch_lengths,
+      &NoopProgress,
+    )?;
+
+    pretty_assert_eq!(format!("{expected:?}"), format!("{actual:?}"));
+    Ok(())
+  }
+
+  #[test]
+  fn test_refinement_optimize_rate_counts_later_fits_with_the_update_under_the_first_fit() -> Result<(), Report> {
+    let input = helpers::Input::new()?;
+    let partition = input.dense()?;
+    let (graph, branch_lengths) = (&input.graph, &input.branch_lengths);
+    let rate_step = |gtr, nodes| {
+      optimize_gtr_rate(
+        &partition,
+        gtr,
+        nodes,
+        graph,
+        branch_lengths,
+        RateRangeEdge::KeepStart,
+        &NoopProgress,
+      )
+    };
+
+    let start = partition.marginal_update(&input.start_gtr, graph, branch_lengths, &())?;
+    let first_fit = fitted_gtr(&partition.count_transitions(
+      &input.start_gtr,
+      graph,
+      branch_lengths,
+      &start.node_states,
+      &start.edges.backward,
+      &start.edges.forward,
+    )?)?;
+    let under_first_fit = partition.marginal_update(&first_fit, graph, branch_lengths, &())?;
+    let (first_rated, rated_nodes, rated_backward) = rate_step(first_fit, &under_first_fit.node_states)?;
+    let second_fit = fitted_gtr(&partition.count_transitions(
+      &first_rated,
+      graph,
+      branch_lengths,
+      &under_first_fit.node_states,
+      &rated_backward,
+      &under_first_fit.edges.forward,
+    )?)?;
+    let (expected, _, _) = rate_step(second_fit, &rated_nodes)?;
+
+    let (actual, _) = fit_marginal(
+      &partition,
+      input.start_gtr.clone(),
+      &(),
+      Some(&helpers::refinement(1, RefinementRate::Optimize { scale: None })),
+      graph,
+      branch_lengths,
+      &NoopProgress,
+    )?;
+
+    pretty_assert_eq!(format!("{expected:?}"), format!("{actual:?}"));
     Ok(())
   }
 
@@ -197,11 +284,13 @@ mod tests {
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::gtr::get_gtr::{JC69Params, jc69};
     use crate::gtr::gtr::GTR;
+    use crate::gtr::infer_gtr::common::{InferGtrOptions, MutationCounts, infer_gtr_from_counts};
     use crate::gtr::refinement::{GtrRefinement, RefinementRate};
     use crate::partition::fitch::passes::create_fitch_partition;
     use crate::partition::marginal::dense::partition::PartitionMarginalDense;
     use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
     use crate::partition::storage::sparse::SparseNodeState;
+    use crate::progress::NoopProgress;
     use crate::seq::alignment::NodeSeqInput;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
@@ -221,6 +310,20 @@ mod tests {
         fixed_pi: None,
         rate,
       }
+    }
+
+    pub(super) fn fitted_gtr(counts: &MutationCounts) -> Result<GTR, Report> {
+      let options = InferGtrOptions {
+        pc: 1.0,
+        ..InferGtrOptions::default()
+      };
+      let result = infer_gtr_from_counts(counts, &options, &NoopProgress)?;
+      GTR::builder()
+        .n_states(result.pi.len())
+        .mu(result.mu)
+        .W(result.W)
+        .pi(result.pi)
+        .build()
     }
 
     pub(super) struct Input {
