@@ -2667,7 +2667,7 @@ export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
  */
 export type TimetreeConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
    * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
    * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
    * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
@@ -3074,6 +3074,12 @@ export type TimetreeConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**
@@ -3251,7 +3257,7 @@ export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb
  */
 export type ClockConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
    * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
    * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
    * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
@@ -3365,6 +3371,12 @@ export type ClockConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**
@@ -3563,7 +3575,7 @@ export type SampleMode = 'argmax' | 'root' | 'all';
  */
 export type AncestralConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
    * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
    * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
    * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
@@ -3760,6 +3772,12 @@ export type AncestralConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**
@@ -3955,7 +3973,7 @@ export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'ma
  */
 export type HomoplasyConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
    * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
    * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
    * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
@@ -4131,6 +4149,12 @@ export type HomoplasyConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**
@@ -4414,6 +4438,12 @@ export type MugrationConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**
@@ -4588,7 +4618,7 @@ export type OptimizeRerootMethod = 'min-dev';
  */
 export type OptimizeConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
    * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
    * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
    * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
@@ -4670,6 +4700,12 @@ export type OptimizeConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**
@@ -4940,7 +4976,7 @@ export type PruneOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb
  */
 export type PruneConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
    * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
    * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
    * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
@@ -4988,6 +5024,12 @@ export type PruneConfig = {
    * name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
    * must contain `{partition}`, which is replaced by the number. Other tree outputs with
    * `{partition}` in their file name are also written once per file.
+   *
+   * An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+   * compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+   * `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+   * with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+   * to read than the other formats.
    */
   output_all?: string;
   /**

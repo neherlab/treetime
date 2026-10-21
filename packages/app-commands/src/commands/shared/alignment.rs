@@ -31,7 +31,7 @@ use treetime_utils::io::file::is_path_stdin;
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlignmentArgs {
-  /// Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected
+  /// Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
   /// by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
   /// partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
   /// one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard

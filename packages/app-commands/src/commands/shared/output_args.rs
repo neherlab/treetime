@@ -146,6 +146,12 @@ pub struct OutputCoreArgs {
   /// name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
   /// must contain `{partition}`, which is replaced by the number. Other tree outputs with
   /// `{partition}` in their file name are also written once per file.
+  ///
+  /// An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
+  /// compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+  /// `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
+  /// with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
+  /// to read than the other formats.
   #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,

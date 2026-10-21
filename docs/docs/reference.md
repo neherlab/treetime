@@ -111,7 +111,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -328,6 +328,8 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -440,7 +442,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -505,6 +507,8 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -688,7 +692,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -713,6 +717,8 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -856,7 +862,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
@@ -976,6 +982,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1098,7 +1106,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1178,6 +1186,8 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1294,7 +1304,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zstd`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
+* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1407,6 +1417,8 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -1583,6 +1595,8 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
    With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+
+   An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
 * `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
 
    Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
