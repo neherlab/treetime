@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_support::tests::{mugration_graph, mugration_setup, node_key, topology_from};
+  use crate::__tests__::test_support::tests::{
+    mugration_graph, mugration_setup, mugration_setup_from, node_key, topology_from,
+  };
   use crate::annotated_graph::AnnotatedTreeView;
   use crate::augur_node_data_traits::build_augur_node_data_traits;
   use crate::trait_tables::{write_trait_confidence_rows, write_traits_rows};
@@ -9,8 +11,8 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::alphabet::state_alphabet::StateAlphabet;
   use treetime::gtr::gtr::{GTR, Mu};
+  use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
   use treetime_io::csv::{CsvWriter, TableFormat};
   use treetime_utils::{assert_error, o};
 
@@ -27,12 +29,10 @@ mod tests {
     #[case] (attribute, node, value): (&str, &str, &str),
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let mut setup = mugration_setup()?;
-    setup.topology = topology_from("(A:0.1)root;")?;
-    let leaf = node_key(&setup.topology, "A");
-    let root = node_key(&setup.topology, "root");
-    setup.topology.names.insert(leaf, Some(o!(node)));
-    setup.values = btreemap! { leaf => Some(o!(value)), root => None };
+    let mut topology = topology_from("A;")?;
+    let leaf = node_key(&topology, "A");
+    topology.names.insert(leaf, Some(o!(node)));
+    let setup = mugration_setup_from(topology, &[value, "other"], &btreemap! { leaf => value })?;
     let graph = mugration_graph(&setup, attribute);
 
     let mut buf = Vec::new();
@@ -46,15 +46,10 @@ mod tests {
 
   #[test]
   fn test_trait_tables_traits_csv_writes_one_row_per_node_with_a_repeated_name() -> Result<(), Report> {
-    let mut setup = mugration_setup()?;
-    setup.topology = topology_from("(A:0.1,B:0.1)root;")?;
-    let (a, b, root) = (
-      node_key(&setup.topology, "A"),
-      node_key(&setup.topology, "B"),
-      node_key(&setup.topology, "root"),
-    );
-    setup.topology.names.insert(b, Some(o!("A")));
-    setup.values = btreemap! { a => Some(o!("usa")), b => Some(o!("uk")), root => None };
+    let mut topology = topology_from("(A:0.1)B;")?;
+    let (a, b) = (node_key(&topology, "A"), node_key(&topology, "B"));
+    topology.names.insert(b, Some(o!("A")));
+    let setup = mugration_setup_from(topology, &["uk", "usa"], &btreemap! { a => "usa", b => "uk" })?;
     let graph = mugration_graph(&setup, "country");
 
     let mut buf = Vec::new();
@@ -68,17 +63,18 @@ mod tests {
 
   #[test]
   fn test_trait_tables_confidence_csv_quotes_fields_per_rfc4180() -> Result<(), Report> {
-    let mut setup = mugration_setup()?;
-    setup.topology = topology_from("(A:0.1,B:0.1)root;")?;
-    let (a, b, root) = (
-      node_key(&setup.topology, "A"),
-      node_key(&setup.topology, "B"),
-      node_key(&setup.topology, "root"),
-    );
-    setup.topology.names.insert(a, Some(o!("A,1")));
-    setup.states = StateAlphabet::new(["Congo, DR", "usa"])?;
-    setup.values = btreemap! { a => Some(o!("usa")), b => Some(o!("Congo, DR")), root => None };
-    setup.profiles = btreemap! { a => Some(array![0.25, 0.75]), b => Some(array![1.0, 0.0]), root => None };
+    let mut topology = topology_from("(A:0.1)B;")?;
+    let (a, b) = (node_key(&topology, "A"), node_key(&topology, "B"));
+    topology.names.insert(a, Some(o!("A,1")));
+    let mut setup = mugration_setup_from(
+      topology,
+      &["Congo, DR", "usa"],
+      &btreemap! { a => "usa", b => "Congo, DR" },
+    )?;
+    setup.posteriors = btreemap! {
+      a => StatePosterior::new(array![0.25, 0.75])?,
+      b => StatePosterior::new(array![1.0, 0.0])?,
+    };
     let graph = mugration_graph(&setup, "country");
 
     let mut buf = Vec::new();
@@ -99,7 +95,7 @@ mod tests {
   fn test_trait_tables_node_data_rejects_non_finite_probability() -> Result<(), Report> {
     let mut setup = mugration_setup()?;
     let a = node_key(&setup.topology, "A");
-    setup.profiles.insert(a, Some(array![f64::NAN, 1.0]));
+    setup.posteriors.insert(a, StatePosterior::new(array![f64::NAN, 1.0])?);
     let graph = mugration_graph(&setup, "country");
     let model = GTR::builder()
       .n_states(2)

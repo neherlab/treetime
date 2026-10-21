@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::{
-    NUC_ALPHABET, annotated, dated_graph, dated_setup, mugration_graph, mugration_setup, no_mutations, node_key,
-    parent_edge, substitution, topology_from,
+    NUC_ALPHABET, alternating_trait_values, annotated, dated_graph, dated_setup, mugration_graph, mugration_setup,
+    mugration_setup_from, no_mutations, node_key, parent_edge, substitution, topology, topology_from,
   };
   use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
   use crate::nwk_comments::nwk_node_comments;
@@ -170,9 +170,10 @@ mod tests {
   #[case::comma(       "Congo, DR", r#""Congo, DR""#)]
   #[trace]
   fn test_nwk_comments_trait_values_keep_their_text(#[case] value: &str, #[case] expected: &str) -> Result<(), Report> {
-    let mut setup = mugration_setup()?;
-    let a_key = node_key(&setup.topology, "A");
-    setup.values.insert(a_key, Some(o!(value)));
+    let topology = topology()?;
+    let mut values = alternating_trait_values(&topology);
+    values.insert(node_key(&topology, "A"), value);
+    let setup = mugration_setup_from(topology, &["CH", "US", value], &values)?;
     let graph = mugration_graph(&setup, "country");
     let dir = TempDir::new()?;
     let path = dir.path().join("mugration.nwk");

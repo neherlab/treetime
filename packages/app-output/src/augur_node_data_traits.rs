@@ -1,9 +1,9 @@
 use crate::annotated_graph::{AnnotatedTreeView, TreeTraits};
 use crate::auspice::ensure_finite;
-use crate::trait_profile::{build_confidence_map, compute_entropy};
+use crate::trait_profile::{build_confidence_map, trait_change};
 use deser_value::{Value, to_value};
 use eyre::Report;
-use itertools::izip;
+use itertools::{Itertools, izip};
 use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -30,7 +30,7 @@ pub fn build_augur_node_data_traits(
     .traits
     .as_ref()
     .ok_or_else(|| make_internal_report!("Trait node data requires reconstructed traits"))?;
-  let branches = trait_branches(tree, traits);
+  let branches = trait_branches(tree, traits)?;
   let mut other = BTreeMap::new();
   if !branches.is_empty() {
     other.insert("branches".to_owned(), to_value(&branches)?);
@@ -71,22 +71,19 @@ fn trait_nodes(
   for node in graph.graph.get_nodes() {
     let key = node.key();
     let name = node_name_or_key(key, graph.names[&key].as_deref());
+    let posterior = &traits.posteriors[&key];
     let mut fields = BTreeMap::new();
-    if let Some(value) = &traits.values[&key] {
-      fields.insert(traits.attribute.to_owned(), Value::from(value.as_str()));
+    fields.insert(traits.attribute.to_owned(), Value::from(traits.state_name(key)?));
+    for (state, probability) in izip!(traits.states.iter(), posterior.profile()) {
+      ensure_finite(*probability, &name, &format!("trait state '{state}' probability"))?;
     }
-    if let Some(profile) = &traits.profiles[&key] {
-      for (state, probability) in izip!(traits.states.iter(), profile) {
-        ensure_finite(*probability, &name, &format!("trait state '{state}' probability"))?;
-      }
-      let entropy = compute_entropy(profile);
-      ensure_finite(entropy, &name, "trait entropy")?;
-      let confidence = build_confidence_map(traits.states, profile);
-      if !confidence.is_empty() {
-        fields.insert(confidence_key.clone(), to_value(&confidence)?);
-      }
-      fields.insert(entropy_key.clone(), Value::from(entropy));
+    let entropy = posterior.entropy();
+    ensure_finite(entropy, &name, "trait entropy")?;
+    let confidence = build_confidence_map(traits.states, posterior.profile());
+    if !confidence.is_empty() {
+      fields.insert(confidence_key.clone(), to_value(&confidence)?);
     }
+    fields.insert(entropy_key.clone(), Value::from(entropy));
     nodes.insert(name, AugurNodeDataJsonTraitsNode { fields });
   }
   Ok(nodes)
@@ -95,28 +92,33 @@ fn trait_nodes(
 fn trait_branches(
   tree: &AnnotatedTreeView<'_>,
   traits: &TreeTraits<'_>,
-) -> BTreeMap<String, AugurNodeDataJsonTraitsBranches> {
+) -> Result<BTreeMap<String, AugurNodeDataJsonTraitsBranches>, Report> {
   let graph = tree.graph();
   graph
     .graph
     .get_nodes()
-    .filter_map(|node| {
+    .map(|node| {
       let key = node.key();
-      let label = branch_label(tree, traits, key)?;
-      let branch = AugurNodeDataJsonTraitsBranches {
-        labels: Some(btreemap! { traits.attribute.to_owned() => label }),
-        other: BTreeMap::new(),
-      };
-      Some((node_name_or_key(key, graph.names[&key].as_deref()), branch))
+      let branch = branch_label(tree, traits, key)?.map(|label| {
+        let branch = AugurNodeDataJsonTraitsBranches {
+          labels: Some(btreemap! { traits.attribute.to_owned() => label }),
+          other: BTreeMap::new(),
+        };
+        (node_name_or_key(key, graph.names[&key].as_deref()), branch)
+      });
+      Ok(branch)
     })
+    .flatten_ok()
     .collect()
 }
 
-fn branch_label(tree: &AnnotatedTreeView<'_>, traits: &TreeTraits<'_>, key: GraphNodeKey) -> Option<String> {
-  let child = traits.values[&key].as_ref()?;
-  let Some((parent_key, _)) = tree.tree().parent(key) else {
-    return Some(child.clone());
-  };
-  let parent = traits.values[&parent_key].as_ref()?;
-  (parent != child).then(|| format!("{parent} \u{2192} {child}"))
+fn branch_label(
+  tree: &AnnotatedTreeView<'_>,
+  traits: &TreeTraits<'_>,
+  key: GraphNodeKey,
+) -> Result<Option<String>, Report> {
+  match tree.tree().parent(key) {
+    Some((parent_key, _)) => trait_change(traits, parent_key, key),
+    None => Ok(Some(traits.state_name(key)?.to_owned())),
+  }
 }

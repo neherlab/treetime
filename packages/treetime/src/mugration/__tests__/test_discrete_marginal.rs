@@ -109,7 +109,7 @@ mod tests {
 
     let (partition, _) = helpers::make_partition(&state_refs, &graph, &traits, &names, &log)?;
 
-    assert_eq!(state_names.len(), partition.n_states());
+    assert_eq!(state_names.len(), partition.states.len());
     let sorted_states = state_names.iter().sorted().collect_vec();
     let expected = traits
       .iter()
@@ -217,8 +217,9 @@ mod tests {
     helpers::assert_profile_normalized(&inner_profile);
 
     let inner_key = helpers::get_node_key(&graph, &names, "inner");
-    let expected_trait = Some(o!("usa"));
-    let actual_trait = partition.get_reconstructed_trait(&node_states, inner_key);
+    let posteriors = partition.state_posteriors(&graph, &node_states)?;
+    let expected_trait = Some("usa");
+    let actual_trait = partition.states.name(posteriors[&inner_key].state());
     assert_eq!(expected_trait, actual_trait);
 
     Ok(())

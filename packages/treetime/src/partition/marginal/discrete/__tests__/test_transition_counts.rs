@@ -202,9 +202,10 @@ mod tests {
         &edges.backward,
         &edges.forward,
       )?;
+      let state_posteriors = partition.state_posteriors(&graph, &node_states)?;
       let posteriors = NODES
         .into_iter()
-        .map(|name| (name, node_states[&key(name)].profile.dis.row(0).to_owned()))
+        .map(|name| (name, state_posteriors[&key(name)].profile().clone()))
         .collect();
       Ok((counts, posteriors))
     }

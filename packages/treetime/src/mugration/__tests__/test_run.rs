@@ -157,7 +157,7 @@ mod tests {
     };
     let (output, names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, None, &mugration_params())?;
 
-    assert_eq!(2, output.n_states);
+    assert_eq!(2, output.states.len());
     assert_eq!(
       vec_of_owned!["germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
@@ -196,7 +196,7 @@ mod tests {
     };
     let (output, _names) = run_mugration_case("(A:0.1,B:0.2,C:0.3)root;", &traits, Some(weights), &mugration_params())?;
 
-    assert_eq!(3, output.n_states);
+    assert_eq!(3, output.states.len());
     assert_eq!(
       vec_of_owned!["france", "germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
@@ -224,7 +224,7 @@ mod tests {
     };
     let (output, _names) = run_mugration_case("(A:0.1,B:0.2)root;", &traits, Some(weights), &mugration_params())?;
 
-    assert_eq!(3, output.n_states);
+    assert_eq!(3, output.states.len());
     assert_eq!(
       vec_of_owned!["france", "germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
@@ -540,10 +540,11 @@ mod tests {
       output
         .graph
         .get_nodes()
-        .filter_map(|node| {
+        .map(|node| {
           let key = node.key();
           let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
-          output.reconstructed_traits[&key].clone().map(|value| (name, value))
+          let state = output.states.name(output.posteriors[&key].state()).unwrap();
+          (name, state.to_owned())
         })
         .collect()
     }
@@ -559,9 +560,7 @@ mod tests {
         .map(|node| node.key())
         .find(|key| names[key].as_deref() == Some(node_name))
         .unwrap_or_else(|| panic!("missing node '{node_name}'"));
-      output.confidences[&key]
-        .clone()
-        .expect("node has no confidence profile")
+      output.posteriors[&key].profile().clone()
     }
   }
 }

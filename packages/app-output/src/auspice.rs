@@ -1,6 +1,6 @@
 use crate::annotated_graph::{AnnotatedTreeView, Divergence, TreeSequences, TreeTraits};
 use crate::output_plan::CommandKind;
-use crate::trait_profile::{build_confidence_map, compute_entropy};
+use crate::trait_profile::{build_confidence_map, trait_change};
 use deser_value::{Map, Value, to_value};
 use eyre::{Report, WrapErr};
 use itertools::izip;
@@ -203,12 +203,18 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
     .transpose()?;
   let (traits, labels) = match &graph.traits {
     Some(traits) => (
-      node_trait(traits, key, &name)?,
-      node_transition(tree, traits, key).map(|transition| AuspiceTreeBranchAttrsLabels {
-        aa: None,
-        clade: None,
-        other: Map::from_iter([(traits.attribute, Value::from(transition))]),
-      }),
+      Some(node_trait(traits, key, &name)?),
+      tree
+        .tree()
+        .parent(key)
+        .map(|(parent_key, _)| trait_change(traits, parent_key, key))
+        .transpose()?
+        .flatten()
+        .map(|transition| AuspiceTreeBranchAttrsLabels {
+          aa: None,
+          clade: None,
+          other: Map::from_iter([(traits.attribute, Value::from(transition))]),
+        }),
     ),
     None => (None, None),
   };
@@ -291,36 +297,24 @@ fn auspice_track_name(track: &str) -> Result<&str, Report> {
   }
 }
 
-fn node_trait(traits: &TreeTraits<'_>, key: GraphNodeKey, node_name: &str) -> Result<Option<(String, Value)>, Report> {
-  let Some(value) = &traits.values[&key] else {
-    return Ok(None);
-  };
+fn node_trait(traits: &TreeTraits<'_>, key: GraphNodeKey, node_name: &str) -> Result<(String, Value), Report> {
+  let posterior = &traits.posteriors[&key];
   let mut fields = Map::new();
-  fields.insert("value", value);
-  if let Some(profile) = &traits.profiles[&key] {
-    for (state, probability) in izip!(traits.states.iter(), profile) {
-      ensure_finite(*probability, node_name, &format!("trait state '{state}' probability"))?;
-    }
-    let confidence: BTreeMap<String, f64> = build_confidence_map(traits.states, profile)
-      .into_iter()
-      .map(|(state, probability)| (state, format_number(probability, 3)))
-      .collect();
-    let entropy = compute_entropy(profile);
-    ensure_finite(entropy, node_name, "trait entropy")?;
-    if !confidence.is_empty() {
-      fields.insert("confidence", to_value(&confidence)?);
-    }
-    fields.insert("entropy", format_number(entropy, 3));
+  fields.insert("value", traits.state_name(key)?);
+  for (state, probability) in izip!(traits.states.iter(), posterior.profile()) {
+    ensure_finite(*probability, node_name, &format!("trait state '{state}' probability"))?;
   }
-  Ok(Some((traits.attribute.to_owned(), Value::from(fields))))
-}
-
-fn node_transition(tree: &AnnotatedTreeView<'_>, traits: &TreeTraits<'_>, key: GraphNodeKey) -> Option<String> {
-  let (parent_key, _) = tree.tree().parent(key)?;
-  match (&traits.values[&parent_key], &traits.values[&key]) {
-    (Some(parent), Some(child)) if parent != child => Some(format!("{parent} \u{2192} {child}")),
-    _ => None,
+  let confidence: BTreeMap<String, f64> = build_confidence_map(traits.states, posterior.profile())
+    .into_iter()
+    .map(|(state, probability)| (state, format_number(probability, 3)))
+    .collect();
+  let entropy = posterior.entropy();
+  ensure_finite(entropy, node_name, "trait entropy")?;
+  if !confidence.is_empty() {
+    fields.insert("confidence", to_value(&confidence)?);
   }
+  fields.insert("entropy", format_number(entropy, 3));
+  Ok((traits.attribute.to_owned(), Value::from(fields)))
 }
 
 fn finite_number(value: Option<f64>, precision: usize, node_name: &str, field: &str) -> Result<Option<f64>, Report> {

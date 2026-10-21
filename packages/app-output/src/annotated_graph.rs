@@ -1,9 +1,9 @@
 use eyre::Report;
-use ndarray::Array1;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::alphabet::state_alphabet::StateAlphabet;
 use treetime::ancestral::aa::AaNodeData;
+use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -11,6 +11,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::{GraphSchedule, TreeSchedule};
 use treetime_primitives::Seq;
 use treetime_primitives::date::DateConstraint;
+use treetime_utils::make_internal_report;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub struct AnnotatedTreeView<'a> {
@@ -85,6 +86,15 @@ pub struct TreeDates<'a> {
 pub struct TreeTraits<'a> {
   pub attribute: &'a str,
   pub states: &'a StateAlphabet,
-  pub values: &'a BTreeMap<GraphNodeKey, Option<String>>,
-  pub profiles: &'a BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
+  pub posteriors: &'a BTreeMap<GraphNodeKey, StatePosterior>,
+}
+
+impl<'a> TreeTraits<'a> {
+  pub(crate) fn state_name(&self, key: GraphNodeKey) -> Result<&'a str, Report> {
+    let state = self.posteriors[&key].state();
+    self
+      .states
+      .name(state)
+      .ok_or_else(|| make_internal_report!("Most likely state {state} of node {key} is not a trait state"))
+  }
 }

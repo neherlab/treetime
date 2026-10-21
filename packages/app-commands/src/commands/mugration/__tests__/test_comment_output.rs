@@ -60,8 +60,7 @@ mod tests {
       traits: Some(TreeTraits {
         attribute: "country",
         states: &output.states,
-        values: &output.reconstructed_traits,
-        profiles: &output.confidences,
+        posteriors: &output.posteriors,
       }),
     };
     let dir = TempDir::new()?;

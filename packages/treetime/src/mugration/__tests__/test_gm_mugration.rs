@@ -27,10 +27,6 @@ mod tests {
     let actual_states = states_vec(&output);
     assert_eq!(expected_states, actual_states);
 
-    let expected_n_states = expected.states.len();
-    let actual_n_states = output.n_states;
-    assert_eq!(expected_n_states, actual_n_states);
-
     let expected_trait_assignments = expected.trait_assignments.clone();
     let actual_trait_assignments = trait_assignments_by_name(&output, &names);
     assert_eq!(expected_trait_assignments, actual_trait_assignments);
@@ -237,10 +233,11 @@ mod tests {
       output
         .graph
         .get_nodes()
-        .filter_map(|node| {
+        .map(|node| {
           let key = node.key();
           let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
-          output.reconstructed_traits[&key].clone().map(|value| (name, value))
+          let state = output.states.name(output.posteriors[&key].state()).unwrap();
+          (name, state.to_owned())
         })
         .collect()
     }
@@ -252,10 +249,10 @@ mod tests {
       output
         .graph
         .get_nodes()
-        .filter_map(|node| {
+        .map(|node| {
           let key = node.key();
           let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
-          output.confidences[&key].clone().map(|profile| (name, profile))
+          (name, output.posteriors[&key].profile().clone())
         })
         .collect()
     }

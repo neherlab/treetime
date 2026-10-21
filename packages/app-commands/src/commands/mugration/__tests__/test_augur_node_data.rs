@@ -149,8 +149,7 @@ mod tests {
         traits: Some(TreeTraits {
           attribute: "country",
           states: &output.states,
-          values: &output.reconstructed_traits,
-          profiles: &output.confidences,
+          posteriors: &output.posteriors,
         }),
       };
       let data = build_augur_node_data_traits(&AnnotatedTreeView::new(&annotated).unwrap(), &output.gtr).unwrap();

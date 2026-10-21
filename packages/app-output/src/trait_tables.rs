@@ -27,11 +27,8 @@ pub(crate) fn write_traits_rows<W: Write>(tree: &AnnotatedTreeView<'_>, csv: &mu
   csv.write_record(["node", traits.attribute])?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    let Some(value) = &traits.values[&key] else {
-      return Ok(());
-    };
     let name = node_name_or_key(key, graph.names[&key].as_deref());
-    csv.write_record([name.as_str(), value.as_str()])
+    csv.write_record([name.as_str(), traits.state_name(key)?])
   })
 }
 
@@ -44,10 +41,8 @@ pub(crate) fn write_trait_confidence_rows<W: Write>(
   csv.write_record(once("node").chain(traits.states.iter()))?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    let Some(profile) = &traits.profiles[&key] else {
-      return Ok(());
-    };
     let name = node_name_or_key(key, graph.names[&key].as_deref());
+    let profile = traits.posteriors[&key].profile();
     csv.write_record(once(name).chain(profile.iter().map(|probability| format!("{probability:.6}"))))
   })
 }

@@ -9,7 +9,7 @@ pub(crate) mod tests {
   use eyre::Report;
   use jsonschema::{Retrieve, Uri, Validator};
   use maplit::btreemap;
-  use ndarray::{Array1, array};
+  use ndarray::Array1;
   use serde_json::Value;
   use std::collections::{BTreeMap, BTreeSet};
   use std::error::Error;
@@ -18,6 +18,7 @@ pub(crate) mod tests {
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::alphabet::state_alphabet::StateAlphabet;
   use treetime::ancestral::aa::AaNodeData;
+  use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
@@ -67,8 +68,7 @@ pub(crate) mod tests {
   pub(crate) struct MugrationSetup {
     pub(crate) topology: Topology,
     pub(crate) states: StateAlphabet,
-    pub(crate) values: BTreeMap<GraphNodeKey, Option<String>>,
-    pub(crate) profiles: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
+    pub(crate) posteriors: BTreeMap<GraphNodeKey, StatePosterior>,
   }
 
   pub(crate) struct DatedSetup {
@@ -216,25 +216,39 @@ pub(crate) mod tests {
 
   pub(crate) fn mugration_setup() -> Result<MugrationSetup, Report> {
     let topology = topology()?;
-    let (values, profiles) = topology
+    let values = alternating_trait_values(&topology);
+    mugration_setup_from(topology, &["CH", "US"], &values)
+  }
+
+  pub(crate) fn alternating_trait_values(topology: &Topology) -> BTreeMap<GraphNodeKey, &'static str> {
+    topology
       .graph
       .get_nodes()
       .enumerate()
-      .map(|(index, node)| {
-        let key = node.key();
-        let (state, profile) = if index % 2 == 0 {
-          ("CH", array![1.0, 0.0])
-        } else {
-          ("US", array![0.0, 1.0])
-        };
-        ((key, Some(o!(state))), (key, Some(profile)))
+      .map(|(index, node)| (node.key(), if index % 2 == 0 { "CH" } else { "US" }))
+      .collect()
+  }
+
+  pub(crate) fn mugration_setup_from(
+    topology: Topology,
+    state_names: &[&str],
+    values: &BTreeMap<GraphNodeKey, &str>,
+  ) -> Result<MugrationSetup, Report> {
+    let states = StateAlphabet::new(state_names.iter().copied())?;
+    let posteriors = values
+      .iter()
+      .map(|(&key, value)| {
+        let index = states
+          .index_of(value)
+          .ok_or_else(|| make_report!("'{value}' is not one of the trait states"))?;
+        let profile = Array1::from_shape_fn(states.len(), |state| if state == index { 1.0 } else { 0.0 });
+        Ok((key, StatePosterior::new(profile)?))
       })
-      .unzip();
+      .collect::<Result<_, Report>>()?;
     Ok(MugrationSetup {
       topology,
-      states: StateAlphabet::new(["CH", "US"])?,
-      values,
-      profiles,
+      states,
+      posteriors,
     })
   }
 
@@ -243,8 +257,7 @@ pub(crate) mod tests {
       traits: Some(TreeTraits {
         attribute,
         states: &setup.states,
-        values: &setup.values,
-        profiles: &setup.profiles,
+        posteriors: &setup.posteriors,
       }),
       ..annotated(&setup.topology)
     }

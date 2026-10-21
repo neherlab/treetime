@@ -195,8 +195,7 @@ fn write_mugration_trees(
     traits: Some(TreeTraits {
       attribute,
       states: &output.states,
-      values: &output.reconstructed_traits,
-      profiles: &output.confidences,
+      posteriors: &output.posteriors,
     }),
   };
   write_graph_outputs(&annotated, &resolved.tree_outputs)?;

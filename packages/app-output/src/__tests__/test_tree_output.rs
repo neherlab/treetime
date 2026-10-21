@@ -146,8 +146,7 @@ pub(super) mod tests {
       traits: Some(TreeTraits {
         attribute: "country",
         states: &mugration.states,
-        values: &mugration.values,
-        profiles: &mugration.profiles,
+        posteriors: &mugration.posteriors,
       }),
       ..dated_graph(&dated, None)
     };
@@ -196,8 +195,7 @@ pub(super) mod tests {
       traits: with_traits.then_some(TreeTraits {
         attribute: "country",
         states: &mugration.states,
-        values: &mugration.values,
-        profiles: &mugration.profiles,
+        posteriors: &mugration.posteriors,
       }),
       ..annotated(&dated.topology)
     };

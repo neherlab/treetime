@@ -1,14 +1,14 @@
 use crate::alphabet::state_alphabet::StateAlphabet;
+use crate::partition::marginal::discrete::state_posterior::StatePosterior;
 use crate::partition::marginal::shared::data::DenseInputs;
 use crate::partition::marginal::shared::pass::{IndexedKind, IndexedPartition};
 use crate::partition::storage::dense::DenseNodeState;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_utils::array::ndarray::argmax_first;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDiscrete {
@@ -45,28 +45,26 @@ impl PartitionMarginalDiscrete {
     })
   }
 
-  pub fn n_states(&self) -> usize {
-    self.states.len()
-  }
-
-  pub fn get_reconstructed_trait(
+  pub(crate) fn state_posteriors(
     &self,
+    graph: &Graph,
     node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    node_key: GraphNodeKey,
-  ) -> Option<String> {
-    let node = node_states.get(&node_key)?;
-    let row = node.profile.dis.row(0);
-    let argmax = argmax_first(&row)?;
-    self.states.name(argmax).map(ToOwned::to_owned)
-  }
-
-  pub fn get_confidence(
-    &self,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    node_key: GraphNodeKey,
-  ) -> Option<Array1<f64>> {
-    let node = node_states.get(&node_key)?;
-    Some(node.profile.dis.row(0).to_owned())
+  ) -> Result<BTreeMap<GraphNodeKey, StatePosterior>, Report> {
+    graph
+      .get_nodes()
+      .map(|node| {
+        let key = node.key();
+        let profile = node_states[&key].profile.dis.row(0).to_owned();
+        if profile.len() != self.states.len() {
+          return make_internal_error!(
+            "Posterior profile of node {key} has {} states, the partition has {}",
+            profile.len(),
+            self.states.len()
+          );
+        }
+        Ok((key, StatePosterior::new(profile)?))
+      })
+      .collect()
   }
 }
 

@@ -8,8 +8,8 @@ use crate::gtr::gtr::{GTR, Mu};
 use crate::gtr::refinement::{GtrRefinement, RefinementRate};
 use crate::mugration::leaf_observations::leaf_observations;
 use crate::partition::marginal::discrete::partition::PartitionMarginalDiscrete;
+use crate::partition::marginal::discrete::state_posterior::StatePosterior;
 use crate::partition::marginal::shared::update::MarginalUpdate;
-use crate::partition::storage::dense::DenseNodeState;
 use crate::progress::LogSink;
 use crate::{make_error, progress_info, progress_warn};
 use eyre::Report;
@@ -132,15 +132,15 @@ pub fn run(
     fit_marginal(&partition, gtr, &(), Some(&refinement), &graph, &branch_lengths, log)
       .map_err(OperationError::classify)?;
 
-  let (reconstructed_traits, confidences) = gather_reconstruction_maps(&graph, &partition, &node_states);
+  let posteriors = partition
+    .state_posteriors(&graph, &node_states)
+    .map_err(OperationError::classify)?;
 
   Ok(MugrationOutput {
     graph,
     gtr,
-    states: partition.states.clone(),
-    n_states: partition.n_states(),
-    reconstructed_traits,
-    confidences,
+    states: partition.states,
+    posteriors,
   })
 }
 
@@ -168,34 +168,7 @@ pub struct MugrationOutput {
   pub graph: Graph,
   pub gtr: GTR,
   pub states: StateAlphabet,
-  pub n_states: usize,
-  pub reconstructed_traits: BTreeMap<GraphNodeKey, Option<String>>,
-  pub confidences: BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
-}
-
-fn gather_reconstruction_maps(
-  graph: &Graph,
-  partition: &PartitionMarginalDiscrete,
-  node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-) -> (
-  BTreeMap<GraphNodeKey, Option<String>>,
-  BTreeMap<GraphNodeKey, Option<Array1<f64>>>,
-) {
-  let reconstructed_traits = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, partition.get_reconstructed_trait(node_states, key))
-    })
-    .collect();
-  let confidences = graph
-    .get_nodes()
-    .map(|node| {
-      let key = node.key();
-      (key, partition.get_confidence(node_states, key))
-    })
-    .collect();
-  (reconstructed_traits, confidences)
+  pub posteriors: BTreeMap<GraphNodeKey, StatePosterior>,
 }
 
 pub(crate) fn validate_weight_coverage(

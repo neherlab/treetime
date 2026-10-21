@@ -20,10 +20,11 @@ pub(crate) fn nwk_node_comments(tree: &AnnotatedTreeView<'_>) -> Result<NwkNodeC
     {
       node_comments.push(("date".to_owned(), NewickValue::NumberText(format!("{date:.2}"))));
     }
-    if let Some(traits) = &graph.traits
-      && let Some(value) = traits.values[&key].as_ref().filter(|value| !value.is_empty())
-    {
-      node_comments.push((traits.attribute.to_owned(), NewickValue::String(value.clone())));
+    if let Some(traits) = &graph.traits {
+      let value = traits.state_name(key)?;
+      if !value.is_empty() {
+        node_comments.push((traits.attribute.to_owned(), NewickValue::String(value.to_owned())));
+      }
     }
     comments.insert(key, node_comments);
   }
