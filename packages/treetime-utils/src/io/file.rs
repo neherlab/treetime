@@ -53,7 +53,7 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, R
 
   let file: Box<dyn Write + Sync + Send> = if is_path_stdout(filepath) {
     info!("File path is '{}'. Writing to standard output.", filepath.display());
-    Box::new(BufWriter::with_capacity(DEFAULT_FILE_BUF_SIZE, stdout()))
+    Box::new(stdout())
   } else {
     ensure_dir(filepath)?;
     Box::new(File::create(filepath).wrap_err_with(|| format!("When creating file '{}'", filepath.display()))?)
@@ -69,7 +69,7 @@ pub fn create_file_or_stdout(filepath: impl AsRef<Path>) -> Result<FileWriter, R
 }
 
 pub struct FileWriter {
-  inner: BufWriter<Compressor<'static>>,
+  inner: BufWriter<Compressor>,
   filepath: PathBuf,
 }
 
