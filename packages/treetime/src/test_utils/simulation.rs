@@ -33,7 +33,7 @@ use treetime_simulation::substitution_model::{NUCLEOTIDES, SubstitutionModel};
 use treetime_simulation::tc_schedule::TcSchedule;
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating, usize_to_u64};
 use treetime_utils::sync::random::get_random_number_generator;
-use treetime_utils::{make_error, make_internal_error, make_report};
+use treetime_utils::{make_error, make_internal_error, make_report, o};
 
 pub(crate) const TIMETREE_CELL_TC: f64 = 5.0;
 pub(crate) const TIMETREE_CELL_MU: f64 = 3e-3;
@@ -317,6 +317,7 @@ pub(crate) struct MeanCheck {
   pub n: usize,
   pub mean: f64,
   pub std_dev: f64,
+  pub zero_spread: bool,
   pub alpha: f64,
   pub interval: MeanInterval,
   pub tests: Vec<BoundTest>,
@@ -333,10 +334,16 @@ impl MeanCheck {
       n,
       mean,
       std_dev,
+      zero_spread,
       alpha,
       interval,
       tests,
     } = self;
+    let std_dev = if *zero_spread {
+      o!("0 (zero spread: a test passes when the mean lies strictly beyond its bound)")
+    } else {
+      format!("{std_dev:.6}")
+    };
     let tests = tests
       .iter()
       .map(|test| {
@@ -348,7 +355,7 @@ impl MeanCheck {
       })
       .join(", ");
     format!(
-      "{name}: n = {n}, mean = {mean:.6}, standard deviation = {std_dev:.6}, interval [{:.6}, {:.6}], {tests}, alpha = {alpha:.3e}",
+      "{name}: n = {n}, mean = {mean:.6}, standard deviation = {std_dev}, interval [{:.6}, {:.6}], {tests}, alpha = {alpha:.3e}",
       interval.lower, interval.upper
     )
   }
@@ -447,8 +454,15 @@ fn mean_check(
     return make_error!("{name}: values must be finite, got {value}");
   }
   let view = aview1(values);
-  let mean = view.mean().ok_or_else(|| make_report!("{name}: no values"))?;
-  let std_dev = view.std(1.0);
+  let common_value = values.iter().all_equal_value().copied();
+  let zero_spread = common_value.is_ok();
+  let (mean, std_dev) = match common_value {
+    Ok(value) => (value, 0.0),
+    Err(_) => (
+      view.mean().ok_or_else(|| make_report!("{name}: no values"))?,
+      view.std(1.0),
+    ),
+  };
   let degrees_of_freedom = (n - 1).to_f64_exact();
   let quantile = StudentsT::new(0.0, 1.0, degrees_of_freedom)
     .map_err(|error| {
@@ -464,12 +478,17 @@ fn mean_check(
     .into_iter()
     .filter_map(|(side, bound)| Some((side, bound?)))
     .map(|(side, bound)| {
-      let alternative = match side {
-        BoundSide::Above => Alternative::Greater,
-        BoundSide::Below => Alternative::Less,
+      let p_value = if zero_spread {
+        zero_spread_p_value(side, mean, bound)
+      } else {
+        let alternative = match side {
+          BoundSide::Above => Alternative::Greater,
+          BoundSide::Below => Alternative::Less,
+        };
+        let (_, p_value) = ttest_onesample(values.to_vec(), bound, alternative, NaNPolicy::Error)
+          .map_err(|error| make_report!("{name}: one-sample t-test against {bound}: {error}"))?;
+        p_value
       };
-      let (_, p_value) = ttest_onesample(values.to_vec(), bound, alternative, NaNPolicy::Error)
-        .map_err(|error| make_report!("{name}: one-sample t-test against {bound}: {error}"))?;
       Ok(BoundTest { side, bound, p_value })
     })
     .collect::<Result<Vec<_>, Report>>()?;
@@ -478,10 +497,19 @@ fn mean_check(
     n,
     mean,
     std_dev,
+    zero_spread,
     alpha,
     interval,
     tests,
   })
+}
+
+fn zero_spread_p_value(side: BoundSide, mean: f64, bound: f64) -> f64 {
+  let beyond = match side {
+    BoundSide::Above => mean > bound,
+    BoundSide::Below => mean < bound,
+  };
+  if beyond { 0.0 } else { 1.0 }
 }
 
 #[cfg(test)]
@@ -750,6 +778,54 @@ mod tests {
     let actual = decrease_check("log ratio", &log_ratios, 0.25)?.passed();
 
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::upper_below_bound(   Margins::Upper,    [ 0.01; 3], true )]
+  #[case::upper_on_bound(      Margins::Upper,    [ 0.03; 3], false)]
+  #[case::upper_above_bound(   Margins::Upper,    [ 0.05; 3], false)]
+  #[case::two_sided_inside(    Margins::TwoSided, [-0.01; 3], true )]
+  #[case::two_sided_on_lower(  Margins::TwoSided, [-0.03; 3], false)]
+  #[case::two_sided_below_lower(Margins::TwoSided, [-0.05; 3], false)]
+  #[trace]
+  fn test_simulation_recovery_checks_decide_constant_errors_by_their_side_of_the_margin(
+    #[case] margins: Margins,
+    #[case] errors: [f64; 3],
+    #[case] expected: bool,
+  ) -> Result<(), Report> {
+    let actual = margins.check("error", &errors, 0.03, 0.25)?.passed();
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::below_zero([-0.5; 3], true )]
+  #[case::at_zero(   [ 0.0; 3], false)]
+  #[case::above_zero([ 0.5; 3], false)]
+  #[trace]
+  fn test_simulation_decrease_check_decides_constant_log_ratios_by_their_side_of_zero(
+    #[case] log_ratios: [f64; 3],
+    #[case] expected: bool,
+  ) -> Result<(), Report> {
+    let actual = decrease_check("log ratio", &log_ratios, 0.25)?.passed();
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_simulation_require_passed_states_a_zero_spread() -> Result<(), Report> {
+    let check = decrease_check("log ratio", &[0.0; 4], 0.25)?;
+
+    assert_error!(
+      require_passed(&[check]),
+      "Statistical checks failed:\n\
+       FAILED log ratio: n = 4, mean = 0.000000, standard deviation = 0 (zero spread: a test passes when the mean lies strictly beyond its bound), interval [-inf, 0.000000], p(mean < 0) = 1.000e0, alpha = 2.500e-1"
+    );
     Ok(())
   }
 
