@@ -38,6 +38,7 @@ mod test_root_sequence;
 mod test_sample;
 mod test_sample_reconstruction;
 mod test_sim_ancestral_calibration;
+mod test_sim_ancestral_gtr_error_reduction;
 mod test_smoke_gtr_iterations;
 mod test_smoke_sample_from_profile;
 mod test_sparse_mutations_prop;
