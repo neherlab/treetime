@@ -19,4 +19,4 @@ Byte-identical outputs need one BLAS kernel set without FMA, one LAPACK build, o
 ## Related
 
 - [kb/issues/M-timetree-outputs-depend-on-the-rounding-of-the-platform.md](../issues/M-timetree-outputs-depend-on-the-rounding-of-the-platform.md): measured differences between platforms
-- [kb/issues/M-posterior-argmax-follows-rounding-at-ties.md](../issues/M-posterior-argmax-follows-rounding-at-ties.md): a tied state follows the rounding of the platform
+- [kb/decisions/posterior-most-likely-state-tie-rule.md](posterior-most-likely-state-tie-rule.md): a most likely state over states tied within 1e-10 is the first state in the fixed order

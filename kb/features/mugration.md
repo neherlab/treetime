@@ -24,7 +24,7 @@
 - [x] GTR model construction (uniform rates, optional weight-based equilibrium frequencies)
 - [x] Discrete marginal reconstruction (backward pass, forward pass)
 - [x] Missing data handling (all-ones profile for tips with the missing-data value or without a metadata row)
-- [x] Trait assignment from argmax of posterior profiles
+- [x] Trait assignment from the most likely state of the posterior profiles, with the tie rule of [kb/decisions/posterior-most-likely-state-tie-rule.md](../decisions/posterior-most-likely-state-tie-rule.md)
 - [x] Confidence profile and entropy per node (`StatePosterior`)
 
 ## Output
@@ -40,3 +40,4 @@
 - [x] Sampling bias correction (`--sampling-bias-correction`)
 - [x] Confidence CSV output (`--confidence`)
 - [x] `--pc` pseudo-counts
+- [x] Optional ambiguity report in the traits CSV, augur node data, and Auspice JSON (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))

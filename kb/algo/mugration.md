@@ -170,7 +170,8 @@ The confidence profiles are compared with v0 at an absolute tolerance of 1e-7. B
 ## Known Issues
 
 - [kb/issues/M-mugration-refinement-counts-with-forward-messages-of-the-first-fit.md](../issues/M-mugration-refinement-counts-with-forward-messages-of-the-first-fit.md): later fits count with the forward messages of the first fitted model
-- [kb/issues/M-posterior-argmax-follows-rounding-at-ties.md](../issues/M-posterior-argmax-follows-rounding-at-ties.md): a tied most likely state follows rounding
+- [kb/decisions/posterior-most-likely-state-tie-rule.md](../decisions/posterior-most-likely-state-tie-rule.md): the most likely state is the first state within 1e-10 of the maximum
+- [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md): the optional report of the states near the most likely state
 
 ---
 

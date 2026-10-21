@@ -13,6 +13,8 @@ Examples on `data/rsv/a/20` (sparse, dense; positions are 0-based alignment colu
 
 The differences are canonical states at positions where both backends agree on gaps and unknown characters, so the dense gap rule does not cause them.
 
+The ambiguity report ([kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md)) shows the same divergence in the posteriors. On `data/dengue/100` the two backends differ at 92 internal-node positions without the report. With `--ambiguity-threshold=0.2`, dense writes 318 ambiguity codes and sparse 291, and at 13 more positions dense writes a code where sparse writes one state, for example `NODE_0000023` position 21 (`R` dense, `A` sparse) and position 10388 (`Y`, `T`), in each case with the same most likely state in both backends.
+
 ## Reproduction
 
 ```bash
