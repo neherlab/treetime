@@ -12,7 +12,7 @@ Golden masters:
 
 Property, consistency, and command tests:
 
-- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L50](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L50): `#[ignore]` with `max_relative = 1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
+- Dense/sparse property test [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L15](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L15): `#[ignore]` with `max_relative = 1e-5`. Related: [M-ancestral-dense-sparse-divergence.md](M-ancestral-dense-sparse-divergence.md)
 - Sparse root-invariance property test [packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L27](../../packages/treetime/src/ancestral/__tests__/test_marginal_root_invariance_prop.rs#L27): `#[ignore]`. Related: [M-ancestral-sparse-root-invariance.md](M-ancestral-sparse-root-invariance.md)
 - Sparse GTR refinement against dense [packages/treetime/src/gtr/__tests__/test_refinement.rs#L202](../../packages/treetime/src/gtr/__tests__/test_refinement.rs#L202): `#[ignore]`. Related: [M-gtr-sparse-transition-counts-diverge-from-dense.md](M-gtr-sparse-transition-counts-diverge-from-dense.md)
 - Homoplasy dense/sparse comparison [packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs#L17](../../packages/app-commands/src/commands/homoplasy/__tests__/test_dense_sparse.rs#L17): `#[ignore]`. Related: [H-ancestral-sparse-dense-internal-residues-diverge.md](H-ancestral-sparse-dense-internal-residues-diverge.md)
