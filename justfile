@@ -80,7 +80,7 @@ dylint_over_baseline := dylint_target_dir / "mordant/over-baseline.txt"
 # surface of the Node addon and the `#[wasm_bindgen]` surface of the WebAssembly
 # back end are consumed by JavaScript. The test-infrastructure crates serve only
 # test targets, which neither check counts as users.
-public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi app_wasm treetime_validation treetime_analytical"
+public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_data_json util_usher_mat app_napi app_wasm treetime_validation treetime_analytical treetime_simulation"
 
 # Cargo with the seven-day minimum publish age of new dependency releases. The
 # setting is unstable in the pinned Rust (stable from 1.100), so the dependency

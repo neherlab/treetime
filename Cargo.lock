@@ -5158,6 +5158,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "treetime-simulation"
+version = "1.0.0"
+dependencies = [
+ "approx",
+ "ctor",
+ "eyre",
+ "itertools",
+ "maplit",
+ "ndarray",
+ "pretty_assertions",
+ "proptest",
+ "rand 0.10.3",
+ "rand_distr",
+ "rayon",
+ "rstest",
+ "statrs",
+ "treetime-graph",
+ "treetime-primitives",
+ "treetime-utils",
+]
+
+[[package]]
 name = "treetime-utils"
 version = "1.0.0"
 dependencies = [

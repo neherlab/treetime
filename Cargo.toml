@@ -38,6 +38,7 @@ members = [
   "packages/treetime-ops",
   "packages/treetime-schema",
   "packages/treetime-primitives",
+  "packages/treetime-simulation",
   "packages/treetime-utils",
   "packages/treetime-validation",
   "packages/util-augur-node-data-json",
@@ -243,6 +244,7 @@ treetime-io = { path = "packages/treetime-io" }
 treetime-ops = { path = "packages/treetime-ops" }
 treetime-primitives = { path = "packages/treetime-primitives" }
 treetime-schema = { path = "packages/treetime-schema" }
+treetime-simulation = { path = "packages/treetime-simulation" }
 treetime-utils = { path = "packages/treetime-utils" }
 util-augur-node-data-json = { path = "packages/util-augur-node-data-json" }
 util-newick = { path = "packages/util-newick" }
