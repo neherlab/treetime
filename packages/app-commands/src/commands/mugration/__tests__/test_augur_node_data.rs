@@ -35,14 +35,14 @@ mod tests {
       "country_confidence": {{
         "usa": 1.0
       }},
-      "country_entropy": -1.000088900581841e-12
+      "country_entropy": 0.0
     }},
     "B": {{
       "country": "germany",
       "country_confidence": {{
         "germany": 1.0
       }},
-      "country_entropy": -1.000088900581841e-12
+      "country_entropy": 0.0
     }},
     "root": {{
       "country": "usa",
@@ -50,7 +50,7 @@ mod tests {
         "germany": 0.32191714956411566,
         "usa": 0.6780828504358842
       }},
-      "country_entropy": 0.6283061142879482
+      "country_entropy": 0.6283061142899482
     }}
   }},
   "models": {{

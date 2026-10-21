@@ -2,9 +2,8 @@ use crate::make_internal_report;
 use eyre::Report;
 use getset::{CopyGetters, Getters};
 use ndarray::Array1;
+use ndarray_stats::EntropyExt;
 use treetime_utils::array::ndarray::argmax_first;
-
-const ENTROPY_PROBABILITY_OFFSET: f64 = 1e-12;
 
 #[derive(Clone, Debug, PartialEq, CopyGetters, Getters)]
 pub struct StatePosterior {
@@ -20,14 +19,17 @@ impl StatePosterior {
   pub fn new(profile: Array1<f64>) -> Result<Self, Report> {
     let state = argmax_first(&profile.view())
       .ok_or_else(|| make_internal_report!("A state posterior needs a profile with at least one state"))?;
-    let entropy = -profile
-      .iter()
-      .map(|&p| p * (p + ENTROPY_PROBABILITY_OFFSET).ln())
-      .sum::<f64>();
+    let entropy = profile
+      .entropy()
+      .map_err(|err| make_internal_report!("The entropy of a state posterior failed: {err}"))?;
     Ok(Self {
       state,
       profile,
-      entropy,
+      entropy: without_negative_zero(entropy),
     })
   }
+}
+
+fn without_negative_zero(value: f64) -> f64 {
+  value + 0.0
 }

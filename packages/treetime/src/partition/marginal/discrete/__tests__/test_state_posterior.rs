@@ -6,7 +6,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::cast::ToF64Exact;
-  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
+  use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -20,7 +20,8 @@ mod tests {
     let posterior = StatePosterior::new(profile)?;
 
     assert_eq!(expected_state, posterior.state());
-    pretty_assert_abs_diff_eq!(0.0, posterior.entropy(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.0, posterior.entropy(), epsilon = 1e-15);
+    assert!(posterior.entropy().is_sign_positive(), "entropy {} must not be a negative zero", posterior.entropy());
     Ok(())
   }
 
@@ -32,7 +33,15 @@ mod tests {
     let posterior = StatePosterior::new(Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact()))?;
 
     assert_eq!(0, posterior.state());
-    pretty_assert_abs_diff_eq!(n_states.to_f64_exact().ln(), posterior.entropy(), epsilon = 1e-10);
+    pretty_assert_ulps_eq!(n_states.to_f64_exact().ln(), posterior.entropy(), max_ulps = 4);
+    Ok(())
+  }
+
+  #[test]
+  fn test_state_posterior_entropy_counts_a_zero_probability_as_zero() -> Result<(), Report> {
+    let posterior = StatePosterior::new(array![0.5, 0.0, 0.5])?;
+
+    pretty_assert_ulps_eq!(2.0_f64.ln(), posterior.entropy(), max_ulps = 4);
     Ok(())
   }
 
