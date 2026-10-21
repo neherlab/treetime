@@ -10,8 +10,7 @@ mod sparse;
 mod timetree;
 
 pub(crate) use alignment::{
-  Columns, RSV_A_20_TRANSLATION_G_XZ, TestDataset, columns, fasta_xz_read, fasta_xz_records, get_common_length,
-  split_at_gap_free_column,
+  Columns, RSV_A_20_TRANSLATION_G_XZ, TestDataset, fasta_xz_records, get_common_length, split_at_gap_free_column,
 };
 pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name, node_keys_named};

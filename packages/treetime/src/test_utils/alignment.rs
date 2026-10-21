@@ -123,7 +123,7 @@ impl TestDataset {
   }
 }
 
-pub(crate) fn fasta_xz_read(bytes: &[u8]) -> Result<Vec<AlignmentRecord>, Report> {
+fn fasta_xz_read(bytes: &[u8]) -> Result<Vec<AlignmentRecord>, Report> {
   Ok(
     fasta_xz_records(bytes, &Alphabet::default())?
       .into_iter()
@@ -151,7 +151,7 @@ pub(crate) fn split_at_gap_free_column(records: &[AlignmentRecord]) -> Result<[V
   Ok([columns(records, 0..cut), columns(records, cut..length)])
 }
 
-pub(crate) fn columns(records: &[AlignmentRecord], range: Range<usize>) -> Vec<AlignmentRecord> {
+fn columns(records: &[AlignmentRecord], range: Range<usize>) -> Vec<AlignmentRecord> {
   records
     .iter()
     .map(|record| AlignmentRecord {
