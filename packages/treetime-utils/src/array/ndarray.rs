@@ -38,6 +38,25 @@ pub fn argmax_first<T: PartialOrd>(arr: &ArrayView<T, Ix1>) -> Option<usize> {
   Some(max_idx)
 }
 
+pub fn argmax_first_within<S: Data<Elem = f64>>(arr: &ArrayBase<S, Ix1>, tolerance: f64) -> Option<usize> {
+  argmax_all_within(arr, tolerance).next()
+}
+
+pub fn argmax_all_within<S: Data<Elem = f64>>(
+  arr: &ArrayBase<S, Ix1>,
+  tolerance: f64,
+) -> impl Iterator<Item = usize> + '_ {
+  let lowest = arr
+    .iter()
+    .copied()
+    .filter(|value| !value.is_nan())
+    .reduce(f64::max)
+    .map(|max| max - tolerance);
+  arr
+    .iter()
+    .positions(move |&value| lowest.is_some_and(|lowest| value >= lowest))
+}
+
 #[inline]
 pub fn max_or<S: Data<Elem = f64>>(arr: &ArrayBase<S, Ix1>, default: f64) -> f64 {
   arr.max().map_or(default, |&max| max)
