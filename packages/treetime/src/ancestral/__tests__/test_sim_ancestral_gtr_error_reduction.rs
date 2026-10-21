@@ -6,7 +6,7 @@ mod tests {
   use treetime_simulation::FALSE_FAIL_RATE;
 
   #[test]
-  #[ignore = "kb/issues/M-ancestral-gtr-iterations-refit-against-frozen-messages.md"]
+  #[ignore = "kb/issues/M-gtr-fitch-fit-frequencies-do-not-improve-with-more-sites.md"]
   fn test_sim_ancestral_gtr_error_falls_with_more_sites() -> Result<(), Report> {
     let log_ratios = run_replicates(BASE_SEED, REPLICATE_COUNT, replicate_log_ratios)?;
 
@@ -51,7 +51,6 @@ mod tests {
     pub(super) const BASE_SEED: u64 = 1;
     const FEW_SITES: usize = 1000;
     const ALL_SITES: usize = 10_000;
-    const GTR_ITERATIONS: usize = 3;
 
     pub(super) fn replicate_log_ratios(seed: u64) -> Result<LogRatios, Report> {
       log_ratios(&ancestral_case(seed, ALL_SITES)?.simulate()?)
@@ -85,7 +84,6 @@ mod tests {
         include_leaves: false,
         report_ambiguous: false,
         impute_missing_data: false,
-        gtr_iterations: GTR_ITERATIONS,
         site_specific_gtr: false,
         seed: 0,
         sample_from_profile: SampleMode::Argmax,
