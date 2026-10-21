@@ -6,13 +6,18 @@
 # x86_64-unknown-linux-gnu these are all the code generation flags of the
 # shipped binary; dev/cross/build adds the static runtime and linker flags of
 # the other targets.
+#
+# The prebuilt archives that the builds link follow the same CPU baselines:
+# OpenBLAS selects its kernels at run time, and binarylandia/staticbourg builds
+# liblzma and libzstd for these baselines (dev/docker/files/install-compression-libs).
 
-# Export RUSTFLAGS and the C, C++, and Fortran flags of the shipped build for a
-# target, by default the host. RUSTFLAGS replaces the target rustflags of
-# .cargo/config.toml (mold, frame pointers, v0 symbol mangling, OpenBLAS link
-# arguments) instead of adding to them, as in the shipped builds.
+# Export RUSTFLAGS and the C and C++ flags of the shipped build for a target, by
+# default the host. RUSTFLAGS replaces the target rustflags of .cargo/config.toml
+# (mold, frame pointers, v0 symbol mangling, OpenBLAS link arguments) instead of
+# adding to them, as in the shipped builds. The C and C++ flags carry only the
+# CPU baseline: the cc crate passes the optimization level of the cargo profile.
 export_dist_flags() {
-  local target="${1:-$(rustc --print host-tuple)}" target_safe c_arch rust_arch c_flags
+  local target="${1:-$(rustc --print host-tuple)}" target_safe c_arch rust_arch
   target_safe="${target//-/_}"
 
   case "${target}" in
@@ -34,18 +39,16 @@ export_dist_flags() {
     export JEMALLOC_SYS_WITH_LG_PAGE=16
     ;;
   aarch64-*)
-    # Features of -C target-feature=+v8.2a, which is unstable, listed explicitly.
-    c_arch="-march=armv8.2-a"
-    rust_arch="-C target-cpu=generic -C target-feature=+crc,+dpb,+lor,+lse,+neon,+pan,+ras,+rdm,+vh"
-    ;;
-  x86_64-win7-*)
-    # Windows 7 runs on many CPUs older than Haswell.
-    c_arch="-march=x86-64-v2"
-    rust_arch="-C target-cpu=x86-64-v2"
+    # Windows 11 on Arm requires the LSE atomics of Armv8.1, and the Windows
+    # targets of rustc have no outline atomics, so LSE is enabled at build time.
+    c_arch="-march=armv8-a+lse"
+    rust_arch="-C target-feature=+lse"
     ;;
   x86_64-*)
-    c_arch="-march=haswell"
-    rust_arch="-C target-cpu=haswell"
+    # x86-64-v2 (SSE4.2, POPCNT, CMPXCHG16B; Intel Nehalem, AMD Bulldozer, or
+    # newer), so the binaries also run on CPUs and virtual machines without AVX2.
+    c_arch="-march=x86-64-v2"
+    rust_arch="-C target-cpu=x86-64-v2"
     ;;
   *)
     printf 'Unsupported target: %s\n' "${target}" >&2
@@ -53,9 +56,7 @@ export_dist_flags() {
     ;;
   esac
 
-  c_flags="-O3 -ftree-vectorize -funroll-loops ${c_arch}"
   export RUSTFLAGS="${rust_arch}"
-  export "CFLAGS_${target_safe}=${CFLAGS:-} ${c_flags}"
-  export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_flags}"
-  export "FCFLAGS_${target_safe}=${FCFLAGS:-} ${c_flags}"
+  export "CFLAGS_${target_safe}=${CFLAGS:-} ${c_arch}"
+  export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_arch}"
 }

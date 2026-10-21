@@ -23,7 +23,7 @@ set -euxo pipefail
 
 triplet="${1:?triplet}"
 dest="${2:?prefix}"
-release="2026-10-16_08-00-16"
+release="2026-10-21_13-40-13"
 lzma_version="5.8.4"
 zstd_version="1.5.7"
 emscripten_version="6.0.10"

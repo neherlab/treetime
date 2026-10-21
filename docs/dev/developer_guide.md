@@ -377,7 +377,7 @@ After changing `pixi.toml`, run `pixi lock` and commit both files. Package relea
 - `dev` (`just build`, `just run`, the tests): unoptimized workspace crates, dependencies at `opt-level = 2`, full debug info
 - `dev-opt` (`just run-dev-opt`): `dev` with optimized workspace crates, for long runs on real datasets; rebuilds are slower
 - `release` (`just build-release`, `just run-release`, `just example`, `just smoke`): optimized and fast to rebuild, without LTO
-- `dist` (`just build-dist`, `just cross`, `just build-napi dist`, `just cross-napi`, nightly releases): the shipped binary and Node addon, with fat LTO, one codegen unit, and the CPU flags of the shipped builds from `dev/lib/dist-flags.sh` (`-C target-cpu=haswell` on x86-64, no frame pointers)
+- `dist` (`just build-dist`, `just cross`, `just build-napi dist`, `just cross-napi`, nightly releases): the shipped binary and Node addon, with fat LTO, one codegen unit, and the CPU flags of the shipped builds from `dev/lib/dist-flags.sh` (`-C target-cpu=x86-64-v2` on x86-64, no frame pointers)
 - `profiling` (`just build-profiling`, `just profile`): `dist` with full debug info; without frame pointers, profilers unwind call stacks with DWARF (`dev/profile` does) or LBR
 - `profiling-heap` (`just build-profiling-heap`): `profiling` with jemalloc heap profiling compiled in, for heap profiles only
 - `bench` (`just bench`): the `dist` settings
@@ -440,7 +440,12 @@ Each target family has its own cross image, with every toolchain component pinne
 
 `dev/cross/check` fails when a binary or addon needs a library that is not part of the operating system: anything beyond glibc 2.17 on the Linux gnu targets (the addon may also need `libgcc_s.so.1`, as Electron does), any library on the musl targets, a DLL other than the Windows system DLLs (`KERNEL32.dll`, `api-ms-win-crt-*.dll`, and others) on Windows, a DLL other than the Windows 7 system DLLs and `msvcrt.dll`, or a function that Windows 8 or later added, on Windows 7, and a library outside `/usr/lib` and `/System/Library` on macOS. `dev/cross/all --run` runs each Linux binary under QEMU and each x86_64 Windows binary under Wine; macOS and aarch64 Windows binaries are only built and checked there. CI runs the Windows binaries on `windows-2022` and `windows-11-arm`, and the macOS binaries on macOS runners.
 
-The x86_64 release binaries require a CPU with AVX2 (Haswell or newer); on an older CPU they stop with a message that names the missing level. The Windows 7 build requires x86-64-v2 (SSE4.2, POPCNT, CMPXCHG16B; Nehalem or newer). The Linux aarch64 binaries run on any ARMv8.0 CPU, such as the Cortex-A53 and Cortex-A72 of the Raspberry Pi 3 and 4: atomic operations go through outline atomics, which use LSE instructions when the CPU has them, and OpenBLAS selects its kernels at run time. The Windows aarch64 binaries require ARMv8.2, which every device that runs Windows 11 on Arm meets.
+The release binaries run on these CPUs; on an older x86_64 CPU they stop with a message that names the missing level. The prebuilt archives they link follow the same levels: OpenBLAS selects its kernels at run time, and binarylandia/staticbourg builds liblzma and libzstd for these levels.
+
+- x86_64 (every operating system, Windows 7 included): x86-64-v2 (SSE4.2, POPCNT, CMPXCHG16B; Intel Nehalem, AMD Bulldozer, or newer)
+- Linux aarch64: Armv8.0, such as the Cortex-A53 and Cortex-A72 of the Raspberry Pi 3 and 4. Atomic operations go through outline atomics, which use LSE instructions when the CPU has them
+- Windows aarch64: the LSE atomics of Armv8.1, which every device that runs Windows 11 on Arm has
+- macOS aarch64: Apple M1 or newer
 
 ### Nightly releases
 
