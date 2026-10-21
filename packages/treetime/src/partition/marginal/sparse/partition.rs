@@ -1,10 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::gtr::GTR;
+use crate::partition::marginal::posterior_states::AmbiguityThreshold;
 use crate::partition::marginal::sample::{Resolve, SampleMode};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::update::{MarginalBackward, MarginalEdges, MarginalForward, MarginalPasses};
 use crate::partition::marginal::sparse::reconstruct::{
-  map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
+  internal_ambiguity, leaf_ambiguity, map_seq, map_seq_overlay, map_seq_sampled, reconstruct_leaf_sequence,
 };
 use crate::partition::marginal::sparse::{backward, forward};
 use crate::partition::optimize::contribution::OptimizationContribution;
@@ -13,6 +14,7 @@ use crate::partition::storage::sparse::{
 };
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::seq::overlay::SeqOverlay;
+use crate::seq::sink::AmbiguousSites;
 use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
@@ -203,6 +205,39 @@ impl PartitionMarginalSparse {
       parent_state,
       impute,
       &self.alphabet,
+    ))
+  }
+
+  pub(crate) fn node_ambiguity(
+    &self,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    impute: bool,
+    node_key: GraphNodeKey,
+    threshold: AmbiguityThreshold,
+  ) -> Result<AmbiguousSites, Report> {
+    let node_data = &node_states[&node_key];
+    let is_leaf = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found while reporting its ambiguous sites"))?
+      .is_leaf();
+    if !is_leaf {
+      return Ok(internal_ambiguity(node_data, &self.alphabet, threshold));
+    }
+    let parent = graph
+      .node_parent(node_key)
+      .wrap_err_with(|| format!("When reporting the ambiguous sites of node {node_key}"))?;
+    let (true, Some((parent_key, edge_key))) = (impute, parent) else {
+      return Ok(AmbiguousSites::new());
+    };
+    Ok(leaf_ambiguity(
+      node_data,
+      &self.obs_nodes[&node_key],
+      &forward[&edge_key].msg_from_parent,
+      &node_states[&parent_key],
+      &self.alphabet,
+      threshold,
     ))
   }
 

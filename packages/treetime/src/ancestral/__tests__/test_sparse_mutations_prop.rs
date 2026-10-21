@@ -46,6 +46,7 @@ mod tests {
         false,
         report_unknown,
         |node_key| reconstruction.node_sequence(&graph, impute, node_key),
+        |node_key, threshold| reconstruction.node_ambiguity(&graph, impute, node_key, threshold),
         |edge_key| reconstruction.edge_indels(edge_key),
         None,
       )

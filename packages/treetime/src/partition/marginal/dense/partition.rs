@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::constants::MIN_BRANCH_LENGTH_FRACTION;
 use crate::gtr::gtr::GTR;
-use crate::partition::marginal::posterior_states::most_likely_state;
+use crate::partition::marginal::posterior_states::{AmbiguityThreshold, most_likely_state};
 use crate::partition::marginal::sample::{Resolve, SampleMode, resolve_profile};
 use crate::partition::marginal::sequences::sample_internal_sequences;
 use crate::partition::marginal::shared::data::DenseInputs;
@@ -15,9 +15,10 @@ use crate::seq::alignment::{NodeSeqInput, get_common_length_of_node_inputs};
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use crate::seq::overlay::SeqOverlay;
+use crate::seq::sink::AmbiguousSites;
 use crate::{make_internal_report, make_report};
 use eyre::Report;
-use itertools::izip;
+use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -205,16 +206,55 @@ impl PartitionMarginalDense {
     })
   }
 
+  pub(crate) fn node_ambiguity(
+    &self,
+    graph: &Graph,
+    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    impute: bool,
+    node_key: GraphNodeKey,
+    threshold: AmbiguityThreshold,
+  ) -> Result<AmbiguousSites, Report> {
+    let seq_info = &node_states[&node_key];
+    let is_leaf = graph
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Node {node_key} not found while reporting its ambiguous sites"))?
+      .is_leaf();
+    let profile = &seq_info.profile.dis;
+    let sites = if is_leaf {
+      self
+        .imputed_positions(seq_info, impute)
+        .filter_map(|pos| {
+          threshold
+            .ambiguity_char(&profile.row(pos), &self.alphabet)
+            .map(|code| (pos, code))
+        })
+        .collect()
+    } else {
+      (0..profile.nrows())
+        .filter(|&pos| !range_contains(&seq_info.seq.gaps, pos) && !range_contains(&seq_info.seq.unknown, pos))
+        .filter_map(|pos| {
+          threshold
+            .ambiguity_char(&profile.row(pos), &self.alphabet)
+            .map(|code| (pos, code))
+        })
+        .collect()
+    };
+    Ok(sites)
+  }
+
+  fn imputed_positions<'a>(&'a self, seq_info: &'a DenseNodeState, impute: bool) -> impl Iterator<Item = usize> + 'a {
+    let seq = &seq_info.seq.sequence;
+    let imputes = impute && seq_info.profile.dis.nrows() == seq.len();
+    seq
+      .iter()
+      .positions(move |&ch| imputes && !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch))
+  }
+
   fn reconstruct_leaf_sequence(&self, seq_info: &DenseNodeState, impute: bool) -> Seq {
     let mut seq = seq_info.seq.sequence.clone();
-    if impute && seq_info.profile.dis.nrows() == seq.len() {
-      for pos in 0..seq.len() {
-        let ch = seq[pos];
-        if !self.alphabet.is_canonical(ch) && !self.alphabet.is_gap(ch) {
-          if let Some(idx) = most_likely_state(&seq_info.profile.dis.row(pos)) {
-            seq[pos] = self.alphabet.char(idx);
-          }
-        }
+    for pos in self.imputed_positions(seq_info, impute) {
+      if let Some(idx) = most_likely_state(&seq_info.profile.dis.row(pos)) {
+        seq[pos] = self.alphabet.char(idx);
       }
     }
     seq

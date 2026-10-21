@@ -191,6 +191,10 @@ impl Alphabet {
     self.set_to_char[&c]
   }
 
+  pub(crate) fn ambiguity_char(&self, states: StateSet) -> AsciiChar {
+    self.set_to_char.get(&states).copied().unwrap_or(self.unknown)
+  }
+
   pub(crate) fn char_to_set(&self, c: impl Into<AsciiChar>) -> StateSet {
     self.char_to_set[&c.into()]
   }

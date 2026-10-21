@@ -4,7 +4,7 @@ mod tests {
   use crate::cancel::CancelledError;
   use crate::error::OperationError;
   use crate::seq::mutation::{SequenceMutations, mutation_event_strings, stream_sequence_mutations};
-  use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+  use crate::seq::sink::{AmbiguousSites, SeqItem, SeqSink, SeqTrack};
   use eyre::Report;
   use helpers::{Failure, Stream, error_class, stream};
   use maplit::btreemap;
@@ -78,6 +78,7 @@ mod tests {
       include_leaves,
       report_unknown,
       |_| Err::<Seq, _>(failure.report()),
+      |_, _| Ok(AmbiguousSites::new()),
       |_| vec![],
       None,
     );
@@ -154,6 +155,7 @@ mod tests {
         include_leaves,
         report_unknown,
         |key| Seq::try_from_str(sequences[&names[key]]),
+        |_, _| Ok(AmbiguousSites::new()),
         |_| vec![],
         sink.map(|sink| SeqStream::new(sink, &names)),
       )?;

@@ -1,9 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::partition::marginal::posterior_states::most_likely_state;
+use crate::partition::marginal::posterior_states::{AmbiguityThreshold, most_likely_state};
 use crate::partition::marginal::sample::{Resolve, resolve_profile};
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState, SparseSeqDistribution};
 use crate::seq::overlay::SeqOverlay;
+use crate::seq::sink::AmbiguousSites;
 use ndarray::{Array1, aview1};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_primitives::{AsciiChar, Seq};
 
@@ -102,6 +104,68 @@ pub(crate) fn reconstruct_leaf_sequence(
   }
 
   seq
+}
+
+pub(crate) fn internal_ambiguity(
+  node: &SparseNodeState,
+  alphabet: &Alphabet,
+  threshold: AmbiguityThreshold,
+) -> AmbiguousSites {
+  let mut sites: AmbiguousSites = node
+    .profile
+    .variable
+    .iter()
+    .filter(|&(&pos, _)| node.sequence[pos] != alphabet.gap())
+    .filter_map(|(&pos, var)| {
+      threshold
+        .ambiguity_char(&aview1(var.dis), alphabet)
+        .map(|code| (pos, code))
+    })
+    .collect();
+  let fixed_codes: BTreeMap<AsciiChar, AsciiChar> = node
+    .profile
+    .fixed
+    .iter()
+    .filter_map(|fixed| {
+      threshold
+        .ambiguity_char(&aview1(&fixed.dis), alphabet)
+        .map(|code| (fixed.state, code))
+    })
+    .collect();
+  if !fixed_codes.is_empty() {
+    let fixed_sites = node
+      .sequence
+      .iter()
+      .enumerate()
+      .filter(|&(pos, _)| !node.profile.variable.contains_key(pos))
+      .filter_map(|(pos, state)| fixed_codes.get(state).map(|&code| (pos, code)));
+    sites.extend(fixed_sites);
+  }
+  sites
+}
+
+pub(crate) fn leaf_ambiguity(
+  node: &SparseNodeState,
+  node_obs: &SparseNodeObs,
+  down: &SparseSeqDistribution,
+  parent: &SparseNodeState,
+  alphabet: &Alphabet,
+  threshold: AmbiguityThreshold,
+) -> AmbiguousSites {
+  let unknown_positions = node_obs.unknown.iter().flat_map(|&(start, end)| start..end);
+  let ambiguous_positions = node_obs.fitch.variable.keys().copied();
+  unknown_positions
+    .chain(ambiguous_positions)
+    .filter_map(|pos| {
+      let observed = node_obs
+        .fitch
+        .variable
+        .get(&pos)
+        .map_or(node.sequence[pos], |&states| alphabet.set_to_char(states));
+      let posterior = leaf_posterior(observed, pos, down, parent, alphabet)?;
+      threshold.ambiguity_char(&posterior, alphabet).map(|code| (pos, code))
+    })
+    .collect()
 }
 
 pub(crate) fn impute_state(

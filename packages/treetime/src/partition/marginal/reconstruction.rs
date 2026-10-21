@@ -3,6 +3,7 @@ use crate::error::OperationError;
 use crate::gtr::gtr::GTR;
 use crate::gtr::refinement::{RateRangeEdge, optimize_gtr_rate};
 use crate::partition::marginal::dense::partition::{DenseMarginalEdges, PartitionMarginalDense};
+use crate::partition::marginal::posterior_states::AmbiguityThreshold;
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_node_states};
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
@@ -18,7 +19,7 @@ use crate::seq::mutation::{
   Mutation, MutationTrack, SequenceMutations, Sub, combine_edge_mutations, emit_sequences, stream_sequence_mutations,
 };
 use crate::seq::overlay::SeqOverlay;
-use crate::seq::sink::{SeqStream, SeqTrack};
+use crate::seq::sink::{AmbiguousSites, SeqStream, SeqTrack};
 use eyre::Report;
 use rand::Rng;
 use std::collections::BTreeMap;
@@ -79,6 +80,16 @@ impl MarginalReconstruction {
 
   pub(crate) fn node_sequence(&self, graph: &Graph, impute: bool, node_key: GraphNodeKey) -> Result<Seq, Report> {
     self.view().node_sequence(graph, impute, node_key)
+  }
+
+  pub(crate) fn node_ambiguity(
+    &self,
+    graph: &Graph,
+    impute: bool,
+    node_key: GraphNodeKey,
+    threshold: AmbiguityThreshold,
+  ) -> Result<AmbiguousSites, Report> {
+    self.view().node_ambiguity(graph, impute, node_key, threshold)
   }
 
   pub(crate) fn stream_sequences(
@@ -143,6 +154,30 @@ impl<'a> ReconstructionRef<'a> {
     }
   }
 
+  pub(crate) fn node_ambiguity(
+    self,
+    graph: &Graph,
+    impute: bool,
+    node_key: GraphNodeKey,
+    threshold: AmbiguityThreshold,
+  ) -> Result<AmbiguousSites, Report> {
+    match self {
+      Self::Dense(reconstruction) => {
+        reconstruction
+          .partition
+          .node_ambiguity(graph, &reconstruction.node_states, impute, node_key, threshold)
+      },
+      Self::Sparse(reconstruction) => reconstruction.partition.node_ambiguity(
+        graph,
+        &reconstruction.node_states,
+        &reconstruction.edges.forward,
+        impute,
+        node_key,
+        threshold,
+      ),
+    }
+  }
+
   pub(crate) fn stream_sequences(
     self,
     graph: &Graph,
@@ -153,6 +188,7 @@ impl<'a> ReconstructionRef<'a> {
     sink: Option<SeqStream<'_>>,
   ) -> Result<SequenceMutations, OperationError> {
     let node_sequence = |node_key| self.node_sequence(graph, impute, node_key);
+    let node_ambiguity = |node_key, threshold| self.node_ambiguity(graph, impute, node_key, threshold);
     let Self::Sparse(reconstruction) = self else {
       return stream_sequence_mutations(
         graph,
@@ -161,12 +197,13 @@ impl<'a> ReconstructionRef<'a> {
         include_leaves,
         report_unknown,
         node_sequence,
+        node_ambiguity,
         |edge_key| self.edge_indels(edge_key),
         sink,
       );
     };
     if let Some(sink) = sink {
-      emit_sequences(graph, track, include_leaves, node_sequence, sink)?;
+      emit_sequences(graph, track, include_leaves, node_sequence, node_ambiguity, sink)?;
     }
     let root_key = graph.root_key().map_err(OperationError::classify)?;
     let root_sequence = node_sequence(root_key).map_err(OperationError::classify)?;

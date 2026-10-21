@@ -1,7 +1,8 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
+use crate::partition::marginal::posterior_states::AmbiguityThreshold;
 use crate::seq::indel::{InDel, InDelKind};
-use crate::seq::sink::{SeqStream, SeqTrack};
+use crate::seq::sink::{AmbiguousSites, SeqStream, SeqTrack};
 use crate::{make_error, make_internal_error, make_internal_report};
 use derive_more::Display;
 use eyre::{Report, WrapErr};
@@ -21,7 +22,7 @@ use treetime_utils::error::{report_to_string, to_eyre_error};
 
 #[expect(
   clippy::too_many_arguments,
-  reason = "dense and sparse reconstructions supply node sequences and edge indels as closures over their own state, next to the output switches and the optional sink"
+  reason = "dense and sparse reconstructions supply node sequences, ambiguous sites, and edge indels as closures over their own state, next to the output switches and the optional sink"
 )]
 pub(crate) fn stream_sequence_mutations(
   graph: &Graph,
@@ -30,6 +31,7 @@ pub(crate) fn stream_sequence_mutations(
   include_leaves: bool,
   report_unknown: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
+  mut node_ambiguity: impl FnMut(GraphNodeKey, AmbiguityThreshold) -> Result<AmbiguousSites, Report>,
   edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
   mut sink: Option<SeqStream<'_>>,
 ) -> Result<SequenceMutations, OperationError> {
@@ -43,9 +45,14 @@ pub(crate) fn stream_sequence_mutations(
     let seq = node_sequence(key).map_err(OperationError::classify)?;
     let child_count = schedule.children(key).len();
     if let Some(sink) = sink.as_mut() {
-      sink
-        .emit(key, seq_track, &seq, include_leaves || child_count > 0)
-        .map_err(OperationError::SinkFailed)?;
+      emit_node(
+        sink,
+        key,
+        seq_track,
+        &seq,
+        include_leaves || child_count > 0,
+        &mut node_ambiguity,
+      )?;
     }
     match schedule.parents(key).first() {
       None => root_sequence = Some(seq.clone()),
@@ -89,17 +96,33 @@ pub(crate) fn emit_sequences(
   seq_track: SeqTrack<'_>,
   include_leaves: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
+  mut node_ambiguity: impl FnMut(GraphNodeKey, AmbiguityThreshold) -> Result<AmbiguousSites, Report>,
   mut sink: SeqStream<'_>,
 ) -> Result<(), OperationError> {
   let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
   for &key in schedule.preorder() {
     let seq = node_sequence(key).map_err(OperationError::classify)?;
     let emitted = include_leaves || !schedule.children(key).is_empty();
-    sink
-      .emit(key, seq_track, &seq, emitted)
-      .map_err(OperationError::SinkFailed)?;
+    emit_node(&mut sink, key, seq_track, &seq, emitted, &mut node_ambiguity)?;
   }
   Ok(())
+}
+
+fn emit_node(
+  sink: &mut SeqStream<'_>,
+  key: GraphNodeKey,
+  seq_track: SeqTrack<'_>,
+  seq: &Seq,
+  emitted: bool,
+  node_ambiguity: &mut impl FnMut(GraphNodeKey, AmbiguityThreshold) -> Result<AmbiguousSites, Report>,
+) -> Result<(), OperationError> {
+  let ambiguous_sites = match sink.ambiguity() {
+    Some(threshold) if emitted => node_ambiguity(key, threshold).map_err(OperationError::classify)?,
+    _ => AmbiguousSites::new(),
+  };
+  sink
+    .emit(key, seq_track, seq, &ambiguous_sites, emitted)
+    .map_err(OperationError::SinkFailed)
 }
 
 pub(crate) fn sequence_subs(

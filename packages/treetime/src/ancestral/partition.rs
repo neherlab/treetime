@@ -2,10 +2,11 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
 use crate::gtr::gtr::GTR;
 use crate::partition::fitch::partition::PartitionFitch;
+use crate::partition::marginal::posterior_states::AmbiguityThreshold;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{SequenceMutations, stream_sequence_mutations};
-use crate::seq::sink::{SeqStream, SeqTrack};
+use crate::seq::sink::{AmbiguousSites, SeqStream, SeqTrack};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -72,9 +73,26 @@ impl AncestralPartition {
       include_leaves,
       report_unknown,
       |node_key| self.node_sequence(graph, node_key),
+      |node_key, threshold| self.node_ambiguity(graph, node_key, threshold),
       |edge_key| self.edge_indels(edge_key),
       sink,
     )
+  }
+
+  fn node_ambiguity(
+    &self,
+    graph: &Graph,
+    node_key: GraphNodeKey,
+    threshold: AmbiguityThreshold,
+  ) -> Result<AmbiguousSites, Report> {
+    match self {
+      Self::Marginal {
+        reconstruction,
+        sampled,
+        impute,
+      } if !sampled.contains_key(&node_key) => reconstruction.node_ambiguity(graph, *impute, node_key, threshold),
+      Self::Fitch(_) | Self::Marginal { .. } => Ok(AmbiguousSites::new()),
+    }
   }
 
   fn node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report> {

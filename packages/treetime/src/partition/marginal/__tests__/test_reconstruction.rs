@@ -90,6 +90,7 @@ mod tests {
       include_leaves,
       true,
       |key| reconstruction.node_sequence(&graph, false, key),
+      |key, threshold| reconstruction.node_ambiguity(&graph, false, key, threshold),
       |edge_key| reconstruction.edge_indels(edge_key),
       Some(SeqStream::new(&mut sink, &names)),
     )?;
