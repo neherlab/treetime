@@ -117,6 +117,7 @@ Each line names the issue and the options that a maintainer must choose from.
 
 Each line names the issue and the measurement or analysis that must come first.
 
+- **[kb/issues/M-gtr-fitch-fit-frequencies-do-not-improve-with-more-sites.md](issues/M-gtr-fitch-fit-frequencies-do-not-improve-with-more-sites.md)**: measure the signed error of each frequency of the Fitch fit at 1000 and at 10000 simulated sites, and compare it with the composition of the simulated root
 - **[kb/issues/M-ancestral-sparse-root-invariance.md](issues/M-ancestral-sparse-root-invariance.md)**: find the sparse representation mapping and an independent oracle that define a fix for the failing root invariance
 - **[kb/issues/M-coalescent-skyline-underestimates-tc-on-simulated-data.md](issues/M-coalescent-skyline-underestimates-tc-on-simulated-data.md)**: run v0 and v1 with the skyline on the same simulated trees and compare Tc with the truth by depth
 - **[kb/issues/M-distribution-convolution-drops-operand-tails.md](issues/M-distribution-convolution-drops-operand-tails.md)**: measure the date interval coverage on the validation suite for runs dominated by short branches, with and without the operand tails
