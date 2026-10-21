@@ -83,11 +83,6 @@ impl Graph {
     graph.leaves = leaves;
   }
 
-  fn topology_changed(&mut self) -> &mut Self {
-    self.schedule.take();
-    self
-  }
-
   pub fn get_node(&self, key: GraphNodeKey) -> Option<&Node> {
     self.nodes.get(key.as_usize())?.as_ref()
   }
@@ -120,20 +115,6 @@ impl Graph {
       .inbound()
       .iter()
       .filter_map(move |&edge_key| self.get_edge(edge_key).map(|edge| (edge.source(), edge_key)))
-  }
-
-  fn one_parent_of(&self, node: &Node) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
-    match node.inbound().len() {
-      0 => Ok(None),
-      1 => {
-        let edge_key = node.inbound()[0];
-        Ok(Some((self.get_source_node_key(edge_key)?, edge_key)))
-      },
-      n => make_internal_error!(
-        "Only trees with exactly one parent per node are currently supported, but node '{}' has {n} parents",
-        node.key()
-      ),
-    }
   }
 
   pub fn children_of<'a>(&'a self, node: &'a Node) -> impl DoubleEndedIterator<Item = (&'a Node, &'a Edge)> + 'a {
@@ -298,6 +279,25 @@ impl Graph {
 
   pub fn root_key(&self) -> Result<GraphNodeKey, Report> {
     Ok(self.get_exactly_one_root()?.key())
+  }
+
+  fn topology_changed(&mut self) -> &mut Self {
+    self.schedule.take();
+    self
+  }
+
+  fn one_parent_of(&self, node: &Node) -> Result<Option<(GraphNodeKey, GraphEdgeKey)>, Report> {
+    match node.inbound().len() {
+      0 => Ok(None),
+      1 => {
+        let edge_key = node.inbound()[0];
+        Ok(Some((self.get_source_node_key(edge_key)?, edge_key)))
+      },
+      n => make_internal_error!(
+        "Only trees with exactly one parent per node are currently supported, but node '{}' has {n} parents",
+        node.key()
+      ),
+    }
   }
 }
 
