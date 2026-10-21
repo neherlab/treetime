@@ -6,7 +6,7 @@
 # command as the host user, with HOME=/tmp/home and the cargo home in the
 # checkout. Ubuntu 24.04 keeps the glibc of the binaries built here no newer than
 # on current hosts, so profiling builds run on the host.
-FROM ubuntu:noble-20260905@sha256:a053cbffda9d424679c103c5b4f452297efc3774a1e491c110289f726fbb5d34
+FROM ubuntu:noble-20260930.1@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
 RUN set -euxo pipefail >/dev/null \

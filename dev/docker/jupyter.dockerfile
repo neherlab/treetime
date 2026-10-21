@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # check=experimental=all
-FROM debian:12.14-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df
+FROM debian:12.15-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
 
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
