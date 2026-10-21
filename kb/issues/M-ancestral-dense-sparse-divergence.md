@@ -18,6 +18,14 @@ Measurement: one run of 200 proptest cases (the test runs 30), 4 taxa, 10-site g
 
 The test uses `max_relative = 1e-5` to accommodate the worst observed case (7.6e-6). A ULP tolerance does not fit the bimodal distribution. `epsilon = 0.0` turns off the absolute tolerance of `relative_eq!`, so the comparison is purely relative.
 
+## Measurement on simulated data
+
+`test_prop_marginal_dense_sparse_simulated_agree_on_states_and_likelihood` [packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs](../../packages/treetime/src/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.rs) runs both representations on data from the simulation generator (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites), with the true GTR and the exact branch lengths. It asserts the relative tolerance `1e-5` above. One run of its 64 cases measured:
+
+- Every case differs by more than rounding: relative differences of the log-likelihoods from 1.2e-9 to 5.3e-6. On realistic data the two populations above do not separate; all cases fall into population 2
+- The most likely states of the internal nodes agree at all 564950 compared node sites (dense posterior gap above `1e-3`), and at every excluded near-tie site
+- The calibration of the posteriors is equal for both representations on one simulated tree of 40 tips and 5000 sites: the mean of wrong most likely states minus their posterior error probability per site is -0.0209 for dense and -0.0210 for sparse, with p-values 0.490 and 0.487 against a mean of 0 ([packages/treetime/src/ancestral/__tests__/test_sim_ancestral_calibration.rs](../../packages/treetime/src/ancestral/__tests__/test_sim_ancestral_calibration.rs)). The divergence of the log-likelihoods therefore does not show in the calibration of the posteriors at this size
+
 ## Investigation leads
 
 Candidates for root cause (from test file comments):
