@@ -24,6 +24,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -142,7 +143,7 @@ pub(crate) struct TimeInferenceInputs<'a> {
   pub gammas: &'a BTreeMap<GraphEdgeKey, f64>,
   pub branch_model: &'a BranchModel,
   pub branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: &'a NodeNames,
   pub clock_model: &'a ClockModel,
   pub clock_rate_fixed: bool,
   pub indel_policy: IndelPolicy,

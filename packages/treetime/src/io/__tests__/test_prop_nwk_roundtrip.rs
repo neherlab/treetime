@@ -32,7 +32,7 @@ mod tests {
       .stack_size(2 << 20)
       .spawn(move || -> Result<String, Report> {
         let parse = nwk_read(input.as_bytes())?;
-        let names = parse.names();
+        let names = parse.names.clone();
         nwk_write_str(
           &GraphSchedule::new(&parse.graph)?.into_tree()?,
           &names,
@@ -54,6 +54,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
@@ -81,6 +82,7 @@ mod tests {
         }
       }
       graph.build()?;
+      let names = NodeNames::from_input(names, &graph)?.names;
       let options = NwkWriteOptions {
         weight_significant_digits: Some(17),
         ..NwkWriteOptions::default()
@@ -97,16 +99,16 @@ mod tests {
 
     pub(super) fn read_back(written: &str) -> Result<NameParentLength, Report> {
       let parse = nwk_read(written.as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let mut actual = BTreeMap::new();
       for node in parse.graph.get_nodes() {
-        let name = names[&node.key()].clone().unwrap_or_default();
+        let name = names[node.key()].to_owned();
         let inbound = node.inbound();
         let (parent, length) = match inbound.first() {
           Some(&edge_key) => {
             let edge = parse.graph.get_edge(edge_key).unwrap();
             (
-              names[&edge.source()].clone(),
+              Some(names[edge.source()].to_owned()),
               parse.branch_lengths[&edge_key].map(f64::to_bits),
             )
           },

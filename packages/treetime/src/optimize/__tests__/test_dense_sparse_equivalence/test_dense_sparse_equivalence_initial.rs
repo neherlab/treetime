@@ -16,7 +16,7 @@ mod tests {
     let aln = super::super::test_dense_sparse_equivalence_support::tests::gap_free_alignment()?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_dense_names = nwk_parsed.names();
+    let graph_dense_names = nwk_parsed.names.clone();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
     let dense_reconstruction = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
@@ -25,7 +25,7 @@ mod tests {
     let log_lh_dense = log_lh_dense.value();
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse_names = nwk_parsed.names.clone();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
     let sparse_reconstruction = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;
@@ -59,7 +59,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_dense_names = nwk_parsed.names();
+    let graph_dense_names = nwk_parsed.names.clone();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
     let dense_reconstruction = setup_dense_only(&graph_dense, &graph_dense_names, &aln, &branch_lengths_dense)?;
@@ -68,7 +68,7 @@ mod tests {
     let log_lh_dense = log_lh_dense.value();
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse_names = nwk_parsed.names.clone();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
     let sparse_reconstruction = setup_sparse_only(&graph_sparse, &graph_sparse_names, &aln, &branch_lengths_sparse)?;

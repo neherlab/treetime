@@ -132,7 +132,7 @@ mod tests {
 
     pub(super) fn run_once(case: &TimetreeCase) -> Result<BTreeMap<String, LeafOutcome>, Report> {
       let nwk_parsed = nwk_read(case.newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -193,7 +193,7 @@ mod tests {
           .get_leaves()
           .map(|leaf| {
             let key = leaf.key();
-            let name = names[&key].clone().expect("generated leaves are named");
+            let name = names[key].to_owned();
             let outcome = LeafOutcome {
               expected_bad: given_dates[&name].is_none() || case.outliers.contains(&name),
               bad: inference.bad_branches[&key],

@@ -19,7 +19,7 @@ mod tests {
   #[test]
   fn test_sparse_reroot_stem_removal_gives_the_root_the_stem_child_sequence() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)R:0.001)STEM;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");

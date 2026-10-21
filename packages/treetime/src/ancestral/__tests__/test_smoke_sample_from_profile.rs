@@ -45,7 +45,7 @@ mod tests {
       seed: 0,
       sample_from_profile: SampleMode::Root,
     };
-    let names = parse.names();
+    let names = parse.names.clone();
     let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta").unwrap();
     let input = ancestral_input_for_tree(parse, vec![source]);
 
@@ -66,6 +66,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::seq::sink::SeqStream;
 
     pub(super) fn run_root_sampled(seed: u64) -> Result<BTreeMap<String, String>, Report> {
       run_sampled(SampleMode::Root, seed)
@@ -88,7 +89,7 @@ mod tests {
         seed,
         sample_from_profile: mode,
       };
-      let names = parse.names();
+      let names = parse.names.clone();
       let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta")?;
       let input = ancestral_input_for_tree(parse, vec![source]);
 
@@ -96,7 +97,7 @@ mod tests {
       pipeline::run(
         &params,
         input,
-        Some(&mut sink),
+        Some(SeqStream::new(&mut sink, &names)),
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,
@@ -105,7 +106,7 @@ mod tests {
         .items
         .into_iter()
         .filter(|(_, emitted, _)| *emitted)
-        .map(|(key, _, seq)| (names[&key].clone().unwrap_or_default(), seq.to_string()))
+        .map(|(key, _, seq)| (names[key].to_owned(), seq.to_string()))
         .collect::<BTreeMap<String, String>>();
 
       Ok(captured)

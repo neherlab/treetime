@@ -106,7 +106,7 @@ mod tests {
     let dir = tempdir().unwrap();
     let reference = write_tree(dir.path(), "(B#1:1,A#2:1);");
     let tree = nwk_read(b"(A:1,B:1)root;".as_slice()).unwrap();
-    let names = tree.names();
+    let names = tree.names.clone();
     let args = TopologyOrderArgs {
       topology_order: Some(TopologyOrderArg::TargetOrder),
       topology_order_target_source: Some(TopologyOrderTargetSourceArg::ReferenceTopology),
@@ -119,7 +119,7 @@ mod tests {
     let actual: BTreeMap<&str, usize> = spec
       .target_order
       .iter()
-      .map(|(key, &position)| (names[key].as_deref().unwrap(), position))
+      .map(|(key, &position)| (&names[*key], position))
       .collect();
     assert_eq!(expected, actual);
   }

@@ -1,12 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 
 pub fn pair_trait_rows(
   rows: impl IntoIterator<Item = (String, String)>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> TraitPairing {
   let pairing = pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, rows);
   let observed_values = pairing

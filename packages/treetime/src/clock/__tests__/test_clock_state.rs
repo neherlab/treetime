@@ -11,7 +11,7 @@ mod tests {
   #[test]
   fn test_clock_inputs_from_times_sources_times_and_edge_inputs_and_defaults_the_rest() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).unwrap();
     let (a, b, root) = (key("A"), key("B"), key("root"));

@@ -23,6 +23,7 @@ mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::date::{DateRange, DateValue};
@@ -370,7 +371,7 @@ mod tests {
   #[test]
   fn test_pipeline_date_branch_lengths_need_both_end_dates() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");
     let node_dates = btreemap! {
@@ -385,7 +386,7 @@ mod tests {
       .into_iter()
       .map(|(edge_key, length)| {
         let child = graph.get_edge(edge_key).expect("edge must exist").target();
-        (names[&child].clone().expect("every node is named"), length)
+        (names[child].to_owned(), length)
       })
       .collect();
 
@@ -425,7 +426,7 @@ mod tests {
   fn test_pipeline_marginal_mode_removes_an_undated_single_child_root() -> Result<(), Report> {
     let newick = helpers::zika_newick_with_stem()?;
     let samples = nwk_read((helpers::zika_newick()?).as_bytes())?;
-    let sample_names = helpers::leaf_names(&samples.graph, &samples.names());
+    let sample_names = helpers::leaf_names(&samples.graph, &samples.names);
     let input = helpers::zika_input(&newick, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
       keep_root: false,
@@ -483,7 +484,7 @@ mod tests {
 
     pub(super) fn star_input(dates: Option<BTreeMap<String, Option<DateConstraint>>>) -> Result<TimetreeInput, Report> {
       let nwk_parsed = nwk_read(STAR_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let dates = dates.map(|dates| dates_by_node(dates, &nwk_parsed.graph, &names));
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
@@ -497,7 +498,7 @@ mod tests {
 
     pub(super) fn tip_past_optimum_input() -> Result<TimetreeInput, Report> {
       let nwk_parsed = nwk_read(TIP_PAST_OPTIMUM_TREE.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let dates = btreemap! {
         o!("A") => Some(DateConstraint::exact(2000.0)),
         o!("B") => Some(DateConstraint::exact(2001.0)),
@@ -534,7 +535,7 @@ mod tests {
     ) -> Result<TimetreeInput, Report> {
       let alphabet = Alphabet::default();
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let source = if with_alignment {
         let records = TestDataset::Zika20.alignment()?;
         Some(sequence_source(
@@ -555,11 +556,8 @@ mod tests {
       Ok(input)
     }
 
-    pub(super) fn leaf_names(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> BTreeSet<String> {
-      graph
-        .get_leaves()
-        .map(|leaf| names[&leaf.key()].clone().expect("every leaf is named"))
-        .collect()
+    pub(super) fn leaf_names(graph: &Graph, names: &NodeNames) -> BTreeSet<String> {
+      graph.get_leaves().map(|leaf| names[leaf.key()].to_owned()).collect()
     }
   }
 }

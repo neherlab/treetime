@@ -126,6 +126,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::seq::sink::SeqStream;
     use pretty_assertions::assert_eq;
 
     type EdgeSubs = BTreeMap<GraphEdgeKey, Vec<Sub>>;
@@ -157,7 +158,7 @@ mod tests {
       include_leaves: bool,
     ) -> Result<EngineAndDerivedSubs, Report> {
       let parse = nwk_read(dataset.tree().as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let read_alphabet = match track {
         SeqTrack::Nuc(_) => alphabet.clone(),
         SeqTrack::Aa(_) => Alphabet::new(AlphabetName::Aa)?,
@@ -202,7 +203,13 @@ mod tests {
         })
         .collect::<Result<EdgeSubs, Report>>()?;
       let mut sink = RecordingSeqSink::default();
-      let derived = partition.stream_sequences(graph, track, include_leaves, true, Some(&mut sink))?;
+      let derived = partition.stream_sequences(
+        graph,
+        track,
+        include_leaves,
+        true,
+        Some(SeqStream::new(&mut sink, &names)),
+      )?;
       let actual: EdgeSubs = derived
         .edge_mutations
         .into_iter()
@@ -289,7 +296,7 @@ mod tests {
     ) -> Result<(BTreeMap<String, Vec<String>>, BTreeMap<String, String>), Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1)root;".as_slice())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let graph = &parse.graph;
       let sequences = fasta_read(b">A\nAKGANC\n>B\nAGGTAC\n>C\nAGGTAC\n".as_slice(), &alphabet)?
         .into_iter()
@@ -310,10 +317,16 @@ mod tests {
         &NoopProgress,
       )?;
       let mut sink = RecordingSeqSink::default();
-      let derived = partition.stream_sequences(graph, SeqTrack::Nuc(1), include_leaves, true, Some(&mut sink))?;
+      let derived = partition.stream_sequences(
+        graph,
+        SeqTrack::Nuc(1),
+        include_leaves,
+        true,
+        Some(SeqStream::new(&mut sink, &names)),
+      )?;
       let node_sequences: BTreeMap<GraphNodeKey, Seq> =
         sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
-      let name = |key: GraphNodeKey| names[&key].clone().expect("all test nodes are named");
+      let name = |key: GraphNodeKey| names[key].to_owned();
       let mut mutations = BTreeMap::new();
       for edge in graph.get_edges() {
         let subs = substitutions(derived.edge_mutations[&edge.key()].clone());

@@ -489,7 +489,8 @@ mod tests {
     use indexmap::IndexMap;
     use ndarray::Array1;
     use std::collections::BTreeMap;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
+
     use treetime_io::nwk::nwk_read;
     use treetime_utils::o;
 
@@ -510,9 +511,9 @@ mod tests {
       traits: &BTreeMap<String, String>,
       weights: Option<BTreeMap<String, f64>>,
       params: &MugrationParams,
-    ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    ) -> Result<(MugrationOutput, NodeNames), Report> {
       let nwk_parsed = nwk_read(nwk.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -533,32 +534,25 @@ mod tests {
       Ok((output, names))
     }
 
-    pub(super) fn trait_assignments_by_name(
-      output: &MugrationOutput,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-    ) -> IndexMap<String, String> {
+    pub(super) fn trait_assignments_by_name(output: &MugrationOutput, names: &NodeNames) -> IndexMap<String, String> {
       output
         .graph
         .get_nodes()
         .map(|node| {
           let key = node.key();
-          let name = names[&key].clone().unwrap_or_else(|| format!("node_{}", key.0));
+          let name = names[key].to_owned();
           let state = output.states.name(output.posteriors[&key].state()).unwrap();
           (name, state.to_owned())
         })
         .collect()
     }
 
-    pub(super) fn confidence_of(
-      output: &MugrationOutput,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      node_name: &str,
-    ) -> Array1<f64> {
+    pub(super) fn confidence_of(output: &MugrationOutput, names: &NodeNames, node_name: &str) -> Array1<f64> {
       let key = output
         .graph
         .get_nodes()
         .map(|node| node.key())
-        .find(|key| names[key].as_deref() == Some(node_name))
+        .find(|key| &names[*key] == node_name)
         .unwrap_or_else(|| panic!("missing node '{node_name}'"));
       output.posteriors[&key].profile().clone()
     }

@@ -190,7 +190,7 @@ mod tests {
       o!("c")    => Some(DateConstraint::exact(2010.0)),
     };
     let nwk_parsed = nwk_read(b"((a:1,b:1)x:1,c:1)root:0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let constraints = load_date_constraints(&dates_by_node(dates, &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, constraints))

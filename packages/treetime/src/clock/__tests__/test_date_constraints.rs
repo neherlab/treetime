@@ -14,7 +14,8 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
@@ -22,7 +23,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_success_three_leaves() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -46,7 +47,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_mixed_leaves() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -71,7 +72,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_range() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => range(2020.0, 2020.25),
@@ -121,7 +122,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_internal_node() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -147,7 +148,7 @@ mod tests {
   #[test]
   fn test_derive_bad_branches_over_loaded_dates_marks_only_the_undated_leaf() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -187,7 +188,7 @@ mod tests {
   #[test]
   fn test_derive_bad_branches_over_loaded_dates_marks_a_subtree_whose_children_are_all_bad() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.2)AB:0.1,(C:0.15,D:0.18)CD:0.1)ABCD:0.1,E:0.2)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("C") => exact(2020.0),
@@ -231,7 +232,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_boundary_exactly_three_leaves() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -249,7 +250,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_date_with_none_value() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -277,7 +278,7 @@ mod tests {
     let nwk_parsed = nwk_read(
       b"((((((A:0.1,B:0.1)L1:0.1,C:0.1)L2:0.1,D:0.1)L3:0.1,E:0.1)L4:0.1,F:0.1)L5:0.1,G:0.1)root:0.0;".as_slice(),
     )?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("C") => exact(2020.0),
@@ -332,7 +333,7 @@ mod tests {
   fn test_load_date_constraints_wide_tree() -> Result<(), Report> {
     let nwk_parsed =
       nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1,G:0.1,H:0.1,I:0.1,J:0.1,K:0.1,L:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -368,7 +369,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_mixed_ranges_and_points() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15,D:0.18)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => range(2020.0, 2020.25),
@@ -394,7 +395,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_internal_node_with_range() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.15)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(2020.0),
@@ -420,7 +421,7 @@ mod tests {
   #[test]
   fn test_load_date_constraints_negative_time() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.15)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let dates: BTreeMap<String, Option<DateConstraint>> = btreemap! {
       o!("A") => exact(-500.0),
@@ -446,27 +447,23 @@ mod tests {
 
     #[derive(Clone, Default, Debug, PartialEq)]
     pub(super) struct LoadedNode {
-      pub(super) name: Option<String>,
+      pub(super) name: String,
       pub(super) date_constraint: Option<Arc<Distribution<NegLog>>>,
     }
 
-    pub(super) fn node_constraints(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-      constraints: &DateConstraints,
-    ) -> Vec<LoadedNode> {
+    pub(super) fn node_constraints(names: &NodeNames, graph: &Graph, constraints: &DateConstraints) -> Vec<LoadedNode> {
       graph
         .get_nodes()
         .map(|node| LoadedNode {
-          name: names.get(&node.key()).cloned().flatten(),
+          name: names[node.key()].to_owned(),
           date_constraint: constraints.by_node[&node.key()].clone(),
         })
-        .sorted_by_key(|n| n.name.clone().unwrap_or_default())
+        .sorted_by_key(|n| n.name.clone())
         .collect_vec()
     }
 
     pub(super) fn derived_bad_branches(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       graph: &Graph,
       constraints: &DateConstraints,
     ) -> Result<BTreeMap<String, bool>, Report> {
@@ -474,14 +471,14 @@ mod tests {
       Ok(
         derive_bad_branches(graph, constraints, &leaf_bad_branches)?
           .into_iter()
-          .map(|(key, bad)| (names[&key].clone().expect("every fixture node is named"), bad))
+          .map(|(key, bad)| (names[key].to_owned(), bad))
           .collect(),
       )
     }
 
     pub(super) fn loaded(name: &str, date_constraint: Option<Distribution<NegLog>>) -> LoadedNode {
       LoadedNode {
-        name: Some(name.to_owned()),
+        name: name.to_owned(),
         date_constraint: date_constraint.map(Arc::new),
       }
     }

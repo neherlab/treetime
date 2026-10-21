@@ -19,7 +19,7 @@ mod tests {
     #[case] zero_based: bool,
     #[case] ((substitution, substitution_position), (indel, indel_position), ambiguous_site): ((&str, usize), (&str, usize), usize),
   ) -> Result<(), Report> {
-    let names = names();
+    let names = names()?;
     let result = homoplasy_result(&output()?, &ResultContext { names: &names, drms: None, zero_based });
     let first_substitution = &result.substitutions.all.ranked[0];
     let first_indel = &result.indels.all.ranked[0];
@@ -37,7 +37,7 @@ mod tests {
 
   #[test]
   fn test_summary_homoplasy_names_branches_and_annotates_drms() -> Result<(), Report> {
-    let names = names();
+    let names = names()?;
     let drms = DrmTable::from_rows(vec![DrmRow {
       genomic_position: 10,
       alt_base: o!("A"),
@@ -58,7 +58,7 @@ mod tests {
       mutation: o!("G10A"),
       position: 10,
       multiplicity: 2,
-      branches: vec_of_owned!["A", "node_2"],
+      branches: vec_of_owned!["A", "NODE_0000000"],
       drm: Some(DrmAnnotation {
         gene: o!("RT"),
         drug: o!("NRTI"),
@@ -72,7 +72,7 @@ mod tests {
 
   #[test]
   fn test_summary_homoplasy_orders_taxa_by_homoplasic_count_then_name() -> Result<(), Report> {
-    let names = names();
+    let names = names()?;
     let drms = DrmTable::from_rows(vec![DrmRow {
       genomic_position: 10,
       alt_base: o!("T"),
@@ -128,7 +128,9 @@ mod tests {
     use treetime::o;
     use treetime::seq::indel::InDelKind;
     use treetime::seq::mutation::Sub;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_primitives::Seq;
 
     const A: GraphNodeKey = GraphNodeKey(1);
@@ -136,13 +138,22 @@ mod tests {
     const B: GraphNodeKey = GraphNodeKey(3);
     const C: GraphNodeKey = GraphNodeKey(4);
 
-    pub(super) fn names() -> BTreeMap<GraphNodeKey, Option<String>> {
-      btreemap! {
+    pub(super) fn names() -> Result<NodeNames, Report> {
+      let mut graph = Graph::new();
+      let root = graph.add_node();
+      for _ in [A, UNNAMED, B, C] {
+        let child = graph.add_node();
+        graph.add_edge(root, child)?;
+      }
+      graph.build()?;
+      let input = btreemap! {
+        root => Some(o!("root")),
         A => Some(o!("A")),
         UNNAMED => None,
         B => Some(o!("B")),
         C => Some(o!("C")),
-      }
+      };
+      Ok(NodeNames::from_input(input, &graph)?.names)
     }
 
     pub(super) fn output() -> Result<HomoplasyOutput, Report> {

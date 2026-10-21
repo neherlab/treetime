@@ -102,7 +102,7 @@ mod tests {
     impl Input {
       pub(super) fn star(sequences: &[(&str, &str)]) -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let aln = sequences
           .iter()
           .map(|(name, seq)| {

@@ -17,10 +17,9 @@ use eyre::Report;
 use itertools::Itertools;
 use log::debug;
 use std::collections::BTreeMap;
-use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_error;
@@ -30,7 +29,7 @@ pub(crate) fn run_optimize_loop(
   mut partitions: PartitionSet,
   settings: &OptimizeLoopSettings,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: NodeNames,
   log: &dyn LogSink,
 ) -> Result<OptimizeLoopResult, Report> {
   let OptimizeLoopSettings {
@@ -41,7 +40,7 @@ pub(crate) fn run_optimize_loop(
   } = *settings;
   let mut state = LoopState {
     branch_lengths,
-    names: names.clone(),
+    names,
     convergence: ConvergenceSummary::default(),
   };
   let mut indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths);
@@ -119,7 +118,7 @@ pub(crate) struct OptimizeLoopResult {
 
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
 
   #[cfg_attr(not(test), expect(dead_code, reason = "read only in test code"))]
   pub lh_history: Vec<LogLh>,
@@ -254,7 +253,7 @@ fn update_branch_lengths(
 
 struct LoopState {
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
+  names: NodeNames,
   convergence: ConvergenceSummary,
 }
 
@@ -336,7 +335,7 @@ pub(crate) fn prune_and_merge_in_loop(
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &mut BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
 ) -> Result<TopologyCleanup, Report> {
   let sparse = partitions.sparse_mut();
 
@@ -364,7 +363,7 @@ pub(crate) fn prune_and_merge_in_loop(
     }
   }
 
-  if resolve_polytomies(graph, sparse, topology_ops, branch_lengths)? > 0 {
+  if resolve_polytomies(graph, names, sparse, topology_ops, branch_lengths)? > 0 {
     topology_changed = true;
   }
 
@@ -376,7 +375,6 @@ pub(crate) fn prune_and_merge_in_loop(
   }
 
   graph.build()?;
-  *names = assign_node_names(std::mem::take(names), graph)?.names;
 
   Ok(TopologyCleanup {
     partitions: partitions.reconcile_node_states(graph),
@@ -395,7 +393,7 @@ pub(crate) fn apply_initial_guess_mode(
   evidence: &InitialGuessEvidence,
   mode: InitialGuessMode,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let invalid_branch_lengths = invalid_branch_length_descriptions(graph, branch_lengths, names)?;

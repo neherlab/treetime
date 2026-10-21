@@ -1,17 +1,14 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::first_key_by_name;
 
-pub(crate) fn find_node_key_by_name(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  name: &str,
-) -> Option<GraphNodeKey> {
+pub(crate) fn find_node_key_by_name(graph: &Graph, names: &NodeNames, name: &str) -> Option<GraphNodeKey> {
   for node in graph.get_nodes() {
     let key = node.key();
-    if names.get(&key).and_then(|n| n.as_deref()) == Some(name) {
+    if &names[key] == name {
       return Some(key);
     }
   }
@@ -20,7 +17,7 @@ pub(crate) fn find_node_key_by_name(
 
 pub(crate) fn find_edge_key(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   source_name: &str,
   target_name: &str,
 ) -> Option<GraphEdgeKey> {
@@ -35,11 +32,8 @@ pub(crate) fn find_edge_key(
   None
 }
 
-pub(crate) fn node_keys_named(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  wanted: &[&str],
-) -> BTreeSet<GraphNodeKey> {
-  let first_key_of = first_key_by_name(names.keys().copied(), names);
+pub(crate) fn node_keys_named(graph: &Graph, names: &NodeNames, wanted: &[&str]) -> BTreeSet<GraphNodeKey> {
+  let first_key_of = first_key_by_name(graph.get_nodes().map(|node| node.key()), names);
   wanted
     .iter()
     .filter_map(|name| first_key_of.get(name).copied())

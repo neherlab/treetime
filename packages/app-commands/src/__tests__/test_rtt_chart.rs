@@ -39,7 +39,7 @@ mod tests {
 
     pub(super) fn row(date: Option<f64>, is_outlier: bool) -> ClockRegressionResult {
       ClockRegressionResult {
-        name: None,
+        name: String::new(),
         div: 0.01,
         date,
         predicted_date: 2005.0,

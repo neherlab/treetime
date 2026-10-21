@@ -23,6 +23,7 @@ use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::first_key_by_name;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_primitives::Seq;
@@ -39,7 +40,7 @@ pub fn run_prune(
   stages.report("Reading input", 0.0, "");
 
   let parse = read_input_tree(args.tree(), args.tree_dialect.dialect(), log)?;
-  let names = parse.names();
+  let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths_input = parse.branch_lengths;
   let input_order = leaf_order(&graph);
@@ -78,13 +79,14 @@ pub fn run_prune(
 
   let input = PruneInput {
     graph,
+    names,
     sources,
     branch_lengths: branch_lengths_input,
   };
 
   cancel.check()?;
   stages.report("Pruning", 0.4, "");
-  let output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, cancel, log).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
     mut results,
@@ -145,7 +147,7 @@ pub fn run_prune(
 
 fn write_prune_trees(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   sequences: &BTreeMap<usize, TreeSequences<'_>>,
   resolved: &ResolvedOutputs,
@@ -227,7 +229,7 @@ fn parse_node_names(
 pub(crate) fn resolve_node_names(
   node_names: &BTreeSet<String>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> BTreeSet<GraphNodeKey> {
   let first_node_of = first_key_by_name(graph.get_nodes().map(|node| node.key()), names);
   node_names

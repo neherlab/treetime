@@ -245,7 +245,8 @@ mod tests {
     use std::path::PathBuf;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
+
     use treetime_io::nwk::{NwkParse, nwk_read};
     use treetime_primitives::{AlignmentRecord, Seq};
     use treetime_utils::o;
@@ -322,7 +323,7 @@ mod tests {
     }
 
     pub(super) struct Optimized {
-      pub(super) edges: BTreeSet<(Option<String>, Option<String>)>,
+      pub(super) edges: BTreeSet<(String, String)>,
       pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
       pub(super) paths: Vec<PathBuf>,
     }
@@ -334,7 +335,7 @@ mod tests {
       partition_rates: PartitionRates,
     ) -> Result<Optimized, Report> {
       let parse = dataset.tree()?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
       let params = OptimizeParams {
         model: GtrModelName::JC69,
@@ -353,17 +354,18 @@ mod tests {
       };
       let input = OptimizeInput {
         graph: parse.graph,
+        names,
         sources,
         branch_lengths: parse.branch_lengths,
       };
-      let output = run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let edges = output
         .graph
         .get_edges()
         .map(|edge| {
           (
-            output.names[&edge.source()].clone(),
-            output.names[&edge.target()].clone(),
+            output.names[edge.source()].to_owned(),
+            output.names[edge.target()].to_owned(),
           )
         })
         .collect();
@@ -376,7 +378,7 @@ mod tests {
 
     pub(super) struct SmallSet {
       pub(super) graph: Graph,
-      pub(super) names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub(super) names: NodeNames,
       pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       pub(super) partitions: PartitionSet,
     }
@@ -387,7 +389,7 @@ mod tests {
 
     pub(super) fn build_set_with_model(blocks: &[Block], dense: bool, model: GtrModelName) -> Result<SmallSet, Report> {
       let parse = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1,D:0.1)root;".as_slice())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
       let representation = if dense {
         Representation::Dense
@@ -449,7 +451,7 @@ mod tests {
       start_rate: f64,
     ) -> Result<RateStep, Report> {
       let parse = dataset.tree()?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
       let input_branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
       let (_, mut partitions) = build_partition_set(
@@ -477,20 +479,12 @@ mod tests {
       })
     }
 
-    pub(super) fn internal_edge_above(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      name: &str,
-    ) -> GraphEdgeKey {
+    pub(super) fn internal_edge_above(graph: &Graph, names: &NodeNames, name: &str) -> GraphEdgeKey {
       let node_key = find_node_key_by_name(graph, names, name).expect("the tree has the named node");
       graph.get_node(node_key).expect("node exists").inbound()[0]
     }
 
-    fn sources(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      blocks: &[Block],
-    ) -> Result<Vec<SequenceSource>, Report> {
+    fn sources(graph: &Graph, names: &NodeNames, blocks: &[Block]) -> Result<Vec<SequenceSource>, Report> {
       blocks
         .iter()
         .map(|block| {

@@ -57,7 +57,7 @@ mod tests {
 
     let data = helpers::build(
       &parse.graph,
-      &parse.names(),
+      &parse.names,
       &parse.branch_lengths,
       None,
       &alignments,
@@ -129,7 +129,7 @@ mod tests {
     let root = project_root();
     let alphabet = Alphabet::default();
     let nwk_parsed = nwk_read_file(root.join("data/flu/h3n2/20/tree.nwk")).unwrap();
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let sequences: Vec<AlignmentRecord> = fasta_read_file(root.join("data/flu/h3n2/20/aln.fasta.xz"), &alphabet)
@@ -158,6 +158,7 @@ mod tests {
     let mask = sequences.mask(length, &alphabet);
     let input = OptimizeInput {
       graph,
+      names,
       sources: vec![SequenceSource {
         path: root.join("data/flu/h3n2/20/aln.fasta.xz"),
         alphabet,
@@ -168,7 +169,7 @@ mod tests {
       branch_lengths,
     };
 
-    let output = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
+    let output = pipeline::run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress).unwrap();
 
     let data = helpers::build_augur_node_data_json_from_output(
       &output,
@@ -194,7 +195,8 @@ mod tests {
     use treetime::optimize::pipeline::OptimizeOutput;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
+
     use treetime_io::nwk::nwk_read;
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
@@ -203,7 +205,7 @@ mod tests {
       let parse = nwk_read(nwk.as_bytes()).unwrap();
       let data = build(
         &parse.graph,
-        &parse.names(),
+        &parse.names,
         &parse.branch_lengths,
         None,
         &[PathBuf::from("aln.fasta")],
@@ -225,7 +227,7 @@ mod tests {
         .collect();
       let data = build(
         &parse.graph,
-        &parse.names(),
+        &parse.names,
         &parse.branch_lengths,
         Some(&counts),
         &[PathBuf::from("aln.fasta")],
@@ -252,7 +254,7 @@ mod tests {
 
     pub(super) fn build(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
       alignments: &[PathBuf],

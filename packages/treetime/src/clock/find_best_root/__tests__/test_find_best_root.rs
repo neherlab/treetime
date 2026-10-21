@@ -153,16 +153,16 @@ mod tests {
       clock_rate: Option<f64>,
     ) -> Result<RootSearch, Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-      let names = nwk_parsed.names();
+      let mut names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let times = graph
         .get_leaves()
-        .map(|node| (node.key(), dates.get(names[&node.key()].as_deref().unwrap()).copied()))
+        .map(|node| (node.key(), dates.get(&names[node.key()]).copied()))
         .collect();
       let edge_names: BTreeMap<_, _> = graph
         .get_edges()
         .map(|edge| {
-          let name = |key| names[&key].clone().unwrap_or_else(|| o!("unnamed"));
+          let name = |key| names[key].to_owned();
           (edge.key(), (name(edge.source()), name(edge.target())))
         })
         .collect();
@@ -185,7 +185,7 @@ mod tests {
           reroot_params: &reroot_params,
           prev_clock_rate: None,
         },
-        &names,
+        &mut names,
         &NoopProgress,
       )?;
       let edge_split = result.reroot_result().and_then(|reroot| reroot.edge_split.as_ref());

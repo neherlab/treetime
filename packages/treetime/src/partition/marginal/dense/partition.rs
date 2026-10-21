@@ -50,7 +50,7 @@ impl PartitionMarginalDense {
         let seq = node
           .seq
           .as_ref()
-          .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name.as_deref().unwrap_or("")))?;
+          .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name))?;
         Ok((leaf_key, DenseLeafObs::new(seq, &alphabet)))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;

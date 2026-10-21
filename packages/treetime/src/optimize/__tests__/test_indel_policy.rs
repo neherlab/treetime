@@ -227,7 +227,7 @@ mod tests {
     impl Fixture {
       pub(super) fn new() -> Result<Self, Report> {
         let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let mut branch_lengths = nwk_parsed.branch_lengths;
         let mut reconstruction = setup_identical_reconstruction(&graph, &names, &mut branch_lengths)?;

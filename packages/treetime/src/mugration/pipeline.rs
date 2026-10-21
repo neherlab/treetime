@@ -21,12 +21,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
 
 pub fn run(
   params: &MugrationParams,
   input: MugrationInput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<MugrationOutput, OperationError> {

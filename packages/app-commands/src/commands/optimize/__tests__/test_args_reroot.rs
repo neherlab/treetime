@@ -13,21 +13,21 @@ mod tests {
   fn test_optimize_args_reroot_spec_default_keeps_root() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = args_with(None, vec![], false);
-    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names()).unwrap());
+    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names).unwrap());
   }
 
   #[test]
   fn test_optimize_args_reroot_spec_keep_root_flag_keeps_root() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = args_with(None, vec![], true);
-    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names()).unwrap());
+    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names).unwrap());
   }
 
   #[test]
   fn test_optimize_args_reroot_spec_keep_root_overrides_method() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = args_with(Some(OptimizeRerootMethod::MinDev), vec![], true);
-    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names()).unwrap());
+    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names).unwrap());
   }
 
   #[test]
@@ -36,7 +36,7 @@ mod tests {
     let args = args_with(Some(OptimizeRerootMethod::MinDev), vec![], false);
     assert_eq!(
       Some(RerootSpec::Method(RerootMethod::MinDev)),
-      args.reroot_spec(&tree.graph, &tree.names()).unwrap()
+      args.reroot_spec(&tree.graph, &tree.names).unwrap()
     );
   }
 
@@ -48,7 +48,7 @@ mod tests {
       Some(RerootSpec::Tips(
         tree.graph.get_leaves().map(|leaf| leaf.key()).take(2).collect()
       )),
-      args.reroot_spec(&tree.graph, &tree.names()).unwrap()
+      args.reroot_spec(&tree.graph, &tree.names).unwrap()
     );
   }
 

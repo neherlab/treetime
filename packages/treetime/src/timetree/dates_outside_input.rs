@@ -2,20 +2,20 @@ use crate::progress::{RunWarning, RunWarningKind};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::{DateConstraint, DateRange, DateValue};
 use treetime_utils::fmt::string::{counted, name_list};
 
 pub(crate) fn dates_outside_input_dates(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   dates: &BTreeMap<GraphNodeKey, DateConstraint>,
   node_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
 ) -> Option<RunWarning> {
   let latest_input_date = dates.values().map(|date| OrderedFloat(date_range(date).end)).max()?.0;
-  let name = |key: GraphNodeKey| node_name_or_key(key, names[&key].as_deref());
+  let name = |key: GraphNodeKey| names[key].to_owned();
 
   let tips = graph
     .get_leaves()

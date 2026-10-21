@@ -20,7 +20,7 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
 use treetime_utils::make_error;
 
@@ -35,7 +35,7 @@ pub fn run_mugration(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
   let parse = read_input_tree(&mugration_args.tree, mugration_args.tree_dialect.dialect(), log)?;
-  let names = parse.names();
+  let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;
 
@@ -143,7 +143,7 @@ pub(crate) fn validate_weights(weights: &BTreeMap<String, f64>, weights_filepath
 pub(crate) fn pair_traits(
   rows: Vec<(String, String)>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   path: &Path,
   log: &dyn LogSink,
 ) -> TraitPairing {
@@ -178,7 +178,7 @@ pub(crate) fn pair_traits(
 
 fn write_mugration_trees(
   output: &MugrationOutput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   attribute: &str,
   resolved: &ResolvedOutputs,

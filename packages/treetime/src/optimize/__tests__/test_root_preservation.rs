@@ -302,7 +302,7 @@ mod tests {
           .map(AlignmentRecord::from)
           .collect();
         let nwk_parsed = nwk_read(newick.as_bytes())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let branch_lengths = nwk_parsed.branch_lengths;
         let gtr = jc69(JC69Params::default())?;
@@ -311,7 +311,7 @@ mod tests {
         let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
         let edges_by_child_name = graph
           .get_edges()
-          .map(|edge| (names[&edge.target()].clone().unwrap(), edge.key()))
+          .map(|edge| (names[edge.target()].to_owned(), edge.key()))
           .collect();
         Ok(Self {
           graph,

@@ -8,7 +8,6 @@ use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::gtr::gtr::GTR;
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::make_internal_report;
@@ -70,7 +69,7 @@ fn trait_nodes(
   let mut nodes = BTreeMap::new();
   for node in graph.graph.get_nodes() {
     let key = node.key();
-    let name = node_name_or_key(key, graph.names[&key].as_deref());
+    let name = graph.names[key].to_owned();
     let posterior = &traits.posteriors[&key];
     let mut fields = BTreeMap::new();
     fields.insert(traits.attribute.to_owned(), Value::from(traits.state_name(key)?));
@@ -104,7 +103,7 @@ fn trait_branches(
           labels: Some(btreemap! { traits.attribute.to_owned() => label }),
           other: BTreeMap::new(),
         };
-        (node_name_or_key(key, graph.names[&key].as_deref()), branch)
+        (graph.names[key].to_owned(), branch)
       });
       Ok(branch)
     })

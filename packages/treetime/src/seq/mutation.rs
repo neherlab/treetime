@@ -1,7 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
 use crate::seq::indel::{InDel, InDelKind};
-use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
+use crate::seq::sink::{SeqStream, SeqTrack};
 use crate::{make_error, make_internal_error, make_internal_report};
 use derive_more::Display;
 use eyre::{Report, WrapErr};
@@ -31,7 +31,7 @@ pub(crate) fn stream_sequence_mutations(
   report_unknown: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
   edge_indels: impl Fn(GraphEdgeKey) -> Vec<InDel>,
-  mut sink: Option<&mut (dyn SeqSink + '_)>,
+  mut sink: Option<SeqStream<'_>>,
 ) -> Result<SequenceMutations, OperationError> {
   let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
   schedule.require_tree().map_err(OperationError::classify)?;
@@ -42,14 +42,10 @@ pub(crate) fn stream_sequence_mutations(
   for &key in schedule.preorder() {
     let seq = node_sequence(key).map_err(OperationError::classify)?;
     let child_count = schedule.children(key).len();
-    if let Some(sink) = sink.as_deref_mut() {
-      let item = SeqItem {
-        key,
-        track: seq_track,
-        seq: &seq,
-        emitted: include_leaves || child_count > 0,
-      };
-      sink.emit(item).map_err(OperationError::SinkFailed)?;
+    if let Some(sink) = sink.as_mut() {
+      sink
+        .emit(key, seq_track, &seq, include_leaves || child_count > 0)
+        .map_err(OperationError::SinkFailed)?;
     }
     match schedule.parents(key).first() {
       None => root_sequence = Some(seq.clone()),
@@ -93,18 +89,15 @@ pub(crate) fn emit_sequences(
   seq_track: SeqTrack<'_>,
   include_leaves: bool,
   mut node_sequence: impl FnMut(GraphNodeKey) -> Result<Seq, Report>,
-  sink: &mut (dyn SeqSink + '_),
+  mut sink: SeqStream<'_>,
 ) -> Result<(), OperationError> {
   let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
   for &key in schedule.preorder() {
     let seq = node_sequence(key).map_err(OperationError::classify)?;
-    let item = SeqItem {
-      key,
-      track: seq_track,
-      seq: &seq,
-      emitted: include_leaves || !schedule.children(key).is_empty(),
-    };
-    sink.emit(item).map_err(OperationError::SinkFailed)?;
+    let emitted = include_leaves || !schedule.children(key).is_empty();
+    sink
+      .emit(key, seq_track, &seq, emitted)
+      .map_err(OperationError::SinkFailed)?;
   }
   Ok(())
 }

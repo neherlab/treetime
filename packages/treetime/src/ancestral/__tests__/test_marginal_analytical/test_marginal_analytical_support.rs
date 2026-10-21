@@ -81,7 +81,7 @@ pub(super) mod tests {
 
   pub(crate) fn run_dense_marginal_get_log_lh(newick: &str, aln_str: &str, gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;

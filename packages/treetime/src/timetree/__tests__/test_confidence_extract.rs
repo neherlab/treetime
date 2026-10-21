@@ -12,17 +12,19 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution};
   use treetime_graph::graph::Graph;
+  use treetime_graph::node_names::NodeNames;
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
 
   #[test]
-  fn test_extract_confidence_intervals_includes_unnamed_nodes() {
+  fn test_extract_confidence_intervals_names_unnamed_nodes() {
     let mut graph = Graph::new();
     let mut names = BTreeMap::new();
     let unnamed_key = add_named(&mut graph, &mut names, None);
     let named_key = add_named(&mut graph, &mut names, Some("named"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
 
     let state = helpers::state(
       &graph,
@@ -30,7 +32,7 @@ mod tests {
     );
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(2, intervals.len());
-    assert_eq!("", intervals[0].name);
+    assert_eq!("NODE_0000000", intervals[0].name);
     assert_eq!("named", intervals[1].name);
   }
 
@@ -41,6 +43,7 @@ mod tests {
     let no_time_key = add_named(&mut graph, &mut names, Some("no_time"));
     let has_time_key = add_named(&mut graph, &mut names, Some("has_time"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
 
     let state = helpers::state(&graph, &[(no_time_key, None, None), (has_time_key, Some(2021.0), None)]);
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
@@ -54,6 +57,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
 
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
@@ -70,6 +74,7 @@ mod tests {
     let dist = Arc::new(Distribution::range((2019.0, 2021.0), 0.0));
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
 
     let state = helpers::state(&graph, &[(key, Some(2020.0), Some(dist))]);
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
@@ -88,6 +93,7 @@ mod tests {
     let alpha_key = add_named(&mut graph, &mut names, Some("alpha"));
     let middle_key = add_named(&mut graph, &mut names, Some("middle"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
 
     let state = helpers::state(
       &graph,
@@ -110,6 +116,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
     let state = helpers::state(&graph, &[(key, Some(2010.0), None)]);
@@ -131,6 +138,7 @@ mod tests {
     let dist = Arc::new(Distribution::function(t, y).unwrap());
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [2009.0, 2010.0, 2011.0] };
 
     let state = helpers::state(&graph, &[(key, Some(mean), Some(dist))]);
@@ -151,6 +159,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
@@ -169,6 +178,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [2019.9, 2020.0, 2020.1] };
 
     let state = helpers::state(&graph, &[(key, Some(2019.5), None)]);
@@ -196,6 +206,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("skewed"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
 
     let state = helpers::state(&graph, &[(key, Some(peak_time), Some(Arc::new(dist)))]);
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
@@ -218,6 +229,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("dated_tip"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map: BTreeMap<_, _> = rate_dates.into_iter().map(|dates| (key, dates)).collect();
     let dist = Arc::new(Distribution::point(2020.5, 0.0));
 
@@ -241,6 +253,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [t0 - 1.0, t0, t0 + 1.0] };
 
     let state = helpers::state(&graph, &[(key, Some(t0), Some(dist))]);
@@ -270,6 +283,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [t0 - 5.0, t0, t0 + 5.0] };
 
     let state = helpers::state(&graph, &[(key, Some(t0), Some(dist))]);
@@ -291,6 +305,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let rate_map = btreemap! { key => [t0 - 5.0, t0, t0 + 5.0] };
     let mut state = helpers::state(
       &graph,
@@ -316,6 +331,7 @@ mod tests {
     let mut names = BTreeMap::new();
     let key = add_named(&mut graph, &mut names, Some("node_a"));
     graph.build().unwrap();
+    let names = NodeNames::from_input(names, &graph).unwrap().names;
     let inference = TimeInference {
       posterior_summaries: PosteriorSummaries::default(),
       ..helpers::state(&graph, &[(key, Some(2020.5), None)])

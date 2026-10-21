@@ -20,7 +20,7 @@ mod tests {
   #[test]
   fn test_parse_branch_lengths_covers_all_edges() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let saved = branch_lengths;
@@ -36,7 +36,7 @@ mod tests {
   #[test]
   fn test_apply_damping_zero_is_noop() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let original = branch_lengths;
@@ -62,7 +62,7 @@ mod tests {
   fn test_apply_damping_weights_match_v0(#[case] iteration: usize, #[case] expected_old_weight: f64) -> Result<(), Report> {
     let damping = 0.75;
     let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let old_bls = branch_lengths;
@@ -80,7 +80,7 @@ mod tests {
   #[test]
   fn test_apply_damping_blends_correctly() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let old_bls = branch_lengths;
@@ -107,7 +107,7 @@ mod tests {
     let mut prev_damped = old_bl;
     for iteration in 0..10 {
       let nwk_parsed = nwk_read(b"(A:1.0)root:0.0;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let old_bls = branch_lengths;
@@ -134,7 +134,7 @@ mod tests {
   fn test_damped_optimization_converges(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -158,7 +158,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_2,
+      names_tt_2,
       &NoopProgress,
     )?;
     let reconstruction = result.partitions;
@@ -189,7 +189,7 @@ mod tests {
   fn test_damped_optimization_does_not_regress(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -211,7 +211,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_1,
+      names_tt_1,
       &NoopProgress,
     )?;
     let reconstruction = result.partitions;

@@ -169,17 +169,18 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::node_names::NodeNames;
 
     pub(super) struct Fixture {
       graph: Graph,
-      names: BTreeMap<GraphNodeKey, Option<String>>,
+      names: NodeNames,
       branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
     }
 
     impl Fixture {
       pub(super) fn new() -> Result<Self, Report> {
         let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let branches = graph
           .get_edges()
@@ -257,7 +258,7 @@ mod tests {
 
     pub(super) struct CoalescentTip {
       graph: Graph,
-      names: BTreeMap<GraphNodeKey, Option<String>>,
+      names: NodeNames,
       constraints: DateConstraints,
       branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
       prior: CoalescentPrior,
@@ -266,7 +267,7 @@ mod tests {
     impl CoalescentTip {
       pub(super) fn new(tip_constraint: Distribution<NegLog>) -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"(A:9,B:7)root;".as_slice())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let mut constraints = point_date_constraints(&graph, &names, &[("B", SIBLING_DATE), ("root", ROOT_DATE)]);
         let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");

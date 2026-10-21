@@ -132,7 +132,7 @@ mod tests {
       log: &dyn LogSink,
     ) -> Result<Vec<AlignmentSource>, Report> {
       let tree = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-      let names = tree.names();
+      let names = tree.names.clone();
       let alphabet = Alphabet::default();
       let settings = SourceSettings {
         alphabet: &alphabet,
@@ -150,7 +150,7 @@ mod tests {
         .iter()
         .map(|aligned| {
           let source = &aligned.source;
-          let name = |key| source.nodes[key].name.clone().unwrap_or_default();
+          let name = |key| source.nodes[key].name.clone();
           SourceFacts {
             path: source.path.clone(),
             length: source.length,
@@ -159,7 +159,7 @@ mod tests {
             seqs: source
               .nodes
               .values()
-              .filter_map(|node| Some((node.name.clone()?, node.seq.as_ref()?.to_string())))
+              .filter_map(|node| Some((node.name.clone(), node.seq.as_ref()?.to_string())))
               .collect(),
             descs: aligned
               .descs

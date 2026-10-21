@@ -13,9 +13,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 pub(crate) fn resolve_polytomies(
   graph: &mut Graph,
+  names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -29,7 +31,7 @@ pub(crate) fn resolve_polytomies(
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, sparse, node_key, topology_ops, branch_lengths)? {
+      if resolve_one(graph, names, sparse, node_key, topology_ops, branch_lengths)? {
         round_changed += 1;
       }
     }
@@ -48,6 +50,7 @@ pub(crate) fn resolve_polytomies(
 
 fn resolve_one(
   graph: &mut Graph,
+  names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
@@ -57,8 +60,10 @@ fn resolve_one(
 
   let mut any_changed = false;
   loop {
-    let merged = topology_ops.merge_siblings && merge_single_polytomy(graph, sparse, node_key, branch_lengths)? > 0;
-    let hoisted = topology_ops.flip_parent_child && try_hoist_reverting_child(graph, sparse, node_key, branch_lengths)?;
+    let merged =
+      topology_ops.merge_siblings && merge_single_polytomy(graph, names, sparse, node_key, branch_lengths)? > 0;
+    let hoisted =
+      topology_ops.flip_parent_child && try_hoist_reverting_child(graph, names, sparse, node_key, branch_lengths)?;
     let retired = retire_created_helpers(graph, sparse, &preexisting, branch_lengths)?;
 
     if !(merged || hoisted || retired) {
@@ -72,6 +77,7 @@ fn resolve_one(
 
 fn try_hoist_reverting_child(
   graph: &mut Graph,
+  names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -91,7 +97,7 @@ fn try_hoist_reverting_child(
   if let Some((root_key, sibling_edge_key)) = root_and_sibling {
     slide_bifurcating_root_for_child(sparse, root_key, parent_edge_key, sibling_edge_key, child_edge_key)?;
   }
-  hoist_reverting_child(graph, sparse, parent_edge_key, child_edge_key, branch_lengths)?;
+  hoist_reverting_child(graph, names, sparse, parent_edge_key, child_edge_key, branch_lengths)?;
   Ok(true)
 }
 

@@ -14,10 +14,10 @@ mod tests {
   use proptest::prelude::*;
   use rand::Rng;
   use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::assign_node_names::assign_node_names;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::sync::random::get_random_number_generator;
@@ -31,10 +31,10 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_leaves_a_binary_tree_alone() -> Result<(), Report> {
-    let (graph, names, mut node_times, branch_lengths) = binary_tree()?;
+    let (graph, mut names, mut node_times, branch_lengths) = binary_tree()?;
     let mut rng = get_random_number_generator(1);
 
-    let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+    let (graph, created) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
 
     assert_eq!(created, 0, "a binary tree has no polytomy to resolve");
     Ok(())
@@ -42,11 +42,11 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_resolves_a_three_way_polytomy() -> Result<(), Report> {
-    let (graph, names, mut node_times, branch_lengths) = polytomy_tree()?;
+    let (graph, mut names, mut node_times, branch_lengths) = polytomy_tree()?;
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
     let mut rng = get_random_number_generator(11);
 
-    let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+    let (graph, created) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
 
     assert_eq!(created, 1, "a 3-way polytomy needs one merger to become a bifurcation");
     let degree = graph.get_node(abc_key).expect("Node must exist").degree_out();
@@ -57,12 +57,12 @@ mod tests {
   proptest! {
     #[test]
     fn test_prop_resolve_polytomies_preserves_every_leaf(seed in any::<u64>()) {
-      let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree().unwrap();
+      let (graph, mut names, mut node_times, branch_lengths) = wide_polytomy_tree().unwrap();
       let parent_key = find_node_key_by_name(&graph, &names, "P").expect("P must exist");
       let before = leaf_names_under(&graph, &names, parent_key);
       let mut rng = get_random_number_generator(seed);
 
-      let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng).unwrap();
+      let (graph, _) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng).unwrap();
 
       let after = leaf_names_under(&graph, &names, parent_key);
       prop_assert_eq!(before, after);
@@ -70,9 +70,9 @@ mod tests {
 
     #[test]
     fn test_prop_resolve_polytomies_leaves_no_single_child_nodes(seed in any::<u64>()) {
-      let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree().unwrap();
+      let (graph, mut names, mut node_times, branch_lengths) = wide_polytomy_tree().unwrap();
       let mut rng = get_random_number_generator(seed);
-      let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng).unwrap();
+      let (graph, _) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng).unwrap();
 
       let has_single_child_node = graph.get_nodes().into_iter().any(|node| {
         node.inbound().len() == 1 && node.outbound().len() == 1
@@ -84,9 +84,9 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_is_reproducible_under_the_same_seed() -> Result<(), Report> {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
-      let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
+      let (graph, mut names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(seed);
-      let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+      let (graph, _) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
       Ok(
         graph
           .get_nodes()
@@ -109,9 +109,9 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_different_seeds_can_differ() -> Result<(), Report> {
     let clusters = |seed: u64| -> Result<BTreeSet<Vec<String>>, Report> {
-      let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
+      let (graph, mut names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
       let mut rng = get_random_number_generator(seed);
-      let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+      let (graph, _) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
       Ok(
         graph
           .get_nodes()
@@ -134,7 +134,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomies_without_a_time_window_is_a_noop() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2,C:0.15)ABC:0.05)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut node_times = undated(&graph);
@@ -149,7 +149,7 @@ mod tests {
     }
     let mut rng = get_random_number_generator(1);
 
-    let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+    let (graph, created) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
 
     assert_eq!(created, 0, "no window above the polytomy means no resolution");
     let abc_key = find_node_key_by_name(&graph, &names, "ABC").ok_or_else(|| make_report!("ABC not found"))?;
@@ -160,15 +160,16 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_dates_new_nodes_between_parent_and_children() -> Result<(), Report> {
-    let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
+    let (graph, mut names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
     let parent_key = find_node_key_by_name(&graph, &names, "P").ok_or_else(|| make_report!("P not found"))?;
     let parent_time = 1980.0;
     let mut rng = get_random_number_generator(9);
+    let input_nodes: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|node| node.key()).collect();
 
-    let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+    let (graph, _) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
 
     for node in graph.get_nodes() {
-      if node.is_leaf() || names.get(&node.key()).and_then(|x| x.as_ref()).is_some() {
+      if node.is_leaf() || input_nodes.contains(&node.key()) {
         continue;
       }
       let time = node_times[&node.key()].expect("new nodes must be dated");
@@ -196,15 +197,13 @@ mod tests {
 
   #[test]
   fn test_resolve_polytomies_names_new_nodes() -> Result<(), Report> {
-    let (graph, names, mut node_times, branch_lengths) = polytomy_tree()?;
+    let (graph, mut names, mut node_times, branch_lengths) = polytomy_tree()?;
     let mut rng = get_random_number_generator(11);
 
-    let (graph, created) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+    let (graph, created) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
     assert_eq!(created, 1);
 
-    let names = assign_node_names(names, &graph)?.names;
-
-    let mut name_list: Vec<String> = names.values().filter_map(Clone::clone).collect();
+    let mut name_list: Vec<String> = graph.get_nodes().map(|node| names[node.key()].to_owned()).collect();
     name_list.sort();
 
     assert_eq!(name_list, vec!["A", "ABC", "B", "C", "NODE_0000000", "root"]);
@@ -244,15 +243,16 @@ mod tests {
     let undated_leaves: BTreeSet<String> = ["A", "B", "C"].map(str::to_owned).into();
     let mut observed_flags = BTreeSet::new();
     for seed in 0..MERGER_FLAG_SEEDS {
-      let (graph, names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
+      let (graph, mut names, mut node_times, branch_lengths) = wide_polytomy_tree()?;
       let constraints = point_date_constraints(&graph, &names, &[("D", 2017.0), ("E", 2016.0), ("F", 2015.0)]);
       let leaf_bad_branches = bad_leaves(&graph, &constraints, &BTreeSet::new());
       let mut rng = get_random_number_generator(seed);
-      let (graph, _) = resolve(graph, branch_lengths, &mut node_times, &mut rng)?;
+      let input_nodes: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|node| node.key()).collect();
+      let (graph, _) = resolve(graph, &mut names, branch_lengths, &mut node_times, &mut rng)?;
 
       let bad_branches = derive_bad_branches(&graph, &constraints, &leaf_bad_branches)?;
 
-      for merger in graph.get_nodes().filter(|node| !names.contains_key(&node.key())) {
+      for merger in graph.get_nodes().filter(|node| !input_nodes.contains(&node.key())) {
         let expected = leaf_names_under(&graph, &names, merger.key()).is_subset(&undated_leaves);
         assert_eq!(
           expected,
@@ -276,7 +276,7 @@ mod tests {
 
     pub(super) fn set_time(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       times: &mut NodeTimes,
       name: &str,
       time: f64,
@@ -290,17 +290,10 @@ mod tests {
       graph.get_nodes().map(|node| (node.key(), None)).collect()
     }
 
-    pub(super) fn polytomy_tree() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        NodeTimes,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    pub(super) fn polytomy_tree() -> Result<(Graph, NodeNames, NodeTimes, BTreeMap<GraphEdgeKey, Option<f64>>), Report>
+    {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2,C:0.15)ABC:0.05)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let mut node_times = undated(&graph);
@@ -319,17 +312,10 @@ mod tests {
       Ok((graph, names, node_times, branch_lengths))
     }
 
-    pub(super) fn wide_polytomy_tree() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        NodeTimes,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    pub(super) fn wide_polytomy_tree()
+    -> Result<(Graph, NodeNames, NodeTimes, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let mut node_times = undated(&graph);
@@ -351,17 +337,9 @@ mod tests {
       Ok((graph, names, node_times, branch_lengths))
     }
 
-    pub(super) fn binary_tree() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        NodeTimes,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    pub(super) fn binary_tree() -> Result<(Graph, NodeNames, NodeTimes, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let mut node_times = undated(&graph);
@@ -381,6 +359,7 @@ mod tests {
 
     pub(super) fn resolve(
       graph: Graph,
+      names: &mut NodeNames,
       branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       times: &mut NodeTimes,
       rng: &mut dyn Rng,
@@ -390,6 +369,7 @@ mod tests {
         graph, merger_times, ..
       } = resolve_polytomies(
         graph,
+        names,
         branch_lengths,
         &BranchModel::Input,
         TEST_MUTATION_RATE,
@@ -403,19 +383,13 @@ mod tests {
       Ok((graph, created))
     }
 
-    pub(super) fn leaf_names_under(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      node_key: GraphNodeKey,
-    ) -> BTreeSet<String> {
+    pub(super) fn leaf_names_under(graph: &Graph, names: &NodeNames, node_key: GraphNodeKey) -> BTreeSet<String> {
       let mut result = BTreeSet::new();
       let mut stack = vec![node_key];
       while let Some(key) = stack.pop() {
         let node = graph.get_node(key).expect("Node must exist");
         if node.is_leaf() {
-          if let Some(name) = names.get(&node.key()).cloned().flatten() {
-            result.insert(name);
-          }
+          result.insert(names[node.key()].to_owned());
           continue;
         }
         for &edge_key in node.outbound() {

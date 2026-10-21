@@ -55,7 +55,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_sparse_composes_subs() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -84,13 +84,13 @@ mod tests {
     let p = &sparse[0].partition;
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = &names[target.key()];
       let edge_data = &p.obs_edges[&edge.key()];
-      match target_name.as_deref() {
-        Some("A") => {
+      match target_name {
+        "A" => {
           assert_eq!(edge_data.fitch_subs(), &[sub(b'A', 0, b'T'), sub(b'G', 5, b'C')]);
         },
-        Some("B") => {
+        "B" => {
           assert_eq!(edge_data.fitch_subs(), &[sub(b'A', 0, b'T')]);
         },
         other => unreachable!("unexpected target node: {other:?}"),
@@ -106,7 +106,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_graph_cleanup() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -134,7 +134,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_branch_length_sum() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -148,12 +148,12 @@ mod tests {
 
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = &names[target.key()];
       let bl = branch_lengths[&edge.key()];
 
-      match target_name.as_deref() {
-        Some("A") => assert_abs_diff_eq!(bl.unwrap(), 0.4, epsilon = 1e-7),
-        Some("B") => assert_abs_diff_eq!(bl.unwrap(), 0.5, epsilon = 1e-7),
+      match target_name {
+        "A" => assert_abs_diff_eq!(bl.unwrap(), 0.4, epsilon = 1e-7),
+        "B" => assert_abs_diff_eq!(bl.unwrap(), 0.5, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -164,7 +164,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_branch_length_sum_with_zero() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -178,12 +178,12 @@ mod tests {
 
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = &names[target.key()];
       let bl = branch_lengths[&edge.key()];
 
-      match target_name.as_deref() {
-        Some("A") => assert_abs_diff_eq!(bl.unwrap(), 0.1, epsilon = 1e-7),
-        Some("B") => assert_abs_diff_eq!(bl.unwrap(), 0.2, epsilon = 1e-7),
+      match target_name {
+        "A" => assert_abs_diff_eq!(bl.unwrap(), 0.1, epsilon = 1e-7),
+        "B" => assert_abs_diff_eq!(bl.unwrap(), 0.2, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -194,7 +194,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_branch_length_none_plus_some() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -209,10 +209,10 @@ mod tests {
 
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
-      match target_name.as_deref() {
-        Some("A") => assert_eq!(branch_lengths[&edge.key()], None),
-        Some("B") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.5, epsilon = 1e-7),
+      let target_name = &names[target.key()];
+      match target_name {
+        "A" => assert_eq!(branch_lengths[&edge.key()], None),
+        "B" => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.5, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -223,7 +223,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_branch_length_some_plus_none() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -237,10 +237,10 @@ mod tests {
 
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
-      match target_name.as_deref() {
-        Some("A") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.1, epsilon = 1e-7),
-        Some("B") => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.2, epsilon = 1e-7),
+      let target_name = &names[target.key()];
+      match target_name {
+        "A" => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.1, epsilon = 1e-7),
+        "B" => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.2, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -251,7 +251,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_indel_concatenation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -282,13 +282,13 @@ mod tests {
     let p = &sparse[0].partition;
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = &names[target.key()];
       let edge_data = &p.obs_edges[&edge.key()];
-      match target_name.as_deref() {
-        Some("A") => {
+      match target_name {
+        "A" => {
           assert_eq!(edge_data.indels, vec![collapsed_indel.clone(), child_a_indel.clone()]);
         },
-        Some("B") => {
+        "B" => {
           assert_eq!(edge_data.indels, vec![collapsed_indel.clone()]);
         },
         other => unreachable!("unexpected target node: {other:?}"),
@@ -301,7 +301,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_reversion_cancels() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1)I:0.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -325,11 +325,7 @@ mod tests {
       .get_edges()
       .find(|e| {
         let t = e.target();
-        graph
-          .get_node(t)
-          .and_then(|n| names.get(&n.key()).cloned().flatten())
-          .as_deref()
-          == Some("A")
+        graph.get_node(t).map(|n| names[n.key()].to_owned()).as_deref() == Some("A")
       })
       .cloned()
       .unwrap();
@@ -343,7 +339,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_no_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let ri_key = find_edge_key(&graph, &names, "root", "I").unwrap();
@@ -365,7 +361,7 @@ mod tests {
   #[test]
   fn test_topology_collapse_edge_multiple_sparse_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 

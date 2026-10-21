@@ -24,7 +24,8 @@ pub(super) mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -44,7 +45,7 @@ pub(super) mod tests {
   #[test]
   fn test_initial_guess_mode_detects_nan_from_newick() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_WITHOUT_LENGTHS.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     assert!(!invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
@@ -54,7 +55,7 @@ pub(super) mod tests {
   #[test]
   fn test_initial_guess_mode_detects_explicit_nan() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
@@ -66,7 +67,7 @@ pub(super) mod tests {
   #[test]
   fn test_initial_guess_mode_detects_negative_branch_length() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     set_first_branch_length(&graph, &mut branch_lengths, -0.1);
@@ -77,7 +78,7 @@ pub(super) mod tests {
   #[test]
   fn test_initial_guess_mode_describes_all_invalid_edges_and_warning() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     set_branch_length_by_target_name(&names, &graph, &mut branch_lengths, "A", -0.1);
@@ -98,7 +99,7 @@ pub(super) mod tests {
   #[test]
   fn test_initial_guess_mode_no_missing_when_all_finite() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_WITH_LENGTHS.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     assert!(invalid_branch_length_descriptions(&graph, &branch_lengths, &names)?.is_empty());
@@ -397,7 +398,7 @@ pub(super) mod tests {
     }
 
     pub(crate) fn set_branch_length_by_target_name(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       graph: &Graph,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       target_name: &str,
@@ -410,7 +411,7 @@ pub(super) mod tests {
           let target = edge_ref.target();
           graph
             .get_node(target)
-            .is_some_and(|node| names.get(&node.key()).and_then(|x| x.as_deref()) == Some(target_name))
+            .is_some_and(|node| &names[node.key()] == target_name)
         })
         .expect("target node must have an incoming edge");
       let edge_key = edge.key();
@@ -430,19 +431,11 @@ pub(super) mod tests {
 
     pub(crate) fn setup_dense_with_marginal(
       newick: &str,
-    ) -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        PartitionSet,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    ) -> Result<(Graph, NodeNames, PartitionSet, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = test_alignment()?.into_iter().map(AlignmentRecord::from).collect();
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 

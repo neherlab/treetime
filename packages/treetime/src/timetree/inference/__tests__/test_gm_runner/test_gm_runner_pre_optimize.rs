@@ -26,7 +26,7 @@ mod tests {
   ) -> Result<(), Report> {
     let case = &OUTPUTS[dataset];
     let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let dates = dates_by_node(load_dates_for_dataset(dataset)?, &nwk_parsed.graph, &names);
     let input_branch_lengths = nwk_parsed.branch_lengths.clone();
     let aln: Vec<AlignmentRecord> = load_alignment_for_dataset(dataset)?

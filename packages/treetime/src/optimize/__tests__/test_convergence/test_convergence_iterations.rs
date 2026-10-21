@@ -23,7 +23,7 @@ mod tests {
 
     let lh_ref = {
       let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-      let graph_ref_names = nwk_parsed.names();
+      let graph_ref_names = nwk_parsed.names.clone();
       let graph_ref = nwk_parsed.graph;
       let mut branch_lengths_ref = nwk_parsed.branch_lengths;
       let recon_ref = setup_reconstruction(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
@@ -38,7 +38,7 @@ mod tests {
     };
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -69,7 +69,7 @@ mod tests {
   fn test_optimization_improves_or_maintains_likelihood(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -106,7 +106,7 @@ mod tests {
   fn test_optimization_produces_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 

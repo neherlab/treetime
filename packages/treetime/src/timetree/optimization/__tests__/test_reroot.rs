@@ -30,7 +30,8 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_graph::reroot::RerootResult;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -45,7 +46,7 @@ mod tests {
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-  fn date_constraints(names: &BTreeMap<GraphNodeKey, Option<String>>, graph: &Graph) -> DateConstraints {
+  fn date_constraints(names: &NodeNames, graph: &Graph) -> DateConstraints {
     let dates = btreemap! {
       o!("A") => 2013.0,
       o!("B") => 2022.0,
@@ -55,11 +56,8 @@ mod tests {
 
     let mut date_constraints = BTreeMap::new();
     for n in graph.get_leaves() {
-      let name = names.get(&n.key()).cloned().flatten();
-      if let Some(name) = name {
-        let date = dates[&name];
-        date_constraints.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
-      }
+      let date = dates[&names[n.key()]];
+      date_constraints.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
     }
     DateConstraints {
       by_node: date_constraints,
@@ -93,7 +91,7 @@ mod tests {
   fn test_reroot_tree_sparse_with_edge_split() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let constraints = date_constraints(&names, &graph);
@@ -127,7 +125,7 @@ mod tests {
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
       },
-      &names,
+      &mut names,
       &NoopProgress,
     )?;
 
@@ -170,7 +168,7 @@ mod tests {
   #[test]
   fn test_sparse_reroot_inverts_subs_and_indels_on_path() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -242,7 +240,7 @@ mod tests {
   #[test]
   fn test_sparse_reroot_inverts_edge_mutations() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -321,7 +319,7 @@ mod tests {
   #[test]
   fn test_reroot_root_sequence_updated_with_indel() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -376,7 +374,7 @@ mod tests {
   #[test]
   fn test_reroot_root_sequence_multi_hop() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let gtr = jc69(JC69Params::default())?;
@@ -444,7 +442,7 @@ mod tests {
   fn test_reroot_tree_sparse_flow_does_not_panic() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let constraints = date_constraints(&names, &graph);
@@ -489,7 +487,7 @@ mod tests {
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
       },
-      &names,
+      &mut names,
       &NoopProgress,
     )?;
 
@@ -519,7 +517,7 @@ mod tests {
         reroot_params: &RerootParams::new(RerootSpec::default(), true),
         prev_clock_rate: None,
       },
-      &names,
+      &mut names,
       &NoopProgress,
     )?;
 

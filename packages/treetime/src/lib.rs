@@ -11,7 +11,6 @@ pub(crate) mod hacks;
 pub mod homoplasy;
 mod io;
 pub mod mugration;
-mod node_label;
 pub mod optimize;
 pub mod partition;
 pub mod progress;

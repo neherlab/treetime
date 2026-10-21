@@ -5,9 +5,10 @@ mod tests {
     fixture_deep_tree, fixture_shape_tree, fixture_tree, make_names, target_positions,
   };
   use crate::graph::Graph;
+  use crate::node_names::NodeNames;
   use crate::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
   use eyre::Report;
-  use maplit::btreemap;
+
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_utils::{assert_error, o};
@@ -74,13 +75,16 @@ mod tests {
     graph.add_edge(right, right_only)?;
     graph.build()?;
 
-    let names = make_names(vec![
-      (root, "root"),
-      (left, "left"),
-      (right, "right"),
-      (shared, "shared"),
-      (right_only, "right_only"),
-    ]);
+    let names = make_names(
+      &graph,
+      vec![
+        (root, "root"),
+        (left, "left"),
+        (right, "right"),
+        (shared, "shared"),
+        (right_only, "right_only"),
+      ],
+    )?;
     let branch_lengths = edge_branch_lengths(&graph);
     TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths)?;
     let actual = child_names(&graph, &names, "root")?;
@@ -119,7 +123,7 @@ mod tests {
     graph.add_edge(c, a)?;
     graph.build()?;
 
-    let names = make_names(vec![(a, "A"), (b, "B"), (c, "C")]);
+    let names = make_names(&graph, vec![(a, "A"), (b, "B"), (c, "C")])?;
     let branch_lengths = edge_branch_lengths(&graph);
     let result = TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths);
 
@@ -143,7 +147,7 @@ mod tests {
     graph.add_edge(b, a)?;
     graph.build()?;
 
-    let names = make_names(vec![(root, "root"), (a, "A"), (b, "B")]);
+    let names = make_names(&graph, vec![(root, "root"), (a, "A"), (b, "B")])?;
     let branch_lengths = edge_branch_lengths(&graph);
     let result = TopologyOrderSpec::default().apply(&mut graph, &names, &branch_lengths);
 
@@ -233,28 +237,6 @@ mod tests {
   }
 
   #[test]
-  fn topology_order_label_names_the_unnamed_leaf_with_the_smallest_key() -> Result<(), Report> {
-    let mut graph = Graph::new();
-    let root = graph.add_node();
-    let first = graph.add_node();
-    let second = graph.add_node();
-    graph.add_edge(root, second)?;
-    graph.add_edge(root, first)?;
-    graph.build()?;
-    let names = btreemap! { root => Some(o!("root")), first => None, second => None };
-    let spec = TopologyOrderSpec {
-      preset: TopologyOrderPreset::Label,
-      ..TopologyOrderSpec::default()
-    };
-
-    let branch_lengths = edge_branch_lengths(&graph);
-    let result = spec.apply(&mut graph, &names, &branch_lengths);
-
-    assert_error!(result, "When ordering topology by labels: leaf node 1 has no name");
-    Ok(())
-  }
-
-  #[test]
   fn topology_order_label_reverse_sorts_descending() -> Result<(), Report> {
     let (mut graph, names) = fixture_shape_tree()?;
     let spec = TopologyOrderSpec {
@@ -334,10 +316,15 @@ mod tests {
 
   #[test]
   fn topology_order_target_order_gives_leaves_that_share_a_name_its_position() -> Result<(), Report> {
-    let (mut graph, mut names) = fixture_tree()?;
-    let node_b = find_node(&names, "B")?;
-    let node_c = find_node(&names, "C")?;
-    names.insert(node_c, Some("B".to_owned()));
+    let (mut graph, names) = fixture_tree()?;
+    let node_b = find_node(&graph, &names, "B")?;
+    let node_c = find_node(&graph, &names, "C")?;
+    let input = graph
+      .get_nodes()
+      .map(|node| node.key())
+      .map(|key| (key, Some(if key == node_c { o!("B") } else { names[key].to_owned() })))
+      .collect();
+    let names = NodeNames::from_input(input, &graph)?.names;
     let target_order = target_positions(&graph, &names, &["D", "E", "F", "A", "B"]);
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
@@ -406,6 +393,7 @@ mod tests {
     use crate::edge::GraphEdgeKey;
     use crate::graph::Graph;
     use crate::node::GraphNodeKey;
+    use crate::node_names::NodeNames;
     use crate::pair_by_name::pair_by_name;
     use crate::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
     use eyre::Report;
@@ -413,11 +401,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_utils::make_report;
 
-    pub(super) fn target_positions(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      labels: &[&str],
-    ) -> BTreeMap<GraphNodeKey, usize> {
+    pub(super) fn target_positions(graph: &Graph, names: &NodeNames, labels: &[&str]) -> BTreeMap<GraphNodeKey, usize> {
       let positions = labels
         .iter()
         .enumerate()
@@ -443,7 +427,7 @@ mod tests {
       child_names(&graph, &names, "root")
     }
 
-    pub(super) fn fixture_deep_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn fixture_deep_tree() -> Result<(Graph, NodeNames), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let deep = graph.add_node();
@@ -467,22 +451,25 @@ mod tests {
       graph.add_edge(shallow, tip_c)?;
       graph.build()?;
 
-      let names = make_names(vec![
-        (root, "root"),
-        (deep, "deep"),
-        (tip_a, "A"),
-        (shallow, "shallow"),
-        (mid, "mid"),
-        (tip_d, "D"),
-        (tip_e, "E"),
-        (tip_f, "F"),
-        (tip_b, "B"),
-        (tip_c, "C"),
-      ]);
+      let names = make_names(
+        &graph,
+        vec![
+          (root, "root"),
+          (deep, "deep"),
+          (tip_a, "A"),
+          (shallow, "shallow"),
+          (mid, "mid"),
+          (tip_d, "D"),
+          (tip_e, "E"),
+          (tip_f, "F"),
+          (tip_b, "B"),
+          (tip_c, "C"),
+        ],
+      )?;
       Ok((graph, names))
     }
 
-    pub(super) fn fixture_shape_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn fixture_shape_tree() -> Result<(Graph, NodeNames), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let wide = graph.add_node();
@@ -506,29 +493,26 @@ mod tests {
       graph.add_edge(mid, tip_y)?;
       graph.build()?;
 
-      let names = make_names(vec![
-        (root, "root"),
-        (wide, "wide"),
-        (deep, "deep"),
-        (tip_l, "L"),
-        (tip_b1, "B1"),
-        (tip_b2, "B2"),
-        (tip_b3, "B3"),
-        (mid, "mid"),
-        (tip_x, "X"),
-        (tip_y, "Y"),
-      ]);
+      let names = make_names(
+        &graph,
+        vec![
+          (root, "root"),
+          (wide, "wide"),
+          (deep, "deep"),
+          (tip_l, "L"),
+          (tip_b1, "B1"),
+          (tip_b2, "B2"),
+          (tip_b3, "B3"),
+          (mid, "mid"),
+          (tip_x, "X"),
+          (tip_y, "Y"),
+        ],
+      )?;
       Ok((graph, names))
     }
 
-    pub(super) fn fixture_branch_length_tree() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    pub(super) fn fixture_branch_length_tree() -> Result<(Graph, NodeNames, BTreeMap<GraphEdgeKey, Option<f64>>), Report>
+    {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let short = graph.add_node();
@@ -548,19 +532,22 @@ mod tests {
       ]);
       graph.build()?;
 
-      let names = make_names(vec![
-        (root, "root"),
-        (short, "short"),
-        (long, "long"),
-        (tip_a, "A"),
-        (tip_b, "B"),
-        (tip_c, "C"),
-        (tip_d, "D"),
-      ]);
+      let names = make_names(
+        &graph,
+        vec![
+          (root, "root"),
+          (short, "short"),
+          (long, "long"),
+          (tip_a, "A"),
+          (tip_b, "B"),
+          (tip_c, "C"),
+          (tip_d, "D"),
+        ],
+      )?;
       Ok((graph, names, branch_lengths))
     }
 
-    pub(super) fn fixture_tree() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn fixture_tree() -> Result<(Graph, NodeNames), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let def = graph.add_node();
@@ -582,26 +569,25 @@ mod tests {
       graph.add_edge(bc, tip_c)?;
       graph.build()?;
 
-      let names = make_names(vec![
-        (root, "root"),
-        (def, "DEF"),
-        (tip_a, "A"),
-        (bc, "BC"),
-        (tip_d, "D"),
-        (tip_e, "E"),
-        (tip_f, "F"),
-        (tip_b, "B"),
-        (tip_c, "C"),
-      ]);
+      let names = make_names(
+        &graph,
+        vec![
+          (root, "root"),
+          (def, "DEF"),
+          (tip_a, "A"),
+          (bc, "BC"),
+          (tip_d, "D"),
+          (tip_e, "E"),
+          (tip_f, "F"),
+          (tip_b, "B"),
+          (tip_c, "C"),
+        ],
+      )?;
       Ok((graph, names))
     }
 
-    pub(super) fn child_names(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      parent_name: &str,
-    ) -> Result<Vec<String>, Report> {
-      let parent_key = find_node(names, parent_name)?;
+    pub(super) fn child_names(graph: &Graph, names: &NodeNames, parent_name: &str) -> Result<Vec<String>, Report> {
+      let parent_key = find_node(graph, names, parent_name)?;
       let parent = graph
         .get_node(parent_key)
         .ok_or_else(|| make_report!("Node {parent_key} not found"))?;
@@ -613,25 +599,24 @@ mod tests {
       )
     }
 
-    pub(super) fn find_node(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      name: &str,
-    ) -> Result<GraphNodeKey, Report> {
-      names
-        .iter()
-        .find_map(|(key, value)| (value.as_deref() == Some(name)).then_some(*key))
+    pub(super) fn find_node(graph: &Graph, names: &NodeNames, name: &str) -> Result<GraphNodeKey, Report> {
+      graph
+        .get_nodes()
+        .map(|node| node.key())
+        .find(|key| &names[*key] == name)
         .ok_or_else(|| make_report!("Node '{name}' not found"))
     }
 
-    fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
-      names[&key].clone().unwrap_or_default()
+    fn node_name(names: &NodeNames, key: GraphNodeKey) -> String {
+      names[key].to_owned()
     }
 
-    pub(super) fn make_names(pairs: Vec<(GraphNodeKey, &str)>) -> BTreeMap<GraphNodeKey, Option<String>> {
-      pairs
+    pub(super) fn make_names(graph: &Graph, pairs: Vec<(GraphNodeKey, &str)>) -> Result<NodeNames, Report> {
+      let input = pairs
         .into_iter()
         .map(|(key, name)| (key, Some(name.to_owned())))
-        .collect()
+        .collect();
+      Ok(NodeNames::from_input(input, graph)?.names)
     }
 
     fn make_branch_lengths(pairs: Vec<(GraphEdgeKey, f64)>) -> BTreeMap<GraphEdgeKey, Option<f64>> {

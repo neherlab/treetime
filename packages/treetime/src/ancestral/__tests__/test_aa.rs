@@ -99,7 +99,7 @@ mod tests {
   #[test]
   fn test_reconstruct_aa_reconstructs_each_cds_independently_with_stop_codon() {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice()).unwrap();
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let name_to_key = helpers::node_name_to_key(&names, &nwk_parsed.graph);
     let aa = Alphabet::new(AlphabetName::Aa).unwrap();
     let cdses = vec![
@@ -184,6 +184,7 @@ mod tests {
     use crate::progress::NoopProgress;
     use crate::seq::alignment::pair_leaf_sequences;
     use crate::seq::mutation::{MutationEvent, Sub};
+    use crate::seq::sink::SeqStream;
     use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
@@ -194,6 +195,7 @@ mod tests {
     use std::sync::atomic::{AtomicBool, Ordering};
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, AsciiChar, Seq};
@@ -236,7 +238,7 @@ mod tests {
 
     pub(super) fn reconstruct_two_cdses(cancel: &FlagCancel, mut sink: Box<dyn SeqSink>) -> Result<AaNodeData, Report> {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let aa = Alphabet::new(AlphabetName::Aa)?;
       let cdses = vec![
         cds_input(
@@ -259,7 +261,7 @@ mod tests {
         &nwk_parsed.branch_lengths,
         &sparse_params(),
         cdses,
-        Some(sink.as_mut()),
+        Some(SeqStream::new(sink.as_mut(), &names)),
         cancel,
         &NoopProgress,
       )
@@ -287,36 +289,29 @@ mod tests {
       )
     }
 
-    pub(super) fn node_name_to_key(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-    ) -> BTreeMap<String, GraphNodeKey> {
+    pub(super) fn node_name_to_key(names: &NodeNames, graph: &Graph) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
         .map(|node| {
           let key = node.key();
-          let name = names[&node.key()].clone().unwrap();
+          let name = names[node.key()].to_owned();
           (name, key)
         })
         .collect()
     }
 
-    pub(super) fn named_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+    pub(super) fn named_tree() -> (Graph, NodeNames) {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.1)root;".as_slice()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       (graph, names)
     }
 
-    pub(super) fn fitch_partition(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      leaf_sequences: &[&str],
-    ) -> AncestralPartition {
+    pub(super) fn fitch_partition(graph: &Graph, names: &NodeNames, leaf_sequences: &[&str]) -> AncestralPartition {
       let alphabet = Alphabet::default();
       let mut fasta = String::new();
       for (leaf, seq) in graph.get_leaves().zip(leaf_sequences) {
-        let name = names[&leaf.key()].clone().unwrap();
+        let name = names[leaf.key()].to_owned();
         writeln!(fasta, ">{name}").unwrap();
         writeln!(fasta, "{seq}").unwrap();
       }
@@ -334,7 +329,7 @@ mod tests {
       alphabet: &Alphabet,
       seqs: &[(&str, &str)],
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
     ) -> CdsInput {
       let records = seqs
         .iter()

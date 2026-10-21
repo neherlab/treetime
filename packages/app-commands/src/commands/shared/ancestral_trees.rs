@@ -12,7 +12,7 @@ use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::Seq;
 use treetime_utils::make_internal_error;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -70,7 +70,7 @@ pub(crate) fn write_ancestral_trees(
 
 pub(crate) struct AncestralTrees<'a> {
   pub(crate) graph: &'a Graph,
-  pub(crate) names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) names: &'a NodeNames,
   pub(crate) branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   pub(crate) amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
 }

@@ -23,7 +23,7 @@ mod tests {
   #[test]
   fn test_optimize_method_brent_sqrt_transform_round_trip() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let aln = simple_alignment()?;
@@ -70,7 +70,7 @@ mod tests {
   #[test]
   fn test_optimize_method_brent_sqrt_bracket_validity() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;

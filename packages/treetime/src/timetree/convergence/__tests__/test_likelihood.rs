@@ -18,7 +18,6 @@ mod tests {
   use eyre::Report;
   use maplit::btreemap;
   use ndarray::array;
-  use std::collections::BTreeMap;
 
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -89,6 +88,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::timetree::convergence::metrics::IterationClock;
+    use treetime_graph::node_names::NodeNames;
 
     pub(super) const fn fixed_clock() -> IterationClock {
       IterationClock {
@@ -124,9 +124,9 @@ mod tests {
       }]))
     }
 
-    pub(super) fn two_node_graph() -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn two_node_graph() -> Result<(Graph, NodeNames), Report> {
       let nwk_parsed = nwk_read(b"(child:0.1)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       Ok((graph, names))
     }

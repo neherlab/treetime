@@ -1,6 +1,7 @@
 use crate::edge::{GraphEdgeKey, invert_edge};
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
+use crate::node_names::NodeNames;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_utils::make_internal_report;
@@ -49,11 +50,13 @@ pub fn remove_stem_root(graph: &mut Graph, root_key: GraphNodeKey) -> Result<Opt
 
 pub fn split_edge(
   graph: &mut Graph,
+  names: &mut NodeNames,
   edge_key: GraphEdgeKey,
   split_position: f64,
   branch_length: Option<f64>,
 ) -> Result<EdgeSplitInfo, Report> {
   let new_node_key = graph.add_node();
+  names.name_new_node(new_node_key);
 
   let (source_key, target_key) = {
     let edge = &graph[edge_key];

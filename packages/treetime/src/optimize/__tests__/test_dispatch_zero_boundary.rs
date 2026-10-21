@@ -32,7 +32,7 @@ pub(super) mod tests {
   fn test_dispatch_zero_boundary_k80_identical_sequences(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
@@ -70,7 +70,7 @@ pub(super) mod tests {
   fn test_dispatch_zero_boundary_uncertified_models_all_reach_zero(#[case] model: GtrModelName,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
@@ -113,7 +113,7 @@ pub(super) mod tests {
     #[case] model: GtrModelName,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
@@ -253,7 +253,7 @@ pub(super) mod tests {
   fn test_dispatch_zero_boundary_topology_cleanup_collects_k80_internal_edges(#[case] method: BranchOptMethod,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(IDENTICAL_TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
@@ -422,7 +422,8 @@ pub(super) mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
+
     use treetime_io::fasta::fasta_read;
     use treetime_primitives::AlignmentRecord;
 
@@ -439,7 +440,7 @@ pub(super) mod tests {
 
     pub(super) fn setup_identical_reconstruction(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       model: GtrModelName,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> Result<PartitionSet, Report> {

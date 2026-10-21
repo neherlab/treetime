@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_primitives::{AlignmentRecord, Seq};
 
@@ -42,18 +43,14 @@ pub struct EdgeSeqInput {
   pub branch_length: Option<f64>,
 }
 
-pub fn pair_leaf_sequences(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  records: Vec<AlignmentRecord>,
-) -> LeafPairing {
+pub fn pair_leaf_sequences(graph: &Graph, names: &NodeNames, records: Vec<AlignmentRecord>) -> LeafPairing {
   let pairing = pair_by_name(
     graph.get_leaves().map(|leaf| leaf.key()),
     names,
     records.into_iter().map(|record| (record.name, record.seq)),
   );
   LeafPairing {
-    sequences: LeafSequences::new(names, pairing.by_node, pairing.unmatched),
+    sequences: LeafSequences::new(graph, names, pairing.by_node, pairing.unmatched),
     duplicate_names: pairing.duplicate_entry_names,
   }
 }
@@ -71,18 +68,20 @@ pub struct LeafSequences {
 
 impl LeafSequences {
   pub fn new(
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    graph: &Graph,
+    names: &NodeNames,
     mut seqs: BTreeMap<GraphNodeKey, Seq>,
     unmatched: Vec<(String, Seq)>,
   ) -> Self {
-    let nodes = names
-      .iter()
-      .map(|(key, name)| {
+    let nodes = graph
+      .get_nodes()
+      .map(|node| {
+        let key = node.key();
         let input = NodeSeqInput {
-          name: name.clone(),
-          seq: seqs.remove(key),
+          name: names[key].to_owned(),
+          seq: seqs.remove(&key),
         };
-        (*key, input)
+        (key, input)
       })
       .collect();
     Self { nodes, unmatched }
@@ -100,7 +99,7 @@ impl LeafSequences {
     self
       .nodes
       .values()
-      .filter_map(|node| Some((node.name.as_deref().unwrap_or(""), node.seq.as_ref()?)))
+      .filter_map(|node| Some((node.name.as_str(), node.seq.as_ref()?)))
   }
 
   fn kept(&self) -> impl Iterator<Item = (&str, &Seq)> {
@@ -115,13 +114,13 @@ pub(crate) fn get_common_length_of_node_inputs(
   common_length(
     node_inputs
       .values()
-      .filter_map(|node| Some((node.name.as_deref().unwrap_or(""), node.seq.as_ref()?))),
+      .filter_map(|node| Some((node.name.as_str(), node.seq.as_ref()?))),
   )
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NodeSeqInput {
-  pub name: Option<String>,
+  pub name: String,
   pub seq: Option<Seq>,
 }
 

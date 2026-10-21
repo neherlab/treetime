@@ -110,7 +110,7 @@ mod tests {
         seed: 0,
         sample_from_profile: SampleMode::Argmax,
       };
-      let names = parse.names();
+      let names = parse.names.clone();
       let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta")?;
       let input = ancestral_input_for_tree(parse, vec![source]);
 

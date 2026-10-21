@@ -4,10 +4,12 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::make_internal_error;
 
 pub(crate) fn apply_plan(
   graph: &mut Graph,
+  names: &mut NodeNames,
   parent_key: GraphNodeKey,
   parent_time: f64,
   children: &[ChildRef],
@@ -21,6 +23,7 @@ pub(crate) fn apply_plan(
 
   for merger in &plan.mergers {
     let new_node_key = graph.add_node();
+    names.name_new_node(new_node_key);
     merger_times.insert(new_node_key, merger.time);
 
     for lineage in [merger.left, merger.right] {

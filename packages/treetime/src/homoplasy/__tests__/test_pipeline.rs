@@ -342,6 +342,7 @@ mod tests {
     use std::str::FromStr;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::{NwkParse, nwk_read};
 
     const NEWICK: &str = "((A:0.1,B:0.2)AB:0.3,(C:0.4,D:0.5)CD:0.6)root;";
@@ -352,7 +353,7 @@ mod tests {
 
     pub(super) struct Scenario {
       parse: NwkParse,
-      names: BTreeMap<GraphNodeKey, Option<String>>,
+      names: NodeNames,
       raw: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
       bridged: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
       sequence_length: usize,
@@ -365,7 +366,7 @@ mod tests {
 
       pub(super) fn with_length(sequence_length: usize) -> Result<Self, Report> {
         let parse = nwk_read(NEWICK.as_bytes())?;
-        let names = parse.names();
+        let names = parse.names.clone();
         let empty: BTreeMap<GraphEdgeKey, Vec<Mutation>> =
           parse.graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
         Ok(Self {

@@ -133,6 +133,7 @@ mod tests {
     let (graph, names) = tree()?;
     let node_data = AaNodeData {
       node_aa_mutations: node_events(
+        &graph,
         &names,
         &btreemap! {
           "root" => btreemap! { "S" => vec!["K7R"] },
@@ -149,6 +150,7 @@ mod tests {
       UnknownMutationFilter::hiding_unknown(AsciiChar::try_new(b'X')?).reported_aa_node_data(&graph, node_data)?;
 
     let expected = node_events(
+      &graph,
       &names,
       &btreemap! {
         "root" => btreemap! { "S" => vec!["K7R"] },
@@ -170,13 +172,14 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::nwk_read;
 
-    pub(super) type Names = BTreeMap<GraphNodeKey, Option<String>>;
+    pub(super) type Names = NodeNames;
 
     pub(super) fn tree() -> Result<(Graph, Names), Report> {
       let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)root;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       Ok((parsed.graph, names))
     }
 
@@ -192,17 +195,17 @@ mod tests {
       Ok((graph, shared_edge, shared))
     }
 
-    pub(super) fn node_key(names: &Names, name: &str) -> GraphNodeKey {
-      names
-        .iter()
-        .find(|(_, node_name)| node_name.as_deref() == Some(name))
-        .map(|(&key, _)| key)
+    pub(super) fn node_key(graph: &Graph, names: &Names, name: &str) -> GraphNodeKey {
+      graph
+        .get_nodes()
+        .map(|node| node.key())
+        .find(|key| &names[*key] == name)
         .expect("node must exist")
     }
 
     pub(super) fn edge_key(graph: &Graph, names: &Names, name: &str) -> Result<GraphEdgeKey, Report> {
       let (_, edge_key) = graph
-        .node_parent(node_key(names, name))?
+        .node_parent(node_key(graph, names, name))?
         .expect("node must have a parent");
       Ok(edge_key)
     }
@@ -236,6 +239,7 @@ mod tests {
     }
 
     pub(super) fn node_events(
+      graph: &Graph,
       names: &Names,
       mutations: &BTreeMap<&str, BTreeMap<&str, Vec<&str>>>,
     ) -> Result<BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>, Report> {
@@ -246,7 +250,7 @@ mod tests {
             .iter()
             .map(|(cds, strings)| Ok(((*cds).to_owned(), events(strings)?)))
             .collect::<Result<_, Report>>()?;
-          Ok((node_key(names, name), cds_events))
+          Ok((node_key(graph, names, name), cds_events))
         })
         .collect()
     }
@@ -267,7 +271,7 @@ mod tests {
             .into_iter()
             .flatten()
             .collect();
-          Ok((names[&child].clone().expect("every node is named"), strings))
+          Ok((names[child].to_owned(), strings))
         })
         .collect()
     }

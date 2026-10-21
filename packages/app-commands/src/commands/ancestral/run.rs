@@ -29,12 +29,13 @@ use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
 use treetime::seq::alignment::{LeafSequences, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
-use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
-use treetime_graph::assign_node_names::node_name_or_key;
+use treetime::seq::sink::{SeqItem, SeqSink, SeqStream, SeqTrack};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::{FastaWriter, fasta_read_file};
+use treetime_io::nwk::NwkParse;
 use treetime_primitives::Seq;
 use treetime_utils::make_internal_error;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
@@ -62,13 +63,18 @@ pub fn run_ancestral_reconstruction(
     ignore_missing_alns: args.ignore_missing_alns,
   };
   let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
-  let names = tree.names();
+  let NwkParse {
+    graph,
+    names,
+    branch_lengths,
+    ..
+  } = tree;
   let (sources, descs): (Vec<SequenceSource>, BTreeMap<usize, _>) = sources
     .into_iter()
     .zip(1..)
     .map(|(AlignmentSource { source, descs, .. }, partition)| (source, (partition, descs)))
     .unzip();
-  let input = ancestral_input(tree, sources);
+  let input = ancestral_input(graph, branch_lengths, sources);
   let branch_lengths = input.branch_lengths();
 
   let topology_order =
@@ -78,21 +84,27 @@ pub fn run_ancestral_reconstruction(
 
   let resolved = args.resolve_outputs()?;
   let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
-  let mut seq_sink = AncestralSeqSink::new(&resolved, names.clone(), descs)?;
+  let mut seq_sink = AncestralSeqSink::new(&resolved, descs)?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
   let seed = args.seed_args.resolve(random_step, log);
   let params = ancestral_params(args, seed);
 
-  let output =
-    pipeline::run(&params, input, Some(&mut seq_sink), cancel, stages, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(
+    &params,
+    input,
+    Some(SeqStream::new(&mut seq_sink, &names)),
+    cancel,
+    stages,
+    log,
+  )
+  .map_err(|err| err.into_report())?;
   let mut graph = output.graph;
   let models = partition_models(&output.results, None);
   let mut results = output.results;
   let AncestralSeqSink {
     fasta,
     mut node_sequences,
-    ..
   } = seq_sink;
   if let Some(fasta) = fasta {
     fasta.finish()?;
@@ -206,7 +218,6 @@ fn planned_aa_fasta_paths(
 }
 
 struct AncestralSeqSink {
-  names: BTreeMap<GraphNodeKey, Option<String>>,
   fasta: Option<NucFastaWriters>,
   node_sequences: BTreeMap<usize, BTreeMap<GraphNodeKey, Seq>>,
 }
@@ -214,7 +225,6 @@ struct AncestralSeqSink {
 impl AncestralSeqSink {
   fn new(
     resolved: &ResolvedOutputs,
-    names: BTreeMap<GraphNodeKey, Option<String>>,
     descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
   ) -> Result<Self, Report> {
     let fasta_paths = resolved.partition_paths(OutputSelection::ReconstructedNucFasta);
@@ -226,11 +236,7 @@ impl AncestralSeqSink {
       .into_keys()
       .map(|partition| (partition, BTreeMap::new()))
       .collect();
-    Ok(Self {
-      names,
-      fasta,
-      node_sequences,
-    })
+    Ok(Self { fasta, node_sequences })
   }
 }
 
@@ -240,8 +246,7 @@ impl SeqSink for AncestralSeqSink {
       return make_internal_error!("Nucleotide reconstructed FASTA sink received an amino-acid track");
     };
     if let (Some(fasta), true) = (self.fasta.as_mut(), item.emitted) {
-      let name = self.names[&item.key].as_deref().unwrap_or("");
-      fasta.write(partition, item.key, name, item.seq)?;
+      fasta.write(partition, item.key, item.name, item.seq)?;
     }
     if let Some(node_sequences) = self.node_sequences.get_mut(&partition) {
       node_sequences.insert(item.key, item.seq.clone());
@@ -305,7 +310,7 @@ fn run_aa_reconstructions(
     })
     .collect::<Result<Vec<_>, Report>>()?;
 
-  let mut seq_sink = fasta_paths.map(|paths| AaFastaSink::new(paths, inputs.names.clone()));
+  let mut seq_sink = fasta_paths.map(AaFastaSink::new);
 
   let cds_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry> = cdses
     .iter()
@@ -317,7 +322,7 @@ fn run_aa_reconstructions(
     inputs.branch_lengths,
     &params,
     cds_inputs,
-    seq_sink.as_mut().map(|sink| -> &mut dyn SeqSink { sink }),
+    seq_sink.as_mut().map(|sink| SeqStream::new(sink, inputs.names)),
     cancel,
     log,
   )?;
@@ -371,24 +376,19 @@ fn read_cds_translations(
 
 struct AaRunInputs<'a> {
   graph: &'a Graph,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  names: &'a NodeNames,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   seed: u64,
 }
 
 struct AaFastaSink {
   paths: BTreeMap<String, PathBuf>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
-  pending: Option<(String, BTreeMap<GraphNodeKey, Seq>)>,
+  pending: Option<(String, BTreeMap<GraphNodeKey, (String, Seq)>)>,
 }
 
 impl AaFastaSink {
-  fn new(paths: BTreeMap<String, PathBuf>, names: BTreeMap<GraphNodeKey, Option<String>>) -> Self {
-    Self {
-      paths,
-      names,
-      pending: None,
-    }
+  fn new(paths: BTreeMap<String, PathBuf>) -> Self {
+    Self { paths, pending: None }
   }
 
   fn finish(mut self) -> Result<(), Report> {
@@ -403,8 +403,8 @@ impl AaFastaSink {
       return make_internal_error!("No amino-acid FASTA path was planned for CDS '{cds}'");
     };
     let mut writer = FastaWriter::create(path)?;
-    for (key, seq) in &sequences {
-      writer.write(&node_name_or_key(*key, self.names[key].as_deref()), None, seq)?;
+    for (name, seq) in sequences.values() {
+      writer.write(name, None, seq)?;
     }
     writer.finish()
   }
@@ -422,7 +422,7 @@ impl SeqSink for AaFastaSink {
       .pending
       .get_or_insert_with(|| (cds.to_owned(), BTreeMap::new()))
       .1
-      .insert(item.key, item.seq.clone());
+      .insert(item.key, (item.name.to_owned(), item.seq.clone()));
     Ok(())
   }
 }

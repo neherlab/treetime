@@ -30,13 +30,13 @@ mod tests {
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_with_names = nwk_parsed.names();
+    let graph_with_names = nwk_parsed.names.clone();
     let mut graph_with = nwk_parsed.graph;
     let mut branch_lengths_with = nwk_parsed.branch_lengths;
     let mut reconstruction_with = setup_reconstruction(&graph_with, &graph_with_names, &aln, &mut branch_lengths_with)?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_without_names = nwk_parsed.names();
+    let graph_without_names = nwk_parsed.names.clone();
     let mut graph_without = nwk_parsed.graph;
     let mut branch_lengths_without = nwk_parsed.branch_lengths;
     let mut reconstruction_without =
@@ -74,7 +74,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_with,
-      &names_tt_4,
+      names_tt_4,
       &NoopProgress,
     )?;
 
@@ -92,7 +92,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_without,
-      &names_tt_3,
+      names_tt_3,
       &NoopProgress,
     )?;
 
@@ -109,7 +109,7 @@ mod tests {
   fn test_no_indels_optimizer_ignores_indel_counts() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -146,13 +146,13 @@ mod tests {
   fn test_no_indels_matches_no_indel_data() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_no_flag_names = nwk_parsed.names();
+    let graph_no_flag_names = nwk_parsed.names.clone();
     let mut graph_no_flag = nwk_parsed.graph;
     let mut branch_lengths_nf = nwk_parsed.branch_lengths;
     let reconstruction_nf = setup_reconstruction(&graph_no_flag, &graph_no_flag_names, &aln, &mut branch_lengths_nf)?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_flag_names = nwk_parsed.names();
+    let graph_flag_names = nwk_parsed.names.clone();
     let mut graph_flag = nwk_parsed.graph;
     let mut branch_lengths_f = nwk_parsed.branch_lengths;
     let reconstruction_f = setup_reconstruction(&graph_flag, &graph_flag_names, &aln, &mut branch_lengths_f)?;
@@ -171,7 +171,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_nf,
-      &names_tt_2,
+      names_tt_2,
       &NoopProgress,
     )?;
 
@@ -189,7 +189,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths_f,
-      &names_tt_1,
+      names_tt_1,
       &NoopProgress,
     )?;
 
@@ -239,7 +239,7 @@ mod tests {
   fn test_no_indels_initial_guess_ignores_indel_counts(#[case] mode: InitialGuessMode,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_with_indel_names = nwk_parsed.names();
+    let graph_with_indel_names = nwk_parsed.names.clone();
     let graph_with_indel = nwk_parsed.graph;
     let mut branch_lengths_with_indel = nwk_parsed.branch_lengths;
     let mut reconstruction_with_indel = setup_identical_reconstruction(&graph_with_indel, &graph_with_indel_names, &mut branch_lengths_with_indel)?;
@@ -251,7 +251,7 @@ mod tests {
     );
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_without_indel_names = nwk_parsed.names();
+    let graph_without_indel_names = nwk_parsed.names.clone();
     let graph_without_indel = nwk_parsed.graph;
     let mut branch_lengths_without_indel = nwk_parsed.branch_lengths;
     let reconstruction_without_indel = setup_identical_reconstruction(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;

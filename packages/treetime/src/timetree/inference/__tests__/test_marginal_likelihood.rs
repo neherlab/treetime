@@ -51,6 +51,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::node_names::NodeNames;
 
     pub(super) const REFERENCE_RATE: f64 = 1e-3;
     const SITES: f64 = 1000.0;
@@ -73,12 +74,12 @@ mod tests {
       pub bad_branches: BTreeMap<GraphNodeKey, bool>,
       pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
       pub keys: BTreeMap<&'static str, GraphNodeKey>,
-      pub names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub names: NodeNames,
     }
 
     pub(super) fn setup() -> Result<Setup, Report> {
       let parsed = nwk_read(b"((A:3,B:2)I:2,C:5)root;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let keys: BTreeMap<&'static str, GraphNodeKey> = ["A", "B", "C", "I", "root"]
         .into_iter()

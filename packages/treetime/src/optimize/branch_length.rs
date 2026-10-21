@@ -1,15 +1,14 @@
 use crate::make_report;
-use crate::node_label::node_label;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 pub(crate) fn invalid_branch_length_descriptions(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> Result<Vec<String>, Report> {
   graph
     .get_edges()
@@ -19,8 +18,8 @@ pub(crate) fn invalid_branch_length_descriptions(
       (!is_valid_branch_length(branch_length)).then_some((edge.source(), edge.target(), branch_length))
     })
     .map(|(source, target, branch_length)| {
-      let source = node_label(names, source);
-      let target = node_label(names, target);
+      let source = &names[source];
+      let target = &names[target];
       let branch_length = branch_length.map_or_else(|| "missing".to_owned(), |value| value.to_string());
       Ok(format!("{source} -> {target}: {branch_length}"))
     })

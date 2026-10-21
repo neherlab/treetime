@@ -33,7 +33,7 @@ mod tests {
     let length = INPUT_BRANCH_LENGTH;
     let newick = format!("((A:{length},B:{length})AB:{length},(C:{length},D:{length})CD:{length})root;");
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -75,7 +75,6 @@ mod tests {
     let inputs = PreLoopInputs {
       params: &params,
       context: &context,
-      names: &names,
       has_alignment: true,
     };
     let clock_fit = ClockFit {
@@ -83,7 +82,13 @@ mod tests {
       points: vec![],
     };
     let input_edges: BTreeSet<GraphEdgeKey> = branch_lengths.keys().copied().collect();
-    let state = PreLoopState::new(graph, branch_lengths, BranchModel::Marginal(reconstruction), clock_fit);
+    let state = PreLoopState::new(
+      graph,
+      names,
+      branch_lengths,
+      BranchModel::Marginal(reconstruction),
+      clock_fit,
+    );
 
     let state = run_pre_loop(&inputs, state, &NoopCancel, &NoopProgress, &NoopProgress)?;
 

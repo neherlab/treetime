@@ -22,7 +22,8 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -34,7 +35,7 @@ mod tests {
   fn test_initial_guess_formula_sparse() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
@@ -73,7 +74,7 @@ mod tests {
   fn test_initial_guess_formula_dense() -> Result<(), Report> {
     let aln: Vec<AlignmentRecord> = divergent_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
@@ -116,11 +117,11 @@ mod tests {
       .collect();
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_dense_names = nwk_parsed.names();
+    let graph_dense_names = nwk_parsed.names.clone();
     let graph_dense = nwk_parsed.graph;
     let mut branch_lengths_dense = nwk_parsed.branch_lengths;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse_names = nwk_parsed.names.clone();
     let graph_sparse = nwk_parsed.graph;
     let mut branch_lengths_sparse = nwk_parsed.branch_lengths;
 
@@ -167,11 +168,11 @@ mod tests {
       .collect();
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_dense_names = nwk_parsed.names();
+    let graph_dense_names = nwk_parsed.names.clone();
     let graph_dense = nwk_parsed.graph;
     let branch_lengths_dense = nwk_parsed.branch_lengths;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_sparse_names = nwk_parsed.names();
+    let graph_sparse_names = nwk_parsed.names.clone();
     let graph_sparse = nwk_parsed.graph;
     let branch_lengths_sparse = nwk_parsed.branch_lengths;
 
@@ -241,7 +242,7 @@ mod tests {
 
   fn setup_sparse(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<PartitionSet, Report> {
@@ -260,7 +261,7 @@ mod tests {
 
   fn setup_dense(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<PartitionSet, Report> {
@@ -278,14 +279,14 @@ mod tests {
 
   fn branch_lengths_by_child_name(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<BTreeMap<String, f64>, Report> {
     graph
       .get_edges()
       .map(|edge_ref| {
         let child_key = edge_ref.target();
-        let child_name = names[&child_key].clone().unwrap();
+        let child_name = names[child_key].to_owned();
         let branch_length = branch_lengths[&edge_ref.key()].unwrap_or(0.0);
         Ok((child_name, branch_length))
       })
@@ -294,7 +295,7 @@ mod tests {
 
   fn optimization_metrics_by_child_name(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     contribution: impl Fn(GraphEdgeKey) -> Result<OptimizationContribution, Report>,
     branch_length: f64,
   ) -> Result<BTreeMap<String, (f64, f64, f64)>, Report> {
@@ -302,7 +303,7 @@ mod tests {
       .get_edges()
       .map(|edge_ref| {
         let child_key = edge_ref.target();
-        let child_name = names[&child_key].clone().unwrap();
+        let child_name = names[child_key].to_owned();
         let metrics =
           evaluate_partitions(&[contribution(edge_ref.key())?], branch_length).expect("valid branch length");
         Ok((

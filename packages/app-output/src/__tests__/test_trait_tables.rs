@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::{
-    mugration_graph, mugration_setup, mugration_setup_from, node_key, topology_from,
+    mugration_graph, mugration_setup, mugration_setup_from, node_key, rename_node, topology_from,
   };
   use crate::annotated_graph::AnnotatedTreeView;
   use crate::augur_node_data_traits::build_augur_node_data_traits;
@@ -14,7 +14,7 @@ mod tests {
   use treetime::gtr::gtr::{GTR, Mu};
   use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
   use treetime_io::csv::{CsvWriter, TableFormat};
-  use treetime_utils::{assert_error, o};
+  use treetime_utils::assert_error;
 
   #[rustfmt::skip]
   #[rstest]
@@ -31,7 +31,7 @@ mod tests {
   ) -> Result<(), Report> {
     let mut topology = topology_from("A;")?;
     let leaf = node_key(&topology, "A");
-    topology.names.insert(leaf, Some(o!(node)));
+    rename_node(&mut topology, leaf, node)?;
     let setup = mugration_setup_from(topology, &[value, "other"], &btreemap! { leaf => value })?;
     let graph = mugration_graph(&setup, attribute);
 
@@ -48,7 +48,7 @@ mod tests {
   fn test_trait_tables_traits_csv_writes_one_row_per_node_with_a_repeated_name() -> Result<(), Report> {
     let mut topology = topology_from("(A:0.1)B;")?;
     let (a, b) = (node_key(&topology, "A"), node_key(&topology, "B"));
-    topology.names.insert(b, Some(o!("A")));
+    rename_node(&mut topology, b, "A")?;
     let setup = mugration_setup_from(topology, &["uk", "usa"], &btreemap! { a => "usa", b => "uk" })?;
     let graph = mugration_graph(&setup, "country");
 
@@ -65,7 +65,7 @@ mod tests {
   fn test_trait_tables_confidence_csv_quotes_fields_per_rfc4180() -> Result<(), Report> {
     let mut topology = topology_from("(A:0.1)B;")?;
     let (a, b) = (node_key(&topology, "A"), node_key(&topology, "B"));
-    topology.names.insert(a, Some(o!("A,1")));
+    rename_node(&mut topology, a, "A,1")?;
     let mut setup = mugration_setup_from(
       topology,
       &["Congo, DR", "usa"],

@@ -54,7 +54,7 @@ mod tests {
 
     pub(super) fn run_prune_empty() -> Result<PruneOutput, Report> {
       let parsed = nwk_read(b"(((A:0.1,B:0.1)AB:0.1,C:0.1)ABC:0.1,D:0.1)root;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let sequences = vec![
         record("A", "ACGT")?,
         record("B", "AGGT")?,
@@ -76,10 +76,11 @@ mod tests {
       };
       let input = PruneInput {
         graph: parsed.graph,
+        names,
         sources: vec![source],
         branch_lengths: parsed.branch_lengths,
       };
-      run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
+      run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
     }
 
     pub(super) fn edge_mutations_by_name(

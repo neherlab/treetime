@@ -19,6 +19,7 @@ use treetime::progress::{LogSink, StageSink};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 
 pub fn run_clock(
@@ -31,7 +32,7 @@ pub fn run_clock(
   stages.report("Reading input", 0.0, "");
 
   let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.tree_dialect.dialect(), log)?;
-  let names = nwk_parsed.names();
+  let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let input_order = leaf_order(&graph);
@@ -56,11 +57,12 @@ pub fn run_clock(
 
   let input = ClockInput {
     graph,
+    names,
     dates,
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, cancel, stages, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::ClockOutput {
     mut graph,
     inputs,
@@ -120,7 +122,7 @@ fn write_clock_run_outputs(
 
 fn write_clock_trees(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   divergences: &BTreeMap<GraphNodeKey, f64>,
   dates: &ClockDates,

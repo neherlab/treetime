@@ -17,7 +17,8 @@ use treetime::gtr::get_gtr::GtrModelName;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource, pair_leaf_sequences};
-use treetime::seq::sink::{SeqItem, SeqSink};
+use treetime::seq::sink::{SeqItem, SeqSink, SeqStream};
+use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::nwk_read_file;
 use treetime_primitives::AlignmentRecord;
@@ -53,13 +54,13 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
     group.bench_with_input(BenchmarkId::new("sparse", threads), &threads, |bencher, _| {
       bencher.iter_batched(
         setup,
-        |input| {
+        |(input, names)| {
           let output = pool
             .install(|| {
               run(
                 &params,
                 black_box(input),
-                Some(&mut DiscardSequences),
+                Some(SeqStream::new(&mut DiscardSequences, &names)),
                 &NoopCancel,
                 &NoopProgress,
                 &NoopProgress,
@@ -84,11 +85,11 @@ impl SeqSink for DiscardSequences {
   }
 }
 
-fn setup() -> AncestralInput {
+fn setup() -> (AncestralInput, NodeNames) {
   let alphabet = Alphabet::default();
   let project_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
   let nwk_parsed = nwk_read_file(project_root.join("data/flu/h3n2/200/tree.nwk")).unwrap();
-  let names = nwk_parsed.names();
+  let names = nwk_parsed.names;
   let alignment: Vec<AlignmentRecord> = fasta_read_file(project_root.join("data/flu/h3n2/200/aln.fasta.xz"), &alphabet)
     .unwrap()
     .into_iter()
@@ -97,7 +98,7 @@ fn setup() -> AncestralInput {
   let sequences = pair_leaf_sequences(&nwk_parsed.graph, &names, alignment).sequences;
   let length = sequences.common_length().unwrap();
   let mask = sequences.mask(length, &alphabet);
-  AncestralInput {
+  let input = AncestralInput {
     edges: nwk_parsed
       .branch_lengths
       .into_iter()
@@ -111,7 +112,8 @@ fn setup() -> AncestralInput {
       nodes: sequences.nodes,
       mask,
     }],
-  }
+  };
+  (input, names)
 }
 
 criterion_group!(benches, benchmark_marginal_scaling);

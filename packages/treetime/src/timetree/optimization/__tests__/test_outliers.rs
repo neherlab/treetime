@@ -12,7 +12,7 @@ mod tests {
   #[test]
   fn test_report_outliers_lists_dated_outliers_by_descending_residual() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:2,C:3,D:4,E:5,F:6)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");
     let divergences = btreemap! {
@@ -61,7 +61,7 @@ mod tests {
   #[test]
   fn test_report_outliers_is_silent_without_outliers() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let log = RecordingLog::default();
 

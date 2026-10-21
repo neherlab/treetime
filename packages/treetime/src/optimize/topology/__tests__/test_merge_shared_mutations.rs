@@ -23,6 +23,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AsciiChar, Seq};
 
@@ -36,7 +37,7 @@ mod tests {
 
   fn make_partition(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     length: usize,
     edge_mutations: &[(&str, &str, Vec<Sub>)],
   ) -> Result<PartitionMarginalSparse, Report> {
@@ -78,21 +79,23 @@ mod tests {
     Ok(partition)
   }
 
-  fn find_unnamed_internal_nodes(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<GraphNodeKey> {
+  fn input_name(names: &NodeNames, key: GraphNodeKey) -> Option<&str> {
+    let name = &names[key];
+    (!name.starts_with("NODE_")).then_some(name)
+  }
+
+  fn find_generated_internal_nodes(graph: &Graph, names: &NodeNames) -> Vec<GraphNodeKey> {
     graph
       .get_nodes()
-      .filter_map(|node| {
-        let is_unnamed = names.get(&node.key()).and_then(|n| n.as_ref()).is_none();
-        let is_internal = !node.is_leaf() && !node.is_root();
-        (is_unnamed && is_internal).then_some(node.key())
-      })
+      .filter(|node| !node.is_leaf() && !node.is_root() && names[node.key()].starts_with("NODE_"))
+      .map(|node| node.key())
       .collect()
   }
 
   #[test]
   fn test_merge_no_polytomy() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)internal:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -108,7 +111,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
     assert_eq!(graph.get_nodes().count(), 4);
     Ok(())
@@ -117,7 +120,7 @@ mod tests {
   #[test]
   fn test_merge_polytomy_no_shared_mutations() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -133,7 +136,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
     assert_eq!(graph.get_nodes().count(), 4);
     Ok(())
@@ -142,7 +145,7 @@ mod tests {
   #[test]
   fn test_merge_polytomy_two_siblings_share_all_mutations() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
@@ -159,22 +162,22 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
     assert_eq!(graph.get_nodes().count(), 5);
     assert_eq!(graph.get_edges().count(), 4);
 
-    let unnamed = find_unnamed_internal_nodes(&graph, &names);
-    assert_eq!(unnamed.len(), 1);
+    let created = find_generated_internal_nodes(&graph, &names);
+    assert_eq!(created.len(), 1);
 
     let p = &partitions[0].partition;
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
-        match target_name.as_deref() {
+        match target_name {
           Some("A" | "B") => assert_eq!(
             edge_data.fitch_subs().len(),
             0,
@@ -197,7 +200,7 @@ mod tests {
   #[test]
   fn test_merge_polytomy_partial_overlap() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -217,7 +220,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
@@ -225,9 +228,9 @@ mod tests {
 
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
-        match target_name.as_deref() {
+        match target_name {
           Some("A") => assert_eq!(edge_data.fitch_subs().len(), 0),
           Some("B") => {
             assert_eq!(edge_data.fitch_subs().len(), 1);
@@ -250,7 +253,7 @@ mod tests {
   #[test]
   fn test_merge_greedy_picks_best_pair() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3,D:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -275,7 +278,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
@@ -284,7 +287,7 @@ mod tests {
     let p = &partitions[0].partition;
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       if target_name.is_none() {
         if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
           assert_eq!(edge_data.fitch_subs().len(), 3);
@@ -298,7 +301,7 @@ mod tests {
   #[test]
   fn test_merge_branch_length_adjustment() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
@@ -315,16 +318,16 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let d = -0.75 * f64::ln(1.0 - 4.0 * 0.02 / 3.0);
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       let bl = branch_lengths[&edge.key()];
 
-      match target_name.as_deref() {
+      match target_name {
         None => assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
         Some("A") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
         Some("B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
@@ -339,7 +342,7 @@ mod tests {
   #[test]
   fn test_merge_child_bl_zero_when_all_shared() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.05,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
@@ -356,15 +359,15 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       let bl = branch_lengths[&edge.key()];
 
-      if target_name.as_deref() == Some("A") {
+      if target_name == Some("A") {
         assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15);
       }
     }
@@ -375,7 +378,7 @@ mod tests {
   #[test]
   fn test_merge_multiple_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -422,7 +425,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![p1, p2]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
@@ -430,7 +433,7 @@ mod tests {
     let d_expected = -0.75 * f64::ln(1.0 - 4.0 * p_pooled / 3.0);
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       let bl = branch_lengths[&edge.key()];
 
       if target_name.is_none() {
@@ -442,8 +445,8 @@ mod tests {
     let p2 = &partitions[1].partition;
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
-      if target_name.as_deref() == Some("B") {
+      let target_name = input_name(&names, target.key());
+      if target_name == Some("B") {
         assert_eq!(p1.obs_edges[&edge.key()].fitch_subs().len(), 1);
         assert_eq!(p1.obs_edges[&edge.key()].fitch_subs()[0], sub(b'G', 5, b'C'));
         assert_eq!(p2.obs_edges[&edge.key()].fitch_subs().len(), 0);
@@ -456,7 +459,7 @@ mod tests {
   #[test]
   fn test_merge_repeated_until_exhausted() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -474,7 +477,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 2);
 
     graph.build()?;
@@ -487,13 +490,13 @@ mod tests {
   #[test]
   fn test_merge_empty_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut partitions: Vec<SparseReconstruction> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 0);
     Ok(())
   }
@@ -501,7 +504,7 @@ mod tests {
   #[test]
   fn test_merge_preserves_tree_structure_for_non_polytomies() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1,C:0.1)internal1:0.1,D:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -519,7 +522,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     graph.build()?;
@@ -534,7 +537,7 @@ mod tests {
   #[test]
   fn test_merge_single_mutation_shared() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.05,B:0.05,C:0.05)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -550,14 +553,14 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
     let d_expected = -0.75 * f64::ln(1.0 - 4.0 * 0.001 / 3.0);
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       let bl = branch_lengths[&edge.key()];
 
       if target_name.is_none() {
@@ -571,7 +574,7 @@ mod tests {
   #[test]
   fn test_merge_branch_length_jc_correction_differs_from_raw() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.5,B:0.5,C:0.5)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let shared: Vec<Sub> = (0..10).map(|i| sub(b'A', i, b'T')).collect();
@@ -588,7 +591,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let p = 0.10;
@@ -596,10 +599,10 @@ mod tests {
     assert!(d > p * 1.05, "JC correction must exceed raw p by >5%: d={d} p={p}");
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
-      let target_name = names.get(&target.key()).cloned().flatten();
+      let target_name = input_name(&names, target.key());
       let bl = branch_lengths[&edge.key()];
 
-      match target_name.as_deref() {
+      match target_name {
         None => assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
         Some("A" | "B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
         _ => {},
@@ -623,7 +626,7 @@ mod tests {
   ) -> Result<(), Report> {
     let newick = format!("(A:{newick_bl},B:{newick_bl},C:{newick_bl})root;");
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -632,7 +635,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
@@ -647,7 +650,7 @@ mod tests {
   #[test]
   fn test_merge_child_bl_includes_indels_in_remaining() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.5,B:0.5,C:0.5)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let shared = vec![sub(b'A', 0, b'T'), sub(b'G', 5, b'C')];
@@ -671,7 +674,7 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
@@ -684,7 +687,7 @@ mod tests {
   #[test]
   fn test_merge_child_bl_across_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.5,B:0.5,C:0.5)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -719,7 +722,7 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![p1, p2]);
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
@@ -732,7 +735,7 @@ mod tests {
   #[test]
   fn test_merge_group_three_siblings_same_mutation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = make_partition(
@@ -749,14 +752,14 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
-    let unnamed = find_unnamed_internal_nodes(&graph, &names);
-    assert_eq!(unnamed.len(), 1);
+    let created = find_generated_internal_nodes(&graph, &names);
+    assert_eq!(created.len(), 1);
 
-    let new_node = graph.get_node(unnamed[0]).expect("new internal node");
+    let new_node = graph.get_node(created[0]).expect("new internal node");
     assert_eq!(new_node.degree_out(), 3);
 
     Ok(())
@@ -765,7 +768,7 @@ mod tests {
   #[test]
   fn test_merge_shared_indels_only() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut partition = make_partition(
@@ -790,7 +793,7 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
 
     Ok(())
@@ -799,7 +802,7 @@ mod tests {
   #[test]
   fn test_merge_shared_subs_and_indels_split_correctly() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut partition = make_partition(
@@ -824,7 +827,7 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
     let mut branch_lengths = branch_lengths;
-    merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     let edge_data = helpers::extract_edge_mutation_counts(&names, &graph, &partitions[0].partition);
@@ -847,7 +850,7 @@ mod tests {
     }
 
     pub(super) fn extract_branch_lengths(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
     ) -> BTreeMap<String, f64> {
@@ -855,7 +858,7 @@ mod tests {
         .get_edges()
         .filter_map(|edge| {
           let target = graph.get_node(edge.target())?;
-          let name = names.get(&target.key()).cloned().flatten()?;
+          let name = input_name(names, target.key())?.to_owned();
           let bl = branch_lengths[&edge.key()]?;
           Some((name, bl))
         })
@@ -863,7 +866,7 @@ mod tests {
     }
 
     pub(super) fn extract_edge_mutation_counts<'a>(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       graph: &Graph,
       partition: &PartitionMarginalSparse,
     ) -> BTreeMap<Option<&'a str>, (usize, usize)> {
@@ -871,9 +874,9 @@ mod tests {
       let mut result = BTreeMap::new();
       for edge in graph.get_edges() {
         let target = graph.get_node(edge.target()).expect("target node");
-        let target_name = names.get(&target.key()).cloned().flatten();
+        let target_name = input_name(names, target.key());
         if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
-          let key: Option<&'a str> = match target_name.as_deref() {
+          let key: Option<&'a str> = match target_name {
             Some("A") => Some("A"),
             Some("B") => Some("B"),
             Some("C") => Some("C"),
@@ -919,7 +922,7 @@ mod tests {
 
     pub(super) fn make_second_partition(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       length: usize,
       edge_subs: &[((&str, &str), Vec<Sub>)],
     ) -> Result<PartitionMarginalSparse, Report> {

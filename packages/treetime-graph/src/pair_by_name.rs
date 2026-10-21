@@ -1,4 +1,5 @@
 use crate::node::GraphNodeKey;
+use crate::node_names::NodeNames;
 use indexmap::IndexMap;
 use indexmap::map::Entry;
 use itertools::izip;
@@ -6,7 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub fn pair_by_name<T: Clone>(
   candidates: impl IntoIterator<Item = GraphNodeKey>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   entries: impl IntoIterator<Item = (String, T)>,
 ) -> NamePairing<T> {
   let mut duplicate_entry_names = BTreeSet::new();
@@ -24,7 +25,7 @@ pub fn pair_by_name<T: Clone>(
 
   let mut keys_by_entry: Vec<Vec<GraphNodeKey>> = vec![vec![]; by_name.len()];
   for key in candidates {
-    if let Some(index) = names[&key].as_deref().and_then(|name| by_name.get_index_of(name)) {
+    if let Some(index) = by_name.get_index_of(&names[key]) {
       keys_by_entry[index].push(key);
     }
   }
@@ -49,16 +50,14 @@ pub fn pair_by_name<T: Clone>(
 
 pub fn first_key_by_name(
   candidates: impl IntoIterator<Item = GraphNodeKey>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> BTreeMap<&str, GraphNodeKey> {
   let mut first_key_of: BTreeMap<&str, GraphNodeKey> = BTreeMap::new();
   for key in candidates {
-    if let Some(name) = names[&key].as_deref() {
-      first_key_of
-        .entry(name)
-        .and_modify(|first| *first = (*first).min(key))
-        .or_insert(key);
-    }
+    first_key_of
+      .entry(&names[key])
+      .and_modify(|first| *first = (*first).min(key))
+      .or_insert(key);
   }
   first_key_of
 }

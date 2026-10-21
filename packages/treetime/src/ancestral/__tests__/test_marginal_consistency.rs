@@ -26,7 +26,8 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
@@ -84,7 +85,7 @@ mod tests {
   fn run_dense_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, MarginalReconstruction), Report> {
@@ -99,7 +100,7 @@ mod tests {
   fn run_sparse_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, MarginalReconstruction), Report> {
@@ -116,7 +117,7 @@ mod tests {
   fn test_marginal_dense_sparse_log_lh_consistency_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -142,7 +143,7 @@ mod tests {
   fn test_marginal_sparse_varpos_matches_dense_profile_gap_free() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -199,7 +200,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -265,7 +266,7 @@ mod tests {
   fn test_marginal_dense_sparse_ambiguous_r_reference_state_consistency() -> Result<(), Report> {
     let aln = ambiguous_r_in_g_clade_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -315,7 +316,7 @@ mod tests {
     .map(AlignmentRecord::from)
     .collect_vec();
     let nwk_parsed = nwk_read(b"((L1:0.1,L2:0.1)X:0.1,L3:0.1)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph: Graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let x_key = find_node_key_by_name(&graph, &names, "X").expect("node X must exist");
@@ -355,7 +356,7 @@ mod tests {
 
   fn reconstruct_named_sequences(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     recon: &MarginalReconstruction,
   ) -> Result<BTreeMap<String, Seq>, Report> {
     let sampled = recon.sample_sequences(graph, SampleMode::Argmax, &mut get_random_number_generator(0))?;
@@ -366,15 +367,15 @@ mod tests {
 
   fn edge_subs_by_edge_name(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     edge_subs: impl Fn(GraphEdgeKey) -> Result<Vec<Sub>, Report>,
   ) -> Result<BTreeMap<String, Vec<Sub>>, Report> {
     graph
       .get_edges()
       .map(|edge_ref| {
         let edge = edge_ref;
-        let parent_name = names.get(&edge.source()).cloned().flatten().expect("named parent");
-        let child_name = names.get(&edge.target()).cloned().flatten().expect("named child");
+        let parent_name = names[edge.source()].to_owned();
+        let child_name = names[edge.target()].to_owned();
         let edge_name = format!("{parent_name}->{child_name}");
         let subs = edge_subs(edge.key())?;
         Ok((edge_name, subs))
@@ -404,7 +405,7 @@ mod tests {
 
     let tree_newick = "((A:0.601,B:0.301):0.1,C:0.2):0.001;";
     let nwk_parsed = nwk_read(tree_newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -451,7 +452,7 @@ mod tests {
   fn test_marginal_sparse_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -480,7 +481,7 @@ mod tests {
   fn test_marginal_dense_uniform_site_rates_matches_scalar() -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -513,7 +514,7 @@ mod tests {
   fn test_marginal_site_rates_rejected_by_branch_length_contribution(#[case] #[notrace] run: MarginalRunner) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let seq_len = get_common_length(&aln)?;
@@ -549,7 +550,7 @@ mod tests {
   ) -> Result<(), Report> {
     let aln = gap_free_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -568,7 +569,7 @@ mod tests {
   type MarginalRunner = fn(
     &Graph,
     &BTreeMap<GraphEdgeKey, Option<f64>>,
-    &BTreeMap<GraphNodeKey, Option<String>>,
+    &NodeNames,
     &[AlignmentRecord],
     GTR,
   ) -> Result<(f64, MarginalReconstruction), Report>;

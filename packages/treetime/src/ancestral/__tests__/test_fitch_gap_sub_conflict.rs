@@ -23,7 +23,7 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
     let nwk_parsed = nwk_read(nwk.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let graph: Graph = graph;
     let partition = PartitionFitch {
@@ -34,7 +34,7 @@ mod tests {
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
-    let name = |key| -> String { names.get(&key).cloned().flatten().unwrap_or_default() };
+    let name = |key| -> String { names[key].to_owned() };
 
     Ok(
       graph

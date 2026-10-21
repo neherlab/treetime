@@ -76,7 +76,7 @@ mod tests {
 
     fn replicate_rates(records: &[AlignmentRecord], replicate: usize) -> Result<Vec<f64>, Report> {
       let parse = nwk_read(TestDataset::Zika86.tree().as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = (0..FILE_COUNT)
         .map(|file| {
           let start = (replicate * FILE_COUNT + file) * SITES_PER_FILE;
@@ -107,10 +107,11 @@ mod tests {
       };
       let input = OptimizeInput {
         graph: parse.graph,
+        names,
         sources,
         branch_lengths: parse.branch_lengths,
       };
-      let output = run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)?;
+      let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
       output
         .results
         .iter()

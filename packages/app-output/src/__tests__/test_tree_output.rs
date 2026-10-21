@@ -25,6 +25,7 @@ pub(super) mod tests {
   use treetime::progress::NoopProgress;
   use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
   use treetime_graph::graph::Graph;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
   use treetime_io::nwk::{NwkStyle, nwk_read};
   use treetime_primitives::Seq;
@@ -222,7 +223,7 @@ pub(super) mod tests {
       .join("\n");
     assert!(errors.is_empty(), "Auspice schema errors:\n{errors}");
     let reparsed = nwk_read(read_file_to_string(&nwk_path)?.as_bytes())?;
-    assert_eq!(dated.topology.names, reparsed.names());
+    assert_eq!(dated.topology.names, reparsed.names);
     Ok(())
   }
 
@@ -287,14 +288,19 @@ pub(super) mod tests {
       graph.add_edge(right, shared)?,
     ];
     graph.build()?;
-    let topology = Topology {
-      graph,
-      names: btreemap! {
+    let names = NodeNames::from_input(
+      btreemap! {
         root => Some(o!("root")),
         left => Some(o!("L")),
         right => Some(o!("R")),
         shared => Some(o!("S")),
       },
+      &graph,
+    )?
+    .names;
+    let topology = Topology {
+      graph,
+      names,
       branch_lengths: edges.iter().map(|&edge| (edge, Some(0.1))).collect(),
     };
     let dir = TempDir::new().wrap_err("When creating a temporary directory")?;

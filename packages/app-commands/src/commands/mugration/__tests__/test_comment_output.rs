@@ -19,7 +19,7 @@ mod tests {
   #[test]
   fn test_mugration_annotated_tree_has_trait_comments() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let traits = btreemap! {

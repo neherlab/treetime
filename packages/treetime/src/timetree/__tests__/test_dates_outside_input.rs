@@ -27,7 +27,7 @@ mod tests {
   ) -> Result<(), Report> {
     let [a, b, c, d, x, y, root] = node_dates;
     let parsed = nwk_read(TREE.as_bytes())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let key = |name: &str| find_node_key_by_name(&parsed.graph, &names, name).expect("node must exist");
     let range = |start: f64, end: f64| DateConstraint {
       raw: o!("range"),
@@ -63,7 +63,7 @@ mod tests {
   #[test]
   fn test_dates_outside_input_dates_skips_undated_tips_and_nodes_without_dates() -> Result<(), Report> {
     let parsed = nwk_read(TREE.as_bytes())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let key = |name: &str| find_node_key_by_name(&parsed.graph, &names, name).expect("node must exist");
     let dates = btreemap! {
       key("A") => DateConstraint::exact(2010.0),

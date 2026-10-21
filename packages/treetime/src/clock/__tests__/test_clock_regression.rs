@@ -21,6 +21,7 @@ mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
 
@@ -42,14 +43,14 @@ mod tests {
     };
 
     let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
     let divergences = root_to_node_divergences(&graph, |edge_key| branch_lengths[&edge_key].unwrap_or_default())?;
     let divs: BTreeMap<String, f64> = graph
       .get_leaves()
-      .map(|leaf| (names[&leaf.key()].clone().unwrap(), divergences[&leaf.key()]))
+      .map(|leaf| (names[leaf.key()].to_owned(), divergences[&leaf.key()]))
       .collect();
     let naive_rate = compute_naive_rate(&dates, &divs);
 
@@ -62,7 +63,7 @@ mod tests {
   #[test]
   fn test_clock_regression_fallback_replaces_only_a_non_positive_rate() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let branch_lengths = nwk_parsed.branch_lengths;
     let divergences = root_to_node_divergences(&nwk_parsed.graph, |edge_key| {
       branch_lengths[&edge_key].unwrap_or_default()
@@ -70,7 +71,7 @@ mod tests {
     let divs: BTreeMap<String, f64> = nwk_parsed
       .graph
       .get_leaves()
-      .map(|leaf| (names[&leaf.key()].clone().unwrap(), divergences[&leaf.key()]))
+      .map(|leaf| (names[leaf.key()].to_owned(), divergences[&leaf.key()]))
       .collect();
     let falling: BTreeMap<String, f64> = divs
       .iter()
@@ -241,7 +242,7 @@ mod tests {
       prev_clock_rate: Option<f64>,
     ) -> Result<(ClockModel, Vec<(String, Option<f64>, f64, bool)>), Report> {
       let nwk_parsed = nwk_read(tree.as_bytes())?;
-      let names = nwk_parsed.names();
+      let mut names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let times = leaf_times(&names, &graph, dates);
@@ -250,10 +251,10 @@ mod tests {
         .map(|(&key, length)| (key, (length.map(|length| length * 100.0), 3.0)))
         .collect();
       let inputs = ClockInputs::from_times(&graph, &times, &edge_inputs);
-      let outliers: BTreeSet<GraphNodeKey> = names
-        .iter()
-        .filter(|(_, name)| name.as_deref().is_some_and(|name| outlier_names.contains(&name)))
-        .map(|(key, _)| *key)
+      let outliers: BTreeSet<GraphNodeKey> = graph
+        .get_nodes()
+        .map(|node| node.key())
+        .filter(|key| outlier_names.contains(&&names[*key]))
         .collect();
       let (_, result) = estimate_clock_model_with_reroot_policy(
         ClockTree {
@@ -268,7 +269,7 @@ mod tests {
           reroot_params: &RerootParams::default(),
           prev_clock_rate,
         },
-        &names,
+        &mut names,
         &NoopProgress,
       )?;
       let fit = result.into_clock_fit()?;
@@ -276,7 +277,7 @@ mod tests {
         .points
         .iter()
         .map(|point| {
-          let name = names[&point.key].clone().unwrap();
+          let name = names[point.key].to_owned();
           (name, point.date, point.div, point.is_outlier)
         })
         .sorted_by(|a, b| a.0.cmp(&b.0))
@@ -285,14 +286,14 @@ mod tests {
     }
 
     pub(super) fn leaf_times(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       graph: &Graph,
       dates: &BTreeMap<String, f64>,
     ) -> BTreeMap<GraphNodeKey, Option<f64>> {
       graph
         .get_leaves()
         .map(|node| {
-          let name = names[&node.key()].clone().unwrap();
+          let name = names[node.key()].to_owned();
           (node.key(), dates.get(&name).copied())
         })
         .collect()
@@ -304,7 +305,7 @@ mod tests {
 
     pub(super) fn root_fit(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRerootResult, Report> {
       let nwk_parsed = nwk_read(tree.as_bytes())?;
-      let names = nwk_parsed.names();
+      let mut names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let times = leaf_times(&names, &graph, dates);
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
@@ -321,7 +322,7 @@ mod tests {
           reroot_params: &RerootParams::default(),
           prev_clock_rate: None,
         },
-        &names,
+        &mut names,
         &NoopProgress,
       )?;
       Ok(result)

@@ -1,5 +1,4 @@
 use crate::clock::date_constraints::DateConstraints;
-use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_warn;
 use crate::timetree::inference::result::{
@@ -21,6 +20,7 @@ use treetime_distribution::distribution_multiplication;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::PerEdge;
 use treetime_grid::MaxGridPoints;
@@ -46,7 +46,7 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
     .into_map();
 
   for &key in schedule.preorder().iter().filter(|key| outputs[key].undated) {
-    let name = node_label(inputs.names, key);
+    let name = &inputs.names[key];
     progress_warn!(
       log,
       "Timetree forward pass: node '{name}' has an empty time distribution; no date was assigned. \
@@ -152,7 +152,7 @@ where
 
 pub(crate) struct ForwardPassInputs<'a> {
   pub constraints: &'a DateConstraints,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: &'a NodeNames,
   pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
   pub max_points: MaxGridPoints,
 }
@@ -164,7 +164,7 @@ struct ForwardOutput<S> {
 }
 
 fn refine_distribution_from_parent(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   key: GraphNodeKey,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
   parent: Option<&Posterior>,
@@ -268,7 +268,7 @@ pub(super) fn committed_time(likely_time: f64, parent_time: Option<f64>) -> f64 
 }
 
 fn log_refinement(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   key: GraphNodeKey,
   parent: &Distribution<NegLog>,
   convolved: &Distribution<NegLog>,
@@ -278,7 +278,7 @@ fn log_refinement(
   if !log_enabled!(Level::Debug) {
     return;
   }
-  let name = node_label(names, key);
+  let name = &names[key];
   debug!(
     "Timetree forward pass: node '{name}': parent {} -> convolved {} at {spacing:?} spacing -> refined {}",
     describe_grid(parent),
@@ -288,7 +288,7 @@ fn log_refinement(
 }
 
 fn log_kept_given_date(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   key: GraphNodeKey,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
   dist_from_parent: &Distribution<NegLog>,
@@ -296,7 +296,7 @@ fn log_kept_given_date(
   if !log_enabled!(Level::Debug) {
     return;
   }
-  let name = node_label(names, key);
+  let name = &names[key];
   let given = date_constraint.map_or_else(|| "none".to_owned(), |constraint| describe_grid(constraint.as_ref()));
   debug!(
     "Timetree forward pass: node '{name}' keeps the date it was given, {given}: the rest of the \

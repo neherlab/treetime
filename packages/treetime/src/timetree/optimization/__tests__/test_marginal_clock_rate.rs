@@ -124,6 +124,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::node_names::NodeNames;
     use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
     const PRECISION: f64 = 4.0;
@@ -135,7 +136,7 @@ mod tests {
       pub constraints: DateConstraints,
       pub bad_branches: BTreeMap<GraphNodeKey, bool>,
       pub branches: BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
-      pub names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub names: NodeNames,
     }
 
     impl Cherry {
@@ -164,7 +165,7 @@ mod tests {
 
     pub(super) fn cherry() -> Result<Cherry, Report> {
       let parsed = nwk_read(b"(A:8.0,B:5.0)root;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let mut constraints = DateConstraints::default();
       let mut branches = unknown_branches(&graph);

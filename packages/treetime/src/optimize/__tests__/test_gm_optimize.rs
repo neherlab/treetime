@@ -71,7 +71,7 @@ mod tests {
         let bl = result.branch_lengths.get(&edge.key()).copied().flatten()?;
         let target_key = edge.target();
         let node = result.graph.get_node(target_key)?;
-        let name = result.names.get(&node.key()).cloned().flatten()?;
+        let name = result.names[node.key()].to_owned();
         Some((name, bl))
       })
       .collect();
@@ -154,6 +154,7 @@ mod tests {
   mod helpers {
     use crate::optimize::partition_rates::PartitionRates;
     use crate::progress::NoopProgress;
+    use treetime_graph::node_names::NodeNames;
 
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
@@ -177,7 +178,7 @@ mod tests {
     use std::path::Path;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_io::fasta::fasta_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_primitives::AlignmentRecord;
@@ -200,7 +201,7 @@ mod tests {
 
     pub(super) struct OptimizeResult {
       pub(crate) graph: Graph,
-      pub(crate) names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub(crate) names: NodeNames,
       pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
       pub(crate) lh_history: Vec<f64>,
       pub(crate) stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
@@ -235,7 +236,7 @@ mod tests {
         .map(AlignmentRecord::from)
         .collect();
       let nwk_parsed = nwk_read_file(&tree_path)?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let mut graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -273,7 +274,7 @@ mod tests {
           partition_rates: PartitionRates::Estimate,
         },
         branch_lengths,
-        &names_tt_1,
+        names_tt_1,
         &NoopProgress,
       )?;
       let branch_lengths = result.branch_lengths;

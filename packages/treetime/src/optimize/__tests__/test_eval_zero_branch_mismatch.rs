@@ -20,7 +20,7 @@ mod tests {
   #[test]
   fn test_eval_zero_branch_mismatch_no_nan() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.0,B:0.0)AB:0.0,(C:0.0,D:0.0)CD:0.0)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 

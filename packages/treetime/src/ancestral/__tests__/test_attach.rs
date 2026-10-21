@@ -9,7 +9,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::{assert_error, o};
@@ -164,7 +165,7 @@ mod tests {
   #[test]
   fn test_attach_gives_leaves_that_share_a_name_the_first_record_of_that_name() {
     let nwk_parsed = nwk_read(b"(A:0.1,A:0.1,B:0.1)root;".as_slice()).unwrap();
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT"), ("B", "GGGG"), ("A", "TTTT")]);
 
@@ -214,23 +215,23 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn two_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+    pub(super) fn two_leaf_tree() -> (Graph, NodeNames) {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.1)root;".as_slice()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       (graph, names)
     }
 
-    pub(super) fn three_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+    pub(super) fn three_leaf_tree() -> (Graph, NodeNames) {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       (graph, names)
     }
 
-    pub(super) fn four_leaf_tree() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>) {
+    pub(super) fn four_leaf_tree() -> (Graph, NodeNames) {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.1):0.1,(C:0.1,D:0.1):0.1)root;".as_slice()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       (graph, names)
     }
@@ -247,7 +248,7 @@ mod tests {
 
     pub(super) fn complete(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       records: Vec<AlignmentRecord>,
       alphabet: &Alphabet,
       limit: MissingLeafLimit,
@@ -267,7 +268,7 @@ mod tests {
         sequences
           .nodes
           .into_values()
-          .filter_map(|node| Some((node.name?, node.seq?)))
+          .filter_map(|node| Some((node.name, node.seq?)))
           .collect(),
       )
     }

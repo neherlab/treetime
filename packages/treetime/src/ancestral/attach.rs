@@ -6,7 +6,6 @@ use crate::{make_error, make_internal_report};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AlphabetLike, Seq, seq};
@@ -30,10 +29,7 @@ pub fn complete_alignment_for_leaves(
 
   let n_missing = missing.len();
   warn_leaves_without_data(
-    &missing
-      .iter()
-      .map(|key| node_name_or_key(*key, nodes[key].name.as_deref()))
-      .collect_vec(),
+    &missing.iter().map(|key| nodes[key].name.clone()).collect_vec(),
     n_leaves,
     LeafData::Sequence,
     source,

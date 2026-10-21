@@ -11,8 +11,10 @@ use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
+use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::{NewickDialect, NwkParse};
 
@@ -28,7 +30,6 @@ pub(crate) fn read_tree_and_sources(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
   let tree = read_input_tree(args.tree, args.tree_dialect, log)?;
-  let names = tree.names();
   let settings = SourceSettings {
     alphabet: &alphabet,
     gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
@@ -36,7 +37,7 @@ pub(crate) fn read_tree_and_sources(
       ignored: args.ignore_missing_alns,
     },
   };
-  let sources = read_sequence_sources(args.alignment, &settings, &tree.graph, &names, log)?;
+  let sources = read_sequence_sources(args.alignment, &settings, &tree.graph, &tree.names, log)?;
   Ok(TreeAndSources { tree, sources })
 }
 
@@ -44,7 +45,7 @@ pub(crate) fn read_sequence_sources(
   alignment: &AlignmentArgs,
   settings: &SourceSettings<'_>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<Vec<AlignmentSource>, Report> {
   alignment
@@ -54,17 +55,16 @@ pub(crate) fn read_sequence_sources(
     .collect()
 }
 
-pub(crate) fn ancestral_input(tree: NwkParse, sources: Vec<SequenceSource>) -> AncestralInput {
-  let edges = tree
-    .branch_lengths
+pub(crate) fn ancestral_input(
+  graph: Graph,
+  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  sources: Vec<SequenceSource>,
+) -> AncestralInput {
+  let edges = branch_lengths
     .into_iter()
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
-  AncestralInput {
-    graph: tree.graph,
-    edges,
-    sources,
-  }
+  AncestralInput { graph, edges, sources }
 }
 
 pub(crate) struct SequenceInputArgs<'a> {
@@ -85,7 +85,7 @@ fn read_sequence_source(
   path: &Path,
   settings: &SourceSettings<'_>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<AlignmentSource, Report> {
   let alphabet = settings.alphabet;

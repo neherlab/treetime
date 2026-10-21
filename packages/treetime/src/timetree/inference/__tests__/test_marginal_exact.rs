@@ -160,7 +160,7 @@ mod tests {
       grid: &[f64],
     ) -> Result<(Vec<f64>, Vec<f64>), Report> {
       let parsed = nwk_read(b"((A:1,B:1)X:1,C:1)R;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
       let branches: BTreeMap<_, _> = ["A", "B", "X", "C"]
@@ -287,7 +287,7 @@ mod tests {
       grid: &[f64],
     ) -> Result<[Vec<f64>; 3], Report> {
       let parsed = nwk_read(b"((A:1,B:1)X:1,(C:1,D:1)Y:1)R;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
       let branches: BTreeMap<_, _> = ["A", "B", "C", "D", "X", "Y"]

@@ -15,7 +15,7 @@ mod tests {
   #[test]
   fn test_solver_outcome_reports_unconverged_rounds_of_a_run_as_one_warning() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut pre_reroot = ConvergenceSummary::default();
     pre_reroot.record(
@@ -55,7 +55,7 @@ mod tests {
   #[test]
   fn test_solver_outcome_reports_search_bound_alone_in_singular() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut summary = ConvergenceSummary::default();
     summary.record(
@@ -84,7 +84,7 @@ mod tests {
   #[test]
   fn test_solver_outcome_reports_nothing_when_every_edge_converged() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut summary = ConvergenceSummary::default();
     summary.record(&UnconvergedEdges::default(), &graph, &names);
@@ -98,22 +98,18 @@ mod tests {
   }
 
   mod helpers {
-    use std::collections::BTreeMap;
+    use treetime_graph::node_names::NodeNames;
+
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
 
-    pub(super) fn edges_into(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      targets: &[&str],
-    ) -> Vec<GraphEdgeKey> {
+    pub(super) fn edges_into(graph: &Graph, names: &NodeNames, targets: &[&str]) -> Vec<GraphEdgeKey> {
       targets
         .iter()
         .map(|&target| {
           graph
             .get_edges()
-            .find(|edge| names[&edge.target()].as_deref() == Some(target))
+            .find(|edge| &names[edge.target()] == target)
             .expect("edge into the named node")
             .key()
         })

@@ -21,7 +21,7 @@ mod tests {
 
     let written = nwk_write_str(
       &GraphSchedule::new(&parse.graph)?.into_tree()?,
-      &parse.names(),
+      &parse.names,
       &parse.branch_lengths,
       &NwkWriteOptions::default(),
       &NwkNodeComments::new(),
@@ -67,7 +67,7 @@ mod tests {
 
     let written = nwk_write_str(
       &GraphSchedule::new(&parse.graph)?.into_tree()?,
-      &parse.names(),
+      &parse.names,
       &parse.branch_lengths,
       &NwkWriteOptions::default(),
       &NwkNodeComments::new(),
@@ -96,7 +96,7 @@ mod tests {
 
     let written = nwk_write_str(
       &GraphSchedule::new(&parse.graph)?.into_tree()?,
-      &parse.names(),
+      &parse.names,
       &parse.branch_lengths,
       &NwkWriteOptions::default(),
       &NwkNodeComments::new(),

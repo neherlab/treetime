@@ -84,6 +84,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::seq::sink::SeqStream;
 
     pub(super) fn reconstruct(
       nwk: &str,
@@ -93,7 +94,7 @@ mod tests {
     ) -> Result<(AncestralOutput, BTreeMap<GraphNodeKey, Seq>), Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read(nwk.as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sequences = fasta_read(fasta.as_bytes(), &alphabet)?
         .into_iter()
         .map(AlignmentRecord::from)
@@ -123,7 +124,7 @@ mod tests {
       let output = run(
         &params,
         input,
-        Some(&mut sink),
+        Some(SeqStream::new(&mut sink, &names)),
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,

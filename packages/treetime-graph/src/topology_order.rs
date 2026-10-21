@@ -1,7 +1,7 @@
-use crate::assign_node_names::node_name_or_key;
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
+use crate::node_names::NodeNames;
 use crate::schedule::GraphSchedule;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -31,7 +31,7 @@ impl TopologyOrderSpec {
   pub fn apply(
     &self,
     graph: &mut Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<(), Report> {
     let order = if self.preset == TopologyOrderPreset::Keep {
@@ -58,7 +58,7 @@ impl TopologyOrderSpec {
     &self,
     graph: &Graph,
     postorder: &[GraphNodeKey],
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<TopologyOrder, Report> {
     let reverse = self.preset.is_reverse();
@@ -77,7 +77,7 @@ impl TopologyOrderSpec {
         build_order(graph, &keys, reverse)
       },
       TopologyOrderPreset::Label | TopologyOrderPreset::LabelReverse => {
-        let keys = compute_labels(graph, postorder, names)?;
+        let keys = compute_labels(graph, postorder, names);
         build_order(graph, &keys, reverse)
       },
       TopologyOrderPreset::TargetOrder | TopologyOrderPreset::TargetOrderReverse => {
@@ -234,35 +234,24 @@ fn compute_divergences(
   divergences
 }
 
-fn compute_labels(
-  graph: &Graph,
-  postorder: &[GraphNodeKey],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
-  let mut labels = graph
-    .get_nodes()
-    .filter(|node| node.is_leaf())
-    .map(|node| {
-      let key = node.key();
-      names[&key]
-        .clone()
-        .map(|name| (key, name))
-        .ok_or_else(|| make_report!("When ordering topology by labels: leaf node {key} has no name"))
-    })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+fn compute_labels(graph: &Graph, postorder: &[GraphNodeKey], names: &NodeNames) -> BTreeMap<GraphNodeKey, String> {
+  let mut labels: BTreeMap<GraphNodeKey, String> = graph
+    .get_leaves()
+    .map(|node| (node.key(), names[node.key()].to_owned()))
+    .collect();
   for &node_key in postorder {
     let node = &graph[node_key];
     if let Some(label) = graph.children_keys_of(node).map(|(key, _)| labels[&key].clone()).min() {
       labels.insert(node_key, label);
     }
   }
-  Ok(labels)
+  labels
 }
 
 fn compute_target_scores(
   graph: &Graph,
   postorder: &[GraphNodeKey],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   target_order: &BTreeMap<GraphNodeKey, usize>,
   aggregate: TopologyOrderTargetAggregate,
 ) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
@@ -379,7 +368,7 @@ impl PartialOrd for TargetScore {
 
 fn validate_target_order(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   target_order: &BTreeMap<GraphNodeKey, usize>,
 ) -> Result<(), Report> {
   match graph
@@ -389,7 +378,7 @@ fn validate_target_order(
   {
     Some(key) => make_error!(
       "When validating target order: leaf '{}' is absent from target order",
-      node_name_or_key(key, names[&key].as_deref())
+      &names[key]
     ),
     None => Ok(()),
   }

@@ -21,7 +21,7 @@ mod tests {
   #[test]
   fn test_timetree_nexus_output_includes_mutations_and_date() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let edge_subs = &[(
       0,

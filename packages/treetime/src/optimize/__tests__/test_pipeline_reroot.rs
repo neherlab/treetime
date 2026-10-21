@@ -22,10 +22,10 @@ mod tests {
       &params_with(Some(RerootSpec::Method(RerootMethod::MinDev))),
       OptimizeInput {
         graph,
+        names,
         sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
-      &names,
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -51,10 +51,10 @@ mod tests {
       &params_with(Some(RerootSpec::Tips(tips))),
       OptimizeInput {
         graph,
+        names,
         sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
-      &names,
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -78,10 +78,10 @@ mod tests {
       &params,
       OptimizeInput {
         graph,
+        names,
         sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
-      &names,
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -102,7 +102,7 @@ mod tests {
     let mut expected: Vec<String> = sequences
       .values()
       .filter(|node| node.seq.is_some())
-      .filter_map(|node| node.name.clone())
+      .map(|node| node.name.clone())
       .collect();
     expected.sort();
 
@@ -112,10 +112,10 @@ mod tests {
       &params,
       OptimizeInput {
         graph,
+        names,
         sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
-      &names,
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -128,7 +128,7 @@ mod tests {
       output
         .graph
         .get_nodes()
-        .all(|node| output.names[&node.key()].as_deref() != Some("UNARYROOT")),
+        .all(|node| &output.names[node.key()] != "UNARYROOT"),
       "the unary root is removed from the graph"
     );
     assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
@@ -143,10 +143,10 @@ mod tests {
       &params_with(None),
       OptimizeInput {
         graph,
+        names,
         sources: vec![sequence_source(alphabet, sequences)?],
         branch_lengths,
       },
-      &names,
       &NoopCancel,
       &NoopProgress,
       &NoopProgress,
@@ -173,11 +173,12 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::{NwkParse, nwk_read};
 
     pub(super) type Loaded = (
       Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
+      NodeNames,
       Alphabet,
       BTreeMap<GraphNodeKey, NodeSeqInput>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -230,16 +231,13 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn leaf_names(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
-      graph
-        .get_leaves()
-        .map(|leaf| names.get(&leaf.key()).cloned().flatten().expect("leaf has a name"))
-        .collect()
+    pub(super) fn leaf_names(graph: &Graph, names: &NodeNames) -> Vec<String> {
+      graph.get_leaves().map(|leaf| names[leaf.key()].to_owned()).collect()
     }
 
     fn loaded(nwk_parsed: NwkParse) -> Result<Loaded, Report> {
       let alphabet = Alphabet::default();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let sequences = leaf_seq_inputs(&nwk_parsed.graph, &names, TestDataset::Flu20.alignment()?);
       Ok((nwk_parsed.graph, names, alphabet, sequences, nwk_parsed.branch_lengths))
     }

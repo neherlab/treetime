@@ -156,7 +156,7 @@ mod tests {
     let tree = ResultTree::from_auspice(&fixture())?;
     let model = clock_model();
     let row = |name: &str, date: Option<f64>, predicted_date: f64, is_outlier: bool| ClockRegressionResult {
-      name: Some(name.to_owned()),
+      name: name.to_owned(),
       div: 0.01,
       date,
       predicted_date,

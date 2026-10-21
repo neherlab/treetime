@@ -18,7 +18,8 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -45,7 +46,7 @@ mod tests {
 
   fn setup_dense_jc69(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<PartitionSet, Report> {
@@ -75,7 +76,7 @@ mod tests {
     })?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_stale_names = nwk_parsed.names();
+    let graph_stale_names = nwk_parsed.names.clone();
     let graph_stale = nwk_parsed.graph;
     let mut branch_lengths_stale = nwk_parsed.branch_lengths;
     let reconstruction_stale = setup_dense_jc69(&graph_stale, &graph_stale_names, &aln, &branch_lengths_stale)?;
@@ -97,7 +98,7 @@ mod tests {
     let bl_stale = get_branch_lengths(&graph_stale, &branch_lengths_stale);
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph_fresh_names = nwk_parsed.names();
+    let graph_fresh_names = nwk_parsed.names.clone();
     let graph_fresh = nwk_parsed.graph;
     let mut branch_lengths_fresh = nwk_parsed.branch_lengths;
     let reconstruction_fresh = setup_dense_jc69(&graph_fresh, &graph_fresh_names, &aln, &branch_lengths_fresh)?;
@@ -136,7 +137,7 @@ mod tests {
     })?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_dense_jc69(&graph, &names, &aln, &branch_lengths)?;
@@ -158,7 +159,7 @@ mod tests {
     let bl_first = get_branch_lengths(&graph, &branch_lengths);
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph2_names = nwk_parsed.names();
+    let graph2_names = nwk_parsed.names.clone();
     let graph2 = nwk_parsed.graph;
     let mut branch_lengths2 = nwk_parsed.branch_lengths;
     let reconstruction2 = setup_dense_jc69(&graph2, &graph2_names, &aln, &branch_lengths2)?;

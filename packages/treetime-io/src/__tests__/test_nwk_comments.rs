@@ -45,7 +45,7 @@ mod tests {
   #[test]
   fn test_nwk_comments_name_quoting_special_chars() -> Result<(), Report> {
     let parse = nwk_read(b"('node (1)':0.1,B:0.2)root;".as_slice())?;
-    let names = parse.names();
+    let names = parse.names.clone();
     let NwkParse {
       graph, branch_lengths, ..
     } = parse;
@@ -66,8 +66,9 @@ mod tests {
     use crate::nwk::{NewickValue, NwkNodeComments, NwkParse, NwkStyle, NwkWriteOptions, nwk_read, nwk_write_str};
     use eyre::Report;
     use maplit::btreemap;
-    use std::collections::BTreeMap;
+    use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
 
     pub(super) fn write_with_comments_on_a(
@@ -75,11 +76,13 @@ mod tests {
       comments: Vec<(String, NewickValue)>,
     ) -> Result<String, Report> {
       let parse = nwk_read(b"((A:0.1,B:0.2)inner:0.3,C:0.4)root;".as_slice())?;
-      let names = parse.names();
-      let comments: NwkNodeComments = btreemap! { find_node_key_by_name(&names, "A") => comments };
       let NwkParse {
-        graph, branch_lengths, ..
+        graph,
+        names,
+        branch_lengths,
+        ..
       } = parse;
+      let comments: NwkNodeComments = btreemap! { find_node_key_by_name(&graph, &names, "A") => comments };
       let options = NwkWriteOptions {
         style,
         ..NwkWriteOptions::default()
@@ -93,10 +96,11 @@ mod tests {
       )
     }
 
-    fn find_node_key_by_name(names: &BTreeMap<GraphNodeKey, Option<String>>, name: &str) -> GraphNodeKey {
-      names
-        .iter()
-        .find_map(|(key, node_name)| (node_name.as_deref() == Some(name)).then_some(*key))
+    fn find_node_key_by_name(graph: &Graph, names: &NodeNames, name: &str) -> GraphNodeKey {
+      graph
+        .get_nodes()
+        .map(|node| node.key())
+        .find(|key| &names[*key] == name)
         .unwrap_or_else(|| panic!("Missing test node '{name}'"))
     }
   }

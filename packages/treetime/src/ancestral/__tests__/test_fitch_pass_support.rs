@@ -12,13 +12,14 @@ pub(super) mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
 
     pub(crate) struct FitchInput {
       pub graph: Graph,
-      pub names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub names: NodeNames,
       pub partition: PartitionFitch,
       pub node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
     }
@@ -43,7 +44,7 @@ pub(super) mod tests {
       .map(AlignmentRecord::from)
       .collect();
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let partition = PartitionFitch {
         alphabet,

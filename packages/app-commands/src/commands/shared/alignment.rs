@@ -11,6 +11,7 @@ use treetime::progress::{LogSink, RunWarningKind};
 use treetime::seq::alignment::LeafSequences;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
@@ -73,7 +74,7 @@ pub(crate) fn pair_alignment(
   records: Vec<FastaRecord>,
   path: &Path,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   log: &dyn LogSink,
 ) -> PairedAlignment {
   let pairing = pair_by_name(
@@ -101,7 +102,7 @@ pub(crate) fn pair_alignment(
     .map(|(name, (seq, _))| (name, seq))
     .collect();
   PairedAlignment {
-    sequences: LeafSequences::new(names, seqs, unmatched),
+    sequences: LeafSequences::new(graph, names, seqs, unmatched),
     descs,
   }
 }

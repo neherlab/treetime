@@ -14,7 +14,8 @@ pub(super) mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::fasta_read;
   use treetime_primitives::AlignmentRecord;
 
@@ -46,7 +47,7 @@ pub(super) mod tests {
 
   pub(crate) fn setup_dense_only(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<PartitionSet, Report> {
@@ -64,7 +65,7 @@ pub(super) mod tests {
 
   pub(crate) fn setup_sparse_only(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   ) -> Result<PartitionSet, Report> {

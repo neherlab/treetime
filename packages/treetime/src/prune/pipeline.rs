@@ -16,22 +16,20 @@ use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
-use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::make_report;
 
 pub fn run(
   params: &PruneParams,
   mut input: PruneInput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<PruneOutput, OperationError> {
   cancel.check().map_err(OperationError::classify)?;
 
-  let mut names = names.clone();
   let mut branch_lengths = take(&mut input.branch_lengths);
 
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
@@ -83,12 +81,9 @@ pub fn run(
   .map_err(OperationError::classify)?;
 
   if params.merge_shared_mutations {
-    merge_shared_mutation_branches(&mut input.graph, &mut partitions, &mut branch_lengths)
+    merge_shared_mutation_branches(&mut input.graph, &mut input.names, &mut partitions, &mut branch_lengths)
       .map_err(OperationError::classify)?;
     input.graph.build().map_err(OperationError::classify)?;
-    names = assign_node_names(names, &input.graph)
-      .map_err(OperationError::classify)?
-      .names;
   }
 
   let results = sources
@@ -101,7 +96,7 @@ pub fn run(
   Ok(PruneOutput {
     graph: input.graph,
     results,
-    names,
+    names: input.names,
     branch_lengths,
   })
 }
@@ -115,6 +110,7 @@ pub struct PruneParams {
 
 pub struct PruneInput {
   pub graph: Graph,
+  pub names: NodeNames,
   pub sources: Vec<SequenceSource>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
@@ -123,7 +119,7 @@ pub struct PruneInput {
 pub struct PruneOutput {
   pub graph: Graph,
   pub results: Vec<PartitionResult>,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 

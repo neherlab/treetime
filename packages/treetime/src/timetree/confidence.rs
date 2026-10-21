@@ -14,6 +14,7 @@ use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 pub const CI_FRACTION: f64 = 0.9;
 
@@ -86,7 +87,7 @@ pub fn extract_confidence_intervals(
   graph: &Graph,
   inference: &TimeInference,
   rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> Result<Vec<NodeConfidenceInterval>, Report> {
   if !inference.posterior_summaries.regions {
     return make_internal_error!(
@@ -97,7 +98,7 @@ pub fn extract_confidence_intervals(
     .get_nodes()
     .filter_map(|node| {
       let key = node.key();
-      let name = names[&key].clone().unwrap_or_default();
+      let name = names[key].to_owned();
       node_confidence_interval(
         key,
         name,

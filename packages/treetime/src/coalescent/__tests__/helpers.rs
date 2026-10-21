@@ -52,7 +52,7 @@ pub(crate) mod tests {
     dates: &BTreeMap<String, Option<DateConstraint>>,
   ) -> Result<(Graph, DateConstraints), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
     Ok((graph, constraints))

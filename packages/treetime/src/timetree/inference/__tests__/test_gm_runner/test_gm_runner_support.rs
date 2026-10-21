@@ -31,6 +31,7 @@ pub(super) mod support {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_grid::MaxGridPoints;
   use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
   use treetime_io::fasta::{FastaRecord, fasta_read_file};
@@ -94,7 +95,7 @@ pub(super) mod support {
 
   pub(crate) struct MarginalSetup {
     pub(crate) graph: Graph,
-    pub(crate) names: BTreeMap<GraphNodeKey, Option<String>>,
+    pub(crate) names: NodeNames,
     pub(crate) branch_model: BranchModel,
     pub(crate) clock_model: ClockModel,
     pub(crate) constraints: DateConstraints,
@@ -173,7 +174,7 @@ pub(super) mod support {
     let case = &OUTPUTS[dataset];
 
     let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -207,7 +208,7 @@ pub(super) mod support {
         reroot_params: &RerootParams::default(),
         prev_clock_rate: None,
       },
-      &names,
+      &mut names,
       &NoopProgress,
     )?;
     let clock_model = clock_reroot.into_clock_fit()?.model;
@@ -224,14 +225,14 @@ pub(super) mod support {
 
   pub(crate) fn extract_node_times(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
   ) -> BTreeMap<String, f64> {
     graph
       .get_nodes()
       .filter_map(|node_ref| {
         let key = node_ref.key();
-        let name = names[&key].clone()?;
+        let name = names[key].to_owned();
         let time = posterior[&key].time?;
         Some((name, time))
       })
@@ -240,7 +241,7 @@ pub(super) mod support {
 
   fn marginal_reconstruction(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: Vec<AlignmentRecord>,
     mode: SequenceMode,
   ) -> Result<PartitionSet, Report> {

@@ -26,7 +26,7 @@ mod tests {
     #[case] expected: &str,
   ) -> Result<(), Report> {
     let parsed = nwk_read(b"((A:0.1,B:0.2)X:0.1,C:0.3)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let dates = dates_by_node(
       dates.into_iter().map(|(name, date)| (name, Some(DateConstraint::exact(date)))),
       &parsed.graph,
@@ -40,11 +40,12 @@ mod tests {
     };
     let input = ClockInput {
       graph: parsed.graph,
+      names,
       dates,
       branch_lengths: parsed.branch_lengths,
     };
 
-    let result = pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress);
+    let result = pipeline::run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress);
 
     let Err(OperationError::InvalidInput(report)) = result else {
       panic!("a data problem must be classified as invalid input");
@@ -89,7 +90,7 @@ mod tests {
 
     pub(super) fn run_negative_rate_tree(clock_filter: f64) -> Result<ClockOutput, OperationError> {
       let parsed = nwk_read(NEGATIVE_RATE_TREE.as_bytes()).map_err(OperationError::InvalidInput)?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let dates = btreemap! {
         o!("A") => Some(DateConstraint::exact(2017.0)),
         o!("B") => Some(DateConstraint::exact(2005.0)),
@@ -104,10 +105,11 @@ mod tests {
       };
       let input = ClockInput {
         dates: dates_by_node(dates, &parsed.graph, &names),
+        names: names.clone(),
         graph: parsed.graph,
         branch_lengths: parsed.branch_lengths,
       };
-      pipeline::run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)
+      pipeline::run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)
     }
   }
 }

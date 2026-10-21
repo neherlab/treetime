@@ -11,11 +11,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::iterator::difference::iterator_difference;
 
 pub(crate) fn merge_shared_mutation_branches(
   graph: &mut Graph,
+  names: &mut NodeNames,
   partitions: &mut [SparseReconstruction],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -24,7 +26,7 @@ pub(crate) fn merge_shared_mutation_branches(
   let polytomy_keys = find_polytomy_nodes(graph);
 
   for node_key in polytomy_keys {
-    let merged = merge_single_polytomy(graph, partitions, node_key, branch_lengths)?;
+    let merged = merge_single_polytomy(graph, names, partitions, node_key, branch_lengths)?;
     total_merged += merged;
   }
 
@@ -39,6 +41,7 @@ pub(crate) fn merge_shared_mutation_branches(
 
 pub(crate) fn merge_single_polytomy(
   graph: &mut Graph,
+  names: &mut NodeNames,
   partitions: &mut [SparseReconstruction],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -68,7 +71,7 @@ pub(crate) fn merge_single_polytomy(
         group.edges.len(),
         group.total_shared,
       );
-      merge_sibling_group(graph, partitions, node_key, &group, branch_lengths)?;
+      merge_sibling_group(graph, names, partitions, node_key, &group, branch_lengths)?;
       nodes_created += 1;
     }
   }
@@ -181,6 +184,7 @@ fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup
 
 fn merge_sibling_group(
   graph: &mut Graph,
+  names: &mut NodeNames,
   partitions: &mut [SparseReconstruction],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
@@ -247,6 +251,7 @@ fn merge_sibling_group(
   }
 
   let new_node_key = graph.add_node();
+  names.name_new_node(new_node_key);
 
   let new_parent_edge_key = graph.add_edge(parent_key, new_node_key)?;
   branch_lengths.insert(new_parent_edge_key, Some(new_edge_bl));

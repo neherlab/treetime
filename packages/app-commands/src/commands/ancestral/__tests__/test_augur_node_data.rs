@@ -216,6 +216,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -234,9 +235,9 @@ mod tests {
       .unwrap()
     }
 
-    pub(super) fn mutation_case() -> (Graph, BTreeMap<GraphNodeKey, Option<String>>, OutputMaps) {
+    pub(super) fn mutation_case() -> (Graph, NodeNames, OutputMaps) {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.1)root;".as_slice()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
       let seqs = btreemap! { o!("A") => o!("ACGA"), o!("B") => o!("ACGT"), o!("root") => o!("ACGT") };
@@ -245,15 +246,12 @@ mod tests {
       (graph, names, maps)
     }
 
-    fn node_name_to_key(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      graph: &Graph,
-    ) -> BTreeMap<String, GraphNodeKey> {
+    fn node_name_to_key(names: &NodeNames, graph: &Graph) -> BTreeMap<String, GraphNodeKey> {
       graph
         .get_nodes()
         .map(|node| {
           let key = node.key();
-          let name = names[&node.key()].clone().unwrap();
+          let name = names[node.key()].to_owned();
           (name, key)
         })
         .collect()
@@ -268,12 +266,12 @@ mod tests {
 
     fn build_output_maps(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       seqs: &BTreeMap<String, String>,
       edge_subs_by_child: &BTreeMap<String, Vec<Sub>>,
       length: usize,
     ) -> OutputMaps {
-      let name_of = |key: GraphNodeKey| names[&key].clone().unwrap();
+      let name_of = |key: GraphNodeKey| names[key].to_owned();
       let node_sequences = graph
         .get_nodes()
         .map(|node| (node.key(), Seq::try_from_str(&seqs[&name_of(node.key())]).unwrap()))
@@ -302,7 +300,7 @@ mod tests {
 
     fn build_json(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       maps: OutputMaps,
       mask: &[bool],
       amino_acids: Option<TreeAminoAcids<'_>>,
@@ -332,12 +330,7 @@ mod tests {
       build_augur_node_data_ancestral(&AnnotatedTreeView::new(&annotated).unwrap(), sequences).unwrap()
     }
 
-    pub(super) fn write_json(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      maps: OutputMaps,
-      mask: &[bool],
-    ) -> String {
+    pub(super) fn write_json(graph: &Graph, names: &NodeNames, maps: OutputMaps, mask: &[bool]) -> String {
       let data = build_json(graph, names, maps, mask, None);
       json_write_str(&data, JsonPretty(true)).unwrap()
     }

@@ -21,6 +21,7 @@ use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_grid::MaxGridPoints;
 
 pub(crate) fn constraint_expectation(
@@ -131,11 +132,7 @@ pub(crate) fn parent_edge_key(graph: &Graph, target_key: GraphNodeKey) -> GraphE
     .key()
 }
 
-pub(crate) fn point_date_constraints(
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-  dates: &[(&str, f64)],
-) -> DateConstraints {
+pub(crate) fn point_date_constraints(graph: &Graph, names: &NodeNames, dates: &[(&str, f64)]) -> DateConstraints {
   let by_node = dates
     .iter()
     .map(|(name, date)| {
@@ -148,7 +145,7 @@ pub(crate) fn point_date_constraints(
 
 pub(crate) fn point_coalescent_prior(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   times: &[(&str, f64)],
   tc: f64,
 ) -> Result<CoalescentPrior, Report> {

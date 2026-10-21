@@ -23,15 +23,15 @@ mod tests {
   #[test]
   fn test_reroot_undated_min_dev_roots_a_cherry_at_equal_distances() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     reroot_undated(
       &mut graph,
+      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
-      &names,
       &NoopProgress,
     )?;
 
@@ -45,15 +45,15 @@ mod tests {
   #[test]
   fn test_reroot_undated_min_dev_places_the_root_at_the_analytic_minimum_of_the_variance() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:2,C:6)R;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
     reroot_undated(
       &mut graph,
+      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
-      &names,
       &NoopProgress,
     )?;
 
@@ -65,26 +65,26 @@ mod tests {
   #[test]
   fn test_reroot_undated_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let unstemmed = nwk_read(b"((A:0.1,B:0.3)X:0.05,C:0.4)R;".as_slice())?;
-    let unstemmed_names = unstemmed.names();
+    let mut unstemmed_names = unstemmed.names.clone();
     let mut unstemmed_graph = unstemmed.graph;
     let mut unstemmed_branch_lengths = unstemmed.branch_lengths;
 
     let result = reroot_undated(
       &mut graph,
+      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
-      &names,
       &NoopProgress,
     )?;
     reroot_undated(
       &mut unstemmed_graph,
+      &mut unstemmed_names,
       &mut unstemmed_branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
-      &unstemmed_names,
       &NoopProgress,
     )?;
 

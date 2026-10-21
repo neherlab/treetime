@@ -19,7 +19,7 @@ use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSou
 use crate::partition::set::build_partition_set;
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::SequenceSource;
-use crate::seq::sink::{SeqSink, SeqTrack};
+use crate::seq::sink::{SeqSink, SeqStream, SeqTrack};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
 use crate::timetree::coalescent_timescale::{CoalescentSetup, build_coalescent_output};
@@ -42,10 +42,10 @@ use itertools::izip;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
-use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::DateConstraint;
 use treetime_utils::make_report;
 
@@ -65,7 +65,7 @@ pub fn run(
     sources,
     dates,
     branch_lengths,
-    names,
+    mut names,
   } = input;
   let alignment_length = (!sources.is_empty()).then(|| sources.iter().map(|source| source.length).sum());
   let context = prepare_inputs(params, &graph, alignment_length, dates.as_ref(), log)?;
@@ -73,20 +73,20 @@ pub fn run(
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.1, "");
   let (graph, branch_lengths, clock_fit) =
-    estimate_initial_clock(params, &context, graph, branch_lengths, &names, log).map_err(OperationError::classify)?;
+    estimate_initial_clock(params, &context, graph, &mut names, branch_lengths, log)
+      .map_err(OperationError::classify)?;
   let has_alignment = !sources.is_empty();
   let (sources, branch_model) = initialize_branch_model(params, &graph, &branch_lengths, sources, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
-    names: &names,
     has_alignment,
   };
-  let pre_loop_state = PreLoopState::new(graph, branch_lengths, branch_model, clock_fit);
+  let pre_loop_state = PreLoopState::new(graph, names, branch_lengths, branch_model, clock_fit);
   let pre_loop =
     run_pre_loop(&pre_loop_inputs, pre_loop_state, cancel, stages, log).map_err(OperationError::classify)?;
 
-  let initial = initialize(params, &context, &names, pre_loop, log).map_err(OperationError::classify)?;
+  let initial = initialize(params, &context, pre_loop, log).map_err(OperationError::classify)?;
   let round_inputs = RoundInputs {
     params,
     context: &context,
@@ -138,7 +138,7 @@ fn assemble_output(
   } = results.state;
   let partition_results = final_partition_results(
     inputs,
-    seq_sink,
+    seq_sink.map(|sink| SeqStream::new(sink, &names)),
     &graph,
     branch_model,
     &branch_lengths,
@@ -173,7 +173,7 @@ fn assemble_output(
 
 pub struct TimetreeInput {
   pub graph: Graph,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
   pub sources: Vec<SequenceSource>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -181,7 +181,7 @@ pub struct TimetreeInput {
 
 pub struct TimetreeOutput {
   pub graph: Graph,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
   pub node_dates: BTreeMap<GraphNodeKey, Option<f64>>,
   pub divergences: BTreeMap<GraphNodeKey, f64>,
   pub outliers: BTreeSet<GraphNodeKey>,
@@ -271,8 +271,8 @@ fn estimate_initial_clock(
   params: &TimetreeParams,
   context: &TimetreeContext,
   graph: Graph,
+  names: &mut NodeNames,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>, ClockFit), Report> {
   let reroot_params = RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate);
@@ -468,9 +468,7 @@ fn gather_results(
   let divergences = root_to_node_divergences(&state.graph, |edge_key| {
     branch_length_or_zero(&state.branch_lengths, edge_key)
   })?;
-  let names = assign_node_names(state.names, &state.graph)?.names;
-
-  let clock_regression = clock_fit_regression_results(&state.clock_model, &state.clock_points, &names, |key| {
+  let clock_regression = clock_fit_regression_results(&state.clock_model, &state.clock_points, &state.names, |key| {
     if context.date_constraints.date_constraint(key).is_some() {
       ClockDateSource::Input
     } else {
@@ -479,7 +477,7 @@ fn gather_results(
   });
 
   Ok(FinalResults {
-    state: RoundState { names, ..state },
+    state,
     confidence_intervals,
     coalescent_output,
     divergences,
@@ -503,7 +501,7 @@ struct FinalResults {
 
 fn final_partition_results(
   inputs: FinalInputs<'_>,
-  mut seq_sink: Option<&mut dyn SeqSink>,
+  mut seq_stream: Option<SeqStream<'_>>,
   graph: &Graph,
   branch_model: BranchModel,
   divergence_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -535,9 +533,6 @@ fn final_partition_results(
     FinalSequences::Skip | FinalSequences::FromLastRound => partitions,
   };
   let streams_sequences = !matches!(context.final_sequences, FinalSequences::Skip);
-  if streams_sequences && let Some(sink) = seq_sink.as_deref_mut() {
-    sink.on_topology(graph).map_err(OperationError::SinkFailed)?;
-  }
   let indel_rates = params
     .indel_policy
     .edge_indels(graph, &partitions, divergence_branch_lengths)
@@ -545,7 +540,15 @@ fn final_partition_results(
   izip!(sources, partitions.iter(), indel_rates)
     .map(|(source, partition, indel_rate)| {
       let sequences = streams_sequences
-        .then(|| stream_final_sequences(params, seq_sink.as_deref_mut(), graph, partition, source.number))
+        .then(|| {
+          stream_final_sequences(
+            params,
+            seq_stream.as_mut().map(SeqStream::reborrow),
+            graph,
+            partition,
+            source.number,
+          )
+        })
         .transpose()?;
       Ok(PartitionResult {
         number: source.number,
@@ -571,7 +574,7 @@ struct FinalInputs<'a> {
 
 fn stream_final_sequences(
   params: &TimetreeParams,
-  seq_sink: Option<&mut (dyn SeqSink + '_)>,
+  seq_stream: Option<SeqStream<'_>>,
   graph: &Graph,
   partition: ReconstructionRef<'_>,
   number: usize,
@@ -582,7 +585,7 @@ fn stream_final_sequences(
     SeqTrack::Nuc(number),
     params.include_leaves,
     params.report_ambiguous,
-    seq_sink,
+    seq_stream,
   )?;
   PartitionSequences::new(mutations, partition.alphabet()).map_err(OperationError::InferenceFailed)
 }

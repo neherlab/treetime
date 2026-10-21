@@ -21,7 +21,7 @@ mod tests {
   fn test_optimization_converges_with_valid_branch_lengths(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -74,7 +74,7 @@ mod tests {
     let aln = simple_alignment()?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph1_names = nwk_parsed.names();
+    let graph1_names = nwk_parsed.names.clone();
     let graph1 = nwk_parsed.graph;
     let mut branch_lengths1 = nwk_parsed.branch_lengths;
     let mut reconstruction1 = setup_reconstruction(&graph1, &graph1_names, &aln, &mut branch_lengths1)?;
@@ -90,7 +90,7 @@ mod tests {
     let (_, lh1) = compute_total_lh(&graph1, reconstruction1, &branch_lengths1)?;
 
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let graph2_names = nwk_parsed.names();
+    let graph2_names = nwk_parsed.names.clone();
     let graph2 = nwk_parsed.graph;
     let mut branch_lengths2 = nwk_parsed.branch_lengths;
     let mut reconstruction2 = setup_reconstruction(&graph2, &graph2_names, &aln, &mut branch_lengths2)?;

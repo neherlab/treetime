@@ -29,7 +29,7 @@ mod tests {
   #[trace]
   fn test_nwk_read_internal_label(#[case] input: &str, #[case] expected: &str) -> Result<(), Report> {
     let parse = nwk_read(input.as_bytes())?;
-    let names = parse.names();
+    let names = parse.names.clone();
     let NwkParse {
       graph, branch_lengths, ..
     } = parse;

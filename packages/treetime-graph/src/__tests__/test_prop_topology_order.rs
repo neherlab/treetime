@@ -3,6 +3,7 @@ mod tests {
   use self::helpers::{former_postorder, spec_cases};
   use super::super::test_graph_support::tests::generators::gen_dag;
   use super::super::test_graph_support::tests::helpers::graph_from_dag;
+  use crate::node_names::NodeNames;
   use crate::schedule::GraphSchedule;
   use itertools::Itertools;
   use proptest::collection::vec;
@@ -17,7 +18,8 @@ mod tests {
       positions in Just((0..40_usize).collect_vec()).prop_shuffle(),
     ) {
       let graph = graph_from_dag(&dag).unwrap();
-      let names: BTreeMap<_, _> = graph.node_keys().map(|key| (key, Some(format!("n{key}")))).collect();
+      let input = graph.node_keys().map(|key| (key, Some(format!("n{key}")))).collect();
+      let names = NodeNames::from_input(input, &graph).unwrap().names;
       let branch_lengths: BTreeMap<_, _> = graph
         .get_edges()
         .map(|edge| (edge.key(), Some(lengths[edge.key().as_usize()])))

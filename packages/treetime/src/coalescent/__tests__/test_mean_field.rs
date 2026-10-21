@@ -12,6 +12,7 @@ mod tests {
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_grid::{Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
@@ -26,7 +27,7 @@ mod tests {
   fn test_mean_field_cherry_root_density_is_kingman(#[case] tc: f64, #[case] root_time: f64) -> Result<(), Report> {
     let tip = 2010.0;
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let prior = point_coalescent_prior(&graph, &names, &[("A", tip), ("B", tip), ("root", root_time)], tc)?;
     let root = find_node_key_by_name(&graph, &names, "root").expect("root must exist");
@@ -51,7 +52,7 @@ mod tests {
   ) -> Result<(), Report> {
     let tc = 2.0;
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let prior = point_coalescent_prior(&graph, &names, &[("A", 2010.0), ("B", 2010.0), ("root", 2000.0)], tc)?;
     let key = find_node_key_by_name(&graph, &names, name).expect("node must exist");
@@ -85,7 +86,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)I:1,C:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let times = [
       ("A", 2015.0),
@@ -106,7 +107,7 @@ mod tests {
   #[test]
   fn test_mean_field_internal_slope_counts_the_lineages_without_the_own_merger() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)I:1,C:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let times = [
       ("A", 2015.0),
@@ -131,7 +132,7 @@ mod tests {
   #[test]
   fn test_mean_field_segment_statistics_of_point_times_are_those_of_the_lineage_counts() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)I:1,C:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let times = [
       ("A", 2015.0),
@@ -152,7 +153,7 @@ mod tests {
   #[test]
   fn test_mean_field_segment_statistics_integrate_over_the_root_posterior() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let flat_root = Distribution::function(Array1::linspace(2000.0, 2004.0, 401), Array1::zeros(401))?;
     let expectation = helpers::expectation(&graph, &names, &[("A", 2010.0), ("B", 2010.0)], &[("root", flat_root)])?;
@@ -167,7 +168,7 @@ mod tests {
   #[test]
   fn test_mean_field_segment_statistics_read_the_exact_survival_inside_a_long_earlier_tail() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let unit_box_with_tail_mass_one = Distribution::Function(
       DistributionFunction::<f64, NegLog>::from_range_values((-1.0, 0.0), array![0.0, 0.0])?
@@ -193,7 +194,7 @@ mod tests {
   fn test_mean_field_segment_statistics_read_the_exact_survival_of_a_narrow_posterior_with_a_long_soft_tail()
   -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let tent = Array1::linspace(0.0, 1.0, 11).mapv(|t: f64| 1.0 - 1.8 * (t - 0.5).abs());
     let rate = 0.2;
@@ -231,7 +232,7 @@ mod tests {
   #[test]
   fn test_mean_field_own_integral_follows_a_tc_step_inside_a_knot_interval() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let density = [1.0, 3.0, 2.0, 4.0, 1.0];
     let root = Distribution::Function(
@@ -306,7 +307,7 @@ mod tests {
   #[test]
   fn test_mean_field_own_share_is_removed_at_its_weight_in_the_expectation() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1,C:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let tc = 2.0;
     let prior = point_coalescent_prior(
@@ -329,7 +330,7 @@ mod tests {
   #[test]
   fn test_mean_field_with_topology_equals_a_fresh_expectation() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:1,B:1)N:1,C:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
     let times = [
@@ -400,7 +401,7 @@ mod tests {
   #[test]
   fn test_mean_field_prior_reports_a_tc_that_cannot_be_evaluated_at_the_lineage_grid_edge() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
     let graph = parsed.graph;
     let flat_root = Distribution::function(Array1::linspace(2000.0, 2004.0, 401), Array1::zeros(401))?;
     let expectation = helpers::expectation(&graph, &names, &[("A", 2010.0), ("B", 2010.0)], &[("root", flat_root)])?;
@@ -422,7 +423,7 @@ mod tests {
       mean: f64,
       std: f64,
       excluded: &[&str],
-    ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, Arc<LineageExpectation>), Report> {
+    ) -> Result<(Graph, NodeNames, Arc<LineageExpectation>), Report> {
       gaussian_cherry_dated(mean, std, [2010.0, 2010.0], excluded)
     }
 
@@ -431,9 +432,9 @@ mod tests {
       std: f64,
       dates: [f64; 2],
       excluded: &[&str],
-    ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, Arc<LineageExpectation>), Report> {
+    ) -> Result<(Graph, NodeNames, Arc<LineageExpectation>), Report> {
       let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
       let marginals = BTreeMap::from([(key("root"), NodeTimeGaussian { mean, std })]);
@@ -475,7 +476,7 @@ mod tests {
 
     pub(super) fn expectation(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       points: &[(&str, f64)],
       distributions: &[(&str, Distribution<NegLog>)],
     ) -> Result<Arc<LineageExpectation>, Report> {

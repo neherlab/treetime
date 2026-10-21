@@ -41,7 +41,7 @@ mod tests {
     aln: &[AlignmentRecord],
   ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -61,7 +61,7 @@ mod tests {
     aln: &[AlignmentRecord],
   ) -> Result<(Graph, PartitionFitch, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;

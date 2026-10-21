@@ -18,7 +18,7 @@ pub(crate) mod tests {
   #[test]
   fn test_remove_node_if_trivial_simple() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.5)mid:0.3,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -83,7 +83,7 @@ pub(crate) mod tests {
       },
       ..RerootParams::default()
     };
-    let (tree, _) = helpers::reroot(fixture, &reroot_params)?;
+    let (tree, names, _) = helpers::reroot(fixture, &reroot_params)?;
 
     let node_count_after = tree.graph.get_nodes().count();
     assert_eq!(
@@ -106,7 +106,7 @@ pub(crate) mod tests {
       },
       ..RerootParams::default()
     };
-    let (tree, new_root_key) = helpers::reroot(fixture, &reroot_params)?;
+    let (tree, names, new_root_key) = helpers::reroot(fixture, &reroot_params)?;
 
     if new_root_key != old_root_key {
       assert!(
@@ -123,7 +123,7 @@ pub(crate) mod tests {
     let fixture = setup_reroot_test_graph()?;
     let node_count_before = fixture.tree.graph.get_nodes().count();
 
-    let (tree, _) = helpers::reroot(fixture, &RerootParams::default())?;
+    let (tree, names, _) = helpers::reroot(fixture, &RerootParams::default())?;
 
     let node_count_after = tree.graph.get_nodes().count();
     assert!(
@@ -137,17 +137,16 @@ pub(crate) mod tests {
   #[test]
   fn test_reroot_tips_uses_mrca_branch() -> Result<(), Report> {
     let fixture = setup_reroot_test_graph()?;
-    let names = fixture.names.clone();
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &names, &["A", "B"])),
+      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &fixture.names, &["A", "B"])),
       ..RerootParams::default()
     };
 
-    let (tree, new_root_key) = helpers::reroot(fixture, &reroot_params)?;
+    let (tree, names, new_root_key) = helpers::reroot(fixture, &reroot_params)?;
 
     let child_names = helpers::child_names(&tree.graph, &names, new_root_key)?;
     assert!(
-      child_names.contains(&Some(o!("AB"))),
+      child_names.contains(&o!("AB")),
       "new root should split the branch leading to the AB MRCA"
     );
 
@@ -170,17 +169,16 @@ pub(crate) mod tests {
   #[test]
   fn test_reroot_oldest_uses_oldest_dated_leaf() -> Result<(), Report> {
     let fixture = setup_reroot_test_graph()?;
-    let names = fixture.names.clone();
     let reroot_params = RerootParams {
       spec: RerootSpec::Method(RerootMethod::Oldest),
       ..RerootParams::default()
     };
 
-    let (tree, new_root_key) = helpers::reroot(fixture, &reroot_params)?;
+    let (tree, names, new_root_key) = helpers::reroot(fixture, &reroot_params)?;
 
     let child_names = helpers::child_names(&tree.graph, &names, new_root_key)?;
     assert!(
-      child_names.contains(&Some(o!("D"))),
+      child_names.contains(&o!("D")),
       "new root should split the branch leading to the oldest dated leaf"
     );
 
@@ -190,13 +188,12 @@ pub(crate) mod tests {
   #[test]
   fn test_reroot_min_dev_places_the_root_at_the_minimum_variance_point() -> Result<(), Report> {
     let fixture = setup_reroot_test_graph()?;
-    let names = fixture.names.clone();
     let reroot_params = RerootParams {
       spec: RerootSpec::Method(RerootMethod::MinDev),
       ..RerootParams::default()
     };
 
-    let (tree, result) = helpers::reroot_with_result(fixture, &reroot_params)?;
+    let (tree, names, result) = helpers::reroot_with_result(fixture, &reroot_params)?;
 
     let expected = btreemap! { o!("AB") => 0.08, o!("CD") => 0.07 };
     let actual = helpers::root_child_lengths(&tree, &names, result.new_root_key)?;
@@ -209,7 +206,7 @@ pub(crate) mod tests {
     let fixture = setup_reroot_test_graph()?;
     let old_root_key = fixture.tree.graph.get_exactly_one_root()?.key();
 
-    let (tree, result) = helpers::reroot_with_result(fixture, &RerootParams::default())?;
+    let (tree, names, result) = helpers::reroot_with_result(fixture, &RerootParams::default())?;
 
     let merge = result.edge_merge.expect("the old root becomes trivial and is merged");
     assert_eq!(old_root_key, merge.removed_node_key);
@@ -224,11 +221,11 @@ pub(crate) mod tests {
     let names = fixture.names.clone();
     let stem_key = find_node_key_by_name(&fixture.tree.graph, &names, "STEM").expect("STEM exists");
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &names, &["A", "B"])),
+      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &fixture.names, &["A", "B"])),
       ..RerootParams::default()
     };
 
-    let (tree, result) = helpers::reroot_with_result(fixture, &reroot_params)?;
+    let (tree, names, result) = helpers::reroot_with_result(fixture, &reroot_params)?;
 
     let stem = result.stem_removal.expect("the undated stem is removed");
     assert_eq!(stem_key, stem.removed_node_key);
@@ -249,11 +246,11 @@ pub(crate) mod tests {
   fn test_reroot_least_squares_root_ignores_an_undated_stem_root() -> Result<(), Report> {
     let without_stem = helpers::setup_unstemmed_graph(&helpers::leaf_dates())?;
     let with_stem = helpers::setup_stem_graph(&helpers::leaf_dates())?;
-    let names_without_stem = without_stem.names.clone();
-    let names_with_stem = with_stem.names.clone();
 
-    let (tree_without_stem, result_without_stem) = helpers::reroot_with_result(without_stem, &RerootParams::default())?;
-    let (tree_with_stem, result_with_stem) = helpers::reroot_with_result(with_stem, &RerootParams::default())?;
+    let (tree_without_stem, names_without_stem, result_without_stem) =
+      helpers::reroot_with_result(without_stem, &RerootParams::default())?;
+    let (tree_with_stem, names_with_stem, result_with_stem) =
+      helpers::reroot_with_result(with_stem, &RerootParams::default())?;
 
     assert!(result_with_stem.stem_removal.is_some());
     let expected = helpers::root_child_lengths(
@@ -271,13 +268,12 @@ pub(crate) mod tests {
     let mut dates = helpers::leaf_dates();
     dates.insert(o!("STEM"), 1990.0);
     let fixture = helpers::setup_stem_graph(&dates)?;
-    let names = fixture.names.clone();
     let reroot_params = RerootParams {
-      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &names, &["A", "B"])),
+      spec: RerootSpec::Tips(helpers::tip_keys(&fixture.tree.graph, &fixture.names, &["A", "B"])),
       ..RerootParams::default()
     };
 
-    let (tree, result) = helpers::reroot_with_result(fixture, &reroot_params)?;
+    let (tree, names, result) = helpers::reroot_with_result(fixture, &reroot_params)?;
 
     assert!(result.stem_removal.is_none());
     assert_eq!(
@@ -293,24 +289,22 @@ pub(crate) mod tests {
   #[test]
   fn test_reroot_keep_root_leaves_an_undated_stem_in_place() -> Result<(), Report> {
     let fixture = helpers::setup_stem_graph(&helpers::leaf_dates())?;
-    let names = fixture.names.clone();
     let nodes_before = fixture.tree.graph.get_nodes().count();
 
-    let (tree, result) = helpers::estimate(fixture, true, &RerootParams::default())?;
+    let (tree, names, result) = helpers::estimate(fixture, true, &RerootParams::default())?;
 
     assert!(result.is_none());
     assert_eq!(nodes_before, tree.graph.get_nodes().count());
     let root_key = tree.graph.get_exactly_one_root()?.key();
-    assert_eq!(Some(o!("STEM")), names[&root_key]);
+    assert_eq!("STEM", &names[root_key]);
     Ok(())
   }
 
   #[test]
   fn test_reroot_past_a_tip_roots_at_a_new_node_with_a_zero_length_branch_to_the_tip() -> Result<(), Report> {
     let fixture = helpers::setup_tip_past_optimum_graph()?;
-    let names = fixture.names.clone();
 
-    let (tree, result) = helpers::reroot_at_fixed_rate(fixture, &RerootParams::default())?;
+    let (tree, names, result) = helpers::reroot_at_fixed_rate(fixture, &RerootParams::default())?;
 
     let a_key = find_node_key_by_name(&tree.graph, &names, "A").expect("A exists");
     assert!(
@@ -318,7 +312,7 @@ pub(crate) mod tests {
       "v0 roots a split at the tip end with Biopython root_with_outgroup(tip): a new root with a 0-length branch to \
        the tip (packages/legacy/treetime/treetime/treeregression.py#L443-L463)"
     );
-    assert_eq!(None, names.get(&result.new_root_key).cloned().flatten());
+    assert_eq!("NODE_0000000", &names[result.new_root_key]);
     helpers::assert_inputs_match_graph(&tree);
     let expected = btreemap! { o!("A") => 0.0, o!("N") => 0.002 };
     let actual = helpers::root_child_lengths(&tree, &names, result.new_root_key)?;
@@ -329,7 +323,6 @@ pub(crate) mod tests {
   #[test]
   fn test_reroot_past_a_tip_without_edge_split_keeps_the_parent_end() -> Result<(), Report> {
     let fixture = helpers::setup_tip_past_optimum_graph()?;
-    let names = fixture.names.clone();
     let reroot_params = RerootParams {
       topology: RerootTopologyParams {
         split_edge: false,
@@ -338,9 +331,9 @@ pub(crate) mod tests {
       ..RerootParams::default()
     };
 
-    let (tree, result) = helpers::reroot_at_fixed_rate(fixture, &reroot_params)?;
+    let (tree, names, result) = helpers::reroot_at_fixed_rate(fixture, &reroot_params)?;
 
-    assert_eq!(Some(o!("R")), names[&result.new_root_key]);
+    assert_eq!("R", &names[result.new_root_key]);
     let expected = btreemap! { o!("A") => 0.001, o!("N") => 0.001 };
     let actual = helpers::root_child_lengths(&tree, &names, result.new_root_key)?;
     pretty_assert_map_abs_diff_eq!(expected, actual, epsilon = 1e-12);
@@ -359,9 +352,9 @@ pub(crate) mod tests {
     use maplit::btreemap;
     use pretty_assertions::assert_eq;
     use std::collections::{BTreeMap, BTreeSet};
-    use treetime_graph::assign_node_names::assign_node_names;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_graph::reroot::RerootResult;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
@@ -378,14 +371,10 @@ pub(crate) mod tests {
 
     pub(super) struct RerootFixture {
       pub tree: ClockTree,
-      pub names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub names: NodeNames,
     }
 
-    pub(super) fn tip_keys(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      tips: &[&str],
-    ) -> Vec<GraphNodeKey> {
+    pub(super) fn tip_keys(graph: &Graph, names: &NodeNames, tips: &[&str]) -> Vec<GraphNodeKey> {
       tips
         .iter()
         .map(|tip| find_node_key_by_name(graph, names, tip).expect("the tip exists"))
@@ -429,9 +418,10 @@ pub(crate) mod tests {
     pub(super) fn reroot_at_fixed_rate(
       fixture: RerootFixture,
       reroot_params: &RerootParams,
-    ) -> Result<(ClockTree, RerootResult), Report> {
+    ) -> Result<(ClockTree, NodeNames, RerootResult), Report> {
+      let RerootFixture { tree, mut names } = fixture;
       let (tree, result) = estimate_clock_model_with_reroot_policy(
-        fixture.tree,
+        tree,
         &ClockFitParams {
           outliers: &BTreeSet::new(),
           clock_rate: Some(TIP_PAST_OPTIMUM_RATE),
@@ -439,11 +429,12 @@ pub(crate) mod tests {
           reroot_params,
           prev_clock_rate: None,
         },
-        &fixture.names,
+        &mut names,
         &NoopProgress,
       )?;
       Ok((
         tree,
+        names,
         result.reroot_result().cloned().expect("a reroot reports its result"),
       ))
     }
@@ -452,9 +443,10 @@ pub(crate) mod tests {
       fixture: RerootFixture,
       keep_root: bool,
       reroot_params: &RerootParams,
-    ) -> Result<(ClockTree, Option<RerootResult>), Report> {
+    ) -> Result<(ClockTree, NodeNames, Option<RerootResult>), Report> {
+      let RerootFixture { tree, mut names } = fixture;
       let (tree, result) = estimate_clock_model_with_reroot_policy(
-        fixture.tree,
+        tree,
         &ClockFitParams {
           outliers: &BTreeSet::new(),
           clock_rate: None,
@@ -462,26 +454,26 @@ pub(crate) mod tests {
           reroot_params,
           prev_clock_rate: None,
         },
-        &fixture.names,
+        &mut names,
         &NoopProgress,
       )?;
-      Ok((tree, result.reroot_result().cloned()))
+      Ok((tree, names, result.reroot_result().cloned()))
     }
 
     pub(super) fn reroot_with_result(
       fixture: RerootFixture,
       reroot_params: &RerootParams,
-    ) -> Result<(ClockTree, RerootResult), Report> {
-      let (tree, result) = estimate(fixture, false, reroot_params)?;
-      Ok((tree, result.expect("a reroot reports its result")))
+    ) -> Result<(ClockTree, NodeNames, RerootResult), Report> {
+      let (tree, names, result) = estimate(fixture, false, reroot_params)?;
+      Ok((tree, names, result.expect("a reroot reports its result")))
     }
 
     pub(super) fn reroot(
       fixture: RerootFixture,
       reroot_params: &RerootParams,
-    ) -> Result<(ClockTree, GraphNodeKey), Report> {
-      let (tree, result) = reroot_with_result(fixture, reroot_params)?;
-      Ok((tree, result.new_root_key))
+    ) -> Result<(ClockTree, NodeNames, GraphNodeKey), Report> {
+      let (tree, names, result) = reroot_with_result(fixture, reroot_params)?;
+      Ok((tree, names, result.new_root_key))
     }
 
     pub(super) fn rerooted_newick(
@@ -489,9 +481,7 @@ pub(crate) mod tests {
       reroot_params: &RerootParams,
     ) -> Result<String, Report> {
       let fixture = setup_reroot_test_graph_with_dates(dates)?;
-      let names = fixture.names.clone();
-      let (tree, _) = reroot(fixture, reroot_params)?;
-      let names = assign_node_names(names, &tree.graph)?.names;
+      let (tree, names, _) = reroot(fixture, reroot_params)?;
       nwk_write_str(
         &GraphSchedule::new(&tree.graph)?.into_tree()?,
         &names,
@@ -501,25 +491,21 @@ pub(crate) mod tests {
       )
     }
 
-    pub(super) fn child_names(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      node_key: GraphNodeKey,
-    ) -> Result<Vec<Option<String>>, Report> {
+    pub(super) fn child_names(graph: &Graph, names: &NodeNames, node_key: GraphNodeKey) -> Result<Vec<String>, Report> {
       let node = graph.get_node(node_key).expect("node should exist");
       node
         .outbound()
         .iter()
         .map(|edge_key| {
           let child_key = graph.get_target_node_key(*edge_key)?;
-          Ok(names.get(&child_key).cloned().flatten())
+          Ok(names[child_key].to_owned())
         })
         .collect()
     }
 
     pub(super) fn root_child_lengths(
       tree: &ClockTree,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       root_key: GraphNodeKey,
     ) -> Result<BTreeMap<String, f64>, Report> {
       let root = tree.graph.get_node(root_key).expect("root should exist");
@@ -528,18 +514,18 @@ pub(crate) mod tests {
         .iter()
         .map(|edge_key| {
           let child_key = tree.graph.get_target_node_key(*edge_key)?;
-          let name = names[&child_key].clone().expect("root children are named");
+          let name = names[child_key].to_owned();
           let length = tree.branch_lengths[edge_key].expect("root edges have a length");
           Ok((name, length))
         })
         .collect()
     }
 
-    pub(super) fn leaf_names(tree: &ClockTree, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Vec<String> {
+    pub(super) fn leaf_names(tree: &ClockTree, names: &NodeNames) -> Vec<String> {
       tree
         .graph
         .get_leaves()
-        .map(|leaf| names[&leaf.key()].clone().expect("leaves are named"))
+        .map(|leaf| names[leaf.key()].to_owned())
         .sorted()
         .collect()
     }
@@ -554,11 +540,11 @@ pub(crate) mod tests {
 
     fn setup_graph(newick: &str, dates: &BTreeMap<String, f64>) -> Result<RerootFixture, Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names;
       let graph = nwk_parsed.graph;
-      let times = names
-        .iter()
-        .map(|(key, name)| (*key, name.as_ref().and_then(|name| dates.get(name)).copied()))
+      let times = graph
+        .get_nodes()
+        .map(|node| (node.key(), dates.get(&names[node.key()]).copied()))
         .collect();
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
       Ok(RerootFixture {

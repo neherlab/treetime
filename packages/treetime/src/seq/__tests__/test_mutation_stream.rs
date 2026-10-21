@@ -103,6 +103,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::seq::sink::SeqStream;
 
     #[derive(Debug, PartialEq)]
     pub(super) struct Stream {
@@ -138,7 +139,7 @@ mod tests {
       sink: Option<&mut dyn SeqSink>,
     ) -> Result<Stream, OperationError> {
       let parsed = nwk_read(TREE.as_bytes()).unwrap();
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
       let (include_leaves, report_unknown) = (true, true);
@@ -152,9 +153,9 @@ mod tests {
         SeqTrack::Nuc(1),
         include_leaves,
         report_unknown,
-        |key| Seq::try_from_str(sequences[names[&key].as_deref().unwrap()]),
+        |key| Seq::try_from_str(sequences[&names[key]]),
         |_| vec![],
-        sink,
+        sink.map(|sink| SeqStream::new(sink, &names)),
       )?;
 
       let edge_mutations = edge_mutations
@@ -165,7 +166,7 @@ mod tests {
             .iter()
             .flat_map(|mutation| mutation_event_strings(&mutation.event).unwrap())
             .collect();
-          (names[&child].clone().unwrap(), strings)
+          (names[child].to_owned(), strings)
         })
         .collect();
       Ok(Stream {

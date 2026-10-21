@@ -1,13 +1,13 @@
 use eyre::{Report, WrapErr};
 use log::warn;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::Path;
-use treetime_graph::assign_node_names::{AssignedNodeNames, assign_node_names};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::{InputNodeNames, NodeNames};
 use treetime_graph::schedule::TreeSchedule;
 use treetime_utils::fmt::float::float_to_digits;
 use treetime_utils::io::file::{read_file_with, write_file_with};
@@ -50,18 +50,11 @@ pub(crate) fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Rep
   let mut graph = Graph::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.node_count());
-  let mut nodes: BTreeMap<GraphNodeKey, NwkNodeMeta> = BTreeMap::new();
+  let mut input_names: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
   let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = BTreeMap::new();
   for (_, nwk_node) in nwk_graph.nodes() {
-    let name: Option<&str> = nwk_node.name().filter(|n| !n.is_empty());
-
     let key = graph.add_node();
-    nodes.insert(
-      key,
-      NwkNodeMeta {
-        name: name.map(ToOwned::to_owned),
-      },
-    );
+    input_names.insert(key, nwk_node.name().map(ToOwned::to_owned));
     node_keys.push(key);
   }
 
@@ -86,17 +79,16 @@ pub(crate) fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Rep
 
   graph.build()?;
 
-  let names = nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect();
-  let AssignedNodeNames { names, duplicate_names } = assign_node_names(names, &graph)?;
-  for (key, name) in names {
-    if let Some(meta) = nodes.get_mut(&key) {
-      meta.name = name;
-    }
-  }
+  let InputNodeNames {
+    names,
+    unnamed_nodes,
+    duplicate_names,
+  } = NodeNames::from_input(input_names, &graph)?;
 
   Ok(NwkParse {
     graph,
-    nodes,
+    names,
+    unnamed_nodes,
     branch_lengths,
     duplicate_names,
   })
@@ -120,26 +112,16 @@ fn reject_network_nodes(nwk_graph: &NewickGraph) -> Result<(), Report> {
 #[derive(Debug)]
 pub struct NwkParse {
   pub graph: Graph,
-  pub nodes: BTreeMap<GraphNodeKey, NwkNodeMeta>,
+  pub names: NodeNames,
+  pub unnamed_nodes: BTreeSet<GraphNodeKey>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub duplicate_names: Vec<String>,
-}
-
-impl NwkParse {
-  pub fn names(&self) -> BTreeMap<GraphNodeKey, Option<String>> {
-    self.nodes.iter().map(|(key, meta)| (*key, meta.name.clone())).collect()
-  }
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NwkNodeMeta {
-  name: Option<String>,
 }
 
 pub fn nwk_write_file(
   filepath: impl AsRef<Path>,
   tree: &TreeSchedule<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
@@ -153,7 +135,7 @@ pub fn nwk_write_file(
 
 pub fn nwk_write_str(
   tree: &TreeSchedule<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
@@ -166,7 +148,7 @@ pub fn nwk_write_str(
 pub fn nwk_write(
   mut writer: impl Write,
   tree: &TreeSchedule<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
@@ -178,16 +160,13 @@ pub fn nwk_write(
 
 pub(crate) fn newick_graph(
   tree: &TreeSchedule<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
   comments: &NwkNodeComments,
   style: NwkStyle,
 ) -> Result<NewickGraph, Report> {
   let node_data = |key: GraphNodeKey| {
-    let mut data = NewickNodeData::new();
-    if let Some(name) = &names[&key] {
-      data = data.with_name(name.clone());
-    }
+    let data = NewickNodeData::new().with_name(names[key].to_owned());
     match (style, comments.get(&key)) {
       (NwkStyle::Beast, Some(pairs)) if !pairs.is_empty() => data.with_comment(NodeComment::new(
         LabelSide::AfterLabel,

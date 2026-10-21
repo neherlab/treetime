@@ -101,7 +101,7 @@ mod tests {
 
     let actual: BTreeMap<String, Vec<(String, NewickValue)>> = comments
       .into_iter()
-      .map(|(key, comments)| (setup.topology.names[&key].clone().unwrap(), comments))
+      .map(|(key, comments)| (setup.topology.names[key].to_owned(), comments))
       .collect();
     let expected = btreemap! {
       o!("A") => vec![(o!("date"), NewickValue::NumberText(o!("2020.00")))],
@@ -148,7 +148,7 @@ mod tests {
 
     let actual: BTreeMap<String, Vec<(String, NewickValue)>> = comments
       .into_iter()
-      .map(|(key, comments)| (setup.topology.names[&key].clone().unwrap(), comments))
+      .map(|(key, comments)| (setup.topology.names[key].to_owned(), comments))
       .collect();
     let expected = btreemap! {
       o!("A") => vec![(o!("country"), NewickValue::String(o!("CH")))],

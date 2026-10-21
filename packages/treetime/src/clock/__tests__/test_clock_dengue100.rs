@@ -111,6 +111,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::path::Path;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::dates_csv::metadata_read_file;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
     use treetime_primitives::date::DateConstraint;
@@ -119,7 +120,7 @@ mod tests {
 
     pub(super) fn run_clock(clock_filter: f64, keep_root: bool) -> Result<ClockOutput, Report> {
       let (nwk_parsed, dates) = load()?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let params = ClockParams {
         clock_filter,
         keep_root,
@@ -128,13 +129,13 @@ mod tests {
       };
       let input = ClockInput {
         graph: nwk_parsed.graph,
+        names,
         dates,
         branch_lengths: nwk_parsed.branch_lengths,
       };
       Ok(pipeline::run(
         &params,
         input,
-        &names,
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,
@@ -143,7 +144,7 @@ mod tests {
 
     pub(super) fn prefilter_outlier_names() -> Result<Vec<String>, Report> {
       let (nwk_parsed, dates) = load()?;
-      let names = nwk_parsed.names();
+      let mut names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let mut inputs = ClockInputs::new(&graph);
       assign_dates(&graph, &dates, &mut inputs)?;
@@ -160,7 +161,7 @@ mod tests {
           reroot_params: &RerootParams::new(RerootSpec::default(), true),
           prev_clock_rate: None,
         },
-        &names,
+        &mut names,
         &NoopProgress,
       )?;
       let filtered = clock_filter(
@@ -189,16 +190,12 @@ mod tests {
         Some("date"),
       )
       .and_then(|table| table.dates())?;
-      let dates = dates_by_node(dates, &nwk_parsed.graph, &nwk_parsed.names());
+      let dates = dates_by_node(dates, &nwk_parsed.graph, &nwk_parsed.names);
       Ok((nwk_parsed, dates))
     }
 
-    fn sorted_names(names: &BTreeMap<GraphNodeKey, Option<String>>, keys: &BTreeSet<GraphNodeKey>) -> Vec<String> {
-      keys
-        .iter()
-        .map(|key| names[key].clone().expect("outliers are named"))
-        .sorted()
-        .collect()
+    fn sorted_names(names: &NodeNames, keys: &BTreeSet<GraphNodeKey>) -> Vec<String> {
+      keys.iter().map(|key| names[*key].to_owned()).sorted().collect()
     }
   }
 }

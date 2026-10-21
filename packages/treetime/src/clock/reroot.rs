@@ -3,7 +3,6 @@ use crate::clock::clock_state::{ClockEdgeInput, ClockInputs, ClockNodeInput};
 use crate::clock::find_best_root::find_best_root::find_best_root;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec, RootObjective};
 use crate::error::input_error;
-use crate::node_label::node_label;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::reroot::orchestrate::{RerootTopologyParams, apply_root_at_edge};
@@ -15,13 +14,14 @@ use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo, remove_stem_root};
 
 pub(crate) fn reroot_undated(
   graph: &mut Graph,
+  names: &mut NodeNames,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   spec: &RerootSpec,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<RerootResult, Report> {
   let tip_dates = graph.get_leaves().map(|leaf| (leaf.key(), Some(0.0))).collect();
@@ -44,7 +44,7 @@ pub(crate) fn reroot_at_best_root(
   inputs: &mut ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
   reroot_params: &RerootParams,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<RerootResult, Report> {
   let split_edge = reroot_params.topology.split_edge;
@@ -67,7 +67,7 @@ pub(crate) fn reroot_at_best_root(
     names,
   )?;
   apply_reroot_to_inputs(inputs, &result);
-  progress_info!(log, "Rerooted to {}", node_label(names, result.new_root_key));
+  progress_info!(log, "Rerooted to {}", &names[result.new_root_key]);
   Ok(result)
 }
 

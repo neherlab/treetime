@@ -1,11 +1,10 @@
-use crate::node_label::node_label;
 use crate::optimize::params::BranchOptMethod;
 use crate::progress::{LogSink, RunWarning, RunWarningKind};
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::fmt::string::counted;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -17,18 +16,13 @@ pub(crate) struct ConvergenceSummary {
 }
 
 impl ConvergenceSummary {
-  pub(crate) fn record(
-    &mut self,
-    round: &UnconvergedEdges,
-    graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) {
+  pub(crate) fn record(&mut self, round: &UnconvergedEdges, graph: &Graph, names: &NodeNames) {
     self.rounds += 1;
     if round.is_empty() {
       return;
     }
     self.unconverged_rounds += 1;
-    let label = |edge_key: &GraphEdgeKey| node_label(names, graph[*edge_key].target());
+    let label = |edge_key: &GraphEdgeKey| names[graph[*edge_key].target()].to_owned();
     self.iteration_limit.extend(round.iteration_limit.iter().map(label));
     self.search_bound.extend(round.search_bound.iter().map(label));
   }

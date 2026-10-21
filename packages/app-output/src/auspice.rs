@@ -10,7 +10,6 @@ use treetime::clock::divergence::root_to_node_divergences_where_known;
 use treetime::homoplasy::classify::MutationClass;
 use treetime::homoplasy::site_branches::sites_by_branch_count;
 use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
@@ -185,7 +184,7 @@ fn genome_annotations(
 
 fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64>) -> Result<AuspiceTreeNode, Report> {
   let graph = tree.graph();
-  let name = node_name_or_key(key, graph.names[&key].as_deref());
+  let name = graph.names[key].to_owned();
 
   let div = finite_number(div, 6, &name, "div")?;
   let num_date = match &graph.dates {

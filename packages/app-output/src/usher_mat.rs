@@ -29,7 +29,7 @@ pub(crate) fn mat_tree(tree: &AnnotatedTreeView<'_>) -> Result<MatOutput, Report
   let mut condensed_nodes = Vec::with_capacity(order.len());
   let mut metadata = Vec::with_capacity(order.len());
   for &key in order {
-    let name = graph.names[&key].clone().unwrap_or_default();
+    let name = graph.names[key].to_owned();
     let mutations = match (sequences, tree.tree().parent(key)) {
       (Some(sequences), Some((parent_key, edge_key))) => {
         let mutations = &sequences.edge_mutations[&edge_key];

@@ -66,11 +66,10 @@ mod tests {
     let (rows, _) = run_zika(output.path(), &metadata, |_| {})?;
 
     let tree = nwk_read_file(zika_dir().join("tree.nwk"))?;
-    let names = tree.names();
     let tips: BTreeSet<String> = tree
       .graph
       .get_leaves()
-      .filter_map(|leaf| names[&leaf.key()].clone())
+      .map(|leaf| tree.names[leaf.key()].to_owned())
       .collect();
     let dates = metadata_read_file(
       &metadata,
@@ -83,12 +82,12 @@ mod tests {
     .into_iter()
     .collect::<BTreeMap<_, _>>();
 
-    let listed: BTreeSet<String> = rows.iter().filter_map(|row| row.name.clone()).collect();
+    let listed: BTreeSet<String> = rows.iter().map(|row| row.name.clone()).collect();
     assert_eq!(20, rows.len());
     assert_eq!(tips, listed);
     assert_eq!(tips, dates.keys().cloned().collect::<BTreeSet<_>>());
     for row in &rows {
-      let name = row.name.as_deref().expect("every tip has a name");
+      let name = row.name.as_str();
       let expected = dates[name].as_ref().expect("zika/20 dates every sample").mean();
       assert_eq!(Some(ClockDateSource::Input), row.date_source, "{name}");
       assert_ulps_eq!(expected, row.date.expect("an input date"), max_ulps = 4);
@@ -123,13 +122,13 @@ mod tests {
 
     let row = rows
       .iter()
-      .find(|row| row.name.as_deref() == Some(UNDATED_TIP))
+      .find(|row| row.name == UNDATED_TIP)
       .expect("the undated tip is listed");
     assert_eq!((source, dated), (row.date_source, row.date.is_some()));
     assert!(
       rows
         .iter()
-        .filter(|row| row.name.as_deref() != Some(UNDATED_TIP))
+        .filter(|row| row.name != UNDATED_TIP)
         .all(|row| row.date_source == Some(ClockDateSource::Input))
     );
     Ok(())

@@ -22,7 +22,7 @@ use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::Seq;
 use treetime_utils::make_internal_error;
 
@@ -38,7 +38,7 @@ pub fn run_optimize(
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
   let nwk_parsed = read_input_tree(args.tree(), args.tree_dialect.dialect(), log)?;
-  let names = nwk_parsed.names();
+  let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let settings = SourceSettings {
@@ -71,11 +71,12 @@ pub fn run_optimize(
 
   let input = OptimizeInput {
     graph,
+    names,
     sources,
     branch_lengths,
   };
 
-  let output = pipeline::run(&params, input, &names, cancel, stages, log).map_err(|err| err.into_report())?;
+  let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::OptimizeOutput {
     mut graph,
     mut results,
@@ -161,7 +162,7 @@ fn write_optimize_trees(
 
 struct OptimizeTrees<'a> {
   graph: &'a Graph,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  names: &'a NodeNames,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   sequences: &'a BTreeMap<usize, TreeSequences<'a>>,
   run: RefineRun<'a>,

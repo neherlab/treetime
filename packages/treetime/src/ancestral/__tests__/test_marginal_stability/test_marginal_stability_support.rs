@@ -60,7 +60,7 @@ pub(super) mod tests {
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -83,7 +83,7 @@ pub(super) mod tests {
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;

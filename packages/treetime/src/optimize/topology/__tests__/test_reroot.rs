@@ -13,7 +13,7 @@ mod tests {
   #[test]
   fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.6,B:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -26,7 +26,7 @@ mod tests {
       .map(|e| e.key())
       .unwrap();
 
-    let info = split_edge(&mut graph, edge_key, 0.25, branch_lengths[&edge_key])?;
+    let info = split_edge(&mut graph, &mut names, edge_key, 0.25, branch_lengths[&edge_key])?;
 
     assert_eq!(info.old_edge_key, edge_key);
     assert_abs_diff_eq!(info.split_position, 0.25, epsilon = 1e-7);
@@ -47,7 +47,7 @@ mod tests {
   #[test]
   fn test_reroot_split_edge_at_midpoint() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0,B:2.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -60,7 +60,7 @@ mod tests {
       .map(|e| e.key())
       .unwrap();
 
-    let info = split_edge(&mut graph, edge_key, 0.5, branch_lengths[&edge_key])?;
+    let info = split_edge(&mut graph, &mut names, edge_key, 0.5, branch_lengths[&edge_key])?;
 
     let parent_bl = info.parent_side_length.unwrap();
     assert_abs_diff_eq!(parent_bl, 1.0, epsilon = 1e-7);
@@ -74,7 +74,7 @@ mod tests {
   #[test]
   fn test_reroot_apply_reroot_topology_inverts_path() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -96,7 +96,7 @@ mod tests {
   #[test]
   fn test_reroot_apply_reroot_topology_multi_hop() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -115,7 +115,7 @@ mod tests {
   #[test]
   fn test_reroot_apply_reroot_topology_preserves_leaf_count() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
 
     let initial_leaves = graph.get_leaves().count();
@@ -132,7 +132,7 @@ mod tests {
   #[test]
   fn test_reroot_remove_node_if_trivial_merges_edges() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.5)mid:0.3,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -166,7 +166,7 @@ mod tests {
   #[test]
   fn test_reroot_remove_node_if_trivial_non_trivial_returns_none() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -186,7 +186,7 @@ mod tests {
   #[test]
   fn test_reroot_full_reroot_and_cleanup_preserves_topology() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root:0.001;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -224,7 +224,7 @@ mod tests {
   #[test]
   fn test_reroot_remove_trivial_with_partial_branch_lengths() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.5)mid,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -243,7 +243,7 @@ mod tests {
   #[test]
   fn test_reroot_full_cycle_branch_length_conservation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,(C:0.15,D:0.25)CD:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 

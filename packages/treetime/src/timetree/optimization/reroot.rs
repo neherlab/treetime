@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 pub(crate) fn reroot_tree(
   graph: Graph,
@@ -20,7 +21,7 @@ pub(crate) fn reroot_tree(
   branch_model: BranchModel,
   constraints: &DateConstraints,
   params: &RerootFitParams<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<RerootedTree, Report> {
   progress_info!(
@@ -77,7 +78,7 @@ pub(crate) fn fit_clock_to_dates(
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   constraints: &DateConstraints,
   params: &ClockFitParams<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
   let times = given_times(&graph, constraints)?;

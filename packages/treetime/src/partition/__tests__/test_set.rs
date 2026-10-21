@@ -96,6 +96,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_graph::reroot::remove_node_if_trivial;
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
@@ -124,14 +125,14 @@ mod tests {
 
     pub(super) struct PolytomySet {
       pub(super) graph: Graph,
-      pub(super) names: BTreeMap<GraphNodeKey, Option<String>>,
+      pub(super) names: NodeNames,
       pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
       pub(super) set: PartitionSet,
     }
 
     pub(super) fn updated_polytomy_set(representation: Representation, tree: &str) -> Result<PolytomySet, Report> {
       let parse = nwk_read(tree.as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let graph = parse.graph;
       let records = fasta_read(POLYTOMY_ALIGNMENT.as_bytes(), &Alphabet::default())?
         .into_iter()
@@ -224,14 +225,10 @@ mod tests {
       Ok(values)
     }
 
-    fn leaf_names_below(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      key: GraphNodeKey,
-    ) -> Vec<String> {
+    fn leaf_names_below(graph: &Graph, names: &NodeNames, key: GraphNodeKey) -> Vec<String> {
       let node = &graph[key];
       if node.is_leaf() {
-        return names[&key].iter().cloned().collect();
+        return vec![names[key].to_owned()];
       }
       node
         .outbound()
@@ -246,7 +243,7 @@ mod tests {
       files: Vec<Vec<AlignmentRecord>>,
     ) -> Result<(Graph, PartitionSet), Report> {
       let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = files
         .into_iter()
         .map(|records| sequence_source(Alphabet::default(), leaf_seq_inputs(&parse.graph, &names, records)))

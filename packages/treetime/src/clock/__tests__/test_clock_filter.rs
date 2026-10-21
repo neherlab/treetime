@@ -180,6 +180,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::nwk_read;
 
     pub(super) const OUTLIER_TREE: &str = "(((A:0.1,B:0.2)AB:0.01,(C:0.15,D:0.25)CD:0.01)ABCD:0.01,((E:0.12,F:0.18)EF:0.01,(G:2.0,H:3.0)GH:0.01)EFGH:0.01)root;";
@@ -190,7 +191,7 @@ mod tests {
 
     pub(super) type GraphSetup = (
       Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
+      NodeNames,
       BTreeMap<GraphNodeKey, Option<f64>>,
       BTreeMap<GraphEdgeKey, Option<f64>>,
     );
@@ -253,12 +254,12 @@ mod tests {
 
     pub(super) fn setup_graph(newick: &str, dates: &BTreeMap<String, f64>) -> Result<GraphSetup, Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let times = graph
         .get_leaves()
         .map(|leaf| {
-          let name = names[&leaf.key()].clone().expect("leaves are named");
+          let name = names[leaf.key()].to_owned();
           (leaf.key(), dates.get(&name).copied())
         })
         .collect();
@@ -286,24 +287,17 @@ mod tests {
       Ok((graph, times, nwk_parsed.branch_lengths))
     }
 
-    pub(super) fn outlier_names(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      outliers: &BTreeSet<GraphNodeKey>,
-    ) -> Vec<String> {
-      outliers
-        .iter()
-        .map(|key| names[key].clone().expect("outliers are named"))
-        .sorted()
-        .collect()
+    pub(super) fn outlier_names(names: &NodeNames, outliers: &BTreeSet<GraphNodeKey>) -> Vec<String> {
+      outliers.iter().map(|key| names[*key].to_owned()).sorted().collect()
     }
 
     pub(super) fn divergences_by_name(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       divergences: &BTreeMap<GraphNodeKey, f64>,
     ) -> BTreeMap<String, f64> {
       divergences
         .iter()
-        .map(|(key, div)| (names[key].clone().expect("nodes are named"), *div))
+        .map(|(key, div)| (names[*key].to_owned(), *div))
         .collect()
     }
   }

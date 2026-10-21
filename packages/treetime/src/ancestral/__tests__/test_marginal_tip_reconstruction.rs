@@ -16,6 +16,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
@@ -30,7 +31,7 @@ mod tests {
       GCGT
     "#})?;
     let nwk_parsed = nwk_read(b"(A:0.4,B:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -55,7 +56,7 @@ mod tests {
       ATGTC
     "#})?;
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -99,7 +100,7 @@ mod tests {
       ACGT
     "#})?;
     let nwk_parsed = nwk_read(b"(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -131,7 +132,7 @@ mod tests {
       ACGT
     "#})?;
     let nwk_parsed = nwk_read(b"(A:0.1,(B:0.1,C:0.1)BC:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -153,13 +154,13 @@ mod tests {
     )
   }
 
-  fn node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
-    names[&key].clone().expect("named node")
+  fn node_name(names: &NodeNames, key: GraphNodeKey) -> String {
+    names[key].to_owned()
   }
 
   fn reconstruct_named(
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     recon: &MarginalReconstruction,
     impute: bool,
   ) -> Result<BTreeMap<String, Seq>, Report> {
@@ -172,7 +173,7 @@ mod tests {
   fn reconstruct_sparse(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {
@@ -190,7 +191,7 @@ mod tests {
   fn reconstruct_dense(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     impute: bool,
   ) -> Result<BTreeMap<String, String>, Report> {

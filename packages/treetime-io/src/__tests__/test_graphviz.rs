@@ -9,7 +9,7 @@ mod tests {
   #[test]
   fn test_graphviz_output_starts_with_the_graph_and_ends_with_one_newline() -> Result<(), Report> {
     let parse = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = parse.names();
+    let names = parse.names.clone();
 
     let mut buf = Vec::new();
     graphviz_write(&mut buf, &parse.graph, &names, &parse.branch_lengths)?;
@@ -25,7 +25,7 @@ mod tests {
   #[test]
   fn test_graphviz_writes_the_root_only_in_the_roots_subgraph() -> Result<(), Report> {
     let parse = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-    let names = parse.names();
+    let names = parse.names.clone();
 
     let mut buf = Vec::new();
     graphviz_write(&mut buf, &parse.graph, &names, &parse.branch_lengths)?;
@@ -83,7 +83,7 @@ mod tests {
   #[test]
   fn test_graphviz_escapes_quotes_and_backslashes_in_labels() -> Result<(), Report> {
     let parse = nwk_read(br#"('A\B':0.1,'C""D':0.2)root;"#.as_slice())?;
-    let names = parse.names();
+    let names = parse.names.clone();
 
     let mut buf = Vec::new();
     graphviz_write(&mut buf, &parse.graph, &names, &parse.branch_lengths)?;

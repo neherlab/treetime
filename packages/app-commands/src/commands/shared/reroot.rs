@@ -3,11 +3,11 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::make_report;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::first_key_by_name;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
@@ -47,7 +47,7 @@ pub struct RerootArgs {
 }
 
 impl RerootArgs {
-  pub fn spec(&self, graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<RerootSpec, Report> {
+  pub fn spec(&self, graph: &Graph, names: &NodeNames) -> Result<RerootSpec, Report> {
     if self.reroot_tips.is_empty() {
       Ok(RerootSpec::Method(self.reroot.map(Into::into).unwrap_or_default()))
     } else {
@@ -56,11 +56,7 @@ impl RerootArgs {
   }
 }
 
-pub fn resolve_reroot_tips(
-  tips: &[String],
-  graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
-) -> Result<Vec<GraphNodeKey>, Report> {
+pub fn resolve_reroot_tips(tips: &[String], graph: &Graph, names: &NodeNames) -> Result<Vec<GraphNodeKey>, Report> {
   let first_leaf_of = first_key_by_name(graph.get_leaves().map(|leaf| leaf.key()), names);
   tips
     .iter()
@@ -107,7 +103,7 @@ mod tests {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = RerootArgs::default();
 
-    let actual = args.spec(&tree.graph, &tree.names()).unwrap();
+    let actual = args.spec(&tree.graph, &tree.names).unwrap();
 
     assert_eq!(RerootSpec::Method(RerootMethod::LeastSquares), actual);
   }
@@ -120,7 +116,7 @@ mod tests {
       ..RerootArgs::default()
     };
 
-    let actual = args.spec(&tree.graph, &tree.names()).unwrap();
+    let actual = args.spec(&tree.graph, &tree.names).unwrap();
 
     assert_eq!(RerootSpec::Method(RerootMethod::MinDev), actual);
   }
@@ -133,7 +129,7 @@ mod tests {
       ..RerootArgs::default()
     };
 
-    let actual = args.spec(&tree.graph, &tree.names()).unwrap();
+    let actual = args.spec(&tree.graph, &tree.names).unwrap();
 
     let expected = vec![helpers::leaf_keys(&tree, "B")[0], helpers::leaf_keys(&tree, "C")[0]];
     assert_eq!(RerootSpec::Tips(expected), actual);
@@ -144,7 +140,7 @@ mod tests {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let leaves_named_a = helpers::leaf_keys(&tree, "A");
 
-    let actual = resolve_reroot_tips(&[o!("C"), o!("A")], &tree.graph, &tree.names()).unwrap();
+    let actual = resolve_reroot_tips(&[o!("C"), o!("A")], &tree.graph, &tree.names).unwrap();
 
     assert_eq!(2, leaves_named_a.len());
     assert_eq!(vec![helpers::leaf_keys(&tree, "C")[0], leaves_named_a[0]], actual);
@@ -154,7 +150,7 @@ mod tests {
   fn test_reroot_resolve_tips_of_an_empty_list_is_empty() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
 
-    let actual = resolve_reroot_tips(&[], &tree.graph, &tree.names()).unwrap();
+    let actual = resolve_reroot_tips(&[], &tree.graph, &tree.names).unwrap();
 
     assert_eq!(Vec::<GraphNodeKey>::new(), actual);
   }
@@ -167,7 +163,7 @@ mod tests {
   fn test_reroot_resolve_tips_rejects_names_of_no_leaf(#[case] tip: &str, #[case] expected: &str) {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
 
-    let result = resolve_reroot_tips(&[tip.to_owned()], &tree.graph, &tree.names());
+    let result = resolve_reroot_tips(&[tip.to_owned()], &tree.graph, &tree.names);
 
     assert_error!(result, expected);
   }
@@ -178,12 +174,11 @@ mod tests {
     use treetime_io::nwk::NwkParse;
 
     pub(super) fn leaf_keys(tree: &NwkParse, name: &str) -> Vec<GraphNodeKey> {
-      let names = tree.names();
       tree
         .graph
         .get_leaves()
         .map(|leaf| leaf.key())
-        .filter(|key| names[key].as_deref() == Some(name))
+        .filter(|key| &tree.names[*key] == name)
         .sorted()
         .collect()
     }

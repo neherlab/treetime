@@ -15,6 +15,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
 
   const NWK: &str = "(((A:0.1,B:0.1,Z:0.1)V:0.2)U:0.1)root:0.0;";
@@ -22,7 +23,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_large_t_not_duplicated() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -44,7 +45,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -59,7 +60,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_chain_composed() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -77,7 +78,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -90,7 +91,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_reversion_removed_reduces_count() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -109,7 +110,7 @@ mod tests {
 
     let before = helpers::total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
     let after = helpers::total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 2);
@@ -125,7 +126,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_branch_length_distance_preserved() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -148,7 +149,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let bl = |ek: GraphEdgeKey| branch_lengths[&ek].unwrap_or(0.0);
@@ -163,7 +164,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_multi_partition() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -190,7 +191,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![p0, p1]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let g0 = &sparse[0].partition;
@@ -208,7 +209,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_indel_cancellation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -233,7 +234,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -246,7 +247,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_indel_overlap_fallback() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -271,7 +272,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -288,7 +289,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_indel_no_interaction_hoisted() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let uv = find_edge_key(&graph, &names, "U", "V").unwrap();
@@ -313,7 +314,7 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, uv, va, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -328,7 +329,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_slide_moves_sibling_sub_to_parent() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK_BIFURCATING.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -360,7 +361,7 @@ mod tests {
   #[test]
   fn test_hoist_reversions_slide_then_hoist_removes_cross_root_reversion() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK_BIFURCATING.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -383,7 +384,7 @@ mod tests {
     slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
     let after_slide = helpers::total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut sparse, root_v, v_c1, &mut branch_lengths)?;
+    hoist_reverting_child(&mut graph, &mut names, &mut sparse, root_v, v_c1, &mut branch_lengths)?;
     let after_hoist = helpers::total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 2);
@@ -415,12 +416,7 @@ mod tests {
     }
 
     impl Hoisted {
-      pub(crate) fn locate(
-        graph: &Graph,
-        names: &BTreeMap<GraphNodeKey, Option<String>>,
-        v_name: &str,
-        c_name: &str,
-      ) -> Self {
+      pub(crate) fn locate(graph: &Graph, names: &NodeNames, v_name: &str, c_name: &str) -> Self {
         let v = find_node_key_by_name(graph, names, v_name).unwrap();
         let c = find_node_key_by_name(graph, names, c_name).unwrap();
         let nv = single_inbound(graph, v);
@@ -457,7 +453,7 @@ mod tests {
 
     pub(super) fn make_partition(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {

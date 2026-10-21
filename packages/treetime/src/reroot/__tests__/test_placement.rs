@@ -92,7 +92,7 @@ mod tests {
   #[test]
   fn test_require_dated_new_leaves_rejects_a_new_undated_leaf() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let b_key = find_node_key_by_name(&graph, &names, "B").expect("B exists");
     let mut leaves_before = leaf_keys(&graph);
@@ -110,7 +110,7 @@ mod tests {
   #[test]
   fn test_require_dated_new_leaves_accepts_a_new_dated_leaf() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let b_key = find_node_key_by_name(&graph, &names, "B").expect("B exists");
     let mut leaves_before = leaf_keys(&graph);
@@ -123,7 +123,7 @@ mod tests {
   #[test]
   fn test_require_dated_new_leaves_ignores_undated_leaves_that_were_leaves_before() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
 
     require_dated_new_leaves(&graph, &leaf_keys(&graph), |_| false, &names)?;
@@ -166,7 +166,7 @@ mod tests {
 
     pub(super) fn edge_fixture() -> Result<(Graph, GraphEdgeKey, GraphNodeKey, GraphNodeKey), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let edge_key = find_edge_key(&graph, &names, "root", "AB").expect("root->AB exists");
       let source_key = find_node_key_by_name(&graph, &names, "root").expect("root exists");
@@ -176,7 +176,7 @@ mod tests {
 
     pub(super) fn terminal_edge_fixture() -> Result<(Graph, GraphEdgeKey, GraphNodeKey, GraphNodeKey), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.3,C:0.4)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let edge_key = find_edge_key(&graph, &names, "root", "C").expect("root->C exists");
       let source_key = find_node_key_by_name(&graph, &names, "root").expect("root exists");

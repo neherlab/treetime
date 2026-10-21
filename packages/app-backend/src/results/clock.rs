@@ -67,7 +67,7 @@ pub fn root_to_tip(tree: Option<&ResultTree>, model: Option<&ClockModel>, rows: 
   let points = rows
     .iter()
     .filter_map(|row| {
-      let name = row.name.as_deref()?;
+      let name = row.name.as_str();
       let listed = tips
         .as_ref()
         .map_or_else(|| row.date.is_some(), |tips| tips.contains(name));

@@ -1,5 +1,4 @@
 use crate::make_internal_error;
-use crate::node_label::node_label;
 use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
 use eyre::Report;
 use smart_default::SmartDefault;
@@ -7,6 +6,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::{
   RerootResult, StemRemovalInfo, apply_reroot_topology, record_merge, record_split, remove_node_if_trivial, split_edge,
   trivial_node_branch_lengths,
@@ -24,7 +24,7 @@ pub(crate) fn apply_root_at_edge(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   stem_removal: Option<StemRemovalInfo>,
   is_dated: impl Fn(GraphNodeKey) -> bool,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
 ) -> Result<RerootResult, Report> {
   let old_root_key = graph.root_key()?;
   let unchanged = RerootResult {
@@ -42,12 +42,12 @@ pub(crate) fn apply_root_at_edge(
   let leaves_before = leaf_keys(graph);
   let (new_root_key, edge_split) = match target {
     RootTarget::Node(key) if graph.is_leaf(key) => {
-      return make_internal_error!("Rerooting must not make the leaf '{}' the root", node_label(names, key));
+      return make_internal_error!("Rerooting must not make the leaf '{}' the root", &names[key]);
     },
     RootTarget::Node(key) => (key, None),
     RootTarget::Split { edge_key, split } => {
       let length = branch_lengths.get(&edge_key).copied().flatten();
-      let info = split_edge(graph, edge_key, split, length)?;
+      let info = split_edge(graph, names, edge_key, split, length)?;
       record_split(branch_lengths, &info);
       (info.new_node_key, Some(info))
     },

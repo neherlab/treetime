@@ -11,7 +11,7 @@ use crate::partition::marginal::sample::SampleMode;
 use crate::progress::{LogSink, NoopProgress};
 use crate::seq::alignment::LeafSequences;
 use crate::seq::mutation::{MutationEvent, SequenceMutations, Sub};
-use crate::seq::sink::{SeqSink, SeqTrack};
+use crate::seq::sink::{SeqStream, SeqTrack};
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use std::collections::BTreeMap;
@@ -27,7 +27,7 @@ pub fn reconstruct_aa(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   params: &AaParams,
   cdses: Vec<CdsInput>,
-  mut seq_sink: Option<&mut dyn SeqSink>,
+  mut seq_stream: Option<SeqStream<'_>>,
   cancel: &dyn Cancel,
   log: &dyn LogSink,
 ) -> Result<AaNodeData, Report> {
@@ -36,9 +36,6 @@ pub fn reconstruct_aa(
   let representation = Representation::resolve(params.dense);
   let branch_lengths = branch_lengths_or_zero(branch_lengths);
   let mut aa_node_data = AaNodeData::default();
-  if let Some(sink) = seq_sink.as_deref_mut() {
-    sink.on_topology(graph)?;
-  }
   for (index, cds) in cdses.into_iter().enumerate() {
     let CdsInput {
       name,
@@ -88,7 +85,7 @@ pub fn reconstruct_aa(
         SeqTrack::Aa(&name),
         params.include_leaves,
         true,
-        seq_sink.as_deref_mut(),
+        seq_stream.as_mut().map(SeqStream::reborrow),
       )
       .map_err(OperationError::into_report)?;
     let cds_data = collect_aa_cds_node_data(graph, mutations, unknown, &name, reference_override.as_ref())?;

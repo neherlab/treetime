@@ -18,7 +18,7 @@ mod tests {
   fn test_optimize_pipeline_infer_gtr_mu_normalized() -> Result<(), Report> {
     let alphabet = Alphabet::default();
     let nwk_parsed = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -41,11 +41,12 @@ mod tests {
     };
     let input = OptimizeInput {
       graph,
+      names,
       sources: vec![sequence_source(alphabet, sequences)?],
       branch_lengths,
     };
 
-    let output = run(&params, input, &names, &NoopCancel, &NoopProgress, &NoopProgress)?;
+    let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
     let [result] = output.results.as_slice() else {
       panic!("one alignment gives one result");

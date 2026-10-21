@@ -8,6 +8,7 @@ use std::path::Path;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::{GraphNodeKey, Node};
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::io::file::write_file_with;
 use treetime_utils::make_internal_report;
 
@@ -17,7 +18,7 @@ const FAKE_EDGE_WEIGHT_STEP: usize = 100;
 pub fn graphviz_write_file(
   filepath: impl AsRef<Path>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   write_file_with(filepath, |writer| graphviz_write(writer, graph, names, weights))
@@ -26,7 +27,7 @@ pub fn graphviz_write_file(
 pub fn graphviz_write(
   mut writer: impl io::Write,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   let mut text = String::new();
@@ -37,7 +38,7 @@ pub fn graphviz_write(
 fn write_graphviz_text(
   mut writer: impl Write,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
   write!(
@@ -55,7 +56,7 @@ fn write_graphviz_text(
   Ok(())
 }
 
-fn print_nodes<W>(graph: &Graph, names: &BTreeMap<GraphNodeKey, Option<String>>, mut writer: W) -> Result<(), Report>
+fn print_nodes<W>(graph: &Graph, names: &NodeNames, mut writer: W) -> Result<(), Report>
 where
   W: Write,
 {
@@ -82,19 +83,13 @@ where
   Ok(())
 }
 
-fn print_node<W>(mut writer: W, node: &Node, names: &BTreeMap<GraphNodeKey, Option<String>>) -> Result<(), Report>
+fn print_node<W>(mut writer: W, node: &Node, names: &NodeNames) -> Result<(), Report>
 where
   W: Write,
 {
   let key = node.key();
-  let label = names[&key].clone();
-
-  if let Some(label) = label {
-    let label = label.replace('\\', "\\\\").replace('"', "\\\"");
-    writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
-  } else {
-    writeln!(writer, "    {key} [label=\"({key})\"]")?;
-  }
+  let label = names[key].replace('\\', "\\\\").replace('"', "\\\"");
+  writeln!(writer, "    {key} [label=\"({key}) {label}\"]")?;
   Ok(())
 }
 

@@ -17,7 +17,8 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_graph::schedule::GraphSchedule;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
@@ -73,7 +74,7 @@ mod tests {
   #[test]
   fn test_create_branch_distributions_input_mode_gives_each_edge_a_point_at_its_time_length() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.5,B:3.0)AB:4.5,C:6.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
 
     let branches = create_branch_distributions_input_mode(
@@ -96,7 +97,7 @@ mod tests {
   #[test]
   fn test_input_mode_newick_output_uses_time_lengths() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.003,B:0.006)AB:0.009,C:0.012)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let clock_rate = 0.001;
@@ -127,7 +128,7 @@ mod tests {
   #[test]
   fn test_input_mode_gamma_scales_time_length() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:3.0)I:1.5)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
     let gammas = btreemap! {
@@ -216,13 +217,13 @@ mod tests {
 
     pub(super) fn by_target_name<V: Clone>(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       values: &BTreeMap<GraphEdgeKey, V>,
     ) -> BTreeMap<String, V> {
       graph
         .get_edges()
         .filter_map(|edge| {
-          let name = names[&edge.target()].clone().expect("every fixture node is named");
+          let name = names[edge.target()].to_owned();
           let value = values.get(&edge.key())?.clone();
           Some((name, value))
         })
@@ -231,7 +232,7 @@ mod tests {
 
     pub(super) struct BlendFixture {
       graph: Graph,
-      names: BTreeMap<GraphNodeKey, Option<String>>,
+      names: NodeNames,
       previous: BTreeMap<GraphEdgeKey, f64>,
       node_times: NodeTimes,
       gammas: BTreeMap<GraphEdgeKey, f64>,
@@ -240,7 +241,7 @@ mod tests {
     impl BlendFixture {
       pub(super) fn new() -> Result<Self, Report> {
         let nwk_parsed = nwk_read(BLEND_TREE.as_bytes())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
         let edge = |name: &str| parent_edge_key(&graph, key(name));

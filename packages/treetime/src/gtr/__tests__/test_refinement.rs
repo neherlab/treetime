@@ -362,7 +362,7 @@ mod tests {
 
       fn from_fasta(fasta: &str) -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let aln: Vec<AlignmentRecord> = fasta_read(fasta.as_bytes(), &Alphabet::new(AlphabetName::Nuc)?)?
           .into_iter()
           .map(AlignmentRecord::from)

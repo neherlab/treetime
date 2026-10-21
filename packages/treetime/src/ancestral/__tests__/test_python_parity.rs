@@ -19,7 +19,8 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::{fasta_read, fasta_read_file};
   use treetime_io::nwk::{nwk_read, nwk_read_file};
   use treetime_primitives::AlignmentRecord;
@@ -28,7 +29,7 @@ mod tests {
   fn build_dense_recon(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     alphabet: Alphabet,
     gtr: GTR,
@@ -60,7 +61,7 @@ mod tests {
       .collect();
 
     let nwk_parsed = nwk_read_file(&tree_path)?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -114,7 +115,7 @@ mod tests {
   #[test]
   fn test_internal_node_ab_profile_matches_python() -> Result<(), Report> {
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -143,7 +144,7 @@ mod tests {
   #[test]
   fn test_root_profile_matches_python() -> Result<(), Report> {
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -172,7 +173,7 @@ mod tests {
   #[test]
   fn test_internal_node_cd_profile_valid() -> Result<(), Report> {
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -206,7 +207,7 @@ mod tests {
   #[test]
   fn test_all_internal_nodes_normalized() -> Result<(), Report> {
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -236,7 +237,7 @@ mod tests {
   #[test]
   fn test_multi_partition_independent_computation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -276,7 +277,7 @@ mod tests {
   #[test]
   fn test_multi_partition_internal_node_ab() -> Result<(), Report> {
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -318,7 +319,7 @@ mod tests {
     let simple_aln = ">A\nACATCGCCTTACGGAC\n>B\nGCATCCCTGTACTGAC\n>C\nCCGGCGATGTATTGAC\n>D\nTCGGCCGTGTATTGAC\n";
 
     let nwk_parsed = nwk_read(PYTHON_TREE.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 

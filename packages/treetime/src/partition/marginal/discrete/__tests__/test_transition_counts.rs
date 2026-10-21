@@ -164,7 +164,7 @@ mod tests {
       let n = case.pi.len();
       let [t_a, t_b, t_inner, t_c] = case.lengths;
       let parsed = nwk_read(format!("((A:{t_a},B:{t_b})inner:{t_inner},C:{t_c})root;").as_bytes())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name: &str| -> GraphNodeKey {
         find_node_key_by_name(&graph, &names, name).unwrap_or_else(|| panic!("missing node '{name}'"))

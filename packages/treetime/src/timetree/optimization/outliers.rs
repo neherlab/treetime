@@ -7,6 +7,7 @@ use ordered_float::OrderedFloat;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::fmt::string::truncate_right_with_ellipsis;
 
 #[expect(
@@ -20,7 +21,7 @@ pub(crate) fn report_outliers(
   clock_model: &ClockModel,
   iqd: f64,
   given_dates: &NodeTimes,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   log: &dyn LogSink,
 ) {
   let records = collect_outlier_records(graph, outliers, divergences, clock_model, iqd, given_dates, names);
@@ -56,7 +57,7 @@ fn collect_outlier_records(
   clock_model: &ClockModel,
   iqd: f64,
   given_dates: &NodeTimes,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> Vec<OutlierRecord> {
   graph
     .get_leaves()
@@ -65,7 +66,7 @@ fn collect_outlier_records(
       if !outliers.contains(&key) {
         return None;
       }
-      let name = names[&key].clone()?;
+      let name = names[key].to_owned();
       let given_date = given_dates.get(&key).copied().flatten()?;
       let div = divergences[&key];
       let apparent_date = clock_model.date(div);

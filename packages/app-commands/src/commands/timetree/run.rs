@@ -29,10 +29,10 @@ use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
 use treetime::{make_error, make_internal_error};
-use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_io::dates_csv::DateConstraint;
 use treetime_primitives::Seq;
 use treetime_utils::cast::ToF64Exact;
@@ -49,7 +49,6 @@ pub fn run_timetree_estimation(
 
   let input_data = load_input_data(args, log)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
-  let parse_names = input_data.names;
 
   let resolved = args.resolve_outputs()?;
   let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, args.branch_length_mode, log)?;
@@ -66,7 +65,7 @@ pub fn run_timetree_estimation(
   let seed = args
     .seed_args
     .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
-  let reroot_spec = args.reroot.spec(&input_data.graph, &parse_names)?;
+  let reroot_spec = args.reroot.spec(&input_data.graph, &input_data.names)?;
   let params = timetree_params(args, reroot_spec, sequence_outputs_requested, seed);
 
   let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
@@ -77,7 +76,7 @@ pub fn run_timetree_estimation(
     .unzip();
   let input = TimetreeInput {
     graph: input_data.graph,
-    names: parse_names.clone(),
+    names: input_data.names,
     sources,
     dates: input_data.dates,
     branch_lengths: input_data.branch_lengths,
@@ -85,10 +84,9 @@ pub fn run_timetree_estimation(
 
   let mut recon_sink = (!reconstructed_nuc_fasta.is_empty())
     .then(|| {
-      Ok::<_, Report>(ReconstructedNucSink::new(
-        NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs)?,
-        parse_names,
-      ))
+      Ok::<_, Report>(ReconstructedNucSink {
+        writers: NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs)?,
+      })
     })
     .transpose()?;
 
@@ -386,7 +384,7 @@ fn write_timetree_trees(
 
 struct TimetreeTrees<'a> {
   graph: &'a Graph,
-  names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  names: &'a NodeNames,
   branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   divergences: &'a BTreeMap<GraphNodeKey, f64>,
@@ -414,33 +412,13 @@ fn mutation_divergences(
 
 struct ReconstructedNucSink {
   writers: NucFastaWriters,
-  parse_names: BTreeMap<GraphNodeKey, Option<String>>,
-  names: BTreeMap<GraphNodeKey, Option<String>>,
-}
-
-impl ReconstructedNucSink {
-  fn new(writers: NucFastaWriters, parse_names: BTreeMap<GraphNodeKey, Option<String>>) -> Self {
-    Self {
-      writers,
-      parse_names,
-      names: BTreeMap::new(),
-    }
-  }
 }
 
 impl SeqSink for ReconstructedNucSink {
-  fn on_topology(&mut self, graph: &Graph) -> Result<(), Report> {
-    self.names = assign_node_names(self.parse_names.clone(), graph)?.names;
-    Ok(())
-  }
-
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     match item.track {
       SeqTrack::Nuc(_) if !item.emitted => Ok(()),
-      SeqTrack::Nuc(partition) => {
-        let name = self.names[&item.key].as_deref().unwrap_or("");
-        self.writers.write(partition, item.key, name, item.seq)
-      },
+      SeqTrack::Nuc(partition) => self.writers.write(partition, item.key, item.name, item.seq),
       SeqTrack::Aa(cds) => {
         make_internal_error!("Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'")
       },

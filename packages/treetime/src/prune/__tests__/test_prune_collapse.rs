@@ -19,6 +19,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::seq;
   use treetime_utils::make_report;
@@ -26,7 +27,7 @@ mod tests {
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_basic() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1)internal2:0.1)internal1:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -55,7 +56,7 @@ mod tests {
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_node_with_children() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal1:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -82,7 +83,7 @@ mod tests {
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_stops_at_root() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -137,7 +138,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_compose_non_overlapping() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -175,12 +176,14 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
+
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -193,9 +196,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_key = edge.key();
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
 
       if let Some(edge_partition) = partition.obs_edges.get(&edge_key) {
         if target_name.as_deref() == Some("A") {
@@ -215,7 +216,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_compose_chain() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -246,12 +247,13 @@ mod tests {
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -259,9 +261,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_key = edge.key();
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];
@@ -277,7 +277,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_compose_cancellation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -308,12 +308,13 @@ mod tests {
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -321,9 +322,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_key = edge.key();
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];
@@ -337,7 +336,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_compose_multiple_partitions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -391,12 +390,14 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition1, partition2]);
 
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
+
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -406,9 +407,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_key = edge.key();
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
 
       if target_name.as_deref() == Some("A") {
         assert_eq!(p1.obs_edges[&edge_key].fitch_subs().len(), 2);
@@ -422,27 +421,27 @@ mod tests {
   #[test]
   fn test_collapse_edge_branch_length_sum_both_some() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.2,B:0.1)internal:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partitions = vec![];
 
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
+
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -458,26 +457,25 @@ mod tests {
   #[test]
   fn test_collapse_edge_branch_length_sum_precision() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:2e-10,B:3e-10)internal:1e-10)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
 
     let mut partitions = vec![];
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -498,8 +496,11 @@ mod tests {
     let internal = graph.add_node();
     let a = graph.add_node();
     let b = graph.add_node();
-    let names =
-      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
+    let names = NodeNames::from_input(
+      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
+      &graph,
+    )?
+    .names;
 
     let e_root_internal = graph.add_edge(root, internal)?;
     let e_internal_a = graph.add_edge(internal, a)?;
@@ -513,20 +514,19 @@ mod tests {
       e_internal_a => None,
       e_internal_b => Some(0.2),
     };
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -547,8 +547,11 @@ mod tests {
     let internal = graph.add_node();
     let a = graph.add_node();
     let b = graph.add_node();
-    let names =
-      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
+    let names = NodeNames::from_input(
+      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
+      &graph,
+    )?
+    .names;
 
     let e_root_internal = graph.add_edge(root, internal)?;
     let e_internal_a = graph.add_edge(internal, a)?;
@@ -562,20 +565,19 @@ mod tests {
       e_internal_a => Some(0.3),
       e_internal_b => Some(0.2),
     };
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
     for edge in graph.get_edges() {
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
@@ -596,8 +598,11 @@ mod tests {
     let internal = graph.add_node();
     let a = graph.add_node();
     let b = graph.add_node();
-    let names =
-      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) };
+    let names = NodeNames::from_input(
+      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
+      &graph,
+    )?
+    .names;
 
     let e_root_internal = graph.add_edge(root, internal)?;
     let e_internal_a = graph.add_edge(internal, a)?;
@@ -611,12 +616,13 @@ mod tests {
       e_internal_a => None,
       e_internal_b => None,
     };
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -631,7 +637,7 @@ mod tests {
   #[test]
   fn test_prune_then_merge_exposes_hidden_polytomy() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:1e-8,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -672,12 +678,14 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
+    let prune_keys = node_keys_named(&graph, &names, &[]);
+
     prune_nodes(
       &mut graph,
       &mut partitions,
       Some(1e-6),
       false,
-      &node_keys_named(&names, &[]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     assert!(
@@ -685,7 +693,7 @@ mod tests {
       "I should be collapsed by prune"
     );
 
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     graph.build()?;
 
     assert_eq!(merged, 1, "one group merge should place A, B, C under one node");
@@ -702,7 +710,7 @@ mod tests {
   #[test]
   fn test_collapse_edge_indel_preservation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)internal:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -734,12 +742,13 @@ mod tests {
       .insert(internal_b_edge_key, SparseEdgeObs::default());
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -747,9 +756,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_key = edge.key();
       let target_key = edge.target();
-      let target_name = graph
-        .get_node(target_key)
-        .and_then(|n| names.get(&n.key()).cloned().flatten());
+      let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
 
       if target_name.as_deref() == Some("A") {
         let edge_partition = &partition.obs_edges[&edge_key];

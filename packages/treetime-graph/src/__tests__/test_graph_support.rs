@@ -31,11 +31,18 @@ pub(crate) mod tests {
     use crate::edge::GraphEdgeKey;
     use crate::graph::Graph;
     use crate::node::GraphNodeKey;
+    use crate::node_names::NodeNames;
     use eyre::Report;
     use itertools::Itertools;
     use std::collections::BTreeMap;
     use std::iter::repeat_with;
     use treetime_utils::make_report;
+
+    pub(crate) fn names_on_star(input: BTreeMap<GraphNodeKey, Option<String>>) -> Result<NodeNames, Report> {
+      let size = input.keys().map(|key| key.as_usize() + 1).max().unwrap_or(1);
+      let graph = graph_from_parents(&vec![0; size])?;
+      Ok(NodeNames::from_input(input, &graph)?.names)
+    }
 
     pub(crate) fn graph_from_parents(parents: &[usize]) -> Result<Graph, Report> {
       let mut graph = Graph::new();

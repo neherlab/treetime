@@ -258,18 +258,11 @@ mod tests {
     #[test]
     fn test_prop_tree_arb_newick_parseable_and_leaf_names_exact(newick in arb_newick(6)) {
       let nwk_parsed = nwk_read(newick.as_bytes()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
 
-      let mut actual_names = Vec::new();
-      for leaf in graph.get_leaves() {
-        let maybe_name = names.get(&leaf.key()).cloned().flatten();
-        prop_assert!(maybe_name.is_some(), "Leaf node is missing name in Newick: {newick}");
-        if let Some(name) = maybe_name {
-          actual_names.push(name);
-        }
-      }
+      let actual_names: Vec<String> = graph.get_leaves().map(|leaf| names[leaf.key()].to_owned()).collect();
 
       let expected_names: BTreeSet<String> = (0..6).map(|index| format!("T{index}")).collect();
       let actual_name_count = actual_names.len();

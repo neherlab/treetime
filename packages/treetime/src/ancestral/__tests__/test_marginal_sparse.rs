@@ -27,6 +27,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq};
@@ -93,7 +94,7 @@ mod tests {
   fn run_sparse_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, SparseReconstruction), Report> {
@@ -108,7 +109,7 @@ mod tests {
 
   fn run_sparse_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -153,7 +154,7 @@ mod tests {
     .collect::<BTreeMap<_, _>>();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -218,7 +219,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -261,7 +262,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -345,7 +346,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -403,7 +404,7 @@ mod tests {
       .build()?;
 
     let nwk_parsed = nwk_read(b"((A:0.6,B:0.3):0.1,C:0.2)root:0.001;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -456,7 +457,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -485,7 +486,7 @@ mod tests {
       .get_nodes()
       .map(|node| {
         let key = node.key();
-        let name = names[&key].clone().expect("all test nodes should have names");
+        let name = names[key].to_owned();
         Ok((name, recon.node_sequence(&graph, false, key)?))
       })
       .collect::<Result<BTreeMap<_, _>, Report>>()?;
@@ -531,7 +532,7 @@ mod tests {
       .collect();
       ThreadPoolBuilder::new().num_threads(threads).build()?.install(|| {
         let nwk_parsed = nwk_read(newick.as_bytes())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let branch_lengths = nwk_parsed.branch_lengths;
         let (_, recon) = run_sparse_marginal(
@@ -569,7 +570,7 @@ mod tests {
 
     pub(super) fn expected_edge_subs_by_edge(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       partition: &PartitionMarginalSparse,
       seqs_by_name: &BTreeMap<String, Seq>,
     ) -> Result<BTreeMap<GraphEdgeKey, Vec<Sub>>, Report> {
@@ -589,11 +590,11 @@ mod tests {
 
     fn get_reconstructed_seq<'a>(
       _graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       seqs_by_name: &'a BTreeMap<String, Seq>,
       node_key: GraphNodeKey,
     ) -> &'a Seq {
-      let name = names[&node_key].as_ref().expect("all test nodes should have names");
+      let name = &names[node_key];
       &seqs_by_name[name]
     }
   }

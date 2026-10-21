@@ -30,7 +30,7 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;

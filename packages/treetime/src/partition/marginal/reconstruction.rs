@@ -18,7 +18,7 @@ use crate::seq::mutation::{
   Mutation, MutationTrack, SequenceMutations, Sub, combine_edge_mutations, emit_sequences, stream_sequence_mutations,
 };
 use crate::seq::overlay::SeqOverlay;
-use crate::seq::sink::{SeqSink, SeqTrack};
+use crate::seq::sink::{SeqStream, SeqTrack};
 use eyre::Report;
 use rand::Rng;
 use std::collections::BTreeMap;
@@ -88,7 +88,7 @@ impl MarginalReconstruction {
     track: SeqTrack<'_>,
     include_leaves: bool,
     report_unknown: bool,
-    sink: Option<&mut (dyn SeqSink + '_)>,
+    sink: Option<SeqStream<'_>>,
   ) -> Result<SequenceMutations, OperationError> {
     self
       .view()
@@ -150,7 +150,7 @@ impl<'a> ReconstructionRef<'a> {
     track: SeqTrack<'_>,
     include_leaves: bool,
     report_unknown: bool,
-    sink: Option<&mut (dyn SeqSink + '_)>,
+    sink: Option<SeqStream<'_>>,
   ) -> Result<SequenceMutations, OperationError> {
     let node_sequence = |node_key| self.node_sequence(graph, impute, node_key);
     let Self::Sparse(reconstruction) = self else {

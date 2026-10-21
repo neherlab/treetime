@@ -1,8 +1,8 @@
-mod test_assign_node_names;
 mod test_edge;
 mod test_graph_ops;
 mod test_graph_ops_collapse_edge;
 pub(crate) mod test_graph_support;
+mod test_node_names;
 mod test_pair_by_name;
 mod test_prop_graph_ops_collapse_edge;
 mod test_prop_pair_by_name;

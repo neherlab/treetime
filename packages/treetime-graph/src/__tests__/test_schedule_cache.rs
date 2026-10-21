@@ -37,6 +37,7 @@ mod tests {
   mod helpers {
     use super::super::super::test_graph_support::tests::helpers::NamedGraph;
     use crate::edge::invert_edge;
+    use crate::node_names::NodeNames;
     use crate::schedule::GraphSchedule;
     use crate::topology_order::TopologyOrderSpec;
     use eyre::Report;
@@ -93,7 +94,8 @@ mod tests {
     }
 
     fn order_by_descendant_count(tree: &mut NamedGraph) -> Result<(), Report> {
-      TopologyOrderSpec::default().apply(&mut tree.graph, &BTreeMap::new(), &BTreeMap::new())
+      let names = NodeNames::from_input(BTreeMap::new(), &tree.graph)?.names;
+      TopologyOrderSpec::default().apply(&mut tree.graph, &names, &BTreeMap::new())
     }
   }
 }

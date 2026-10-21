@@ -191,7 +191,11 @@ mod tests {
       &outcome.topology,
       TopologyOutcome::Changed { merger_times } if merger_times.is_empty()
     ));
-    let node_names: BTreeSet<String> = state.names.values().flatten().cloned().collect();
+    let node_names: BTreeSet<String> = state
+      .graph
+      .get_nodes()
+      .map(|node| state.names[node.key()].to_owned())
+      .collect();
     let expected_names: BTreeSet<String> = ["A", "B", "C", "D", "P", "root"].map(str::to_owned).into();
     assert_eq!(expected_names, node_names);
     helpers::assert_state_matches_graph(&state);
@@ -403,7 +407,7 @@ mod tests {
       dates: &BTreeMap<String, Option<DateConstraint>>,
     ) -> Result<(RoundState, TimetreeContext), Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let mut names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -443,7 +447,7 @@ mod tests {
           reroot_params: &RerootParams::default(),
           prev_clock_rate: None,
         },
-        &names,
+        &mut names,
         &NoopProgress,
       )?;
       let ClockFit {
@@ -566,7 +570,8 @@ mod tests {
         .map(|node| node.key())
         .collect();
       let edges: BTreeSet<GraphEdgeKey> = state.graph.get_edges().map(|edge| edge.key()).collect();
-      assert_eq!(nodes, state.names.keys().copied().collect::<BTreeSet<_>>());
+      let node_names: BTreeSet<&str> = nodes.iter().map(|&key| &state.names[key]).collect();
+      assert_eq!(nodes.len(), node_names.len());
       assert_eq!(
         nodes,
         state.time_inference.posterior.keys().copied().collect::<BTreeSet<_>>()

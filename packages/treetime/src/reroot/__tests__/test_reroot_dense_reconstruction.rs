@@ -21,7 +21,7 @@ mod tests {
   #[test]
   fn test_reroot_dense_reconstruction_matches_a_fresh_reconstruction_on_the_rerooted_tree() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let aln: Vec<AlignmentRecord> = fasta_read(
@@ -52,9 +52,9 @@ mod tests {
 
     let reroot = reroot_undated(
       &mut graph,
+      &mut names,
       &mut branch_lengths,
       &RerootSpec::Tips(tips.to_vec()),
-      &names,
       &NoopProgress,
     )?;
     let (_, log_lh_rerooted) = reconstruction

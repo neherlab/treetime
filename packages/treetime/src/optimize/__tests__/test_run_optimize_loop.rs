@@ -26,7 +26,7 @@ mod tests {
   fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -46,7 +46,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_6,
+      names_tt_6,
       &NoopProgress,
     )?;
 
@@ -59,7 +59,7 @@ mod tests {
   fn test_run_optimize_loop_records_joint_likelihood_with_sparse_indels() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -93,7 +93,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_5,
+      names_tt_5,
       &NoopProgress,
     )?;
 
@@ -106,7 +106,7 @@ mod tests {
   fn test_run_optimize_loop_breaks_on_convergence() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -128,7 +128,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_4,
+      names_tt_4,
       &NoopProgress,
     )?;
 
@@ -141,7 +141,7 @@ mod tests {
   fn test_run_optimize_loop_zero_max_iter_is_noop() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -160,7 +160,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_3,
+      names_tt_3,
       &NoopProgress,
     )?;
 
@@ -173,7 +173,7 @@ mod tests {
   fn test_run_optimize_loop_all_likelihoods_finite() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -192,7 +192,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_2,
+      names_tt_2,
       &NoopProgress,
     )?;
 
@@ -206,7 +206,7 @@ mod tests {
   fn test_run_optimize_loop_improves_likelihood() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -237,7 +237,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_1,
+      names_tt_1,
       &NoopProgress,
     )?;
     let branch_lengths = result.branch_lengths;
@@ -264,7 +264,7 @@ mod tests {
   ) -> Result<(), Report> {
     let aln = chain_alignment()?;
     let nwk_parsed = nwk_read(b"((A:0.1,X:0.1)n1:0.1,(B:0.1,Y:0.1)n2:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let mut reconstruction = setup_dense_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -294,7 +294,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       start_branch_lengths.clone(),
-      &names,
+      names.clone(),
       &NoopProgress,
     )?;
 

@@ -14,7 +14,7 @@ mod tests {
   #[test]
   fn test_pair_traits_keeps_the_first_row_of_a_name_for_every_leaf_with_that_name() {
     let tree = nwk_read(b"((A:0.1,A:0.1)X:0.1,B:0.1)root;".as_slice()).unwrap();
-    let names = tree.names();
+    let names = tree.names.clone();
     let rows = vec![
       (o!("A"), o!("usa")),
       (o!("B"), o!("uk")),
@@ -30,7 +30,7 @@ mod tests {
         .graph
         .get_leaves()
         .map(|leaf| leaf.key())
-        .filter(|key| names[key].as_deref() == Some(name))
+        .filter(|key| &names[*key] == name)
         .sorted()
         .collect_vec()
     };

@@ -18,7 +18,8 @@ pub(super) mod tests {
   use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_primitives::AsciiChar;
@@ -96,7 +97,7 @@ pub(super) mod tests {
   #[test]
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
     let mut graph = Graph::new();
-    let names: BTreeMap<GraphNodeKey, Option<String>> = btreemap! {};
+    let names = NodeNames::from_input(btreemap! {}, &graph)?.names;
     let mut partitions = vec![];
     let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = btreemap! {};
     prune_nodes(
@@ -395,12 +396,13 @@ pub(super) mod tests {
   fn test_prune_nodes_single_named_leaf() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["B"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["B"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -418,12 +420,13 @@ pub(super) mod tests {
   fn test_prune_nodes_multiple_named_leaves() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2,C:0.3,D:0.4)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["A", "C"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["A", "C"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -441,12 +444,13 @@ pub(super) mod tests {
   fn test_prune_nodes_nonexistent_name_is_noop() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["nonexistent"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["nonexistent"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -464,12 +468,13 @@ pub(super) mod tests {
   fn test_prune_nodes_named_internal_node() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["internal"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -487,12 +492,13 @@ pub(super) mod tests {
   fn test_prune_nodes_mixed_internal_and_leaf_names() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("((A:0.1,B:0.2)internal:0.3,C:0.4,D:0.5)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["internal", "D"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["internal", "D"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     let output_nwk = nwk_write_str(
@@ -533,12 +539,13 @@ pub(super) mod tests {
   fn test_prune_nodes_all_leaves_preserves_root() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(A:0.1,B:0.2)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["A", "B"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["A", "B"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
     assert_eq!(graph.get_nodes().count(), 1);
@@ -549,12 +556,13 @@ pub(super) mod tests {
   fn test_prune_nodes_deep_nested_leaf_removal() -> Result<(), Report> {
     let (mut graph, names, mut partitions, mut branch_lengths) =
       create_test_graph_with_partitions("(((A:0.1,B:0.2)i1:0.3,C:0.4)i2:0.5,D:0.6)root;", &[])?;
+    let prune_keys = node_keys_named(&graph, &names, &["A"]);
     prune_nodes(
       &mut graph,
       &mut partitions,
       None,
       false,
-      &node_keys_named(&names, &["A"]),
+      &prune_keys,
       &mut branch_lengths,
     )?;
 
@@ -563,7 +571,7 @@ pub(super) mod tests {
     let leaf_names: BTreeSet<_> = graph
       .get_nodes()
       .filter(|n| graph.is_leaf(n.key()))
-      .filter_map(|n| names.get(&n.key()).cloned().flatten())
+      .map(|n| names[n.key()].to_owned())
       .collect();
     assert_eq!(leaf_names, btreeset! { "B".to_owned(), "C".to_owned(), "D".to_owned() });
 
@@ -572,6 +580,7 @@ pub(super) mod tests {
 
   pub(crate) mod helpers {
     use super::*;
+    use treetime_graph::node_names::NodeNames;
 
     pub(crate) fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
@@ -598,14 +607,14 @@ pub(super) mod tests {
     ) -> Result<
       (
         Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
+        NodeNames,
         Vec<SparseReconstruction>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
     > {
       let nwk_parsed = nwk_read(nwk.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
@@ -652,14 +661,14 @@ pub(super) mod tests {
     ) -> Result<
       (
         Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
+        NodeNames,
         Vec<SparseReconstruction>,
         BTreeMap<GraphEdgeKey, Option<f64>>,
       ),
       Report,
     > {
       let nwk_parsed = nwk_read(nwk.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;

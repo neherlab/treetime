@@ -4,13 +4,13 @@ use crate::commands::homoplasy::result::{
   SiteBranchesRow, SiteHitsRow, SubstitutionResult, TaxonResult,
 };
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime::homoplasy::pipeline::{HomoplasyOutput, IndelKey};
 use treetime::homoplasy::recurrence::RecurrenceTable;
 use treetime::seq::indel::InDelKind;
 use treetime::seq::mutation::Sub;
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 pub fn homoplasy_result(output: &HomoplasyOutput, context: &ResultContext<'_>) -> HomoplasyResult {
   let substitutions = &output.substitutions;
@@ -98,7 +98,7 @@ fn mutation_table<K>(
         branches: recurrence
           .branches
           .iter()
-          .map(|&key| node_name_or_key(key, context.names[&key].as_deref()))
+          .map(|&key| context.names[key].to_owned())
           .collect(),
         drm: drm(&recurrence.mutation),
       })
@@ -125,7 +125,7 @@ fn taxa(output: &HomoplasyOutput, context: &ResultContext<'_>) -> Vec<TaxonResul
         .map(Vec::as_slice)
         .unwrap_or_default();
       TaxonResult {
-        name: node_name_or_key(key, context.names[&key].as_deref()),
+        name: context.names[key].to_owned(),
         homoplasic_mutations: homoplasic
           .iter()
           .map(|sub| substitution_name(sub, context.zero_based))
@@ -147,7 +147,7 @@ fn taxa(output: &HomoplasyOutput, context: &ResultContext<'_>) -> Vec<TaxonResul
 }
 
 pub struct ResultContext<'a> {
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: &'a NodeNames,
   pub drms: Option<&'a DrmTable>,
   pub zero_based: bool,
 }

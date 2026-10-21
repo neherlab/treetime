@@ -8,6 +8,7 @@ use treetime::progress::{LogSink, RunWarningKind};
 use treetime::progress_warn;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
 
@@ -18,7 +19,7 @@ pub fn read_input_dates(
   metadata_id: &MetadataIdArgs,
   date_column: Option<&str>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphNodeKey, DateConstraint>, Report> {
   let rows = metadata_read_file(

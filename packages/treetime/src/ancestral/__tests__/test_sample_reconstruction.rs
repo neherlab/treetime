@@ -144,7 +144,7 @@ mod tests {
         .collect();
 
       let nwk_parsed = nwk_read(tree.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph: Graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 

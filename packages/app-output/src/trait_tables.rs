@@ -5,7 +5,6 @@ use eyre::Report;
 use std::io::Write;
 use std::iter::once;
 use std::path::Path;
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_io::csv::CsvWriter;
 use treetime_utils::make_internal_report;
 
@@ -27,7 +26,7 @@ pub(crate) fn write_traits_rows<W: Write>(tree: &AnnotatedTreeView<'_>, csv: &mu
   csv.write_record(["node", traits.attribute])?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    let name = node_name_or_key(key, graph.names[&key].as_deref());
+    let name = graph.names[key].to_owned();
     csv.write_record([name.as_str(), traits.state_name(key)?])
   })
 }
@@ -41,7 +40,7 @@ pub(crate) fn write_trait_confidence_rows<W: Write>(
   csv.write_record(once("node").chain(traits.states.iter()))?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
-    let name = node_name_or_key(key, graph.names[&key].as_deref());
+    let name = graph.names[key].to_owned();
     let profile = traits.posteriors[&key].profile();
     csv.write_record(once(name).chain(profile.iter().map(|probability| format!("{probability:.6}"))))
   })

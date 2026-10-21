@@ -1,12 +1,12 @@
 use crate::clock::clock_model::{ClockLine, ClockModel};
 use crate::clock::clock_regression::ClockRegressionPoint;
 use crate::clock::clock_state::ClockInputs;
-use deser::adapters::SkipBlank;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::adapters::TrueOrNull;
 
 pub(crate) fn gather_clock_regression_results(
@@ -15,7 +15,7 @@ pub(crate) fn gather_clock_regression_results(
   divergences: &BTreeMap<GraphNodeKey, f64>,
   outliers: &BTreeSet<GraphNodeKey>,
   clock_model: &ClockModel,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> Vec<ClockRegressionResult> {
   graph
     .get_nodes()
@@ -24,7 +24,7 @@ pub(crate) fn gather_clock_regression_results(
       let div = divergences[&key];
       let time = inputs.likely_time(key);
       ClockRegressionResult {
-        name: names[&key].clone(),
+        name: names[key].to_owned(),
         div,
         date: time,
         predicted_date: clock_model.date(div),
@@ -40,13 +40,13 @@ pub(crate) fn gather_clock_regression_results(
 pub(crate) fn clock_fit_regression_results(
   model: &ClockModel,
   points: &[ClockRegressionPoint],
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   date_source: impl Fn(GraphNodeKey) -> ClockDateSource,
 ) -> Vec<ClockRegressionResult> {
   points
     .iter()
     .map(|point| ClockRegressionResult {
-      name: names[&point.key].clone(),
+      name: names[point.key].to_owned(),
       div: point.div,
       date: point.date,
       predicted_date: model.date(point.div),
@@ -60,8 +60,7 @@ pub(crate) fn clock_fit_regression_results(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockRegressionResult {
-  #[deser(as = SkipBlank<Option<_>>)]
-  pub name: Option<String>,
+  pub name: String,
   pub div: f64,
   pub date: Option<f64>,
   pub predicted_date: f64,

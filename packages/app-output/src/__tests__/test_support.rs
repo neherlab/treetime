@@ -23,6 +23,7 @@ pub(crate) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_io::nwk::nwk_read;
   use treetime_io::usher_mat::UsherTree;
@@ -53,7 +54,7 @@ pub(crate) mod tests {
 
   pub(crate) struct Topology {
     pub(crate) graph: Graph,
-    pub(crate) names: BTreeMap<GraphNodeKey, Option<String>>,
+    pub(crate) names: NodeNames,
     pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   }
 
@@ -86,7 +87,7 @@ pub(crate) mod tests {
   pub(crate) fn topology_from(nwk: &str) -> Result<Topology, Report> {
     let parsed = nwk_read(nwk.as_bytes())?;
     Ok(Topology {
-      names: parsed.names(),
+      names: parsed.names.clone(),
       graph: parsed.graph,
       branch_lengths: parsed.branch_lengths,
     })
@@ -401,10 +402,25 @@ pub(crate) mod tests {
 
   pub(crate) fn node_key(topology: &Topology, name: &str) -> GraphNodeKey {
     topology
-      .names
-      .iter()
-      .find_map(|(key, node_name)| (node_name.as_deref() == Some(name)).then_some(*key))
+      .graph
+      .get_nodes()
+      .map(|node| node.key())
+      .find(|key| &topology.names[*key] == name)
       .expect("fixture node must exist")
+  }
+
+  pub(crate) fn rename_node(topology: &mut Topology, key: GraphNodeKey, name: &str) -> Result<(), Report> {
+    let input = topology
+      .graph
+      .get_nodes()
+      .map(|node| node.key())
+      .map(|other| {
+        let other_name = if other == key { name } else { &topology.names[other] };
+        (other, Some(other_name.to_owned()))
+      })
+      .collect();
+    topology.names = NodeNames::from_input(input, &topology.graph)?.names;
+    Ok(())
   }
 
   pub(crate) fn parent_edge(topology: &Topology, name: &str) -> Result<GraphEdgeKey, Report> {

@@ -10,7 +10,7 @@ mod tests {
   #[test]
   fn test_capture_node_times_keeps_only_finite_committed_times() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0,C:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
     let mut inference = empty_time_inference(&graph);

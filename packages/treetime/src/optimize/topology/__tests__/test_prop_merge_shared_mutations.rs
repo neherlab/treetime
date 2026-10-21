@@ -21,7 +21,8 @@ mod tests {
   use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AsciiChar, Seq};
 
@@ -46,14 +47,14 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, names, edge_mutations, length, mut branch_lengths) =
+      let (mut graph, mut names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
 
       let original_total: usize = edge_mutations.iter().map(|(_, _, subs)| subs.len()).sum();
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let mut partitions = sparse_topology_partitions(vec![partition]);
 
-      merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
+      merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
       let p = &partitions[0].partition;
@@ -80,12 +81,12 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, names, edge_mutations, length, mut branch_lengths) =
+      let (mut graph, mut names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let mut partitions = sparse_topology_partitions(vec![partition]);
 
-      merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
+      merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
       for (edge_key, bl) in &branch_lengths {
@@ -106,15 +107,15 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, names, edge_mutations, length, mut branch_lengths) =
+      let (mut graph, mut names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let mut partitions = sparse_topology_partitions(vec![partition]);
 
-      let merged_first = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
+      let merged_first = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
-      let merged_second = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
+      let merged_second = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths).unwrap();
 
       prop_assert_eq!(merged_second, 0);
     }
@@ -129,23 +130,23 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, names, edge_mutations, length, mut branch_lengths) =
+      let (mut graph, mut names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
 
       let leaves_before: BTreeSet<String> = graph
         .get_leaves()
-        .filter_map(|n| names.get(&n.key()).cloned().flatten())
+        .map(|n| names[n.key()].to_owned())
         .collect();
 
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let mut partitions = sparse_topology_partitions(vec![partition]);
 
-      merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
+      merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
       let leaves_after: BTreeSet<String> = graph
         .get_leaves()
-        .filter_map(|n| names.get(&n.key()).cloned().flatten())
+        .map(|n| names[n.key()].to_owned())
         .collect();
 
       prop_assert_eq!(leaves_before, leaves_after);
@@ -162,12 +163,12 @@ mod tests {
       let n_children = unique_counts.len();
       if n_children < 3 { return Ok(()); }
 
-      let (mut graph, names, edge_mutations, length, mut branch_lengths) =
+      let (mut graph, mut names, edge_mutations, length, mut branch_lengths) =
         helpers::build_polytomy(n_children, n_shared, unique_counts, length);
       let partition = helpers::make_partition(&graph, &names, length, &edge_mutations);
       let mut partitions = sparse_topology_partitions(vec![partition]);
 
-      merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths).unwrap();
+      merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths).unwrap();
       graph.build().unwrap();
 
       let p = &partitions[0].partition;
@@ -200,7 +201,7 @@ mod tests {
   #[test]
   fn test_merge_all_children_share_same_mutation() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = helpers::make_partition_from_static(
@@ -218,7 +219,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
@@ -236,7 +237,7 @@ mod tests {
   #[test]
   fn test_merge_overlapping_groups_greedy_selection() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = helpers::make_partition_from_static(
@@ -253,7 +254,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert!(merged >= 1);
 
     Ok(())
@@ -262,7 +263,7 @@ mod tests {
   #[test]
   fn test_merge_polytomy_reduced_to_binary_stops() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = helpers::make_partition_from_static(
@@ -278,7 +279,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 1);
     graph.build()?;
 
@@ -291,7 +292,7 @@ mod tests {
   #[test]
   fn test_merge_multiple_polytomies_in_one_tree() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1,C:0.1)I:0.1,D:0.1,E:0.1,F:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let partition = helpers::make_partition_from_static(
@@ -311,7 +312,7 @@ mod tests {
     let mut partitions = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 2);
 
     Ok(())
@@ -320,7 +321,7 @@ mod tests {
   #[test]
   fn test_merge_disjoint_sub_and_indel_groups_same_round() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1,E:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut partition = helpers::make_partition_from_static(
@@ -347,7 +348,7 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert_eq!(merged, 2);
 
     Ok(())
@@ -356,7 +357,7 @@ mod tests {
   #[test]
   fn test_merge_multi_partition_asymmetric_sharing() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -386,15 +387,11 @@ mod tests {
 
     let mut partitions = sparse_topology_partitions(vec![p1, p2]);
     let mut branch_lengths = branch_lengths;
-    let merged = merge_shared_mutation_branches(&mut graph, &mut partitions, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut partitions, &mut branch_lengths)?;
     assert!(merged >= 1);
     graph.build()?;
 
-    let leaf_count = graph
-      .get_leaves()
-      .filter(|n| names.get(&n.key()).and_then(|x| x.as_ref()).is_some())
-      .count();
-    assert_eq!(leaf_count, 4);
+    assert_eq!(graph.get_leaves().count(), 4);
 
     Ok(())
   }
@@ -404,7 +401,7 @@ mod tests {
 
     type PolytomySetup = (
       Graph,
-      BTreeMap<GraphNodeKey, Option<String>>,
+      NodeNames,
       Vec<(String, String, Vec<Sub>)>,
       usize,
       BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -420,7 +417,7 @@ mod tests {
       let newick_children = names.iter().map(|n| format!("{n}:0.1")).join(",");
       let newick = format!("({newick_children})root;");
       let nwk_parsed = nwk_read(newick.as_bytes()).unwrap();
-      let node_names = nwk_parsed.names();
+      let node_names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -446,7 +443,7 @@ mod tests {
 
     pub(super) fn make_partition(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
     ) -> PartitionMarginalSparse {
@@ -459,7 +456,7 @@ mod tests {
 
     pub(super) fn make_partition_from_static(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> Result<PartitionMarginalSparse, Report> {

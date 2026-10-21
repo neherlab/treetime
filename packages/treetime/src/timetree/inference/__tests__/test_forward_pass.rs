@@ -32,6 +32,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_grid::{BoundaryBehavior, MaxGridPoints, Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
@@ -56,7 +57,7 @@ mod tests {
   #[test]
   fn test_forward_pass_leaves_internal_node_with_empty_distribution_undated() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:2.5)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
 
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
@@ -92,7 +93,7 @@ mod tests {
   #[trace]
   fn test_forward_pass_warns_about_undated_nodes_in_preorder(#[case] threads: usize) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0,B:1.0,C:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
 
@@ -123,7 +124,7 @@ mod tests {
   #[test]
   fn test_forward_pass_refines_uncertain_leaf_date_from_parent() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -147,7 +148,7 @@ mod tests {
   #[test]
   fn test_forward_pass_keeps_exact_leaf_date_earlier_than_its_parent() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -171,7 +172,7 @@ mod tests {
   #[test]
   fn test_forward_pass_clamps_uncertain_leaf_date_to_parent_time() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -191,7 +192,7 @@ mod tests {
   #[test]
   fn test_forward_pass_keeps_uncertain_leaf_date_the_tree_contradicts() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -235,7 +236,7 @@ mod tests {
 
     let refine = |parent: Distribution<NegLog>| -> Result<f64, Report> {
       let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
       let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -264,7 +265,7 @@ mod tests {
   #[test]
   fn test_forward_pass_refines_a_date_range_narrower_than_the_parent_grid() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -314,7 +315,7 @@ mod tests {
   #[test]
   fn test_forward_pass_trims_each_refined_posterior_to_its_mass() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)N:2.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
     let (root_key, node_key, a_key, b_key) = (key("root"), key("N"), key("A"), key("B"));
@@ -400,7 +401,7 @@ mod tests {
   #[test]
   fn test_forward_pass_child_interval_is_not_clipped_at_the_cut_of_its_parent() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:1.0)C:1.0)P:2.0)R;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
     let (parent_key, child_key) = (key("P"), key("C"));
@@ -502,7 +503,7 @@ mod tests {
     #[case] refined: bool,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(N:2.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
     let (root_key, node_key) = (key("root"), key("N"));
@@ -552,7 +553,7 @@ mod tests {
     #[case] subtree: Option<Distribution<NegLog>>,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(N:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node not found");
     let (root_key, node_key) = (key("root"), key("N"));
@@ -587,7 +588,7 @@ mod tests {
   #[test]
   fn test_forward_pass_missing_backward_output_is_an_internal_error() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
@@ -611,7 +612,7 @@ mod tests {
     #[case] expected: Option<MaxPosteriorRegion>,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -634,7 +635,7 @@ mod tests {
   #[test]
   fn test_forward_pass_stores_no_region_for_an_undated_node() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
@@ -664,7 +665,7 @@ mod tests {
     #[case] stored: bool,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let leaf_key = find_node_key_by_name(&nwk_parsed.graph, &names, "A").expect("leaf A not found");
     let distribution = Arc::new(Distribution::range((2004.0, 2006.0), 0.0));
     let view = PosteriorView {
@@ -693,7 +694,7 @@ mod tests {
   #[test]
   fn test_forward_pass_frees_every_posterior_distribution_when_it_returns() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0,C:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
 
@@ -725,7 +726,7 @@ mod tests {
   #[test]
   fn test_forward_pass_frees_the_grids_of_a_finished_sibling_subtree_before_the_next_sibling() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0,C:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
 
@@ -789,7 +790,7 @@ mod tests {
     pub(super) fn run_forward_pass(
       graph: &Graph,
       inputs: &ForwardInputs,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
     ) -> Result<BTreeMap<GraphNodeKey, FullPosterior>, Report> {
       run_forward_pass_with_log(graph, inputs, names, &NoopProgress)
     }
@@ -797,7 +798,7 @@ mod tests {
     pub(super) fn run_forward_pass_with_log(
       graph: &Graph,
       inputs: &ForwardInputs,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       log: &dyn LogSink,
     ) -> Result<BTreeMap<GraphNodeKey, FullPosterior>, Report> {
       propagate_distributions_forward(
@@ -812,7 +813,7 @@ mod tests {
     pub(super) fn run_forward_pass_summaries(
       graph: &Graph,
       inputs: &ForwardInputs,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       summaries: PosteriorSummaries,
     ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
       propagate_distributions_forward(
@@ -824,10 +825,7 @@ mod tests {
       )
     }
 
-    pub(super) fn forward_inputs<'a>(
-      inputs: &'a ForwardInputs,
-      names: &'a BTreeMap<GraphNodeKey, Option<String>>,
-    ) -> ForwardPassInputs<'a> {
+    pub(super) fn forward_inputs<'a>(inputs: &'a ForwardInputs, names: &'a NodeNames) -> ForwardPassInputs<'a> {
       ForwardPassInputs {
         constraints: &inputs.constraints,
         names,
@@ -917,7 +915,7 @@ mod tests {
       message_from_child: Option<Distribution<NegLog>>,
     ) -> Result<Option<f64>, Report> {
       let nwk_parsed = nwk_read(b"(N:1.0)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let root_key = find_node_key_by_name(&graph, &names, "root").expect("root not found");
       let child_key = find_node_key_by_name(&graph, &names, "N").expect("node N not found");

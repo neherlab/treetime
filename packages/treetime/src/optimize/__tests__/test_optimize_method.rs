@@ -19,7 +19,8 @@ pub(super) mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
@@ -30,7 +31,7 @@ pub(super) mod tests {
   #[trace]
   fn test_optimize_method_equivalence_no_indels(#[case] method: BranchOptMethod) -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let aln = simple_alignment()?;
@@ -165,7 +166,7 @@ pub(super) mod tests {
 
     pub(crate) fn setup_with_indels(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
       n_indels: usize,
     ) -> Result<(PartitionSet, f64), Report> {
@@ -196,7 +197,7 @@ pub(super) mod tests {
       n_indels: usize,
     ) -> Result<OptimizedFirstEdge, Report> {
       let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;

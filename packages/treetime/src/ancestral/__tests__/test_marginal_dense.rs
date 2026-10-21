@@ -19,7 +19,8 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
+
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -56,7 +57,7 @@ mod tests {
   fn run_dense_marginal(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
   ) -> Result<(f64, DenseReconstruction), Report> {
@@ -70,7 +71,7 @@ mod tests {
 
   fn run_dense_lh_for_newick(newick: &str, aln: &[AlignmentRecord], gtr: GTR) -> Result<f64, Report> {
     let nwk_parsed = nwk_read(newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -128,7 +129,7 @@ mod tests {
     .collect::<BTreeMap<_, _>>();
 
     let nwk_parsed = nwk_read(TREE_7_TAXON.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -156,7 +157,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_probability_normalization() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_7_TAXON.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -189,7 +190,7 @@ mod tests {
   #[test]
   fn test_marginal_dense_update_is_idempotent() -> Result<(), Report> {
     let nwk_parsed = nwk_read(TREE_7_TAXON.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -264,7 +265,7 @@ mod tests {
       .build()?;
 
     let nwk_parsed = nwk_read(b"((A:0.6,B:0.3):0.1,C:0.2)root:0.001;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 

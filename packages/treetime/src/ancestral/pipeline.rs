@@ -6,7 +6,7 @@ use crate::error::OperationError;
 use crate::partition::result::{PartitionResult, PartitionSequences, split_sources};
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::AncestralInput;
-use crate::seq::sink::{SeqSink, SeqTrack};
+use crate::seq::sink::{SeqStream, SeqTrack};
 use treetime_graph::graph::Graph;
 use treetime_utils::make_report;
 use treetime_utils::sync::random::get_random_number_generator;
@@ -14,7 +14,7 @@ use treetime_utils::sync::random::get_random_number_generator;
 pub fn run(
   params: &AncestralParams,
   input: AncestralInput,
-  mut seq_sink: Option<&mut dyn SeqSink>,
+  mut seq_stream: Option<SeqStream<'_>>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -41,9 +41,6 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  if let Some(sink) = seq_sink.as_deref_mut() {
-    sink.on_topology(&graph).map_err(OperationError::SinkFailed)?;
-  }
   let results = partitions
     .into_iter()
     .map(|(source, partition)| {
@@ -52,7 +49,7 @@ pub fn run(
         SeqTrack::Nuc(source.number),
         params.include_leaves,
         params.report_ambiguous,
-        seq_sink.as_deref_mut(),
+        seq_stream.as_mut().map(SeqStream::reborrow),
       )?;
       let alphabet = partition.alphabet().clone();
       let sequences = PartitionSequences::new(mutations, &alphabet).map_err(OperationError::InferenceFailed)?;

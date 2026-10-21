@@ -62,12 +62,10 @@ pub(crate) fn attach_seqs_to_graph(
       let node = node_inputs
         .get_mut(&leaf_key)
         .ok_or_else(|| make_internal_report!("Leaf {leaf_key} has no sequence input"))?;
-      let seq = node.seq.take().ok_or_else(|| {
-        make_report!(
-          "Leaf sequence not found after alignment completion: '{}'",
-          node.name.as_deref().unwrap_or("")
-        )
-      })?;
+      let seq = node
+        .seq
+        .take()
+        .ok_or_else(|| make_report!("Leaf sequence not found after alignment completion: '{}'", node.name))?;
       Ok((leaf_key, seq))
     })
     .collect::<Result<Vec<_>, Report>>()?;

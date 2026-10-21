@@ -12,6 +12,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
 
   const NWK: &str = "(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;";
@@ -19,7 +20,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_merge_hoist_retire_worked_example() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let (partition, node_states) = helpers::make_partition(
@@ -36,7 +37,13 @@ mod tests {
     let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     assert!(changed > 0);
 
     let p = &sparse[0].partition;
@@ -55,7 +62,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_incompatible_splits_five_to_four() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let (partition, node_states) = helpers::make_partition(
@@ -77,7 +84,13 @@ mod tests {
 
     let before = total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
-    resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    resolve_polytomies(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     let after = total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 5);
@@ -88,7 +101,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_bifurcating_root_cross_root_reversion() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((G1:0.1,G2:0.1,A1:0.1,A2:0.1)V:0.1,S:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let (partition, node_states) = helpers::make_partition(
@@ -107,7 +120,13 @@ mod tests {
 
     let before = total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
     let after = total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 3);
@@ -127,7 +146,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_retirement_preserves_preexisting_internal_node() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((((X1:0.1,X2:0.1)W:0.0,C1:0.1,C2:0.1)V:0.2)U:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let (partition, node_states) = helpers::make_partition(
@@ -144,7 +163,13 @@ mod tests {
     let mut sparse = vec![sparse_topology_partition(partition, node_states)];
 
     let mut branch_lengths = branch_lengths;
-    resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    resolve_polytomies(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert!(
       find_node_key_by_name(&graph, &names, "W").is_some(),
@@ -165,7 +190,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_root_polytomy_skipped() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.1,C:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let (partition, node_states) = helpers::make_partition(
@@ -182,7 +207,13 @@ mod tests {
     let nodes_before = graph.get_nodes().count();
 
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().count(), nodes_before);
@@ -193,7 +224,7 @@ mod tests {
   #[test]
   fn test_resolve_polytomy_no_change_without_reversions() -> Result<(), Report> {
     let nwk_parsed = nwk_read(NWK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let (partition, node_states) = helpers::make_partition(
@@ -211,7 +242,13 @@ mod tests {
     let nodes_before = graph.get_nodes().count();
 
     let mut branch_lengths = branch_lengths;
-    let changed = resolve_polytomies(&mut graph, &mut sparse, TopologyOps::default(), &mut branch_lengths)?;
+    let changed = resolve_polytomies(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      TopologyOps::default(),
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(changed, 0);
     assert_eq!(graph.get_nodes().count(), nodes_before);
@@ -252,7 +289,7 @@ mod tests {
 
     pub(super) fn make_partition(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
     ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {

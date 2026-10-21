@@ -43,7 +43,7 @@ TCGGCCGTGTRTTG--
   fn test_marginal_idempotency_example_dense() -> Result<(), Report> {
     let input = example_input()?;
     let nwk_parsed = nwk_read(input.newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -62,7 +62,7 @@ TCGGCCGTGTRTTG--
   fn test_marginal_idempotency_example_sparse() -> Result<(), Report> {
     let input = example_input()?;
     let nwk_parsed = nwk_read(input.newick.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;

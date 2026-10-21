@@ -160,22 +160,11 @@ mod tests {
     #[test]
     fn test_prop_input_arb_marginal_input_parseable_and_taxa_exact(input in arb_marginal_input_small()) {
       let nwk_parsed = nwk_read(input.newick.as_bytes()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
 
-      let mut leaf_names = Vec::new();
-      for leaf in graph.get_leaves() {
-        let maybe_name = names.get(&leaf.key()).cloned().flatten();
-        prop_assert!(
-          maybe_name.is_some(),
-          "Leaf node is missing name in generated Newick: {}",
-          input.newick
-        );
-        if let Some(name) = maybe_name {
-          leaf_names.push(name);
-        }
-      }
+      let leaf_names: Vec<String> = graph.get_leaves().map(|leaf| names[leaf.key()].to_owned()).collect();
 
       let leaf_name_count = leaf_names.len();
       let leaf_names: BTreeSet<String> = leaf_names.into_iter().collect();

@@ -1,11 +1,11 @@
 use crate::error::input_error;
-use crate::node_label::node_label;
 use approx::ulps_eq;
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 pub(crate) fn root_moves(
   graph: &Graph,
@@ -55,7 +55,7 @@ pub(crate) fn require_dated_new_leaves(
   graph: &Graph,
   leaves_before: &BTreeSet<GraphNodeKey>,
   is_dated: impl Fn(GraphNodeKey) -> bool,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> Result<(), Report> {
   let undated = graph
     .get_leaves()
@@ -66,7 +66,7 @@ pub(crate) fn require_dated_new_leaves(
     Some(key) => Err(input_error(format!(
       "Rerooting turned the internal node '{}' into a leaf, but it has no date and no observed data. \
        Remove the node from the input tree or pass --keep-root.",
-      node_label(names, key)
+      &names[key]
     ))),
   }
 }

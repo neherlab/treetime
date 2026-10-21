@@ -18,6 +18,7 @@ pub(super) mod tests {
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -56,11 +57,11 @@ pub(super) mod tests {
       &*NUC_ALPHABET,
     )?
     .into_iter()
-    .map(|fasta| (Some(fasta.seq_name), fasta.seq.to_string()))
+    .map(|fasta| (fasta.seq_name, fasta.seq.to_string()))
     .collect::<BTreeMap<_, _>>();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -80,7 +81,7 @@ pub(super) mod tests {
     ancestral_reconstruction_fitch(&graph, &mut partitions_parsimony)?;
     for key in internal_node_keys(&graph) {
       actual.insert(
-        names[&key].clone(),
+        names[key].to_owned(),
         partitions_parsimony[0].node_sequence(key).to_string(),
       );
     }
@@ -131,11 +132,11 @@ pub(super) mod tests {
       &*NUC_ALPHABET,
     )?
     .into_iter()
-    .map(|fasta| (Some(fasta.seq_name), fasta.seq.to_string()))
+    .map(|fasta| (fasta.seq_name, fasta.seq.to_string()))
     .collect::<BTreeMap<_, _>>();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -155,7 +156,7 @@ pub(super) mod tests {
     ancestral_reconstruction_fitch(&graph, &mut partitions_parsimony)?;
     for key in node_keys(&graph) {
       actual.insert(
-        names[&key].clone(),
+        names[key].to_owned(),
         partitions_parsimony[0].node_sequence(key).to_string(),
       );
     }
@@ -186,7 +187,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -231,7 +232,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -294,7 +295,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,(D:0.05,E:0.03)DE:0.01)CDE:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -361,7 +362,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.05,E:0.03)CDE:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -424,7 +425,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -483,13 +484,13 @@ pub(super) mod tests {
   pub(crate) mod helpers {
     use super::*;
 
-    fn get_node_name(names: &BTreeMap<GraphNodeKey, Option<String>>, key: GraphNodeKey) -> String {
-      names[&key].clone().expect("node has name")
+    fn get_node_name(names: &NodeNames, key: GraphNodeKey) -> String {
+      names[key].to_owned()
     }
 
     pub(crate) fn collect_edge_subs(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       partition: &PartitionFitch,
     ) -> BTreeMap<String, Vec<String>> {
       graph
@@ -534,13 +535,12 @@ pub(super) mod tests {
 
     pub(crate) fn get_node_variable_positions_by_name(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       partition: &PartitionFitch,
       name: &str,
     ) -> Vec<usize> {
       for node in graph.get_nodes() {
-        let node_name = names[&node.key()].clone();
-        if node_name.as_deref() == Some(name) {
+        if &names[node.key()] == name {
           return partition.nodes[&node.key()]
             .seq
             .fitch
@@ -561,13 +561,13 @@ pub(super) mod tests {
 
     pub(crate) fn get_internal_sequences(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       partition: &PartitionFitch,
     ) -> BTreeMap<String, String> {
       graph
         .get_internal_nodes()
         .map(|node| {
-          let node_name = names[&node.key()].clone().unwrap();
+          let node_name = names[node.key()].to_owned();
           let sequence = partition.nodes[&node.key()].seq.sequence.as_str().to_owned();
           (node_name, sequence)
         })
@@ -576,7 +576,7 @@ pub(super) mod tests {
 
     pub(crate) fn collect_edge_indels(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       partition: &PartitionFitch,
     ) -> BTreeMap<String, Vec<String>> {
       graph

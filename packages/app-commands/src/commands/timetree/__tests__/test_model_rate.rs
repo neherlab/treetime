@@ -169,10 +169,7 @@ mod tests {
       let clock_model: ClockModel = json_read_file(output.join("timetree.clock-model.json"))?;
       let rows: Vec<ClockRegressionResult> =
         table_read_file(OutputSelection::ClockCsv, &output.join("timetree.clock.csv"))?;
-      let divergence = rows
-        .into_iter()
-        .filter_map(|row| row.name.map(|name| (name, row.div)))
-        .collect();
+      let divergence = rows.into_iter().map(|row| (row.name, row.div)).collect();
       Ok(SymmetricRun {
         clock_rate: clock_model.clock_rate(),
         divergence,

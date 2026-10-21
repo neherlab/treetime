@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
 use treetime_io::name_list::name_list_read_file;
@@ -57,7 +58,7 @@ impl TopologyOrderArgs {
   pub fn resolve_topology_order(
     &self,
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     input_order: Option<Vec<GraphNodeKey>>,
     tree_dialect: NewickDialect,
   ) -> Result<TopologyOrderSpec, Report> {
@@ -126,7 +127,7 @@ impl TopologyOrderArgs {
   fn target_order(
     &self,
     graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     input_order: Option<Vec<GraphNodeKey>>,
     tree_dialect: NewickDialect,
   ) -> Result<BTreeMap<GraphNodeKey, usize>, Report> {
@@ -150,10 +151,9 @@ impl TopologyOrderArgs {
           .as_ref()
           .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
         let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading target reference topology")?;
-        let ref_names = nwk_parsed.names();
         leaf_order(&nwk_parsed.graph)
           .into_iter()
-          .filter_map(|key| ref_names[&key].clone())
+          .map(|key| nwk_parsed.names[key].to_owned())
           .collect_vec()
       },
       TopologyOrderTargetSourceArg::List => {
@@ -171,7 +171,7 @@ impl TopologyOrderArgs {
 pub(crate) fn target_positions(
   target_names: Vec<String>,
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
 ) -> BTreeMap<GraphNodeKey, usize> {
   let positions = target_names
     .into_iter()

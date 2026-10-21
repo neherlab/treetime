@@ -8,6 +8,7 @@ use treetime::seq::mutation::Mutation;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::{GraphSchedule, TreeSchedule};
 use treetime_primitives::Seq;
 use treetime_primitives::date::DateConstraint;
@@ -39,7 +40,7 @@ impl<'a> AnnotatedTreeView<'a> {
 #[derive(Clone, Copy)]
 pub struct AnnotatedGraph<'a> {
   pub graph: &'a Graph,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: &'a NodeNames,
   pub divergence_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   pub time_branch_lengths: Option<&'a BTreeMap<GraphEdgeKey, Option<f64>>>,
   pub divergence: Divergence<'a>,

@@ -29,7 +29,7 @@ mod tests {
   #[test]
   fn test_time_inference_likely_times_names_node_with_nan_date_constraint() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let inference = empty_time_inference(&graph);
@@ -49,7 +49,7 @@ mod tests {
   #[test]
   fn test_time_inference_likely_times_prefer_the_date_constraint() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = find_node_key_by_name(&graph, &names, "I").expect("internal node I not found");
     let inference = helpers::inference_with_likely_time(&graph, key, 2010.0);
@@ -71,7 +71,7 @@ mod tests {
   #[test]
   fn test_time_inference_node_times_reads_the_committed_time_of_every_node() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
     let mut inference = empty_time_inference(&graph);
@@ -104,7 +104,7 @@ mod tests {
   #[test]
   fn test_time_inference_likely_times_cover_every_node() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1.0,B:1.0)I:1.0)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
     let mut constraints = point_date_constraints(&graph, &names, &[("A", 2010.0)]);
@@ -137,7 +137,7 @@ mod tests {
   #[test]
   fn test_time_inference_likely_times_take_the_posterior_of_a_polytomy_merger() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2,C:0.15)ABC:0.05)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
     let [a, b, c, abc, root] = ["A", "B", "C", "ABC", "root"].map(key);
@@ -154,6 +154,7 @@ mod tests {
       graph, merger_times, ..
     } = resolve_polytomies(
       graph,
+      &mut names,
       branch_lengths,
       &BranchModel::Input,
       POLYTOMY_MUTATION_RATE,

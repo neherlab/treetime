@@ -26,6 +26,7 @@ use std::sync::LazyLock;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read;
 use treetime_io::nwk::{NwkParse, nwk_read};
 use treetime_primitives::{AlignmentRecord, LogLh, Seq, seq};
@@ -34,7 +35,7 @@ pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::def
 
 pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
   let nwk_parsed = nwk_read(newick.as_bytes())?;
-  let names = nwk_parsed.names();
+  let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
@@ -50,7 +51,7 @@ pub(crate) fn run_dense_marginal_with_newick(newick: &str, aln_str: &str, gtr: &
 
 pub(crate) fn run_sparse_marginal_with_newick(newick: &str, aln_str: &str, gtr: &GTR) -> Result<f64, Report> {
   let nwk_parsed = nwk_read(newick.as_bytes())?;
-  let names = nwk_parsed.names();
+  let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let aln: Vec<AlignmentRecord> = fasta_read(aln_str.as_bytes(), &*NUC_ALPHABET)?
@@ -105,7 +106,7 @@ pub(crate) fn node_keys(graph: &Graph) -> Vec<GraphNodeKey> {
 }
 
 pub(crate) fn emitted_sequences_by_name(
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   emitted_nodes: &[GraphNodeKey],
   sampled: &BTreeMap<GraphNodeKey, Seq>,
   node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
@@ -117,7 +118,7 @@ pub(crate) fn emitted_sequences_by_name(
         Some(seq) => seq.clone(),
         None => node_sequence(*key)?,
       };
-      Ok((names[key].clone().expect("all test nodes are named"), seq))
+      Ok((names[*key].to_owned(), seq))
     })
     .collect()
 }
@@ -209,7 +210,7 @@ pub(crate) fn dense_partition_with_constant_leaves(
     .get_leaves()
     .map(|leaf| {
       let input = NodeSeqInput {
-        name: None,
+        name: leaf.key().to_string(),
         seq: Some(seq![fill; length]),
       };
       (leaf.key(), input)
@@ -220,7 +221,7 @@ pub(crate) fn dense_partition_with_constant_leaves(
 
 pub(crate) fn leaf_seq_inputs(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   aln: Vec<AlignmentRecord>,
 ) -> BTreeMap<GraphNodeKey, NodeSeqInput> {
   pair_leaf_sequences(graph, names, aln).sequences.nodes
@@ -233,7 +234,7 @@ pub(crate) struct CompletedSequences {
 
 pub(crate) fn complete_sequence_source(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   aln: Vec<AlignmentRecord>,
   alphabet: &Alphabet,
   path: &str,
@@ -277,7 +278,7 @@ pub(crate) fn ancestral_input_for_tree(parse: NwkParse, sources: Vec<SequenceSou
 
 pub(crate) fn complete_leaf_sequences(
   graph: &Graph,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   aln: Vec<AlignmentRecord>,
   alphabet: &Alphabet,
 ) -> Result<CompletedSequences, Report> {

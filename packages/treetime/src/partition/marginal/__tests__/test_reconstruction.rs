@@ -11,6 +11,7 @@ mod tests {
   use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sample::SampleMode;
   use crate::seq::mutation::stream_sequence_mutations;
+  use crate::seq::sink::SeqStream;
   use crate::seq::sink::SeqTrack;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{RecordingSeqSink, marginal_update_reconstruction};
@@ -20,6 +21,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -89,7 +91,7 @@ mod tests {
       true,
       |key| reconstruction.node_sequence(&graph, false, key),
       |edge_key| reconstruction.edge_indels(edge_key),
-      Some(&mut sink),
+      Some(SeqStream::new(&mut sink, &names)),
     )?;
 
     let expected = expected
@@ -99,7 +101,7 @@ mod tests {
     let actual = sink
       .items
       .into_iter()
-      .map(|(key, emitted, _)| (names[&key].clone().unwrap(), emitted))
+      .map(|(key, emitted, _)| (names[key].to_owned(), emitted))
       .collect::<Vec<_>>();
     assert_eq!(expected, actual);
     Ok(())
@@ -167,7 +169,7 @@ mod tests {
       .map(AlignmentRecord::from)
       .collect();
       let nwk_parsed = nwk_read(TREE.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let fitch = create_fitch_partition(&graph, alphabet, leaf_seq_inputs(&graph, &names, aln))?;
       let (partition, node_states) = fitch.into_marginal_sparse(&graph)?;
@@ -181,9 +183,9 @@ mod tests {
 
     pub(super) fn updated_four_leaves(
       representation: Representation,
-    ) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>, MarginalReconstruction), Report> {
+    ) -> Result<(Graph, NodeNames, MarginalReconstruction), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)X:0.1,(C:0.1,D:0.1)Y:0.1)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);
       let aln: Vec<AlignmentRecord> = fasta_read(
@@ -217,11 +219,7 @@ mod tests {
       Ok((graph, names, reconstruction))
     }
 
-    pub(super) fn keys(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      node_names: &[&str],
-    ) -> Vec<GraphNodeKey> {
+    pub(super) fn keys(graph: &Graph, names: &NodeNames, node_names: &[&str]) -> Vec<GraphNodeKey> {
       node_names
         .iter()
         .map(|name| find_node_key_by_name(graph, names, name).expect("node must exist"))

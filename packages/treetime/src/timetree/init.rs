@@ -17,7 +17,6 @@ use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -25,13 +24,13 @@ use treetime_graph::node::GraphNodeKey;
 pub(crate) fn initialize(
   params: &TimetreeParams,
   context: &TimetreeContext,
-  input_names: &BTreeMap<GraphNodeKey, Option<String>>,
   pre_loop: PreLoopState,
   log: &dyn LogSink,
 ) -> Result<InitialRound, Report> {
   progress_info!(log, "### TreeTime: initialization");
   let PreLoopState {
     graph,
+    names,
     branch_lengths,
     branch_model,
     clock_fit: ClockFit {
@@ -42,7 +41,7 @@ pub(crate) fn initialize(
   } = pre_loop;
   let leaf_bad_branches = bad_leaves(&graph, &context.date_constraints, &outliers);
   let state = RoundState {
-    names: restrict_node_names(input_names, &graph),
+    names,
     gammas: unit_gammas(&graph),
     graph,
     branch_model,

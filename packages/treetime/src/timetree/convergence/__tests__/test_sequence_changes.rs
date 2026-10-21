@@ -145,7 +145,7 @@ mod tests {
 
     pub(super) fn sparse_model(fasta: &str) -> Result<(Graph, BranchModel), Report> {
       let nwk_parsed = nwk_read(TREE.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = branch_lengths_or_zero(&nwk_parsed.branch_lengths);
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;

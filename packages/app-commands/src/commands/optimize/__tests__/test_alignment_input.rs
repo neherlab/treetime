@@ -12,7 +12,7 @@ mod tests {
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime_io::nwk::nwk_read_file;
-  use treetime_utils::{assert_error, o};
+  use treetime_utils::{assert_error, vec_of_owned};
 
   #[test]
   fn test_optimize_fills_a_leaf_without_a_sequence() -> Result<(), Report> {
@@ -29,14 +29,13 @@ mod tests {
     helpers::run(dir.path())?;
 
     let tree = nwk_read_file(dir.path().join("optimize.nwk"))?;
-    let names = tree.names();
     let leaves = tree
       .graph
       .get_leaves()
-      .map(|leaf| names[&leaf.key()].clone())
+      .map(|leaf| tree.names[leaf.key()].to_owned())
       .sorted()
       .collect_vec();
-    assert_eq!(vec![Some(o!("A")), Some(o!("B")), Some(o!("C")), Some(o!("D"))], leaves);
+    assert_eq!(vec_of_owned!["A", "B", "C", "D"], leaves);
     Ok(())
   }
 

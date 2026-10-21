@@ -14,17 +14,16 @@ use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::DateConstraint;
 use treetime_utils::make_internal_error;
 
 pub fn run(
   params: &ClockParams,
   input: ClockInput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -36,6 +35,7 @@ pub fn run(
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.3, "");
+  let mut names = input.names;
   let tree = ClockTree {
     graph: input.graph,
     branch_lengths: input.branch_lengths,
@@ -49,11 +49,10 @@ pub fn run(
     },
     clock_model,
     filter_outliers,
-  ) = estimate_clock_model_with_prefilter(tree, params, names, log).map_err(OperationError::classify)?;
+  ) = estimate_clock_model_with_prefilter(tree, params, &mut names, log).map_err(OperationError::classify)?;
 
   let outliers = filter_outliers.unwrap_or_default();
 
-  let names = restrict_node_names(names, &graph);
   let divergences = root_to_node_divergences(&graph, |edge_key| branch_length_or_zero(&branch_lengths, edge_key))
     .map_err(OperationError::classify)?;
   let regression_results =
@@ -73,6 +72,7 @@ pub fn run(
 
 pub struct ClockInput {
   pub graph: Graph,
+  pub names: NodeNames,
   pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
@@ -85,14 +85,14 @@ pub struct ClockOutput {
   pub outliers: BTreeSet<GraphNodeKey>,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 fn estimate_clock_model_with_prefilter(
   tree: ClockTree,
   params: &ClockParams,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
   let reroot_spec = &params.reroot_spec;

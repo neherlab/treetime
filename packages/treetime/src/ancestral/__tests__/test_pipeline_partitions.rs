@@ -71,6 +71,7 @@ mod tests {
     use crate::partition::marginal::sample::SampleMode;
     use crate::partition::result::PartitionResult;
     use crate::progress::NoopProgress;
+    use crate::seq::sink::SeqStream;
     use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
     use crate::test_utils::{TestDataset, ancestral_input_for_tree, complete_sequence_source, get_common_length};
     use eyre::Report;
@@ -114,7 +115,7 @@ mod tests {
     ) -> Result<(AncestralOutput, Vec<usize>), Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = blocks
         .iter()
         .map(|block| complete_sequence_source(&parse.graph, &names, block.records.clone(), &alphabet, &block.path))
@@ -135,7 +136,7 @@ mod tests {
       let output = run(
         &params,
         ancestral_input_for_tree(parse, sources),
-        Some(&mut sink),
+        Some(SeqStream::new(&mut sink, &names)),
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,

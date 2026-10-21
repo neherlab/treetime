@@ -11,12 +11,13 @@ use treetime::progress::LogSink;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_io::dates_csv::DateConstraint;
 
 pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) -> Result<InputData, Report> {
   let nwk_parsed =
     read_input_tree(&args.tree, args.tree_dialect.dialect(), log).wrap_err("Failed to load tree from file")?;
-  let names = nwk_parsed.names();
+  let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let input_leaf_order = leaf_order(&graph);
@@ -61,7 +62,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
 
 pub(crate) struct InputData {
   pub graph: Graph,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub input_leaf_order: Vec<GraphNodeKey>,
   pub sequences: Vec<AlignmentSource>,

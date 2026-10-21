@@ -13,6 +13,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
 
   const TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,C:0.1)root;";
@@ -293,17 +294,13 @@ mod tests {
   mod helpers {
     use super::*;
 
-    pub(super) fn tree(newick: &str) -> Result<(Graph, BTreeMap<GraphNodeKey, Option<String>>), Report> {
+    pub(super) fn tree(newick: &str) -> Result<(Graph, NodeNames), Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       Ok((nwk_parsed.graph, names))
     }
 
-    pub(super) fn dated(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      dated: &[&str],
-    ) -> DateConstraints {
+    pub(super) fn dated(graph: &Graph, names: &NodeNames, dated: &[&str]) -> DateConstraints {
       let dates = dated.iter().map(|name| (*name, DATE)).collect::<Vec<_>>();
       point_date_constraints(graph, names, &dates)
     }
@@ -328,14 +325,8 @@ mod tests {
       Ok(by_name(&names, &bad_branches))
     }
 
-    pub(super) fn by_name(
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      flags: &BTreeMap<GraphNodeKey, bool>,
-    ) -> BTreeMap<String, bool> {
-      flags
-        .iter()
-        .map(|(key, bad)| (names[key].clone().expect("every fixture node is named"), *bad))
-        .collect()
+    pub(super) fn by_name(names: &NodeNames, flags: &BTreeMap<GraphNodeKey, bool>) -> BTreeMap<String, bool> {
+      flags.iter().map(|(key, bad)| (names[*key].to_owned(), *bad)).collect()
     }
 
     pub(super) fn subtree_keys(graph: &Graph, key: GraphNodeKey) -> Vec<GraphNodeKey> {

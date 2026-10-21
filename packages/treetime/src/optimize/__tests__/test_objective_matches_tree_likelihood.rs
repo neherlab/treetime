@@ -124,7 +124,7 @@ mod tests {
 
     pub(super) fn setup_skewed_pi(sparse: bool, mu: f64) -> Result<SkewedPiTree, Report> {
       let parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let graph = parsed.graph;
       let branch_lengths: BTreeMap<GraphEdgeKey, f64> = parsed
         .branch_lengths

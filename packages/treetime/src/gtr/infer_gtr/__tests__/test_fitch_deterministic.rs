@@ -45,7 +45,7 @@ mod tests {
 
     let gtr_a = {
       let nwk_parsed = nwk_read_file(&tree_path)?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;
@@ -55,7 +55,7 @@ mod tests {
 
     let gtr_b = {
       let nwk_parsed = nwk_read_file(&tree_path)?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let graph: Graph = graph;

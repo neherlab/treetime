@@ -50,7 +50,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_no_zero_edges() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
@@ -62,7 +62,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_skips_leaves() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.0,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
@@ -74,7 +74,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_collects_internal() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.0,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
@@ -83,9 +83,7 @@ pub(super) mod tests {
     let edge_key = edges[0];
     let edge = graph.get_edge(edge_key).unwrap();
     let target = edge.target();
-    let target_name = graph
-      .get_node(target)
-      .and_then(|n| names.get(&n.key()).cloned().flatten());
+    let target_name = graph.get_node(target).map(|n| names[n.key()].to_owned());
     assert_eq!(target_name.as_deref(), Some("I"));
     Ok(())
   }
@@ -93,7 +91,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_find_zero_optimal_internal_edges_multiple() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.1)I1:0.0,C:0.1)I2:0.0,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
@@ -127,7 +125,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -207,7 +205,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)AB:0.05,(C:0.1,D:0.1)CD:0.05)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -276,7 +274,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"(A:0.001,B:0.001,C:0.001,D:0.001,E:0.001)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -288,7 +286,7 @@ pub(super) mod tests {
     let initial_node_count = graph.get_nodes().count();
 
     let mut sparse_obs = [sparse];
-    let merged = merge_shared_mutation_branches(&mut graph, &mut sparse_obs, &mut branch_lengths)?;
+    let merged = merge_shared_mutation_branches(&mut graph, &mut names, &mut sparse_obs, &mut branch_lengths)?;
     assert!(merged > 0, "A and B should share mutation A->T, triggering merge");
     graph.build()?;
 
@@ -311,7 +309,7 @@ pub(super) mod tests {
   #[test]
   fn test_optimize_cascading_collapse_parent_child_both_zero() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.1)I2:0.0)I1:0.0,C:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -375,7 +373,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -454,7 +452,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -487,7 +485,7 @@ pub(super) mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_2,
+      names_tt_2,
       &NoopProgress,
     )?;
 
@@ -522,7 +520,7 @@ pub(super) mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)AB:0.01,(C:0.01,D:0.01)CD:0.01)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -560,7 +558,7 @@ pub(super) mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_1,
+      names_tt_1,
       &NoopProgress,
     )?;
 

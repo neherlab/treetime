@@ -24,10 +24,9 @@ use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::izip;
 use std::collections::BTreeMap;
-use treetime_graph::assign_node_names::restrict_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::{make_internal_error, make_report};
 
 const PRE_REROOT_DAMPING: f64 = 0.75;
@@ -35,7 +34,6 @@ const PRE_REROOT_DAMPING: f64 = 0.75;
 pub fn run(
   params: &OptimizeParams,
   mut input: OptimizeInput,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -114,7 +112,7 @@ pub fn run(
       &evidence,
       params.initial_guess,
       &mut branch_lengths,
-      names,
+      &input.names,
       log,
     )
     .map_err(OperationError::classify)?;
@@ -130,15 +128,20 @@ pub fn run(
       params.loop_settings.opt_method,
       params.loop_settings.indel_policy,
       &mut branch_lengths,
-      names,
+      &input.names,
       &mut convergence,
     )
     .map_err(OperationError::classify)?;
-    partitions = reroot_optimize(&mut input.graph, spec, partitions, &mut branch_lengths, names, log)
-      .map_err(OperationError::classify)?;
+    partitions = reroot_optimize(
+      &mut input.graph,
+      &mut input.names,
+      spec,
+      partitions,
+      &mut branch_lengths,
+      log,
+    )
+    .map_err(OperationError::classify)?;
   }
-
-  let loop_names = restrict_node_names(names, &input.graph);
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Optimizing branch lengths", 0.3, "");
@@ -147,7 +150,7 @@ pub fn run(
     partitions,
     &params.loop_settings,
     branch_lengths,
-    &loop_names,
+    input.names,
     log,
   )
   .map_err(OperationError::classify)?;
@@ -184,6 +187,7 @@ pub struct OptimizeParams {
 
 pub struct OptimizeInput {
   pub graph: Graph,
+  pub names: NodeNames,
   pub sources: Vec<SequenceSource>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
@@ -193,7 +197,7 @@ pub struct OptimizeOutput {
   pub graph: Graph,
   pub results: Vec<PartitionResult>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
 }
 
 fn optimize_result(
@@ -238,7 +242,7 @@ fn pre_reroot_optimize(
   opt_method: BranchOptMethod,
   indel_policy: IndelPolicy,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   convergence: &mut ConvergenceSummary,
 ) -> Result<PartitionSet, Report> {
   let old_branch_lengths = branch_lengths.clone();
@@ -264,10 +268,10 @@ fn pre_reroot_optimize(
 
 fn reroot_optimize(
   graph: &mut Graph,
+  names: &mut NodeNames,
   spec: &RerootSpec,
   partitions: PartitionSet,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
   if let RerootSpec::Method(method @ (RerootMethod::LeastSquares | RerootMethod::Oldest | RerootMethod::ClockFilter)) =
@@ -275,7 +279,7 @@ fn reroot_optimize(
   {
     return make_internal_error!("optimize cannot reroot with a date-dependent method: {method:?}");
   }
-  let reroot_result = reroot_undated(graph, branch_lengths, spec, names, log)?;
+  let reroot_result = reroot_undated(graph, names, branch_lengths, spec, log)?;
 
   let partitions = partitions.apply_reroot(&reroot_result)?;
   Ok(

@@ -44,7 +44,7 @@ mod tests {
   #[test]
   fn test_input_pairing_alignment_keeps_the_first_record_of_a_name_for_every_leaf_with_that_name() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let names = tree.names();
+    let names = tree.names.clone();
     let records = vec![
       helpers::record("A", Some("first"), "ACGT"),
       helpers::record("B", None, "GGGG"),
@@ -81,7 +81,7 @@ mod tests {
     let path = dir.path().join("metadata.tsv");
     fs::write(&path, "strain\tdate\nA\t2001\nB\t2002\nA\t2005\n").unwrap();
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let names = tree.names();
+    let names = tree.names.clone();
     let log = RecordingLog::default();
 
     let actual = read_input_dates(&path, &MetadataIdArgs::default(), None, &tree.graph, &names, &log).unwrap();
@@ -113,7 +113,7 @@ mod tests {
   fn test_input_pairing_target_order_gives_leaves_that_share_a_name_its_first_position() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
 
-    let actual = target_positions(vec_of_owned!["B", "A", "Z", "A"], &tree.graph, &tree.names());
+    let actual = target_positions(vec_of_owned!["B", "A", "Z", "A"], &tree.graph, &tree.names);
 
     let [a1, a2] = leaf_keys(&tree, "A")[..] else {
       panic!("the tree has two leaves named A")
@@ -131,12 +131,12 @@ mod tests {
     use treetime_utils::o;
 
     pub(super) fn leaf_keys(tree: &NwkParse, name: &str) -> Vec<GraphNodeKey> {
-      let names = tree.names();
+      let names = tree.names.clone();
       tree
         .graph
         .get_leaves()
         .map(|leaf| leaf.key())
-        .filter(|key| names[key].as_deref() == Some(name))
+        .filter(|key| &names[*key] == name)
         .sorted()
         .collect()
     }

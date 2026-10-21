@@ -5,7 +5,7 @@ use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::{SequenceMutations, stream_sequence_mutations};
-use crate::seq::sink::{SeqSink, SeqTrack};
+use crate::seq::sink::{SeqStream, SeqTrack};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -54,7 +54,7 @@ impl AncestralPartition {
     track: SeqTrack<'_>,
     include_leaves: bool,
     report_unknown: bool,
-    sink: Option<&mut (dyn SeqSink + '_)>,
+    sink: Option<SeqStream<'_>>,
   ) -> Result<SequenceMutations, OperationError> {
     if let Self::Marginal {
       reconstruction,

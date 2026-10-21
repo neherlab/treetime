@@ -19,12 +19,13 @@ mod tests {
     excluded: &[&str],
   ) -> Result<(GaussianClock, BTreeMap<String, (f64, f64)>), Report> {
     let parsed = nwk_read(nwk.as_bytes())?;
-    let names = parsed.names();
-    let key_of: BTreeMap<&str, GraphNodeKey> = names
-      .iter()
-      .filter_map(|(key, name)| Some((name.as_deref()?, *key)))
+    let names = parsed.names.clone();
+    let key_of: BTreeMap<&str, GraphNodeKey> = parsed
+      .graph
+      .get_nodes()
+      .map(|node| (&names[node.key()], node.key()))
       .collect();
-    let mut tip_dates: NodeTimes = names.keys().map(|key| (*key, None)).collect();
+    let mut tip_dates: NodeTimes = parsed.graph.get_nodes().map(|node| (node.key(), None)).collect();
     for (name, date) in dates {
       tip_dates.insert(key_of[name], Some(*date));
     }
@@ -40,7 +41,7 @@ mod tests {
     let times = clock
       .node_times
       .iter()
-      .map(|(key, t)| (names[key].clone().unwrap_or_default(), (t.mean, t.std)))
+      .map(|(key, t)| (names[*key].to_owned(), (t.mean, t.std)))
       .collect();
     Ok((clock, times))
   }
@@ -136,15 +137,16 @@ mod tests {
   fn test_gaussian_rate_maximizes_the_profile_likelihood() -> Result<(), Report> {
     let tree = Tree3::new();
     let parsed = nwk_read(TREE_3.as_bytes())?;
-    let names = parsed.names();
-    let tip_dates: NodeTimes = names
-      .iter()
-      .map(|(key, name)| {
+    let names = parsed.names.clone();
+    let tip_dates: NodeTimes = parsed
+      .graph
+      .get_nodes()
+      .map(|node| {
         let date = DATES_3
           .iter()
-          .find(|(tip, _)| Some(*tip) == name.as_deref())
+          .find(|(tip, _)| *tip == &names[node.key()])
           .map(|(_, t)| *t);
-        (*key, date)
+        (node.key(), date)
       })
       .collect();
     let rate = GaussianTree::new(

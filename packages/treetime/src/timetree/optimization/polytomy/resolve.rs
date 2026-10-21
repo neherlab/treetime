@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::{EdgeMergeInfo, record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
@@ -21,6 +22,7 @@ use treetime_utils::make_error;
 )]
 pub(crate) fn resolve_polytomies(
   mut graph: Graph,
+  names: &mut NodeNames,
   mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   branch_model: &BranchModel,
   mutation_rate: f64,
@@ -46,6 +48,7 @@ pub(crate) fn resolve_polytomies(
   for node_key in polytomy_keys {
     let created = resolve_single_polytomy(
       &mut graph,
+      names,
       branch_model,
       node_key,
       mutation_rate,
@@ -93,6 +96,7 @@ pub(crate) struct PolytomyResolution {
 )]
 fn resolve_single_polytomy(
   graph: &mut Graph,
+  names: &mut NodeNames,
   branch_model: &BranchModel,
   node_key: GraphNodeKey,
   mutation_rate: f64,
@@ -140,7 +144,7 @@ fn resolve_single_polytomy(
     })
     .collect();
 
-  let created = apply_plan(graph, node_key, parent_time, &child_refs, &plan, branch_lengths)?;
+  let created = apply_plan(graph, names, node_key, parent_time, &child_refs, &plan, branch_lengths)?;
 
   debug!(
     "Polytomy at node {node_key}: {} children -> {} children, created {} nodes",

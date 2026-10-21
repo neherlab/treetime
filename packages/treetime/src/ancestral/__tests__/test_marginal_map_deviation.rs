@@ -16,6 +16,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, Seq};
@@ -44,7 +45,7 @@ mod tests {
     let nwk_parsed = nwk_read(
       b"((T1:0.0,((((C1:0.005,C2:0.005)Y3:0.005,C3:0.005)Y2:0.005,C4:0.005)Y1:0.005,C5:0.005)Z:0.5,C6:0.5)X:0.3,C7:0.3)root:0.0;".as_slice(),
     )?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -82,7 +83,7 @@ mod tests {
     "#})?;
     let nwk_parsed =
       nwk_read(b"(((D1:0.05,D2:0.05)DD:0.05,D3:0.05)DEL:0.2,(A1:0.05,A2:0.05)POLY:0.2)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let graph: Graph = graph;
@@ -121,7 +122,7 @@ mod tests {
   fn reconstruct_sparse(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let fitch = create_fitch_partition(graph, Alphabet::default(), leaf_seq_inputs(graph, names, aln.to_vec()))?;
@@ -143,7 +144,7 @@ mod tests {
   fn reconstruct_dense(
     graph: &Graph,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     aln: &[AlignmentRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
     let partition =
@@ -159,7 +160,7 @@ mod tests {
   }
 
   fn named_strings(
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
+    names: &NodeNames,
     emitted_nodes: &[GraphNodeKey],
     sampled: &BTreeMap<GraphNodeKey, Seq>,
     node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,

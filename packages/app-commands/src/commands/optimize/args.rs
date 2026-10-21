@@ -16,13 +16,12 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -42,11 +41,7 @@ impl TreetimeOptimizeArgs {
     &self.tree
   }
 
-  pub fn reroot_spec(
-    &self,
-    graph: &Graph,
-    names: &BTreeMap<GraphNodeKey, Option<String>>,
-  ) -> Result<Option<RerootSpec>, Report> {
+  pub fn reroot_spec(&self, graph: &Graph, names: &NodeNames) -> Result<Option<RerootSpec>, Report> {
     if self.keep_root {
       return Ok(None);
     }

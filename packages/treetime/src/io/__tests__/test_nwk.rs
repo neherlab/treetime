@@ -13,7 +13,7 @@ mod tests {
   fn test_nwk_roundtrip_binary_tree() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -22,8 +22,7 @@ mod tests {
     assert_eq!(graph.get_leaves().count(), 4, "Should have 4 leaves");
 
     let root = graph.get_exactly_one_root()?;
-    let root_name = names[&root.key()].clone();
-    assert_eq!(root_name.as_deref(), Some("root"));
+    assert_eq!("root", &names[root.key()]);
 
     let output = nwk_write_str(
       &GraphSchedule::new(&graph)?.into_tree()?,
@@ -40,7 +39,7 @@ mod tests {
   fn test_nwk_parse_no_branch_lengths() -> Result<(), Report> {
     let input = "((A,B)AB,(C,D)CD)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -60,7 +59,7 @@ mod tests {
   fn test_nwk_roundtrip_single_node() -> Result<(), Report> {
     let input = "A;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -69,7 +68,7 @@ mod tests {
     assert_eq!(graph.get_leaves().count(), 1, "Should have 1 leaf");
 
     let root = graph.get_exactly_one_root()?;
-    let root_name = names[&root.key()].clone();
+    let root_name = Some(names[root.key()].to_owned());
     assert_eq!(root_name.as_deref(), Some("A"));
 
     let output = nwk_write_str(
@@ -87,7 +86,7 @@ mod tests {
   fn test_nwk_roundtrip_polytomy() -> Result<(), Report> {
     let input = "(A:0.1,B:0.2,C:0.3)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -114,7 +113,7 @@ mod tests {
   fn test_nwk_roundtrip_nested_polytomy() -> Result<(), Report> {
     let input = "((A:0.1,B:0.2,C:0.3)ABC:0.4,D:0.5,E:0.6)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -137,7 +136,7 @@ mod tests {
   fn test_nwk_roundtrip_zero_length_branches() -> Result<(), Report> {
     let input = "((A:0,B:0.2)AB:0,(C:0.2,D:0)CD:0.05)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -165,7 +164,7 @@ mod tests {
   fn test_nwk_parse_verifies_branch_lengths() -> Result<(), Report> {
     let input = "((A:0.123,B:0.456)AB:0.789,C:1.5)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let edge_lengths = nwk_parsed.branch_lengths;
 
@@ -173,11 +172,7 @@ mod tests {
     for edge in graph.get_edges() {
       let edge_ref = edge;
       let target_key = edge_ref.target();
-      let target_name = names[&target_key].clone();
-      if let Some(name) = target_name {
-        let length = edge_lengths[&edge_ref.key()];
-        branch_lengths.insert(name, length);
-      }
+      branch_lengths.insert(names[target_key].to_owned(), edge_lengths[&edge_ref.key()]);
     }
 
     assert_abs_diff_eq!(
@@ -208,14 +203,11 @@ mod tests {
   fn test_nwk_parse_verifies_leaf_names() -> Result<(), Report> {
     let input = "((leaf_A:0.1,leaf_B:0.2)internal:0.1,leaf_C:0.3)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let leaf_names: Vec<String> = graph
-      .get_leaves()
-      .map(|n| names[&n.key()].clone().unwrap_or_default())
-      .collect();
+    let leaf_names: Vec<String> = graph.get_leaves().map(|n| names[n.key()].to_owned()).collect();
 
     assert!(leaf_names.contains(&"leaf_A".to_owned()));
     assert!(leaf_names.contains(&"leaf_B".to_owned()));
@@ -248,7 +240,7 @@ mod tests {
   fn test_nwk_parse_with_beast_comment_succeeds() -> Result<(), Report> {
     let input = "(A[&prob=0.95]:0.1,B:0.2);";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let edge_lengths = nwk_parsed.branch_lengths;
 
@@ -258,10 +250,7 @@ mod tests {
     let mut branch_lengths = BTreeMap::new();
     for edge in graph.get_edges() {
       let edge_ref = edge;
-      let name = names[&edge_ref.target()].clone();
-      if let Some(name) = name {
-        branch_lengths.insert(name, edge_lengths[&edge_ref.key()]);
-      }
+      branch_lengths.insert(names[edge_ref.target()].to_owned(), edge_lengths[&edge_ref.key()]);
     }
 
     assert_abs_diff_eq!(
@@ -277,7 +266,7 @@ mod tests {
   fn test_nwk_parse_negative_branch_length() -> Result<(), Report> {
     let input = "(A:-0.001,B:0.2)root;";
     let nwk_parsed = nwk_read(input.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -304,7 +293,7 @@ mod tests {
 
     for path in &trees {
       let nwk_parsed = nwk_read_file(path)?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let graph: Graph = graph;
       assert!(graph.get_nodes().next().is_some(), "Tree {path:?} should have nodes");

@@ -20,7 +20,7 @@ mod tests {
   #[test]
   fn test_discrete_marginal_new_maps_observed_and_missing_data_profiles_without_warning() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -41,7 +41,7 @@ mod tests {
   #[test]
   fn test_discrete_marginal_new_fills_and_warns_tree_leaf_missing_from_metadata() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -70,7 +70,7 @@ mod tests {
   #[test]
   fn test_discrete_marginal_new_accepts_metadata_name_missing_from_tree() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph: Graph = nwk_parsed.graph;
     let traits = btreemap! {
       o!("A") => o!("usa"),
@@ -100,7 +100,7 @@ mod tests {
       leaf_names.iter().map(|name| format!("{name}:0.1")).join(",")
     );
     let nwk_parsed = nwk_read(nwk.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph: Graph = nwk_parsed.graph;
     let traits: BTreeMap<String, String> =
       izip!(leaf_names.iter().cloned(), state_names.iter().rev().cloned()).collect();
@@ -243,6 +243,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::nwk_read;
     use treetime_utils::cast::ToF64Exact;
     use treetime_utils::pretty_assert_abs_diff_eq;
@@ -251,7 +252,7 @@ mod tests {
       states: &[&str],
       graph: &Graph,
       traits: &BTreeMap<String, String>,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       log: &dyn LogSink,
     ) -> Result<(PartitionMarginalDiscrete, GTR), Report> {
       let states = StateAlphabet::new(states.iter().copied())?;
@@ -269,7 +270,7 @@ mod tests {
 
     pub(super) fn leaf_observations_by_name(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       partition: &PartitionMarginalDiscrete,
       leaf_names: &[&str],
     ) -> Vec<(String, Array1<f64>)> {
@@ -284,16 +285,9 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn make_fixture_graph() -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<String>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    pub(super) fn make_fixture_graph() -> Result<(Graph, NodeNames, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)inner:0.01,C:0.25)root;".as_slice())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, names, branch_lengths))
@@ -314,17 +308,13 @@ mod tests {
       pretty_assert_abs_diff_eq!(expected_sum, actual_sum, epsilon = 1e-12);
     }
 
-    pub(super) fn get_node_key(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-      name: &str,
-    ) -> GraphNodeKey {
+    pub(super) fn get_node_key(graph: &Graph, names: &NodeNames, name: &str) -> GraphNodeKey {
       find_node_key_by_name(graph, names, name).unwrap_or_else(|| panic!("Missing test node '{name}'"))
     }
 
     pub(super) fn get_node_profile(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
       name: &str,
     ) -> Array1<f64> {
@@ -337,7 +327,7 @@ mod tests {
 
     pub(super) fn get_edge_msg_from_child(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
       source_name: &str,
       target_name: &str,
@@ -352,7 +342,7 @@ mod tests {
 
     pub(super) fn get_edge_msg_to_child(
       graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
+      names: &NodeNames,
       forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
       source_name: &str,
       target_name: &str,

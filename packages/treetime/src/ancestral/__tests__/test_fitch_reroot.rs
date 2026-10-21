@@ -46,7 +46,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -105,7 +105,13 @@ mod tests {
       .map(|i| i.to_string())
       .collect();
 
-    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
+    let split_info = split_edge(
+      &mut graph,
+      &mut names,
+      edge_ab_a_key,
+      0.5,
+      branch_lengths[&edge_ab_a_key],
+    )?;
     let new_root_key = split_info.new_node_key;
     let parent_side_key = split_info.parent_side_edge_key;
     let child_side_key = split_info.child_side_edge_key;
@@ -234,7 +240,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -293,7 +299,13 @@ mod tests {
         .collect()
     };
 
-    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
+    let split_info = split_edge(
+      &mut graph,
+      &mut names,
+      edge_ab_a_key,
+      0.5,
+      branch_lengths[&edge_ab_a_key],
+    )?;
     let new_root_key = split_info.new_node_key;
 
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;
@@ -362,7 +374,7 @@ mod tests {
     .collect();
 
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let mut graph: Graph = graph;
@@ -396,7 +408,13 @@ mod tests {
       .expect("AB->A edge not found");
 
     let mut branch_lengths = branch_lengths;
-    let split_info = split_edge(&mut graph, edge_ab_a_key, 0.5, branch_lengths[&edge_ab_a_key])?;
+    let split_info = split_edge(
+      &mut graph,
+      &mut names,
+      edge_ab_a_key,
+      0.5,
+      branch_lengths[&edge_ab_a_key],
+    )?;
     record_split(&mut branch_lengths, &split_info);
     let new_root_key = split_info.new_node_key;
     let inverted_edge_keys = apply_reroot_topology(&mut graph, old_root_key, new_root_key)?;

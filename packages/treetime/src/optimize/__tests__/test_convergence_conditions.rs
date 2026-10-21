@@ -30,7 +30,7 @@ mod tests {
   ) -> Result<(), Report> {
     let damping = 0.75;
     let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let old_bls = branch_lengths;
@@ -53,7 +53,7 @@ mod tests {
     assert!(expected_old_weight > DAMPING_FLOOR);
 
     let nwk_parsed = nwk_read(b"(A:1.0,B:1.0)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -73,7 +73,7 @@ mod tests {
   fn test_convergence_conditions_converged_reason() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -92,7 +92,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_6,
+      names_tt_6,
       &NoopProgress,
     )?;
 
@@ -108,7 +108,7 @@ mod tests {
   fn test_convergence_conditions_worsened_reverts_to_best() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -127,7 +127,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_5,
+      names_tt_5,
       &NoopProgress,
     )?;
 
@@ -154,7 +154,7 @@ mod tests {
   fn test_convergence_conditions_worsened_rollback_reproduces_best_lh() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -173,7 +173,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_4,
+      names_tt_4,
       &NoopProgress,
     )?;
 
@@ -196,7 +196,7 @@ mod tests {
   fn test_convergence_conditions_oscillation_detection() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -215,7 +215,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_3,
+      names_tt_3,
       &NoopProgress,
     )?;
 
@@ -232,7 +232,7 @@ mod tests {
   fn test_convergence_conditions_exhausts_max_iter() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
@@ -252,7 +252,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_2,
+      names_tt_2,
       &NoopProgress,
     )?;
 
@@ -268,7 +268,7 @@ mod tests {
   fn test_convergence_conditions_dense_only_converges() -> Result<(), Report> {
     let aln = simple_alignment()?;
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -288,7 +288,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_1,
+      names_tt_1,
       &NoopProgress,
     )?;
 

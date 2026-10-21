@@ -89,11 +89,12 @@ mod tests {
     use std::sync::LazyLock;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::csv::default_name_candidates;
     use treetime_io::discrete_states_csv::discrete_attrs_read_file;
     use treetime_io::nwk::nwk_read_file;
     use treetime_utils::io::json::json_read_file;
-    use treetime_utils::{make_error, make_report, o};
+    use treetime_utils::{make_error, o};
 
     static GENERATED_NAME: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^NODE_\d{7}$").unwrap());
 
@@ -145,7 +146,7 @@ mod tests {
 
       let tree_path = project_root.join(&fixture.tree_path);
       let nwk_parsed = nwk_read_file(&tree_path)?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -229,19 +230,13 @@ mod tests {
         .collect()
     }
 
-    fn v0_node_names(
-      graph: &Graph,
-      names: &BTreeMap<GraphNodeKey, Option<String>>,
-    ) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
+    fn v0_node_names(graph: &Graph, names: &NodeNames) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
       let mut v0_names = BTreeMap::new();
       for node in graph.get_nodes().filter(|node| node.is_leaf()) {
-        let name = names[&node.key()]
-          .clone()
-          .ok_or_else(|| make_report!("Leaf {} has no name", node.key()))?;
-        v0_names.insert(node.key(), name);
+        v0_names.insert(node.key(), names[node.key()].to_owned());
       }
       for node in graph.get_nodes().filter(|node| !node.is_leaf()) {
-        let name = names[&node.key()].as_deref().unwrap_or_default();
+        let name = &names[node.key()];
         if !GENERATED_NAME.is_match(name) {
           return make_error!(
             "Internal node label '{name}': the v0 node names of the harness need a tree without internal labels"

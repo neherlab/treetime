@@ -54,7 +54,7 @@ mod tests {
 
     pub(super) fn reroot_at_internal_node(newick: &str, node_idx: usize) -> Result<String, Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let mut branch_lengths = nwk_parsed.branch_lengths;
       let mut graph: Graph = graph;
@@ -108,7 +108,7 @@ mod tests {
         }
 
         let nwk_parsed = nwk_read(rerooted.as_bytes())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let branch_lengths = nwk_parsed.branch_lengths;
 

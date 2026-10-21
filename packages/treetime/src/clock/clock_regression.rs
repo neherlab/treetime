@@ -16,6 +16,7 @@ use std::mem;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::RerootResult;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -24,7 +25,7 @@ use treetime_utils::make_internal_report;
 pub(crate) fn estimate_clock_model_with_reroot_policy(
   tree: ClockTree,
   params: &ClockFitParams<'_>,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockRerootResult), Report> {
   let ClockFitParams {

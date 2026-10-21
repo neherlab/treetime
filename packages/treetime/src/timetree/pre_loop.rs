@@ -23,6 +23,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 
 const TIMETREE_PRE_STEP_DAMPING: f64 = 0.75;
 
@@ -36,7 +37,7 @@ pub(crate) fn run_pre_loop(
   let params = inputs.params;
   let mut convergence = ConvergenceSummary::default();
   let state = if inputs.has_alignment {
-    ml_optimize(state, params, inputs.names, "pre-reroot", &mut convergence, log)?
+    ml_optimize(state, params, "pre-reroot", &mut convergence, log)?
   } else {
     state
   };
@@ -57,7 +58,7 @@ pub(crate) fn run_pre_loop(
     progress_info!(log, "Using input branch lengths for timetree inference");
     state
   } else {
-    ml_optimize(state, params, inputs.names, "post-reroot", &mut convergence, log)?
+    ml_optimize(state, params, "post-reroot", &mut convergence, log)?
   };
   convergence.report(BranchOptMethod::Brent, log);
   cancel.check()?;
@@ -72,7 +73,6 @@ pub(crate) fn run_pre_loop(
 fn ml_optimize(
   state: PreLoopState,
   params: &TimetreeParams,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
   label: &str,
   convergence: &mut ConvergenceSummary,
   log: &dyn LogSink,
@@ -87,7 +87,7 @@ fn ml_optimize(
     &partitions,
     state.branch_lengths,
     params.indel_policy,
-    names,
+    &state.names,
     convergence,
   )
   .wrap_err_with(|| format!("ML branch-length optimization ({label}) failed"))?;
@@ -115,10 +115,18 @@ fn reroot(
   log: &dyn LogSink,
 ) -> Result<PreLoopState, Report> {
   let params = inputs.params;
+  let PreLoopState {
+    graph,
+    mut names,
+    branch_lengths,
+    branch_model,
+    outliers: filtered_outliers,
+    ..
+  } = state;
   let no_outliers = BTreeSet::new();
   let outliers = match outliers {
     RerootOutliers::None => &no_outliers,
-    RerootOutliers::Filtered => &state.outliers,
+    RerootOutliers::Filtered => &filtered_outliers,
   };
   let RerootedTree {
     graph,
@@ -126,9 +134,9 @@ fn reroot(
     branch_model,
     clock_fit,
   } = reroot_tree(
-    state.graph,
-    state.branch_lengths,
-    state.branch_model,
+    graph,
+    branch_lengths,
+    branch_model,
     &inputs.context.date_constraints,
     &RerootFitParams {
       outliers,
@@ -136,15 +144,16 @@ fn reroot(
       reroot_params: &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
       prev_clock_rate: None,
     },
-    inputs.names,
+    &mut names,
     log,
   )?;
   Ok(PreLoopState {
     graph,
+    names,
     branch_lengths,
     branch_model,
     clock_fit,
-    ..state
+    outliers: filtered_outliers,
   })
 }
 
@@ -181,7 +190,7 @@ fn filter_clock_outliers(
     &state.clock_fit.model,
     iqd,
     &given_dates,
-    inputs.names,
+    &state.names,
     log,
   );
   Ok(PreLoopState { outliers, ..state })
@@ -190,12 +199,12 @@ fn filter_clock_outliers(
 pub(crate) struct PreLoopInputs<'a> {
   pub params: &'a TimetreeParams,
   pub context: &'a TimetreeContext,
-  pub names: &'a BTreeMap<GraphNodeKey, Option<String>>,
   pub has_alignment: bool,
 }
 
 pub(crate) struct PreLoopState {
   pub graph: Graph,
+  pub names: NodeNames,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub branch_model: BranchModel,
   pub clock_fit: ClockFit,
@@ -205,12 +214,14 @@ pub(crate) struct PreLoopState {
 impl PreLoopState {
   pub(crate) fn new(
     graph: Graph,
+    names: NodeNames,
     branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
     branch_model: BranchModel,
     clock_fit: ClockFit,
   ) -> Self {
     Self {
       graph,
+      names,
       branch_lengths,
       branch_model,
       clock_fit,
@@ -224,7 +235,7 @@ fn optimize_branch_lengths(
   partitions: &PartitionSet,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   indel_policy: IndelPolicy,
-  names: &BTreeMap<GraphNodeKey, Option<String>>,
+  names: &NodeNames,
   convergence: &mut ConvergenceSummary,
 ) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
   let old_branch_lengths = branch_lengths;

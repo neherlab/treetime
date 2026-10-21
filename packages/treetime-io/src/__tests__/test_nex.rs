@@ -103,7 +103,7 @@ mod tests {
   #[trace]
   fn test_nex_exact_output(#[case] nwk: &str, #[case] expected: &str) -> Result<(), Report> {
     let parse = nwk_read(nwk.as_bytes())?;
-    let names = parse.names();
+    let names = parse.names.clone();
     let NwkParse {
       graph, branch_lengths, ..
     } = parse;
@@ -121,17 +121,13 @@ mod tests {
   }
 
   #[test]
-  fn test_nex_taxon_count_matches_written_labels() -> Result<(), Report> {
-    let parse = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-    let mut names = parse.names();
-    let b_key = names
-      .iter()
-      .find_map(|(key, name)| (name.as_deref() == Some("B")).then_some(*key))
-      .expect("fixture has leaf B");
-    names.insert(b_key, None);
+  fn test_nex_writes_the_generated_name_of_an_unnamed_leaf() -> Result<(), Report> {
     let NwkParse {
-      graph, branch_lengths, ..
-    } = parse;
+      graph,
+      names,
+      branch_lengths,
+      ..
+    } = nwk_read(b"(A:0.1,:0.2)root;".as_slice())?;
     let mut actual = Vec::new();
 
     nex_write(
@@ -147,14 +143,15 @@ mod tests {
       #NEXUS
 
       Begin Taxa;
-        Dimensions NTax=1;
+        Dimensions NTax=2;
         TaxLabels
           A
+          NODE_0000000
         ;
       End;
 
       Begin Trees;
-        Tree tree1 = (A:0.1,:0.2)root;
+        Tree tree1 = (A:0.1,NODE_0000000:0.2)root;
       End;
     "#};
     assert_eq!(expected, String::from_utf8(actual)?);

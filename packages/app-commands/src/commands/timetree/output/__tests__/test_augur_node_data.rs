@@ -139,13 +139,14 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::node_names::NodeNames;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
     use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
     pub(super) struct SampleCase {
       graph: Graph,
-      names: BTreeMap<GraphNodeKey, Option<String>>,
+      names: NodeNames,
       times: BTreeMap<GraphNodeKey, Option<f64>>,
       clock_model: ClockModel,
       dates: BTreeMap<GraphNodeKey, DateConstraint>,
@@ -221,6 +222,7 @@ mod tests {
       let edge_a_key = graph.add_edge(root_key, leaf_a_key).unwrap();
       let edge_b_key = graph.add_edge(root_key, leaf_b_key).unwrap();
       graph.build().unwrap();
+      let names = NodeNames::from_input(names, &graph).unwrap().names;
 
       let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = maplit::btreemap! {
         edge_a_key => Some(0.005),

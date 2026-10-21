@@ -83,6 +83,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::seq::sink::SeqStream;
     use eyre::Report;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_primitives::AlignmentRecord;
@@ -92,7 +93,7 @@ mod tests {
       params: &AncestralParams,
     ) -> Result<(RecordingSeqSink, AncestralOutput), Report> {
       let nwk_parsed = nwk_read(input.newick.as_bytes())?;
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let alphabet = Alphabet::default();
       let alignment: Vec<AlignmentRecord> = input.alignment.clone();
       let sequences = pair_leaf_sequences(&nwk_parsed.graph, &names, alignment).sequences;
@@ -110,7 +111,7 @@ mod tests {
       let output = run(
         params,
         ancestral_input,
-        Some(&mut sink),
+        Some(SeqStream::new(&mut sink, &names)),
         &NoopCancel,
         &NoopProgress,
         &NoopProgress,

@@ -52,7 +52,7 @@ mod tests {
     use treetime_primitives::{AlignmentRecord, LogLh};
 
     pub(super) struct Timetree {
-      pub(super) edges: BTreeSet<(Option<String>, Option<String>)>,
+      pub(super) edges: BTreeSet<(String, String)>,
       pub(super) node_dates: BTreeMap<GraphNodeKey, f64>,
       pub(super) total_length: usize,
       pub(super) numbers: Vec<usize>,
@@ -66,7 +66,7 @@ mod tests {
       partition_rates: PartitionRates,
     ) -> Result<Timetree, Report> {
       let parse = nwk_read(dataset.tree().as_bytes())?;
-      let names = parse.names();
+      let names = parse.names.clone();
       let sources = files
         .into_iter()
         .map(|records| sequence_source(Alphabet::default(), leaf_seq_inputs(&parse.graph, &names, records)))
@@ -93,8 +93,8 @@ mod tests {
         .get_edges()
         .map(|edge| {
           (
-            output.names[&edge.source()].clone(),
-            output.names[&edge.target()].clone(),
+            output.names[edge.source()].to_owned(),
+            output.names[edge.target()].to_owned(),
           )
         })
         .collect();

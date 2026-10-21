@@ -151,10 +151,11 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::optimize::indel::IndelPolicy;
+    use treetime_graph::node_names::NodeNames;
 
     pub(super) struct SusceptibilityFixture {
       graph: Graph,
-      names: BTreeMap<GraphNodeKey, Option<String>>,
+      names: NodeNames,
       constraints: DateConstraints,
       leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
       gammas: BTreeMap<GraphEdgeKey, f64>,
@@ -166,7 +167,7 @@ mod tests {
     impl SusceptibilityFixture {
       pub(super) fn new() -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"((A:0.01,B:0.02)AB:0.01,(C:0.015,D:0.01)CD:0.02)root;".as_slice())?;
-        let names = nwk_parsed.names();
+        let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let branch_lengths = nwk_parsed.branch_lengths;
         let alphabet = Alphabet::new(AlphabetName::Nuc)?;

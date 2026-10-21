@@ -24,11 +24,11 @@ mod tests {
     #[case] expected: &[(&str, f64)],
   ) -> Result<(), Report> {
     let parsed = nwk_read(nwk.as_bytes())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
 
     let actual: BTreeMap<String, f64> = root_to_node_divergences(&parsed.graph, |edge_key| parsed.branch_lengths[&edge_key].unwrap_or_default())?
       .into_iter()
-      .map(|(key, div)| (names[&key].clone().unwrap(), div))
+      .map(|(key, div)| (names[key].to_owned(), div))
       .collect();
 
     let expected: BTreeMap<String, f64> = expected.iter().map(|(name, div)| ((*name).to_owned(), *div)).collect();
@@ -48,12 +48,12 @@ mod tests {
     #[case] expected: &[(&str, Option<f64>)],
   ) -> Result<(), Report> {
     let parsed = nwk_read(nwk.as_bytes())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
 
     let actual: BTreeMap<String, Option<f64>> =
       root_to_node_divergences_where_known(&GraphSchedule::new(&parsed.graph)?, &parsed.branch_lengths)?
         .into_iter()
-        .map(|(key, div)| (names[&key].clone().unwrap(), div))
+        .map(|(key, div)| (names[key].to_owned(), div))
         .collect();
 
     let expected: BTreeMap<String, Option<f64>> = expected.iter().map(|(name, div)| ((*name).to_owned(), *div)).collect();
@@ -89,7 +89,7 @@ mod tests {
   #[test]
   fn test_root_to_node_divergences_gives_internal_nodes_their_path_sum() -> Result<(), Report> {
     let parsed = nwk_read(b"((A:0.1,B:0.2):0.3,C:0.4);".as_slice())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
 
     let actual = root_to_node_divergences(&parsed.graph, |edge_key| {
       parsed.branch_lengths[&edge_key].unwrap_or_default()
@@ -99,11 +99,11 @@ mod tests {
       .graph
       .get_nodes()
       .map(|node| {
-        let div = match (node.is_root(), node.is_leaf(), names[&node.key()].as_deref()) {
+        let div = match (node.is_root(), node.is_leaf(), &names[node.key()]) {
           (true, _, _) => 0.0,
           (false, false, _) => 0.3,
-          (false, true, Some("A" | "C")) => 0.4,
-          (false, true, Some("B")) => 0.5,
+          (false, true, "A" | "C") => 0.4,
+          (false, true, "B") => 0.5,
           (false, true, other) => panic!("unexpected leaf {other:?}"),
         };
         (node.key(), div)
@@ -120,14 +120,14 @@ mod tests {
       (1..20).fold("A:0.05".to_owned(), |nwk, _| format!("({nwk}):0.05"))
     );
     let parsed = nwk_read(nwk.as_bytes())?;
-    let names = parsed.names();
+    let names = parsed.names.clone();
 
     let actual = root_to_node_divergences(&parsed.graph, |edge_key| {
       parsed.branch_lengths[&edge_key].unwrap_or_default()
     })?;
 
     let leaf = parsed.graph.get_leaves().next().unwrap().key();
-    assert_eq!(Some("A"), names[&leaf].as_deref());
+    assert_eq!("A", &names[leaf]);
     assert_abs_diff_eq!(19.0 * 0.05, actual[&leaf], epsilon = 1e-12);
     Ok(())
   }

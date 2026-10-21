@@ -90,7 +90,7 @@ mod tests {
 
     pub(super) fn result(name: &str, date: f64, div: f64, is_outlier: bool) -> ClockRegressionResult {
       ClockRegressionResult {
-        name: Some(name.to_owned()),
+        name: name.to_owned(),
         div,
         date: Some(date),
         predicted_date: date,

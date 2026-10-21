@@ -9,6 +9,7 @@ use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_primitives::AsciiChar;
 use treetime_utils::cast::ToF64Exact;
 
@@ -129,6 +130,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
 
 pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
+  names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
@@ -175,6 +177,7 @@ pub(crate) fn hoist_reverting_child(
   let bl_nc = bl_nv + bl_vc;
 
   let n_key = graph.add_node();
+  names.name_new_node(n_key);
   let un_edge_key = graph.add_edge(u_key, n_key)?;
   branch_lengths.insert(un_edge_key, Some(bl_un));
   graph.reparent_edge(parent_edge_key, n_key)?;

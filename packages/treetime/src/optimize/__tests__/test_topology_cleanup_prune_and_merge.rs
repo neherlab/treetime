@@ -14,7 +14,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_empty_list() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)I:0.3)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
     let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
@@ -38,7 +38,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_collapses_and_merges() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -76,14 +76,13 @@ mod tests {
 
     branch_lengths.insert(ri_key, Some(0.0));
 
-    let mut names_tt_12 = names.clone();
     let cleanup = prune_and_merge_in_loop(
       &mut graph,
       reconstruction,
       &[ri_key],
       TopologyOps::default(),
       &mut branch_lengths,
-      &mut names_tt_12,
+      &mut names,
     )?;
     let reconstruction = cleanup.partitions;
     let changed = cleanup.topology_changed;
@@ -103,7 +102,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_hoists_reversion_without_collapse() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -163,7 +162,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_names_new_nodes() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -214,10 +213,7 @@ mod tests {
     let changed = cleanup.topology_changed;
     assert!(changed);
 
-    let mut names: Vec<String> = graph
-      .get_nodes()
-      .filter_map(|n| names_tt_6.get(&n.key()).cloned().flatten())
-      .collect();
+    let mut names: Vec<String> = graph.get_nodes().map(|n| names_tt_6[n.key()].to_owned()).collect();
     names.sort();
 
     assert_eq!(names, vec!["A", "B", "C", "D", "NODE_0000000", "root"]);
@@ -228,7 +224,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_merge_disabled_keeps_polytomy() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:0.1,B:0.1)I:0.0,C:0.1,D:0.1)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -292,7 +288,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_flip_disabled_keeps_reversion() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -352,7 +348,7 @@ mod tests {
   #[test]
   fn test_optimize_prune_and_merge_all_ops_disabled_is_noop() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((C1:0.1,C2:0.1,C3:0.1)V:0.2)U:0.1)root:0.0;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 

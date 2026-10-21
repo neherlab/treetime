@@ -4,7 +4,6 @@ use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::clock::clock_model::ClockModel;
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
@@ -31,7 +30,7 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
     .get_nodes()
     .map(|node| {
       let key = node.key();
-      let name = node_name_or_key(key, graph.names[&key].as_deref());
+      let name = graph.names[key].to_owned();
       let lengths = refine_lengths(tree, run, key);
       let dates = graph
         .dates

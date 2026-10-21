@@ -103,7 +103,7 @@ mod tests {
 
     pub(super) fn run_prune(tree: &str, files: &[Vec<AlignmentRecord>]) -> Result<PruneOutput, Report> {
       let parsed = nwk_read(tree.as_bytes())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let sources = files
         .iter()
         .map(|records| {
@@ -121,10 +121,11 @@ mod tests {
       };
       let input = PruneInput {
         graph: parsed.graph,
+        names,
         sources,
         branch_lengths: parsed.branch_lengths,
       };
-      run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
+      run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
     }
 
     pub(super) fn clades(output: &PruneOutput) -> BTreeSet<BTreeSet<&str>> {
@@ -137,7 +138,7 @@ mod tests {
 
     fn leaf_names_below(output: &PruneOutput, node_key: GraphNodeKey) -> BTreeSet<&str> {
       if output.graph.is_leaf(node_key) {
-        return output.names[&node_key].as_deref().into_iter().collect();
+        return BTreeSet::from([&output.names[node_key]]);
       }
       output
         .graph
@@ -148,7 +149,7 @@ mod tests {
 
     pub(super) fn run_prune_empty(files: &[&[(&str, &str)]]) -> Result<PruneOutput, Report> {
       let parsed = nwk_read(TREE.as_bytes())?;
-      let names = parsed.names();
+      let names = parsed.names.clone();
       let sources = files
         .iter()
         .map(|file| {
@@ -172,17 +173,18 @@ mod tests {
       };
       let input = PruneInput {
         graph: parsed.graph,
+        names,
         sources,
         branch_lengths: parsed.branch_lengths,
       };
-      run(&params, input, &names, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
+      run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
     }
 
     pub(super) fn internal_node_names(output: &PruneOutput) -> BTreeSet<&str> {
       output
         .graph
         .get_internal_nodes()
-        .filter_map(|node| output.names[&node.key()].as_deref())
+        .map(|node| &output.names[node.key()])
         .collect()
     }
   }

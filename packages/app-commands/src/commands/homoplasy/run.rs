@@ -23,6 +23,7 @@ use treetime::homoplasy::pipeline::{HomoplasyInput, HomoplasyParams};
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
+use treetime_io::nwk::NwkParse;
 use treetime_utils::io::file::write_file_with;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
 use treetime_utils::{make_internal_error, make_internal_report};
@@ -54,8 +55,13 @@ pub fn run_homoplasy(
     source.length,
     tree.graph.num_leaves()
   );
-  let names = tree.names();
-  let mut input = ancestral_input(tree, vec![source]);
+  let NwkParse {
+    graph,
+    names,
+    branch_lengths,
+    ..
+  } = tree;
+  let mut input = ancestral_input(graph, branch_lengths, vec![source]);
   for edge in input.edges.values_mut() {
     edge.branch_length = edge.branch_length.map(|branch_length| branch_length * args.rescale);
   }

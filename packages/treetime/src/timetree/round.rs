@@ -30,10 +30,10 @@ use eyre::{Report, WrapErr};
 use rand::Rng;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
-use treetime_graph::assign_node_names::assign_node_names;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::node_names::NodeNames;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_internal_error;
@@ -142,6 +142,7 @@ fn refine_topology(
 
   let total_mutation_rate = state.clock_model.clock_rate() * total_length.to_f64_exact();
   let mut node_times = state.time_inference.node_times();
+  let mut names = state.names;
   let PolytomyResolution {
     graph,
     branch_lengths,
@@ -149,6 +150,7 @@ fn refine_topology(
     merges,
   } = resolve_polytomies(
     state.graph,
+    &mut names,
     state.branch_lengths,
     &state.branch_model,
     total_mutation_rate,
@@ -161,6 +163,7 @@ fn refine_topology(
   if merger_times.is_empty() && merges.is_empty() {
     let state = RoundState {
       graph,
+      names,
       branch_lengths,
       ..state
     };
@@ -171,7 +174,6 @@ fn refine_topology(
   if resolved_nodes > 0 {
     progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
   }
-  let names = assign_node_names(state.names, &graph)?.names;
   node_times.extend(merger_times.iter().map(|(&key, &time)| (key, Some(time))));
   require_internal_node_times(&graph, &node_times)
     .wrap_err("Polytomy resolution left an internal node without an inferred time")?;
@@ -278,6 +280,7 @@ fn update_clock_model(
   let clock_inputs = ClockInputs::from_times(&state.graph, &times, &edge_inputs);
   let previous_clock_rate = state.clock_model.clock_rate();
   let keep_root = true;
+  let mut names = state.names;
   let (
     ClockTree {
       graph, branch_lengths, ..
@@ -296,7 +299,7 @@ fn update_clock_model(
       reroot_params: &RerootParams::default(),
       prev_clock_rate: Some(previous_clock_rate),
     },
-    &state.names,
+    &mut names,
     log,
   )
   .wrap_err("Failed to update clock model")?;
@@ -304,6 +307,7 @@ fn update_clock_model(
     .into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, log))?;
   Ok(RoundState {
     graph,
+    names,
     branch_lengths,
     clock_model: model,
     clock_points: points,
@@ -343,7 +347,7 @@ fn marginal_clock_rate(
 
 pub(crate) struct RoundState {
   pub graph: Graph,
-  pub names: BTreeMap<GraphNodeKey, Option<String>>,
+  pub names: NodeNames,
   pub branch_model: BranchModel,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub clock_model: ClockModel,

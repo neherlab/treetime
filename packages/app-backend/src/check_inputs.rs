@@ -286,16 +286,21 @@ impl InputKind {
 
 fn read_tree(path: &Path, dialect: NewickDialect) -> Result<(TreeFacts, Vec<String>), Report> {
   let parsed = tree_read_file(path, dialect)?;
-  let names = parsed.names();
   let graph = &parsed.graph;
-  let tip_names = graph.get_leaves().map(|leaf| names[&leaf.key()].clone()).collect_vec();
+  let (unnamed_tips, named_tips): (Vec<_>, Vec<_>) = graph
+    .get_leaves()
+    .map(|leaf| leaf.key())
+    .partition(|key| parsed.unnamed_nodes.contains(key));
   let internal = graph.get_internal_nodes().collect_vec();
-  let named_tips = tip_names.iter().flatten().cloned().collect_vec();
+  let named_tips = named_tips
+    .into_iter()
+    .map(|key| parsed.names[key].to_owned())
+    .collect_vec();
   let facts = TreeFacts {
-    tips: tip_names.len(),
+    tips: graph.num_leaves(),
     internal_nodes: internal.len(),
     polytomies: internal.iter().filter(|node| node.outbound().len() > 2).count(),
-    unnamed_tips: tip_names.iter().filter(|name| name.is_none()).count(),
+    unnamed_tips: unnamed_tips.len(),
     duplicate_node_names: parsed.duplicate_names.clone(),
   };
   Ok((facts, named_tips))

@@ -14,7 +14,7 @@ mod tests {
   #[test]
   fn test_gather_clock_regression_results_reports_every_node_against_the_clock_line() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"((A:1,B:2)AB:1,C:4)root;".as_slice())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");
     let divergences = btreemap! {
@@ -62,7 +62,7 @@ mod tests {
       kind: Kind,
     ) -> ClockRegressionResult {
       ClockRegressionResult {
-        name: Some(o!(name)),
+        name: o!(name),
         div,
         date,
         predicted_date,

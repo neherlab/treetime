@@ -143,7 +143,7 @@ mod tests {
 
     pub(super) fn run_and_serialize(tree: &str, traits: &std::collections::BTreeMap<String, String>) -> String {
       let nwk_parsed = nwk_read(tree.as_bytes()).unwrap();
-      let names = nwk_parsed.names();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let params = MugrationParams {

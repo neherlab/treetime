@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::ancestral::mask::mask_to_string;
 use treetime::seq::mutation::{MutationEvent, mutation_event_strings};
-use treetime_graph::assign_node_names::node_name_or_key;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -65,7 +64,7 @@ pub fn build_augur_node_data_ancestral(
       .flatten()
       .filter(|sequences| !sequences.is_empty());
     nodes.insert(
-      node_name_or_key(key, graph.names[&key].as_deref()),
+      graph.names[key].to_owned(),
       AugurNodeDataJsonAncestralNode {
         muts: nucleotide_substitutions(tree, facts, mask, key),
         sequence: Some(sequence.into_string()),

@@ -24,7 +24,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let aln = TestDataset::Sc2_2844.alignment()?;
     let nwk_parsed = nwk_read(TestDataset::Sc2_2844.tree().as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -62,7 +62,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_2,
+      names_tt_2,
       &NoopProgress,
     )?;
 
@@ -80,7 +80,7 @@ mod tests {
     let alphabet = Alphabet::default();
     let aln = TestDataset::Flu20.alignment()?;
     let nwk_parsed = nwk_read(TestDataset::Flu20.tree().as_bytes())?;
-    let names = nwk_parsed.names();
+    let names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
@@ -117,7 +117,7 @@ mod tests {
         partition_rates: PartitionRates::Estimate,
       },
       branch_lengths,
-      &names_tt_1,
+      names_tt_1,
       &NoopProgress,
     )?;
 
