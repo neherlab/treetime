@@ -1,12 +1,11 @@
 use crate::clock::gaussian::NodeTimeGaussian;
-use crate::coalescent::knot_times::{KnotCursor, KnotGrid, KnotTimes};
 use crate::timetree::inference::result::{NodePosterior, NodeTimes, TimeInference};
-use crate::timetree::max_posterior_region::{PosteriorSurvival, posterior_survival};
+use crate::timetree::max_posterior_region::{PosteriorSurvival, SurvivalLevel, posterior_survival};
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, izip};
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
-use statrs::distribution::{Continuous, ContinuousCDF, Normal};
+use statrs::distribution::{ContinuousCDF, Normal};
 use std::collections::BTreeMap;
 use std::iter::once;
 use std::sync::Arc;
@@ -20,13 +19,10 @@ use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error};
 
 const EXPECTATION_GRID_POINTS: usize = 4001;
-const SURVIVAL_TRIM: f64 = 1e-9;
-const SURVIVAL_INTERPOLATION_ERROR: f64 = 1e-8;
+const SURVIVAL_TAIL_LEVELS: [f64; 9] = [1e-9, 1e-7, 1e-5, 1e-4, 1e-3, 3e-3, 1e-2, 2e-2, 3.5e-2];
+const INTERIOR_LEVELS: usize = 40;
 const MERGER_RATE_STRIDE: usize = 10;
 const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
-const TRUNCATED_NORMAL_POINTS: usize = 1024;
-const CURVATURE_GRID_REFINEMENT: usize = 16;
-const CURVATURE_GRID_UNIFORM_SHARE: f64 = 0.1;
 
 #[derive(Clone, Debug)]
 pub(crate) struct CoalescentPrior {
@@ -96,7 +92,7 @@ impl CoalescentPrior {
     let own_offset: f64 = expectation
       .nodes
       .values()
-      .map(|node| node.weight.powi(2) * prior.inverse_tc_integral_at(node.survival.t.first()))
+      .map(|node| node.weight.powi(2) * prior.inverse_tc_integral_at(node.survival.first()))
       .sum();
     Ok(Self {
       log_normalization: pair_integral + own_offset,
@@ -171,7 +167,7 @@ impl CoalescentPrior {
             Side::Left => grid.partition_point(|&g| g < edge),
             Side::Right => grid.partition_point(|&g| g <= edge),
           };
-          self.rates().rate(cell) * node.survival.segment(i).value(edge)
+          self.rates().rate(cell) * node.survival.value_in(i, edge)
         },
         Piece::After => 0.0,
       },
@@ -208,23 +204,16 @@ impl CoalescentPrior {
     let (Some(node), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
       return 0.0;
     };
-    let knots = &node.survival.t;
-    let n = knots.len();
-    let first = knots.first();
+    let survival = &node.survival;
+    let first = survival.first();
     if x < first {
       return self.inverse_tc_integral_at(x) - self.inverse_tc_integral_at(first);
     }
-    if x >= knots.last() {
-      return integral.cumulative[n - 1];
+    if x >= survival.last() {
+      return integral.cumulative[survival.t.len() - 1];
     }
-    let i = knots.partition_point(|tk| tk <= x) - 1;
-    let segment = node.survival.segment(i);
-    let piece = KnotPiece {
-      segment,
-      start: segment.t0,
-      end: knots.at(i + 1),
-    };
-    piece.integral_to(&self.rates(), integral.cumulative[i], x)
+    let i = survival.t.partition_point(|&tk| tk <= x) - 1;
+    integral.cumulative[i] + survival_integral_in(survival, i, &self.rates(), x)
   }
 
   fn rates(&self) -> CellRates<'_> {
@@ -244,51 +233,28 @@ struct OwnIntegral {
 
 impl OwnIntegral {
   fn new(survival: &NodeSurvival, rates: &CellRates<'_>) -> Self {
-    let knots = &survival.t;
-    let mut cumulative = Vec::with_capacity(knots.len());
+    let mut cumulative = Vec::with_capacity(survival.t.len());
     cumulative.push(0.0);
-    for (i, (start, end)) in knots.iter().tuple_windows().enumerate() {
-      let total = cumulative[i];
-      let total = if start < end {
-        let piece = KnotPiece {
-          segment: survival.hermite(i, start, end),
-          start,
-          end,
-        };
-        piece.integral_to(rates, total, end)
-      } else {
-        total
-      };
-      cumulative.push(total);
+    for i in 0..survival.t.len().saturating_sub(1) {
+      cumulative.push(cumulative[i] + survival_integral_in(survival, i, rates, survival.t[i + 1]));
     }
     Self { cumulative }
   }
 }
 
-struct KnotPiece {
-  segment: HermiteSegment,
-  start: f64,
-  end: f64,
-}
-
-impl KnotPiece {
-  fn integral_to(&self, rates: &CellRates<'_>, at_start: f64, x: f64) -> f64 {
-    let grid = rates.grid;
-    let first = grid.partition_point(|&g| g <= self.start);
-    let inside = grid[first..].iter().take_while(|&&g| g < self.end && g <= x);
-    let mut total = at_start;
-    let mut primitive_before = 0.0;
-    let mut breakpoint = self.start;
-    let mut cell = first;
-    for &g in inside {
-      let primitive = self.segment.integral_to(g);
-      total += rates.rate(cell) * (primitive - primitive_before);
-      primitive_before = primitive;
-      breakpoint = g;
-      cell += 1;
-    }
-    total + rates.rate(cell) * (self.segment.integral_to(x) - self.segment.integral_to(breakpoint))
+fn survival_integral_in(survival: &NodeSurvival, segment: usize, rates: &CellRates<'_>, x: f64) -> f64 {
+  let grid = rates.grid;
+  let start = survival.t[segment];
+  let mut cell = grid.partition_point(|&g| g <= start);
+  let mut from = start;
+  let mut total = 0.0;
+  for &g in grid[cell..].iter().take_while(|&&g| g < x) {
+    total +=
+      rates.rate(cell) * (g - from) * f64::midpoint(survival.value_in(segment, from), survival.value_in(segment, g));
+    from = g;
+    cell += 1;
   }
+  total + rates.rate(cell) * (x - from) * f64::midpoint(survival.value_in(segment, from), survival.value_in(segment, x))
 }
 
 struct CellRates<'a> {
@@ -432,17 +398,14 @@ impl LineageExpectation {
       return make_error!("Cannot build the expected lineage count: no node has a time");
     }
 
-    let t_min = weighted.iter().map(|(_, s)| s.t.first()).fold(f64::INFINITY, f64::min);
-    let t_max = weighted
-      .iter()
-      .map(|(_, s)| s.t.last())
-      .fold(f64::NEG_INFINITY, f64::max);
+    let t_min = weighted.iter().map(|(_, s)| s.first()).fold(f64::INFINITY, f64::min);
+    let t_max = weighted.iter().map(|(_, s)| s.last()).fold(f64::NEG_INFINITY, f64::max);
     let span = (t_max - t_min).max(f64::EPSILON);
     let step = span / (EXPECTATION_GRID_POINTS - 1).to_f64_exact();
     let step_times: Vec<f64> = weighted
       .iter()
       .filter(|(_, survival)| survival.is_point())
-      .map(|(_, survival)| survival.t.first())
+      .map(|(_, survival)| survival.first())
       .sorted_by_key(|&t| OrderedFloat(t))
       .dedup()
       .collect();
@@ -463,13 +426,13 @@ impl LineageExpectation {
     let mut surviving_from = vec![0.0; grid.len() + 1];
     let mut squares_from = vec![0.0; grid.len() + 1];
     for &(weight, survival) in &weighted {
-      let first = grid.partition_point(|&g| g < survival.t.first());
+      let first = grid.partition_point(|&g| g < survival.first());
       if survival.is_point() {
         surviving_from[first + 1] += weight;
         squares_from[first + 1] += weight * weight;
         continue;
       }
-      let last = grid.partition_point(|&g| g < survival.t.last());
+      let last = grid.partition_point(|&g| g < survival.last());
       surviving_from[first] += weight;
       squares_from[first] += weight * weight;
       let values = survival.values_at_sorted(&grid[first..last]);
@@ -603,37 +566,20 @@ struct WeightedSurvival {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NodeSurvival {
-  t: KnotTimes,
+  t: Vec<f64>,
   survival: Vec<f64>,
-  slope: Vec<f64>,
 }
 
 impl NodeSurvival {
   pub(crate) fn of_posterior(distribution: &Distribution<NegLog>) -> Result<Option<Self>, Report> {
-    let grid = match distribution {
-      Distribution::Function(function) => Some(KnotGrid {
-        origin: function.x_min(),
-        step: function.dx(),
-      }),
-      _ => None,
-    };
-    let survival = posterior_survival(distribution, SURVIVAL_TRIM, SURVIVAL_INTERPOLATION_ERROR)?;
-    Ok(survival.map(|survival| Self::on_grid(survival, grid)))
-  }
-
-  fn on_grid(survival: PosteriorSurvival, grid: Option<KnotGrid>) -> Self {
-    Self {
-      t: KnotTimes::new(&survival.t, grid),
-      survival: survival.survival,
-      slope: survival.slope,
-    }
+    let survival = posterior_survival(distribution, &survival_levels())?;
+    Ok(survival.map(Self::from))
   }
 
   fn point(time: f64) -> Self {
     Self {
-      t: KnotTimes::listed(vec![time]),
+      t: vec![time],
       survival: vec![0.0],
-      slope: vec![0.0],
     }
   }
 
@@ -643,158 +589,103 @@ impl NodeSurvival {
     let normal = Normal::standard();
     let cdf_upper = normal.cdf(z_upper);
     let tail_rate = (z_upper <= -TRUNCATED_NORMAL_SPAN).then(|| (mean - upper) / std.powi(2));
-    let (start, end) = match tail_rate {
-      Some(rate) => (upper + SURVIVAL_TRIM.ln() / rate, upper),
-      None => (
-        mean + std * normal.inverse_cdf(SURVIVAL_TRIM * cdf_upper),
-        upper.min(mean + std * normal.inverse_cdf((1.0 - SURVIVAL_TRIM) * cdf_upper)),
-      ),
+    let time_below = |mass: f64| match tail_rate {
+      Some(rate) => upper + mass.ln() / rate,
+      None => mean + std * normal.inverse_cdf(mass * cdf_upper),
     };
-    let survival = |t: f64| match tail_rate {
-      Some(rate) => 1.0 - (-rate * (upper - t)).exp(),
+    let survival_at = |t: f64| match tail_rate {
+      Some(rate) => -(-rate * (upper - t)).exp_m1(),
       None => ((cdf_upper - normal.cdf((t - mean) / std)) / cdf_upper).clamp(0.0, 1.0),
     };
-    let slope = |t: f64| match tail_rate {
-      Some(rate) => -rate * (-rate * (upper - t)).exp(),
-      None => -normal.pdf((t - mean) / std) / (std * cdf_upper),
+    let mut survival = PosteriorSurvival {
+      t: vec![],
+      survival: vec![],
     };
-    let t = curvature_grid(start, end, TRUNCATED_NORMAL_POINTS, survival);
-    let mut survival: Vec<f64> = t.iter().map(|&x| survival(x)).collect();
-    survival[0] = 1.0;
-    survival[TRUNCATED_NORMAL_POINTS - 1] = 0.0;
-    let slope = t.iter().map(|&x| slope(x)).collect();
-    Self {
-      t: KnotTimes::listed(t),
-      survival,
-      slope,
+    for level in survival_levels() {
+      let mass_below = match level {
+        SurvivalLevel::Below(mass) => mass,
+        SurvivalLevel::Above(mass) => 1.0 - mass,
+      };
+      let t = time_below(mass_below).min(upper);
+      survival.push(t, survival_at(t));
     }
+    Self::from(survival.with_unit_ends())
   }
 
   fn is_point(&self) -> bool {
     self.t.len() == 1
   }
 
+  fn first(&self) -> f64 {
+    self.t[0]
+  }
+
+  fn last(&self) -> f64 {
+    self.t[self.t.len() - 1]
+  }
+
   pub(crate) fn at(&self, x: f64) -> f64 {
-    if x < self.t.first() {
+    if x < self.first() {
       return 1.0;
     }
-    if x >= self.t.last() {
+    if x >= self.last() {
       return 0.0;
     }
-    self.segment(self.t.partition_point(|ti| ti <= x) - 1).value(x)
+    self.value_in(self.t.partition_point(|&ti| ti <= x) - 1, x)
   }
 
   fn values_at_sorted<'a>(&'a self, xs: &'a [f64]) -> impl Iterator<Item = f64> + 'a {
-    let (first, last) = (self.t.first(), self.t.last());
-    xs.iter().scan(KnotCursor::default(), move |cursor, &x| {
+    let (first, last) = (self.first(), self.last());
+    xs.iter().scan(0, move |segment, &x| {
       if x < first {
         return Some(1.0);
       }
       if x >= last {
         return Some(0.0);
       }
-      *cursor = self.t.advance_while(*cursor, |ti| ti <= x);
-      let (t0, t1) = self.t.segment_at(*cursor);
-      Some(self.hermite(cursor.position(), t0, t1).value(x))
+      *segment += self.t[*segment + 1..].partition_point(|&ti| ti <= x);
+      Some(self.value_in(*segment, x))
     })
   }
 
   fn piece_at(&self, side: Side, x: f64) -> Piece<usize> {
     let i = match side {
-      Side::Left => self.t.partition_point(|ti| ti < x),
-      Side::Right => self.t.partition_point(|ti| ti <= x),
+      Side::Left => self.t.partition_point(|&ti| ti < x),
+      Side::Right => self.t.partition_point(|&ti| ti <= x),
     };
     piece_of(i, self.t.len())
   }
 
-  fn segment(&self, i: usize) -> HermiteSegment {
-    let (t0, t1) = self.t.segment(i);
-    self.hermite(i, t0, t1)
-  }
-
-  fn hermite(&self, i: usize, t0: f64, t1: f64) -> HermiteSegment {
-    HermiteSegment {
-      t0,
-      h: t1 - t0,
-      s0: self.survival[i],
-      s1: self.survival[i + 1],
-      d0: self.slope[i],
-      d1: self.slope[i + 1],
-    }
+  fn value_in(&self, segment: usize, x: f64) -> f64 {
+    let (t0, t1) = (self.t[segment], self.t[segment + 1]);
+    let (s0, s1) = (self.survival[segment], self.survival[segment + 1]);
+    s0 + (x - t0) / (t1 - t0) * (s1 - s0)
   }
 }
 
 impl From<PosteriorSurvival> for NodeSurvival {
   fn from(survival: PosteriorSurvival) -> Self {
-    Self::on_grid(survival, None)
+    Self {
+      t: survival.t,
+      survival: survival.survival,
+    }
   }
 }
 
-#[derive(Clone, Copy, Debug)]
-struct HermiteSegment {
-  t0: f64,
-  h: f64,
-  s0: f64,
-  s1: f64,
-  d0: f64,
-  d1: f64,
-}
-
-impl HermiteSegment {
-  fn value(self, x: f64) -> f64 {
-    let u = (x - self.t0) / self.h;
-    let (u2, u3) = (u * u, u * u * u);
-    self.s0
-      + (3.0 * u2 - 2.0 * u3) * (self.s1 - self.s0)
-      + self.h * ((u3 - 2.0 * u2 + u) * self.d0 + (u3 - u2) * self.d1)
-  }
-
-  fn integral_to(self, x: f64) -> f64 {
-    let u = (x - self.t0) / self.h;
-    let (u2, u3, u4) = (u * u, u * u * u, u * u * u * u);
-    self.h
-      * (self.s0 * u
-        + (u3 - u4 / 2.0) * (self.s1 - self.s0)
-        + self.h * ((u4 / 4.0 - 2.0 * u3 / 3.0 + u2 / 2.0) * self.d0 + (u4 / 4.0 - u3 / 3.0) * self.d1))
-  }
-}
-
-fn curvature_grid(start: f64, end: f64, n_points: usize, survival: impl Fn(f64) -> f64) -> Vec<f64> {
-  let fine = n_points * CURVATURE_GRID_REFINEMENT;
-  let spacing = (end - start) / (fine - 1).to_f64_exact();
-  let times: Vec<f64> = (0..fine).map(|i| start + spacing * i.to_f64_exact()).collect();
-  let values: Vec<f64> = times.iter().map(|&time| survival(time)).collect();
-  let curvature: Vec<f64> = (0..fine)
-    .map(|i| {
-      let center = i.clamp(1, fine - 2);
-      let second_difference = values[center - 1] - 2.0 * values[center] + values[center + 1];
-      (second_difference / (spacing * spacing)).abs().sqrt()
-    })
-    .collect();
-  let mean_curvature = curvature.iter().sum::<f64>() / fine.to_f64_exact();
-  let density: Vec<f64> = curvature
+pub(crate) fn survival_levels() -> Vec<SurvivalLevel> {
+  let interior = (1..INTERIOR_LEVELS).map(|i| i.to_f64_exact() / INTERIOR_LEVELS.to_f64_exact());
+  let below = SURVIVAL_TAIL_LEVELS
     .iter()
-    .map(|&local| local + CURVATURE_GRID_UNIFORM_SHARE * mean_curvature.max(f64::MIN_POSITIVE))
-    .collect();
-  let cumulative: Vec<f64> = once(0.0)
-    .chain(density.iter().tuple_windows().scan(0.0, |acc, (left, right)| {
-      *acc += spacing * f64::midpoint(*left, *right);
-      Some(*acc)
-    }))
-    .collect();
-  let total = cumulative[fine - 1];
-  (0..n_points)
-    .map(|index| {
-      if index == 0 {
-        return start;
-      }
-      if index == n_points - 1 {
-        return end;
-      }
-      let target = total * index.to_f64_exact() / (n_points - 1).to_f64_exact();
-      interpolate(&cumulative, &times, target)
-    })
-    .collect()
+    .copied()
+    .chain(interior.filter(|&mass| mass <= 0.5 && mass > SURVIVAL_TAIL_LEVELS[SURVIVAL_TAIL_LEVELS.len() - 1]))
+    .map(SurvivalLevel::Below);
+  let interior = (1..INTERIOR_LEVELS).map(|i| i.to_f64_exact() / INTERIOR_LEVELS.to_f64_exact());
+  let above = interior
+    .filter(|&mass| mass < 0.5 && mass > SURVIVAL_TAIL_LEVELS[SURVIVAL_TAIL_LEVELS.len() - 1])
+    .rev()
+    .chain(SURVIVAL_TAIL_LEVELS.iter().copied().rev())
+    .map(SurvivalLevel::Above);
+  below.chain(above).collect()
 }
 
 fn piece_slope(t: &[f64], values: &[f64], side: Side, x: f64) -> Piece<f64> {

@@ -1,7 +1,7 @@
 use argmin::core::{CostFunction, Error as ArgminError, Executor, TerminationReason, TerminationStatus};
 use argmin::solver::brent::BrentRoot;
 use eyre::Report;
-use itertools::{Itertools, chain};
+use itertools::Itertools;
 use ndarray::{Array1, ArrayView1, s};
 use ordered_float::OrderedFloat;
 use std::iter::once;
@@ -16,7 +16,6 @@ use treetime_utils::{make_error, make_internal_error, make_report};
 const LEVEL_BRACKET_DOUBLINGS: usize = 64;
 const LEVEL_SOLVE_MAX_ITERS: u64 = 200;
 const REGION_MASS_ROUNDING_ULPS: f64 = 64.0;
-const HERMITE_SLOPE_BASIS_MAX: f64 = 4.0 / 27.0;
 
 pub fn max_posterior_region(
   distribution: &Distribution<NegLog>,
@@ -52,22 +51,23 @@ pub(crate) fn posterior_median(distribution: &Distribution<NegLog>) -> Result<Op
 
 pub(crate) fn posterior_survival(
   distribution: &Distribution<NegLog>,
-  trim: f64,
-  max_error: f64,
+  levels: &[SurvivalLevel],
 ) -> Result<Option<PosteriorSurvival>, Report> {
   match Posterior::of(distribution)? {
     Posterior::Empty => Ok(None),
     Posterior::Point(t) => Ok(Some(PosteriorSurvival::point(t))),
-    Posterior::Range(start, end) => {
-      let slope = -(end - start).recip();
-      Ok(Some(PosteriorSurvival {
-        t: vec![start, end],
-        survival: vec![1.0, 0.0],
-        slope: vec![slope, slope],
-      }))
-    },
-    Posterior::Function(function) => function_survival(&function, trim, max_error).map(Some),
+    Posterior::Range(start, end) => Ok(Some(PosteriorSurvival {
+      t: vec![start, end],
+      survival: vec![1.0, 0.0],
+    })),
+    Posterior::Function(function) => function_survival(&function, levels).map(Some),
   }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum SurvivalLevel {
+  Below(f64),
+  Above(f64),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -94,7 +94,6 @@ pub enum PeakLocation {
 pub(crate) struct PosteriorSurvival {
   pub t: Vec<f64>,
   pub survival: Vec<f64>,
-  pub slope: Vec<f64>,
 }
 
 impl PosteriorSurvival {
@@ -102,8 +101,26 @@ impl PosteriorSurvival {
     Self {
       t: vec![t],
       survival: vec![0.0],
-      slope: vec![0.0],
     }
+  }
+
+  pub(crate) fn push(&mut self, t: f64, survival: f64) {
+    let later = self.t.last().is_none_or(|&last| t > last);
+    let lower = self.survival.last().is_none_or(|&last| survival < last);
+    if later && lower {
+      self.t.push(t);
+      self.survival.push(survival);
+    }
+  }
+
+  pub(crate) fn with_unit_ends(mut self) -> Self {
+    if let [first, .., last] = self.survival.as_mut_slice() {
+      *first = 1.0;
+      *last = 0.0;
+    } else {
+      self.survival = vec![0.0];
+    }
+    self
   }
 }
 
@@ -146,208 +163,46 @@ fn posterior_fractions(profile: &MassProfile) -> Result<MassFractions<'_>, Repor
 
 fn function_survival(
   function: &DistributionFunction<f64, NegLog>,
-  trim: f64,
-  max_error: f64,
+  levels: &[SurvivalLevel],
 ) -> Result<PosteriorSurvival, Report> {
   let profile = MassProfile::new(function)?;
   let fractions = posterior_fractions(&profile)?;
-  let start = fractions.quantile(trim);
-  let end = fractions.survival_inverse(trim).max(start);
-  if !(start.is_finite() && end.is_finite()) {
-    let (side, tail) = if start.is_finite() {
+  let time_at = |level: SurvivalLevel| match level {
+    SurvivalLevel::Below(mass) => fractions.quantile(mass),
+    SurvivalLevel::Above(mass) => fractions.survival_inverse(mass),
+  };
+  for &level in levels.first().into_iter().chain(levels.last()) {
+    let t = time_at(level);
+    if t.is_finite() {
+      continue;
+    }
+    let (SurvivalLevel::Below(mass) | SurvivalLevel::Above(mass)) = level;
+    let (side, tail) = if t > 0.0 {
       (Side::Right, function.right_extrap())
     } else {
       (Side::Left, function.left_extrap())
     };
     return match tail {
       BoundaryBehavior::Linear(law) => make_error!(
-        "Posterior on [{}, {}] has a tail of slope {:e} on the {side:?} side, which holds mass {trim:e} beyond the largest finite time",
+        "Posterior on [{}, {}] has a tail of slope {:e} on the {side:?} side, which holds mass {mass:e} beyond the largest finite time",
         function.x_min(),
         function.x_max(),
         law.slope
       ),
       BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => {
-        make_internal_error!("Posterior quantile {trim} on the {side:?} side without a soft tail is not finite")
+        make_internal_error!("Posterior quantile {mass:e} on the {side:?} side without a soft tail is not finite")
       },
     };
   }
-  let pieces = survival_pieces(function, start, end)?;
-  if pieces.is_empty() {
-    return Ok(PosteriorSurvival::point(start));
-  }
-  let mut knots = SurvivalKnots {
-    fractions: &fractions,
-    max_error,
-    survival: PosteriorSurvival {
-      t: vec![],
-      survival: vec![],
-      slope: vec![],
-    },
+  let mut survival = PosteriorSurvival {
+    t: Vec::with_capacity(levels.len()),
+    survival: Vec::with_capacity(levels.len()),
   };
-  for piece in pieces {
-    knots.add_piece(piece);
+  for &level in levels {
+    let t = time_at(level);
+    survival.push(t, fractions.survival(t));
   }
-  let PosteriorSurvival {
-    mut t,
-    mut survival,
-    mut slope,
-  } = knots.survival;
-  t.shrink_to_fit();
-  survival.shrink_to_fit();
-  slope.shrink_to_fit();
-  Ok(PosteriorSurvival { t, survival, slope })
-}
-
-fn survival_pieces(
-  function: &DistributionFunction<f64, NegLog>,
-  start: f64,
-  end: f64,
-) -> Result<Vec<SurvivalPiece>, Report> {
-  let y = function.y();
-  let n = y.len();
-  let x_at = |idx: usize| function.x_min() + function.dx() * idx.to_f64_exact();
-  let (x_min, x_max) = (x_at(0), x_at(n - 1));
-  let left = SurvivalPiece {
-    start,
-    end: end.min(x_min),
-    law: PieceLaw::of_tail(function.left_extrap(), Side::Left),
-  };
-  let right = SurvivalPiece {
-    start: start.max(x_max),
-    end,
-    law: PieceLaw::of_tail(function.right_extrap(), Side::Right),
-  };
-  let cells = (0..n - 1)
-    .filter(|&cell| x_at(cell + 1) > start && x_at(cell) < end)
-    .map(|cell| {
-      let law = match (y[cell].is_infinite(), y[cell + 1].is_infinite()) {
-        (false, false) | (true, true) => PieceLaw::Exact,
-        (hard_left, _) => PieceLaw::PowerLaw {
-          t_hard: x_at(if hard_left { cell } else { cell + 1 }),
-          b: function.hard_cell(cell)?.map_or(0.0, |hard| hard.law.b),
-        },
-      };
-      Ok(SurvivalPiece {
-        start: start.max(x_at(cell)),
-        end: end.min(x_at(cell + 1)),
-        law,
-      })
-    });
-  chain!(once(Ok(left)), cells, once(Ok(right)))
-    .filter_ok(|piece| piece.start < piece.end)
-    .try_collect()
-}
-
-#[derive(Clone, Copy)]
-struct SurvivalPiece {
-  start: f64,
-  end: f64,
-  law: PieceLaw,
-}
-
-#[derive(Clone, Copy)]
-enum PieceLaw {
-  Exact,
-  Exponential { rate: f64 },
-  PowerLaw { t_hard: f64, b: f64 },
-}
-
-impl PieceLaw {
-  fn of_tail(behavior: BoundaryBehavior, side: Side) -> Self {
-    match (behavior, side) {
-      (BoundaryBehavior::Linear(law), Side::Left) => Self::Exponential { rate: -law.slope },
-      (BoundaryBehavior::Linear(law), Side::Right) => Self::Exponential { rate: law.slope },
-      (BoundaryBehavior::HardApproach(law), _) => Self::PowerLaw {
-        t_hard: law.t_hard,
-        b: law.b,
-      },
-      (BoundaryBehavior::Hard | BoundaryBehavior::Error, _) => Self::Exact,
-    }
-  }
-
-  fn interpolation_error_bound(self, a: Knot, b: Knot) -> f64 {
-    let h = b.t - a.t;
-    let quartic = h.powi(4) / 384.0;
-    let smooth = match self {
-      PieceLaw::Exact => 0.0,
-      PieceLaw::Exponential { rate } => rate.abs().powi(3) * a.slope.abs().max(b.slope.abs()) * quartic,
-      PieceLaw::PowerLaw { t_hard, b: exponent } => {
-        let factor = (exponent * (exponent - 1.0) * (exponent - 2.0)).abs();
-        let (near, far) = if (a.t - t_hard).abs() <= (b.t - t_hard).abs() {
-          (a, b)
-        } else {
-          (b, a)
-        };
-        let largest_at = if exponent < 3.0 { near } else { far };
-        let distance = (largest_at.t - t_hard).abs();
-        if factor <= 0.0 {
-          0.0
-        } else if distance > 0.0 {
-          factor * largest_at.slope.abs() / distance.powi(3) * quartic
-        } else {
-          f64::INFINITY
-        }
-      },
-    };
-    let monotone = (a.survival - b.survival).abs() + HERMITE_SLOPE_BASIS_MAX * h * (a.slope.abs() + b.slope.abs());
-    if smooth.is_finite() {
-      smooth.min(monotone)
-    } else {
-      monotone
-    }
-  }
-}
-
-#[derive(Clone, Copy)]
-struct Knot {
-  t: f64,
-  survival: f64,
-  slope: f64,
-}
-
-struct SurvivalKnots<'a> {
-  fractions: &'a MassFractions<'a>,
-  max_error: f64,
-  survival: PosteriorSurvival,
-}
-
-impl SurvivalKnots<'_> {
-  fn add_piece(&mut self, piece: SurvivalPiece) {
-    let a = self.knot(piece.start, Side::Right);
-    let b = self.knot(piece.end, Side::Left);
-    self.push(a);
-    self.refine(piece.law, a, b);
-  }
-
-  fn knot(&self, t: f64, side: Side) -> Knot {
-    Knot {
-      t,
-      survival: self.fractions.survival(t),
-      slope: -self.fractions.density(t, side),
-    }
-  }
-
-  fn refine(&mut self, law: PieceLaw, a: Knot, b: Knot) {
-    let t_mid = f64::midpoint(a.t, b.t);
-    if !(a.t < t_mid && t_mid < b.t) || law.interpolation_error_bound(a, b) <= self.max_error {
-      self.push(b);
-      return;
-    }
-    let mid = self.knot(t_mid, Side::Left);
-    self.refine(law, a, mid);
-    self.refine(law, mid, b);
-  }
-
-  fn push(&mut self, knot: Knot) {
-    let PosteriorSurvival { t, survival, slope } = &mut self.survival;
-    let repeated = t.last().is_some_and(|&last| last.total_cmp(&knot.t).is_eq())
-      && slope.last().is_some_and(|&last| last.total_cmp(&knot.slope).is_eq());
-    if !repeated {
-      t.push(knot.t);
-      survival.push(knot.survival);
-      slope.push(knot.slope);
-    }
-  }
+  Ok(survival.with_unit_ends())
 }
 
 fn function_max_posterior_region(
