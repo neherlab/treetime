@@ -294,7 +294,7 @@ fn read_tree(path: &Path, dialect: NewickDialect) -> Result<(TreeFacts, Vec<Stri
   let internal = graph.get_internal_nodes().collect_vec();
   let named_tips = named_tips
     .into_iter()
-    .map(|key| parsed.names[key].to_owned())
+    .map(|key| parsed.names.pairing_name(key).to_owned())
     .collect_vec();
   let facts = TreeFacts {
     tips: graph.num_leaves(),

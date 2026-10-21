@@ -16,7 +16,7 @@ mod tests {
         .graph
         .get_nodes()
         .map(|node| node.key())
-        .filter(|key| &tree.names[*key] == name)
+        .filter(|key| tree.names.pairing_name(*key) == name)
         .sorted()
         .collect()
     };

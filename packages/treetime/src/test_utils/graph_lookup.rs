@@ -3,7 +3,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
-use treetime_graph::pair_by_name::first_key_by_name;
+use treetime_graph::pair_by_name::key_by_name;
 
 pub(crate) fn find_node_key_by_name(graph: &Graph, names: &NodeNames, name: &str) -> Option<GraphNodeKey> {
   for node in graph.get_nodes() {
@@ -33,9 +33,6 @@ pub(crate) fn find_edge_key(
 }
 
 pub(crate) fn node_keys_named(graph: &Graph, names: &NodeNames, wanted: &[&str]) -> BTreeSet<GraphNodeKey> {
-  let first_key_of = first_key_by_name(graph.get_nodes().map(|node| node.key()), names);
-  wanted
-    .iter()
-    .filter_map(|name| first_key_of.get(name).copied())
-    .collect()
+  let key_of = key_by_name(graph.get_nodes().map(|node| node.key()), names);
+  wanted.iter().filter_map(|name| key_of.get(name).copied()).collect()
 }

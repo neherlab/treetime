@@ -33,7 +33,7 @@ mod tests {
       vec![warning(
         RunWarningKind::DuplicateNodeNames,
         &format!(
-          "The tree '{}' gives the same name to more than one node: A. Nodes with the same name receive the same data from the other inputs, and augur node data keeps one entry per name.",
+          "The tree '{}' gives the same name to more than one node: A. TreeTime keeps the name of the first such node and writes the others as <name>_2, <name>_3 and so on. Nodes with the same input name still receive the same data from the other inputs.",
           path.display()
         ),
       )],
@@ -136,7 +136,7 @@ mod tests {
         .graph
         .get_leaves()
         .map(|leaf| leaf.key())
-        .filter(|key| &names[*key] == name)
+        .filter(|key| names.pairing_name(*key) == name)
         .sorted()
         .collect()
     }

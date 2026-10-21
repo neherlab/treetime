@@ -24,7 +24,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
-use treetime_graph::pair_by_name::first_key_by_name;
+use treetime_graph::pair_by_name::key_by_name;
 use treetime_io::name_list::{name_list_read_file, name_list_read_str};
 use treetime_primitives::Seq;
 
@@ -231,10 +231,10 @@ pub(crate) fn resolve_node_names(
   graph: &Graph,
   names: &NodeNames,
 ) -> BTreeSet<GraphNodeKey> {
-  let first_node_of = first_key_by_name(graph.get_nodes().map(|node| node.key()), names);
+  let node_of = key_by_name(graph.get_nodes().map(|node| node.key()), names);
   node_names
     .iter()
-    .filter_map(|name| first_node_of.get(name.as_str()).copied())
+    .filter_map(|name| node_of.get(name.as_str()).copied())
     .collect()
 }
 

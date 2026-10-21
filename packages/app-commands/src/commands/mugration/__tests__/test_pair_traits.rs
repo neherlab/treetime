@@ -30,7 +30,7 @@ mod tests {
         .graph
         .get_leaves()
         .map(|leaf| leaf.key())
-        .filter(|key| &names[*key] == name)
+        .filter(|key| names.pairing_name(*key) == name)
         .sorted()
         .collect_vec()
     };

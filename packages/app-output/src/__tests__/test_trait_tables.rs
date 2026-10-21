@@ -45,7 +45,7 @@ mod tests {
   }
 
   #[test]
-  fn test_trait_tables_traits_csv_writes_one_row_per_node_with_a_repeated_name() -> Result<(), Report> {
+  fn test_trait_tables_traits_csv_writes_unique_names_for_a_repeated_name() -> Result<(), Report> {
     let mut topology = topology_from("(A:0.1)B;")?;
     let (a, b) = (node_key(&topology, "A"), node_key(&topology, "B"));
     rename_node(&mut topology, b, "A")?;
@@ -57,7 +57,7 @@ mod tests {
     write_traits_rows(&AnnotatedTreeView::new(&graph)?, &mut csv)?;
     csv.into_inner()?;
 
-    assert_eq!("node,country\nA,usa\nA,uk\n", String::from_utf8(buf)?);
+    assert_eq!("node,country\nA,usa\nA_2,uk\n", String::from_utf8(buf)?);
     Ok(())
   }
 

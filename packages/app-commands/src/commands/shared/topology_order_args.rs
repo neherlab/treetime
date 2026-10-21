@@ -153,7 +153,7 @@ impl TopologyOrderArgs {
         let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading target reference topology")?;
         leaf_order(&nwk_parsed.graph)
           .into_iter()
-          .map(|key| nwk_parsed.names[key].to_owned())
+          .map(|key| nwk_parsed.names.pairing_name(key).to_owned())
           .collect_vec()
       },
       TopologyOrderTargetSourceArg::List => {

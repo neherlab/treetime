@@ -31,7 +31,7 @@ pub fn read_input_tree(path: &Path, dialect: NewickDialect, log: &dyn LogSink) -
       "The tree '{}' gives the same name to more than one node:",
       path.display()
     ),
-    "Nodes with the same name receive the same data from the other inputs, and augur node data keeps one entry per name.",
+    "TreeTime keeps the name of the first such node and writes the others as <name>_2, <name>_3 and so on. Nodes with the same input name still receive the same data from the other inputs.",
     &parse.duplicate_names,
   );
   Ok(parse)

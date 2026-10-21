@@ -8,7 +8,7 @@ use treetime::make_report;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
-use treetime_graph::pair_by_name::first_key_by_name;
+use treetime_graph::pair_by_name::key_by_name;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
@@ -57,11 +57,11 @@ impl RerootArgs {
 }
 
 pub fn resolve_reroot_tips(tips: &[String], graph: &Graph, names: &NodeNames) -> Result<Vec<GraphNodeKey>, Report> {
-  let first_leaf_of = first_key_by_name(graph.get_leaves().map(|leaf| leaf.key()), names);
+  let leaf_of = key_by_name(graph.get_leaves().map(|leaf| leaf.key()), names);
   tips
     .iter()
     .map(|tip| {
-      first_leaf_of
+      leaf_of
         .get(tip.as_str())
         .copied()
         .ok_or_else(|| make_report!("Reroot tip not found: {tip}"))
@@ -136,7 +136,7 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_resolve_tips_takes_the_first_leaf_of_a_repeated_name_in_input_order() {
+  fn test_reroot_resolve_tips_takes_the_leaf_of_a_repeated_name_in_input_order() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let leaves_named_a = helpers::leaf_keys(&tree, "A");
 
@@ -178,7 +178,7 @@ mod tests {
         .graph
         .get_leaves()
         .map(|leaf| leaf.key())
-        .filter(|key| &tree.names[*key] == name)
+        .filter(|key| tree.names.pairing_name(*key) == name)
         .sorted()
         .collect()
     }

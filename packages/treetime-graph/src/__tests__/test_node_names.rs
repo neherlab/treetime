@@ -62,7 +62,7 @@ mod tests {
   }
 
   #[test]
-  fn test_node_names_from_input_reports_repeated_input_names() -> Result<(), Report> {
+  fn test_node_names_from_input_suffixes_repeated_input_names_by_occurrence() -> Result<(), Report> {
     let graph = tree()?;
     let input: BTreeMap<_, _> = (0..6).map(|key| (GraphNodeKey(key), Some(o!("A")))).collect();
 
@@ -70,8 +70,52 @@ mod tests {
 
     assert_eq!(vec_of_owned!["A"], actual.duplicate_names);
     assert_eq!(
-      vec_of_owned!["A", "A", "A", "A", "A", "A"],
+      vec_of_owned!["A", "A_2", "A_3", "A_4", "A_5", "A_6"],
       names_by_key(&graph, &actual.names)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_node_names_from_input_skips_suffixed_names_taken_by_the_input() -> Result<(), Report> {
+    let graph = tree()?;
+    let input = btreemap! {
+      GraphNodeKey(0) => Some(o!("A")),
+      GraphNodeKey(1) => Some(o!("A")),
+      GraphNodeKey(2) => Some(o!("A")),
+      GraphNodeKey(3) => Some(o!("A_2")),
+      GraphNodeKey(4) => Some(o!("B")),
+      GraphNodeKey(5) => Some(o!("A_4")),
+    };
+
+    let actual = NodeNames::from_input(input, &graph)?;
+
+    assert_eq!(vec_of_owned!["A"], actual.duplicate_names);
+    assert_eq!(
+      vec_of_owned!["A", "A_3", "A_5", "A_2", "B", "A_4"],
+      names_by_key(&graph, &actual.names)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_node_names_pairing_name_is_the_input_name_of_a_renamed_node() -> Result<(), Report> {
+    let graph = tree()?;
+    let input = btreemap! {
+      GraphNodeKey(2) => Some(o!("A")),
+      GraphNodeKey(3) => Some(o!("A")),
+      GraphNodeKey(5) => Some(o!("C")),
+    };
+
+    let names = NodeNames::from_input(input, &graph)?.names;
+
+    let actual = graph
+      .get_nodes()
+      .map(|node| names.pairing_name(node.key()).to_owned())
+      .collect::<Vec<_>>();
+    assert_eq!(
+      vec_of_owned!["NODE_0000000", "NODE_0000001", "A", "A", "NODE_0000002", "C"],
+      actual
     );
     Ok(())
   }

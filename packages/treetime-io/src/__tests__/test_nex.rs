@@ -84,19 +84,20 @@ mod tests {
     "#},
   )]
   #[case::nexus_punctuation(
-    "('hCoV-19/USA/1':0.1,'hCoV-19/USA/1':0.2)root;",
+    "('hCoV-19/USA/1':0.1,'hCoV-19/USA/2':0.2)root;",
     indoc! {r#"
       #NEXUS
 
       Begin Taxa;
-        Dimensions NTax=1;
+        Dimensions NTax=2;
         TaxLabels
           'hCoV-19/USA/1'
+          'hCoV-19/USA/2'
         ;
       End;
 
       Begin Trees;
-        Tree tree1 = (hCoV-19/USA/1:0.1,hCoV-19/USA/1:0.2)root;
+        Tree tree1 = (hCoV-19/USA/1:0.1,hCoV-19/USA/2:0.2)root;
       End;
     "#},
   )]

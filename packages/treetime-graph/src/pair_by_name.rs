@@ -25,7 +25,7 @@ pub fn pair_by_name<T: Clone>(
 
   let mut keys_by_entry: Vec<Vec<GraphNodeKey>> = vec![vec![]; by_name.len()];
   for key in candidates {
-    if let Some(index) = by_name.get_index_of(&names[key]) {
+    if let Some(index) = by_name.get_index_of(names.pairing_name(key)) {
       keys_by_entry[index].push(key);
     }
   }
@@ -48,18 +48,11 @@ pub fn pair_by_name<T: Clone>(
   }
 }
 
-pub fn first_key_by_name(
+pub fn key_by_name(
   candidates: impl IntoIterator<Item = GraphNodeKey>,
   names: &NodeNames,
 ) -> BTreeMap<&str, GraphNodeKey> {
-  let mut first_key_of: BTreeMap<&str, GraphNodeKey> = BTreeMap::new();
-  for key in candidates {
-    first_key_of
-      .entry(&names[key])
-      .and_modify(|first| *first = (*first).min(key))
-      .or_insert(key);
-  }
-  first_key_of
+  candidates.into_iter().map(|key| (&names[key], key)).collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

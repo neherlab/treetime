@@ -2,7 +2,7 @@
 mod tests {
   use crate::__tests__::test_graph_support::tests::helpers::names_on_star;
   use crate::node::GraphNodeKey;
-  use crate::pair_by_name::{NamePairing, first_key_by_name, pair_by_name};
+  use crate::pair_by_name::{NamePairing, key_by_name, pair_by_name};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -101,13 +101,13 @@ mod tests {
   }
 
   #[test]
-  fn test_pair_by_name_first_key_by_name_keeps_the_smallest_key_of_each_name() -> Result<(), Report> {
+  fn test_pair_by_name_key_by_name_resolves_the_written_name_of_each_node() -> Result<(), Report> {
     let (b, a1, a2) = (GraphNodeKey(0), GraphNodeKey(1), GraphNodeKey(2));
     let names = names_on_star(btreemap! { b => Some(o!("B")), a1 => Some(o!("A")), a2 => Some(o!("A")) })?;
 
-    let actual = first_key_by_name([a2, b, a1], &names);
+    let actual = key_by_name([a2, b, a1], &names);
 
-    assert_eq!(btreemap! { "A" => a1, "B" => b }, actual);
+    assert_eq!(btreemap! { "A" => a1, "A_2" => a2, "B" => b }, actual);
     Ok(())
   }
 }

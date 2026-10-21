@@ -119,7 +119,7 @@ fn duplicate_names(context: &CheckContext<'_>) -> Vec<RunCheck> {
       warn(
         "duplicate-node-names",
         format!(
-          "The tree gives the same name to more than one node: {}. Nodes with the same name receive the same data from the other inputs.",
+          "The tree gives the same name to more than one node: {}. TreeTime keeps the name of the first such node and writes the others as <name>_2, <name>_3 and so on. Nodes with the same input name still receive the same data from the other inputs.",
           name_list(&tree.duplicate_node_names)
         ),
       )

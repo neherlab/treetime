@@ -9,7 +9,7 @@ mod tests {
 
   proptest! {
     #[test]
-    fn test_prop_pair_by_name_pairs_every_named_candidate_with_the_first_entry_of_its_name(
+    fn test_prop_pair_by_name_pairs_every_named_candidate_with_the_first_entry_of_its_input_name(
       node_names in prop::collection::vec(prop::option::of("[a-d]"), 0..12),
       candidate_mask in prop::collection::vec(any::<bool>(), 12),
       entry_names in prop::collection::vec("[a-e]", 0..16),
@@ -28,9 +28,9 @@ mod tests {
       let first_index = |name: &str| entry_names.iter().position(|entry| entry == name);
       let expected_by_node: BTreeMap<GraphNodeKey, usize> = candidates
         .iter()
-        .filter_map(|key| Some((*key, first_index(&names[*key])?)))
+        .filter_map(|key| Some((*key, first_index(names.pairing_name(*key))?)))
         .collect();
-      let candidate_names: BTreeSet<&str> = candidates.iter().map(|key| &names[*key]).collect();
+      let candidate_names: BTreeSet<&str> = candidates.iter().map(|key| names.pairing_name(*key)).collect();
       let expected_unmatched = entry_names
         .iter()
         .unique()
