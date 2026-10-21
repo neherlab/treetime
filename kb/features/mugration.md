@@ -36,7 +36,7 @@
 
 ## Additional Features
 
-- [x] Iterative GTR inference in the v0 order (golden master parity tracked in [kb/issues/H-mugration-iterative-gtr.md](../issues/H-mugration-iterative-gtr.md))
+- [x] Iterative GTR inference in the v0 order (golden masters: traits and confidences match v0 on nine cases)
 - [x] Sampling bias correction (`--sampling-bias-correction`)
 - [x] Confidence CSV output (`--confidence`)
 - [x] `--pc` pseudo-counts

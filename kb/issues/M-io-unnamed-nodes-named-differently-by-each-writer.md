@@ -11,7 +11,7 @@ Required behavior: the project convention is `NODE_0000001` (7 digits, numbered 
 - **Node order**: v0 ladderizes the tree before it names the nodes (unless `keep_node_order` is set), and v1 names them in the preorder of the input file. On a tree that is not ladderized, the same `NODE_*` name points to different nodes in v0 and v1 outputs
 - **Counter**: v0 advances the counter at every internal node, also at an internal node that has a name in the input; v1 advances it only when it assigns a name. On a tree with named internal nodes, the numbers that follow differ
 
-The mugration golden-master test names the v1 nodes as v0 does to compare them ([packages/treetime/src/mugration/__tests__/test_gm_mugration.rs](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs)); the outputs of every command keep the v1 names. On `dengue`, `tb`, `rsv`, and `mpox` (20 tips), the same `NODE_*` name pointed to different nodes before this test change ([H-mugration-iterative-gtr.md](H-mugration-iterative-gtr.md)).
+The mugration golden-master test names the v1 nodes as v0 does to compare them ([packages/treetime/src/mugration/__tests__/test_gm_mugration.rs](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs)); the outputs of every command keep the v1 names. On `dengue`, `tb`, `rsv`, and `mpox` (20 tips), the same `NODE_*` name in v0 and v1 names different nodes.
 
 > [!IMPORTANT]
 > **Decision required.** v0 parity of generated names conflicts with the output order of the tree: v1 writes the tree in input order unless a tree-ordering flag such as `--ladderize` is given (`TopologyOrderArgs`, [packages/app-commands/src/commands/shared/topology_order_args.rs](../../packages/app-commands/src/commands/shared/topology_order_args.rs)), and v0 always ladderizes. With v0 numbering, the names of a tree written in input order do not follow its preorder. Options:
@@ -23,4 +23,3 @@ The mugration golden-master test names the v1 nodes as v0 does to compare them (
 
 - [N-clock-unnamed-root-after-reroot.md](N-clock-unnamed-root-after-reroot.md)
 - [M-io-confidence-tsv-unnamed-root-has-empty-name.md](M-io-confidence-tsv-unnamed-root-has-empty-name.md)
-- [H-mugration-iterative-gtr.md](H-mugration-iterative-gtr.md)

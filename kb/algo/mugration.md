@@ -126,7 +126,7 @@ Refinement order of `fn refine_gtr()` with `RefinementRate::Optimize`, the order
 
 `fn refine_gtr()` logs the log likelihood at the start and at the end. With `RefinementRate::Keep` (ancestral `--gtr-iterations`), every fit counts with the messages of the start-model update and no rate step runs ([kb/issues/M-ancestral-gtr-iterations-refit-against-frozen-messages.md](../issues/M-ancestral-gtr-iterations-refit-against-frozen-messages.md)).
 
-Pseudo-count smoothing of the initial pi and root state uniform-threshold filtering are opt-in flags (`--smooth-initial-pi`, `--filter-uninformative-root`) that default to v0 behavior. Remaining parity differences are tracked in [kb/issues/H-mugration-iterative-gtr.md](../issues/H-mugration-iterative-gtr.md).
+Pseudo-count smoothing of the initial pi and root state uniform-threshold filtering are opt-in flags (`--smooth-initial-pi`, `--filter-uninformative-root`) that default to v0 behavior.
 
 ---
 
@@ -152,7 +152,7 @@ The `profile` of each `StatePosterior` is the full posterior distribution `profi
 
 | Test Type          | Location                                                                                                                                                  | Coverage                                                                                                                                  |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Golden master      | [`mugration/__tests__/test_gm_mugration.rs`](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs)                                        | States and trait assignments of every node, confidence profiles; nodes named as v0 names them (ladderize, then `NODE_%07d` in preorder) |
+| Golden master      | [`mugration/__tests__/test_gm_mugration.rs`](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs)                                        | States and trait assignments of every node, confidence profiles within 1e-7; nodes named as v0 names them (ladderize, then `NODE_%07d` in preorder); seven datasets and two zika cases with unknown traits (missing-data values, leaves without a metadata row) |
 | Pipeline           | [`mugration/__tests__/test_run.rs`](../../packages/treetime/src/mugration/__tests__/test_run.rs)                                                          | Weight coverage, `pi`, pseudo-counts, refinement, sampling-bias scale, single-state rejection, leaf without metadata                      |
 | Partition          | [`mugration/__tests__/test_discrete_marginal.rs`](../../packages/treetime/src/mugration/__tests__/test_discrete_marginal.rs)                              | Leaf observations and warnings, more than 128 named states, backward and forward passes, full run                                         |
 | Transition counts  | [`discrete/__tests__/test_transition_counts.rs`](../../packages/treetime/src/partition/marginal/discrete/__tests__/test_transition_counts.rs)              | Discrete transition counts and node posteriors with 2, 3 and 5 states against a hand-enumerated F81 oracle; root filter                   |
@@ -161,16 +161,14 @@ The `profile` of each `StatePosterior` is the full posterior distribution `profi
 | Refinement         | [`gtr/__tests__/test_refinement.rs`](../../packages/treetime/src/gtr/__tests__/test_refinement.rs)                                                        | Keep and optimize rate policies, messages that each fit counts with, sampling-bias scale                                                  |
 | Brent              | inline tests in [`gtr/brent_bracketed.rs`](../../packages/treetime/src/gtr/brent_bracketed.rs)                                                            | Pure math optimizer tests                                                                                                                 |
 
-### Test Gaps
+### Golden-master tolerance
 
-1. Missing data in golden masters: no golden-master dataset has a leaf with an unknown trait, so the v0 parity of imputed leaves is not tested (see "Leaf evidence" in [kb/issues/H-mugration-iterative-gtr.md](../issues/H-mugration-iterative-gtr.md))
-2. Confidence parity: four golden-master confidence cases are ignored ([kb/issues/H-mugration-iterative-gtr.md](../issues/H-mugration-iterative-gtr.md))
+The confidence profiles are compared with v0 at an absolute tolerance of 1e-7. Both implementations find the rate with a Brent search on $\sqrt{\mu}$ that stops at a relative step of $\sqrt{\epsilon} \approx 1.5 \times 10^{-8}$ (`BrentBracketed`, [packages/treetime/src/gtr/brent_bracketed.rs](../../packages/treetime/src/gtr/brent_bracketed.rs); scipy `brent` in v0). Near the optimum the likelihood is flat in $\mu$, so differences of the order of the machine precision in the cost move the stopping point within this band, and the confidences follow. Measured on the golden-master datasets: v0 against itself, with only the Brent tolerance changed from the default to 1e-10, moves the confidences by up to 4.3e-8 (`zika_20_country_weights`); v1 against v0 differs by up to 2.5e-8; tightening the Brent tolerance of both to 1e-10 does not bring them closer (up to 1.9e-8). A tolerance below about 1e-7 tests the stopping point of the search, not the algorithm.
 
 ---
 
 ## Known Issues
 
-- [kb/issues/H-mugration-iterative-gtr.md](../issues/H-mugration-iterative-gtr.md): trait assignments match v0 on all seven golden-master datasets; the confidence profiles of four datasets differ from v0 by 3.0e-10 to 2.5e-8
 - [kb/issues/M-mugration-gtr-rate-restore-inconsistency.md](../issues/M-mugration-gtr-rate-restore-inconsistency.md): rate restore without a bracket
 - [kb/issues/N-mugration-tied-state-follows-rounding.md](../issues/N-mugration-tied-state-follows-rounding.md): a tied most likely state follows rounding
 

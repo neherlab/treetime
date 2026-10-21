@@ -9,7 +9,6 @@ Systematic test coverage gaps span timetree inference, clock, coalescent, ancest
 Golden masters:
 
 - Optimize per-branch golden master [packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50](../../packages/treetime/src/optimize/__tests__/test_gm_optimize.rs#L50): `#[ignore]`. Related: [M-optimize-gm-per-branch-divergence.md](M-optimize-gm-per-branch-divergence.md)
-- Mugration confidence golden masters of four datasets [packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L96](../../packages/treetime/src/mugration/__tests__/test_gm_mugration.rs#L96): `#[ignore]`, confidence divergence from v0 of 3.0e-10 to 2.5e-8. Related: [H-mugration-iterative-gtr.md](H-mugration-iterative-gtr.md)
 
 Property, consistency, and command tests:
 

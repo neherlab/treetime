@@ -165,7 +165,6 @@ These issues give wrong scientific results or crashes on default settings or exa
 - **[kb/issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)**: find why the sparse message of a tip without sequence data depends on its branch length, starting in the sparse leaf message
 - **[kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md](issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md)**: compute dates before year 1 with signed calendar arithmetic, as v0 does, instead of panicking
 - **[kb/issues/M-timetree-clock-filter-default-differs-from-v0.md](issues/M-timetree-clock-filter-default-differs-from-v0.md)**: set the `--clock-filter` default of `clock` and `timetree` to 4.0, as in v0
-- **[kb/issues/H-mugration-iterative-gtr.md](issues/H-mugration-iterative-gtr.md)**: localize the remaining confidence differences of four golden-master datasets (3.0e-10 to 2.5e-8), starting with `zika_20_country_weights`, then fold the ignored cases into the confidence test
 
 ## Next
 
