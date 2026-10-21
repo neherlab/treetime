@@ -105,6 +105,26 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::below_first_break(      0.0,                           5.0_f64.next_down())]
+  #[case::at_first_break(         0.0,                           5.0)]
+  #[case::at_second_break(        0.0,                           5.0_f64.next_up())]
+  #[case::above_second_break(     0.0,                           5.0_f64.next_up().next_up())]
+  #[case::below_third_break(      0.0,                           (5.0 + 1e-12_f64).next_down())]
+  #[case::at_third_break(         0.0,                           5.0 + 1e-12)]
+  #[case::above_third_break(      0.0,                           (5.0 + 1e-12_f64).next_up())]
+  #[case::from_first_break(       5.0,                           6.0)]
+  #[case::from_second_break(      5.0_f64.next_up(),             6.0)]
+  #[case::from_below_third_break( (5.0 + 1e-12_f64).next_down(), 5.0 + 1e-12)]
+  #[case::across_all_breaks(      5.0_f64.next_down(),           (5.0 + 1e-12_f64).next_up())]
+  #[trace]
+  fn test_tc_schedule_piecewise_time_after_hazard_roundtrip_next_to_close_breaks(#[case] from: f64, #[case] to: f64) {
+    let schedule = TcSchedule::piecewise(vec![5.0, 5.0_f64.next_up(), 5.0 + 1e-12], vec![0.5, 20.0, 0.5, 20.0]).unwrap();
+    let actual = schedule.time_after_hazard(from, schedule.hazard_between(from, to));
+    pretty_assert_ulps_eq!(to, actual, max_ulps = 124);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::zero_tc(              TcSchedule::constant(0.0),                                      "Coalescent time scale Tc must be finite and positive, got 0")]
   #[case::negative_tc(          TcSchedule::constant(-1.0),                                     "Coalescent time scale Tc must be finite and positive, got -1")]
   #[case::infinite_tc(          TcSchedule::constant(f64::INFINITY),                            "Coalescent time scale Tc must be finite and positive, got inf")]
