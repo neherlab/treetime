@@ -6,6 +6,20 @@ mod tests {
   use rstest::rstest;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
+  #[rstest]
+  #[case::direct(&DirectConvolve)]
+  #[case::ndarray_conv(&NdarrayConvolve)]
+  #[case::fft(&FftConvolve)]
+  #[trace]
+  fn test_convolution_inner_outputs_are_trapezoid_sums_and_extreme_outputs_are_quarter_end_products(
+    #[case] algo: &dyn ConvolveAlgo,
+  ) {
+    let (f, g) = (array![2.0, 1.0, 3.0], array![5.0, 1.0, 1.0, 7.0]);
+    let trapezoid_by_hand = array![1.25, 1.75, 4.75, 4.75, 2.5, 2.625];
+    let actual = algo.convolve(0.5, &f, &g).unwrap();
+    pretty_assert_abs_diff_eq!(trapezoid_by_hand, actual, epsilon = 1e-14);
+  }
+
   #[test]
   fn test_convolution_direct_delta_shifts_the_operand_with_half_weight_at_its_grid_ends() {
     let dx = 0.1;

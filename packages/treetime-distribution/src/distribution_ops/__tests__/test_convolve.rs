@@ -263,6 +263,36 @@ mod tests {
   }
 
   #[test]
+  fn test_convolution_function_function_hard_edges_mass_converges_at_second_order() -> Result<(), Report> {
+    let (a, b, end) = (1.5_f64, 4.0_f64, 4.0_f64);
+    let exponential = |rate: f64, cells: usize| -> Result<DistributionNegLog, Report> {
+      let f = function_on((0.0, end), cells + 1, |x| rate * x - rate.ln())?
+        .with_left_extrap(BoundaryBehavior::Hard)?
+        .with_right_extrap(BoundaryBehavior::Hard)?;
+      Ok(DistributionNegLog::Function(f))
+    };
+    let operand_mass = |rate: f64| 1.0 - (-rate * end).exp();
+    let errors: Vec<f64> = [32, 64, 128, 256]
+      .iter()
+      .map(|&cells| {
+        let actual = distribution_convolution(
+          &exponential(a, cells)?,
+          &exponential(b, cells)?,
+          MaxGridPoints::default(),
+        )?;
+        let DistributionNegLog::Function(conv) = &actual else {
+          panic!("expected a Function result, got {actual:?}");
+        };
+        let density = conv.values().mapv(|v| (-v).exp());
+        let trapezoid_mass = conv.dx() * (density.sum() - 0.5 * (density[0] + density[density.len() - 1]));
+        Ok(trapezoid_mass - operand_mass(a) * operand_mass(b))
+      })
+      .try_collect::<_, _, Report>()?;
+    assert_second_order(&errors);
+    Ok(())
+  }
+
+  #[test]
   fn test_convolution_range_function_carries_both_amplitudes() -> Result<(), Report> {
     let f = function_on((0.0, 3.0), 7, |t| t)?
       .with_left_extrap(BoundaryBehavior::Hard)?
