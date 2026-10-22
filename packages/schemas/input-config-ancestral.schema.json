@@ -87,7 +87,7 @@
       "x-cli-flag": "--gap-fill"
     },
     "zero_based": {
-      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
+      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy\nreport. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input\ntable with positions, such as `--drms`, is always counted from 1.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--zero-based"

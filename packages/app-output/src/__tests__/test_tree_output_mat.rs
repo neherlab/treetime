@@ -219,7 +219,7 @@ mod tests {
     use std::collections::BTreeMap;
     use tempfile::TempDir;
     use treetime::progress::NoopProgress;
-    use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
+    use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
     use treetime_io::usher_mat::{UsherMutation, UsherTree};
     use treetime_primitives::{AsciiChar, Seq};
     use treetime_utils::io::json::json_read_file;
@@ -255,6 +255,7 @@ mod tests {
           root_sequence: &root_sequence,
           edge_mutations: &complete,
           amino_acids: None,
+          comment_positions: PositionBase::One,
         }),
         ..annotated(&topology)
       };

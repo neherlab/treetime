@@ -1,7 +1,7 @@
 use crate::annotated_graph::AnnotatedTreeView;
 use eyre::Report;
 use itertools::Itertools;
-use treetime::seq::mutation::{Mutation, MutationEvent, mutation_event_strings};
+use treetime::seq::mutation::{Mutation, MutationEvent, PositionBase, mutation_event_strings};
 use treetime_io::nwk::{NewickValue, NwkNodeComments};
 
 pub(crate) fn nwk_node_comments(tree: &AnnotatedTreeView<'_>) -> Result<NwkNodeComments, Report> {
@@ -11,7 +11,7 @@ pub(crate) fn nwk_node_comments(tree: &AnnotatedTreeView<'_>) -> Result<NwkNodeC
     let mut node_comments = vec![];
     if let Some(sequences) = &graph.sequences
       && let Some((_, edge_key)) = tree.tree().parent(key)
-      && let Some(mutations) = mutation_comment(&sequences.edge_mutations[&edge_key])?
+      && let Some(mutations) = mutation_comment(&sequences.edge_mutations[&edge_key], sequences.comment_positions)?
     {
       node_comments.push(("mutations".to_owned(), NewickValue::String(mutations)));
     }
@@ -31,7 +31,7 @@ pub(crate) fn nwk_node_comments(tree: &AnnotatedTreeView<'_>) -> Result<NwkNodeC
   Ok(comments)
 }
 
-fn mutation_comment(mutations: &[Mutation]) -> Result<Option<String>, Report> {
+fn mutation_comment(mutations: &[Mutation], positions: PositionBase) -> Result<Option<String>, Report> {
   if mutations.is_empty() {
     return Ok(None);
   }
@@ -41,7 +41,7 @@ fn mutation_comment(mutations: &[Mutation]) -> Result<Option<String>, Report> {
       MutationEvent::Substitution(substitution) => substitution.pos(),
       MutationEvent::Insertion(segment) | MutationEvent::Deletion(segment) => segment.range.0,
     })
-    .map(|mutation| mutation_event_strings(&mutation.event))
+    .map(|mutation| mutation_event_strings(&mutation.event, positions))
     .try_collect()?;
   Ok(Some(strings.into_iter().flatten().join(",")))
 }

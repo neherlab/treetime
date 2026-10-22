@@ -1893,6 +1893,7 @@ export const zOptimizeConfig = z.strictObject({
     'rich,mrbayes'
   ]).optional(),
   alphabet: zAlphabetName.optional(),
+  zero_based: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
@@ -1965,6 +1966,7 @@ export const zPruneConfig = z.strictObject({
     'rich,mrbayes'
   ]).optional(),
   alphabet: zAlphabetName.optional(),
+  zero_based: z.boolean().optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),
   output_tree_nwk: z.string().optional(),

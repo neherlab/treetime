@@ -11,7 +11,7 @@ mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use tempfile::TempDir;
   use treetime::progress::NoopProgress;
-  use treetime::seq::mutation::Sub;
+  use treetime::seq::mutation::{PositionBase, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::{NwkStyle, nwk_read};
@@ -50,6 +50,7 @@ mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       dates: Some(TreeDates {
         num_date: &num_date,

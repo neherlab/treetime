@@ -9,6 +9,7 @@ mod tests {
   use helpers::four_leaf_auspice_color_by;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime::seq::mutation::PositionBase;
   use treetime_primitives::Seq;
   use treetime_utils::o;
 
@@ -52,6 +53,7 @@ mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       ..dated_graph(&setup, None)
     };
@@ -68,7 +70,7 @@ mod tests {
     use crate::output_plan::CommandKind;
     use eyre::Report;
     use std::str::FromStr;
-    use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
+    use treetime::seq::mutation::{Mutation, MutationTrack, PositionBase, Sub};
     use treetime_primitives::Seq;
 
     pub(super) fn four_leaf_auspice_color_by(mutations: &str) -> Result<Option<String>, Report> {
@@ -89,6 +91,7 @@ mod tests {
           root_sequence: &root_sequence,
           edge_mutations: &edge_mutations,
           amino_acids: None,
+          comment_positions: PositionBase::One,
         }),
         ..annotated(&topology)
       };

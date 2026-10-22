@@ -70,7 +70,6 @@ pub(crate) mod tests {
 
   #[rustfmt::skip]
   const FLAG_EXCEPTIONS: &[FlagException] = &[
-    FlagException { flag: "--zero-based",                       change: Change::Missing, commands: &[OP, PR],             pending: Pending::ZeroBasedInEverySequenceCommand },
     FlagException { flag: "--coalescent-opt",                   change: Change::Extra,   commands: &[TT],                 pending: Pending::OneCoalescentFlag },
     FlagException { flag: "--coalescent-skyline",               change: Change::Extra,   commands: &[TT],                 pending: Pending::OneCoalescentFlag },
     FlagException { flag: "--skyline-n-points",                 change: Change::Extra,   commands: &[TT],                 pending: Pending::SettingsThatApplyOnlyWithAnother },

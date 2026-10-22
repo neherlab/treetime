@@ -9,7 +9,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::progress::LogSink;
 use treetime::progress_info;
-use treetime::seq::mutation::Mutation;
+use treetime::seq::mutation::{Mutation, PositionBase};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
@@ -52,6 +52,7 @@ pub(crate) fn write_ancestral_trees(
           .amino_acids
           .filter(|_| partition.number == 1)
           .map(|(node_data, cdses)| TreeAminoAcids { node_data, cdses }),
+        comment_positions: trees.comment_positions,
       }),
       ..run_graph
     };
@@ -73,6 +74,7 @@ pub(crate) struct AncestralTrees<'a> {
   pub(crate) names: &'a NodeNames,
   pub(crate) branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
   pub(crate) amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
+  pub(crate) comment_positions: PositionBase,
 }
 
 pub(crate) struct AncestralPartitionTrees<'a> {

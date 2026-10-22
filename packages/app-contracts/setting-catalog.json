@@ -544,7 +544,7 @@
           ],
           "conflicts": [],
           "help": "Report sequence positions counted from 0 instead of 1.",
-          "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
+          "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "clock_rate",
@@ -3042,7 +3042,7 @@
           ],
           "conflicts": [],
           "help": "Report sequence positions counted from 0 instead of 1.",
-          "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
+          "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "ignore_missing_alns",
@@ -4164,7 +4164,7 @@
           ],
           "conflicts": [],
           "help": "Report sequence positions counted from 0 instead of 1.",
-          "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
+          "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "ignore_missing_alns",
@@ -6034,6 +6034,25 @@
           "more": "When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous."
         },
         {
+          "key": "zero_based",
+          "label": "Zero based",
+          "flag": "--zero-based",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "ZERO_BASED"
+          ],
+          "conflicts": [],
+          "help": "Report sequence positions counted from 0 instead of 1.",
+          "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
+        },
+        {
           "key": "model",
           "label": "Substitution model",
           "flag": "--model",
@@ -7080,6 +7099,25 @@
           "conflicts": [],
           "help": "Sequence alphabet",
           "more": "When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous."
+        },
+        {
+          "key": "zero_based",
+          "label": "Zero based",
+          "flag": "--zero-based",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "ZERO_BASED"
+          ],
+          "conflicts": [],
+          "help": "Report sequence positions counted from 0 instead of 1.",
+          "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "output_all",

@@ -114,6 +114,7 @@ pub fn run_optimize(
         root_sequence: &maps.root_sequence,
         edge_mutations: &maps.edge_mutations,
         amino_acids: None,
+        comment_positions: args.zero_based.positions(),
       };
       (result.number, sequences)
     })

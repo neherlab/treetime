@@ -297,6 +297,11 @@ datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal --topology-order=descendant-count-reverse"
 
 [[ancestral]]
+variant = "zero-based"
+datasets = ["flu/h3n2/20"]
+args = "--method-anc=marginal --zero-based"
+
+[[ancestral]]
 variant = "order-height"
 datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal --topology-order=height"
@@ -448,6 +453,11 @@ variant = "missing-weights-threshold"
 datasets = ["zika/20"]
 args = "--pc=1.0 --weights={data}/zika/country_weights.csv --missing-weights-threshold=0.9"
 
+
+[[optimize]]
+variant = "zero-based"
+datasets = ["flu/h3n2/20"]
+args = "--zero-based"
 
 [[optimize]]
 variant = "sparse"

@@ -213,21 +213,47 @@ pub enum MutationTrack {
   AminoAcid(String),
 }
 
-pub fn mutation_event_strings(event: &MutationEvent) -> Result<Vec<String>, Report> {
+pub fn mutation_event_strings(event: &MutationEvent, positions: PositionBase) -> Result<Vec<String>, Report> {
   match event {
-    MutationEvent::Substitution(substitution) => Ok(vec![substitution.to_string()]),
+    MutationEvent::Substitution(substitution) => {
+      let position = mutation_position(substitution.pos(), 0, positions)?;
+      Ok(vec![format!("{}{position}{}", substitution.reff(), substitution.qry())])
+    },
     MutationEvent::Insertion(segment) => segment
       .sequence
       .iter()
       .enumerate()
-      .map(|(offset, state)| mutation_position(segment.range.0, offset).map(|position| format!("-{position}{state}")))
+      .map(|(offset, state)| {
+        mutation_position(segment.range.0, offset, positions).map(|position| format!("-{position}{state}"))
+      })
       .collect(),
     MutationEvent::Deletion(segment) => segment
       .sequence
       .iter()
       .enumerate()
-      .map(|(offset, state)| mutation_position(segment.range.0, offset).map(|position| format!("{state}{position}-")))
+      .map(|(offset, state)| {
+        mutation_position(segment.range.0, offset, positions).map(|position| format!("{state}{position}-"))
+      })
       .collect(),
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PositionBase {
+  Zero,
+  One,
+}
+
+impl PositionBase {
+  pub fn from_zero_based(zero_based: bool) -> Self {
+    if zero_based { Self::Zero } else { Self::One }
+  }
+
+  pub fn first(self) -> usize {
+    match self {
+      Self::Zero => 0,
+      Self::One => 1,
+    }
   }
 }
 
@@ -269,10 +295,10 @@ impl AlignedMutation {
   }
 }
 
-fn mutation_position(start: usize, offset: usize) -> Result<usize, Report> {
+fn mutation_position(start: usize, offset: usize, positions: PositionBase) -> Result<usize, Report> {
   start
     .checked_add(offset)
-    .and_then(|position| position.checked_add(1))
+    .and_then(|position| position.checked_add(positions.first()))
     .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at start {start} and offset {offset}"))
 }
 

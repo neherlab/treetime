@@ -264,7 +264,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 * `--zero-based` — Report sequence positions counted from 0 instead of 1.
 
-   Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1.
+   Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
 * `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
 * `--reconstruct-tip-states` — Same as `--include-leaves --impute-missing-data`: emit tip sequences with ambiguous and unknown states resolved to the most likely inferred state
 * `--report-ambiguous` — Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
@@ -468,6 +468,9 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
+* `--zero-based` — Report sequence positions counted from 0 instead of 1.
+
+   Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
@@ -716,6 +719,9 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
+* `--zero-based` — Report sequence positions counted from 0 instead of 1.
+
+   Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
@@ -936,7 +942,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
 * `--zero-based` — Report sequence positions counted from 0 instead of 1.
 
-   Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1.
+   Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
 * `--include-leaves` — Emit reconstructed leaf (tip) sequences in addition to internal nodes
 * `--reconstruct-tip-states` — Same as `--include-leaves --impute-missing-data`: emit tip sequences with ambiguous and unknown states resolved to the most likely inferred state
 * `--report-ambiguous` — Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
@@ -1349,7 +1355,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 * `--zero-based` — Report sequence positions counted from 0 instead of 1.
 
-   Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1.
+   Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
 * `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
 
    Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous characters on terminal branches then disappear from the branch mutations. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.

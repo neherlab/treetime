@@ -15,14 +15,21 @@ mod tests {
   use std::collections::BTreeMap;
   use tempfile::TempDir;
   use treetime::progress::NoopProgress;
-  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack};
+  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, PositionBase};
   use treetime_io::nwk::{NewickValue, NwkStyle};
   use treetime_primitives::Seq;
   use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::o;
 
-  #[test]
-  fn test_nwk_comments_mutations_are_1_based_with_indels_expanded() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::one_based( PositionBase::One,  "A1T,C2-,G3-,G6C")]
+  #[case::zero_based(PositionBase::Zero, "A0T,C1-,G2-,G5C")]
+  #[trace]
+  fn test_nwk_comments_mutations_follow_the_position_base_with_indels_expanded(
+    #[case] positions: PositionBase,
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
     let mutations = vec![
       substitution(b'A', 0, b'T')?,
       substitution(b'G', 5, b'C')?,
@@ -35,12 +42,9 @@ mod tests {
       },
     ];
 
-    let actual = helpers::leaf_comments(mutations)?;
+    let actual = helpers::leaf_comments(mutations, positions)?;
 
-    assert_eq!(
-      vec![(o!("mutations"), NewickValue::String(o!("A1T,C2-,G3-,G6C")))],
-      actual
-    );
+    assert_eq!(vec![(o!("mutations"), NewickValue::String(o!(expected)))], actual);
     Ok(())
   }
 
@@ -52,7 +56,7 @@ mod tests {
       substitution(b'G', 30, b'C')?,
     ];
 
-    let actual = helpers::leaf_comments(mutations)?;
+    let actual = helpers::leaf_comments(mutations, PositionBase::One)?;
 
     assert_eq!(
       vec![(o!("mutations"), NewickValue::String(o!("A11T,G31C,C51G")))],
@@ -63,7 +67,10 @@ mod tests {
 
   #[test]
   fn test_nwk_comments_edge_without_mutations_has_none() -> Result<(), Report> {
-    assert_eq!(Vec::<(String, NewickValue)>::new(), helpers::leaf_comments(vec![])?);
+    assert_eq!(
+      Vec::<(String, NewickValue)>::new(),
+      helpers::leaf_comments(vec![], PositionBase::One)?
+    );
     Ok(())
   }
 
@@ -79,6 +86,7 @@ mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       ..annotated(&topology)
     };
@@ -125,6 +133,7 @@ mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       ..dated_graph(&setup, None)
     };
@@ -208,6 +217,7 @@ mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       ..dated_graph(&setup, None)
     };
@@ -235,11 +245,14 @@ mod tests {
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
     use crate::nwk_comments::nwk_node_comments;
     use eyre::Report;
-    use treetime::seq::mutation::Mutation;
+    use treetime::seq::mutation::{Mutation, PositionBase};
     use treetime_io::nwk::NewickValue;
     use treetime_primitives::Seq;
 
-    pub(super) fn leaf_comments(mutations: Vec<Mutation>) -> Result<Vec<(String, NewickValue)>, Report> {
+    pub(super) fn leaf_comments(
+      mutations: Vec<Mutation>,
+      positions: PositionBase,
+    ) -> Result<Vec<(String, NewickValue)>, Report> {
       let topology = topology_from("(A:0.1)root;")?;
       let mut edge_mutations = no_mutations(&topology);
       edge_mutations.insert(parent_edge(&topology, "A")?, mutations);
@@ -250,6 +263,7 @@ mod tests {
           root_sequence: &root_sequence,
           edge_mutations: &edge_mutations,
           amino_acids: None,
+          comment_positions: positions,
         }),
         ..annotated(&topology)
       };

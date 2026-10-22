@@ -7,7 +7,7 @@ use treetime::alphabet::state_alphabet::StateAlphabet;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
-use treetime::seq::mutation::Mutation;
+use treetime::seq::mutation::{Mutation, PositionBase};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -70,6 +70,7 @@ pub struct TreeSequences<'a> {
   pub root_sequence: &'a Seq,
   pub edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
   pub amino_acids: Option<TreeAminoAcids<'a>>,
+  pub comment_positions: PositionBase,
 }
 
 #[derive(Clone, Copy)]

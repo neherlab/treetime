@@ -158,6 +158,7 @@ pub fn run_ancestral_reconstruction(
     names: &names,
     branch_lengths: &branch_lengths,
     amino_acids: aa_result.as_ref(),
+    comment_positions: args.zero_based.positions(),
   };
   let partitions = izip!(&results, maps)
     .map(|(result, maps)| AncestralPartitionTrees {

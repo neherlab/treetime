@@ -307,6 +307,7 @@ fn write_result_outputs(
         root_sequence: &maps.root_sequence,
         edge_mutations: &maps.edge_mutations,
         amino_acids: None,
+        comment_positions: args.zero_based.positions(),
       };
       Some((result.number, sequences))
     })

@@ -5,7 +5,7 @@ use maplit::btreemap;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::ancestral::mask::mask_to_string;
-use treetime::seq::mutation::{MutationEvent, mutation_event_strings};
+use treetime::seq::mutation::{MutationEvent, PositionBase, mutation_event_strings};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -139,7 +139,11 @@ fn aa_mutation_strings(tracks: &BTreeMap<String, Vec<MutationEvent>>) -> Result<
   tracks
     .iter()
     .map(|(cds, events)| {
-      let strings: Vec<String> = events.iter().map(mutation_event_strings).flatten_ok().try_collect()?;
+      let strings: Vec<String> = events
+        .iter()
+        .map(|event| mutation_event_strings(event, PositionBase::One))
+        .flatten_ok()
+        .try_collect()?;
       Ok((cds.clone(), strings))
     })
     .collect()

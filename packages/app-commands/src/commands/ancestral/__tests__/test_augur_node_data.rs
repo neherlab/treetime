@@ -216,7 +216,7 @@ mod tests {
     use treetime::ancestral::aa::{AaCdsNodeData, AaNodeData};
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
-    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
+    use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
@@ -321,6 +321,7 @@ mod tests {
           root_sequence: &maps.root_sequence,
           edge_mutations: &maps.edge_mutations,
           amino_acids,
+          comment_positions: PositionBase::One,
         }),
         dates: None,
         traits: None,

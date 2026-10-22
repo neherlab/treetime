@@ -24,7 +24,7 @@ pub(super) mod tests {
   use tempfile::TempDir;
   use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
   use treetime::progress::NoopProgress;
-  use treetime::seq::mutation::{Mutation, MutationTrack, Sub};
+  use treetime::seq::mutation::{Mutation, MutationTrack, PositionBase, Sub};
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
@@ -145,6 +145,7 @@ pub(super) mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       traits: Some(TreeTraits {
         attribute: "country",
@@ -194,6 +195,7 @@ pub(super) mod tests {
         root_sequence: &root_sequence,
         edge_mutations: &edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       dates: if with_dates { dates } else { None },
       traits: with_traits.then_some(TreeTraits {

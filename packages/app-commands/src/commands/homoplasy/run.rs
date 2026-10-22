@@ -126,6 +126,7 @@ pub fn run_homoplasy(
     names: &names,
     branch_lengths: &branch_lengths,
     amino_acids: None,
+    comment_positions: args.zero_based.positions(),
   };
   let partition = AncestralPartitionTrees {
     number: partition_number,

@@ -10,7 +10,7 @@ use std::iter::once;
 use treetime::clock::divergence::root_to_node_divergences_where_known;
 use treetime::homoplasy::classify::MutationClass;
 use treetime::homoplasy::site_branches::sites_by_branch_count;
-use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, mutation_event_strings};
+use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, mutation_event_strings};
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
@@ -262,7 +262,7 @@ fn node_mutations(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> Result<BTr
     for (track, events) in tracks.iter().filter(|(_, events)| !events.is_empty()) {
       let strings = grouped.entry(auspice_track_name(track)?.to_owned()).or_default();
       for event in events {
-        strings.extend(mutation_event_strings(event)?);
+        strings.extend(mutation_event_strings(event, PositionBase::One)?);
       }
     }
   }
@@ -280,7 +280,7 @@ pub(crate) fn group_mutations(mutations: &[Mutation]) -> Result<BTreeMap<String,
     grouped
       .entry(track.to_owned())
       .or_default()
-      .extend(mutation_event_strings(&mutation.event)?);
+      .extend(mutation_event_strings(&mutation.event, PositionBase::One)?);
   }
   Ok(grouped)
 }

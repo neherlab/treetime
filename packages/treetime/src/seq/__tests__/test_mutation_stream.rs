@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::cancel::CancelledError;
   use crate::error::OperationError;
-  use crate::seq::mutation::{SequenceMutations, mutation_event_strings, stream_sequence_mutations};
+  use crate::seq::mutation::{PositionBase, SequenceMutations, mutation_event_strings, stream_sequence_mutations};
   use crate::seq::sink::{AmbiguousSites, SeqItem, SeqSink, SeqTrack};
   use eyre::Report;
   use helpers::{Failure, Stream, error_class, stream};
@@ -166,7 +166,7 @@ mod tests {
           let child = graph.get_edge(edge_key).unwrap().target();
           let strings = mutations
             .iter()
-            .flat_map(|mutation| mutation_event_strings(&mutation.event).unwrap())
+            .flat_map(|mutation| mutation_event_strings(&mutation.event, PositionBase::One).unwrap())
             .collect();
           (names[child].to_owned(), strings)
         })

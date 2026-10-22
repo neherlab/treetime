@@ -21,7 +21,7 @@ pub(crate) mod tests {
   use treetime::ancestral::aa::AaNodeData;
   use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
   use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
-  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
+  use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -196,6 +196,7 @@ pub(crate) mod tests {
           node_data,
           cdses: &setup.aa_annotations,
         }),
+        comment_positions: PositionBase::One,
       }),
       ..annotated(&setup.topology)
     }
@@ -212,6 +213,7 @@ pub(crate) mod tests {
         root_sequence,
         edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       ..annotated(topology)
     }
@@ -329,6 +331,7 @@ pub(crate) mod tests {
         root_sequence,
         edge_mutations: &setup.edge_mutations,
         amino_acids: None,
+        comment_positions: PositionBase::One,
       }),
       dates: Some(TreeDates {
         num_date: &setup.num_date,
@@ -406,6 +409,7 @@ pub(crate) mod tests {
           root_sequence,
           edge_mutations: &no_mutations,
           amino_acids: None,
+          comment_positions: PositionBase::One,
         }),
         ..annotated(&topology)
       })

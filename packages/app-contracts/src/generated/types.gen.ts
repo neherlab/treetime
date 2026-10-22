@@ -2984,8 +2984,9 @@ export type TimetreeConfig = {
   /**
    * Report sequence positions counted from 0 instead of 1.
    *
-   * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
-   * counted from 1.
+   * Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy
+   * report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input
+   * table with positions, such as `--drms`, is always counted from 1.
    */
   zero_based?: boolean;
   /**
@@ -3665,8 +3666,9 @@ export type AncestralConfig = {
   /**
    * Report sequence positions counted from 0 instead of 1.
    *
-   * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
-   * counted from 1.
+   * Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy
+   * report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input
+   * table with positions, such as `--drms`, is always counted from 1.
    */
   zero_based?: boolean;
   /**
@@ -4030,8 +4032,9 @@ export type HomoplasyConfig = {
   /**
    * Report sequence positions counted from 0 instead of 1.
    *
-   * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
-   * counted from 1.
+   * Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy
+   * report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input
+   * table with positions, such as `--drms`, is always counted from 1.
    */
   zero_based?: boolean;
   /**
@@ -4632,6 +4635,14 @@ export type OptimizeConfig = {
    */
   alphabet?: AlphabetName;
   /**
+   * Report sequence positions counted from 0 instead of 1.
+   *
+   * Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy
+   * report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input
+   * table with positions, such as `--drms`, is always counted from 1.
+   */
+  zero_based?: boolean;
+  /**
    * Substitution model to use
    *
    * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
@@ -4978,6 +4989,14 @@ export type PruneConfig = {
    * detection is ambiguous.
    */
   alphabet?: AlphabetName;
+  /**
+   * Report sequence positions counted from 0 instead of 1.
+   *
+   * Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy
+   * report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input
+   * table with positions, such as `--drms`, is always counted from 1.
+   */
+  zero_based?: boolean;
   /**
    * Write all default output files into this directory.
    *

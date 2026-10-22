@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use treetime::homoplasy::pipeline::{HomoplasyOutput, IndelKey};
 use treetime::homoplasy::recurrence::RecurrenceTable;
 use treetime::seq::indel::InDelKind;
-use treetime::seq::mutation::Sub;
+use treetime::seq::mutation::{PositionBase, Sub};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 
@@ -157,5 +157,5 @@ fn substitution_name(sub: &Sub, zero_based: bool) -> String {
 }
 
 fn offset(zero_based: bool) -> usize {
-  if zero_based { 0 } else { 1 }
+  PositionBase::from_zero_based(zero_based).first()
 }
