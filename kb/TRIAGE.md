@@ -190,7 +190,6 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-timetree-date-header-hash.md](issues/M-timetree-date-header-hash.md)**: strip `#` from requested column names as from the headers, then re-enable the `zika_20` runner cases
 - **[kb/issues/M-config-file-values-skip-cli-conflict-rules.md](issues/M-config-file-values-skip-cli-conflict-rules.md)**: move `cli_rule_diagnostics()` into `app-commands` and call it when a config file is loaded
 - **[kb/issues/M-io-stdin-tree-and-alignment-read-twice.md](issues/M-io-stdin-tree-and-alignment-read-twice.md)**: reject `-` on more than one input path of a command
-- **[kb/issues/N-test-approx-assertions-keep-the-default-absolute-epsilon.md](issues/N-test-approx-assertions-keep-the-default-absolute-epsilon.md)**: make the shared approximate assertions require an explicit tolerance, then fix the tests that fail
 
 ## Planned
 

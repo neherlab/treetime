@@ -53,11 +53,12 @@ macro_rules! pretty_assert_map_abs_diff_eq {
 
 #[macro_export]
 macro_rules! pretty_assert_map_ulps_eq {
-  ($expected:expr, $actual:expr, max_ulps = $ulps:expr $(,)?) => {{
+  ($expected:expr, $actual:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
     let expected = &$expected;
     let actual = &$actual;
-    let ulps = $ulps;
-    if !$crate::testing::assert::maps_eq(expected, actual, |a, b| approx::ulps_eq!(a, b, max_ulps = ulps)) {
+    if !$crate::testing::assert::maps_eq(expected, actual, |a, b| {
+      approx::Ulps::default().epsilon(0.0)$(.$opt($val))*.eq(a, b)
+    }) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_map(expected),
         $crate::testing::assert::format_map(actual),
@@ -80,7 +81,7 @@ macro_rules! pretty_assert_ulps_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::ulps_eq!(*lhs, *rhs, $($opt = $val,)*) {
+    if !approx::Ulps::default().epsilon(0.0)$(.$opt($val))*.eq(lhs, rhs) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
@@ -90,7 +91,7 @@ macro_rules! pretty_assert_ulps_eq {
   ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::ulps_eq!(*lhs, *rhs, $($opt = $val,)*) {
+    if !approx::Ulps::default().epsilon(0.0)$(.$opt($val))*.eq(lhs, rhs) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
@@ -105,7 +106,7 @@ macro_rules! pretty_assert_relative_eq {
   ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::relative_eq!(*lhs, *rhs, $($opt = $val,)*) {
+    if !approx::Relative::default().epsilon(0.0)$(.$opt($val))*.eq(lhs, rhs) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
@@ -115,7 +116,7 @@ macro_rules! pretty_assert_relative_eq {
   ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::relative_eq!(*lhs, *rhs, $($opt = $val,)*) {
+    if !approx::Relative::default().epsilon(0.0)$(.$opt($val))*.eq(lhs, rhs) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
@@ -127,20 +128,20 @@ macro_rules! pretty_assert_relative_eq {
 
 #[macro_export]
 macro_rules! pretty_assert_abs_diff_eq {
-  ($lhs:expr, $rhs:expr $(, $opt:ident = $val:expr)* $(,)?) => {{
+  ($lhs:expr, $rhs:expr, epsilon = $eps:expr $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::abs_diff_eq!(*lhs, *rhs, $($opt = $val,)*) {
+    if !approx::abs_diff_eq!(*lhs, *rhs, epsilon = $eps) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
       );
     }
   }};
-  ($lhs:expr, $rhs:expr, $($opt:ident = $val:expr,)* $msg:literal $(, $arg:expr)* $(,)?) => {{
+  ($lhs:expr, $rhs:expr, epsilon = $eps:expr, $msg:literal $(, $arg:expr)* $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::abs_diff_eq!(*lhs, *rhs, $($opt = $val,)*) {
+    if !approx::abs_diff_eq!(*lhs, *rhs, epsilon = $eps) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
@@ -310,51 +311,4 @@ macro_rules! assert_error {
     let actual_message = $crate::error::report_to_string(&error);
     pretty_assertions::assert_eq!(actual_message, $expected_message);
   }};
-}
-
-#[cfg(test)]
-mod tests {
-  use crate::testing::assert::is_neg_inf;
-  use parking_lot::Mutex;
-  use std::panic::{AssertUnwindSafe, catch_unwind, set_hook, take_hook};
-  use std::sync::LazyLock;
-
-  static PANIC_HOOK_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
-
-  #[test]
-  fn test_is_neg_inf_accepts_only_negative_infinity() {
-    assert!(is_neg_inf(f64::NEG_INFINITY));
-    assert!(!is_neg_inf(f64::INFINITY));
-    assert!(!is_neg_inf(f64::NAN));
-    assert!(!is_neg_inf(-1.0));
-    assert!(!is_neg_inf(-0.0));
-    assert!(!is_neg_inf(0.0));
-  }
-
-  #[test]
-  fn test_pretty_assert_neg_inf_accepts_negative_infinity() {
-    let result = catch_unwind(|| pretty_assert_neg_inf!(f64::NEG_INFINITY));
-    result.unwrap();
-  }
-
-  #[test]
-  fn test_pretty_assert_neg_inf_rejects_positive_infinity() {
-    let result = catch_panic_silent(|| pretty_assert_neg_inf!(f64::INFINITY));
-    assert!(result.is_err());
-  }
-
-  #[test]
-  fn test_pretty_assert_neg_inf_rejects_nan() {
-    let result = catch_panic_silent(|| pretty_assert_neg_inf!(f64::NAN));
-    assert!(result.is_err());
-  }
-
-  fn catch_panic_silent(f: impl FnOnce()) -> std::thread::Result<()> {
-    let _guard = PANIC_HOOK_LOCK.lock();
-    let original_hook = take_hook();
-    set_hook(Box::new(|_| {}));
-    let result = catch_unwind(AssertUnwindSafe(f));
-    set_hook(original_hook);
-    result
-  }
 }

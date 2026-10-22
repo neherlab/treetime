@@ -661,7 +661,7 @@ mod tests {
         panic!("expected a Function result, got {actual:?}");
       };
       assert!(
-        g.t().iter().any(|&x| ulps_eq!(x, t, max_ulps = 4)),
+        g.t().iter().any(|&x| ulps_eq!(x, t, epsilon = 0.0, max_ulps = 4)),
         "{t} is a grid point of the result"
       );
     }
