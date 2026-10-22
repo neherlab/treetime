@@ -12,6 +12,7 @@ mod tests {
     marginal_timetree_params, sequence_source,
   };
   use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
+  use crate::timetree::inference::result::date_branch_lengths;
   use crate::timetree::params::{BranchLengthMode, TimetreeParams};
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
@@ -365,7 +366,7 @@ mod tests {
       key("C") => Some(2003.25),
     };
 
-    let actual: BTreeMap<String, Option<f64>> = pipeline::date_branch_lengths(&graph, &node_dates)
+    let actual: BTreeMap<String, Option<f64>> = date_branch_lengths(&graph, &node_dates)
       .into_iter()
       .map(|(edge_key, length)| {
         let child = graph.get_edge(edge_key).expect("edge must exist").target();

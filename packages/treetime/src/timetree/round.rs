@@ -11,7 +11,7 @@ use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
-use crate::timetree::inference::result::{PosteriorSummaries, TimeInference, likely_times};
+use crate::timetree::inference::result::{PosteriorSummaries, TimeInference, date_branch_lengths, likely_times};
 use crate::timetree::inference::runner::{
   CLOCK_BRANCH_LENGTH_DAMPING, CLOCK_BRANCH_LENGTH_UNDAMPED, TimeInferenceInputs, blended_clock_branch_lengths,
   run_timetree, timetree_branch_lengths,
@@ -119,7 +119,7 @@ fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn 
     relax,
     one_mutation,
     state.clock_model.clock_rate(),
-    &state.time_inference.branches,
+    &date_branch_lengths(&state.graph, &state.time_inference.node_times()),
   )?;
   Ok(RoundState { gammas, ..state })
 }

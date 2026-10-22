@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::pretty_assert_ulps_eq;
-  use crate::test_utils::{find_node_key_by_name, unknown_branches};
-  use crate::timetree::inference::result::BranchLikelihood;
+  use crate::test_utils::find_node_key_by_name;
   use crate::timetree::optimization::relaxed_clock::apply_relaxed_clock;
   use deser::Deserialize;
   use eyre::Report;
   use helpers::{
-    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, scaled_time_branches, time_branch,
+    GmInput, GmOutput, build_deep_tree, build_simple_tree, compute_variance, scaled_durations, unknown_durations,
   };
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -39,7 +38,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
-    let mut branches = unknown_branches(&graph);
+    let mut durations = unknown_durations(&graph);
     for (name, branch) in &input.branches {
       let node_key = find_node_key_by_name(&graph, &names, name).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
       let node = graph.get_node(node_key).ok_or_else(|| eyre::eyre!("Node {name} not found"))?;
@@ -47,7 +46,7 @@ mod tests {
         .inbound()
         .first()
         .ok_or_else(|| eyre::eyre!("Parent edge for {name} not found"))?;
-      branches.insert(edge_key, time_branch(Some(branch.clock_length / input.clock_rate)));
+      durations.insert(edge_key, Some(branch.clock_length / input.clock_rate));
     }
 
     let gammas = apply_relaxed_clock(
@@ -56,7 +55,7 @@ mod tests {
       &[input.slack, input.coupling],
       input.one_mutation,
       input.clock_rate,
-      &branches,
+      &durations,
     )?;
 
     let actual = input
@@ -84,8 +83,8 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     for edge in graph.get_edges() {
       let gamma = gammas[&edge.key()];
@@ -103,8 +102,8 @@ mod tests {
     let one_mutation = 0.001;
     let params = [1.0, 1.0];
 
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     for edge in graph.get_edges() {
       let gamma = gammas[&edge.key()];
@@ -123,11 +122,11 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let mut branches = unknown_branches(&graph);
+    let mut durations = unknown_durations(&graph);
     for edge in graph.get_edges() {
-      branches.insert(edge.key(), time_branch(Some(10.0)));
+      durations.insert(edge.key(), Some(10.0));
     }
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     let gammas: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
@@ -144,8 +143,8 @@ mod tests {
     let (graph, branch_lengths) = build_simple_tree()?;
     let one_mutation = 0.01;
 
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &[], one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &[], one_mutation, 1.0, &durations)?;
 
     for edge in graph.get_edges() {
       let gamma = gammas[&edge.key()];
@@ -161,9 +160,9 @@ mod tests {
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
 
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
 
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     let mut any_changed = false;
     for edge in graph.get_edges() {
@@ -184,14 +183,14 @@ mod tests {
     let one_mutation = 0.01;
 
     let params_low = [1.0, 1.0];
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &durations)?;
 
     let gammas_low: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let deviation_low: f64 = gammas_low.iter().map(|g| (g - 1.0).abs()).sum();
 
     let params_high = [100.0, 1.0];
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &branches)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &durations)?;
 
     let gammas_high: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let deviation_high: f64 = gammas_high.iter().map(|g| (g - 1.0).abs()).sum();
@@ -210,14 +209,14 @@ mod tests {
     let one_mutation = 0.01;
 
     let params_low = [1.0, 0.1];
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_low, one_mutation, 1.0, &durations)?;
 
     let gammas_low: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let variance_low = compute_variance(&gammas_low);
 
     let params_high = [1.0, 10.0];
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &branches)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params_high, one_mutation, 1.0, &durations)?;
 
     let gammas_high: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
     let variance_high = compute_variance(&gammas_high);
@@ -240,13 +239,13 @@ mod tests {
     let params = [1.0, 1.0];
 
     let one_mutation_single = 0.001;
-    let branches = scaled_time_branches(&graph, &branch_lengths, 0.8);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_single, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 0.8);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_single, 1.0, &durations)?;
 
     let gammas_single: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
     let one_mutation_multi = 0.0001;
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_multi, 1.0, &branches)?;
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation_multi, 1.0, &durations)?;
 
     let gammas_multi: Vec<f64> = graph.get_edges().map(|e| gammas[&e.key()]).collect();
 
@@ -269,8 +268,8 @@ mod tests {
     let params = [1.0, 1.0];
 
     let tiny_one_mutation = 1e-15;
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, tiny_one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, tiny_one_mutation, 1.0, &durations)?;
 
     for edge in graph.get_edges() {
       let gamma = gammas[&edge.key()];
@@ -290,8 +289,8 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let branches = scaled_time_branches(&graph, &branch_lengths, 100.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 100.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     let root_edge_gamma = graph.get_edges().collect::<Vec<_>>().first().map(|e| gammas[&e.key()]);
 
@@ -314,8 +313,8 @@ mod tests {
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
     let params = [slack, 1.0];
-    let branches = unknown_branches(&graph);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let durations = unknown_durations(&graph);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     for edge in graph.get_edges() {
       let gamma = gammas[&edge.key()];
@@ -334,8 +333,8 @@ mod tests {
 
     let one_mutation = 0.01;
     let params = [1.0, 1.0];
-    let branches = scaled_time_branches(&graph, &branch_lengths, 1.0);
-    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &branches)?;
+    let durations = scaled_durations(&graph, &branch_lengths, 1.0);
+    let gammas = apply_relaxed_clock(&graph, &branch_lengths, &params, one_mutation, 1.0, &durations)?;
 
     let gamma = graph
       .get_edges()
@@ -388,22 +387,19 @@ mod tests {
       Ok((graph, branch_lengths))
     }
 
-    pub(super) fn scaled_time_branches(
+    pub(super) fn scaled_durations(
       graph: &Graph,
       branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
       factor: f64,
-    ) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
-      branch_lengths
-        .iter()
-        .map(|(&edge_key, &branch_length)| (edge_key, time_branch(Some(branch_length.unwrap_or(0.0) * factor))))
+    ) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph
+        .get_edges()
+        .map(|edge| (edge.key(), Some(branch_lengths[&edge.key()].unwrap_or(0.0) * factor)))
         .collect()
     }
 
-    pub(super) fn time_branch(time_length: Option<f64>) -> BranchLikelihood {
-      BranchLikelihood {
-        distribution: None,
-        time_length,
-      }
+    pub(super) fn unknown_durations(graph: &Graph) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      graph.get_edges().map(|edge| (edge.key(), None)).collect()
     }
 
     pub(super) fn compute_variance(values: &[f64]) -> f64 {

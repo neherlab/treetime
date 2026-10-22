@@ -29,6 +29,7 @@ use crate::timetree::confidence::{
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::dates_outside_input::dates_outside_input_dates;
 use crate::timetree::inference::input_branch_length::input_branch_model;
+use crate::timetree::inference::result::date_branch_lengths;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
@@ -593,19 +594,4 @@ fn stream_final_sequences(
     seq_stream,
   )?;
   PartitionSequences::new(mutations, partition.alphabet()).map_err(OperationError::InferenceFailed)
-}
-
-pub(crate) fn date_branch_lengths(
-  graph: &Graph,
-  node_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
-) -> BTreeMap<GraphEdgeKey, Option<f64>> {
-  graph
-    .get_edges()
-    .map(|edge| {
-      let length = node_dates[&edge.source()]
-        .zip(node_dates[&edge.target()])
-        .map(|(parent, child)| child - parent);
-      (edge.key(), length)
-    })
-    .collect()
 }

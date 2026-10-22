@@ -13,7 +13,8 @@ use crate::timetree::inference::branch_length_likelihood::compute_branch_length_
 use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
 use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
-  BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, TimeInference, log_marginal_likelihood,
+  BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, TimeInference, date_branch_lengths,
+  log_marginal_likelihood,
 };
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
@@ -195,18 +196,10 @@ pub(crate) fn blended_clock_branch_lengths(
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> BTreeMap<GraphEdgeKey, f64> {
-  let committed: Vec<(GraphEdgeKey, f64, bool)> = graph
-    .get_edges()
-    .collect::<Vec<_>>()
-    .into_par_iter()
-    .filter_map(|edge_ref| {
-      let key = edge_ref.key();
-      let (Some(parent_time), Some(child_time)) = (node_times[&edge_ref.source()], node_times[&edge_ref.target()])
-      else {
-        return None;
-      };
-
-      let duration = child_time - parent_time;
+  let committed: Vec<(GraphEdgeKey, f64, bool)> = date_branch_lengths(graph, node_times)
+    .into_iter()
+    .filter_map(|(key, duration)| {
+      let duration = duration?;
       let fresh = clock_rate * gammas[&key] * duration.max(0.0);
       let value = match previous_lengths.get(&key) {
         Some(previous) => (1.0 - damping) * previous + damping * fresh,

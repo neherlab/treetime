@@ -26,7 +26,7 @@ mod tests {
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::marginal_clock_rate::{MarginalRateInputs, RateWindow, step_marginal_clock_rate};
   use crate::timetree::optimization::relaxed_clock::{apply_relaxed_clock, unit_gammas};
-  use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
+  use crate::timetree::params::{BranchLengthMode, FinalSequences, TimetreeContext, TimetreeParams};
   use crate::timetree::round::{RoundInputs, RoundOutcome, RoundState, TopologyOutcome, refinement_round};
   use eyre::Report;
   use indoc::indoc;
@@ -34,6 +34,7 @@ mod tests {
   use maplit::btreemap;
 
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_distribution::Distribution;
   use treetime_graph::edge::GraphEdgeKey;
@@ -72,6 +73,12 @@ mod tests {
   const TIME_AFTER_EVERY_SAMPLE: f64 = 2100.0;
 
   const RELAX: [f64; 2] = [1.0, 1.0];
+
+  const RATE_TREE: &str = "((A:0.018,B:0.024,C:0.030)F:0.012,(D:0.006,E:0.010)S:0.004)root;";
+
+  const RATE_TEST_CLOCK_RATE: f64 = 0.002;
+
+  const RATE_SEQUENCE_LENGTH: usize = 1000;
 
   #[test]
   fn test_round_rebuilds_complete_coalescent_state_after_topology_change() -> Result<(), Report> {
@@ -307,38 +314,63 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_round_relaxes_the_clock_with_input_branch_lengths() -> Result<(), Report> {
-    let (state, context) = helpers::create_state(
-      "((A:0.01,B:0.08)X:0.02,(C:0.06,D:0.005)Y:0.01)root;",
-      indoc! {r#"
-        >A
-        ACGTACGTACGTACGTACGTACGT
-        >B
-        ACGTACGAACGTACGTACGTACGT
-        >C
-        ACGTACGTACGTACCTACGTACGT
-        >D
-        ACGTTCGTACGTACGTACGTACGA
-      "#},
-      &btreemap! {
-        "A".to_owned() => Some(DateConstraint::exact(2010.0)),
-        "B".to_owned() => Some(DateConstraint::exact(2012.0)),
-        "C".to_owned() => Some(DateConstraint::exact(2014.0)),
-        "D".to_owned() => Some(DateConstraint::exact(2016.0)),
-      },
-    )?;
-    let state = RoundState {
-      branch_model: jc69_input_branch_model(context.sequence_length),
-      ..state
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::input(   BranchLengthMode::Input)]
+  #[case::marginal(BranchLengthMode::Marginal)]
+  #[trace]
+  fn test_round_relaxed_clock_fits_rates_to_the_durations_between_node_dates(
+    #[case] mode: BranchLengthMode,
+  ) -> Result<(), Report> {
+    let (state, context) = helpers::create_rate_state(mode)?;
+    let params = TimetreeParams {
+      clock_rate: Some(RATE_TEST_CLOCK_RATE),
+      ..helpers::round_params(true, RELAX.to_vec())
     };
+    let first_fit = helpers::fitted_gammas(&context, &state)?;
 
-    let (state, _) = helpers::refine_with(&context, state, None, &helpers::round_params(false, RELAX.to_vec()))?;
+    let (state, outcome) = helpers::refine_with(&context, state, None, &params)?;
 
-    assert!(
-      state.gammas.values().any(|gamma| (gamma - 1.0).abs() > 1e-3),
-      "the relaxed clock must move at least one rate away from 1: {:?}",
-      state.gammas
+    let TopologyOutcome::Changed { merger_times } = &outcome.topology else {
+      panic!("the first round must resolve the polytomy");
+    };
+    let expected: BTreeMap<GraphEdgeKey, f64> = state
+      .graph
+      .get_edges()
+      .map(|edge| {
+        let gamma = if merger_times.contains_key(&edge.target()) {
+          1.0
+        } else {
+          first_fit[&edge.key()]
+        };
+        (edge.key(), gamma)
+      })
+      .collect();
+    assert_eq!(expected, state.gammas);
+
+    let second_fit = helpers::fitted_gammas(&context, &state)?;
+    let (state, outcome) = helpers::refine_with(&context, state, None, &params)?;
+
+    assert!(!outcome.topology.changed());
+    assert_eq!(second_fit, state.gammas);
+    let leaf_gamma = |name: &str| {
+      let key = find_node_key_by_name(&state.graph, &state.names, name).expect("leaf must exist");
+      state.gammas[&parent_edge_key(&state.graph, key)]
+    };
+    let fast: BTreeSet<String> = ["A", "B", "C"]
+      .into_iter()
+      .filter(|&name| leaf_gamma(name) > 1.0)
+      .map(str::to_owned)
+      .collect();
+    let slow: BTreeSet<String> = ["D", "E"]
+      .into_iter()
+      .filter(|&name| leaf_gamma(name) < 1.0)
+      .map(str::to_owned)
+      .collect();
+    assert_eq!(
+      (["A", "B", "C"].map(str::to_owned).into(), ["D", "E"].map(str::to_owned).into()),
+      (fast, slow),
+      "edges of the clade that evolves 3 times faster must get rates above 1, the slow clade below 1"
     );
     Ok(())
   }
@@ -511,14 +543,80 @@ mod tests {
         &RELAX,
         one_mutation(context.sequence_length),
         state.clock_model.clock_rate(),
-        &state.time_inference.branches,
+        &node_date_durations(state),
       )
+    }
+
+    fn node_date_durations(state: &RoundState) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      let times = state.time_inference.node_times();
+      state
+        .graph
+        .get_edges()
+        .map(|edge| {
+          let duration = times[&edge.source()]
+            .zip(times[&edge.target()])
+            .map(|(parent, child)| child - parent);
+          (edge.key(), duration)
+        })
+        .collect()
+    }
+
+    pub(super) fn create_rate_state(mode: BranchLengthMode) -> Result<(RoundState, TimetreeContext), Report> {
+      create_state_with(
+        RATE_TREE,
+        &rate_fasta(),
+        &btreemap! {
+          "A".to_owned() => Some(DateConstraint::exact(2010.0)),
+          "B".to_owned() => Some(DateConstraint::exact(2012.0)),
+          "C".to_owned() => Some(DateConstraint::exact(2014.0)),
+          "D".to_owned() => Some(DateConstraint::exact(2010.0)),
+          "E".to_owned() => Some(DateConstraint::exact(2014.0)),
+        },
+        RATE_TEST_CLOCK_RATE,
+        mode,
+      )
+    }
+
+    fn rate_fasta() -> String {
+      let leaves = [
+        ("A", [0..12, 12..30]),
+        ("B", [0..12, 30..54]),
+        ("C", [0..12, 54..84]),
+        ("D", [84..88, 88..94]),
+        ("E", [84..88, 94..104]),
+      ];
+      leaves
+        .iter()
+        .map(|(name, mutated)| {
+          let sequence: String = (0..RATE_SEQUENCE_LENGTH)
+            .map(|site| {
+              let bases = if mutated.iter().any(|range| range.contains(&site)) {
+                b"CGTA"
+              } else {
+                b"ACGT"
+              };
+              char::from(bases[site % 4])
+            })
+            .collect();
+          [">", name, "\n", &sequence, "\n"].concat()
+        })
+        .collect()
     }
 
     pub(super) fn create_state(
       newick: &str,
       fasta: &str,
       dates: &BTreeMap<String, Option<DateConstraint>>,
+    ) -> Result<(RoundState, TimetreeContext), Report> {
+      create_state_with(newick, fasta, dates, CLOCK_RATE, BranchLengthMode::Marginal)
+    }
+
+    fn create_state_with(
+      newick: &str,
+      fasta: &str,
+      dates: &BTreeMap<String, Option<DateConstraint>>,
+      clock_rate: f64,
+      mode: BranchLengthMode,
     ) -> Result<(RoundState, TimetreeContext), Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let mut names = nwk_parsed.names.clone();
@@ -537,7 +635,10 @@ mod tests {
       }])
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let sequence_length = partition.total_length();
-      let branch_model = BranchModel::Marginal(partition);
+      let branch_model = match mode {
+        BranchLengthMode::Marginal => BranchModel::Marginal(partition),
+        BranchLengthMode::Input => jc69_input_branch_model(sequence_length),
+      };
 
       let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
 
@@ -556,7 +657,7 @@ mod tests {
         },
         &ClockFitParams {
           outliers: &BTreeSet::new(),
-          clock_rate: Some(CLOCK_RATE),
+          clock_rate: Some(clock_rate),
           keep_root: true,
           reroot_params: &RerootParams::default(),
           prev_clock_rate: None,

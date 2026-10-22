@@ -158,3 +158,15 @@ pub(crate) fn likely_time_of_node(
       .wrap_err_with(|| format!("When finding the most likely time of node {key}"))
   })
 }
+
+pub(crate) fn date_branch_lengths(graph: &Graph, node_dates: &NodeTimes) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+  graph
+    .get_edges()
+    .map(|edge| {
+      let length = node_dates[&edge.source()]
+        .zip(node_dates[&edge.target()])
+        .map(|(parent, child)| child - parent);
+      (edge.key(), length)
+    })
+    .collect()
+}

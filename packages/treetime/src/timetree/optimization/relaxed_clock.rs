@@ -1,4 +1,3 @@
-use crate::timetree::inference::result::BranchLikelihood;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -17,7 +16,7 @@ pub(crate) fn apply_relaxed_clock(
   params: &[f64],
   one_mutation: f64,
   clock_rate: f64,
-  branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  date_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
   let RelaxedClockPrior { slack, coupling } = RelaxedClockPrior::of(params);
 
@@ -34,9 +33,7 @@ pub(crate) fn apply_relaxed_clock(
     let (opt_len, act_len) = match schedule.parents(key).first() {
       Some(&(_, edge_key)) => {
         let opt_len = branch_lengths[&edge_key].unwrap_or(0.0);
-        let act_len = branches[&edge_key]
-          .time_length
-          .map_or(opt_len, |time_length| time_length * clock_rate);
+        let act_len = date_branch_lengths[&edge_key].map_or(opt_len, |duration| duration * clock_rate);
         (opt_len, act_len)
       },
       None => (one_mutation, one_mutation),
