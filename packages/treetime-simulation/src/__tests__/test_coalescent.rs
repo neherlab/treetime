@@ -53,6 +53,17 @@ mod tests {
     assert_eq!(expected.tau, actual.tau);
   }
 
+  #[test]
+  fn test_coalescent_rejects_a_merger_wait_below_the_rounding_of_the_time() {
+    let schedule = TcSchedule::constant(1e-20).unwrap();
+    let sampling = [SampleBatch { tau: 0.0, count: 1 }, SampleBatch { tau: 2.0, count: 1 }];
+    let result = simulate_coalescent(&schedule, &sampling, &mut get_random_number_generator(5));
+    assert_error!(
+      result,
+      "Coalescent merger time 2 does not exceed the current time 2 under the Tc schedule Piecewise(PiecewiseTc { breaks: [], values: [1e-20] }): the wait of the next merger is below the rounding of the time"
+    );
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::no_batch(          vec![],                                                                    "Sampling must have at least one batch")]

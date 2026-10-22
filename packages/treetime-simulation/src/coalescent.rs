@@ -53,6 +53,11 @@ pub fn simulate_coalescent(
         active.len()
       );
     }
+    if merger_time <= time {
+      return make_error!(
+        "Coalescent merger time {merger_time} does not exceed the current time {time} under the Tc schedule {schedule:?}: the wait of the next merger is below the rounding of the time"
+      );
+    }
 
     let first = rng.random_range(0..active.len());
     let second = rng.random_range(0..active.len() - 1);
