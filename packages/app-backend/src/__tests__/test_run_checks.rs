@@ -110,7 +110,7 @@ mod tests {
   fn test_run_checks_rejection_that_repeats_a_missing_input_is_left_out() {
     let config = config(AppCommand::Prune, &json!({}));
     let rejection = ConfigRejection {
-      message: "the following required arguments were not provided:\n  --tree <TREE>",
+      message: "the following required arguments were not provided:\n  --tree <FILE>",
       causes: &[],
       problems: &[],
       settings: &[],

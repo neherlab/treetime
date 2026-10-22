@@ -22,6 +22,8 @@ use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInpu
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+#[cfg(feature = "clap")]
+use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::command_outputs::CommandKind;
@@ -43,6 +45,8 @@ use treetime::partition::marginal::sample::SampleMode;
 use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub const ANCESTRAL_ABOUT: &str = "Reconstruct ancestral sequences and map the mutations to the branches of a tree";
 
 pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralParams {
   AncestralParams {
@@ -309,7 +313,17 @@ fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Repo
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[schemars(rename = "AncestralConfig")]
+#[cfg_attr(
+  feature = "clap",
+  command(
+    mut_args(value_name_from_hint),
+    mut_arg("include_leaves", |arg| arg.hide_short_help(false)),
+    mut_arg("impute_missing_data", |arg| arg.hide_short_help(false)),
+    mut_arg("reconstruct_tip_states", |arg| arg.hide_short_help(false)),
+    mut_arg("report_ambiguous", |arg| arg.hide_short_help(false)),
+  )
+)]
+#[schemars(rename = "AncestralConfig", description = ANCESTRAL_ABOUT)]
 pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -335,12 +349,60 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
+  pub zero_based: ZeroBasedArgs,
+
+  /// Genome annotation (GFF3) with the coordinates of the CDSs, for the annotations of the augur node data
+  ///
+  /// Also supplies the CDSs to reconstruct when `--cds-selection` is not given.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
+  pub annotation: Option<PathBuf>,
+
+  /// Path template of the amino-acid alignments, one FASTA file per CDS
+  ///
+  /// The template must contain a CDS placeholder, which is replaced by each name of `--cds-selection`, or by each CDS
+  /// of `--annotation` without `--cds-selection`. The placeholder is `{cds}`, as in Nextclade, or `%GENE`, as in augur.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input-template"))]
+  pub translations: Option<String>,
+
+  /// Names of the CDSs to reconstruct from `--translations`
+  ///
+  /// Without this setting, the run reconstructs every CDS of `--annotation`.
+  #[cfg_attr(
+    feature = "clap",
+    clap(
+      long,
+      value_name = "CDS",
+      num_args = 1..,
+      value_delimiter = ',',
+      help_heading = "Input data"
+    )
+  )]
+  pub cds_selection: Vec<String>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
   pub model_args: ModelArgs,
+
+  /// Substitution model of the amino-acid sequences, as `--model` for the nucleotides
+  ///
+  /// The default `infer`, as in augur, infers the model from the data of each CDS.
+  #[cfg_attr(feature = "clap", clap(long, value_enum, ignore_case = true, default_value_t = AaModelName::default(), help_heading = "Substitution model"))]
+  pub aa_model: AaModelName,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -365,11 +427,6 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub zero_based: ZeroBasedArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
   pub tip_sequences: TipSequenceArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -377,22 +434,31 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   pub impute_missing_data: ImputeMissingDataArgs,
 
+  /// FASTA file with one amino-acid reference sequence of the root per CDS
+  ///
+  /// The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and
+  /// always omit `X` and gaps.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
+  pub aa_root_sequence: Option<PathBuf>,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub missing_sequences: MissingSequenceArgs,
+  pub output: OutputCoreArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: AncestralOutputSelectionArgs,
 
   /// Path to output augur-compatible node data JSON.
   ///
-  /// Contains per-node nucleotide mutations, reconstructed sequences, the alignment
-  /// mask, genome annotations, and the reference (root) sequence. The output is
-  /// compatible with augur export v2 --node-data for Nextstrain pipeline integration.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  /// Contains per-node nucleotide mutations, reconstructed sequences, the alignment mask, genome annotations, and the
+  /// reference (root) sequence. The output is compatible with augur export v2 --node-data for Nextstrain pipeline
+  /// integration.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_node_data: Option<PathBuf>,
 
@@ -406,72 +472,12 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   pub reconstructed_fasta_output: ReconstructedFastaOutputArgs,
 
-  /// Path template for per-CDS amino-acid FASTA alignments.
+  /// Path to output the amino-acid sequences of the nodes as FASTA, one file per CDS
   ///
-  /// The template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each
-  /// CDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade
-  /// `--output-translations`) and `%GENE` (augur) placeholders are accepted.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input-template"))]
-  pub translations: Option<String>,
-
-  /// CDS names to reconstruct from `--translations`.
-  ///
-  /// When omitted, the CDS set is derived from `--annotation`.
-  #[cfg_attr(
-    feature = "clap",
-    clap(
-      long,
-      value_name = "CDS",
-      num_args = 1..,
-      value_delimiter = ',',
-      help_heading = "Input data"
-    )
-  )]
-  pub cds_selection: Vec<String>,
-
-  /// GFF3 file with CDS coordinates for Augur node data annotations.
-  ///
-  /// Also supplies the CDS set when `--cds-selection` is omitted.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub annotation: Option<PathBuf>,
-
-  /// FASTA file with one amino-acid root/reference sequence per CDS.
-  ///
-  /// The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and
-  /// always omit `X` and gaps.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub aa_root_sequence: Option<PathBuf>,
-
-  /// Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, ignore_case = true, default_value_t = AaModelName::default(), help_heading = "Substitution model"))]
-  pub aa_model: AaModelName,
-
-  /// Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).
-  ///
-  /// Off by default. When set, the reconstructed sequence of every node is written per CDS. The
-  /// file name accepts the `{cds}`/`%GENE` placeholders of `--translations`, and needs one when
-  /// more than one CDS is reconstructed; folder names are used as given.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  /// Holds the reconstructed sequence of every node, internal nodes included.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_translations: Option<PathBuf>,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub output: OutputCoreArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub output_selection: AncestralOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

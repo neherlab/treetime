@@ -18,6 +18,8 @@ use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInpu
 use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+#[cfg(feature = "clap")]
+use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::OutputSettings;
@@ -35,6 +37,9 @@ use treetime::partition::marginal::sample::SampleMode;
 use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub const HOMOPLASY_ABOUT: &str =
+  "Reconstruct ancestral sequences and count homoplasies, mutations that occur more than once in a tree";
 
 pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> AncestralParams {
   AncestralParams {
@@ -244,7 +249,8 @@ fn check_one_alignment(alignment: &[PathBuf]) -> Result<(), Report> {
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[schemars(rename = "HomoplasyConfig")]
+#[cfg_attr(feature = "clap", command(mut_args(value_name_from_hint)))]
+#[schemars(rename = "HomoplasyConfig", description = HOMOPLASY_ABOUT)]
 pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -270,7 +276,17 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub zero_based: ZeroBasedArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -290,37 +306,17 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub gap_fill_args: GapFillArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub zero_based: ZeroBasedArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub impute_missing_data: ImputeMissingDataArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub missing_sequences: MissingSequenceArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
   pub sample_from_profile: SampleFromProfileArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub seed_args: SeedArgs,
+  pub gap_fill_args: GapFillArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(skip)]
-  #[deser(skip)]
-  pub jobs_args: JobsArgs,
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub impute_missing_data: ImputeMissingDataArgs,
 
   /// Number of constant sites that the alignment leaves out.
   ///
@@ -328,7 +324,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   /// number of sites without mutations and the rate of the Poisson comparison.
   #[cfg_attr(
     feature = "clap",
-    clap(long = "const", default_value_t = 0, help_heading = "Homoplasy")
+    clap(long = "const", value_name = "N", default_value_t = 0, help_heading = "Homoplasy")
   )]
   pub constant_sites: usize,
 
@@ -363,7 +359,13 @@ pub struct TreetimeHomoplasyArgsRaw {
   /// The statistics JSON always contains the complete lists.
   #[cfg_attr(
     feature = "clap",
-    clap(long, short = 'n', default_value_t = 10, help_heading = "Homoplasy")
+    clap(
+      long,
+      value_name = "N",
+      short = 'n',
+      default_value_t = 10,
+      help_heading = "Homoplasy"
+    )
   )]
   #[default = 10]
   pub num_mut: usize,
@@ -373,32 +375,38 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: HomoplasyOutputSelectionArgs,
+
   /// Path to output homoplasy statistics JSON.
   ///
-  /// Contains the counts, histograms, Poisson comparison, and complete ranked lists of the report,
-  /// for substitutions, changes involving ambiguous characters, and insertions and deletions.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  /// Contains the counts, histograms, Poisson comparison, and complete ranked lists of the report, for substitutions,
+  /// changes involving ambiguous characters, and insertions and deletions.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_homoplasy_stats: Option<PathBuf>,
 
   /// Path to output homoplasy report text.
   ///
   /// The run also logs the report at info level (`-v`).
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_homoplasy_report: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub output_selection: HomoplasyOutputSelectionArgs,
+  pub topology_order: TopologyOrderArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub topology_order: TopologyOrderArgs,
+  pub seed_args: SeedArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 }

@@ -11,6 +11,8 @@ use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+#[cfg(feature = "clap")]
+use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::OutputSettings;
@@ -24,6 +26,9 @@ use std::path::PathBuf;
 use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub const PRUNE_ABOUT: &str =
+  "Collapse short branches and branches without mutations, and remove named nodes from a tree";
 
 #[derive(Debug, Clone)]
 pub struct TreetimePruneArgs {
@@ -167,7 +172,8 @@ fn check_sequence_settings(
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[schemars(rename = "PruneConfig")]
+#[cfg_attr(feature = "clap", command(mut_args(value_name_from_hint)))]
+#[schemars(rename = "PruneConfig", description = PRUNE_ABOUT)]
 pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -204,21 +210,6 @@ pub struct TreetimePruneArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub zero_based: ZeroBasedArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub output: OutputCoreArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub output_selection: PruneOutputSelectionArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub topology_order: TopologyOrderArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -265,6 +256,21 @@ pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Pruning"))]
   #[schemars(extend("x-path" = "input"))]
   pub remove_file: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output: OutputCoreArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: PruneOutputSelectionArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub topology_order: TopologyOrderArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]

@@ -293,7 +293,7 @@ mod tests {
         (
           args.tree.tree,
           args.alignment.alignment,
-          args.metadata,
+          args.metadata.metadata,
           args.output.output_all
         )
       );
@@ -373,7 +373,7 @@ mod tests {
       let result = resolve_ancestral(&["treetime", "ancestral"]);
       assert_error!(
         result,
-        "the following required arguments were not provided:\n  --tree <TREE>"
+        "the following required arguments were not provided:\n  --tree <FILE>"
       );
     }
 
@@ -575,6 +575,7 @@ mod tests {
     use app_commands::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
     use app_commands::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
     use app_commands::commands::shared::alignment::AlignmentArgs;
+    use app_commands::commands::shared::metadata::MetadataArgs;
     use app_commands::commands::shared::tree_input::TreeArgs;
     use app_commands::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use pretty_assertions::assert_eq;
@@ -584,7 +585,7 @@ mod tests {
     fn test_config_required_ancestral_missing_tree_errors() {
       assert_error!(
         TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>"
+        "the following required arguments were not provided:\n  --tree <FILE>"
       );
     }
 
@@ -607,7 +608,7 @@ mod tests {
     fn test_config_required_optimize_missing_tree_errors() {
       assert_error!(
         TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>"
+        "the following required arguments were not provided:\n  --tree <FILE>"
       );
     }
 
@@ -615,7 +616,7 @@ mod tests {
     fn test_config_required_prune_missing_tree_errors() {
       assert_error!(
         TreetimePruneArgs::try_from(TreetimePruneArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>"
+        "the following required arguments were not provided:\n  --tree <FILE>"
       );
     }
 
@@ -623,7 +624,7 @@ mod tests {
     fn test_config_required_clock_missing_tree_and_metadata_lists_both() {
       assert_error!(
         TreetimeClockArgs::try_from(TreetimeClockArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>\n  --metadata <METADATA>"
+        "the following required arguments were not provided:\n  --tree <FILE>\n  --metadata <FILE>"
       );
     }
 
@@ -637,7 +638,7 @@ mod tests {
       };
       assert_error!(
         TreetimeClockArgs::try_from(raw),
-        "the following required arguments were not provided:\n  --metadata <METADATA>"
+        "the following required arguments were not provided:\n  --metadata <FILE>"
       );
     }
 
@@ -645,7 +646,7 @@ mod tests {
     fn test_config_required_mugration_missing_all_lists_all() {
       assert_error!(
         TreetimeMugrationArgs::try_from(TreetimeMugrationArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>\n  --metadata <METADATA>\n  --attribute <ATTRIBUTE>"
+        "the following required arguments were not provided:\n  --tree <FILE>\n  --metadata <FILE>\n  --attribute <COLUMN>"
       );
     }
 
@@ -655,12 +656,14 @@ mod tests {
         tree: TreeArgs {
           tree: Some("tree.nwk".into()),
         },
-        metadata: Some("metadata.tsv".into()),
+        metadata: MetadataArgs {
+          metadata: Some("metadata.tsv".into()),
+        },
         ..Default::default()
       };
       assert_error!(
         TreetimeMugrationArgs::try_from(raw),
-        "the following required arguments were not provided:\n  --attribute <ATTRIBUTE>"
+        "the following required arguments were not provided:\n  --attribute <COLUMN>"
       );
     }
 
@@ -675,7 +678,7 @@ mod tests {
       };
       assert_error!(
         TreetimeMugrationArgs::try_from(raw),
-        "the following required arguments were not provided:\n  --metadata <METADATA>"
+        "the following required arguments were not provided:\n  --metadata <FILE>"
       );
     }
 
@@ -683,7 +686,7 @@ mod tests {
     fn test_config_required_homoplasy_missing_tree_errors() {
       assert_error!(
         TreetimeHomoplasyArgs::try_from(TreetimeHomoplasyArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>"
+        "the following required arguments were not provided:\n  --tree <FILE>"
       );
     }
 
@@ -691,7 +694,7 @@ mod tests {
     fn test_config_required_timetree_missing_tree_and_metadata_lists_both() {
       assert_error!(
         TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>\n  --metadata <METADATA>"
+        "the following required arguments were not provided:\n  --tree <FILE>\n  --metadata <FILE>"
       );
     }
 
@@ -701,7 +704,9 @@ mod tests {
         tree: TreeArgs {
           tree: Some("tree.nwk".into()),
         },
-        metadata: Some("metadata.tsv".into()),
+        metadata: MetadataArgs {
+          metadata: Some("metadata.tsv".into()),
+        },
         alignment: AlignmentArgs {
           alignment: vec!["aln.fasta".into()],
         },

@@ -4,6 +4,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::ambiguity::TimetreeAmbiguityArgs;
   use crate::commands::shared::argument_error::ArgumentError;
+  use crate::commands::shared::metadata::MetadataArgs;
   use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
@@ -96,7 +97,7 @@ mod tests {
       tree: TreeArgs {
         tree: Some(dir.join("tree.nwk")),
       },
-      metadata: Some(dir.join("metadata.tsv")),
+      metadata: MetadataArgs { metadata: Some(dir.join("metadata.tsv")) },
       sequence_length: (!with_alignment).then_some(1000),
       representation: RepresentationArgs {
         representation: Some(RepresentationCli::Dense),
@@ -138,7 +139,7 @@ mod tests {
       tree: TreeArgs {
         tree: Some(dir.join("tree.nwk")),
       },
-      metadata: Some(dir.join("metadata.tsv")),
+      metadata: MetadataArgs { metadata: Some(dir.join("metadata.tsv")) },
       ambiguity: TimetreeAmbiguityArgs {
         ambiguity_threshold: Some(AmbiguityThreshold::new(0.1)?),
         ..TimetreeAmbiguityArgs::default()
@@ -178,7 +179,9 @@ mod tests {
           alignment: alignment.into_iter().collect(),
         },
         tree: TreeArgs { tree: Some(tree) },
-        metadata: Some(metadata),
+        metadata: MetadataArgs {
+          metadata: Some(metadata),
+        },
         sequence_length,
         branch_length_mode,
         ..TreetimeTimetreeArgsRaw::default()

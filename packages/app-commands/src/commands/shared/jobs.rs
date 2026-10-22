@@ -12,7 +12,7 @@ pub struct JobsArgs {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long,
+      long, value_name = "N",
       short = 'j',
       default_value_t = available_jobs(),
       hide_default_value = true,

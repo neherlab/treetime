@@ -1,18 +1,24 @@
 use crate::cli::color::ColorArgs;
+use crate::cli::command_help::{
+  ANCESTRAL_EXAMPLES, ANCESTRAL_USAGE, CLOCK_EXAMPLES, CLOCK_USAGE, COMPLETIONS_EXAMPLES, COMPLETIONS_USAGE, HELP_HINT,
+  HELP_HINT_OUTPUTS, HELP_MARKDOWN_EXAMPLES, HELP_MARKDOWN_USAGE, HOMOPLASY_EXAMPLES, HOMOPLASY_USAGE, MUGRATION_EXAMPLES, MUGRATION_USAGE, OPTIMIZE_EXAMPLES, OPTIMIZE_USAGE,
+  PIPELINE_EXAMPLES, PIPELINE_USAGE, PRUNE_EXAMPLES, PRUNE_USAGE, SCHEMA_WRITE_EXAMPLES, SCHEMA_WRITE_USAGE,
+  TIMETREE_EXAMPLES, TIMETREE_USAGE, after_help, after_long_help,
+};
 use crate::cli::config::overlay_config;
 use crate::cli::schema::SchemaTarget;
 use crate::cli::v0_args::{V0Rewrite, rewrite_v0_args};
 use crate::cli::verbosity::Verbosity;
 use app_commands::command::RawConfig;
 use app_commands::command_config::CommandConfig;
-use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
-use app_commands::commands::clock::args::TreetimeClockArgsRaw;
-use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
-use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
-use app_commands::commands::prune::args::TreetimePruneArgsRaw;
+use app_commands::commands::ancestral::args::{ANCESTRAL_ABOUT, TreetimeAncestralArgsRaw};
+use app_commands::commands::clock::args::{CLOCK_ABOUT, TreetimeClockArgsRaw};
+use app_commands::commands::homoplasy::args::{HOMOPLASY_ABOUT, TreetimeHomoplasyArgsRaw};
+use app_commands::commands::mugration::args::{MUGRATION_ABOUT, TreetimeMugrationArgsRaw};
+use app_commands::commands::optimize::args::{OPTIMIZE_ABOUT, TreetimeOptimizeArgsRaw};
+use app_commands::commands::prune::args::{PRUNE_ABOUT, TreetimePruneArgsRaw};
 use app_commands::commands::shared::jobs::JobsArgs;
-use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::commands::timetree::args::{TIMETREE_ABOUT, TreetimeTimetreeArgsRaw};
 use app_commands::version::LONG_VERSION;
 use clap::{ArgMatches, ColorChoice, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
@@ -141,57 +147,115 @@ fn resolve_command_config(
 #[clap(verbatim_doc_comment)]
 #[deser(rename_all = "kebab-case")]
 pub(crate) enum TreetimeCommands {
-  /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
+  #[command(
+    about = TIMETREE_ABOUT,
+    override_usage = TIMETREE_USAGE,
+    after_help = after_help(TIMETREE_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(TIMETREE_EXAMPLES)
+  )]
   Timetree(Box<TreetimeTimetreeArgsRaw>),
 
-  /// Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based positions.
+  #[command(
+    about = ANCESTRAL_ABOUT,
+    long_about = format!(
+      "{ANCESTRAL_ABOUT}\n\nWith marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with \
+       `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based \
+       positions."
+    ),
+    override_usage = ANCESTRAL_USAGE,
+    after_help = after_help(ANCESTRAL_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(ANCESTRAL_EXAMPLES)
+  )]
   Ancestral(TreetimeAncestralArgsRaw),
 
-  /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`.
+  #[command(
+    about = CLOCK_ABOUT,
+    long_about = format!(
+      "{CLOCK_ABOUT}\n\nThe regression quantifies how clock-like the tree is. Unless `--keep-root` is given, the run \
+       reroots the tree to maximize the clock signal."
+    ),
+    override_usage = CLOCK_USAGE,
+    after_help = after_help(CLOCK_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(CLOCK_EXAMPLES)
+  )]
   Clock(TreetimeClockArgsRaw),
 
-  /// Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred.
+  #[command(
+    about = MUGRATION_ABOUT,
+    override_usage = MUGRATION_USAGE,
+    after_help = after_help(MUGRATION_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(MUGRATION_EXAMPLES)
+  )]
   Mugration(TreetimeMugrationArgsRaw),
 
-  /// Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar.
+  #[command(
+    about = HOMOPLASY_ABOUT,
+    long_about = format!(
+      "{HOMOPLASY_ABOUT}\n\nAn excess of homoplasies can point to contamination, recombination, culture adaptation, or \
+       similar processes."
+    ),
+    override_usage = HOMOPLASY_USAGE,
+    after_help = after_help(HOMOPLASY_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(HOMOPLASY_EXAMPLES)
+  )]
   Homoplasy(TreetimeHomoplasyArgsRaw),
 
-  /// Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences.
+  #[command(
+    about = OPTIMIZE_ABOUT,
+    override_usage = OPTIMIZE_USAGE,
+    after_help = after_help(OPTIMIZE_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(OPTIMIZE_EXAMPLES)
+  )]
   Optimize(TreetimeOptimizeArgsRaw),
 
-  /// Prunes short branches and/or branches without mutations from a phylogenetic tree.
+  #[command(
+    about = PRUNE_ABOUT,
+    override_usage = PRUNE_USAGE,
+    after_help = after_help(PRUNE_EXAMPLES, HELP_HINT_OUTPUTS),
+    after_long_help = after_long_help(PRUNE_EXAMPLES)
+  )]
   Prune(TreetimePruneArgsRaw),
 
-  /// Runs an ordered list of analysis commands from one config file, on one dataset, in one process.
+  /// Run several analysis commands in order from one config file
   ///
-  /// The config file (JSON or YAML) lists named steps, each an analysis command with its arguments.
-  /// Steps run sequentially; a step may reference an earlier step's outputs with
-  /// `{{ steps.<name>.outputs.<selection> }}`. Use `--dry-run` to print the resolved plan without
-  /// running anything, and `--steps` to run only a subset.
+  /// The config file (JSON or YAML) lists named steps, each an analysis command with its arguments. The steps run one
+  /// after another on one dataset, in one process; a step may reference the outputs of an earlier step with
+  /// `{{ steps.<name>.outputs.<selection> }}`. Use `--dry-run` to print the resolved plan without running anything,
+  /// and `--steps` to run only some steps.
+  #[command(
+    override_usage = PIPELINE_USAGE,
+    after_help = after_help(PIPELINE_EXAMPLES, HELP_HINT),
+    after_long_help = after_long_help(PIPELINE_EXAMPLES)
+  )]
   Pipeline(TreetimePipelineArgs),
 
-  /// Write JSON Schema definitions for TreeTime data types
+  /// Write the JSON schemas of the config files and of the TreeTime data types
   Schema {
     #[clap(subcommand)]
     command: TreetimeSchemaCommands,
   },
 
-  /// Generate shell completions.
+  /// Print the shell completions of TreeTime
   ///
-  /// This will print the completions file contents to the console. Refer to your shell's documentation on how to install the completions.
-  ///
-  /// Example for Ubuntu Linux:
-  ///
-  ///    treetime completions bash > ~/.local/share/bash-completion/treetime
-  ///
+  /// Write the output to the completions file of your shell; the documentation of the shell names its location.
+  #[command(
+    override_usage = COMPLETIONS_USAGE,
+    after_help = after_help(COMPLETIONS_EXAMPLES, HELP_HINT),
+    after_long_help = after_long_help(COMPLETIONS_EXAMPLES)
+  )]
   Completions {
     /// Name of the shell to generate appropriate completions
     #[clap(value_name = "SHELL", default_value_t = String::from("bash"), value_parser = SHELLS.clone())]
     shell: String,
   },
 
-  /// Print CLI reference documentation in Markdown format
+  /// Print the command-line reference in Markdown
   #[clap(name = "help-markdown")]
+  #[command(
+    override_usage = HELP_MARKDOWN_USAGE,
+    after_help = after_help(HELP_MARKDOWN_EXAMPLES, HELP_HINT),
+    after_long_help = after_long_help(HELP_MARKDOWN_EXAMPLES)
+  )]
   HelpMarkdown,
 
   /// Print system information for debugging
@@ -205,12 +269,12 @@ pub(crate) struct TreetimePipelineArgs {
   ///
   /// A relative path in the file resolves from the folder of the file, and from the working directory when the file
   /// is read from standard input (`-`).
-  #[clap(long, value_hint = ValueHint::FilePath)]
+  #[clap(long, value_hint = ValueHint::FilePath, value_name = "FILE")]
   pub config: PathBuf,
 
   /// Folder of the outputs: each step writes into a subfolder named after the step. Takes precedence over the
   /// top-level `output_all` of the pipeline file. A relative path resolves from the working directory.
-  #[clap(long, short = 'O', value_hint = ValueHint::DirPath)]
+  #[clap(long, short = 'O', value_hint = ValueHint::DirPath, value_name = "DIR")]
   pub output_all: Option<PathBuf>,
 
   /// Run only these named steps, in the pipeline's list order.
@@ -267,22 +331,23 @@ fn dry_run_config_of<T: RawConfig>(args: &T, dry_run: bool) -> Option<CommandCon
 #[derive(Subcommand, Debug, Serialize)]
 #[deser(rename_all = "kebab-case")]
 pub(crate) enum TreetimeSchemaCommands {
-  /// Write the JSON schema of a config file or of all TreeTime data types.
-  ///
-  /// For example:
-  ///
-  ///    treetime schema write --for timetree -o timetree.schema.json
+  /// Write the JSON schema of a config file, or of every config file and TreeTime data type
+  #[command(
+    override_usage = SCHEMA_WRITE_USAGE,
+    after_help = after_help(SCHEMA_WRITE_EXAMPLES, HELP_HINT),
+    after_long_help = after_long_help(SCHEMA_WRITE_EXAMPLES)
+  )]
   Write(TreetimeSchemaArgs),
 }
 
 #[derive(Parser, Debug, Serialize)]
 pub(crate) struct TreetimeSchemaArgs {
-  /// Which schema to generate
-  #[clap(long = "for", value_enum, default_value_t = SchemaTarget::default())]
+  /// Config file or data type of the schema; `all` writes every schema into the folder of `-o`
+  #[clap(long = "for", value_enum, value_name = "TARGET", default_value_t = SchemaTarget::default())]
   pub target: SchemaTarget,
 
-  /// Output file or directory (use "-" for stdout). Directory required when --for=all
-  #[clap(short = 'o', long, value_hint = ValueHint::AnyPath)]
+  /// Output file, or `-` for standard output; with `--for all`, the output folder (default: the working folder)
+  #[clap(short = 'o', long, value_hint = ValueHint::AnyPath, value_name = "PATH")]
   pub output: Option<PathBuf>,
 
   /// Print the files that the command would write, then stop without writing them

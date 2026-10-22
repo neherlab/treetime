@@ -24,6 +24,9 @@ pub struct ClockFilterArgs {
   ///
   /// By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction
   /// gives essentially mid-point rooting.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Molecular clock")
+  )]
   pub allow_negative_rate: bool,
 }

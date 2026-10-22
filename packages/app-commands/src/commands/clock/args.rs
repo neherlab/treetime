@@ -2,7 +2,7 @@ use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::dates_input::DatesInput;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs, MetadataInput};
+use crate::commands::shared::metadata::{DateColumnArgs, MetadataArgs, MetadataIdArgs, MetadataInput};
 use crate::commands::shared::output_args::{
   ClockOutputArgs, ClockOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
 };
@@ -10,6 +10,8 @@ use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootArgs, RerootTarget, RootingArgs};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+#[cfg(feature = "clap")]
+use crate::commands::shared::value_names::value_name_from_hint;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::OutputSettings;
 use app_output::output_plan::OutputSelection;
@@ -23,6 +25,9 @@ use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub const CLOCK_ABOUT: &str =
+  "Fit a molecular clock by root-to-tip regression, and reroot the tree for the best clock signal";
 
 #[derive(Debug, Clone)]
 pub struct TreetimeClockArgs {
@@ -50,7 +55,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       config_args: _,
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
-      metadata,
+      metadata: MetadataArgs { metadata },
       metadata_id: MetadataIdArgs {
         metadata_id_columns,
         metadata_delimiters,
@@ -172,7 +177,8 @@ fn clock_topology_order(
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[schemars(rename = "ClockConfig")]
+#[cfg_attr(feature = "clap", command(mut_args(value_name_from_hint)))]
+#[schemars(rename = "ClockConfig", description = CLOCK_ABOUT)]
 pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -189,14 +195,10 @@ pub struct TreetimeClockArgsRaw {
   #[deser(flatten)]
   pub newick_dialect: TreeDialectArgs,
 
-  /// Metadata table (CSV or TSV) with one row per sample
-  ///
-  /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
-  /// sample, such as its sampling date or its traits.
-  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub metadata: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub metadata: MetadataArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -231,20 +233,19 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub clock_output: ClockOutputArgs,
-
-  /// Path to output the root-to-tip regression chart.
-  ///
-  /// The extension chooses the image format: `.svg`, `.png` or `.pdf`. Takes precedence over paths configured with
-  /// `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_rtt_chart: Option<PathBuf>,
+  pub output_selection: ClockOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub output_selection: ClockOutputSelectionArgs,
+  pub clock_output: ClockOutputArgs,
+
+  /// Path to output the root-to-tip regression chart.
+  ///
+  /// The extension chooses the image format: `.svg`, `.png` or `.pdf`.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_rtt_chart: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

@@ -36,11 +36,6 @@ pub(crate) mod tests {
       HELP_MARKDOWN,
     ];
 
-    #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    pub(crate) enum Pending {
-      ShortHelp,
-    }
-
     pub(crate) fn treetime_command() -> Command {
       let mut command = TreetimeArgs::command();
       command.build();

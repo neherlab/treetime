@@ -171,9 +171,7 @@ command_outputs!(
   }
 );
 
-/// Output selection shared by every tree-writing command. `--output-all`
-/// chooses the directory, `--output-selection` restricts generated files, and
-/// per-file flags override or add paths. Newick annotations and topology order are separate.
+/// Output folder, Newick node comments and tree outputs, shared by every analysis command.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -182,35 +180,34 @@ command_outputs!(
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct OutputCoreArgs {
-  /// Write all default output files into this directory.
+  /// Folder that receives the default outputs of the command
   ///
-  /// Produces the default set of tree and non-tree outputs for the command, using
-  /// `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
-  /// outputs are written.
+  /// Writes the default outputs of the command as `<dir>/<command>.<ext>`. `--output-selection` restricts the outputs
+  /// that the folder receives. The per-file flags (`--output-*`) override or supplement the files of the folder.
   ///
-  /// Per-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or
-  /// supplement the files produced by `--output-all`.
+  /// An output that the run has no data for is skipped without a message, for example the substitution model of a run
+  /// that fits none. A per-file flag for such an output fails.
   ///
-  /// An output that the run has no data for is skipped without a message, for example the
-  /// substitution model of a run that fits none. A per-file flag for such an output fails.
+  /// Every output path follows these rules. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed
+  /// file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
+  /// `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs`
+  /// threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats. The
+  /// path `-` of a per-file flag writes the output uncompressed to standard output. Missing parent folders are
+  /// created.
   ///
-  /// Table outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and
-  /// `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to
-  /// standard output. Default names use `.tsv`.
+  /// Table outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also
+  /// before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.
   ///
-  /// With several `--alignment` files, the outputs that carry sequence positions are written
-  /// once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
-  /// MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the
-  /// order of the `--alignment` list. Their default names carry the number after the command
-  /// name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
-  /// must contain `{alignment}`, which is replaced by the number. Other tree outputs with
-  /// `{alignment}` in their file name are also written once per file.
+  /// With several `--alignment` files, the outputs that carry sequence positions are written once per file:
+  /// reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with
+  /// `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list.
+  /// Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a
+  /// per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs
+  /// with `{alignment}` in their file name are also written once per file.
   ///
-  /// An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
-  /// compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
-  /// `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress
-  /// with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and
-  /// to read than the other formats.
+  /// The outputs written once per CDS, such as the reconstructed amino-acid sequences, take the placeholder `{cds}`
+  /// or `%GENE` in the file name of their per-file flag, which is replaced by the name of the CDS. The placeholder is
+  /// required when more than one CDS is reconstructed; folder names are used as given.
   #[cfg_attr(feature = "clap", clap(long, short = 'O', value_hint = ValueHint::DirPath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,
@@ -224,109 +221,46 @@ pub struct OutputCoreArgs {
   /// `beast` comments, which FigTree reads.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_enum, default_value_t = NewickAnnotationsArg::default(), help_heading = "Output")
+    clap(long, hide_short_help = true, value_enum, default_value_t = NewickAnnotationsArg::default(), help_heading = "Output")
   )]
   pub newick_annotations: NewickAnnotationsArg,
 
   /// Path to output Newick tree file.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   /// `--newick-annotations` sets the node comments.
-  ///
-  /// With several `--alignment` files and `--newick-annotations` other than `plain`, one file is
-  /// written per alignment, and the file name must contain `{alignment}`, which is replaced by the
-  /// number of the alignment (1, 2, ...).
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_nwk: Option<PathBuf>,
 
   /// Path to output Nexus tree file.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`. The
-  /// nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name must
-  /// contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  /// The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_nexus: Option<PathBuf>,
 
   /// Path to output Auspice v2 JSON tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_auspice: Option<PathBuf>,
 
   /// Path to output UShER MAT protobuf tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_mat_pb: Option<PathBuf>,
 
   /// Path to output UShER MAT JSON tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_mat_json: Option<PathBuf>,
 
   /// Path to output internal graph JSON tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_graph_json: Option<PathBuf>,
 
   /// Path to output Graphviz DOT tree file.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
-  /// Use `-` to write uncompressed to stdout.
-  ///
-  /// Parent directories are created if missing.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tree_dot: Option<PathBuf>,
 }
@@ -428,18 +362,15 @@ fn missing_outputs_argument_error(report: Report) -> Report {
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ClockOutputArgs {
   /// Path to output clock model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_clock_model: Option<PathBuf>,
 
   /// Path to output the root-to-tip regression table.
   ///
   /// One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock
-  /// model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths
-  /// configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  /// model predicts from that distance, and whether the clock filter excluded the sample.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_rtt: Option<PathBuf>,
 }

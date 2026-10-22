@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TimetreeConfig",
-  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
+  "description": "Infer a time-scaled tree from a tree, the sampling dates of its tips, and optionally an alignment",
   "type": "object",
   "properties": {
     "alignment": {
@@ -102,8 +102,20 @@
       "x-unset": true,
       "x-cli-flag": "--sequence-length"
     },
+    "alphabet": {
+      "description": "Alphabet of the sequences\n\n`nuc` (default): nucleotides A, C, G and T, with the IUPAC ambiguity codes and `N` for an unknown base. `aa`: the\n20 amino acids and the stop codon `*` as a 21st state, with `X` for an unknown residue. `aa-no-stop`: the 20\namino acids without a state for the stop codon.",
+      "$ref": "#/$defs/AlphabetName",
+      "x-unset": true,
+      "x-cli-flag": "--alphabet"
+    },
+    "zero_based": {
+      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy\nreport. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input\ntable with positions, such as `--drms`, is always counted from 1.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--zero-based"
+    },
     "clock_rate": {
-      "description": "If specified, the rate of the molecular clock won't be optimized.",
+      "description": "Fixed rate of the molecular clock, in substitutions per site per year\n\nWithout this setting, the run estimates the rate.",
       "type": "number",
       "format": "double",
       "examples": [
@@ -119,37 +131,8 @@
       "x-unset": true,
       "x-cli-flag": "--clock-std-dev"
     },
-    "branch_length_mode": {
-      "description": "How the branch lengths of the time inference are obtained\n\n`auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer\nthan 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary\ndistances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses\n`marginal`. The run logs the choice.",
-      "$ref": "#/$defs/BranchLengthMode",
-      "default": "auto",
-      "x-cli-flag": "--branch-length-mode"
-    },
-    "confidence": {
-      "description": "Estimate the 90% intervals of the node dates\n\nRuns a final marginal round of the time inference after the iterations and writes the 90% interval of every\ndated node. The intervals include the clock rate uncertainty when one is known: `--clock-std-dev` for a given\nrate, or the Gaussian estimate of an estimated rate. The rate uncertainty is added by inferring the dates again\nat the rate plus and minus one standard deviation and combining both parts in quadrature.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--confidence"
-    },
-    "max_grid_points": {
-      "description": "Largest number of points of one probability grid during time inference.\n\nA run stops with an error when a grid would need more points. The value bounds single grids, not the total\nmemory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 1000,
-      "examples": [
-        1000000
-      ],
-      "x-unset": true,
-      "x-cli-flag": "--max-grid-points"
-    },
-    "keep_polytomies": {
-      "description": "Keep the polytomies of the input tree\n\nWithout this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is\nstochastic: the run logs the seed it draws, and `--seed` reproduces the run.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--keep-polytomies"
-    },
     "relax": {
-      "description": "use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate\ndeviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0\n0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more\nstrongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.",
+      "description": "Use an autocorrelated relaxed clock with the given prior strengths, for example `--relax 1.0 0.5`\n\nSLACK is the strength of the Gaussian prior on the rate deviation of each branch, and COUPLING the strength of\nthe coupling of the rates of parent and child branches. Values around 1.0 give weak priors; larger values\nconstrain the rate deviations more strongly. A COUPLING of 0 (`--relax 1.0 0`) gives an uncorrelated clock.",
       "type": "array",
       "items": {
         "type": "number",
@@ -163,66 +146,6 @@
       ],
       "default": [],
       "x-cli-flag": "--relax"
-    },
-    "max_iter": {
-      "description": "Maximum number of iterations of the inference loop\n\nPolytomy resolution and coalescent models of the time inference need at least 2 iterations.",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 0,
-      "default": 2,
-      "x-cli-flag": "--max-iter"
-    },
-    "coalescent": {
-      "description": "Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01)\nor as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one\n\nA time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in\nsubstitutions per site is converted to years with the clock rate of each iteration. Without this setting the node\ntimes have no coalescent prior.",
-      "examples": [
-        0.01
-      ],
-      "oneOf": [
-        {
-          "description": "Fixed time scale in substitutions per site",
-          "type": "number",
-          "exclusiveMinimum": 0.0
-        },
-        {
-          "description": "Fixed time scale: a number in substitutions per site, or a number directly followed by the time unit y, w or d",
-          "type": "string",
-          "pattern": "^\\+?([0-9]*[1-9][0-9]*\\.?[0-9]*|[0-9]*\\.[0-9]*[1-9][0-9]*)([eE][+-]?[0-9]+)?[ywd]?$"
-        },
-        {
-          "type": "string",
-          "enum": [
-            "opt",
-            "skyline"
-          ]
-        }
-      ],
-      "x-unset": true,
-      "x-cli-flag": "--coalescent"
-    },
-    "n_skyline": {
-      "description": "Number of grid points in skyline coalescent model.\n\nApplies only to --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2.",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 2,
-      "default": 20,
-      "x-unset": true,
-      "x-cli-flag": "--n-skyline"
-    },
-    "skyline_stiffness": {
-      "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Applies only to --coalescent skyline.",
-      "type": "number",
-      "format": "double",
-      "default": 2.0,
-      "x-unset": true,
-      "x-cli-flag": "--skyline-stiffness"
-    },
-    "coalescent_confidence": {
-      "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
-      "type": "number",
-      "format": "double",
-      "default": 2.0,
-      "x-unset": true,
-      "x-cli-flag": "--coalescent-confidence"
     },
     "clock_filter": {
       "description": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression\nbeyond which a tip is an outlier.\n\n0 switches the filter off.",
@@ -263,6 +186,103 @@
       "default": false,
       "x-cli-flag": "--keep-root"
     },
+    "branch_length_mode": {
+      "description": "How the branch lengths of the time inference are obtained\n\n`auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer\nthan 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary\ndistances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses\n`marginal`. The run logs the choice.",
+      "$ref": "#/$defs/BranchLengthMode",
+      "default": "auto",
+      "x-cli-flag": "--branch-length-mode"
+    },
+    "max_iter": {
+      "description": "Maximum number of iterations of the inference loop\n\nPolytomy resolution and coalescent models of the time inference need at least 2 iterations.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0,
+      "default": 2,
+      "x-cli-flag": "--max-iter"
+    },
+    "confidence": {
+      "description": "Estimate the 90% intervals of the node dates\n\nRuns a final marginal round of the time inference after the iterations and writes the 90% interval of every\ndated node. The intervals include the clock rate uncertainty when one is known: `--clock-std-dev` for a given\nrate, or the Gaussian estimate of an estimated rate. The rate uncertainty is added by inferring the dates again\nat the rate plus and minus one standard deviation and combining both parts in quadrature.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--confidence"
+    },
+    "max_grid_points": {
+      "description": "Largest number of points of one probability grid during time inference\n\nA run stops with an error when a grid would need more points. The value bounds single grids, not the total\nmemory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 1000,
+      "examples": [
+        1000000
+      ],
+      "x-unset": true,
+      "x-cli-flag": "--max-grid-points"
+    },
+    "keep_polytomies": {
+      "description": "Keep the polytomies of the input tree\n\nWithout this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is\nstochastic: the run logs the seed it draws, and `--seed` reproduces the run.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--keep-polytomies"
+    },
+    "coalescent": {
+      "description": "Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01)\nor as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one\n\nA time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in\nsubstitutions per site is converted to years with the clock rate of each iteration. Without this setting the node\ntimes have no coalescent prior.",
+      "examples": [
+        0.01
+      ],
+      "oneOf": [
+        {
+          "description": "Fixed time scale in substitutions per site",
+          "type": "number",
+          "exclusiveMinimum": 0.0
+        },
+        {
+          "description": "Fixed time scale: a number in substitutions per site, or a number directly followed by the time unit y, w or d",
+          "type": "string",
+          "pattern": "^\\+?([0-9]*[1-9][0-9]*\\.?[0-9]*|[0-9]*\\.[0-9]*[1-9][0-9]*)([eE][+-]?[0-9]+)?[ywd]?$"
+        },
+        {
+          "type": "string",
+          "enum": [
+            "opt",
+            "skyline"
+          ]
+        }
+      ],
+      "x-unset": true,
+      "x-cli-flag": "--coalescent"
+    },
+    "n_skyline": {
+      "description": "Number of grid points of the skyline coalescent model\n\nApplies only to `--coalescent skyline`. Sets how many piecewise linear segments model Tc(t) over time. Must be at\nleast 2.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 2,
+      "default": 20,
+      "x-unset": true,
+      "x-cli-flag": "--n-skyline"
+    },
+    "skyline_stiffness": {
+      "description": "Smoothing stiffness of the skyline coalescent model\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Applies only to `--coalescent skyline`.",
+      "type": "number",
+      "format": "double",
+      "default": 2.0,
+      "x-unset": true,
+      "x-cli-flag": "--skyline-stiffness"
+    },
+    "coalescent_confidence": {
+      "description": "Width of the bands of the coalescent time scale Tc, in standard deviations\n\nApplies only to the inferred coalescent priors (`--coalescent opt` and `--coalescent skyline`).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
+      "type": "number",
+      "format": "double",
+      "default": 2.0,
+      "x-unset": true,
+      "x-cli-flag": "--coalescent-confidence"
+    },
+    "gen_per_year": {
+      "description": "Generations per year, to convert the coalescent time scale Tc into an effective population size\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with\n`--coalescent`.",
+      "type": "number",
+      "format": "double",
+      "default": 50.0,
+      "x-unset": true,
+      "x-cli-flag": "--gen-per-year"
+    },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
       "default": "infer",
@@ -286,12 +306,6 @@
       "x-unset": true,
       "x-cli-flag": "--partition-rates"
     },
-    "alphabet": {
-      "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
-      "$ref": "#/$defs/AlphabetName",
-      "x-unset": true,
-      "x-cli-flag": "--alphabet"
-    },
     "representation": {
       "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
       "default": "auto",
@@ -300,16 +314,10 @@
       "x-cli-flag": "--representation"
     },
     "gap_fill": {
-      "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
+      "description": "How to handle the gap characters of the input sequences\n\n`only-terminal` (default, as in TreeTime 0.x): replace the leading and trailing gaps of each sequence with the\nunknown character of the alphabet (`N` or `X`). `all`: replace every gap with the unknown character. `none`: keep\nevery gap.",
       "$ref": "#/$defs/GapFill",
       "default": "only-terminal",
       "x-cli-flag": "--gap-fill"
-    },
-    "zero_based": {
-      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy\nreport. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input\ntable with positions, such as `--drms`, is always counted from 1.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--zero-based"
     },
     "include_leaves": {
       "description": "Emit reconstructed leaf (tip) sequences in addition to internal nodes.",
@@ -335,83 +343,8 @@
       "default": false,
       "x-cli-flag": "--impute-missing-data"
     },
-    "no_indels": {
-      "description": "Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length\ndistributions.\n\nWhen set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the\ntime inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML,\nBEAST) and TreeTime 0.x. By default, indels count.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--no-indels"
-    },
-    "divergence_units": {
-      "description": "Units of the divergence values in the augur node data and Auspice outputs.\n\n`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed\nsubstitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state\ndo not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths\n(`--branch-length-mode=input`).",
-      "$ref": "#/$defs/DivergenceUnits",
-      "default": "mutations-per-site",
-      "x-cli-flag": "--divergence-units"
-    },
-    "output_node_data": {
-      "description": "Path to output augur-compatible node data JSON.\n\nContains per-node dates, branch lengths, clock model parameters, confidence\nintervals, and divergence metrics. The output is compatible with augur\nexport v2 --node-data for Nextstrain pipeline integration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-node-data"
-    },
-    "output_model": {
-      "description": "Path to output the fitted substitution models as JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-model"
-    },
-    "output_sequences": {
-      "description": "Path to output the nucleotide sequences of the nodes as FASTA.\n\nHolds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or\n`--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states. Takes precedence over paths\nconfigured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain\n`{alignment}`, which is replaced by the number of the alignment (1, 2, ...).",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-sequences"
-    },
-    "output_clock_model": {
-      "description": "Path to output clock model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-clock-model"
-    },
-    "output_rtt": {
-      "description": "Path to output the root-to-tip regression table.\n\nOne row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock\nmodel predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths\nconfigured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-rtt"
-    },
-    "output_dates": {
-      "description": "Path to output node dates TSV: calendar date and numeric date of every node, with the bounds of the 90% max posterior region with `--confidence`.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-dates"
-    },
-    "output_tracelog": {
-      "description": "Path to output the convergence values of every iteration as a table.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-tracelog"
-    },
-    "output_coalescent": {
-      "description": "Path to output the coalescent time scale as a table (one row per skyline segment).\n\nWritten when a coalescent prior is set with `--coalescent`. A fixed time scale writes one\nband-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-coalescent"
-    },
-    "output_coalescent_json": {
-      "description": "Path to output the coalescent time scale as a rich JSON document (inputs + segments).\n\nWritten when a coalescent model is set. Takes precedence over paths configured with\n`--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-coalescent-json"
-    },
     "output_all": {
-      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and\n`.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to\nstandard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{alignment}`, which is replaced by the number. Other tree outputs with\n`{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
+      "description": "Folder that receives the default outputs of the command\n\nWrites the default outputs of the command as `<dir>/<command>.<ext>`. `--output-selection` restricts the outputs\nthat the folder receives. The per-file flags (`--output-*`) override or supplement the files of the folder.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run\nthat fits none. A per-file flag for such an output fails.\n\nEvery output path follows these rules. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed\nfile. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs`\nthreads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats. The\npath `-` of a per-file flag writes the output uncompressed to standard output. Missing parent folders are\ncreated.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also\nbefore a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file:\nreconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with\n`--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list.\nTheir default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a\nper-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs\nwith `{alignment}` in their file name are also written once per file.\n\nThe outputs written once per CDS, such as the reconstructed amino-acid sequences, take the placeholder `{cds}`\nor `%GENE` in the file name of their per-file flag, which is replaced by the name of the CDS. The placeholder is\nrequired when more than one CDS is reconstructed; folder names are used as given.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -424,49 +357,49 @@
       "x-cli-flag": "--newick-annotations"
     },
     "output_tree_nwk": {
-      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n`--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is\nwritten per alignment, and the file name must contain `{alignment}`, which is replaced by the\nnumber of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Newick tree file.\n\n`--newick-annotations` sets the node comments.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
-      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. The\nnodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must\ncontain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Nexus tree file.\n\nThe nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
-      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Auspice v2 JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
-      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT protobuf tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
-      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-json"
     },
     "output_tree_graph_json": {
-      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output internal graph JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-graph-json"
     },
     "output_tree_dot": {
-      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Graphviz DOT tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -480,6 +413,81 @@
       },
       "default": [],
       "x-cli-flag": "--output-selection"
+    },
+    "no_indels": {
+      "description": "Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length\ndistributions.\n\nWhen set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the\ntime inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML,\nBEAST) and TreeTime 0.x. By default, indels count.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--no-indels"
+    },
+    "divergence_units": {
+      "description": "Units of the divergence values in the augur node data and Auspice outputs.\n\n`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed\nsubstitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state\ndo not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths\n(`--branch-length-mode=input`).",
+      "$ref": "#/$defs/DivergenceUnits",
+      "default": "mutations-per-site",
+      "x-cli-flag": "--divergence-units"
+    },
+    "output_node_data": {
+      "description": "Path to output augur-compatible node data JSON.\n\nContains per-node dates, branch lengths, clock model parameters, confidence intervals, and divergence metrics. The\noutput is compatible with augur export v2 --node-data for Nextstrain pipeline integration.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-node-data"
+    },
+    "output_model": {
+      "description": "Path to output the fitted substitution models as JSON.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-model"
+    },
+    "output_sequences": {
+      "description": "Path to output the nucleotide sequences of the nodes as FASTA.\n\nHolds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or\n`--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-sequences"
+    },
+    "output_clock_model": {
+      "description": "Path to output clock model JSON.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-clock-model"
+    },
+    "output_rtt": {
+      "description": "Path to output the root-to-tip regression table.\n\nOne row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock\nmodel predicts from that distance, and whether the clock filter excluded the sample.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-rtt"
+    },
+    "output_dates": {
+      "description": "Path to output node dates TSV: calendar date and numeric date of every node, with the bounds of the 90% max\nposterior region with `--confidence`.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-dates"
+    },
+    "output_tracelog": {
+      "description": "Path to output the convergence values of every iteration as a table",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-tracelog"
+    },
+    "output_coalescent": {
+      "description": "Path to output the coalescent time scale as a table (one row per skyline segment).\n\nWritten when a coalescent prior is set with `--coalescent`. A fixed time scale writes one band-less segment over\nthe tree span.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-coalescent"
+    },
+    "output_coalescent_json": {
+      "description": "Path to output the coalescent time scale as a rich JSON document (inputs + segments).\n\nWritten when a coalescent model is set.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-coalescent-json"
     },
     "ambiguity_threshold": {
       "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nThe reconstructed FASTA writes a position with more than one reported state as the IUPAC code of these states, or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes.",
@@ -532,14 +540,6 @@
       "x-unset": true,
       "x-cli-flag": "--seed"
     },
-    "gen_per_year": {
-      "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with\n`--coalescent`.",
-      "type": "number",
-      "format": "double",
-      "default": 50.0,
-      "x-unset": true,
-      "x-cli-flag": "--gen-per-year"
-    },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
       "type": "string"
@@ -547,6 +547,22 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "AlphabetName": {
+      "type": "string",
+      "enum": [
+        "nuc",
+        "aa",
+        "aa-no-stop"
+      ]
+    },
+    "RerootMethod": {
+      "type": "string",
+      "enum": [
+        "least-squares",
+        "min-dev",
+        "oldest"
+      ]
+    },
     "BranchLengthMode": {
       "oneOf": [
         {
@@ -564,14 +580,6 @@
           "type": "string",
           "const": "marginal"
         }
-      ]
-    },
-    "RerootMethod": {
-      "type": "string",
-      "enum": [
-        "least-squares",
-        "min-dev",
-        "oldest"
       ]
     },
     "GtrModelName": {
@@ -609,14 +617,6 @@
         }
       ]
     },
-    "AlphabetName": {
-      "type": "string",
-      "enum": [
-        "nuc",
-        "aa",
-        "aa-no-stop"
-      ]
-    },
     "Representation": {
       "oneOf": [
         {
@@ -642,13 +642,6 @@
         "only-terminal",
         "all",
         "none"
-      ]
-    },
-    "DivergenceUnits": {
-      "type": "string",
-      "enum": [
-        "mutations-per-site",
-        "mutations"
       ]
     },
     "NewickAnnotationsArg": {
@@ -679,6 +672,13 @@
         "tracelog",
         "coalescent",
         "coalescent-json"
+      ]
+    },
+    "DivergenceUnits": {
+      "type": "string",
+      "enum": [
+        "mutations-per-site",
+        "mutations"
       ]
     },
     "TimetreeAmbiguityOutput": {

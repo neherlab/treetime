@@ -93,7 +93,7 @@ pub struct ModelArgs {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long,
+      long, hide_short_help = true,
       num_args = 1..,
       help_heading = "Substitution model"
     )
@@ -181,7 +181,10 @@ pub struct PartitionRatesArgs {
   /// partitions. `equal` fixes the rate of every partition at 1.
   ///
   /// The setting applies only with two or more partitions.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Substitution model"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, value_enum, help_heading = "Substitution model")
+  )]
   #[schemars(transform = documented_default(&PARTITION_RATES_DEFAULT))]
   pub partition_rates: Option<PartitionRatesCli>,
 }

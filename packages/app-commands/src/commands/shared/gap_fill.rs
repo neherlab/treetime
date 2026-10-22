@@ -12,14 +12,14 @@ use treetime_schema::schema_defaults;
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GapFillArgs {
-  /// How to handle gap characters in input sequences
+  /// How to handle the gap characters of the input sequences
   ///
-  /// 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
-  /// 'all': replace all gap characters with the ambiguous character.
-  /// 'none': leave all gap characters unchanged.
+  /// `only-terminal` (default, as in TreeTime 0.x): replace the leading and trailing gaps of each sequence with the
+  /// unknown character of the alphabet (`N` or `X`). `all`: replace every gap with the unknown character. `none`: keep
+  /// every gap.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_enum, default_value_t = GapFillCli::default(), help_heading = "Ancestral reconstruction")
+    clap(long, hide_short_help = true, value_enum, default_value_t = GapFillCli::default(), help_heading = "Ancestral reconstruction")
   )]
   pub(crate) gap_fill: GapFillCli,
 }

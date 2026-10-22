@@ -334,7 +334,7 @@ pub(crate) mod tests {
     };
     assert_eq!(
       (
-        "the following required arguments were not provided:\n  --metadata <METADATA>\n  --attribute <ATTRIBUTE>",
+        "the following required arguments were not provided:\n  --metadata <FILE>\n  --attribute <COLUMN>",
         0,
         None
       ),

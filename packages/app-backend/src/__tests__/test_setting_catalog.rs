@@ -42,11 +42,11 @@ mod tests {
       vec_of_owned![
         "Input data",
         "Molecular clock",
+        "Rooting",
         "Branch lengths",
         "Dating",
         "Polytomies",
         "Coalescent prior",
-        "Rooting",
         "Substitution model",
         "Ancestral reconstruction",
         "Output",
@@ -105,8 +105,8 @@ mod tests {
         examples: vec![JsonValue(json!(0.001))],
         value_names: vec_of_owned!["CLOCK_RATE"],
         conflicts: vec![],
-        help: o!("If specified, the rate of the molecular clock won't be optimized."),
-        more: o!(""),
+        help: o!("Fixed rate of the molecular clock, in substitutions per site per year"),
+        more: o!("Without this setting, the run estimates the rate."),
       },
       spec(AppCommand::Timetree, "clock_rate")
     );

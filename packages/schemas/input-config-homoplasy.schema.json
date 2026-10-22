@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HomoplasyConfig",
-  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
+  "description": "Reconstruct ancestral sequences and count homoplasies, mutations that occur more than once in a tree",
   "type": "object",
   "properties": {
     "alignment": {
@@ -41,11 +41,23 @@
       "default": "classic,beast",
       "x-cli-flag": "--newick-dialect"
     },
+    "allow_missing_sequences": {
+      "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--allow-missing-sequences"
+    },
     "alphabet": {
-      "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
+      "description": "Alphabet of the sequences\n\n`nuc` (default): nucleotides A, C, G and T, with the IUPAC ambiguity codes and `N` for an unknown base. `aa`: the\n20 amino acids and the stop codon `*` as a 21st state, with `X` for an unknown residue. `aa-no-stop`: the 20\namino acids without a state for the stop codon.",
       "$ref": "#/$defs/AlphabetName",
       "x-unset": true,
       "x-cli-flag": "--alphabet"
+    },
+    "zero_based": {
+      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy\nreport. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input\ntable with positions, such as `--drms`, is always counted from 1.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--zero-based"
     },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
@@ -76,43 +88,23 @@
       "x-unset": true,
       "x-cli-flag": "--representation"
     },
-    "gap_fill": {
-      "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
-      "$ref": "#/$defs/GapFill",
-      "default": "only-terminal",
-      "x-cli-flag": "--gap-fill"
-    },
-    "zero_based": {
-      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy\nreport. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input\ntable with positions, such as `--drms`, is always counted from 1.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--zero-based"
-    },
-    "impute_missing_data": {
-      "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.\n\nGaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous\ncharacters on terminal branches then disappear from the branch mutations. Only defined for marginal\nreconstruction; a no-op with a warning under `--method-anc=parsimony`.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--impute-missing-data"
-    },
-    "allow_missing_sequences": {
-      "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--allow-missing-sequences"
-    },
     "sample_from_profile": {
       "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
       "$ref": "#/$defs/SampleMode",
       "default": "argmax",
       "x-cli-flag": "--sample-from-profile"
     },
-    "seed": {
-      "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0,
-      "x-unset": true,
-      "x-cli-flag": "--seed"
+    "gap_fill": {
+      "description": "How to handle the gap characters of the input sequences\n\n`only-terminal` (default, as in TreeTime 0.x): replace the leading and trailing gaps of each sequence with the\nunknown character of the alphabet (`N` or `X`). `all`: replace every gap with the unknown character. `none`: keep\nevery gap.",
+      "$ref": "#/$defs/GapFill",
+      "default": "only-terminal",
+      "x-cli-flag": "--gap-fill"
+    },
+    "impute_missing_data": {
+      "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.\n\nGaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous\ncharacters on terminal branches then disappear from the branch mutations. Only defined for marginal\nreconstruction; a no-op with a warning under `--method-anc=parsimony`.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--impute-missing-data"
     },
     "constant_sites": {
       "description": "Number of constant sites that the alignment leaves out.\n\nAdded to the alignment length to give the number of sites of the genome, which sets the\nnumber of sites without mutations and the rate of the Poisson comparison.",
@@ -151,7 +143,7 @@
       "x-cli-flag": "--num-mut"
     },
     "output_all": {
-      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and\n`.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to\nstandard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{alignment}`, which is replaced by the number. Other tree outputs with\n`{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
+      "description": "Folder that receives the default outputs of the command\n\nWrites the default outputs of the command as `<dir>/<command>.<ext>`. `--output-selection` restricts the outputs\nthat the folder receives. The per-file flags (`--output-*`) override or supplement the files of the folder.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run\nthat fits none. A per-file flag for such an output fails.\n\nEvery output path follows these rules. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed\nfile. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs`\nthreads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats. The\npath `-` of a per-file flag writes the output uncompressed to standard output. Missing parent folders are\ncreated.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also\nbefore a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file:\nreconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with\n`--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list.\nTheir default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a\nper-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs\nwith `{alignment}` in their file name are also written once per file.\n\nThe outputs written once per CDS, such as the reconstructed amino-acid sequences, take the placeholder `{cds}`\nor `%GENE` in the file name of their per-file flag, which is replaced by the name of the CDS. The placeholder is\nrequired when more than one CDS is reconstructed; folder names are used as given.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -164,67 +156,53 @@
       "x-cli-flag": "--newick-annotations"
     },
     "output_tree_nwk": {
-      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n`--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is\nwritten per alignment, and the file name must contain `{alignment}`, which is replaced by the\nnumber of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Newick tree file.\n\n`--newick-annotations` sets the node comments.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
-      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. The\nnodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must\ncontain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Nexus tree file.\n\nThe nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
-      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Auspice v2 JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
-      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT protobuf tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
-      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-json"
     },
     "output_tree_graph_json": {
-      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output internal graph JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-graph-json"
     },
     "output_tree_dot": {
-      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Graphviz DOT tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-dot"
-    },
-    "output_homoplasy_stats": {
-      "description": "Path to output homoplasy statistics JSON.\n\nContains the counts, histograms, Poisson comparison, and complete ranked lists of the report,\nfor substitutions, changes involving ambiguous characters, and insertions and deletions.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-homoplasy-stats"
-    },
-    "output_homoplasy_report": {
-      "description": "Path to output homoplasy report text.\n\nThe run also logs the report at info level (`-v`).\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--output-homoplasy-report"
     },
     "output_selection": {
       "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails. An output that the settings rule\nout fails in both forms, for example the sequences of `timetree --branch-length-mode input`.",
@@ -234,6 +212,20 @@
       },
       "default": [],
       "x-cli-flag": "--output-selection"
+    },
+    "output_homoplasy_stats": {
+      "description": "Path to output homoplasy statistics JSON.\n\nContains the counts, histograms, Poisson comparison, and complete ranked lists of the report, for substitutions,\nchanges involving ambiguous characters, and insertions and deletions.",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-homoplasy-stats"
+    },
+    "output_homoplasy_report": {
+      "description": "Path to output homoplasy report text.\n\nThe run also logs the report at info level (`-v`).",
+      "type": "string",
+      "x-path": "output",
+      "x-unset": true,
+      "x-cli-flag": "--output-homoplasy-report"
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
@@ -260,6 +252,14 @@
       "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
       "default": "mean",
       "x-cli-flag": "--topology-order-aggregate"
+    },
+    "seed": {
+      "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0,
+      "x-unset": true,
+      "x-cli-flag": "--seed"
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
@@ -323,20 +323,20 @@
         }
       ]
     },
-    "GapFill": {
-      "type": "string",
-      "enum": [
-        "only-terminal",
-        "all",
-        "none"
-      ]
-    },
     "SampleMode": {
       "type": "string",
       "enum": [
         "argmax",
         "root",
         "all"
+      ]
+    },
+    "GapFill": {
+      "type": "string",
+      "enum": [
+        "only-terminal",
+        "all",
+        "none"
       ]
     },
     "NewickAnnotationsArg": {

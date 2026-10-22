@@ -61,14 +61,14 @@ macro_rules! ambiguity_args {
       /// The report is off when the value is not set.
       ///
       #[doc = $details]
-      #[cfg_attr(feature = "clap", clap(long, help_heading = "Output"))]
+      #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, help_heading = "Output"))]
       pub ambiguity_threshold: Option<AmbiguityThreshold>,
 
       /// List of the outputs that carry the ambiguity report.
       ///
       /// Without this list, every output of the run that can carry the report carries it. Requires
       /// `--ambiguity-threshold`.
-      #[cfg_attr(feature = "clap", clap(long, num_args = 1.., value_delimiter = ',', help_heading = "Output"))]
+      #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, num_args = 1.., value_delimiter = ',', help_heading = "Output"))]
       pub ambiguity_outputs: Vec<$output>,
     }
   };

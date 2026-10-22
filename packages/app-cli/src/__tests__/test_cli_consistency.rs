@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_cli_support::tests::helpers::{Pending, is_clap_flag, leaf_commands, treetime_command};
+  use crate::__tests__::test_cli_support::tests::helpers::{is_clap_flag, leaf_commands, treetime_command};
   use helpers::{Property, differences};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -70,10 +70,6 @@ mod tests {
     ),
   ];
 
-  #[rustfmt::skip]
-  const KNOWN_EXCEPTIONS: &[(&str, &[Property], Pending)] = &[
-  ];
-
   #[test]
   fn test_cli_consistency_shared_flags_agree_across_commands() {
     let root = treetime_command();
@@ -81,27 +77,13 @@ mod tests {
     let expected: BTreeSet<String> = ALLOWED_DIFFERENCES
       .iter()
       .map(|(flag, properties, _)| (*flag, *properties))
-      .chain(
-        KNOWN_EXCEPTIONS
-          .iter()
-          .map(|(flag, properties, _)| (*flag, *properties)),
-      )
       .flat_map(|(flag, properties)| properties.iter().map(move |property| format!("{flag} {property:?}")))
       .collect();
 
     let actual = differences(&commands, is_clap_flag);
 
     let actual_keys: BTreeSet<String> = actual.keys().cloned().collect();
-    let known = KNOWN_EXCEPTIONS
-      .iter()
-      .map(|(flag, properties, pending)| format!("{flag} {properties:?} until {pending:?}"))
-      .join("\n");
-    assert_eq!(
-      expected,
-      actual_keys,
-      "{}\nknown exceptions:\n{known}",
-      actual.values().join("\n")
-    );
+    assert_eq!(expected, actual_keys, "{}", actual.values().join("\n"));
   }
 
   mod helpers {

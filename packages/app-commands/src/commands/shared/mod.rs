@@ -29,6 +29,7 @@ pub mod sequence_inputs;
 pub mod tip_sequences;
 pub mod topology_order_args;
 pub mod tree_input;
+pub mod value_names;
 pub mod zero_based;
 
 #[cfg(test)]

@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
   use crate::commands::clock::run::run_clock;
+  use crate::commands::shared::metadata::MetadataArgs;
   use crate::commands::shared::output_args::ClockOutputSelectionArgs;
   use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs};
   use crate::commands::shared::tree_input::TreeArgs;
@@ -22,7 +23,9 @@ mod tests {
       tree: TreeArgs {
         tree: Some(data.join("tree.nwk")),
       },
-      metadata: Some(data.join("metadata.tsv")),
+      metadata: MetadataArgs {
+        metadata: Some(data.join("metadata.tsv")),
+      },
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()

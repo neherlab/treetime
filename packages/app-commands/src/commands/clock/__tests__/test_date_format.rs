@@ -3,6 +3,7 @@ mod tests {
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
   use crate::commands::clock::run::run_clock;
   use crate::commands::shared::metadata::DateColumnArgs;
+  use crate::commands::shared::metadata::MetadataArgs;
   use crate::commands::shared::output_args::{ClockOutputSelection, ClockOutputSelectionArgs, OutputCoreArgs};
   use crate::commands::shared::reroot::RootingArgs;
   use crate::commands::shared::tree_input::TreeArgs;
@@ -42,7 +43,7 @@ mod tests {
     });
     let raw = TreetimeClockArgsRaw {
       tree: TreeArgs { tree: Some(tree) },
-      metadata: Some(metadata),
+      metadata: MetadataArgs { metadata: Some(metadata) },
       date_column,
       rooting: RootingArgs {
         keep_root: true,

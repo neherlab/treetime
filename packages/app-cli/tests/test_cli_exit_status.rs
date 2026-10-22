@@ -15,7 +15,7 @@ mod tests {
       Run {
         code: Some(2),
         stdout: String::new(),
-        stderr: "error: the following required arguments were not provided:\n  --tree <TREE>\n".to_owned(),
+        stderr: "error: the following required arguments were not provided:\n  --tree <FILE>\n".to_owned(),
       },
       run
     );
@@ -54,7 +54,7 @@ mod tests {
       Run {
         code: Some(2),
         stdout: String::new(),
-        stderr: "error: the following required arguments were not provided:\n  --metadata <METADATA>\n".to_owned(),
+        stderr: "error: the following required arguments were not provided:\n  --metadata <FILE>\n".to_owned(),
       },
       run
     );

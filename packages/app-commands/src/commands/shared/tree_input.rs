@@ -74,7 +74,7 @@ pub struct TreeDialectArgs {
   /// and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_enum, default_value_t = TreeDialectArg::default(), help_heading = "Input data")
+    clap(long, hide_short_help = true, value_enum, default_value_t = TreeDialectArg::default(), help_heading = "Input data")
   )]
   #[deser(as = DisplayFromStr)]
   pub newick_dialect: TreeDialectArg,

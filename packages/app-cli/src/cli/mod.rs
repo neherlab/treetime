@@ -1,4 +1,5 @@
 pub(crate) mod color;
+pub(crate) mod command_help;
 pub(crate) mod config;
 pub(crate) mod diagnostics;
 pub(crate) mod dry_run;

@@ -4,12 +4,10 @@ use smart_default::SmartDefault;
 use treetime::alphabet::alphabet::AlphabetName;
 use treetime::gtr::get_gtr::GtrModelName;
 
-/// Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
-/// that are sound over an amino-acid alphabet.
+/// Amino-acid substitution model: the values of `--model` that suit an amino-acid alphabet.
 ///
-/// The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
-/// GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
-/// alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
+/// The default `infer`, as in augur, infers a GTR model over the amino acids and the stop codon, starting from JC69.
+/// Empirical matrices apply only when selected.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]

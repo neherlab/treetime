@@ -13,6 +13,6 @@ pub struct ZeroBasedArgs {
   /// Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy
   /// report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input
   /// table with positions, such as `--drms`, is always counted from 1.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, help_heading = "Input data"))]
   pub zero_based: bool,
 }

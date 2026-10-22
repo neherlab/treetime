@@ -2,6 +2,7 @@
 mod tests {
   use crate::__tests__::test_support::tests::project_root;
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::metadata::MetadataArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
   use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
@@ -39,7 +40,7 @@ alignment: AlignmentArgs {
         alignment: vec![dir.join("aln.fasta.xz")],
       },
 tree: TreeArgs { tree: Some(dir.join("tree.nwk")) },
-metadata: Some(dir.join("metadata.tsv")),
+metadata: MetadataArgs { metadata: Some(dir.join("metadata.tsv")) },
 representation: RepresentationArgs { representation: Some(helpers::representation(dense)) },
 max_iter: 1,
 output: OutputCoreArgs {
@@ -89,6 +90,7 @@ seed_args: SeedArgs { seed: Some(7) },
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::metadata::MetadataArgs;
     use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
     use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
     use crate::commands::shared::reroot::RootingArgs;
@@ -133,7 +135,9 @@ seed_args: SeedArgs { seed: Some(7) },
           alignment: vec![alignment],
         },
         tree: TreeArgs { tree: Some(tree) },
-        metadata: Some(metadata),
+        metadata: MetadataArgs {
+          metadata: Some(metadata),
+        },
         model_args: ModelArgs {
           model: Some(model),
           ..ModelArgs::default()

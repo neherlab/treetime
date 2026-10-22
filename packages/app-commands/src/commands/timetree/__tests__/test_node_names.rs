@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::metadata::MetadataArgs;
   use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::seed::SeedArgs;
@@ -34,7 +35,9 @@ mod tests {
       tree: TreeArgs {
         tree: Some(data.join("tree.nwk")),
       },
-      metadata: Some(data.join("metadata.tsv")),
+      metadata: MetadataArgs {
+        metadata: Some(data.join("metadata.tsv")),
+      },
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()

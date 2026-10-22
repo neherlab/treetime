@@ -121,6 +121,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::metadata::MetadataArgs;
     use crate::commands::shared::reroot::RootingArgs;
     use crate::commands::shared::tip_sequences::TipSequenceArgs;
     use crate::commands::shared::tree_input::TreeArgs;
@@ -143,7 +144,9 @@ mod tests {
           alignment: vec![fasta_path],
         },
         tree: TreeArgs { tree: Some(tree_path) },
-        metadata: Some(metadata_path),
+        metadata: MetadataArgs {
+          metadata: Some(metadata_path),
+        },
         rooting: RootingArgs {
           keep_root: true,
           ..RootingArgs::default()

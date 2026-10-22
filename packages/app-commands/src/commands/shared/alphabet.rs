@@ -5,12 +5,7 @@ use smart_default::SmartDefault;
 use treetime::alphabet::alphabet::AlphabetName;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-/// Alphabet selection shared by every command that reads sequences.
-///
-/// When the alphabet is not given, callers auto-detect it from sequence content and fall back to the
-/// nucleotide alphabet when detection is ambiguous (see `detect_alphabet`).
-///
-/// The flag has no short form: `-a` is reserved for `--alignment`.
+/// Alphabet of the sequences, shared by every command that reads sequences.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -19,11 +14,15 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct AlphabetArgs {
-  /// Sequence alphabet
+  /// Alphabet of the sequences
   ///
-  /// When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
-  /// detection is ambiguous.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Input data"))]
+  /// `nuc` (default): nucleotides A, C, G and T, with the IUPAC ambiguity codes and `N` for an unknown base. `aa`: the
+  /// 20 amino acids and the stop codon `*` as a 21st state, with `X` for an unknown residue. `aa-no-stop`: the 20
+  /// amino acids without a state for the stop codon.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_enum, hide_short_help = true, help_heading = "Input data")
+  )]
   pub(crate) alphabet: Option<AlphabetNameCli>,
 }
 

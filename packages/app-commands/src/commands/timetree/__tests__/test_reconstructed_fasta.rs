@@ -168,6 +168,7 @@ mod tests {
   mod helpers {
     use crate::__tests__::test_support::tests::project_root;
     use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::metadata::MetadataArgs;
     use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
     use crate::commands::shared::seed::SeedArgs;
     use crate::commands::shared::tree_input::TreeArgs;
@@ -213,7 +214,9 @@ mod tests {
         tree: TreeArgs {
           tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
         },
-        metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+        metadata: MetadataArgs {
+          metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+        },
         max_iter: 2,
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {
           output_sequences: Some(fasta.clone()),

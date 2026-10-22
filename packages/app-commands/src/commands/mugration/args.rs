@@ -2,13 +2,15 @@ use crate::commands::shared::ambiguity::{MugrationAmbiguityArgs, resolve_ambigui
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::metadata::{MetadataIdArgs, MetadataInput};
+use crate::commands::shared::metadata::{MetadataArgs, MetadataIdArgs, MetadataInput};
 use crate::commands::shared::output_args::{
   MugrationOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
 };
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+#[cfg(feature = "clap")]
+use crate::commands::shared::value_names::value_name_from_hint;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::OutputSettings;
@@ -24,6 +26,9 @@ use std::path::PathBuf;
 use treetime::gtr::infer_gtr::common::DEFAULT_PSEUDO_COUNT;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub const MUGRATION_ABOUT: &str =
+  "Reconstruct the ancestral states of a discrete trait, such as location or host, and fit a model of its changes";
 
 #[derive(Debug, Clone)]
 pub struct TreetimeMugrationArgs {
@@ -58,7 +63,7 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       attribute,
-      metadata,
+      metadata: MetadataArgs { metadata },
       weights,
       metadata_id: MetadataIdArgs {
         metadata_id_columns,
@@ -207,7 +212,8 @@ pub(crate) fn mugration_output_settings(confidence: bool) -> OutputSettings {
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[schemars(rename = "MugrationConfig")]
+#[cfg_attr(feature = "clap", command(mut_args(value_name_from_hint)))]
+#[schemars(rename = "MugrationConfig", description = MUGRATION_ABOUT)]
 pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -224,43 +230,34 @@ pub struct TreetimeMugrationArgsRaw {
   #[deser(flatten)]
   pub newick_dialect: TreeDialectArgs,
 
-  /// Attribute to reconstruct, e.g. country
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub attribute: Option<String>,
-
-  /// Metadata table (CSV or TSV) with one row per sample
-  ///
-  /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
-  /// sample, such as its sampling date or its traits.
-  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub metadata: Option<PathBuf>,
-
-  /// CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub weights: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub metadata: MetadataArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
-  /// Write the probability of every state at every node
-  ///
-  /// Adds the `trait-probabilities` table to the outputs of `--output-all`, also when `--output-selection` lists
-  /// other outputs. Without `--output-all`, give the file with `--output-trait-probabilities`.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Output"))]
-  pub confidence: bool,
+  /// Metadata column with the discrete trait to reconstruct, for example `country`
+  #[cfg_attr(feature = "clap", clap(long, value_name = "COLUMN", help_heading = "Input data"))]
+  pub attribute: Option<String>,
 
-  /// Path to output the state probabilities of every node as a table.
+  /// Table (CSV or TSV) with the equilibrium probability of each state
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_trait_probabilities: Option<PathBuf>,
+  /// The weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for
+  /// example the population of each country. The first column holds the state and the second its weight, such as
+  /// the row `micronesia,0.1` under the header `country,weight`.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
+  pub weights: Option<PathBuf>,
+
+  /// Value of the trait column that marks missing data
+  #[cfg_attr(feature = "clap", clap(long, default_value = "?", help_heading = "Input data"))]
+  #[default(_code = r#""?".to_owned()"#)]
+  pub missing_data: String,
 
   /// Pseudo-count of the substitution model fit. Higher values give flatter models.
   #[cfg_attr(
@@ -270,72 +267,62 @@ pub struct TreetimeMugrationArgsRaw {
   #[default(DEFAULT_PSEUDO_COUNT)]
   pub pc: f64,
 
-  /// String indicating missing data
-  #[cfg_attr(feature = "clap", clap(long, default_value = "?", help_heading = "Input data"))]
-  #[default(_code = r#""?".to_owned()"#)]
-  pub missing_data: String,
-
-  /// Portion of attribute values that is allowed to not have weights in the weights file
+  /// Largest fraction of the trait values that may have no weight in the `--weights` file
   #[cfg_attr(
     feature = "clap",
-    clap(long, default_value_t = 0.5, help_heading = "Substitution model")
+    clap(
+      long,
+      hide_short_help = true,
+      default_value_t = 0.5,
+      help_heading = "Substitution model"
+    )
   )]
   #[default = 0.5]
   pub missing_weights_threshold: f64,
 
-  /// Number of iterations for GTR model refinement from data.
+  /// Number of iterations of the refinement of the substitution model from the data
   #[cfg_attr(
     feature = "clap",
-    clap(long, default_value_t = 5, help_heading = "Substitution model")
+    clap(
+      long,
+      value_name = "N",
+      hide_short_help = true,
+      default_value_t = 5,
+      help_heading = "Substitution model"
+    )
   )]
   #[default = 5]
   pub model_iterations: usize,
 
-  /// Rough estimate of how many more events would have been observed if sequences represented an
-  /// even sample.
+  /// Correction for biased sampling: a rough estimate of how many more state changes the tree would show if the
+  /// samples were an even sample of the population
+  ///
+  /// The run multiplies the fitted rate of the substitution model by this factor, for example 2.5 for an estimate of
+  /// 2.5 times more changes. Without this setting, the run applies no correction.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Substitution model"))]
   pub sampling_bias_correction: Option<f64>,
 
-  /// Smooth the initial equilibrium frequencies with the pseudo-count before the first
-  /// reconstruction pass.
+  /// Smooth the initial equilibrium frequencies with the pseudo-count before the first reconstruction pass
   ///
-  /// Off by default (TreeTime v0 builds the initial model from raw frequencies and applies the
-  /// pseudo-count only as infer_gtr regularization). Enabling this flattens the prior for the first
-  /// pass; it only affects weighted models.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Substitution model"))]
+  /// By default, the initial model takes the frequencies of `--weights` as they are, and the pseudo-count applies only
+  /// to the fits of the model. This setting flattens the prior of the first pass. It affects only models with
+  /// `--weights`.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Substitution model")
+  )]
   pub smooth_initial_pi: bool,
 
-  /// Exclude near-uniform root positions from the equilibrium-frequency prior.
+  /// Exclude a near-uniform root posterior from the prior of the equilibrium frequencies
   ///
-  /// Off by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling
-  /// this drops root positions whose posterior carries no phylogenetic signal, removing a
-  /// state-order-dependent bias at ambiguous roots.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Substitution model"))]
+  /// By default, the most likely state of the root always enters the prior. This setting leaves out a root whose
+  /// posterior carries no phylogenetic signal, which removes a bias at ambiguous roots that depends on the order of
+  /// the states.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Substitution model")
+  )]
   pub filter_uninformative_root: bool,
-
-  /// Path to output augur-compatible node data JSON.
-  ///
-  /// Contains per-node discrete trait assignments, confidence profiles, entropy,
-  /// the inferred substitution model, and branch state-change labels. The output
-  /// is compatible with augur export v2 --node-data for Nextstrain pipeline
-  /// integration.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_node_data: Option<PathBuf>,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub gtr_output: GtrOutputArgs,
-
-  /// Path to output the inferred trait state of every node as a table.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_traits: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -346,6 +333,37 @@ pub struct TreetimeMugrationArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub output_selection: MugrationOutputSelectionArgs,
+
+  /// Write the probability of every state at every node
+  ///
+  /// Adds the `trait-probabilities` table to the outputs of `--output-all`, also when `--output-selection` lists
+  /// other outputs. Without `--output-all`, give the file with `--output-trait-probabilities`.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Output"))]
+  pub confidence: bool,
+
+  /// Path to output augur-compatible node data JSON.
+  ///
+  /// Contains per-node discrete trait assignments, confidence profiles, entropy, the inferred substitution model, and
+  /// branch state-change labels. The output is compatible with augur export v2 --node-data for Nextstrain pipeline
+  /// integration.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_node_data: Option<PathBuf>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub gtr_output: GtrOutputArgs,
+
+  /// Path to output the inferred trait state of every node as a table.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_traits: Option<PathBuf>,
+
+  /// Path to output the state probabilities of every node as a table.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_trait_probabilities: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

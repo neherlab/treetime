@@ -23,7 +23,10 @@ pub struct RepresentationArgs {
   /// The dense representation stores the probabilities of every state at every alignment position of each node; the
   /// sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
   /// sites change, but uses more memory.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Ancestral reconstruction"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, value_enum, help_heading = "Ancestral reconstruction")
+  )]
   #[schemars(transform = documented_default(&REPRESENTATION_DEFAULT))]
   pub representation: Option<RepresentationCli>,
 }

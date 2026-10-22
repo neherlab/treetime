@@ -2,6 +2,7 @@
 mod tests {
   use crate::__tests__::test_support::tests::project_root;
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::metadata::MetadataArgs;
   use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::seed::SeedArgs;
@@ -34,7 +35,9 @@ mod tests {
       tree: TreeArgs {
         tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
       },
-      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      metadata: MetadataArgs {
+        metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      },
       max_iter: 3,
       output: OutputCoreArgs {
         output_all: Some(outdir.clone()),
@@ -108,7 +111,9 @@ mod tests {
       tree: TreeArgs {
         tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
       },
-      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      metadata: MetadataArgs {
+        metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      },
       max_iter: 0,
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
@@ -148,7 +153,9 @@ mod tests {
       tree: TreeArgs {
         tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
       },
-      metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      metadata: MetadataArgs {
+        metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+      },
       max_iter: 3,
       coalescent: Some(CoalescentArg::Skyline),
       output: OutputCoreArgs {
@@ -229,7 +236,9 @@ mod tests {
         tree: TreeArgs {
           tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
         },
-        metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+        metadata: MetadataArgs {
+          metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+        },
         max_iter: 2,
         clock_rate,
         coalescent: Some(parse_coalescent(coalescent)?),

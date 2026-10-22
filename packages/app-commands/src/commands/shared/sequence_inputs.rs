@@ -69,7 +69,7 @@ pub struct MissingSequenceArgs {
   ///
   /// Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
   /// not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, help_heading = "Input data"))]
   pub allow_missing_sequences: bool,
 }
 

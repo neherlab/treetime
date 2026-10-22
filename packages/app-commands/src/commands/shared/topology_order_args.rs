@@ -28,7 +28,10 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TopologyOrderArgs {
   /// Canonical topology ordering preset.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, value_enum, help_heading = "Tree ordering")
+  )]
   pub topology_order: Option<TopologyOrderArg>,
 
   /// Tree whose leaf order sets the target order
@@ -37,7 +40,7 @@ pub struct TopologyOrderArgs {
   /// the leaf order of the input tree is the target order.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", conflicts_with = "topology_order_list", help_heading = "Tree ordering")
+    clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, value_name = "FILE", conflicts_with = "topology_order_list", help_heading = "Tree ordering")
   )]
   #[schemars(extend("x-path" = "input"))]
   pub topology_order_tree: Option<PathBuf>,
@@ -48,13 +51,13 @@ pub struct TopologyOrderArgs {
   /// the leaf order of the input tree is the target order.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Tree ordering")
+    clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Tree ordering")
   )]
   #[schemars(extend("x-path" = "input"))]
   pub topology_order_list: Option<PathBuf>,
 
   /// Aggregate used to map a subtree to a target-order position.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TopologyOrderTargetAggregateArg::default(), help_heading = "Tree ordering"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_enum, default_value_t = TopologyOrderTargetAggregateArg::default(), help_heading = "Tree ordering"))]
   #[default(TopologyOrderTargetAggregateArg::Mean)]
   pub topology_order_aggregate: TopologyOrderTargetAggregateArg,
 }

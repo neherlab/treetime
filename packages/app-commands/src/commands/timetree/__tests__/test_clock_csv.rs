@@ -136,6 +136,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::metadata::MetadataArgs;
     use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
     use crate::commands::shared::tree_input::TreeArgs;
     use treetime_utils::cast::ToF64Exact;
@@ -152,7 +153,9 @@ mod tests {
         tree: TreeArgs {
           tree: Some(zika_dir().join("tree.nwk")),
         },
-        metadata: Some(metadata.to_path_buf()),
+        metadata: MetadataArgs {
+          metadata: Some(metadata.to_path_buf()),
+        },
         output: OutputCoreArgs {
           output_all: Some(output.to_path_buf()),
           ..OutputCoreArgs::default()

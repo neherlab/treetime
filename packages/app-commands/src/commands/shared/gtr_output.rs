@@ -21,9 +21,7 @@ use treetime_utils::io::json::{JsonPretty, json_write_file};
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GtrOutputArgs {
   /// Path to output the fitted substitution models as JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_model: Option<PathBuf>,
 }

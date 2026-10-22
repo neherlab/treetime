@@ -27,6 +27,7 @@ mod tests {
     use crate::commands::mugration::args::{TreetimeMugrationArgs, TreetimeMugrationArgsRaw};
     use crate::commands::mugration::run::run_mugration;
     use crate::commands::shared::ambiguity::{MugrationAmbiguityArgs, MugrationAmbiguityOutput};
+    use crate::commands::shared::metadata::MetadataArgs;
     use crate::commands::shared::tree_input::TreeArgs;
     use eyre::{Report, WrapErr};
     use std::fs;
@@ -56,7 +57,9 @@ mod tests {
       fs::write(&metadata_path, METADATA).wrap_err("When writing the metadata fixture")?;
       let args = TreetimeMugrationArgs::try_from(TreetimeMugrationArgsRaw {
         tree: TreeArgs { tree: Some(tree_path) },
-        metadata: Some(metadata_path),
+        metadata: MetadataArgs {
+          metadata: Some(metadata_path),
+        },
         attribute: Some(o!("country")),
         output_traits: Some(traits_csv.clone()),
         output_node_data: Some(node_data.clone()),

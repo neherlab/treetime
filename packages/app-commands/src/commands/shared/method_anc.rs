@@ -60,7 +60,7 @@ pub struct SampleFromProfileArgs {
   /// 'all': sample from the posterior at every node.
   ///
   /// Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleModeCli::default(), help_heading = "Ancestral reconstruction"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_enum, default_value_t = SampleModeCli::default(), help_heading = "Ancestral reconstruction"))]
   pub sample_from_profile: SampleModeCli,
 }
 

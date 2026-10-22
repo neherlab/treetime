@@ -38,7 +38,6 @@ pub struct AlignmentArgs {
       long,
       short = 'a',
       value_hint = ValueHint::FilePath,
-      value_name = "FILEPATH",
       display_order = 1,
       help_heading = "Input data",
     )

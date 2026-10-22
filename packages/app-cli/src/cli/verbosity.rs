@@ -7,35 +7,35 @@ use treetime::progress::LogLevel;
 
 #[derive(Args, Debug, Clone)]
 pub(crate) struct Verbosity {
-  /// Set verbosity level of console output
+  /// Verbosity level of the console output
   #[clap(long, global = true, value_parser = PossibleValuesParser::new(["off", "error", "warn", "info", "debug", "trace"])
       .map(|s| s.parse::<LevelFilter>().unwrap()))]
   #[clap(conflicts_with = "quiet", conflicts_with = "verbose", conflicts_with = "silent")]
   #[clap(default_value = "warn")]
-  #[clap(display_order = 95)]
+  #[clap(display_order = 95, hide_short_help = true)]
   pub verbosity: LevelFilter,
 
-  /// Disable all console output. Same as `--verbosity=off`
+  /// Disable all console output, as `--verbosity=off` does
   #[clap(long, global = true)]
   #[clap(conflicts_with = "quiet", conflicts_with = "verbose", conflicts_with = "verbosity")]
-  #[clap(display_order = 96)]
+  #[clap(display_order = 96, hide_short_help = true)]
   pub silent: bool,
 
-  /// Make console output more verbose. Add multiple occurrences to increase verbosity further.
+  /// Make the console output more verbose; repeat the flag (`-vv`) for more
   #[clap(long, short = 'v', action = ArgAction::Count, global = true)]
   #[clap(conflicts_with = "quiet", conflicts_with = "verbosity", conflicts_with = "silent")]
   #[clap(display_order = 97)]
   pub verbose: u8,
 
-  /// Make console output more quiet. Add multiple occurrences to make output even more quiet.
+  /// Make the console output quieter; repeat the flag (`-qq`) for less
   #[clap(long, short = 'q', action = ArgAction::Count, global = true)]
   #[clap(conflicts_with = "verbose", conflicts_with = "verbosity")]
   #[clap(display_order = 98)]
   pub quiet: u8,
 
-  /// Disable progress bar display
+  /// Disable the progress bar
   #[clap(long, global = true)]
-  #[clap(display_order = 99)]
+  #[clap(display_order = 99, hide_short_help = true)]
   pub no_progress: bool,
 }
 

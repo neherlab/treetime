@@ -19,6 +19,8 @@ use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
 use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+#[cfg(feature = "clap")]
+use crate::commands::shared::value_names::value_name_from_hint;
 use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::OutputSettings;
@@ -37,6 +39,8 @@ use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::o;
+
+pub const OPTIMIZE_ABOUT: &str = "Optimize the branch lengths of a tree for the likelihood of an alignment";
 
 #[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
@@ -238,7 +242,8 @@ fn optimize_reroot(
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[schemars(rename = "OptimizeConfig")]
+#[cfg_attr(feature = "clap", command(mut_args(value_name_from_hint)))]
+#[schemars(rename = "OptimizeConfig", description = OPTIMIZE_ABOUT)]
 pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -276,6 +281,94 @@ pub struct TreetimeOptimizeArgsRaw {
   #[deser(flatten)]
   pub zero_based: ZeroBasedArgs,
 
+  /// Reroot the tree by minimizing the variance of the root-to-tip divergence
+  ///
+  /// Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`)
+  /// are available where the inputs have dates.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
+  )]
+  pub reroot: Option<OptimizeRerootMethod>,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub rooting: RootingArgs,
+
+  /// Maximum number of iterations of the inference loop
+  ///
+  /// Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_name = "N", default_value_t = 10, help_heading = "Branch lengths")
+  )]
+  #[default = 10]
+  pub max_iter: usize,
+
+  /// Convergence threshold of the log-likelihood
+  ///
+  /// The loop stops when successive log-likelihoods differ by less than this value, or when it detects a 2-cycle with
+  /// an amplitude below this value.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, default_value_t = 0.1, help_heading = "Branch lengths")
+  )]
+  #[default = 0.1]
+  pub tolerance: f64,
+
+  /// Damping of the branch length updates of the loop, from 0 (inclusive) to 1 (exclusive)
+  ///
+  /// Iteration i updates each branch length b to `b = b_new * (1 - d) + b_old * d`, with
+  /// `d = max(damping^(i+1), 0.01)`. Higher values reduce oscillation; 0 switches damping off.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, default_value_t = 0.0, help_heading = "Branch lengths")
+  )]
+  #[default = 0.0]
+  pub damping: f64,
+
+  /// Initial branch lengths before the optimization of each branch
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_enum, default_value_t = InitialGuessModeCli::Auto, help_heading = "Branch lengths"))]
+  pub initial_branch_lengths: InitialGuessModeCli,
+
+  /// Optimizer of each branch length; both methods optimize sqrt(t) in place of the branch length t
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
+  pub optimizer: BranchOptMethodCli,
+
+  /// Disable collapsing of internal branches whose optimized length is zero.
+  ///
+  /// By default the optimize loop contracts internal edges the per-edge optimizer drove to
+  /// exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
+  /// polytomies. When set, such edges are kept in the output tree with length zero.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Branch lengths")
+  )]
+  pub no_collapse_zero_branches: bool,
+
+  /// Disable merging of polytomy siblings that share substitutions.
+  ///
+  /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
+  /// under a new internal node. The step and the flag apply only to the sparse representation.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Branch lengths")
+  )]
+  pub no_merge_shared_mutations: bool,
+
+  /// Disable the reversion hoist in polytomies.
+  ///
+  /// By default, when a child branch carries the exact reversion of a substitution on the node's
+  /// parent branch, a new node is inserted that groups the node with that child, removing one
+  /// mutation per reverted position. When set, those reversions are left in place. The step and the flag apply
+  /// only to the sparse representation.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, help_heading = "Branch lengths")
+  )]
+  pub no_hoist_reversions: bool,
+
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
@@ -294,7 +387,17 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
+  pub gap_fill_args: GapFillArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
   pub output: OutputCoreArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: OptimizeOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -303,12 +406,9 @@ pub struct TreetimeOptimizeArgsRaw {
 
   /// Path to output augur-compatible node data JSON.
   ///
-  /// Contains per-node optimized branch lengths (divergence, substitutions per
-  /// site) and the input alignment and tree paths. The output is compatible with
-  /// augur export v2 --node-data.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  /// Contains per-node optimized branch lengths (divergence, substitutions per site) and the input alignment and tree
+  /// paths. The output is compatible with augur export v2 --node-data.
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_node_data: Option<PathBuf>,
 
@@ -320,91 +420,7 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub output_selection: OptimizeOutputSelectionArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
-
-  /// Maximum number of iterations of the inference loop
-  ///
-  /// Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 10, help_heading = "Branch lengths"))]
-  #[default = 10]
-  pub max_iter: usize,
-
-  /// Likelihood convergence threshold. The loop stops when successive
-  /// likelihoods differ by less than this value, or when a 2-cycle with
-  /// amplitude below this value is detected.
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.1, help_heading = "Branch lengths"))]
-  #[default = 0.1]
-  pub tolerance: f64,
-
-  /// Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
-  /// where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
-  /// zero disables damping. Must be in $[0,1)$.
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.0, help_heading = "Branch lengths"))]
-  #[default = 0.0]
-  pub damping: f64,
-
-  /// Initial branch length estimate before the per-edge optimization.
-  ///
-  /// - auto: estimate only edges with missing or invalid branch lengths,
-  ///   preserve valid input values (default)
-  /// - always: estimate all edges, overwriting input branch lengths
-  /// - never: use input branch lengths as-is; fails if any are missing
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = InitialGuessModeCli::Auto, help_heading = "Branch lengths"))]
-  pub initial_branch_lengths: InitialGuessModeCli,
-
-  /// Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
-  /// `brent` (default) and `newton`.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
-  pub optimizer: BranchOptMethodCli,
-
-  /// Reroot the tree by minimizing root-to-tip divergence variance.
-  ///
-  /// By default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting.
-  /// Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
-  )]
-  pub reroot: Option<OptimizeRerootMethod>,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub rooting: RootingArgs,
-
-  /// Disable collapsing of internal branches whose optimized length is zero.
-  ///
-  /// By default the optimize loop contracts internal edges the per-edge optimizer drove to
-  /// exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
-  /// polytomies. When set, such edges are kept in the output tree with length zero.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_collapse_zero_branches: bool,
-
-  /// Disable merging of polytomy siblings that share substitutions.
-  ///
-  /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
-  /// under a new internal node. The step and the flag apply only to the sparse representation.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_merge_shared_mutations: bool,
-
-  /// Disable the reversion hoist in polytomies.
-  ///
-  /// By default, when a child branch carries the exact reversion of a substitution on the node's
-  /// parent branch, a new node is inserted that groups the node with that child, removing one
-  /// mutation per reverted position. When set, those reversions are left in place. The step and the flag apply
-  /// only to the sparse representation.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_hoist_reversions: bool,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub gap_fill_args: GapFillArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]
@@ -436,52 +452,46 @@ impl From<OptimizeRerootMethod> for RerootMethod {
 /// Per-edge branch length optimization method.
 ///
 /// Controls how the maximum-likelihood branch length of each edge is found:
-/// Brent's method or Newton-Raphson, both in $\sqrt{t}$ space.
+/// Optimizer of each branch length: Brent's method or Newton-Raphson, both on sqrt(t).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "BranchOptMethod")]
 pub enum BranchOptMethodCli {
-  /// Brent's method in $\sqrt{t}$ space.
+  /// Brent's method on sqrt(t)
   ///
-  /// Derivative-free line search that combines parabolic interpolation with
-  /// golden-section steps. Optimizing $s=\sqrt{t}$ instead of $t$ smooths the
-  /// likelihood near short branches, so the interpolation fits better. v0
-  /// uses the same method and parameterization, with its own search bounds
-  /// and stopping rule, so branch lengths can differ from v0. This is the
-  /// default.
+  /// Derivative-free line search that combines parabolic interpolation with golden-section steps. Optimizing
+  /// s = sqrt(t) in place of t smooths the likelihood near short branches, so the interpolation fits better. TreeTime
+  /// 0.x uses the same method and parameterization, with its own search bounds and stopping rule, so branch lengths can
+  /// differ from TreeTime 0.x. This is the default.
   #[default]
   Brent,
 
-  /// Newton-Raphson in $\sqrt{t}$ space.
+  /// Newton-Raphson on sqrt(t)
   ///
-  /// Uses the first and second derivatives of the likelihood, including the
-  /// indel term, and converges in few iterations on well-behaved edges.
-  /// Choose it to compare against the default; branch lengths can differ
-  /// from the default and from v0.
+  /// Uses the first and second derivatives of the likelihood, including the indel term, and converges in few
+  /// iterations on well-behaved branches. Choose it to compare against the default; branch lengths can differ from the
+  /// default and from TreeTime 0.x.
   Newton,
 }
 
 impl_from_mirror!(BranchOptMethodCli => BranchOptMethod { Brent, Newton });
 
-/// Controls whether marginal reconstruction estimates initial branch lengths
-/// from substitutions divided by effective alignment length. Preserving valid
-/// input lengths can provide a better Newton starting point.
+/// Initial branch lengths: input lengths, or estimates from the number of substitutions divided by the effective
+/// alignment length. Valid input lengths can give Newton-Raphson a better starting point.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "InitialGuessMode")]
 pub enum InitialGuessModeCli {
-  /// Estimate only edges with missing or invalid branch lengths, preserve
-  /// valid input values. No-op when all edges have finite branch lengths.
+  /// Estimate only the branches with a missing or invalid length, and keep the valid input lengths
   #[default]
   Auto,
-  /// Estimate all edges, overwriting input branch lengths.
+  /// Estimate every branch length, replacing the input lengths
   Always,
-  /// Use input branch lengths as-is. Fails if any edge has a missing or
-  /// invalid branch length.
+  /// Keep the input branch lengths; the run fails when a branch has a missing or invalid length
   Never,
 }
 

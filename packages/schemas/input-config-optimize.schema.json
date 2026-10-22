@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OptimizeConfig",
-  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
+  "description": "Optimize the branch lengths of a tree for the likelihood of an alignment",
   "type": "object",
   "properties": {
     "alignment": {
@@ -48,7 +48,7 @@
       "x-cli-flag": "--allow-missing-sequences"
     },
     "alphabet": {
-      "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
+      "description": "Alphabet of the sequences\n\n`nuc` (default): nucleotides A, C, G and T, with the IUPAC ambiguity codes and `N` for an unknown base. `aa`: the\n20 amino acids and the stop codon `*` as a 21st state, with `X` for an unknown residue. `aa-no-stop`: the 20\namino acids without a state for the stop codon.",
       "$ref": "#/$defs/AlphabetName",
       "x-unset": true,
       "x-cli-flag": "--alphabet"
@@ -58,6 +58,84 @@
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--zero-based"
+    },
+    "reroot": {
+      "description": "Reroot the tree by minimizing the variance of the root-to-tip divergence\n\nWithout this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`)\nare available where the inputs have dates.",
+      "$ref": "#/$defs/OptimizeRerootMethod",
+      "x-unset": true,
+      "x-cli-flag": "--reroot"
+    },
+    "outgroup": {
+      "description": "Root the tree on the branch above the most recent common ancestor of the named tips\n\nWith one tip, the root is placed on the branch leading to that tip.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "examples": [
+        [
+          "outgroup_tip"
+        ]
+      ],
+      "default": [],
+      "x-cli-flag": "--outgroup"
+    },
+    "keep_root": {
+      "description": "Keep the root of the input tree instead of rerooting it.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--keep-root"
+    },
+    "max_iter": {
+      "description": "Maximum number of iterations of the inference loop\n\nPolytomy resolution and coalescent models of the time inference need at least 2 iterations.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0,
+      "default": 10,
+      "x-cli-flag": "--max-iter"
+    },
+    "tolerance": {
+      "description": "Convergence threshold of the log-likelihood\n\nThe loop stops when successive log-likelihoods differ by less than this value, or when it detects a 2-cycle with\nan amplitude below this value.",
+      "type": "number",
+      "format": "double",
+      "default": 0.1,
+      "x-cli-flag": "--tolerance"
+    },
+    "damping": {
+      "description": "Damping of the branch length updates of the loop, from 0 (inclusive) to 1 (exclusive)\n\nIteration i updates each branch length b to `b = b_new * (1 - d) + b_old * d`, with\n`d = max(damping^(i+1), 0.01)`. Higher values reduce oscillation; 0 switches damping off.",
+      "type": "number",
+      "format": "double",
+      "default": 0.0,
+      "x-cli-flag": "--damping"
+    },
+    "initial_branch_lengths": {
+      "description": "Initial branch lengths before the optimization of each branch",
+      "$ref": "#/$defs/InitialGuessMode",
+      "default": "auto",
+      "x-cli-flag": "--initial-branch-lengths"
+    },
+    "optimizer": {
+      "description": "Optimizer of each branch length; both methods optimize sqrt(t) in place of the branch length t",
+      "$ref": "#/$defs/BranchOptMethod",
+      "default": "brent",
+      "x-cli-flag": "--optimizer"
+    },
+    "no_collapse_zero_branches": {
+      "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--no-collapse-zero-branches"
+    },
+    "no_merge_shared_mutations": {
+      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--no-merge-shared-mutations"
+    },
+    "no_hoist_reversions": {
+      "description": "Disable the reversion hoist in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--no-hoist-reversions"
     },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
@@ -89,8 +167,14 @@
       "x-unset": true,
       "x-cli-flag": "--representation"
     },
+    "gap_fill": {
+      "description": "How to handle the gap characters of the input sequences\n\n`only-terminal` (default, as in TreeTime 0.x): replace the leading and trailing gaps of each sequence with the\nunknown character of the alphabet (`N` or `X`). `all`: replace every gap with the unknown character. `none`: keep\nevery gap.",
+      "$ref": "#/$defs/GapFill",
+      "default": "only-terminal",
+      "x-cli-flag": "--gap-fill"
+    },
     "output_all": {
-      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and\n`.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to\nstandard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{alignment}`, which is replaced by the number. Other tree outputs with\n`{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
+      "description": "Folder that receives the default outputs of the command\n\nWrites the default outputs of the command as `<dir>/<command>.<ext>`. `--output-selection` restricts the outputs\nthat the folder receives. The per-file flags (`--output-*`) override or supplement the files of the folder.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run\nthat fits none. A per-file flag for such an output fails.\n\nEvery output path follows these rules. A path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed\nfile. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs`\nthreads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats. The\npath `-` of a per-file flag writes the output uncompressed to standard output. Missing parent folders are\ncreated.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also\nbefore a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file:\nreconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with\n`--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list.\nTheir default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a\nper-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs\nwith `{alignment}` in their file name are also written once per file.\n\nThe outputs written once per CDS, such as the reconstructed amino-acid sequences, take the placeholder `{cds}`\nor `%GENE` in the file name of their per-file flag, which is replaced by the name of the CDS. The placeholder is\nrequired when more than one CDS is reconstructed; folder names are used as given.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -103,53 +187,62 @@
       "x-cli-flag": "--newick-annotations"
     },
     "output_tree_nwk": {
-      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n`--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is\nwritten per alignment, and the file name must contain `{alignment}`, which is replaced by the\nnumber of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Newick tree file.\n\n`--newick-annotations` sets the node comments.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
-      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. The\nnodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must\ncontain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Nexus tree file.\n\nThe nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
-      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Auspice v2 JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
-      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT protobuf tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
-      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-json"
     },
     "output_tree_graph_json": {
-      "description": "Path to output internal graph JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output internal graph JSON tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-graph-json"
     },
     "output_tree_dot": {
-      "description": "Path to output Graphviz DOT tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Graphviz DOT tree file.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-dot"
+    },
+    "output_selection": {
+      "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails. An output that the settings rule\nout fails in both forms, for example the sequences of `timetree --branch-length-mode input`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/OptimizeOutputSelection"
+      },
+      "default": [],
+      "x-cli-flag": "--output-selection"
     },
     "no_indels": {
       "description": "Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length\ndistributions.\n\nWhen set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the\ntime inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML,\nBEAST) and TreeTime 0.x. By default, indels count.",
@@ -164,27 +257,18 @@
       "x-cli-flag": "--divergence-units"
     },
     "output_node_data": {
-      "description": "Path to output augur-compatible node data JSON.\n\nContains per-node optimized branch lengths (divergence, substitutions per\nsite) and the input alignment and tree paths. The output is compatible with\naugur export v2 --node-data.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "description": "Path to output augur-compatible node data JSON.\n\nContains per-node optimized branch lengths (divergence, substitutions per site) and the input alignment and tree\npaths. The output is compatible with augur export v2 --node-data.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-node-data"
     },
     "output_model": {
-      "description": "Path to output the fitted substitution models as JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+      "description": "Path to output the fitted substitution models as JSON.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-model"
-    },
-    "output_selection": {
-      "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails. An output that the settings rule\nout fails in both forms, for example the sequences of `timetree --branch-length-mode input`.",
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/OptimizeOutputSelection"
-      },
-      "default": [],
-      "x-cli-flag": "--output-selection"
     },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
@@ -212,90 +296,6 @@
       "default": "mean",
       "x-cli-flag": "--topology-order-aggregate"
     },
-    "max_iter": {
-      "description": "Maximum number of iterations of the inference loop\n\nPolytomy resolution and coalescent models of the time inference need at least 2 iterations.",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 0,
-      "default": 10,
-      "x-cli-flag": "--max-iter"
-    },
-    "tolerance": {
-      "description": "Likelihood convergence threshold. The loop stops when successive\nlikelihoods differ by less than this value, or when a 2-cycle with\namplitude below this value is detected.",
-      "type": "number",
-      "format": "double",
-      "default": 0.1,
-      "x-cli-flag": "--tolerance"
-    },
-    "damping": {
-      "description": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,\nwhere $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;\nzero disables damping. Must be in $[0,1)$.",
-      "type": "number",
-      "format": "double",
-      "default": 0.0,
-      "x-cli-flag": "--damping"
-    },
-    "initial_branch_lengths": {
-      "description": "Initial branch length estimate before the per-edge optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
-      "$ref": "#/$defs/InitialGuessMode",
-      "default": "auto",
-      "x-cli-flag": "--initial-branch-lengths"
-    },
-    "optimizer": {
-      "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent` (default) and `newton`.",
-      "$ref": "#/$defs/BranchOptMethod",
-      "default": "brent",
-      "x-cli-flag": "--optimizer"
-    },
-    "reroot": {
-      "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting.\nDate-dependent methods (least-squares, oldest) are available in the timetree and clock commands.",
-      "$ref": "#/$defs/OptimizeRerootMethod",
-      "x-unset": true,
-      "x-cli-flag": "--reroot"
-    },
-    "outgroup": {
-      "description": "Root the tree on the branch above the most recent common ancestor of the named tips\n\nWith one tip, the root is placed on the branch leading to that tip.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "examples": [
-        [
-          "outgroup_tip"
-        ]
-      ],
-      "default": [],
-      "x-cli-flag": "--outgroup"
-    },
-    "keep_root": {
-      "description": "Keep the root of the input tree instead of rerooting it.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--keep-root"
-    },
-    "no_collapse_zero_branches": {
-      "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--no-collapse-zero-branches"
-    },
-    "no_merge_shared_mutations": {
-      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--no-merge-shared-mutations"
-    },
-    "no_hoist_reversions": {
-      "description": "Disable the reversion hoist in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--no-hoist-reversions"
-    },
-    "gap_fill": {
-      "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
-      "$ref": "#/$defs/GapFill",
-      "default": "only-terminal",
-      "x-cli-flag": "--gap-fill"
-    },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
       "type": "string"
@@ -309,6 +309,48 @@
         "nuc",
         "aa",
         "aa-no-stop"
+      ]
+    },
+    "OptimizeRerootMethod": {
+      "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest) are available\nin the timetree and clock commands.",
+      "type": "string",
+      "enum": [
+        "min-dev"
+      ]
+    },
+    "InitialGuessMode": {
+      "description": "Initial branch lengths: input lengths, or estimates from the number of substitutions divided by the effective\nalignment length. Valid input lengths can give Newton-Raphson a better starting point.",
+      "oneOf": [
+        {
+          "description": "Estimate only the branches with a missing or invalid length, and keep the valid input lengths",
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "description": "Estimate every branch length, replacing the input lengths",
+          "type": "string",
+          "const": "always"
+        },
+        {
+          "description": "Keep the input branch lengths; the run fails when a branch has a missing or invalid length",
+          "type": "string",
+          "const": "never"
+        }
+      ]
+    },
+    "BranchOptMethod": {
+      "description": "Per-edge branch length optimization method.\n\nControls how the maximum-likelihood branch length of each edge is found:\nOptimizer of each branch length: Brent's method or Newton-Raphson, both on sqrt(t).",
+      "oneOf": [
+        {
+          "description": "Brent's method on sqrt(t)\n\nDerivative-free line search that combines parabolic interpolation with golden-section steps. Optimizing\ns = sqrt(t) in place of t smooths the likelihood near short branches, so the interpolation fits better. TreeTime\n0.x uses the same method and parameterization, with its own search bounds and stopping rule, so branch lengths can\ndiffer from TreeTime 0.x. This is the default.",
+          "type": "string",
+          "const": "brent"
+        },
+        {
+          "description": "Newton-Raphson on sqrt(t)\n\nUses the first and second derivatives of the likelihood, including the indel term, and converges in few\niterations on well-behaved branches. Choose it to compare against the default; branch lengths can differ from the\ndefault and from TreeTime 0.x.",
+          "type": "string",
+          "const": "newton"
+        }
       ]
     },
     "GtrModelName": {
@@ -365,19 +407,20 @@
         }
       ]
     },
+    "GapFill": {
+      "type": "string",
+      "enum": [
+        "only-terminal",
+        "all",
+        "none"
+      ]
+    },
     "NewickAnnotationsArg": {
       "type": "string",
       "enum": [
         "plain",
         "beast",
         "nhx"
-      ]
-    },
-    "DivergenceUnits": {
-      "type": "string",
-      "enum": [
-        "mutations-per-site",
-        "mutations"
       ]
     },
     "OptimizeOutputSelection": {
@@ -393,6 +436,13 @@
         "dot",
         "node-data",
         "model"
+      ]
+    },
+    "DivergenceUnits": {
+      "type": "string",
+      "enum": [
+        "mutations-per-site",
+        "mutations"
       ]
     },
     "TopologyOrderArg": {
@@ -416,56 +466,6 @@
       "enum": [
         "mean",
         "median"
-      ]
-    },
-    "InitialGuessMode": {
-      "description": "Controls whether marginal reconstruction estimates initial branch lengths\nfrom substitutions divided by effective alignment length. Preserving valid\ninput lengths can provide a better Newton starting point.",
-      "oneOf": [
-        {
-          "description": "Estimate only edges with missing or invalid branch lengths, preserve\nvalid input values. No-op when all edges have finite branch lengths.",
-          "type": "string",
-          "const": "auto"
-        },
-        {
-          "description": "Estimate all edges, overwriting input branch lengths.",
-          "type": "string",
-          "const": "always"
-        },
-        {
-          "description": "Use input branch lengths as-is. Fails if any edge has a missing or\ninvalid branch length.",
-          "type": "string",
-          "const": "never"
-        }
-      ]
-    },
-    "BranchOptMethod": {
-      "description": "Per-edge branch length optimization method.\n\nControls how the maximum-likelihood branch length of each edge is found:\nBrent's method or Newton-Raphson, both in $\\sqrt{t}$ space.",
-      "oneOf": [
-        {
-          "description": "Brent's method in $\\sqrt{t}$ space.\n\nDerivative-free line search that combines parabolic interpolation with\ngolden-section steps. Optimizing $s=\\sqrt{t}$ instead of $t$ smooths the\nlikelihood near short branches, so the interpolation fits better. v0\nuses the same method and parameterization, with its own search bounds\nand stopping rule, so branch lengths can differ from v0. This is the\ndefault.",
-          "type": "string",
-          "const": "brent"
-        },
-        {
-          "description": "Newton-Raphson in $\\sqrt{t}$ space.\n\nUses the first and second derivatives of the likelihood, including the\nindel term, and converges in few iterations on well-behaved edges.\nChoose it to compare against the default; branch lengths can differ\nfrom the default and from v0.",
-          "type": "string",
-          "const": "newton"
-        }
-      ]
-    },
-    "OptimizeRerootMethod": {
-      "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest) are available\nin the timetree and clock commands.",
-      "type": "string",
-      "enum": [
-        "min-dev"
-      ]
-    },
-    "GapFill": {
-      "type": "string",
-      "enum": [
-        "only-terminal",
-        "all",
-        "none"
       ]
     }
   }

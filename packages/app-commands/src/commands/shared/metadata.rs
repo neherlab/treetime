@@ -1,3 +1,5 @@
+#[cfg(feature = "clap")]
+use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
@@ -7,11 +9,29 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct MetadataArgs {
+  /// Metadata table (CSV or TSV) with one row per sample
+  ///
+  /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
+  /// sample, such as its sampling date or its traits.
+  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
+  #[schemars(extend("x-path" = "input"))]
+  pub metadata: Option<PathBuf>,
+}
+
 /// Metadata identity and delimiter options shared by every command that reads a metadata table.
 ///
 /// `--metadata-id-columns` lists the candidate columns holding the taxon
 /// identifier that links a metadata row to a tree tip; the first column present in the header wins.
-/// Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
+/// Matching is case-insensitive. `--metadata-delimiters` lists
 /// candidate field separators; the delimiter actually present in the file is used.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[schemars(default, deny_unknown_fields)]
@@ -26,7 +46,7 @@ pub struct MetadataIdArgs {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long,
+      long, hide_short_help = true,
       num_args = 1..,
       value_delimiter = ',',
       value_name = "COLUMN",
@@ -42,7 +62,7 @@ pub struct MetadataIdArgs {
   #[default(_code = "default_metadata_delimiters()")]
   #[cfg_attr(
     feature = "clap",
-    clap(long = "metadata-delimiters", num_args = 1.., value_name = "CHAR", default_values_t = default_metadata_delimiters(), help_heading = "Input data")
+    clap(long, hide_short_help = true, num_args = 1.., value_name = "CHAR", default_values_t = default_metadata_delimiters(), help_heading = "Input data")
   )]
   pub metadata_delimiters: Vec<char>,
 }
@@ -61,15 +81,12 @@ pub struct MetadataIdArgs {
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct DateColumnArgs {
   /// Label of the column to be used as sampling date (auto-detected when omitted)
-  #[cfg_attr(
-    feature = "clap",
-    clap(long = "date-column", value_name = "COLUMN", help_heading = "Input data")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, value_name = "COLUMN", help_heading = "Input data"))]
   pub date_column: Option<String>,
 
   /// Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
   #[default(DEFAULT_DATE_FORMAT.to_owned())]
-  #[cfg_attr(feature = "clap", clap(long = "date-format", value_name = "FORMAT", default_value = DEFAULT_DATE_FORMAT, help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(long, hide_short_help = true, value_name = "FORMAT", default_value = DEFAULT_DATE_FORMAT, help_heading = "Input data"))]
   pub date_format: String,
 }
 
