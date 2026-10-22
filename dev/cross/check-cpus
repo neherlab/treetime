@@ -97,7 +97,7 @@ compare_with_plain() {
 
 ancestral_case() {
   local name="${1}" ext="${2}" jobs="${3}"
-  run_on "${oldest}" "${name}" -j "${jobs}" ancestral --method-anc=marginal \
+  run_on "${oldest}" "${name}" ancestral -j "${jobs}" --method-anc=marginal \
     --tree="${data}/tree.nwk" --alignment="${work}/in/aln.fasta${ext}" \
     --output-sequences="${work}/${name}/rec.fasta${ext}" \
     --output-tree-nwk="${work}/${name}/tree.nwk${ext}" || return 0
@@ -116,7 +116,7 @@ if ! cmp -s "${work}/xz/rec.fasta.xz" "${work}/xz-1-thread/rec.fasta.xz"; then
   failed=1
 fi
 
-run_on "${oldest}" pipeline -j 2 pipeline --config data/zika/20/pipeline.yaml --output-all "${work}/pipeline" || true # the failure is recorded
+run_on "${oldest}" pipeline pipeline -j 2 --config data/zika/20/pipeline.yaml --output-all "${work}/pipeline" || true # the failure is recorded
 
 if [[ -n "${below}" ]]; then
   status=0
