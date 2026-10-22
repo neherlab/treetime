@@ -3,8 +3,8 @@
 # Usage: $0 <tag> [target]
 #
 # Build the images of the web deploy: treetime-web:<tag> with the static
-# treetime-server binary for a musl target (default x86_64-unknown-linux-musl),
-# the web UI, and the example datasets, and treetime-caddy:<tag>, the reverse
+# treetime-server binary for a musl target (default x86_64-unknown-linux-musl)
+# and the web UI with its example datasets, and treetime-caddy:<tag>, the reverse
 # proxy with rate limiting (dev/deploy/caddy.dockerfile). Run it on the host; the
 # compilation runs in the build containers of dev/docker/run.
 #

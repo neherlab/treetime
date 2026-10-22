@@ -1,6 +1,7 @@
-# Runtime image of the web app: the static treetime-server binary, the built UI,
-# and the example datasets. It only copies artifacts that dev/deploy/build-web-image
-# builds beforehand, so building it takes seconds and a local build equals the CI build.
+# Runtime image of the web app: the static treetime-server binary and the built UI,
+# which carries the example datasets. It only copies artifacts that
+# dev/deploy/build-web-image builds beforehand, so building it takes seconds and a
+# local build equals the CI build.
 
 # CA bundle from the current Debian package; the one of the distroless image is older.
 FROM debian:12.15-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8 AS certs
@@ -24,10 +25,7 @@ ARG TARGET=x86_64-unknown-linux-musl
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY .out/treetime-server-${TARGET} /app/treetime-server
 COPY packages/app-web/dist /app/dist
-COPY data /app/data
 
-# The server resolves a relative input path inside the examples folder first,
-# then from this working directory.
 WORKDIR /app
 
 ENV HOST=0.0.0.0
