@@ -26,10 +26,11 @@ mod tests {
       prop_assert!(
         run.output_log_lh >= run.exact_log_lh,
         "log-likelihood at the output {} is below the log-likelihood at the exact branch lengths {} \
-         (start {}); optimizer warnings: {:?}",
+         (start {}); stop: {:?}; optimizer warnings: {:?}",
         run.output_log_lh,
         run.exact_log_lh,
         run.start_log_lh,
+        run.stop,
         run.warnings
       );
     }
@@ -42,7 +43,7 @@ mod tests {
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::{OptimizeParams, run};
-    use crate::progress::NoopProgress;
+    use crate::progress::{LogLevel, NoopProgress};
     use crate::test_utils::{
       CaseSpec, ModelFamily, RecordingLog, arb_simulated_case, gtr_from_model, optimize_input, run_dense_marginal,
     };
@@ -108,6 +109,11 @@ mod tests {
         start_log_lh,
         exact_log_lh,
         output_log_lh,
+        stop: log
+          .messages(LogLevel::Info)
+          .into_iter()
+          .filter(|message| message.starts_with("Optimization loop"))
+          .collect(),
         warnings: log.run_warnings().into_iter().map(|warning| warning.message).collect(),
       })
     }
@@ -118,6 +124,7 @@ mod tests {
       pub start_log_lh: f64,
       pub exact_log_lh: f64,
       pub output_log_lh: f64,
+      pub stop: Vec<String>,
       pub warnings: Vec<String>,
     }
 
