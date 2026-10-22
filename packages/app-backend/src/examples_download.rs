@@ -1,4 +1,5 @@
-use crate::runs::app_events::{AppChange, DATASETS_PATH, EXAMPLES_DOWNLOAD_PATH, StalePath};
+use crate::datasets::{DATA_INDEX_FILE, DataIndex};
+use crate::runs::app_events::{AppChange, EXAMPLES_DOWNLOAD_PATH, EXAMPLES_PATH, StalePath};
 use crate::runs::errors::conflict;
 use crate::runs::manager::RunManager;
 use app_commands::examples_download::{download_examples, ensure_empty_target};
@@ -6,16 +7,40 @@ use deser::Serialize;
 use eyre::{Report, WrapErr};
 use parking_lot::Mutex;
 use schemars::JsonSchema;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::report_to_string;
+use treetime_utils::io::fs::{absolute_path, read_file_to_string_if_exists};
+use treetime_utils::io::json::json_read_str;
 
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(250);
 
 const DOWNLOAD_THREAD_NAME: &str = "treetime-examples";
+
+pub fn read_examples_folder(folder: &Path) -> Result<ExamplesFolder, Report> {
+  let folder = absolute_path(folder)?;
+  let file = folder.join(DATA_INDEX_FILE);
+  let index = read_file_to_string_if_exists(&file)?
+    .map(|text| json_read_str::<DataIndex>(&text))
+    .transpose()
+    .wrap_err_with(|| format!("When reading the example data index '{}'", file.display()))?;
+  Ok(ExamplesFolder { folder, index })
+}
+
+/// The examples folder of a local app, with the index of the example data it holds.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct ExamplesFolder {
+  /// Absolute path of the examples folder; the paths of the index are relative to it.
+  pub folder: PathBuf,
+  /// Index of the example data in the folder, read from its `index.json`. Unset when the folder holds no index, for
+  /// example before the example datasets are downloaded.
+  pub index: Option<DataIndex>,
+}
 
 #[derive(Debug)]
 pub struct ExampleDownloads {
@@ -102,7 +127,7 @@ impl ExampleDownloads {
 fn publish(state: &mut ExamplesDownloadStatus, runs: &RunManager, download: ExamplesDownload) {
   let mut stale = vec![StalePath::exact(EXAMPLES_DOWNLOAD_PATH)];
   if matches!(download, ExamplesDownload::Done { .. }) {
-    stale.push(StalePath::exact(DATASETS_PATH));
+    stale.push(StalePath::exact(EXAMPLES_PATH));
   }
   let event = runs.app_events().append(
     AppChange::ExamplesDownload {

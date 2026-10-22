@@ -12,7 +12,7 @@ pub const RUNS_PATH: &str = "/api/runs";
 
 pub const CLADE_IN_RUNS_PATH: &str = "/api/clade-in-runs";
 
-pub const DATASETS_PATH: &str = "/api/datasets";
+pub const EXAMPLES_PATH: &str = "/api/examples";
 
 pub const EXAMPLES_DOWNLOAD_PATH: &str = "/api/examples/download";
 
@@ -93,7 +93,7 @@ pub fn resync_stale_paths() -> Vec<StalePath> {
   vec![
     StalePath::subtree(RUNS_PATH),
     StalePath::exact(CLADE_IN_RUNS_PATH),
-    StalePath::exact(DATASETS_PATH),
+    StalePath::exact(EXAMPLES_PATH),
     StalePath::exact(EXAMPLES_DOWNLOAD_PATH),
   ]
 }

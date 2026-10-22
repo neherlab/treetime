@@ -8,7 +8,7 @@ use aide::axum::ApiRouter;
 use aide::axum::routing::{get_with, post_with, put_with};
 use app_backend::app_settings::settings::{AnalysisSettings, AppSettings, UiSettings, Workspace, WorkspaceUpdate};
 use app_backend::app_settings::workspace::{active_workspace, prepare_workspace};
-use app_backend::examples_download::ExamplesDownloadStatus;
+use app_backend::examples_download::{ExamplesDownloadStatus, ExamplesFolder, read_examples_folder};
 use app_backend::runs::record::SaveRunRequest;
 use axum::extract::State;
 use eyre::Report;
@@ -51,6 +51,15 @@ pub(crate) fn app_settings_routes() -> ApiRouter<Arc<AppState>> {
         op.id("appSettingsAnalysis").description(
           "Replace the settings of the analyses; they apply to runs whose configuration does not set them. Only \
            local apps serve this path.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/examples",
+      get_with(examples, |op| {
+        op.id("examples").description(
+          "The examples folder and the index of the example data it holds, without an index when the folder has \
+           none. Only local apps serve this path.",
         )
       }),
     )
@@ -132,6 +141,12 @@ async fn workspace_update(
   })
   .await
   .map(ApiJson)
+}
+
+async fn examples(State(state): State<Arc<AppState>>) -> Result<ApiJson<ExamplesFolder>, AppError> {
+  blocking(&state, |local| read_examples_folder(&local.paths.examples.path))
+    .await
+    .map(ApiJson)
 }
 
 async fn examples_download(State(state): State<Arc<AppState>>) -> Result<ApiJson<ExamplesDownloadStatus>, AppError> {

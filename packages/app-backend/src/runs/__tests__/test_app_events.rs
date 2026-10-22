@@ -69,7 +69,7 @@ mod tests {
           json!([
             { "path": "/api/runs", "scope": "subtree" },
             { "path": "/api/clade-in-runs", "scope": "exact" },
-            { "path": "/api/datasets", "scope": "exact" },
+            { "path": "/api/examples", "scope": "exact" },
             { "path": "/api/examples/download", "scope": "exact" },
           ])
         ),
@@ -91,7 +91,7 @@ mod tests {
       json!([
         { "path": "/api/runs", "scope": "subtree" },
         { "path": "/api/clade-in-runs", "scope": "exact" },
-        { "path": "/api/datasets", "scope": "exact" },
+        { "path": "/api/examples", "scope": "exact" },
         { "path": "/api/examples/download", "scope": "exact" },
       ]),
       summarize(&received)[0].2
