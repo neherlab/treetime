@@ -11,7 +11,9 @@ export function instantiateBackend<T>(
 
   const options: EmscriptenOptions = {
     instantiateWasm: (imports, receive) => {
-      WebAssembly.instantiate(module, imports).then(receive).catch(failed.reject);
+      WebAssembly.instantiate(module, imports)
+        .then((instance) => receive(instance, module))
+        .catch(failed.reject);
     },
     printErr: (text) => {
       errors.printErr(text);
@@ -61,7 +63,10 @@ export class ErrorLines {
 }
 
 export interface EmscriptenOptions {
-  instantiateWasm: (imports: WebAssembly.Imports, receive: (instance: WebAssembly.Instance) => void) => void;
+  instantiateWasm: (
+    imports: WebAssembly.Imports,
+    receive: (instance: WebAssembly.Instance, module: WebAssembly.Module) => void,
+  ) => void;
   printErr: (text: string) => void;
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Emscripten passes the abort reason as any value
   onAbort: (what: unknown) => void;

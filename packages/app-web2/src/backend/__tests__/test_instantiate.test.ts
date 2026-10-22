@@ -21,6 +21,12 @@ describe("backend instantiation", () => {
     expect(exported).toBe(7);
   });
 
+  test("the runtime receives the compiled module with the instance, which it passes on to its pthread workers", async () => {
+    const received = await instantiateBackend(MODULE_EXPORTING_SEVEN, receivedModule, errorLines());
+
+    expect(received).toBe(MODULE_EXPORTING_SEVEN);
+  });
+
   test("a runtime that cannot take the instance rejects the instantiation", async () => {
     const instantiation = instantiateBackend(MODULE_EXPORTING_SEVEN, rejectingRuntime, errorLines());
 
@@ -90,6 +96,14 @@ function receivedExport({ instantiateWasm }: EmscriptenOptions): Promise<unknown
       const global = instance.exports["g"];
 
       resolve(global instanceof WebAssembly.Global ? global.value : undefined);
+    });
+  });
+}
+
+function receivedModule({ instantiateWasm }: EmscriptenOptions): Promise<WebAssembly.Module> {
+  return new Promise((resolve) => {
+    instantiateWasm({}, (_instance, module) => {
+      resolve(module);
     });
   });
 }
