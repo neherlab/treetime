@@ -6,7 +6,7 @@ The public reroot helper `fn split_edge()` accepts a raw `f64` split fraction. N
 
 `fn split_edge()` [`packages/treetime-graph/src/reroot.rs#L50-L81`](../../packages/treetime-graph/src/reroot.rs#L50-L81) computes the parent-side length as `split_position * length` and the child-side length as `(1.0 - split_position) * length` at L63-L65, without a check of `split_position`. It also adds the new node at L56 before it reads the edge at L59. Every reroot calls it through `fn apply_root_at_edge()` [`packages/treetime/src/reroot/orchestrate.rs#L19`](../../packages/treetime/src/reroot/orchestrate.rs#L19) (call at L50).
 
-On the reroot path, `RootTarget::on_edge()` [`packages/treetime/src/reroot/placement.rs#L29-L30`](../../packages/treetime/src/reroot/placement.rs#L29-L30) resolves the edge with `edge_endpoints()?` before `split_edge()` runs, so an unknown edge key gives an error before any mutation. The graph helpers resolve keys by index (`graph[edge_key]`, `graph[node_key]`), which panics on a missing key, as the project rule for node and edge data requires.
+On the reroot path, `RootTarget::on_edge()` [`packages/treetime/src/reroot/placement.rs#L30-L31`](../../packages/treetime/src/reroot/placement.rs#L30-L31) resolves the edge with `edge_endpoints()?` before `split_edge()` runs, so an unknown edge key gives an error before any mutation. The graph helpers resolve keys by index (`graph[edge_key]`, `graph[node_key]`), which panics on a missing key, as the project rule for node and edge data requires.
 
 ## Fix
 

@@ -19,19 +19,23 @@ One driver serves every caller (`fn reroot_at_best_root()`, [packages/treetime/s
 
 The search returns an edge and a split $x \in [0, 1]$, measured from the parent end ($x = 0$) to the child end ($x = 1$) of the edge. `fn RootTarget::on_edge()` turns it into the new root:
 
-- $x$ within 5 ulps of 0: the parent node becomes the root
-- $x$ within 5 ulps of 1: the child node becomes the root, unless the child is a leaf (below)
+- $x < 10^{-5}$: the parent node becomes the root
+- $x > 1 - 10^{-5}$: the child node becomes the root, unless the child is a leaf (below)
 - Other $x$: a new node splits the edge at $x$, with the lengths $x\ell$ above and $(1 - x)\ell$ below it. Without edge splitting (`split_edge = false`), the root snaps to the nearer end: the parent for $x < \tfrac12$, the child otherwise
+
+**A root within $10^{-5}$ of an edge end goes to the end node.** The score along an edge is the quadratic $q(x) = a x^2 + b x + c$, so a root at the end node instead of at an optimum $x^* < 10^{-5}$ raises the score by $a x^{*2} < 10^{-10} a$. A new node at $x^*$ would add a root branch of length $x^* \ell$ that changes no result. The band is measured on the split fraction, the same band as v0 (below). The search returns exactly 0 or 1 when the optimum lies beyond an edge end, so the band only decides optima that lie inside the edge.
+
+The band also keeps the root when a later search finds the same root again. `clock` with the clock filter searches once before and once after the filter. When the second search finds the current root, rounding puts its optimum a small fraction inside one of the root's edges, larger than an ulp (below $5 \cdot 10^{-7}$ on `data/dengue/20`, `data/flu/h3n2/20` and `data/zika/86`). A split there would add a new root node, rename the root, and change branch lengths in the last digits when the old root is merged away.
 
 **A leaf never becomes the root.** On a terminal edge the exact optimum often lies past the tip: the vertex of the parabola is beyond $x = 1$, so the clamp gives $x = 1$. With edge splitting, the reroot then inserts a new root at the tip end, with a branch of length 0 to the tip and the full length $\ell$ on the other side. Without edge splitting, the parent end becomes the root. A tip as root would give the root the tip's exact date while the tips of its subtree are older, so the time inference would find an empty time distribution at the root and leave the tip undated. `fn apply_root_at_edge()` rejects a leaf as the new root with an internal error.
 
-This is the v0 result. v0 measures the split from the node toward its parent, so its $x$ is $1 - x$ of v1:
+Both rules give the v0 result. v0 measures the split from the node toward its parent, so its $x$ is $1 - x$ of v1:
 
 - v0 scores the node end of a terminal edge as infinite, so a tip is never a candidate root node ([packages/legacy/treetime/treetime/treeregression.py#L397](../../packages/legacy/treetime/treetime/treeregression.py#L397))
 - A split with $x < 10^{-5}$ roots at the edge's node through `root_with_outgroup(node)`, and a split with $x > 1 - 10^{-5}$ at its parent ([packages/legacy/treetime/treetime/treeregression.py#L443-L463](../../packages/legacy/treetime/treetime/treeregression.py#L443-L463))
 - For a terminal outgroup, Biopython's `root_with_outgroup()` creates a new bifurcating root with a 0-length branch to the outgroup ([Bio/Phylo/BaseTree.py#L843-L846](https://github.com/biopython/biopython/blob/d7e4b8b19399668b09442a5b35765d9186b5f665/Bio/Phylo/BaseTree.py#L843-L846), Biopython 1.88)
 
-v1: `fn RootTarget::on_edge()` [packages/treetime/src/reroot/placement.rs#L29](../../packages/treetime/src/reroot/placement.rs#L29)
+v1: `fn RootTarget::on_edge()` [packages/treetime/src/reroot/placement.rs#L30](../../packages/treetime/src/reroot/placement.rs#L30)
 
 ## Minimum-Variance Rooting (min-dev)
 

@@ -32,8 +32,8 @@
 
 ## Edge Operations for Rerooting
 
-- [x] Snap to source endpoint
-- [x] Snap to target endpoint
+- [x] Snap to source endpoint (split fraction below $10^{-5}$, as v0)
+- [x] Snap to target endpoint (split fraction above $1 - 10^{-5}$, as v0)
 - [x] Edge split (create new node at split point)
 - [x] Invert every edge on path to new root
 - [x] Edge merge (remove trivial nodes, remove old root when it becomes trivial)
