@@ -38,6 +38,8 @@ const BASE = "/treetime/";
 
 const MUGRATION_CONFIG = "Mugration of the zika dataset";
 
+const ANCESTRAL_CONFIG = "Ancestral sequences of the zika dataset";
+
 const INDEX: DataIndex = {
   files: [
     { path: "zika/20/ancestral.yaml", size: 32 },
@@ -261,6 +263,21 @@ describe("example data of the web apps", () => {
       "timetree",
       ["/runs/r1/inputs/metadata.tsv", "/runs/r1/inputs/tree.nwk"],
       JSON.stringify("/runs/r1/inputs/again/tree.nwk"),
+    ]);
+  });
+
+  test("a config of another command releases every upload of the earlier draft that it does not keep", async () => {
+    const server = fakeServer();
+    await render(server, "timetree");
+    await loadExampleConfig();
+
+    await loadExampleConfig(ANCESTRAL_CONFIG, "ancestral");
+    await pWaitFor(() => server.released.length === 3);
+
+    expect(server.released.toSorted()).toStrictEqual([
+      "/runs/r1/inputs/country_weights.csv",
+      "/runs/r1/inputs/metadata.tsv",
+      "/runs/r1/inputs/tree.nwk",
     ]);
   });
 

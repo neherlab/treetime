@@ -10,7 +10,7 @@ import { baseName, pathList } from "../settings/inputs";
 import { sameJson } from "../settings/json";
 import { useDraftStore } from "../store/draft";
 import type { UploadedInputs } from "./exampleData";
-import { releasedPaths } from "./fileSelection";
+import { releasedUploads } from "./fileSelection";
 import { useRunUploads } from "./useRunUploads";
 
 export type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
@@ -61,36 +61,32 @@ export function useConfigLoader() {
         return SUPERSEDED;
       }
 
+      const latest = useDraftStore.getState().draft;
       const command = result.command;
       const specs = commandSettings(command).settings;
       const config = normalizeConfig(specs, result.config);
       const sources: Record<string, UiDraftSource> = {};
-      const released: string[] = [];
 
       for (const spec of specs.filter((candidate) => candidate.role === "input")) {
         const value = settingValue(config, spec);
         const paths = pathList(value);
-        const previous = draft.sources[spec.key];
         const upload = uploaded?.sources[spec.key];
 
         if (paths.length > 0) {
           sources[spec.key] =
             upload !== undefined && sameJson(value, uploaded?.replace_inputs[spec.key])
               ? upload
-              : previousSource(previous, sameJson(value, draft.config[spec.key]), paths);
-        }
-
-        if (previous?.origin === "upload" && previous.run_id === draft.upload_run_id) {
-          released.push(...releasedPaths(draft.config[spec.key], value));
+              : previousSource(latest.sources[spec.key], sameJson(value, latest.config[spec.key]), paths);
         }
       }
 
-      const { from_run_id: _fromRun, ...current } = draft;
+      const { from_run_id: _fromRun, ...current } = latest;
+      const next = { ...current, command, config, sources };
 
-      load({ ...current, command, config, sources });
+      load(next);
 
-      if (draft.upload_run_id !== undefined) {
-        release(draft.upload_run_id, released);
+      if (latest.upload_run_id !== undefined) {
+        release(latest.upload_run_id, releasedUploads(latest, next));
       }
 
       await navigate({ to: "/new" });
