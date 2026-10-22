@@ -285,7 +285,12 @@ function ClockFilterRow({ context }: { context: RowContext }) {
   const onSlide = useCallback((next: number | readonly number[]) => set("clock_filter", [next].flat()[0] ?? 0), [set]);
 
   return (
-    <MainRow context={context} label="Clock filter" sub="Outlier threshold in IQD" keys={CLOCK_FILTER_KEYS}>
+    <MainRow
+      context={context}
+      label="Clock filter"
+      sub="Outlier threshold in interquartile ranges"
+      keys={CLOCK_FILTER_KEYS}
+    >
       <Inline>
         <Slider
           min={0}
@@ -301,7 +306,7 @@ function ClockFilterRow({ context }: { context: RowContext }) {
       <Note>
         {value === 0
           ? "Off: all samples stay in the regression"
-          : `Samples more than ${value} interquartile distances from the regression are ignored`}
+          : `Samples more than ${value} interquartile ranges from the regression are ignored`}
       </Note>
     </MainRow>
   );

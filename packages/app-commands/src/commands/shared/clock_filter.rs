@@ -13,7 +13,7 @@ pub struct ClockFilterArgs {
   /// beyond which a tip is an outlier.
   ///
   /// 0 switches the filter off.
-  #[default = 3.0]
+  #[default = 4.0]
   #[cfg_attr(
     feature = "clap",
     clap(long, default_value_t = ClockFilterArgs::default().clock_filter, help_heading = "Molecular clock")

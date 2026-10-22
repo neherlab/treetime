@@ -530,7 +530,7 @@
               "description": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression\nbeyond which a tip is an outlier.\n\n0 switches the filter off.",
               "type": "number",
               "format": "double",
-              "default": 3.0
+              "default": 4.0
             },
             {
               "type": "string",
@@ -1483,7 +1483,7 @@
               "description": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression\nbeyond which a tip is an outlier.\n\n0 switches the filter off.",
               "type": "number",
               "format": "double",
-              "default": 3.0
+              "default": 4.0
             },
             {
               "type": "string",

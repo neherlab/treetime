@@ -196,7 +196,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    0 switches the filter off.
 
-  Default value: `3`
+  Default value: `4`
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
@@ -1157,7 +1157,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
    0 switches the filter off.
 
-  Default value: `3`
+  Default value: `4`
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.

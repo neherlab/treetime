@@ -45,7 +45,7 @@ pub(crate) mod tests {
       panic!("expected a valid config, got {response:?}");
     };
     assert_eq!(
-      (json!("data/zika/20/tree.nwk"), json!(4), json!(3.0), None),
+      (json!("data/zika/20/tree.nwk"), json!(4), json!(4.0), None),
       (
         config["tree"].clone(),
         config["max_iter"].clone(),

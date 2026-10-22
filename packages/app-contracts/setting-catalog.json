@@ -619,7 +619,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
-          "default_value": 3.0,
+          "default_value": 4.0,
           "examples": [],
           "value_names": [
             "CLOCK_FILTER"
@@ -2243,7 +2243,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
-          "default_value": 3.0,
+          "default_value": 4.0,
           "examples": [],
           "value_names": [
             "CLOCK_FILTER"

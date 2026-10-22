@@ -23,7 +23,7 @@ describe("form config", () => {
     const config = defaultConfig(clock);
 
     expect({ clockFilter: config["clock_filter"], keepRoot: config["keep_root"] }).toStrictEqual({
-      clockFilter: 3,
+      clockFilter: 4,
       keepRoot: false,
     });
   });
