@@ -45,20 +45,20 @@ pub(crate) fn resolve_pipeline(
     let payload = substitute_step_refs(&raw.payload, &resolved_steps, &index, &raw.name, &all_names)?;
     let mut payload = interp
       .interpolate_value(&payload, &value_context)
-      .map_err(|err| step_error(&raw.name, &err))?;
+      .map_err(|err| step_error(&raw.name, err))?;
     if let Ok(command) = AppCommand::from_str(&raw.tag) {
       resolve_config_paths(&mut payload, command.config_schema().as_value(), base)
-        .map_err(|err| step_error(&raw.name, &err))?;
+        .map_err(|err| step_error(&raw.name, err))?;
     }
 
     if let Some(dir) = &workdir {
       set_output_all_if_absent(&mut payload, &dir.join(&raw.name));
     }
 
-    let command = step_config(&raw.tag, &payload).map_err(|err| step_config_error(position, raw, &err))?;
+    let command = step_config(&raw.tag, &payload).map_err(|err| step_config_error(position, raw, err))?;
     let resolved = command
       .resolve_outputs()
-      .map_err(|err| step_error(&raw.name, &missing_outputs_error(err)))?;
+      .map_err(|err| step_error(&raw.name, missing_outputs_error(err)))?;
     let outputs = StepOutputs {
       output_all: command.output_all().map(Path::to_path_buf),
       by_selection: resolved.paths_by_selection(),
@@ -331,18 +331,22 @@ fn missing_outputs_error(err: Report) -> Report {
   }
 }
 
-fn step_config_error(position: usize, step: &RawStep, err: &Report) -> Report {
-  match err.chain().find_map(|error| error.downcast_ref::<InvalidSetting>()) {
-    Some(invalid) => Report::new(InvalidSetting {
+fn step_config_error(position: usize, step: &RawStep, err: Report) -> Report {
+  let located = err
+    .chain()
+    .find_map(|error| error.downcast_ref::<InvalidSetting>())
+    .map(|invalid| InvalidSetting {
       pointer: format!("/steps/{position}/{}{}", escape_pointer(&step.tag), invalid.pointer),
       message: format!("in pipeline step `{}`: {}", step.name, invalid.message),
-    }),
+    });
+  match located {
+    Some(invalid) => Report::new(invalid),
     None => step_error(&step.name, err),
   }
 }
 
-fn step_error(step: &str, err: &Report) -> Report {
-  make_report!("in pipeline step `{step}`: {err}")
+fn step_error(step: &str, err: Report) -> Report {
+  err.wrap_err(format!("in pipeline step `{step}`"))
 }
 
 #[cfg(test)]
@@ -583,6 +587,15 @@ mod tests {
     }))
     .unwrap();
     assert_eq!(Some(PathBuf::from("/pipeline/out")), resolved.workdir);
+  }
+
+  #[test]
+  fn test_resolve_step_error_keeps_the_error_chain() {
+    let err = make_report!("inner cause").wrap_err("outer context");
+    assert_error!(
+      Err::<(), Report>(step_error("anc", err)),
+      "in pipeline step `anc`: outer context: inner cause"
+    );
   }
 
   #[test]
