@@ -1,4 +1,4 @@
-import type { AppCommand, IndexedConfig, IndexedDataset, JsonValue, UiDraftSource } from "@neherlab/app-contracts";
+import type { AppCommand, IndexedConfig, IndexedDataset } from "@neherlab/app-contracts";
 import { examples } from "@neherlab/app-contracts/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -8,6 +8,7 @@ import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
 import { inputSettingKeys } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
+import { applyDraftInputs } from "./draftInputs";
 import {
   type ConfigInput,
   configInputs,
@@ -23,7 +24,7 @@ import {
   uploadedConfigInputs,
   webExampleIndex,
 } from "./exampleData";
-import { draftUploadPaths, releasedUploads, type StoredFile, storedSource, storedValue } from "./fileSelection";
+import { draftUploadPaths, type StoredFile, storedSource, storedValue } from "./fileSelection";
 import { claimInputs } from "./inputClaims";
 import { type ConfigLoadResult, SUPERSEDED, useConfigLoader } from "./useConfigLoader";
 import { useRunUploads } from "./useRunUploads";
@@ -108,7 +109,7 @@ export function useDatasetLoader() {
       const inputs = indexedDatasetInputs(dataset, command);
 
       if (examples.origin === "local") {
-        applyDatasetInputs(
+        applyDraftInputs(
           inputs.map((input) => {
             const { key, value, label } = localInputAssignment(examples.folder, input);
 
@@ -146,7 +147,7 @@ export function useDatasetLoader() {
         return;
       }
 
-      applyDatasetInputs(
+      applyDraftInputs(
         inputs.flatMap((input, index) => {
           const file = stored.slice(index, index + 1);
           const value = storedValue(file, input.list);
@@ -170,25 +171,6 @@ export function exampleDataBase(): string {
 export interface ExampleIndexQuery {
   data: ExampleIndex | undefined;
   error: Error | null;
-}
-
-function applyDatasetInputs(
-  assignments: ReadonlyArray<{ key: string; value: JsonValue; source: UiDraftSource }>,
-  release: (runId: string, paths: readonly string[]) => void,
-) {
-  const { draft, load } = useDraftStore.getState();
-
-  const next = {
-    ...draft,
-    config: { ...draft.config, ...Object.fromEntries(assignments.map(({ key, value }) => [key, value])) },
-    sources: { ...draft.sources, ...Object.fromEntries(assignments.map(({ key, source }) => [key, source])) },
-  };
-
-  load(next);
-
-  if (draft.upload_run_id !== undefined) {
-    release(draft.upload_run_id, releasedUploads(draft, next));
-  }
 }
 
 async function uploadConfigInputs(

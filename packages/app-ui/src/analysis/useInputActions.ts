@@ -5,7 +5,15 @@ import { useFormContext } from "react-hook-form";
 import { useHost } from "../host-context";
 import { baseName, type InputAssignment, pathList } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { filesForSetting, releasedPaths, type StoredFile, storedSource, storedValue } from "./fileSelection";
+import { applyDraftInputs } from "./draftInputs";
+import {
+  draftUploadPaths,
+  filesForSetting,
+  releasedPaths,
+  type StoredFile,
+  storedSource,
+  storedValue,
+} from "./fileSelection";
 import { toFormValue, type FormConfig } from "./formValues";
 import { claimInputs } from "./inputClaims";
 import { useRunUploads } from "./useRunUploads";
@@ -79,19 +87,28 @@ export function useInputActions(command: AppCommand): InputActions {
     [releaseReplaced, setSource, setValue],
   );
 
-  const assignStored = useCallback(
-    (key: string, stored: readonly StoredFile[], list: boolean, origin: InputOrigin) => {
+  const assignPending = useCallback(
+    (key: string, stored: readonly StoredFile[], list: boolean, origin: InputOrigin, epoch: number) => {
       const value = storedValue(stored, list);
 
-      if (value !== undefined) {
-        assign(key, value, { ...storedSource(stored), ...origin });
+      if (value === undefined) {
+        return;
+      }
+
+      const source = { ...storedSource(stored), ...origin };
+
+      if (useDraftStore.getState().epoch === epoch) {
+        assign(key, value, source);
+      } else {
+        applyDraftInputs([{ key, value, source }], release);
       }
     },
-    [assign],
+    [assign, release],
   );
 
   const addPendingFiles = useCallback(
     async (key: string, pending: Promise<readonly File[]>, list: boolean) => {
+      const { epoch } = useDraftStore.getState();
       const isCurrent = claimInputs([key]);
       const selected = filesForSetting(await pending, list);
 
@@ -99,7 +116,7 @@ export function useInputActions(command: AppCommand): InputActions {
         const stored = selected.map((file) => ({ name: file.name, path: host.pathForFile(file), size: file.size }));
 
         if (isCurrent()) {
-          assignStored(key, stored, list, { origin: "local" });
+          assignPending(key, stored, list, { origin: "local" }, epoch);
         }
 
         return;
@@ -115,7 +132,9 @@ export function useInputActions(command: AppCommand): InputActions {
         return;
       }
 
-      const stored = await uploadFiles(runId, selected, pendingUploadPaths(key, runId));
+      const { draft, epoch: current } = useDraftStore.getState();
+      const replaces = current === epoch ? pendingUploadPaths(key, runId) : draftUploadPaths(draft, new Set([key]));
+      const stored = await uploadFiles(runId, selected, replaces);
 
       if (!isCurrent(runId)) {
         releaseFromPendingRun(
@@ -126,9 +145,9 @@ export function useInputActions(command: AppCommand): InputActions {
         return;
       }
 
-      assignStored(key, stored, list, { origin: "upload", run_id: runId });
+      assignPending(key, stored, list, { origin: "upload", run_id: runId }, epoch);
     },
-    [assignStored, command, host, pendingUploadPaths, releaseFromPendingRun, uploadFiles, uploadRun],
+    [assignPending, command, host, pendingUploadPaths, releaseFromPendingRun, uploadFiles, uploadRun],
   );
 
   const addFiles = useCallback(

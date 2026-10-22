@@ -15,6 +15,7 @@ interface DraftActions {
   update: (changes: Partial<Pick<UiDraft, "view" | "search" | "changed_only" | "code_format">>) => void;
   setConfig: (config: SparseConfig) => void;
   setSource: (key: string, source: UiDraftSource | undefined) => void;
+  assignInputs: (changes: Pick<UiDraft, "config" | "sources">, keys: readonly string[]) => void;
   claimSelections: (keys: readonly string[], selection: symbol) => void;
   beginUploadRun: (creation: Promise<JobId>) => void;
   settleUploadRun: (creation: Promise<JobId>, id: JobId | undefined) => void;
@@ -45,6 +46,13 @@ export const useDraftStore = create<DraftState & DraftActions>()((set) => ({
         selections: Object.fromEntries(Object.entries(selections).filter(([name]) => name !== key)),
       };
     });
+  },
+  assignInputs: (changes, keys) => {
+    set((state) => ({
+      draft: { ...state.draft, ...changes },
+      epoch: state.epoch + 1,
+      selections: Object.fromEntries(Object.entries(state.selections).filter(([name]) => !keys.includes(name))),
+    }));
   },
   claimSelections: (keys, selection) => {
     set(({ selections }) => ({

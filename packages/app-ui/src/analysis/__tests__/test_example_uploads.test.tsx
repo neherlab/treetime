@@ -29,6 +29,7 @@ import { useDraftStore } from "../../store/draft";
 import { Toaster } from "../../ui/toast";
 import { type FormConfig, fromFormConfig, toFormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
+import { PathPicker } from "../PathPicker";
 import { useDatasetLoader, useExampleIndex } from "../useExampleData";
 
 const NATIVE_FETCH = { fetch, Request, Response, Headers, Blob, File, FormData, AbortController, AbortSignal };
@@ -36,6 +37,8 @@ const NATIVE_FETCH = { fetch, Request, Response, Headers, Blob, File, FormData, 
 const ORIGIN = "http://treetime.test";
 
 const BASE = "/treetime/";
+
+const WEIGHTS: string[] = [];
 
 const MUGRATION_CONFIG = "Mugration of the zika dataset";
 
@@ -260,6 +263,33 @@ describe("example data of the web apps", () => {
     ]);
   });
 
+  test("an upload of an input a dataset does not set is kept when it completes after the dataset load", async () => {
+    const weights = Promise.withResolvers<void>();
+    const server = fakeServer({ heldUploads: new Map([["mine.csv", weights.promise]]) });
+    await render(server, "mugration");
+
+    await userEvent
+      .setup({ document })
+      .upload(page().getByLabelText("Weights file to upload"), new File(["country,w\nA,1\n"], "mine.csv"));
+    await pWaitFor(() => server.started.includes("mine.csv"));
+    await chooseExampleDataset();
+    await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 2);
+    weights.resolve();
+    await pWaitFor(() => useDraftStore.getState().draft.sources["weights"] !== undefined);
+
+    expect([
+      settingText("Weights setting"),
+      settingText("Tree setting"),
+      Object.keys(useDraftStore.getState().draft.sources).toSorted(),
+      server.released,
+    ]).toStrictEqual([
+      JSON.stringify("/runs/r1/inputs/mine.csv"),
+      JSON.stringify("/runs/r1/inputs/tree.nwk"),
+      ["metadata", "tree", "weights"],
+      [],
+    ]);
+  });
+
   test("a dataset chosen while an example config is fetched replaces the config and releases its uploads", async () => {
     const weights = Promise.withResolvers<void>();
     const server = fakeServer({ held: new Map([["zika/country_weights.csv", weights.promise]]) });
@@ -359,10 +389,12 @@ function fakeServer({
   missing,
   rejected = false,
   held = new Map(),
+  heldUploads = new Map(),
 }: {
   missing?: string;
   rejected?: boolean;
   held?: ReadonlyMap<string, Promise<void>>;
+  heldUploads?: ReadonlyMap<string, Promise<void>>;
 } = {}) {
   const requested: string[] = [];
   const uploads: string[] = [];
@@ -370,6 +402,7 @@ function fakeServer({
   const replaced: SparseConfig[] = [];
   const replaces: string[][] = [];
   const stored = new Set<string>();
+  const started: string[] = [];
 
   const fetch = async (input: Request | URL | string, init?: RequestInit): Promise<Response> => {
     const request = new Request(input instanceof Request ? input : new URL(input, ORIGIN), init);
@@ -411,6 +444,8 @@ function fakeServer({
     const name = /^\/api\/runs\/r1\/inputs\/(?<name>[^/]+)$/u.exec(pathname)?.groups?.["name"];
 
     if (request.method === "PUT" && name !== undefined) {
+      started.push(name);
+      await heldUploads.get(name);
       const size = (await request.arrayBuffer()).byteLength;
       uploads.push(`${name}:${size}`);
       replaces.push(url.searchParams.getAll("replaces"));
@@ -431,7 +466,7 @@ function fakeServer({
     return Response.json({ message: `unexpected ${request.method} ${pathname}` }, { status: 500 });
   };
 
-  return { fetch, static: requested, uploads, released, replaced, replaces };
+  return { fetch, static: requested, uploads, released, replaced, replaces, started };
 }
 
 function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected: boolean): CheckConfigResponse {
@@ -541,8 +576,17 @@ function DraftForm({ command }: { command: AppCommand }) {
   return (
     <FormProvider {...form}>
       <InputsSection command={command} facts={undefined} />
+      <PathPicker
+        command={command}
+        settingKey="weights"
+        title="Weights"
+        extensions={WEIGHTS}
+        list={false}
+        filled={false}
+      />
       <SettingValue name="tree" label="Tree setting" />
       <SettingValue name="alignment" label="Alignment setting" />
+      <SettingValue name="weights" label="Weights setting" />
     </FormProvider>
   );
 }
