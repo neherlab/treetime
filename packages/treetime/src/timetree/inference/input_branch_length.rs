@@ -17,7 +17,7 @@ use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_grid::{BoundaryBehavior, GridFn, MaxGridPoints, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, EdgeCellLaw, GridFn, MaxGridPoints, SoftTailLaw};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_internal_error, make_internal_report, make_report};
 
@@ -142,10 +142,19 @@ impl InputBranchLikelihood {
     branch_rate: f64,
     max_points: MaxGridPoints,
   ) -> Result<Arc<Distribution<NegLog>>, Report> {
+    self.distribution_with_points_per_width(branch_rate, GRID_POINTS_PER_WIDTH, max_points)
+  }
+
+  pub(crate) fn distribution_with_points_per_width(
+    self,
+    branch_rate: f64,
+    points_per_width: f64,
+    max_points: MaxGridPoints,
+  ) -> Result<Arc<Distribution<NegLog>>, Report> {
     debug_assert!(branch_rate > 0.0, "branch_rate must be positive, got {branch_rate:.6e}");
     let max_branch_length = self.grid_end()?;
     let time_range = (0.0, max_branch_length / branch_rate);
-    let dx = self.width() / GRID_POINTS_PER_WIDTH;
+    let dx = self.width() / points_per_width;
     let n_points = max_points
       .point_count((max_branch_length / dx).ceil() + 1.0, time_range, dx / branch_rate)?
       .max(GRID_POINTS);
@@ -159,9 +168,23 @@ impl InputBranchLikelihood {
       slope: self.slope(max_branch_length) * branch_rate,
     };
     let distribution_fn = DistributionFunction::from_grid_fn(f)
-      .with_left_extrap(BoundaryBehavior::Hard)?
+      .with_left_extrap(self.start(branch_rate))?
       .with_right_extrap(BoundaryBehavior::Linear(right_tail))?;
     Ok(Arc::new(Distribution::Function(distribution_fn)))
+  }
+
+  fn start(self, branch_rate: f64) -> BoundaryBehavior {
+    match self {
+      Self::Poisson {
+        mutation_length,
+        one_mutation,
+      } => BoundaryBehavior::HardEdgeCell(EdgeCellLaw {
+        t_edge: 0.0,
+        offset: MIN_BRANCH_LENGTH_MUTATION_FRACTION * one_mutation / branch_rate,
+        b: mutation_length / one_mutation,
+      }),
+      Self::Gaussian { .. } => BoundaryBehavior::Hard,
+    }
   }
 
   fn grid_end(self) -> Result<f64, Report> {
