@@ -150,10 +150,10 @@ mod tests {
         iproduct!(0..4, 0..4)
           .map(|(root, inner)| {
             pi[root]
-              * transition(root, inner, 0.2)
-              * transition(inner, a, 0.1)
-              * transition(inner, b, 0.9)
-              * transition(root, c, 0.6)
+              * transition(root, inner, durations[&tree.root_inner])
+              * transition(inner, a, durations[&tree.inner_a])
+              * transition(inner, b, durations[&tree.inner_b])
+              * transition(root, c, durations[&tree.root_c])
           })
           .sum::<f64>()
       })
