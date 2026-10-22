@@ -62,11 +62,14 @@ impl TcSchedule {
     }
   }
 
-  pub fn time_after_hazard(&self, from: f64, hazard: f64) -> f64 {
-    match self {
+  pub fn time_after_hazard(&self, from: f64, hazard: f64) -> Result<f64, Report> {
+    if hazard.is_nan() || hazard < 0.0 {
+      return make_error!("Hazard after time {from} must be non-negative, got {hazard}");
+    }
+    Ok(match self {
       Self::Piecewise(piecewise) => piecewise.time_after_hazard(from, hazard),
       Self::Exponential(exponential) => exponential.time_after_hazard(from, hazard),
-    }
+    })
   }
 }
 

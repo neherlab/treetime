@@ -7,19 +7,19 @@ mod tests {
   proptest! {
     #[test]
     fn test_prop_tc_schedule_constant_time_after_hazard_roundtrip(schedule in gen_constant(), span in gen_span()) {
-      let actual = schedule.time_after_hazard(span.from, schedule.hazard_between(span.from, span.to));
+      let actual = schedule.time_after_hazard(span.from, schedule.hazard_between(span.from, span.to)).unwrap();
       prop_assert_ulps_eq!(span.to, actual, max_ulps = 4);
     }
 
     #[test]
     fn test_prop_tc_schedule_exponential_time_after_hazard_roundtrip(schedule in gen_exponential(), span in gen_span()) {
-      let actual = schedule.time_after_hazard(span.from, schedule.hazard_between(span.from, span.to));
+      let actual = schedule.time_after_hazard(span.from, schedule.hazard_between(span.from, span.to)).unwrap();
       prop_assert_ulps_eq!(span.to, actual, max_ulps = 19);
     }
 
     #[test]
     fn test_prop_tc_schedule_piecewise_time_after_hazard_roundtrip(schedule in gen_piecewise(), span in gen_span()) {
-      let actual = schedule.time_after_hazard(span.from, schedule.hazard_between(span.from, span.to));
+      let actual = schedule.time_after_hazard(span.from, schedule.hazard_between(span.from, span.to)).unwrap();
       prop_assert_ulps_eq!(span.to, actual, max_ulps = 124);
     }
   }

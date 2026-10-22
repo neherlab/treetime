@@ -68,7 +68,7 @@ mod tests {
   fn test_tc_schedule_exponential_time_after_hazard_is_finite_when_hazard_times_tc0_overflows() {
     let schedule = TcSchedule::exponential(1e308, 1e308).unwrap();
     let expected = 1e308 * 3.0_f64.ln();
-    let actual = schedule.time_after_hazard(0.0, 2.0);
+    let actual = schedule.time_after_hazard(0.0, 2.0).unwrap();
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
   }
 
@@ -84,7 +84,9 @@ mod tests {
   fn test_tc_schedule_exponential_time_after_hazard_is_finite_when_the_rate_at_the_start_overflows() {
     let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
     let expected = 751.0;
-    let actual = schedule.time_after_hazard(750.0, schedule.hazard_between(750.0, 751.0));
+    let actual = schedule
+      .time_after_hazard(750.0, schedule.hazard_between(750.0, 751.0))
+      .unwrap();
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 1);
   }
 
@@ -119,8 +121,24 @@ mod tests {
   #[trace]
   fn test_tc_schedule_piecewise_time_after_hazard_roundtrip_next_to_close_breaks(#[case] from: f64, #[case] to: f64) {
     let schedule = TcSchedule::piecewise(vec![5.0, 5.0_f64.next_up(), 5.0 + 1e-12], vec![0.5, 20.0, 0.5, 20.0]).unwrap();
-    let actual = schedule.time_after_hazard(from, schedule.hazard_between(from, to));
+    let actual = schedule.time_after_hazard(from, schedule.hazard_between(from, to)).unwrap();
     pretty_assert_ulps_eq!(to, actual, max_ulps = 124);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::piecewise_negative(  TcSchedule::constant(1.0),         -1.0,     "Hazard after time 2 must be non-negative, got -1")]
+  #[case::piecewise_nan(       TcSchedule::constant(1.0),         f64::NAN, "Hazard after time 2 must be non-negative, got NaN")]
+  #[case::exponential_negative(TcSchedule::exponential(1.0, 1.0), -1.0,     "Hazard after time 2 must be non-negative, got -1")]
+  #[case::exponential_nan(     TcSchedule::exponential(1.0, 1.0), f64::NAN, "Hazard after time 2 must be non-negative, got NaN")]
+  #[trace]
+  fn test_tc_schedule_time_after_hazard_rejects_invalid_hazard(
+    #[case] schedule: Result<TcSchedule, Report>,
+    #[case] hazard: f64,
+    #[case] expected: &str,
+  ) {
+    let result = schedule.unwrap().time_after_hazard(2.0, hazard);
+    assert_error!(result, expected);
   }
 
   #[rustfmt::skip]
