@@ -290,6 +290,7 @@ dependencies = [
  "ctor",
  "eyre",
  "indoc",
+ "itertools",
  "pretty_assertions",
  "rayon",
  "treetime-utils",

@@ -1,10 +1,14 @@
 #[cfg(test)]
 mod tests {
-  use crate::{ExampleFile, discover_datasets, parse_example_config, schema_directive, text_schema_command};
+  use crate::{
+    DatasetFiles, ExampleFile, discover_datasets, example_configs, group_datasets, parse_example_config,
+    schema_directive, text_schema_command,
+  };
+  use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::path::Path;
-  use treetime_utils::o;
+  use treetime_utils::{o, vec_of_owned};
 
   const COMMANDS: &[&str] = &["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
 
@@ -67,6 +71,75 @@ mod tests {
   fn test_examples_discovery_names_the_examples_dir_as_given() {
     let catalog = discover_datasets(Path::new("../../data"), COMMANDS).unwrap();
     assert_eq!("../../data", catalog.examples_dir);
+  }
+
+  #[test]
+  fn test_examples_grouping_of_a_file_list_keeps_folders_with_a_tree() {
+    let paths = [
+      "README.md",
+      "zika/country_weights.csv",
+      "zika/20/tree.nwk",
+      "zika/20/metadata.tsv",
+      "zika/20/.hidden.nwk",
+      "usher/.gitignore",
+      "usher/global.pb",
+      "tree.nwk",
+      "sc2/4500/tree.nwk",
+      "sc2/4500/metadata.tsv.xz",
+      "sc2/4500/translations/F.fasta.xz",
+    ];
+    assert_eq!(
+      vec![
+        DatasetFiles {
+          name: o!(""),
+          files: vec_of_owned!["README.md", "tree.nwk"],
+        },
+        DatasetFiles {
+          name: o!("sc2/4500"),
+          files: vec_of_owned!["metadata.tsv.xz", "tree.nwk"],
+        },
+        DatasetFiles {
+          name: o!("zika/20"),
+          files: vec_of_owned!["metadata.tsv", "tree.nwk"],
+        },
+      ],
+      group_datasets(paths)
+    );
+  }
+
+  #[test]
+  fn test_examples_configs_of_a_file_list_read_only_yaml_files() {
+    let directive = schema_directive("clock");
+    let paths = [
+      "b/clock.yaml",
+      "a/notes.txt",
+      "a/.hidden.yaml",
+      "a/clock.yml",
+      "a/plain.yaml",
+    ];
+    let mut read = vec![];
+    let examples = example_configs(
+      paths,
+      |path| {
+        read.push(path.to_owned());
+        Ok::<_, Report>(match path {
+          "a/plain.yaml" => o!("tree: tree.nwk\n"),
+          _ => format!("{directive}\n# Clock of {path}.\ntree: tree.nwk\n"),
+        })
+      },
+      COMMANDS,
+    )
+    .unwrap();
+    assert_eq!(
+      (
+        vec_of_owned!["a/clock.yml", "b/clock.yaml"],
+        vec_of_owned!["a/clock.yml", "a/plain.yaml", "b/clock.yaml"]
+      ),
+      (
+        examples.into_iter().map(|example| example.path).collect::<Vec<_>>(),
+        read
+      )
+    );
   }
 
   #[test]

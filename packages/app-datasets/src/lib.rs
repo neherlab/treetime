@@ -2,9 +2,10 @@
 mod __tests__;
 
 use eyre::{Report, WrapErr};
-use std::fs::{self, ReadDir};
+use itertools::Itertools;
+use std::fs;
 use std::io::{self, ErrorKind};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub const TREE_FILE: &str = "tree.nwk";
 const SCHEMA_DIRECTIVE: &str = "yaml-language-server:";
@@ -15,25 +16,18 @@ const SCHEMA_URL_BASE: &str = "https://raw.githubusercontent.com/neherlab/treeti
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
 
 pub fn discover_datasets(examples_dir: &Path, commands: &[&str]) -> Result<ExamplesFolder, Report> {
-  let mut datasets = Vec::new();
-  let mut examples = Vec::new();
-  match fs::read_dir(examples_dir) {
-    Ok(entries) => collect(
-      examples_dir,
-      examples_dir,
-      entries,
-      commands,
-      &mut datasets,
-      &mut examples,
-    )?,
-    Err(error) if error.kind() == ErrorKind::NotFound => {},
-    Err(error) => return Err(read_dir_report(error, examples_dir)),
-  }
-  datasets.sort_by(|a, b| a.name.cmp(&b.name));
-  examples.sort_by(|a, b| a.path.cmp(&b.path));
+  let files = list_files(examples_dir)?;
+  let examples = example_configs(
+    files.iter().map(String::as_str),
+    |path| {
+      let file = examples_dir.join(path);
+      fs::read_to_string(&file).wrap_err_with(|| format!("When reading example configuration '{}'", file.display()))
+    },
+    commands,
+  )?;
   Ok(ExamplesFolder {
     examples_dir: examples_dir.to_string_lossy().replace('\\', "/"),
-    datasets,
+    datasets: group_datasets(files.iter().map(String::as_str)),
     examples,
   })
 }
@@ -45,60 +39,47 @@ pub struct ExamplesFolder {
   pub examples: Vec<ExampleFile>,
 }
 
-pub fn schema_directive(command: &str) -> String {
-  format!("# {SCHEMA_DIRECTIVE} {SCHEMA_KEY}{SCHEMA_URL_BASE}/{SCHEMA_FILE_PREFIX}{command}{SCHEMA_FILE_SUFFIX}")
+pub fn group_datasets<'a>(paths: impl IntoIterator<Item = &'a str>) -> Vec<DatasetFiles> {
+  paths
+    .into_iter()
+    .filter_map(split_path)
+    .filter(|(_, name)| !name.starts_with('.'))
+    .into_group_map()
+    .into_iter()
+    .filter(|(_, files)| files.contains(&TREE_FILE))
+    .map(|(folder, files)| DatasetFiles {
+      name: folder.to_owned(),
+      files: files.into_iter().map(str::to_owned).sorted().collect(),
+    })
+    .sorted_by(|a, b| a.name.cmp(&b.name))
+    .collect()
 }
 
-fn collect(
-  base: &Path,
-  dir: &Path,
-  entries: ReadDir,
-  commands: &[&str],
-  datasets: &mut Vec<DatasetFiles>,
-  examples: &mut Vec<ExampleFile>,
-) -> Result<(), Report> {
-  let mut files: Vec<String> = Vec::new();
-  let mut subdirs: Vec<PathBuf> = Vec::new();
-
-  for entry in entries {
-    let entry = entry.map_err(|error| read_dir_report(error, dir))?;
-    let file_type = entry
-      .file_type()
-      .wrap_err_with(|| format!("When reading the file type of '{}'", entry.path().display()))?;
-    let name = entry.file_name().to_string_lossy().into_owned();
-    if file_type.is_dir() {
-      subdirs.push(entry.path());
-    } else if !name.starts_with('.') {
-      if is_yaml(&entry.path()) {
-        let content = fs::read_to_string(entry.path())
-          .wrap_err_with(|| format!("When reading example configuration '{}'", entry.path().display()))?;
-        if let Some(example) = parse_example_config(&relative(base, &entry.path()), &content, commands) {
-          examples.push(example);
-        }
-      }
-      files.push(name);
-    }
-  }
-
-  if files.iter().any(|file| file == TREE_FILE) {
-    files.sort();
-    datasets.push(DatasetFiles {
-      name: relative(base, dir),
-      files,
-    });
-  }
-
-  for subdir in subdirs {
-    let entries = fs::read_dir(&subdir).map_err(|error| read_dir_report(error, &subdir))?;
-    collect(base, &subdir, entries, commands, datasets, examples)?;
-  }
-  Ok(())
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DatasetFiles {
   pub name: String,
   pub files: Vec<String>,
+}
+
+pub fn example_configs<'a>(
+  paths: impl IntoIterator<Item = &'a str>,
+  mut read: impl FnMut(&str) -> Result<String, Report>,
+  commands: &[&str],
+) -> Result<Vec<ExampleFile>, Report> {
+  let mut examples = Vec::new();
+  for path in paths.into_iter().sorted() {
+    if !is_yaml(path) || split_path(path).is_none_or(|(_, name)| name.starts_with('.')) {
+      continue;
+    }
+    if let Some(example) = parse_example_config(path, &read(path)?, commands) {
+      examples.push(example);
+    }
+  }
+  Ok(examples)
+}
+
+pub fn schema_directive(command: &str) -> String {
+  format!("# {SCHEMA_DIRECTIVE} {SCHEMA_KEY}{SCHEMA_URL_BASE}/{SCHEMA_FILE_PREFIX}{command}{SCHEMA_FILE_SUFFIX}")
 }
 
 pub(crate) fn parse_example_config(path: &str, content: &str, commands: &[&str]) -> Option<ExampleFile> {
@@ -145,11 +126,44 @@ fn schema_command(directive: &str) -> Option<&str> {
   file.strip_prefix(SCHEMA_FILE_PREFIX)?.strip_suffix(SCHEMA_FILE_SUFFIX)
 }
 
-fn is_yaml(path: &Path) -> bool {
-  path
+fn is_yaml(path: &str) -> bool {
+  Path::new(path)
     .extension()
     .and_then(|extension| extension.to_str())
     .is_some_and(|extension| YAML_EXTENSIONS.contains(&extension))
+}
+
+fn split_path(path: &str) -> Option<(&str, &str)> {
+  match path.rsplit_once('/') {
+    Some((folder, name)) => Some((folder, name)),
+    None if path.is_empty() => None,
+    None => Some(("", path)),
+  }
+}
+
+fn list_files(examples_dir: &Path) -> Result<Vec<String>, Report> {
+  let mut files = Vec::new();
+  let mut folders = vec![examples_dir.to_path_buf()];
+  while let Some(dir) = folders.pop() {
+    let entries = match fs::read_dir(&dir) {
+      Ok(entries) => entries,
+      Err(error) if error.kind() == ErrorKind::NotFound && dir == examples_dir => return Ok(files),
+      Err(error) => return Err(read_dir_report(error, &dir)),
+    };
+    for entry in entries {
+      let entry = entry.map_err(|error| read_dir_report(error, &dir))?;
+      let file_type = entry
+        .file_type()
+        .wrap_err_with(|| format!("When reading the file type of '{}'", entry.path().display()))?;
+      if file_type.is_dir() {
+        folders.push(entry.path());
+      } else {
+        files.push(relative(examples_dir, &entry.path()));
+      }
+    }
+  }
+  files.sort();
+  Ok(files)
 }
 
 fn relative(base: &Path, path: &Path) -> String {
