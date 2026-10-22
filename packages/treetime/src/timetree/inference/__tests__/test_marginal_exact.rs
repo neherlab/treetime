@@ -22,7 +22,7 @@ mod tests {
   use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
-  use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
   const RATE: f64 = 2.0;
   const SITES: usize = 1000;
@@ -34,10 +34,10 @@ mod tests {
   const GRID_LEN: usize = 2401;
 
   // TODO: kb/issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md
-  // The CDFs of the time passes differ from the exact posterior by up to 5.3e-3 (node R, both tips at zero).
+  // The CDFs of the time passes differ from the exact posterior by up to 2.9e-3 (node R, both tips at zero).
   #[rustfmt::skip]
   #[rstest]
-  #[case::mixed_counts(           [3, 0, 2, 6],  [1e-4, 1e-2])]
+  #[case::mixed_counts(           [3, 0, 2, 6],  [1e-4, 1e-4])]
   #[case::zero_counts_near_tips(  [1, 0, 0, 2],  [1e-3, 1e-3])]
   #[case::long_branches(          [8, 4, 5, 12], [1e-3, 1e-3])]
   #[case::both_tips_at_zero(      [0, 0, 1, 1],  [1e-4, 1e-2])]
@@ -48,7 +48,7 @@ mod tests {
   ) -> Result<(), Report> {
     let gtr = jc69(JC69Params::default())?;
     let grid: Vec<f64> = (0..GRID_LEN).map(|i| GRID_START + GRID_STEP * i.to_f64_exact()).collect();
-    let (exact_x, exact_r) = helpers::exact_marginals(&gtr, counts, &grid);
+    let (exact_x, exact_r) = helpers::exact_marginals(&gtr, counts, &grid, GRID_STEP);
     let (treetime_x, treetime_r) = helpers::treetime_marginal_cdfs(&gtr, counts, &grid)?;
 
     let support_end_x = T_A.min(T_B);
@@ -132,26 +132,43 @@ mod tests {
       ((SITES - k).to_f64_exact() * same.ln() + differing).exp()
     }
 
-    pub(super) fn exact_marginals(gtr: &GTR, [ka, kb, kx, kc]: [usize; 4], grid: &[f64]) -> (Vec<f64>, Vec<f64>) {
+    pub(super) fn exact_marginals(
+      gtr: &GTR,
+      [ka, kb, kx, kc]: [usize; 4],
+      grid: &[f64],
+      step: f64,
+    ) -> (Vec<f64>, Vec<f64>) {
       let n = grid.len();
-      let branch_x: Vec<f64> = (0..n)
-        .map(|i| branch_likelihood(gtr, i.to_f64_exact() * GRID_STEP, kx))
+      let index = |date: f64| f64_to_usize_saturating(((date - grid[0]) / step).round());
+      let lag = |steps: usize, k: usize| branch_likelihood(gtr, steps.to_f64_exact() * step, k);
+      let (index_a, index_b, end_r) = (index(T_A), index(T_B), index(T_C));
+      let end_x = index_a.min(index_b);
+      let branch_x: Vec<f64> = (0..=end_x).map(|lag_steps| lag(lag_steps, kx)).collect();
+      let tips_x: Vec<f64> = (0..=end_x)
+        .map(|i| lag(index_a - i, ka) * lag(index_b - i, kb))
         .collect();
-      let tips_x: Vec<f64> = grid
-        .iter()
-        .map(|&x| branch_likelihood(gtr, T_A - x, ka) * branch_likelihood(gtr, T_B - x, kb))
-        .collect();
-      let tip_r: Vec<f64> = grid.iter().map(|&r| branch_likelihood(gtr, T_C - r, kc)).collect();
+      let tip_r: Vec<f64> = (0..=end_r).map(|j| lag(end_r - j, kc)).collect();
       let mut marginal_x = vec![0.0; n];
       let mut marginal_r = vec![0.0; n];
-      for i in 0..n {
-        for j in 0..i {
-          let weight = tips_x[i] * branch_x[i - j] * tip_r[j];
-          marginal_x[i] += weight;
-          marginal_r[j] += weight;
+      for i in 0..=end_x {
+        let last_j = i.min(end_r);
+        for j in 0..=last_j {
+          let value = tips_x[i] * branch_x[i - j] * tip_r[j];
+          marginal_x[i] += trapezoid_weight(j, 0, last_j) * value;
+          marginal_r[j] += trapezoid_weight(i, j, end_x) * value;
         }
       }
       (marginal_x, marginal_r)
+    }
+
+    fn trapezoid_weight(position: usize, first: usize, last: usize) -> f64 {
+      if first == last {
+        0.0
+      } else if position == first || position == last {
+        0.5
+      } else {
+        1.0
+      }
     }
 
     pub(super) fn treetime_marginal_cdfs(
@@ -366,7 +383,7 @@ mod tests {
     fn cdf(grid: &[f64], density: &[f64], support_end: f64) -> Vec<f64> {
       let mut cumulative = vec![0.0; grid.len()];
       for i in 1..grid.len() {
-        let cell = if grid[i] <= support_end {
+        let cell = if grid[i] - support_end < 0.5 * (grid[i] - grid[i - 1]) {
           f64::midpoint(density[i], density[i - 1]) * (grid[i] - grid[i - 1])
         } else {
           0.0
