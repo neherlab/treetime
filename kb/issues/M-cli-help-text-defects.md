@@ -49,7 +49,7 @@ No indication of expected range, units, or typical values.
 
 ### W1: Output flags appear optional but at least one is required at runtime
 
-Usage lines show all output flags as optional (`[OPTIONS]`), but the output plan returns `MissingOutputs::NoOutputs` when no output destination is provided [packages/app-output/src/output_plan.rs#L91-L93](../../packages/app-output/src/output_plan.rs#L91-L93). Users following the usage pattern get a runtime error after input loading completes. Workflow generators cannot infer that `-O`/`--output-all` or a per-file flag is required.
+Usage lines show all output flags as optional (`[OPTIONS]`), but the output plan returns `MissingOutputs::NoOutputs` when no output destination is provided [packages/app-output/src/output_plan.rs#L91-L93](../../packages/app-output/src/output_plan.rs#L91-L93). Users following the usage pattern get an argument error. Workflow generators cannot infer that `-O`/`--output-all` or a per-file flag is required.
 
 ### W2: `--output-selection` accepts values that the command rejects at runtime
 

@@ -30,7 +30,7 @@ Reproduction:
 ./dev/docker/run just r treetime timetree --tree=data/flu/h3n2/200/tree.nwk \
   --metadata=data/flu/h3n2/200/metadata.tsv --alignment=data/flu/h3n2/200/aln.fasta.xz \
   --clock-rate=3.058e-3 --keep-root --confidence --seed=1 \
-  --output-all=tmp/flu-deep-tail --output-confidence-tsv=tmp/flu-deep-tail/confidence.tsv
+  --output-all=tmp/flu-deep-tail
 ```
 
 ## Impact

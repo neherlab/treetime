@@ -39,6 +39,7 @@ The offending value is the negative `numdate` of the root.
 
 - [packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47](../../packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47): `fn year_fraction_to_date`, the partial function. Its lint suppression of `Duration::from_secs_f64` names this panic
 - [packages/app-output/src/augur_node_data_refine.rs#L129](../../packages/app-output/src/augur_node_data_refine.rs#L129): the node-data writer, which converts every node date
+- [packages/app-output/src/dates_table.rs](../../packages/app-output/src/dates_table.rs): `fn date_fields()`, the writer of the node dates table `timetree.dates.tsv` (in the default set of `timetree`), which converts every node date for its `date` column
 - [packages/app-backend/src/results/year_date.rs#L18](../../packages/app-backend/src/results/year_date.rs#L18): the run results of the app, which convert dates the same way
 - [packages/treetime-utils/src/datetime/year_fraction.rs#L28-L33](../../packages/treetime-utils/src/datetime/year_fraction.rs#L28-L33): `fn year_fraction_days_between()`, which the run results of the app use for date differences
 - [packages/treetime-utils/src/datetime/parse_date.rs#L28](../../packages/treetime-utils/src/datetime/parse_date.rs#L28): converts input dates, which are positive

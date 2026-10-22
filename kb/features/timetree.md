@@ -3,7 +3,7 @@
 ## Initialization
 
 - [x] Load tree from `--tree`
-- [x] Optional date table from `--metadata`
+- [x] Date table from `--metadata`, required
 - [x] Optional alignment: `--branch-length-mode` `auto` (default) keeps the input branch lengths without an alignment
 - [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, only with two or more files and re-estimated branch lengths, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
@@ -46,7 +46,7 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist
   - [x] Confidence interval extraction from node time distributions
-  - [x] Confidence TSV output
+  - [x] Lower and upper bounds in the node dates table (`dates`)
 - [ ] v0 `always` (marginal times in every round, intervals without a final round): no flag, because every v1 round is marginal and `--confidence` writes the intervals
 
 ## Coalescent Models
@@ -140,14 +140,13 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] Model document (`--output-model`) with one entry per alignment file, including the clock rate of each file
 - [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, Nexus, Newick with `--newick-annotations beast` or `nhx`, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{alignment}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] Clock regression table (`--output-rtt`, opt-in; one row per sample with the date, date source (`input` or `inferred`), root-to-tip distance and clock-filter flag the final clock model was fitted on; new in v1, v0 has no table; app runs request it for the root-to-tip plot)
-- [x] Confidence TSV
 - [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot remains, see [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
 - [ ] Root sequence sampled from its posterior in every reconstruction, as v0 does; v1 takes the most likely state ([kb/issues/M-timetree-root-sequence-not-sampled.md](../issues/M-timetree-root-sequence-not-sampled.md))
 - [x] Ancestral sequences FASTA (`--output-sequences`, default under `--output-all`; reuses the `ancestral` marginal reconstruction, internal nodes always, tips with `--include-leaves`)
 - [ ] Branch mutations table ([kb/issues/N-timetree-branch-mutations-output-unimplemented.md](../issues/N-timetree-branch-mutations-output-unimplemented.md))
 - [ ] Molecular clock text output or approved replacement ([kb/issues/N-timetree-molecular-clock-text-output-undecided.md](../issues/N-timetree-molecular-clock-text-output-undecided.md))
 - [ ] Sequence-evolution model text output or approved replacement ([kb/issues/N-timetree-sequence-evolution-model-text-output-undecided.md](../issues/N-timetree-sequence-evolution-model-text-output-undecided.md))
-- [ ] Node dates TSV (not implemented - [kb/issues/N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md))
+- [x] Node dates TSV (`--output-dates`, `timetree.dates.tsv`, in the default set; the columns and header of v0 `dates.tsv`, with the bounds of the 90% region with `--confidence`)
 - [ ] Substitution rates TSV (v0 writes `substitution_rates.tsv` when `--relax` is used)
 - [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; no Augur golden master checks the document: [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)

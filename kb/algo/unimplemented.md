@@ -246,20 +246,6 @@ v1: the `timetree` and `clock` commands declare `--tree` as optional and stop wi
 
 ---
 
-## Timetree Output: Node Dates TSV
-
-Writes inferred node dates to TSV for downstream analysis. The output includes all tree nodes (leaves and internal).
-
-v0: [`packages/legacy/treetime/treetime/CLI_io.py#L136-L158`](../../packages/legacy/treetime/treetime/CLI_io.py#L136-L158).
-v1: not implemented.
-Known issue: [kb/issues/N-timetree-node-dates-output-unimplemented.md](../issues/N-timetree-node-dates-output-unimplemented.md).
-
-v0 format with confidence (`#node\tdate\tnumeric date\tlower bound\tupper bound`): bounds come from `get_max_posterior_region(n, fraction=0.9)`. Bad branches get `--` placeholders.
-
-v0 format without confidence (`#node\tdate\tnumeric date`): no bounds columns.
-
----
-
 ## Timetree Output: Plots
 
 Diagnostic visualizations: root-to-tip regression scatter plot and time-scaled phylogenetic tree. v1 has no `--plot-rtt` and `--plot-tree` flags until the plots exist.
