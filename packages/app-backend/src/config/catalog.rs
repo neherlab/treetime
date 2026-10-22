@@ -4,9 +4,10 @@ use crate::config::choices::{SettingChoice, setting_choices};
 use crate::config::labels::setting_label;
 use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::setting_arg;
+use app_commands::config::cli_rules::setting_conflicts;
 use app_commands::config::properties::{DEFS_PREFIX, PathRole, SettingProperty, def_pointer, setting_properties};
 use app_commands::json_value::JsonValue;
-use clap::{Arg, Command};
+use clap::Arg;
 use deser::Serialize;
 use eyre::Report;
 use itertools::{Itertools, izip};
@@ -44,7 +45,7 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
         property,
         arg,
         &defaults,
-        conflicts(&cli, &properties, &args, arg),
+        setting_conflicts(&cli, &properties, &args, arg),
       )?;
       Ok((order, arg.get_display_order(), spec))
     })
@@ -87,22 +88,6 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     choices: setting_choices(&settings)?,
     settings,
   })
-}
-
-fn conflicts(cli: &Command, properties: &[SettingProperty], args: &[&Arg], arg: &Arg) -> Vec<String> {
-  let declared = cli.get_arg_conflicts_with(arg);
-  izip!(properties, args)
-    .filter(|(_, other)| {
-      declared.iter().any(|conflict| conflict.get_id() == other.get_id())
-        || cli
-          .get_arg_conflicts_with(other)
-          .iter()
-          .any(|conflict| conflict.get_id() == arg.get_id())
-    })
-    .map(|(property, _)| property.key.clone())
-    .sorted()
-    .dedup()
-    .collect()
 }
 
 /// Settings of every command the app runs, as the settings form shows them.

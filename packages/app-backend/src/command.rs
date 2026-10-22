@@ -1,5 +1,4 @@
 use crate::check_inputs::{CommandInput, InputKind, InputNeed};
-use crate::config::cli_rules::cli_rule_diagnostics;
 use crate::run_checks::MissingSequences;
 use crate::runs::errors::invalid;
 use app_commands::command::{AppCommand, CommandArgs, RawConfig, settings_map};
@@ -15,6 +14,7 @@ use app_commands::commands::shared::output_args::{
   OptimizeOutputSelection, PruneOutputSelection, TimetreeOutputSelection,
 };
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::config::cli_rules::cli_rule_diagnostics;
 use app_commands::config::load::{check_command_config, load_config_document, merge_value};
 use app_commands::config::properties::{PathRole, setting_properties};
 use app_commands::config::schema::command_schema;

@@ -3,6 +3,8 @@ mod __tests__;
 
 #[cfg(feature = "clap")]
 pub mod cli_flags;
+#[cfg(feature = "clap")]
+pub mod cli_rules;
 pub mod load;
 pub mod properties;
 pub mod resolve_paths;
