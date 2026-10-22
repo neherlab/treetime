@@ -41,13 +41,22 @@ disallowed-methods = [
     { path = "tokio::sync::mpsc::unbounded_channel", reason = "use tokio::sync::mpsc::channel with an explicit capacity", allow-invalid = true },
 ]
 
-# clippy::disallowed_macros -- the assertions of approx accept any two values
-# closer than f64::EPSILON, whatever their magnitude. The assertions of
-# treetime-utils compare in units in the last place or relatively without that
-# floor, unless the call gives an epsilon, and the absolute-difference assertion
-# requires one.
+# clippy::disallowed_macros -- the assertions and comparisons of approx accept
+# any two values closer than f64::EPSILON when the call gives no epsilon,
+# whatever their magnitude, so a comparison with 0 or between tiny values passes
+# without any check. The assertions of treetime-utils compare in units in the
+# last place or relatively without that floor, unless the call gives an epsilon,
+# and the absolute-difference assertion requires one. A comparison outside an
+# assertion states its tolerance: a rule of its domain, such as the coordinate
+# rule of treetime-grid, or the builders of approx with an explicit epsilon.
 disallowed-macros = [
     { path = "approx::assert_abs_diff_eq", reason = "use pretty_assert_abs_diff_eq! of treetime-utils", allow-invalid = true },
     { path = "approx::assert_relative_eq", reason = "use pretty_assert_relative_eq! of treetime-utils", allow-invalid = true },
     { path = "approx::assert_ulps_eq", reason = "use pretty_assert_ulps_eq! of treetime-utils", allow-invalid = true },
+    { path = "approx::abs_diff_eq", reason = "state the tolerance: approx::AbsDiff::default().epsilon(..)", allow-invalid = true },
+    { path = "approx::abs_diff_ne", reason = "state the tolerance: approx::AbsDiff::default().epsilon(..)", allow-invalid = true },
+    { path = "approx::relative_eq", reason = "state the tolerance: approx::Relative::default().epsilon(..)", allow-invalid = true },
+    { path = "approx::relative_ne", reason = "state the tolerance: approx::Relative::default().epsilon(..)", allow-invalid = true },
+    { path = "approx::ulps_eq", reason = "state the tolerance: approx::Ulps::default().epsilon(..), or a coordinate rule such as treetime_grid::coordinates_coincide", allow-invalid = true },
+    { path = "approx::ulps_ne", reason = "state the tolerance: approx::Ulps::default().epsilon(..)", allow-invalid = true },
 ]

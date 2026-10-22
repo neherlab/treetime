@@ -31,7 +31,10 @@ mod tests {
         .expect("dense and sparse reconstructions run");
 
       prop_assert!(
-        approx::relative_eq!(comparison.log_lh_dense, comparison.log_lh_sparse, max_relative = 1e-5, epsilon = 0.0),
+        approx::Relative::default()
+          .epsilon(0.0)
+          .max_relative(1e-5)
+          .eq(&comparison.log_lh_dense, &comparison.log_lh_sparse),
         "log-likelihoods differ: dense {}, sparse {}; {} excluded near-tie sites differ in their most likely state",
         comparison.log_lh_dense,
         comparison.log_lh_sparse,

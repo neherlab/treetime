@@ -3,7 +3,7 @@ macro_rules! prop_assert_abs_diff_eq {
   ($lhs:expr, $rhs:expr, epsilon = $eps:expr $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::abs_diff_eq!(*lhs, *rhs, epsilon = $eps) {
+    if !approx::AbsDiff::default().epsilon($eps).eq(lhs, rhs) {
       let lhs_fmt = format!("{lhs:?}");
       let rhs_fmt = format!("{rhs:?}");
       return Err(proptest::test_runner::TestCaseError::fail(format!(
@@ -60,7 +60,7 @@ macro_rules! prop_assert_array_abs_diff_eq {
   ($lhs:expr, $rhs:expr, epsilon = $eps:expr $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::abs_diff_eq!(*lhs, *rhs, epsilon = $eps) {
+    if !approx::AbsDiff::default().epsilon($eps).eq(lhs, rhs) {
       let lhs_fmt = $crate::testing::assert::format_array(format!("{lhs:#?}"));
       let rhs_fmt = $crate::testing::assert::format_array(format!("{rhs:#?}"));
       return Err(proptest::test_runner::TestCaseError::fail(format!(
@@ -118,7 +118,7 @@ macro_rules! prop_assert_map_abs_diff_eq {
     let lhs = &$lhs;
     let rhs = &$rhs;
     let eps = $eps;
-    if !$crate::testing::assert::maps_eq(lhs, rhs, |a, b| approx::abs_diff_eq!(a, b, epsilon = eps)) {
+    if !$crate::testing::assert::maps_eq(lhs, rhs, |a, b| approx::AbsDiff::default().epsilon(eps).eq(a, b)) {
       let lhs_fmt = $crate::testing::assert::format_map(lhs);
       let rhs_fmt = $crate::testing::assert::format_map(rhs);
       return Err(proptest::test_runner::TestCaseError::fail(format!(

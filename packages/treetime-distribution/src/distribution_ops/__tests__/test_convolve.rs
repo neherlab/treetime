@@ -7,7 +7,6 @@ mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::__tests__::test_mass_profile_convergence::tests::helpers::assert_second_order;
   use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution};
-  use approx::ulps_eq;
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, array, s};
@@ -718,7 +717,9 @@ mod tests {
         panic!("expected a Function result, got {actual:?}");
       };
       assert!(
-        g.t().iter().any(|&x| ulps_eq!(x, t, epsilon = 0.0, max_ulps = 4)),
+        g.t()
+          .iter()
+          .any(|x| approx::Ulps::default().epsilon(0.0).max_ulps(4).eq(x, &t)),
         "{t} is a grid point of the result"
       );
     }

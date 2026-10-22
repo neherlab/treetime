@@ -14,7 +14,7 @@ mod tests {
     prop_assert_array_nonneg!(dis, epsilon = 1e-14);
     for (row_idx, row) in dis.rows().into_iter().enumerate() {
       let sum: f64 = row.sum();
-      if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
+      if !approx::AbsDiff::default().epsilon(1e-8).eq(&sum, &1.0) {
         return Err(TestCaseError::fail(format!(
           "row {row_idx}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
         )));
@@ -34,7 +34,7 @@ mod tests {
       prop_assert_array_finite!(aview1(var_pos.dis));
       prop_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-14);
       let sum: f64 = aview1(var_pos.dis).sum();
-      if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
+      if !approx::AbsDiff::default().epsilon(1e-8).eq(&sum, &1.0) {
         return Err(TestCaseError::fail(format!(
           "variable position {pos}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
         )));
@@ -45,7 +45,7 @@ mod tests {
       prop_assert_array_finite!(aview1(fixed_dis));
       prop_assert_array_nonneg!(aview1(fixed_dis), epsilon = 1e-14);
       let sum: f64 = aview1(fixed_dis).sum();
-      if !approx::abs_diff_eq!(sum, 1.0, epsilon = 1e-8) {
+      if !approx::AbsDiff::default().epsilon(1e-8).eq(&sum, &1.0) {
         return Err(TestCaseError::fail(format!(
           "fixed distribution for {char_key:?}: sum = {sum}, expected 1.0 (epsilon = 1e-8)"
         )));

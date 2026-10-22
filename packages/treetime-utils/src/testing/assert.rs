@@ -42,7 +42,9 @@ macro_rules! pretty_assert_map_abs_diff_eq {
     let expected = &$expected;
     let actual = &$actual;
     let eps = $eps;
-    if !$crate::testing::assert::maps_eq(expected, actual, |a, b| approx::abs_diff_eq!(a, b, epsilon = eps)) {
+    if !$crate::testing::assert::maps_eq(expected, actual, |a, b| {
+      approx::AbsDiff::default().epsilon(eps).eq(a, b)
+    }) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_map(expected),
         $crate::testing::assert::format_map(actual),
@@ -131,7 +133,7 @@ macro_rules! pretty_assert_abs_diff_eq {
   ($lhs:expr, $rhs:expr, epsilon = $eps:expr $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::abs_diff_eq!(*lhs, *rhs, epsilon = $eps) {
+    if !approx::AbsDiff::default().epsilon($eps).eq(lhs, rhs) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
@@ -141,7 +143,7 @@ macro_rules! pretty_assert_abs_diff_eq {
   ($lhs:expr, $rhs:expr, epsilon = $eps:expr, $msg:literal $(, $arg:expr)* $(,)?) => {{
     let lhs = &$lhs;
     let rhs = &$rhs;
-    if !approx::abs_diff_eq!(*lhs, *rhs, epsilon = $eps) {
+    if !approx::AbsDiff::default().epsilon($eps).eq(lhs, rhs) {
       pretty_assertions::assert_eq!(
         $crate::testing::assert::format_array(format!("{lhs:#?}")),
         $crate::testing::assert::format_array(format!("{rhs:#?}")),
