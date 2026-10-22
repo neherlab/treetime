@@ -192,6 +192,7 @@ mod tests {
         inputs: SparseConfig::default(),
         input_facts: None,
         folder: None,
+        replace_inputs: SparseConfig::default(),
       })
     }
 

@@ -10,7 +10,7 @@ use app_commands::config::resolve_paths::resolve_config_paths_where;
 use app_commands::config::settings::has_path;
 use app_commands::config::source::{ConfigProblem, ConfigSource, InvalidConfig, parse_config_document};
 use app_commands::json_value::SparseConfig;
-use app_commands::yaml::yaml_text;
+use app_commands::yaml::{yaml_document, yaml_text};
 use app_datasets::text_schema_command;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
@@ -23,6 +23,7 @@ use strum::IntoEnumIterator;
 use treetime_schema::field_default;
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::ReportChain;
+use treetime_utils::make_error;
 
 const SOURCE_NAME: &str = "config.yaml";
 
@@ -37,8 +38,10 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
     Err(report) => return invalid(command, &report, None, &[], facts),
   };
   let prepared = parse_config_document(&source, &request.text).and_then(|document| {
-    let text_keys = top_level_keys(&document);
-    let (text, document) = with_inputs(&settings, &request.text, document, &request.inputs)?;
+    let (text, document) = with_replaced_inputs(&settings, &request.text, document, &request.replace_inputs)?;
+    let mut text_keys = top_level_keys(&document);
+    text_keys.retain(|key| !request.replace_inputs.contains_key(key));
+    let (text, document) = with_inputs(&settings, &text, document, &request.inputs)?;
     Ok((text, text_keys, command.config_over_defaults(&document)?))
   });
   let (text, text_keys, config) = match prepared {
@@ -86,6 +89,13 @@ pub struct CheckConfigRequest {
   #[schemars(default, transform = field_default::<SparseConfig>)]
   #[deser(default)]
   pub inputs: SparseConfig,
+  /// Input settings whose values replace the paths that the text sets, for example the uploaded copies of the files
+  /// that an example configuration reads. The replaced values pass the same checks as the text, and paths in
+  /// `replace_inputs` stay as they are. With replacements, the text is checked as the YAML document with the
+  /// replaced values and without its comments, and the places of problems refer to that document.
+  #[schemars(default, transform = field_default::<SparseConfig>)]
+  #[deser(default)]
+  pub replace_inputs: SparseConfig,
   /// Facts about the input files, from `check-inputs`, for the checks that depend on them.
   #[schemars(default)]
   #[deser(default)]
@@ -201,6 +211,34 @@ fn resolve_text_paths(
     *config = settings;
   }
   Ok(())
+}
+
+fn with_replaced_inputs(
+  settings: &[SettingSpec],
+  text: &str,
+  document: Value,
+  replacements: &Map<String, Value>,
+) -> Result<(String, Value), Report> {
+  if replacements.is_empty() {
+    return Ok((text.to_owned(), document));
+  }
+  if let Some(key) = replacements.keys().find(|key| {
+    !settings
+      .iter()
+      .any(|spec| spec.role == SettingRole::Input && spec.key == **key)
+  }) {
+    return make_error!("`replace_inputs` names `{key}`, which is not an input setting of the command");
+  }
+  let mut document_settings = match document {
+    Value::Object(document_settings) => document_settings,
+    Value::Null => Map::new(),
+    _ => return make_error!("a command configuration must be a mapping of settings"),
+  };
+  for (key, value) in replacements {
+    document_settings.insert(key.clone(), value.clone());
+  }
+  let document = Value::Object(document_settings);
+  Ok((yaml_document(&document)?, document))
 }
 
 fn with_inputs(

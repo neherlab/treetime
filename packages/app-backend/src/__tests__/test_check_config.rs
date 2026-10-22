@@ -39,6 +39,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -68,6 +69,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { config, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -90,6 +92,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -106,6 +109,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -148,6 +152,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -174,6 +179,7 @@ pub(crate) mod tests {
       inputs: SparseConfig(Map::from_iter([(o!("alignment"), json!(["inputs/aln.fasta"]))])),
       input_facts: None,
       folder: Some(PathBuf::from("/data/zika/20")),
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -196,6 +202,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -224,6 +231,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
@@ -239,6 +247,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid { message, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -254,6 +263,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid {
       message,
@@ -292,6 +302,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let expected = expected
       .map(|(settings, text)| RunCheck {
@@ -317,6 +328,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid { message, problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -341,6 +353,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let value = to_json_value(&response).unwrap();
     assert_eq!(
@@ -367,6 +380,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { command, config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -386,6 +400,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { command, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -402,6 +417,7 @@ pub(crate) mod tests {
       inputs: SparseConfig(inputs.as_object().unwrap().clone()),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { config, .. } = response else {
       panic!("expected a valid config, got {response:?}");
@@ -417,6 +433,83 @@ pub(crate) mod tests {
   }
 
   #[test]
+  fn test_check_config_replace_inputs_swaps_the_paths_of_an_example_config() {
+    let replacements = json!({
+      "tree": "inputs/1/tree.nwk",
+      "metadata": "inputs/2/metadata.tsv",
+      "weights": "inputs/3/country_weights.csv",
+    });
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Mugration,
+      text: include_str!("../../../../data/zika/20/mugration.yaml").to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig(replacements.as_object().unwrap().clone()),
+    });
+    let CheckConfigResponse::Valid { config, code, .. } = response else {
+      panic!("expected a valid config, got {response:?}");
+    };
+    assert_eq!(
+      (
+        json!("inputs/1/tree.nwk"),
+        json!("inputs/2/metadata.tsv"),
+        json!("inputs/3/country_weights.csv"),
+        json!("country"),
+        true
+      ),
+      (
+        config["tree"].clone(),
+        config["metadata"].clone(),
+        config["weights"].clone(),
+        config["attribute"].clone(),
+        code
+          .command_line
+          .iter()
+          .any(|line| line.text == "--weights inputs/3/country_weights.csv")
+      )
+    );
+  }
+
+  #[test]
+  fn test_check_config_replace_inputs_rejects_a_setting_that_is_not_an_input() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Mugration,
+      text: "tree: tree.nwk\nmetadata: metadata.tsv\nattribute: country\n".to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig(json!({ "attribute": "region" }).as_object().unwrap().clone()),
+    });
+    let CheckConfigResponse::Invalid { message, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      "`replace_inputs` names `attribute`, which is not an input setting of the command",
+      message
+    );
+  }
+
+  #[test]
+  fn test_check_config_replace_inputs_checks_the_type_of_the_values() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Mugration,
+      text: "tree: tree.nwk\nmetadata: metadata.tsv\nattribute: country\n".to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+      replace_inputs: SparseConfig(json!({ "tree": 5 }).as_object().unwrap().clone()),
+    });
+    let CheckConfigResponse::Invalid { problems, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      vec![o!("config::type")],
+      problems.into_iter().map(|problem| problem.code).collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
   fn test_check_config_problems_keep_their_places_in_the_text_when_inputs_are_added() {
     let text = "definitely_not_a_real_field: 1";
     let response = check_config(&CheckConfigRequest {
@@ -425,6 +518,7 @@ pub(crate) mod tests {
       inputs: SparseConfig(json!({ "tree": "draft.nwk" }).as_object().unwrap().clone()),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid { problems, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -446,6 +540,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid { messages, checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -495,6 +590,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: Some(facts),
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Valid { checks, code, .. } = response else {
       panic!("expected a valid config, got {response:?}");
