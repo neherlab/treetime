@@ -7,6 +7,7 @@ mod kingman;
 mod marginal;
 mod poisson_cherry;
 mod progress;
+mod rate_profile;
 mod reference_grid;
 mod reference_log_z;
 mod simulation;
@@ -34,6 +35,7 @@ pub(crate) use marginal::{
 };
 pub(crate) use poisson_cherry::PoissonCherry;
 pub(crate) use progress::RecordingLog;
+pub(crate) use rate_profile::FrozenRateState;
 pub(crate) use reference_log_z::{
   AnalyticBranch, BranchTime, NodeFactors, ReferenceInput, ReferenceLogZ, reference_log_z,
 };
