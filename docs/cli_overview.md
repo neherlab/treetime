@@ -56,8 +56,8 @@ In practice, that algorithm has not been very useful, and v1 removed it: the reg
 
 ## `timetree`
 
-This is the default command run without subcommand.
-It estimates a time tree and ultimately requires a tree (which can be inferred from an alignment).
+TreeTime 0.x runs this command when the command line names no subcommand.
+It estimates a time tree and requires a tree (v0 can also infer the tree from an alignment).
 It also requires either an alignment or the user to specify the sequence length.
 This is needed for the probabilistic evolution models that determine how much a branch in the tree can be compressed and
 stretched.
