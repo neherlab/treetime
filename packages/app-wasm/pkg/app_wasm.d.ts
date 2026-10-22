@@ -1,5 +1,6 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 interface WasmModule {
+  ___set_stack_limits(_0: number, _1: number): void;
 }
 
 declare class Backend {

@@ -55,6 +55,10 @@ rustflags = [
 #   the 64 KiB default
 # - --emit-tsd writes the TypeScript declarations of the exports next to the
 #   module
+# - a stack overflow stops the module with "stack overflow" instead of silently
+#   overwriting data: the stack check stops on any overflow of the main stack
+#   and of the thread stacks, and the stack placed before static data makes an
+#   overflow that the check misses trap instead of overwriting static data
 [target.wasm32-unknown-emscripten]
 rustflags = [
   "-Cpanic=abort",
@@ -69,4 +73,6 @@ rustflags = [
   "-Clink-arg=-sMAXIMUM_MEMORY=4GB",
   "-Clink-arg=-sSTACK_SIZE=8MB",
   "-Clink-arg=--emit-tsd=app-wasm.d.ts",
+  "-Clink-arg=-sSTACK_OVERFLOW_CHECK=2",
+  "-Clink-arg=-Wl,--stack-first",
 ]
