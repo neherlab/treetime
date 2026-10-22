@@ -12,10 +12,9 @@ const LABELS: [(&str, &str); 9] = [
   ("reroot", "Reroot method"),
 ];
 
-const WORDS: [(&str, &str); 17] = [
+const WORDS: [(&str, &str); 16] = [
   ("aa", "amino-acid"),
   ("anc", "ancestral"),
-  ("aln", "alignment"),
   ("cds", "CDS"),
   ("csv", "CSV"),
   ("dot", "DOT"),
