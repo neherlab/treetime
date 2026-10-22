@@ -25,7 +25,7 @@ Every operation that draws random numbers (sampling, random tie-breaking, stocha
 - A command that gains its first random step gains `--seed` by flattening `SeedArgs` into its arguments, and names the step in its `SeedArgs::resolve()` call so that the log line appears
 - Tests seed every generator with a fixed value
 
-Two v0 random steps are not ported yet and must follow this rule when they are: root sampling in `clock` with an alignment ([kb/issues/M-clock-alignment-ignored.md](../issues/M-clock-alignment-ignored.md)) and root sampling in `timetree` ([kb/issues/M-timetree-root-sequence-not-sampled.md](../issues/M-timetree-root-sequence-not-sampled.md)).
+One v0 random step is not ported yet and must follow this rule when it is: root sampling in `timetree` ([kb/issues/M-timetree-root-sequence-not-sampled.md](../issues/M-timetree-root-sequence-not-sampled.md)).
 
 ## Rationale
 

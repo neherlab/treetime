@@ -74,8 +74,7 @@
 - [x] `--impute-missing-data` (resolve ambiguous/unknown tips to the marginal argmax, leaving gaps; no-op under parsimony). See [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md)
 - [x] `--reconstruct-tip-states` (v0-compatible alias enabling both `--include-leaves` and `--impute-missing-data`)
 - [x] `--model` relevant only on marginal paths (parsimony bypasses GTR)
-- [ ] `--keep-overhangs` (parsed but not wired; gap handling not implemented)
-- [ ] `--zero-based` indexing (parsed but not wired: [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md))
+- [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` for reproducibility; a generated seed is logged when sampling runs without one (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [ ] `--gtr-params` custom GTR parameters (parsed but not wired)
@@ -86,6 +85,6 @@
 - [x] `--aa-root-sequence` per-CDS root/reference override
 - [x] `--output-aa-sequences` per-CDS reconstructed AA FASTA output
 - [x] Optional ambiguity report as IUPAC codes in the reconstructed FASTA outputs and the node sequences of augur node data (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))
-- [ ] `--vcf-reference` (parsed, VCF reader not implemented)
+- [ ] VCF input with `--vcf-reference` ([kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))
 - [ ] `--aln` legacy option (parsed but not wired)
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

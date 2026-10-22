@@ -60,7 +60,7 @@
 - [x] Child-first contribution ordering matching v0
 - [x] Merger rate lambda(t) = k(k-1)/(2\*Tc)
 - [x] Branch counting k(t) from node times
-- [ ] `--n-branches-posterior` (parsed, returns explicit error - [kb/issues/N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md))
+- [ ] `--n-branches-posterior` (no flag until point-time lineage counts exist - [kb/issues/N-timetree-n-branches-posterior-unimplemented.md](../issues/N-timetree-n-branches-posterior-unimplemented.md))
 - [ ] Empirical skyline (v0 `skyline_empirical()` - sliding window without optimization)
 - [x] Skyline confidence bands from the full inverse Hessian ([kb/decisions/coalescent-skyline-hessian-confidence-bands.md](../decisions/coalescent-skyline-hessian-confidence-bands.md))
 - [ ] Skyline plot output ([kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
@@ -149,7 +149,7 @@
 - [/] Auspice v2 JSON (schema-valid substitutions, dates, divergence, outlier state, sequences, and genome annotations; no Augur golden master checks the document: [kb/issues/N-io-auspice-output-missing-augur-golden-master.md](../issues/N-io-auspice-output-missing-augur-golden-master.md))
 - [ ] Outliers TSV (v0 writes `outliers.tsv`)
 - [ ] Tracelog run (v0 `tracelog_run()` with detailed per-iteration state)
-- [ ] Plotting (`--plot-tree`, `--plot-rtt` - parsed, return explicit error - [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
+- [ ] Plotting (`--plot-tree`, `--plot-rtt`, `--tip-labels`, `--no-tip-labels` - no flags until the plots exist - [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))
 
 ## CLI Options (Parsed but Not Wired)
 
@@ -157,13 +157,9 @@
 - [x] `--confidence` (time_marginal promotion, rate susceptibility)
 - [ ] `--covariation`, `--tip-slack`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--reroot-tips`
-- [ ] `--n-iqd`
-- [ ] `--tip-labels` / `--no-tip-labels`
 - [x] `--gtr` (model selection: named models and inference)
 - [ ] `--gtr-params` (parsed but not wired)
-- [ ] `--method-anc`
-- [ ] `--keep-overhangs` (gap handling not implemented)
-- [ ] `--zero-based` ([kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md))
+- [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)
 - [x] `--include-leaves` / `--impute-missing-data` / `--reconstruct-tip-states` (drive the reconstructed FASTA: emit tips, impute ambiguous tip states, alias enabling both; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))

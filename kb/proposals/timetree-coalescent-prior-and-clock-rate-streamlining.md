@@ -107,7 +107,7 @@ states the formulas of the Gaussian timetree that v1 uses:
 | part | new | covers |
 | --- | --- | --- |
 | regression | OLS of root-to-tip divergence on date from per-node sums $(n, \sum T, \sum T^2, \sum D, \sum D^2, \sum TD)$: a subtree message (post-order) and an outside message (pre-order) per node; an excluded tip contributes no sums | slope, intercept, $\chi^2$, $R^2$ at any root; outliers out of the fit by construction |
-| root search | combined sums at offset $a$ on every edge; RSS is a convex quadratic in $a$, so each edge's optimum is closed form; minimum over all nodes and edges in $O(N)$ | `LeastSquares` and `ClockFilter` rerooting; `MinDev` as the same search at fixed rate 0; `Oldest` and `Tips` unchanged |
+| root search | combined sums at offset $a$ on every edge; RSS is a convex quadratic in $a$, so each edge's optimum is closed form; minimum over all nodes and edges in $O(N)$ | `LeastSquares` rerooting; `MinDev` as the same search at fixed rate 0; `Oldest` and `Tips` unchanged |
 | outliers | residuals about the fitted line at the chosen root, IQR rule | `--clock-filter` |
 | rate and root uncertainty | Gaussian message passing at the regression rate ($\eta = \mu(D+M+N)/D$): rate and root covariance from the Hessian, converted to $\mu$ | `rate_std` for `--confidence` and the augur node data, in place of `--covariation` |
 | node marginals | the same Gaussian passes | the start of the timetree loop (section 1) |

@@ -2,7 +2,7 @@
 
 v1 removes support for joint maximum likelihood ancestral reconstruction. `enum MethodAncestral` in `packages/treetime/src/ancestral/params.rs` and its command-line counterpart `enum MethodAncestralCli` in `packages/app-commands/src/commands/shared/method_anc.rs` have the variants `marginal` (the default) and `parsimony`, so `--method-anc` accepts only these two values and the parser rejects `joint` like any unknown value. The v0 implementation lives in `_ml_anc_joint()` (`#_ml_anc_joint`) at `packages/legacy/treetime/treetime/treeanc.py:934-1080:`.
 
-Only the `ancestral` command dispatches on `--method-anc`. The `timetree` and `clock` commands parse the flag and never read it; see [kb/issues/M-timetree-method-anc-ignored.md](../issues/M-timetree-method-anc-ignored.md) and [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md).
+Only `ancestral` and `homoplasy` have `--method-anc`. `timetree` reconstructs marginally only, and `clock` reads no sequences.
 
 ## Background: marginal vs joint reconstruction
 

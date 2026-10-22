@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Decision required.** The parser and compression support, internal representation, output contract, and multi-contig semantics are undecided, and they determine incompatible APIs and data models. See "Scope axes requiring decisions".
 
-TreeTime v1 exposes `--vcf-reference` on sequence-consuming commands, but it has no VCF reader or writer. VCF input, compressed VCF input, and VCF output remain unchecked in [kb/features/io.md](../features/io.md).
+TreeTime v1 has no VCF reader or writer, and no command has a VCF flag (v0: `--vcf-reference`) until they exist. VCF input, compressed VCF input, and VCF output remain unchecked in [kb/features/io.md](../features/io.md).
 
 ## User-facing impact
 
@@ -39,6 +39,5 @@ The parser, compression, internal representation, output contract, and multi-con
 ## Related
 
 - [kb/features/io.md](../features/io.md) - VCF input, compressed VCF input, and VCF output inventory
-- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) - other flags that are parsed but ignored; `--vcf-reference` in `ancestral`, `clock`, and `timetree` is tracked here
 - [N-io-large-dataset-memory-constraint.md](N-io-large-dataset-memory-constraint.md) - dense alignment materialization increases peak memory
 - [N-io-multi-segment-genome-input.md](N-io-multi-segment-genome-input.md) - partition semantics for segmented genomes

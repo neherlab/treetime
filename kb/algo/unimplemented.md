@@ -112,7 +112,7 @@ Reference: <a id="cite-2"></a>[Yang 1994](https://doi.org/10.1007/BF00160154) [[
 Extension of GTR where equilibrium frequencies vary per alignment site, requiring per-site eigendecomposition. Standard GTR uses `Pi[n_states]`; full site-specific GTR extends to `Pi[n_states, seq_len]`. More expensive than per-site rate variation because the eigenvectors change per site.
 
 v0: `GTR_site_specific(GTR)` (`#GTR_site_specific`) in [`packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495`](../../packages/legacy/treetime/treetime/gtr_site_specific.py#L1-L495).
-v1: not implemented. `ancestral --site-specific-gtr` returns an error.
+v1: not implemented, and no command has the `--site-specific-gtr` flag.
 
 ### Key methods
 
@@ -279,7 +279,7 @@ v0 format without confidence (`#node\tdate\tnumeric date`): no bounds columns.
 
 ## Timetree Output: Plots
 
-Diagnostic visualizations: root-to-tip regression scatter plot and time-scaled phylogenetic tree. CLI flags `--plot-rtt` and `--plot-tree` are hidden pending implementation.
+Diagnostic visualizations: root-to-tip regression scatter plot and time-scaled phylogenetic tree. v1 has no `--plot-rtt` and `--plot-tree` flags until the plots exist.
 
 v1: not implemented.
 

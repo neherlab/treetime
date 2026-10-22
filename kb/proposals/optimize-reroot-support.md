@@ -12,7 +12,6 @@ The optimize command has no date information. Only divergence-based rooting meth
 | `--reroot-tips=A,B` | yes                  | topology-only -- root at MRCA of named tips              |
 | `LeastSquares`      | no -- requires dates | --                                                       |
 | `Oldest`            | no -- requires dates | --                                                       |
-| `ClockFilter`       | no -- requires dates | --                                                       |
 
 Requesting a date-dependent method produces a CLI error.
 

@@ -2,8 +2,8 @@
 
 The root `description` of each `packages/schemas/input-config-<command>.schema.json` is the doc comment of the first flattened argument group, not a description of the command:
 
-- `timetree`, `clock`, `ancestral`, `optimize`, `prune` and `homoplasy`: the text of `struct AlignmentArgs` ("Sequence alignment input shared by all commands that accept an alignment...") [packages/app-commands/src/commands/shared/alignment.rs#L21-L32](../../packages/app-commands/src/commands/shared/alignment.rs#L21-L32). The `clock` schema thus describes an alignment input that `clock` does not read ([M-clock-alignment-ignored.md](M-clock-alignment-ignored.md))
-- `mugration`: the text of `struct TreeDialectArgs` ("Newick dialect of the tree inputs, shared by every command that reads a tree.") [packages/app-commands/src/commands/shared/tree_input.rs#L40-L48](../../packages/app-commands/src/commands/shared/tree_input.rs#L40-L48)
+- `timetree`, `ancestral`, `optimize`, `prune` and `homoplasy`: the text of `struct AlignmentArgs` ("Sequence alignment input shared by all commands that accept an alignment...") [packages/app-commands/src/commands/shared/alignment.rs#L21-L32](../../packages/app-commands/src/commands/shared/alignment.rs#L21-L32)
+- `clock` and `mugration`: the text of `struct TreeDialectArgs` ("Newick dialect of the tree inputs, shared by every command that reads a tree.") [packages/app-commands/src/commands/shared/tree_input.rs#L40-L48](../../packages/app-commands/src/commands/shared/tree_input.rs#L40-L48)
 
 The `Treetime<Command>ArgsRaw` structs have no doc comment of their own, so the generated root description is that of their first flattened field type, for example `alignment` in `struct TreetimeTimetreeArgsRaw` [packages/app-commands/src/commands/timetree/args.rs#L113-L123](../../packages/app-commands/src/commands/timetree/args.rs#L113-L123).
 

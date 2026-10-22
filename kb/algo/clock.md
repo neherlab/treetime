@@ -51,7 +51,7 @@ v1: `fn optimize_exact()` [packages/treetime/src/clock/find_best_root/method_exa
 
 ## IQD Outlier Detection
 
-Identifies clock outliers using Tukey's fences (<a id="cite-5"></a>[Tukey 1977](https://doi.org/10.1007/978-1-4419-7976-6) [[5](#ref-5)]) applied to clock deviation residuals. The interquartile distance IQD = Q3 - Q1 measures the spread of the middle 50% of clock deviations. A leaf with `|clock_deviation| > threshold * IQD` is flagged as an outlier, where the threshold is controlled by `--clock-filter` (default 3.0).
+Identifies clock outliers using Tukey's fences (<a id="cite-5"></a>[Tukey 1977](https://doi.org/10.1007/978-1-4419-7976-6) [[5](#ref-5)]) applied to clock deviation residuals. The interquartile distance IQD = Q3 - Q1 measures the spread of the middle 50% of clock deviations. A leaf with `|clock_deviation| > threshold * IQD` is flagged as an outlier, where the threshold is controlled by `--clock-filter` (default 4.0, as in v0).
 
 IQD-based detection is nonparametric and does not assume normally distributed residuals, making it appropriate for phylogenetic data where residual distributions can be skewed. For comparison, under a normal distribution IQD = 1.35 _ sigma, so `threshold _ IQD = 3 _ 1.35 _ sigma = 4.05 \* sigma` - roughly the 99.995% interval.
 

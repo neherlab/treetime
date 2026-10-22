@@ -10,9 +10,8 @@ Each line names the issue and the options that a maintainer must choose from.
 
 - **[kb/issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md](issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md)**: honor each of the two flags that the amino-acid path ignores, reject the combination, or document the flag as nucleotide-only
 - **[kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](issues/M-app-runs-folder-grows-without-retention-or-quota.md)**: choose a quota, an age-based retention, or both, their defaults for the deploy, and whether the UI warns before it removes a run
-- **[kb/issues/M-cli-flags-parsed-but-ignored.md](issues/M-cli-flags-parsed-but-ignored.md)**: implement the documented behavior of each flag that no code reads, or remove the flag
+- **[kb/issues/M-cli-flags-parsed-but-ignored.md](issues/M-cli-flags-parsed-but-ignored.md)**: make `--model-params` and `--keep-polytomies` change the run
 - **[kb/issues/M-cli-help-text-defects.md](issues/M-cli-help-text-defects.md)**: give each behavior item its own issue with a parse and runtime contract, or fix all items in one CLI cleanup
-- **[kb/issues/M-clock-alignment-ignored.md](issues/M-clock-alignment-ignored.md)**: remove the alignment input of `clock`, or re-estimate the branch lengths from the alignment before the regression, as v0 does
 - **[kb/issues/M-clock-command-reports-no-rate-uncertainty.md](issues/M-clock-command-reports-no-rate-uncertainty.md)**: report the Gaussian rate uncertainty in `clock` from a sequence length, or keep `clock` without uncertainty and record the divergence from v0
 - **[kb/issues/M-clock-filter-outlier-clade-dated-after-the-samples.md](issues/M-clock-filter-outlier-clade-dated-after-the-samples.md)**: keep the v0 behavior with its warning, keep the date ranges of flagged tips in the time inference, or use a local clock filter
 - **[kb/issues/M-coalescent-tc-band-undercovers-on-simulated-data.md](issues/M-coalescent-tc-band-undercovers-on-simulated-data.md)**: keep the Tc band and document its limit, or include the uncertainty of the node times in the band
@@ -102,7 +101,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/N-timetree-convergence-metric-deficiencies.md](issues/N-timetree-convergence-metric-deficiencies.md)**: test `log_lh_time` for convergence, use it as a plateau guard, or keep it for reporting only
 - **[kb/issues/N-timetree-convergence-tolerance-vs-branch-grid.md](issues/N-timetree-convergence-tolerance-vs-branch-grid.md)**: derive the node-time tolerance from the grid step, take the larger of a fixed floor and the grid step, or switch the criterion to the objective
 - **[kb/issues/N-timetree-dense-golden-master-node-mismatch.md](issues/N-timetree-dense-golden-master-node-mismatch.md)**: recapture the `ebola_20` marginal fixture from v0 with `prune_short=False`, or compare only the nodes that both trees share
-- **[kb/issues/N-timetree-n-branches-posterior-unimplemented.md](issues/N-timetree-n-branches-posterior-unimplemented.md)**: remove `--n-branches-posterior`, or implement it as a switch to point-time lineage counts, the v0 default
+- **[kb/issues/N-timetree-n-branches-posterior-unimplemented.md](issues/N-timetree-n-branches-posterior-unimplemented.md)**: decide whether to add the v0 point-time lineage counts as a choice with `--n-branches-posterior`
 - **[kb/issues/N-timetree-round-refits-clock-when-nothing-changed.md](issues/N-timetree-round-refits-clock-when-nothing-changed.md)**: keep v0 parity, or skip the clock refit when a round changed nothing and record the divergence
 - **[kb/issues/N-topology-order-unknown-target-labels-ignored.md](issues/N-topology-order-unknown-target-labels-ignored.md)**: ignore target names that match no leaf or repeat, warn about them, or reject them
 - **[kb/issues/N-utils-mean-by-key-empty-and-integer-semantics.md](issues/N-utils-mean-by-key-empty-and-integer-semantics.md)**: return `Option<U>`, restrict the function to floating-point keys, or keep the current contract and document it
@@ -163,7 +162,6 @@ These issues give wrong scientific results or crashes on default settings or exa
 - **[kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](issues/H-ancestral-sparse-dense-internal-residues-diverge.md)**: trace `NODE_0000002` at 0-based position 5437 of `rsv/a/20` through both backends, starting with the `EPS = 1e-4` site demotion
 - **[kb/issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md](issues/H-sparse-marginal-likelihood-depends-on-branch-of-unknown-leaf.md)**: find why the sparse message of a tip without sequence data depends on its branch length, starting in the sparse leaf message
 - **[kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md](issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md)**: compute dates before year 1 with signed calendar arithmetic, as v0 does, instead of panicking
-- **[kb/issues/M-timetree-clock-filter-default-differs-from-v0.md](issues/M-timetree-clock-filter-default-differs-from-v0.md)**: set the `--clock-filter` default of `clock` and `timetree` to 4.0, as in v0
 
 ## Next
 
@@ -171,7 +169,7 @@ These issues give wrong results or failures under specific settings, or block ca
 
 - **[kb/issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md](issues/M-ancestral-sparse-imputation-skips-tips-below-unknown-node.md)**: resolve the parent state before the lookup in `fn impute_state()`
 - **[kb/issues/M-timetree-pre-loop-short-branch-pruning-missing.md](issues/M-timetree-pre-loop-short-branch-pruning-missing.md)**: add the v0 short-branch pruning to the timetree pre-loop, with code shared with the post-loop pruning of [kb/issues/M-optimize-short-branch-pruning-unimplemented.md](issues/M-optimize-short-branch-pruning-unimplemented.md)
-- **[kb/issues/M-clock-filter-residual-parity.md](issues/M-clock-filter-residual-parity.md)**: compute quartiles as v0 does and never flag children of the root, together with [kb/issues/M-timetree-clock-filter-default-differs-from-v0.md](issues/M-timetree-clock-filter-default-differs-from-v0.md)
+- **[kb/issues/M-clock-filter-residual-parity.md](issues/M-clock-filter-residual-parity.md)**: compute quartiles as v0 does and never flag children of the root
 - **[kb/issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](issues/M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md)**: leave undated tips out of the in-loop clock fit
 - **[kb/issues/M-timetree-consumers-read-unconstrained-branch-lengths.md](issues/M-timetree-consumers-read-unconstrained-branch-lengths.md)**: fit the relaxed clock against the clock-constrained branch lengths that `RoundState` already holds
 - **[kb/issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md](issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md)**: keep single-child nodes that carry a date constraint
@@ -181,7 +179,6 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md](issues/H-timetree-input-branch-lengths-abort-on-point-division.md)**: build input-mode branch distributions with the v0 Poisson or Gaussian interpolator
 - **[kb/issues/M-distribution-multiply-touching-hard-domains-error-instead-of-point.md](issues/M-distribution-multiply-touching-hard-domains-error-instead-of-point.md)**: return a point when two range domains touch, in `fn multiply_range_range()`
 - **[kb/issues/M-sparse-marginal-zero-multiplicity-nan.md](issues/M-sparse-marginal-zero-multiplicity-nan.md)**: skip zero-weight terms before the multiplication that gives NaN
-- **[kb/issues/M-timetree-method-anc-ignored.md](issues/M-timetree-method-anc-ignored.md)**: implement parsimony in timetree or remove `--method-anc` from it
 - **[kb/issues/M-optimize-short-branch-pruning-unimplemented.md](issues/M-optimize-short-branch-pruning-unimplemented.md)**: add the v0 post-loop short-branch pruning to optimize
 - **[kb/issues/M-dates-date-column-requires-exact-header-match.md](issues/M-dates-date-column-requires-exact-header-match.md)**: detect the date column as v0 does (leftmost header that contains `date`)
 - **[kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)**: derive the optimize mutations from the emitted sequences, as ancestral and timetree do

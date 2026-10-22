@@ -7,22 +7,6 @@ Systematic audit of `--help` output across all commands reveals defects affectin
 
 ## Defects
 
-### D2: `--prune-short` in `clock` has empty description and type mismatch
-
-`clock` command: `--prune-short` renders with no description at all, because the field has no doc comment [packages/app-commands/src/commands/clock/args.rs#L143-L144](../../packages/app-commands/src/commands/clock/args.rs#L143-L144). It is a `bool` flag. In `prune`, the same name takes an `Option<f64>` threshold (`--prune-short <THRESHOLD>`). Same flag name, different types, different semantics.
-
-Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) tracks that `--prune-short` in `clock` is parsed but never wired.
-
-### D4: `--n-iqd` in `timetree` is unused
-
-Defined at [packages/app-commands/src/commands/timetree/args.rs#L330-L332](../../packages/app-commands/src/commands/timetree/args.rs#L330-L332) but never read or used anywhere. The `--clock-filter` flag already controls interquartile-based outlier detection. The relationship between the two is unexplained.
-
-Related: [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md) lists `--n-iqd`.
-
-### D5: `arg` shows help for an unimplemented command
-
-`treetime arg --help` shows the summary "Estimates ancestral reassortment graph (ARG)" and the global flags, with no indication that the command is unimplemented. Running it does nothing and exits with success [packages/app-cli/src/run.rs#L65](../../packages/app-cli/src/run.rs#L65).
-
 ### D7: `--alphabet` help describes detection that does not exist
 
 The help of `--alphabet` says that the alphabet is detected from the sequence content when the flag is omitted, and the doc comment of the argument struct names `detect_alphabet` [packages/app-commands/src/commands/shared/alphabet.rs#L8-L11](../../packages/app-commands/src/commands/shared/alphabet.rs#L8-L11) [packages/app-commands/src/commands/shared/alphabet.rs#L22-L25](../../packages/app-commands/src/commands/shared/alphabet.rs#L22-L25). No such function exists: every caller uses `alphabet_name().unwrap_or_default()`, which gives `nuc`. The same text reaches the generated CLI reference, the JSON schemas, and the TypeScript types.
@@ -33,13 +17,9 @@ The help of `--alphabet` says that the alphabet is detected from the sequence co
 
 `timetree`/`clock`: `-d --metadata` with alias `--dates`. `mugration`: `-s --metadata` with alias `--states`. Same long flag name, different short flags.
 
-### I4: `--vcf-reference` description has two phrasings
-
-`timetree`/`clock`: "Only for vcf input: fasta file of the sequence the VCF was mapped to". `ancestral`: "FASTA file of the sequence the VCF was mapped to (only for vcf input)".
-
 ### I6: Capitalization inconsistent across all commands
 
-Some descriptions of `timetree` start lowercase ("use an autocorrelated", "add posterior LH", "filename to save the plot to", "add tip labels", "don't show tip labels"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
+Some descriptions of `timetree` start lowercase ("use an autocorrelated"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
 
 ## UX / ergonomics
 
@@ -57,13 +37,9 @@ Command: `timetree`. Takes two positional-style values (`--relax 1.0 0.5`). Most
 
 ### U8: Global flags on non-analysis commands
 
-`--jobs`, `--verbosity`, `--no-progress` appear on `completions`, `schema`, `help-markdown`, `arg` where they serve no purpose.
+`--jobs`, `--verbosity`, `--no-progress` appear on `completions`, `schema`, `help-markdown` where they serve no purpose.
 
 ## Style
-
-### S1: "fasta" in lowercase
-
-The `--vcf-reference` description of `timetree` and `clock` says "fasta file"; other descriptions write "FASTA".
 
 ### S3: `mugration --weights` grammar error
 
@@ -141,6 +117,5 @@ Each behavioral item must first select its parse/runtime contract, and already-o
 
 ## Related issues
 
-- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags in clock and timetree (overlaps D2 and D4)
+- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags
 - [M-timetree-polytomy-resolution-off-by-default.md](M-timetree-polytomy-resolution-off-by-default.md): `--keep-polytomies` and `--resolve-polytomies` have no conflict guard
-- [M-timetree-method-anc-ignored.md](M-timetree-method-anc-ignored.md): `--method-anc` is unused in timetree

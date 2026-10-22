@@ -1,7 +1,7 @@
 # Clock filter residual computation differs from v0
 
 > [!WARNING]
-> **Needs review.** The dengue/100 measurement under Impact was not re-measured against the current code. It may include an interval-date effect: v1 now resolves interval dates to their mean, like v0 (see Differences).
+> **Needs review.** The dengue/100 measurement under Impact was not re-measured against the current code. It may include an interval-date effect: v1 now resolves interval dates to their mean, like v0 (see Differences). It also compared v1 at its former `--clock-filter` default of 3 with v0 at 4; both now default to 4.
 
 v1's `clock_filter()` and v0's `residual_filter()` produce different outlier sets on the same data due to implementation differences in the IQD computation and outlier exclusion rules.
 

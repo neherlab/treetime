@@ -1,6 +1,6 @@
 # Timetree plot outputs are unimplemented
 
-`timetree` renders no plot. The hidden flags `--plot-rtt` and `--plot-tree` are accepted by clap [packages/app-commands/src/commands/timetree/args.rs#L299-L311](../../packages/app-commands/src/commands/timetree/args.rs#L299-L311) and then rejected during argument conversion with "not yet implemented" through `make_error!()` [packages/app-commands/src/commands/timetree/args.rs#L58-L63](../../packages/app-commands/src/commands/timetree/args.rs#L58-L63).
+`timetree` renders no plot, and it has no plot flags (v0: `--plot-rtt`, `--plot-tree`, `--tip-labels`, `--no-tip-labels`) until the plots exist.
 
 A public enhancement request asks TreeTime to emit root-to-tip plots at several analysis points, so that date parsing, clock filtering, and failures can be diagnosed [[issue](https://github.com/neherlab/treetime/issues/228)].
 
@@ -14,4 +14,4 @@ The table layout is v1's own per-segment layout, not v0's `date` / `N_e` / `lowe
 
 ## Fix
 
-Implement the three plots as output selections of `timetree`, and remove the "not yet implemented" rejection, or remove the two hidden flags until the plots exist. Each plot draws through `packages/treetime-charts`, as the `clock` chart does: plotters draws the plot once as SVG with the embedded Lato font (`register_chart_fonts()`, `CHART_FONT_FAMILY`), and `ChartFormat::encode()` turns that SVG into the PNG and PDF outputs, so every plot gets the three formats.
+Implement the three plots as output selections of `timetree`, and add their flags with them. Each plot draws through `packages/treetime-charts`, as the `clock` chart does: plotters draws the plot once as SVG with the embedded Lato font (`register_chart_fonts()`, `CHART_FONT_FAMILY`), and `ChartFormat::encode()` turns that SVG into the PNG and PDF outputs, so every plot gets the three formats.

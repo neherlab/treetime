@@ -29,4 +29,4 @@ v1 `timetree` writes the sequences and mutations of the marginal reconstruction 
 
 ## Related issues
 
-- [M-clock-alignment-ignored.md](M-clock-alignment-ignored.md): v0 `clock` reaches the same root sampling through `TreeTime.run()` when it uses the alignment
+- v0 `clock` reaches the same root sampling through `TreeTime.run()` when it uses the alignment; v1 `clock` reads no alignment

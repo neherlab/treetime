@@ -1,6 +1,6 @@
 # Site-specific GTR is not implemented
 
-v1 has no site-specific substitution model. The hidden `--site-specific-gtr` flag of `ancestral` and `homoplasy` ([packages/app-commands/src/commands/ancestral/args.rs#L305-L311](../../packages/app-commands/src/commands/ancestral/args.rs#L305-L311), [packages/app-commands/src/commands/homoplasy/args.rs#L169-L175](../../packages/app-commands/src/commands/homoplasy/args.rs#L169-L175)) is accepted and then rejected with the error `--site-specific-gtr is not implemented` [`packages/treetime/src/ancestral/plan.rs#L30-L35`](../../packages/treetime/src/ancestral/plan.rs#L30-L35). v0 supports the model in production, so this is a parity gap.
+v1 has no site-specific substitution model, and no command has a flag for it (v0: `--site-specific-gtr` of `ancestral` and `homoplasy`) until the model exists. v0 supports the model in production, so this is a parity gap.
 
 ## v0 behavior
 
@@ -9,6 +9,7 @@ v1 has no site-specific substitution model. The hidden `--site-specific-gtr` fla
 ## Work needed
 
 - A site-specific model with per-site eigendecomposition, transition matrices `[n_states, n_states, seq_len]`, and backward and forward propagation
+- The `--site-specific-gtr` flag of `ancestral` and `homoplasy`, added together with the model
 - Inference of $W$, $\pi^a$ and $\mu^a$ from per-site mutation counts, with golden-master tests against v0
 - Model access that both scalar and site-specific models can honor: partitions and reconstructions store the concrete scalar `GTR` type, for example [`packages/treetime/src/partition/create.rs#L95`](../../packages/treetime/src/partition/create.rs#L95) and [`packages/treetime/src/partition/optimize/dense.rs#L17`](../../packages/treetime/src/partition/optimize/dense.rs#L17)
 - Callers of the 2D `expQt()` that handle a different matrix per site
@@ -33,7 +34,7 @@ For each site $a$, the rate matrix $Q^a$ is built from site-specific $\pi^a$ and
 The sparse incompatibility is a hard constraint: a site-specific model requires dense position-specific propagation.
 
 > [!IMPORTANT]
-> **Decision required.** With a site-specific model and sparse mode requested, the options are: reject the combination with an error, or select dense mode automatically. The flag help already states that the model requires `--dense true` and is incompatible with the sparse representation.
+> **Decision required.** With a site-specific model and sparse mode requested, the options are: reject the combination with an error, or select dense mode automatically.
 
 Study v0's `treeanc.infer_gtr(site_specific=True)` path for the inference-to-traversal integration pattern. v0 uses duck typing (both `GTR` and `GTR_site_specific` expose `expQt`), which maps naturally to a Rust trait.
 

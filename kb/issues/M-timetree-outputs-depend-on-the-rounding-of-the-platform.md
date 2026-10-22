@@ -6,7 +6,7 @@ Differences in the last bits of linear algebra and math functions can grow throu
 
 The current builds use OpenBLAS develop `de5d4914` on every target: natively with LAPACK compiled by flang 22, in web2 with the LAPACK C translation (the `openblas` entries of `.config/mise.toml` and `.config/mise.image.toml`).
 
-Measured on the current code with this build, single-threaded, `timetree` with default settings and, for `data/zika/20`, the configuration that web2 resolves for a run with tree, alignment, and metadata (`--max-iter=2`, marginal branch lengths, `--clock-filter=3`):
+Measured on the current code with this build, single-threaded, `timetree` with default settings and, for `data/zika/20`, the configuration that web2 resolves for a run with tree, alignment, and metadata (`--max-iter=2`, marginal branch lengths, `--clock-filter=3`, the default at the time of the measurement):
 
 | Dataset | Output | CLI, OpenBLAS `Haswell` kernels | CLI, `OPENBLAS_CORETYPE=Prescott` (`Katmai` kernels) | Relative difference |
 | --- | --- | --- | --- | --- |
