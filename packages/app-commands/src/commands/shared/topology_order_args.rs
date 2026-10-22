@@ -134,9 +134,7 @@ impl TopologyOrder {
           .map(|key| nwk_parsed.names.pairing_name(key).to_owned())
           .collect_vec()
       },
-      TargetOrderSource::List(path) => {
-        name_list_read_file(path, b'\n').wrap_err("When reading the topology order list")?
-      },
+      TargetOrderSource::List(path) => name_list_read_file(path).wrap_err("When reading the topology order list")?,
       TargetOrderSource::InputTree => {
         let order = input_order.unwrap_or_else(|| leaf_order(graph));
         return Ok(

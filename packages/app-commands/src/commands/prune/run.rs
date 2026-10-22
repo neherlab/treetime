@@ -181,7 +181,7 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
 }
 
 fn node_names_to_remove(remove: &[String], remove_file: Option<&Path>) -> Result<BTreeSet<String>, Report> {
-  let from_file = remove_file.map(|path| name_list_read_file(path, b'\n')).transpose()?;
+  let from_file = remove_file.map(name_list_read_file).transpose()?;
   Ok(remove.iter().cloned().chain(from_file.into_iter().flatten()).collect())
 }
 
