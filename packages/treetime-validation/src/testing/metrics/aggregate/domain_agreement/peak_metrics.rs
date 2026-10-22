@@ -1,4 +1,4 @@
-use approx::ulps_eq;
+use crate::testing::metrics::config::is_negligible;
 use deser::Serialize;
 use eyre::WrapErr;
 use ndarray::Array1;
@@ -19,7 +19,7 @@ pub(crate) fn compute_peak_metrics(
   let actual_peak_idx = argmax_first(&actual.view()).unwrap_or(0);
   let expected_peak_idx = argmax_first(&expected.view()).unwrap_or(0);
 
-  if ulps_eq!(expected_peak, 0.0, max_ulps = 3) {
+  if is_negligible(expected_peak) {
     return make_error!("Expected peak value too close to zero: {:.2e}", expected_peak);
   }
   let value_error = (actual_peak - expected_peak).abs() / expected_peak.abs();

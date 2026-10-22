@@ -1,5 +1,11 @@
 use smart_default::SmartDefault;
 
+const ZERO_THRESHOLD: f64 = 1e-15;
+
+pub(crate) fn is_negligible(value: f64) -> bool {
+  value.abs() < ZERO_THRESHOLD
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct MetricsConfig {
   pub(crate) pointwise: PointwiseConfig,
@@ -9,7 +15,7 @@ pub struct MetricsConfig {
 
 #[derive(Debug, Clone, SmartDefault)]
 pub struct PointwiseConfig {
-  #[default = 1e-15]
+  #[default(ZERO_THRESHOLD)]
   pub(crate) epsilon: f64,
   #[default = 1e-10]
   pub(crate) log_threshold: f64,
@@ -23,7 +29,7 @@ pub struct PointwiseConfig {
 
 #[derive(Debug, Clone, SmartDefault)]
 pub struct SpatialConfig {
-  #[default = 1e-15]
+  #[default(ZERO_THRESHOLD)]
   pub(crate) epsilon: f64,
   #[default = 1e-10]
   pub(crate) log_threshold: f64,

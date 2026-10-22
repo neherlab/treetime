@@ -15,7 +15,7 @@ version.workspace = true
 doctest = false
 
 [package.metadata.cargo-shear]
-ignored = ["pretty_assertions"]
+ignored = ["approx", "pretty_assertions"]
 
 [dependencies]
 # [internal]
@@ -25,7 +25,6 @@ treetime-ops = { workspace = true }
 treetime-utils = { workspace = true }
 
 # [external]
-approx = { workspace = true }
 bon = { workspace = true }
 clap = { workspace = true }
 deser = { workspace = true }
@@ -42,6 +41,7 @@ strum_macros = { workspace = true }
 treetime-io = { workspace = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 ctor = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }

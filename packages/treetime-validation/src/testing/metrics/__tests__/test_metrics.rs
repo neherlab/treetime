@@ -1,5 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::testing::metrics::aggregate::domain_agreement::error_stats::{
+    RelativeErrorStats, compute_relative_error_statistics,
+  };
   use crate::testing::metrics::config::MetricsConfig;
   use crate::testing::metrics::metrics::*;
   use ndarray::array;
@@ -47,5 +50,21 @@ mod tests {
     pretty_assert_ulps_eq!(metrics.aggregate.execution_time_ms, 50.0, max_ulps = 4);
     let expected_sliding_max = array![0.0, 0.0, 0.5, 0.5, 0.5];
     pretty_assert_ulps_eq!(expected_sliding_max, metrics.spatial.windowed.sliding_max, max_ulps = 0);
+  }
+
+  #[test]
+  fn test_relative_error_statistics_skip_expected_values_below_the_zero_threshold() {
+    let expected = array![5e-16, 2.0];
+    let actual = array![1.0, 2.5];
+
+    let actual_stats = compute_relative_error_statistics(&actual, &expected);
+
+    let expected_stats = RelativeErrorStats {
+      mean: 0.25,
+      max: 0.25,
+      mape: 25.0,
+      median: 0.25,
+    };
+    assert_eq!(expected_stats, actual_stats);
   }
 }

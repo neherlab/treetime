@@ -1,5 +1,6 @@
 use crate::testing::framework::results::{TestResult, TestRunOutcome};
 use crate::testing::framework::test_case::TestCase;
+use crate::testing::metrics::config::is_negligible;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -102,10 +103,10 @@ where
     let expected = result.expected_values[i];
     let actual = result.actual_values[i];
     let abs_error = (actual - expected).abs();
-    let rel_error = if expected.abs() > 1e-15 {
-      abs_error / expected.abs()
-    } else {
+    let rel_error = if is_negligible(expected) {
       0.0
+    } else {
+      abs_error / expected.abs()
     };
 
     writer.write_record(&[

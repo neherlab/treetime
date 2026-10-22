@@ -1,3 +1,4 @@
+use crate::testing::metrics::config::is_negligible;
 use deser::Serialize;
 use itertools::izip;
 use ndarray::Array1;
@@ -29,7 +30,7 @@ pub(crate) fn compute_r_squared(actual: &Array1<f64>, expected: &Array1<f64>) ->
   let ss_res: f64 = (actual - expected).mapv(|x| x * x).sum();
   let ss_tot: f64 = expected.mapv(|x| (x - mean_expected).powi(2)).sum();
 
-  if ss_tot.abs() < 1e-15 {
+  if is_negligible(ss_tot) {
     1.0
   } else {
     (1.0 - ss_res / ss_tot).max(0.0)
@@ -48,7 +49,11 @@ pub(crate) fn compute_correlation(actual: &Array1<f64>, expected: &Array1<f64>) 
   let var_expected: f64 = expected.iter().map(|&e| (e - mean_expected).powi(2)).sum();
 
   let denominator = (var_actual * var_expected).sqrt();
-  if denominator < 1e-15 { 1.0 } else { cov / denominator }
+  if is_negligible(denominator) {
+    1.0
+  } else {
+    cov / denominator
+  }
 }
 
 pub(crate) fn compute_mass_error(x: &Array1<f64>, actual: &Array1<f64>, expected: &Array1<f64>) -> f64 {
@@ -71,7 +76,7 @@ pub(crate) fn compute_relative_l2_norm_error(actual: &Array1<f64>, expected: &Ar
   let error_norm = (actual - expected).mapv(|x| x * x).sum().sqrt();
   let expected_norm = expected.mapv(|x| x * x).sum().sqrt();
 
-  if expected_norm < 1e-15 {
+  if is_negligible(expected_norm) {
     0.0
   } else {
     error_norm / expected_norm
@@ -82,7 +87,7 @@ pub(crate) fn compute_relative_l1_norm_error(actual: &Array1<f64>, expected: &Ar
   let error_norm: f64 = (actual - expected).mapv(|x| x.abs()).sum();
   let expected_norm: f64 = expected.mapv(|x| x.abs()).sum();
 
-  if expected_norm < 1e-15 {
+  if is_negligible(expected_norm) {
     0.0
   } else {
     error_norm / expected_norm
@@ -102,7 +107,7 @@ pub(crate) fn compute_relative_linf_norm_error(actual: &Array1<f64>, expected: &
     .max()
     .map_or(0.0, |x| x.0);
 
-  if expected_norm < 1e-15 {
+  if is_negligible(expected_norm) {
     0.0
   } else {
     error_norm / expected_norm

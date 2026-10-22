@@ -1,4 +1,4 @@
-use approx::ulps_eq;
+use crate::testing::metrics::config::is_negligible;
 use deser::Serialize;
 use itertools::izip;
 use ndarray::Array1;
@@ -33,7 +33,7 @@ pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: 
   let mut abs_rel_errors = Vec::new();
 
   for (&a, &e) in izip!(actual.iter(), expected.iter()) {
-    if !ulps_eq!(e, 0.0, max_ulps = 3) {
+    if !is_negligible(e) {
       let rel_error = (a - e) / e;
       rel_errors.push(rel_error);
       abs_rel_errors.push(rel_error.abs());
@@ -74,7 +74,7 @@ pub(crate) fn compute_relative_error_statistics(actual: &Array1<f64>, expected: 
   }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct RelativeErrorStats {
   pub(crate) mean: f64,
   pub(crate) max: f64,

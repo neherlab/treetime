@@ -1,4 +1,4 @@
-use crate::testing::metrics::config::ToleranceThresholds;
+use crate::testing::metrics::config::{ToleranceThresholds, is_negligible};
 use deser::Serialize;
 use itertools::izip;
 use ndarray::Array1;
@@ -20,7 +20,7 @@ pub(crate) fn compute_tolerance_counts(
       }
     }
 
-    let rel_error = if e.abs() > 1e-15 { abs_error / e.abs() } else { 0.0 };
+    let rel_error = if is_negligible(e) { 0.0 } else { abs_error / e.abs() };
     for (i, &threshold) in thresholds.rel_tolerances.iter().enumerate() {
       if rel_error < threshold {
         within_rel_tolerances[i] += 1;
