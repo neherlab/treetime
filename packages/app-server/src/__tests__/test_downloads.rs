@@ -114,24 +114,17 @@ mod tests {
   }
 
   mod helpers {
-    use crate::__tests__::test_routes::tests::helpers::{TestApp, app, request, timetree_config, wait_for_status};
+    use crate::__tests__::test_routes::tests::helpers::{TestApp, app, timetree_config, wait_for_status};
     use axum::body::Body;
     use axum::http::Request;
     use axum::response::Response;
     use itertools::Itertools;
-    use serde_json::json;
     use std::io::Cursor;
     use zip::{CompressionMethod, ZipArchive};
 
     pub(super) async fn finished_run() -> (TestApp, String) {
       let test = app();
-      let (_, record) = request(
-        &test,
-        "POST",
-        "/api/runs",
-        Some(json!({ "command": "timetree", "config": timetree_config() })),
-      )
-      .await;
+      let (_, record) = test.run_with_data("timetree", timetree_config()).await;
       let id = record["id"].as_str().unwrap().to_owned();
       wait_for_status(&test, &id, "ok").await;
       (test, id)

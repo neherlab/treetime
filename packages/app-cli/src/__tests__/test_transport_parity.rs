@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use app_commands::command::AppCommand;
-  use helpers::{config_for, output_files, run_cli, run_napi, run_server};
+  use helpers::{config_for, output_files, run_cli, run_napi, run_server, same_inputs};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use tempfile::tempdir;
@@ -23,7 +23,7 @@ mod tests {
 
     let server = run_server(command, &config, &work.path().join("server")).await;
     let napi_runs = work.path().join("napi");
-    let napi_config = config.clone();
+    let napi_config = same_inputs(&config, &server.config);
     let napi_dir = tokio::task::spawn_blocking(move || run_napi(command, &napi_config, &napi_runs))
       .await
       .unwrap();
@@ -45,10 +45,12 @@ mod tests {
     use app_napi::port::{PortHeader, PortReply, PortRequest};
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use app_server::web::{WebOptions, create_router};
+    use axum::Router;
     use axum::body::Body;
     use axum::http::Request;
+    use axum::http::request::Builder;
     use napi::bindgen_prelude::Uint8Array;
-    use serde_json::{Value, json};
+    use serde_json::{Map, Value, json};
     use std::collections::BTreeMap;
     use std::fs;
     use std::path::{Path, PathBuf};
@@ -59,7 +61,7 @@ mod tests {
     use treetime::progress::NoopProgress;
     use treetime_utils::io::json::to_json_value;
 
-    pub(super) fn examples_dir() -> PathBuf {
+    fn data_dir() -> PathBuf {
       Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../data")
         .canonicalize()
@@ -67,7 +69,7 @@ mod tests {
     }
 
     pub(super) fn config_for(command: AppCommand) -> Value {
-      let data = examples_dir();
+      let data = data_dir();
       let zika = data.join("zika/20");
       let flu = data.join("flu/h3n2/20");
       match command {
@@ -105,6 +107,17 @@ mod tests {
       }
     }
 
+    pub(super) fn same_inputs(config: &Value, server: &Value) -> Value {
+      Value::Object(
+        config
+          .as_object()
+          .unwrap()
+          .keys()
+          .map(|key| (key.clone(), server[key].clone()))
+          .collect(),
+      )
+    }
+
     pub(super) fn run_cli(command: AppCommand, config: &Value, work: &Path, output_dir: &Path) {
       let config_path = work.join("config.json");
       fs::write(&config_path, config.to_string()).unwrap();
@@ -128,7 +141,6 @@ mod tests {
     pub(super) async fn run_server(command: AppCommand, config: &Value, runs_dir: &Path) -> ServerRun {
       let router = create_router(
         ServerConfig {
-          examples_dir: examples_dir(),
           runs_dir: runs_dir.to_path_buf(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
           max_grid_points: None,
@@ -138,14 +150,20 @@ mod tests {
         &WebOptions::default(),
       )
       .unwrap();
-      let request = Request::post("/api/runs")
-        .header("content-type", "application/json")
-        .body(Body::from(
-          json!({ "command": to_json_value(&command).unwrap(), "config": config }).to_string(),
-        ))
-        .unwrap();
-      let record = response_json(router.clone().oneshot(request).await.unwrap()).await;
-      let id = record["id"].as_str().unwrap().to_owned();
+      let created = server_json(
+        &router,
+        Request::post("/api/runs"),
+        json!({ "command": to_json_value(&command).unwrap(), "config": {}, "defer_start": true }).to_string(),
+      )
+      .await;
+      let id = created["id"].as_str().unwrap().to_owned();
+      let config = upload_inputs(&router, &id, config).await;
+      server_json(
+        &router,
+        Request::post(format!("/api/runs/{id}/start")),
+        json!({ "config": config }).to_string(),
+      )
+      .await;
       let events = Request::get(format!("/api/runs/{id}/events"))
         .body(Body::empty())
         .unwrap();
@@ -164,6 +182,43 @@ mod tests {
         config: record["config"].clone(),
         out_dir: runs_dir.join(&id).join("out"),
       }
+    }
+
+    async fn upload_inputs(router: &Router, id: &str, config: &Value) -> Value {
+      let mut uploaded = Map::new();
+      for (key, value) in config.as_object().unwrap() {
+        let value = match value {
+          Value::Array(items) => {
+            let mut paths = vec![];
+            for item in items {
+              paths.push(upload_input(router, id, item).await);
+            }
+            Value::Array(paths)
+          },
+          value => upload_input(router, id, value).await,
+        };
+        uploaded.insert(key.clone(), value);
+      }
+      Value::Object(uploaded)
+    }
+
+    async fn upload_input(router: &Router, id: &str, value: &Value) -> Value {
+      let Some(file) = value.as_str().map(Path::new).filter(|file| file.is_file()) else {
+        return value.clone();
+      };
+      let name = file.file_name().unwrap().to_string_lossy();
+      let request = Request::put(format!("/api/runs/{id}/inputs/{name}"))
+        .body(Body::from(fs::read(file).unwrap()))
+        .unwrap();
+      response_json(router.clone().oneshot(request).await.unwrap()).await["path"].clone()
+    }
+
+    async fn server_json(router: &Router, request: Builder, body: String) -> Value {
+      let request = request
+        .header("content-type", "application/json")
+        .body(Body::from(body))
+        .unwrap();
+      response_json(router.clone().oneshot(request).await.unwrap()).await
     }
 
     pub(super) fn run_napi(command: AppCommand, config: &Value, runs_dir: &Path) -> PathBuf {

@@ -73,7 +73,6 @@ async fn main() -> eyre::Result<()> {
 
   let shutdown = CancellationToken::new();
   let config = ServerConfig {
-    examples_dir: args.examples_dir,
     runs_dir: args.runs_dir,
     max_upload_size: args.max_upload_size,
     max_grid_points: Some(args.max_grid_points),
@@ -116,11 +115,6 @@ struct ServerArgs {
   /// Number of processing threads. Defaults to all available CPU threads
   #[arg(long, short = 'j', default_value_t = available_jobs())]
   jobs: usize,
-
-  /// Folder of the example datasets and example configurations that the app lists. Relative input paths of a run
-  /// resolve inside it
-  #[arg(long)]
-  examples_dir: PathBuf,
 
   /// Directory that holds the runs: one folder per run with its record, events, inputs and outputs
   #[arg(long)]
@@ -191,10 +185,6 @@ mod tests {
   }
 
   fn server_args<'a>(extra: &[&'a str]) -> Vec<&'a str> {
-    [
-      &["treetime-server", "--examples-dir", "examples", "--runs-dir", "runs"],
-      extra,
-    ]
-    .concat()
+    [&["treetime-server", "--runs-dir", "runs"], extra].concat()
   }
 }

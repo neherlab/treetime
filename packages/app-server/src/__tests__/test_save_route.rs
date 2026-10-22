@@ -157,7 +157,7 @@ mod tests {
 
     const EXAMPLES_URL: &str = "http://127.0.0.1:9/examples.zip";
 
-    use crate::__tests__::test_routes::tests::helpers::{TestApp, events_of, request};
+    use crate::__tests__::test_routes::tests::helpers::{TestApp, events_of};
     use crate::routes::{LocalRouters, local_api_routers};
     use crate::state::{DEFAULT_MAX_UPLOAD_SIZE, LocalSettings, ServerConfig, server_service};
     use app_backend::app_paths::{AppFolderEnv, AppPaths};
@@ -184,16 +184,12 @@ mod tests {
     }
 
     pub(super) async fn finished_run(test: &TestApp) -> String {
-      let (_, record) = request(
-        test,
-        "POST",
-        "/api/runs",
-        Some(json!({
-          "command": "ancestral",
-          "config": { "tree": "zika/20/tree.nwk", "alignment": ["zika/20/aln.fasta.xz"] },
-        })),
-      )
-      .await;
+      let (_, record) = test
+        .run_with_data(
+          "ancestral",
+          json!({ "tree": "zika/20/tree.nwk", "alignment": ["zika/20/aln.fasta.xz"] }),
+        )
+        .await;
       let id = record["id"].as_str().unwrap().to_owned();
       events_of(test, &id, "").await;
       id
@@ -211,7 +207,6 @@ mod tests {
         },
       );
       let config = ServerConfig {
-        examples_dir: TestApp::examples_dir(),
         runs_dir: paths.runs.path.clone(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         max_grid_points: None,

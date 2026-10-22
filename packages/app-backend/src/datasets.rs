@@ -3,7 +3,7 @@ use app_commands::command::AppCommand;
 use app_commands::config::properties::{PathRole, setting_properties};
 use app_commands::config::resolve_paths::resolve_config_paths_where;
 use app_commands::yaml::yaml_value_read_str;
-use app_datasets::{DatasetFiles, ExampleFile, TREE_FILE, discover_datasets, example_configs, group_datasets};
+use app_datasets::{DatasetFiles, ExampleFile, TREE_FILE, example_configs, group_datasets};
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -11,11 +11,10 @@ use relative_path::{Component, RelativePath};
 use schemars::JsonSchema;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::str::FromStr;
 use strum::VariantNames;
 use treetime_utils::io::compression::remove_compression_ext;
-use treetime_utils::io::fs::absolute_path;
 use treetime_utils::{make_error, make_report};
 
 pub const DATA_INDEX_FILE: &str = "index.json";
@@ -27,107 +26,6 @@ const DATASET_INPUTS: [(InputKind, &[&str]); 3] = [
   (InputKind::Alignment, &["aln.fasta"]),
   (InputKind::Metadata, &["metadata.tsv", "metadata.csv"]),
 ];
-
-pub fn dataset_catalog(examples_dir: &Path) -> Result<DatasetCatalog, Report> {
-  let discovered = discover_datasets(examples_dir, AppCommand::VARIANTS)?;
-  let folder = absolute_path(examples_dir)?;
-  Ok(DatasetCatalog {
-    datasets: discovered
-      .datasets
-      .iter()
-      .map(|dataset| Dataset::new(&discovered.examples_dir, dataset))
-      .collect(),
-    examples: discovered
-      .examples
-      .into_iter()
-      .map(|example| ExampleConfig::new(&folder, example))
-      .try_collect()?,
-  })
-}
-
-/// Example datasets and example command configurations found in the examples folder.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-pub struct DatasetCatalog {
-  /// Directories that hold a `tree.nwk`, with their files.
-  pub datasets: Vec<Dataset>,
-  /// Example configurations of the commands the application runs.
-  pub examples: Vec<ExampleConfig>,
-}
-
-/// A directory of example input files.
-#[derive(Clone, Debug, JsonSchema, Serialize)]
-pub struct Dataset {
-  /// Path of the directory relative to the examples folder, with `/` separators.
-  pub name: String,
-  /// Names of the files in the directory, sorted.
-  pub files: Vec<String>,
-  /// The files of the directory that fill command inputs, at most one per kind.
-  pub inputs: Vec<DatasetInput>,
-}
-
-impl Dataset {
-  fn new(examples_dir: &str, dataset: &DatasetFiles) -> Self {
-    let inputs = dataset_inputs(dataset)
-      .map(|(kind, file)| DatasetInput {
-        kind,
-        file: format!("{}/{file}", dataset.name),
-        path: [examples_dir, dataset.name.as_str(), file.as_str()]
-          .iter()
-          .filter(|part| !part.is_empty())
-          .copied()
-          .collect::<Vec<_>>()
-          .join("/"),
-      })
-      .collect();
-    Self {
-      name: dataset.name.clone(),
-      files: dataset.files.clone(),
-      inputs,
-    }
-  }
-}
-
-/// A file of an example dataset that fills a command input.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct DatasetInput {
-  /// Input the file fills.
-  pub kind: InputKind,
-  /// Path of the file relative to the examples folder, with `/` separators.
-  pub file: String,
-  /// Path of the file as a run configuration names it.
-  pub path: String,
-}
-
-/// An example configuration file of one command.
-#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
-pub struct ExampleConfig {
-  /// Path of the file relative to the examples folder, with `/` separators.
-  pub path: String,
-  /// Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
-  pub command: AppCommand,
-  /// Title of the example: the first comment line after the directive.
-  pub title: String,
-  /// Absolute folder of the file, which relative paths in the file resolve from.
-  pub folder: PathBuf,
-  /// Text of the file.
-  pub content: String,
-}
-
-impl ExampleConfig {
-  fn new(examples_dir: &Path, example: ExampleFile) -> Result<Self, Report> {
-    let file = examples_dir.join(&example.path);
-    Ok(Self {
-      command: AppCommand::from_str(&example.command)
-        .map_err(|err| make_report!("example `{}` names an unknown command: {err}", example.path))?,
-      folder: file
-        .parent()
-        .map_or_else(|| examples_dir.to_path_buf(), Path::to_path_buf),
-      path: example.path,
-      title: example.title,
-      content: example.content,
-    })
-  }
-}
 
 /// Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
 /// configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`

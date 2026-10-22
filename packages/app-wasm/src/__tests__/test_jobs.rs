@@ -6,7 +6,7 @@ mod tests {
   use app_backend::runs::events::read_events;
   use app_backend::runs::lifecycle::{JobInput, RunJob};
   use axum::Router;
-  use helpers::{call, data_file, started_run};
+  use helpers::{call, started_run};
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use std::fs;
@@ -22,7 +22,7 @@ mod tests {
       panic!("expected one order, got {orders:?}");
     };
     let job: RunJob = json_read_str(order.job.as_deref().unwrap()).unwrap();
-    let paths = vec![data_file("aln.fasta.xz"), data_file("tree.nwk")];
+    let paths = vec![run.alignment.clone(), run.tree.clone()];
     assert_eq!(
       (
         "start",
@@ -193,6 +193,7 @@ mod tests {
     use app_server::port::port_request;
     use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
     use serde_json::{Value, json};
+    use std::fs;
     use std::sync::Arc;
     use tempfile::{TempDir, tempdir};
     use tokio_util::sync::CancellationToken;
@@ -202,6 +203,8 @@ mod tests {
       pub jobs: Arc<JobExecutor>,
       pub id: String,
       pub runs_dir: TempDir,
+      pub tree: PathBuf,
+      pub alignment: PathBuf,
     }
 
     pub(super) async fn started_run() -> StartedRun {
@@ -210,7 +213,6 @@ mod tests {
       let executor: Arc<dyn RunExecutor> = Arc::<JobExecutor>::clone(&jobs);
       let router = web_router(
         ServerConfig {
-          examples_dir: data_dir(),
           runs_dir: runs_dir.path().to_owned(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
           max_grid_points: None,
@@ -220,18 +222,22 @@ mod tests {
         executor,
       )
       .unwrap();
-      let alignment = data_file("aln.fasta.xz");
-      let body = json!({
-        "command": "ancestral",
-        "config": { "tree": data_file("tree.nwk"), "alignment": [alignment, alignment] },
-      });
+      let body = json!({ "command": "ancestral", "config": {}, "defer_start": true });
       let (status, record) = send(&router, "POST", "/api/runs", Some(body)).await;
+      assert_eq!(200, status, "{record}");
+      let id = record["id"].as_str().unwrap().to_owned();
+      let alignment = upload(&router, &id, "aln.fasta.xz").await;
+      let tree = upload(&router, &id, "tree.nwk").await;
+      let body = json!({ "config": { "tree": tree, "alignment": [alignment, alignment] } });
+      let (status, record) = send(&router, "POST", &format!("/api/runs/{id}/start"), Some(body)).await;
       assert_eq!(200, status, "{record}");
       StartedRun {
         router,
         jobs,
-        id: record["id"].as_str().unwrap().to_owned(),
+        id,
         runs_dir,
+        tree,
+        alignment,
       }
     }
 
@@ -239,21 +245,32 @@ mod tests {
       send(router, method, url, None).await
     }
 
-    pub(super) fn data_file(name: &str) -> PathBuf {
-      data_dir().join("flu/h3n2/20").join(name)
-    }
-
-    fn data_dir() -> PathBuf {
-      PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data")
-        .canonicalize()
-        .unwrap()
+    async fn upload(router: &Router, id: &str, name: &str) -> PathBuf {
+      let file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data/flu/h3n2/20")
+        .join(name);
+      let request = port_request(
+        "PUT",
+        &format!("/api/runs/{id}/inputs/{name}"),
+        vec![],
+        Some(fs::read(file).unwrap()),
+      );
+      let (status, uploaded) = receive(PortExchange::start(router.clone(), request)).await;
+      assert_eq!(200, status, "{uploaded}");
+      PathBuf::from(uploaded["path"].as_str().unwrap())
     }
 
     async fn send(router: &Router, method: &str, url: &str, body: Option<Value>) -> (u16, Value) {
       let headers = vec![("content-type".to_owned(), "application/json".to_owned())];
       let body = body.map(|body| body.to_string().into_bytes());
-      let exchange = PortExchange::start(router.clone(), port_request(method, url, headers, body));
+      receive(PortExchange::start(
+        router.clone(),
+        port_request(method, url, headers, body),
+      ))
+      .await
+    }
+
+    async fn receive(exchange: PortExchange) -> (u16, Value) {
       let head = exchange.head().await.unwrap();
       let mut bytes = vec![];
       while let Some(chunk) = exchange.chunk().await.unwrap() {

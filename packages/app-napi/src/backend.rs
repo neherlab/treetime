@@ -56,7 +56,6 @@ impl DesktopService {
     let examples = paths.examples.path.clone();
     let app = Arc::new(AppService::new(
       runs,
-      examples.clone(),
       Arc::new(Unconfined),
       RunLimits::Settings(Arc::clone(&store)),
       Arc::new(ThreadExecutor),
@@ -64,7 +63,6 @@ impl DesktopService {
     let routers = local_api_routers(
       app,
       ServerConfig {
-        examples_dir: examples.clone(),
         runs_dir: paths.runs.path.clone(),
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         max_grid_points: None,

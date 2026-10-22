@@ -1,77 +1,15 @@
 #[cfg(test)]
 mod tests {
   use crate::{
-    DatasetFiles, ExampleFile, discover_datasets, example_configs, group_datasets, parse_example_config,
-    schema_directive, text_schema_command,
+    DatasetFiles, ExampleFile, example_configs, group_datasets, parse_example_config, schema_directive,
+    text_schema_command,
   };
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
-  use std::path::Path;
   use treetime_utils::{o, vec_of_owned};
 
   const COMMANDS: &[&str] = &["timetree", "optimize", "prune", "ancestral", "clock", "mugration"];
-
-  #[test]
-  fn test_examples_discovery_reads_command_and_title_of_ebola_parsimony() {
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
-    let catalog = discover_datasets(&data, COMMANDS).unwrap();
-    let example = catalog
-      .examples
-      .iter()
-      .find(|example| example.path == "ebola/20/ancestral-parsimony.yaml")
-      .unwrap();
-    assert_eq!(
-      ("ancestral", "Ancestral reconstruction by Fitch parsimony (ebola/20)."),
-      (example.command.as_str(), example.title.as_str())
-    );
-  }
-
-  #[test]
-  fn test_examples_discovery_skips_pipeline_configs_and_covers_every_app_command() {
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
-    let catalog = discover_datasets(&data, COMMANDS).unwrap();
-    assert!(
-      catalog
-        .examples
-        .iter()
-        .all(|example| !example.path.ends_with("pipeline.yaml")),
-      "pipeline configs are not offered: {:?}",
-      catalog.examples
-    );
-    let mut commands: Vec<&str> = catalog
-      .examples
-      .iter()
-      .map(|example| example.command.as_str())
-      .collect();
-    commands.sort_unstable();
-    commands.dedup();
-    assert_eq!(
-      vec!["ancestral", "clock", "mugration", "optimize", "prune", "timetree"],
-      commands
-    );
-  }
-
-  #[test]
-  fn test_examples_discovery_lists_datasets_with_a_tree() {
-    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
-    let catalog = discover_datasets(&data, COMMANDS).unwrap();
-    let zika = catalog
-      .datasets
-      .iter()
-      .find(|dataset| dataset.name == "zika/86")
-      .unwrap();
-    assert_eq!(
-      vec!["aln.fasta.xz", "metadata.tsv", "tree.nwk", "zika.phylip.xz"],
-      zika.files
-    );
-  }
-
-  #[test]
-  fn test_examples_discovery_names_the_examples_dir_as_given() {
-    let catalog = discover_datasets(Path::new("../../data"), COMMANDS).unwrap();
-    assert_eq!("../../data", catalog.examples_dir);
-  }
 
   #[test]
   fn test_examples_grouping_of_a_file_list_keeps_folders_with_a_tree() {

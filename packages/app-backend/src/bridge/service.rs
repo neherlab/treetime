@@ -1,7 +1,6 @@
 use crate::bridge::executor::RunExecutor;
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
 use crate::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
-use crate::datasets::{DatasetCatalog, dataset_catalog};
 use crate::job::JobId;
 use crate::results::auspice::{AuspiceDocument, run_auspice};
 use crate::results::clades::{CladeInRuns, CladeRequest, clade_in_runs};
@@ -19,14 +18,12 @@ use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
 use eyre::Report;
 use serde_json::Value;
-use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_schema::{VersionInfo, version_info};
 use treetime_utils::make_error;
 
 pub struct AppService {
   runs: Arc<RunManager>,
-  examples_dir: PathBuf,
   policy: Arc<dyn InputPolicy>,
   limits: Arc<RunLimits>,
   executor: Arc<dyn RunExecutor>,
@@ -35,14 +32,12 @@ pub struct AppService {
 impl AppService {
   pub fn new(
     runs: Arc<RunManager>,
-    examples_dir: PathBuf,
     policy: Arc<dyn InputPolicy>,
     limits: RunLimits,
     executor: Arc<dyn RunExecutor>,
   ) -> Self {
     Self {
       runs,
-      examples_dir,
       policy,
       limits: Arc::new(limits),
       executor,
@@ -55,10 +50,6 @@ impl AppService {
 
   pub fn version(&self) -> Result<VersionInfo, Report> {
     Ok(version_info())
-  }
-
-  pub fn datasets(&self) -> Result<DatasetCatalog, Report> {
-    dataset_catalog(&self.examples_dir)
   }
 
   pub fn check_config(&self, request: &CheckConfigRequest) -> Result<CheckConfigResponse, Report> {

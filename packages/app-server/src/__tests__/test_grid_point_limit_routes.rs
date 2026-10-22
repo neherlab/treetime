@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_routes::tests::helpers::{
-    app_with_grid_limit, events_of, request, timetree_config, wait_for_status,
+    app_with_grid_limit, create_deferred, events_of, request, timetree_config, wait_for_status,
   };
   use helpers::with_limit;
   use pretty_assertions::assert_eq;
@@ -73,11 +73,13 @@ mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_grid_point_limit_routes_run_above_the_server_limit_ends_with_an_error() {
     let test = app_with_grid_limit(MaxGridPoints::new(2_000).unwrap());
+    let uploads = create_deferred(&test).await;
+    let config = test.upload_data(&uploads, with_limit(3_000)).await;
     let (_, record) = request(
       &test,
       "POST",
       "/api/runs",
-      Some(json!({ "command": "timetree", "config": with_limit(3_000) })),
+      Some(json!({ "command": "timetree", "config": config })),
     )
     .await;
     let id = record["id"].as_str().unwrap().to_owned();
@@ -92,13 +94,7 @@ mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_grid_point_limit_routes_run_records_the_filled_limit_as_a_changed_setting() {
     let test = app_with_grid_limit(MaxGridPoints::default());
-    let (_, record) = request(
-      &test,
-      "POST",
-      "/api/runs",
-      Some(json!({ "command": "timetree", "config": timetree_config() })),
-    )
-    .await;
+    let (_, record) = test.run_with_data("timetree", timetree_config()).await;
     let id = record["id"].as_str().unwrap().to_owned();
     let record = wait_for_status(&test, &id, "ok").await;
     let changed = record["changed_settings"]

@@ -17,20 +17,12 @@ use treetime_grid::MaxGridPoints;
 pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
 
 pub fn server_service(config: &ServerConfig, executor: Arc<dyn RunExecutor>) -> Result<Arc<AppService>, Report> {
-  PathPolicy::new(&config.examples_dir, &[])?;
   let runs = RunManager::open(&config.runs_dir)?;
   let policy = Arc::new(ServerInputs {
-    examples_dir: config.examples_dir.clone(),
     runs: Arc::clone(&runs),
   });
   let limits = config.max_grid_points.map_or(RunLimits::Unset, RunLimits::Server);
-  Ok(Arc::new(AppService::new(
-    runs,
-    config.examples_dir.clone(),
-    policy,
-    limits,
-    executor,
-  )))
+  Ok(Arc::new(AppService::new(runs, policy, limits, executor)))
 }
 
 pub(crate) struct AppState {
@@ -43,7 +35,6 @@ pub(crate) struct AppState {
 
 #[derive(Clone, Debug)]
 pub struct ServerConfig {
-  pub examples_dir: PathBuf,
   pub runs_dir: PathBuf,
   pub max_upload_size: usize,
   pub max_grid_points: Option<MaxGridPoints>,
@@ -60,12 +51,11 @@ pub struct LocalSettings {
 }
 
 struct ServerInputs {
-  examples_dir: PathBuf,
   runs: Arc<RunManager>,
 }
 
 impl InputPolicy for ServerInputs {
   fn confine(&self, command: AppCommand, config: &mut Value) -> Result<(), Report> {
-    PathPolicy::new(&self.examples_dir, &self.runs.input_dirs()?)?.confine(command, config)
+    PathPolicy::new(&self.runs.input_dirs()?)?.confine(command, config)
   }
 }

@@ -444,20 +444,20 @@ mod tests {
   }
 
   #[test]
-  fn test_backend_lists_the_examples_of_the_examples_folder() {
+  fn test_backend_reads_the_index_of_the_examples_folder() {
     let root = tempdir().unwrap();
-    let dataset = root.path().join("examples").join("zika").join("20");
-    fs::create_dir_all(&dataset).unwrap();
-    fs::write(dataset.join("tree.nwk"), "(A:1,B:1);\n").unwrap();
+    let examples = root.path().join("examples");
+    let index = json!({
+      "files": [{ "path": "zika/20/tree.nwk", "size": 11 }],
+      "datasets": [{ "name": "zika/20", "inputs": [{ "kind": "tree", "path": "zika/20/tree.nwk" }] }],
+      "configs": [],
+      "pipelines": [],
+    });
+    fs::create_dir_all(&examples).unwrap();
+    fs::write(examples.join("index.json"), index.to_string()).unwrap();
     let service = DesktopService::open(root.path(), &AppFolderEnv::default()).unwrap();
-    let (status, catalog) = fetch_json(&service, "GET", "/api/datasets", None);
-    let names = catalog["datasets"]
-      .as_array()
-      .unwrap()
-      .iter()
-      .map(|dataset| dataset["name"].clone())
-      .collect::<Vec<_>>();
-    assert_eq!((200, vec![json!("zika/20")]), (status, names));
+    let (status, folder) = fetch_json(&service, "GET", "/api/examples", None);
+    assert_eq!((200, json!({ "folder": examples, "index": index })), (status, folder));
   }
 
   #[test]

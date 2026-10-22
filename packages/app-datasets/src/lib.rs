@@ -1,10 +1,8 @@
 #[cfg(test)]
 mod __tests__;
 
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use itertools::Itertools;
-use std::fs;
-use std::io::{self, ErrorKind};
 use std::path::Path;
 
 pub const TREE_FILE: &str = "tree.nwk";
@@ -14,30 +12,6 @@ const SCHEMA_FILE_PREFIX: &str = "input-config-";
 const SCHEMA_FILE_SUFFIX: &str = ".schema.json";
 const SCHEMA_URL_BASE: &str = "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas";
 const YAML_EXTENSIONS: [&str; 2] = ["yaml", "yml"];
-
-pub fn discover_datasets(examples_dir: &Path, commands: &[&str]) -> Result<ExamplesFolder, Report> {
-  let files = list_files(examples_dir)?;
-  let examples = example_configs(
-    files.iter().map(String::as_str),
-    |path| {
-      let file = examples_dir.join(path);
-      fs::read_to_string(&file).wrap_err_with(|| format!("When reading example configuration '{}'", file.display()))
-    },
-    commands,
-  )?;
-  Ok(ExamplesFolder {
-    examples_dir: examples_dir.to_string_lossy().replace('\\', "/"),
-    datasets: group_datasets(files.iter().map(String::as_str)),
-    examples,
-  })
-}
-
-#[derive(Clone, Debug)]
-pub struct ExamplesFolder {
-  pub examples_dir: String,
-  pub datasets: Vec<DatasetFiles>,
-  pub examples: Vec<ExampleFile>,
-}
 
 pub fn group_datasets<'a>(paths: impl IntoIterator<Item = &'a str>) -> Vec<DatasetFiles> {
   paths
@@ -139,43 +113,6 @@ fn split_path(path: &str) -> Option<(&str, &str)> {
     None if path.is_empty() => None,
     None => Some(("", path)),
   }
-}
-
-fn list_files(examples_dir: &Path) -> Result<Vec<String>, Report> {
-  let mut files = Vec::new();
-  let mut folders = vec![examples_dir.to_path_buf()];
-  while let Some(dir) = folders.pop() {
-    let entries = match fs::read_dir(&dir) {
-      Ok(entries) => entries,
-      Err(error) if error.kind() == ErrorKind::NotFound && dir == examples_dir => return Ok(files),
-      Err(error) => return Err(read_dir_report(error, &dir)),
-    };
-    for entry in entries {
-      let entry = entry.map_err(|error| read_dir_report(error, &dir))?;
-      let file_type = entry
-        .file_type()
-        .wrap_err_with(|| format!("When reading the file type of '{}'", entry.path().display()))?;
-      if file_type.is_dir() {
-        folders.push(entry.path());
-      } else {
-        files.push(relative(examples_dir, &entry.path()));
-      }
-    }
-  }
-  files.sort();
-  Ok(files)
-}
-
-fn relative(base: &Path, path: &Path) -> String {
-  path
-    .strip_prefix(base)
-    .unwrap_or(path)
-    .to_string_lossy()
-    .replace('\\', "/")
-}
-
-fn read_dir_report(error: io::Error, dir: &Path) -> Report {
-  Report::new(error).wrap_err(format!("When listing dataset directory '{}'", dir.display()))
 }
 
 #[cfg(test)]

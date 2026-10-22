@@ -7,16 +7,13 @@ use app_server::port::port_request;
 use app_server::routes::api_router;
 use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig, server_service};
 use axum::Router;
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use itertools::izip;
-use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 use treetime_utils::error::report_to_string;
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
-
-const EXAMPLES_DIR: &str = "/treetime/examples";
 
 const RUNS_DIR: &str = "/treetime/runs";
 
@@ -32,8 +29,7 @@ impl Backend {
   pub fn new() -> Result<Self, JsError> {
     let jobs = Arc::new(JobExecutor::default());
     let executor: Arc<dyn RunExecutor> = Arc::<JobExecutor>::clone(&jobs);
-    create_examples_folder()
-      .and_then(|()| web_router(browser_config(), executor))
+    web_router(browser_config(), executor)
       .map(|router| Self { router, jobs })
       .map_err(|report| JsError::new(&report_to_string(&report)))
   }
@@ -132,13 +128,8 @@ pub(crate) fn web_router(config: ServerConfig, executor: Arc<dyn RunExecutor>) -
   Ok(router)
 }
 
-fn create_examples_folder() -> Result<(), Report> {
-  fs::create_dir_all(EXAMPLES_DIR).wrap_err_with(|| format!("When creating the examples folder '{EXAMPLES_DIR}'"))
-}
-
 fn browser_config() -> ServerConfig {
   ServerConfig {
-    examples_dir: PathBuf::from(EXAMPLES_DIR),
     runs_dir: PathBuf::from(RUNS_DIR),
     max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
     max_grid_points: None,

@@ -1,8 +1,8 @@
 #[cfg(test)]
 pub(crate) mod tests {
   use helpers::{
-    TestApp, app, app_with_upload_limit, create_deferred, events_of, next_event, read_events, request, timetree_config,
-    wait_for_status,
+    app, app_with_upload_limit, create_deferred, data_dir, events_of, next_event, read_events, request,
+    timetree_config, wait_for_status,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -12,13 +12,7 @@ pub(crate) mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_run_streams_events_and_records_outputs() {
     let test = app();
-    let (status, record) = request(
-      &test,
-      "POST",
-      "/api/runs",
-      Some(json!({ "command": "timetree", "config": timetree_config() })),
-    )
-    .await;
+    let (status, record) = test.run_with_data("timetree", timetree_config()).await;
     assert_eq!((200, json!("running")), (status, record["status"].clone()));
     let id = record["id"].as_str().unwrap().to_owned();
 
@@ -84,13 +78,12 @@ pub(crate) mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_events_resume_from_an_offset() {
     let test = app();
-    let (_, record) = request(
-      &test,
-      "POST",
-      "/api/runs",
-      Some(json!({ "command": "clock", "config": { "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" } })),
-    )
-    .await;
+    let (_, record) = test
+      .run_with_data(
+        "clock",
+        json!({ "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" }),
+      )
+      .await;
     let id = record["id"].as_str().unwrap().to_owned();
     let all = events_of(&test, &id, "").await;
     let from_three = events_of(&test, &id, "?from=3").await;
@@ -151,19 +144,23 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_input_outside_the_examples_dir_ends_with_an_error_run() {
+  async fn test_routes_input_outside_the_run_uploads_ends_with_an_error_run() {
     let test = app();
+    let tree = data_dir().join("zika/20/tree.nwk");
     let (_, record) = request(
       &test,
       "POST",
       "/api/runs",
-      Some(json!({ "command": "clock", "config": { "tree": "../Cargo.toml", "metadata": "zika/20/metadata.tsv" } })),
+      Some(json!({ "command": "clock", "config": { "tree": tree } })),
     )
     .await;
     let id = record["id"].as_str().unwrap().to_owned();
     let events = events_of(&test, &id, "").await;
     assert_eq!(
-      json!("input `../Cargo.toml` of setting `tree` is outside the directories the server reads inputs from"),
+      json!(format!(
+        "input `{}` of setting `tree` is outside the directories the server reads inputs from",
+        tree.display()
+      )),
       events.last().unwrap().data["data"]["message"]
     );
   }
@@ -171,14 +168,7 @@ pub(crate) mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_cancel_one_of_two_concurrent_runs() {
     let test = app();
-    let create = || {
-      request(
-        &test,
-        "POST",
-        "/api/runs",
-        Some(json!({ "command": "timetree", "config": timetree_config() })),
-      )
-    };
+    let create = || test.run_with_data("timetree", timetree_config());
     let (_, first) = create().await;
     let (_, second) = create().await;
     let first = first["id"].as_str().unwrap().to_owned();
@@ -266,13 +256,12 @@ pub(crate) mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_file_paths_that_leave_the_output_folder_are_rejected() {
     let test = app();
-    let (_, record) = request(
-      &test,
-      "POST",
-      "/api/runs",
-      Some(json!({ "command": "clock", "config": { "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" } })),
-    )
-    .await;
+    let (_, record) = test
+      .run_with_data(
+        "clock",
+        json!({ "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" }),
+      )
+      .await;
     let id = record["id"].as_str().unwrap().to_owned();
     wait_for_status(&test, &id, "ok").await;
 
@@ -318,15 +307,18 @@ pub(crate) mod tests {
     )
     .await;
     let id = record["id"].as_str().unwrap().to_owned();
-    let data = TestApp::examples_dir();
     let tree = test
-      .upload(&id, "tree.nwk", std::fs::read(data.join("zika/20/tree.nwk")).unwrap())
+      .upload(
+        &id,
+        "tree.nwk",
+        std::fs::read(data_dir().join("zika/20/tree.nwk")).unwrap(),
+      )
       .await;
     let metadata = test
       .upload(
         &id,
         "metadata.tsv",
-        std::fs::read(data.join("zika/20/metadata.tsv")).unwrap(),
+        std::fs::read(data_dir().join("zika/20/metadata.tsv")).unwrap(),
       )
       .await;
     assert_eq!(200, tree.0);
@@ -415,7 +407,7 @@ pub(crate) mod tests {
   async fn test_routes_upload_rejects_a_replaced_path_outside_the_uploads_of_the_run() {
     let test = app();
     let id = create_deferred(&test).await;
-    let outside = TestApp::examples_dir().join("zika/20/tree.nwk");
+    let outside = data_dir().join("zika/20/tree.nwk");
 
     let (status, body) = test
       .upload_replacing(&id, "tree.nwk", &[outside.to_str().unwrap()], b"(A,B);".to_vec())
@@ -449,9 +441,12 @@ pub(crate) mod tests {
   async fn test_routes_release_rejects_an_upload_of_a_started_run() {
     let test = app();
     let id = create_deferred(&test).await;
-    let data = TestApp::examples_dir();
     let tree = test
-      .upload(&id, "tree.nwk", std::fs::read(data.join("zika/20/tree.nwk")).unwrap())
+      .upload(
+        &id,
+        "tree.nwk",
+        std::fs::read(data_dir().join("zika/20/tree.nwk")).unwrap(),
+      )
       .await;
     let (status, _) = request(
       &test,
@@ -471,18 +466,22 @@ pub(crate) mod tests {
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_check_inputs_reports_facts_of_zika_86() {
     let test = app();
+    let id = create_deferred(&test).await;
+    let config = test
+      .upload_data(
+        &id,
+        json!({
+          "tree": "zika/86/tree.nwk",
+          "metadata": "zika/86/metadata.tsv",
+          "alignment": ["zika/86/aln.fasta.xz"],
+        }),
+      )
+      .await;
     let (status, facts) = request(
       &test,
       "POST",
       "/api/check-inputs",
-      Some(json!({
-        "command": "timetree",
-        "config": {
-          "tree": "zika/86/tree.nwk",
-          "metadata": "zika/86/metadata.tsv",
-          "alignment": ["zika/86/aln.fasta.xz"],
-        },
-      })),
+      Some(json!({ "command": "timetree", "config": config })),
     )
     .await;
     assert_eq!(
@@ -514,19 +513,19 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_check_inputs_rejects_paths_outside_the_examples_dir() {
+  async fn test_routes_check_inputs_rejects_paths_outside_the_run_uploads() {
     let test = app();
     let (status, body) = request(
       &test,
       "POST",
       "/api/check-inputs",
-      Some(json!({ "command": "prune", "config": { "tree": "../Cargo.toml" } })),
+      Some(json!({ "command": "prune", "config": { "tree": "../../Cargo.toml" } })),
     )
     .await;
     assert_eq!(
       (
         400,
-        json!("input `../Cargo.toml` of setting `tree` is outside the directories the server reads inputs from")
+        json!("input `../../Cargo.toml` of setting `tree` is outside the directories the server reads inputs from")
       ),
       (status, body["message"].clone())
     );
@@ -574,28 +573,9 @@ pub(crate) mod tests {
   }
 
   #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-  async fn test_routes_datasets_lists_examples() {
-    let test = app();
-    let (_, catalog) = request(&test, "GET", "/api/datasets", None).await;
-    let example = catalog["examples"]
-      .as_array()
-      .unwrap()
-      .iter()
-      .find(|example| example["path"] == json!("ebola/20/ancestral-parsimony.yaml"))
-      .unwrap();
-    assert_eq!(json!("ancestral"), example["command"]);
-  }
-
-  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
   async fn test_routes_results_comparison_and_clades_of_a_finished_run() {
     let test = app();
-    let (_, record) = request(
-      &test,
-      "POST",
-      "/api/runs",
-      Some(json!({ "command": "timetree", "config": timetree_config() })),
-    )
-    .await;
+    let (_, record) = test.run_with_data("timetree", timetree_config()).await;
     let id = record["id"].as_str().unwrap().to_owned();
     let (early, _) = request(&test, "GET", &format!("/api/runs/{id}/results"), None).await;
     wait_for_status(&test, &id, "ok").await;
@@ -688,7 +668,8 @@ pub(crate) mod tests {
     use axum::response::Response;
     use itertools::Itertools;
     use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
-    use serde_json::{Value, json};
+    use serde_json::{Map, Value, json};
+    use std::fs;
     use std::path::PathBuf;
     use std::str;
     use std::time::Duration;
@@ -710,10 +691,6 @@ pub(crate) mod tests {
     }
 
     impl TestApp {
-      pub(crate) fn examples_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data")
-      }
-
       pub(crate) async fn send(&self, request: Request<Body>) -> Response {
         self.router.clone().oneshot(request).await.unwrap()
       }
@@ -725,6 +702,53 @@ pub(crate) mod tests {
 
       pub(crate) async fn upload(&self, id: &str, name: &str, bytes: Vec<u8>) -> (u16, Value) {
         self.upload_replacing(id, name, &[], bytes).await
+      }
+
+      pub(crate) async fn run_with_data(&self, command: &str, config: Value) -> (u16, Value) {
+        let id = create_deferred(self).await;
+        let config = self.upload_data(&id, config).await;
+        request(
+          self,
+          "POST",
+          &format!("/api/runs/{id}/start"),
+          Some(json!({ "command": command, "config": config })),
+        )
+        .await
+      }
+
+      pub(crate) async fn upload_data(&self, id: &str, config: Value) -> Value {
+        let Value::Object(settings) = config else {
+          panic!("a run configuration is a mapping of settings, got {config}");
+        };
+        let mut uploaded = Map::new();
+        for (key, value) in settings {
+          let value = match value {
+            Value::Array(items) => {
+              let mut paths = vec![];
+              for item in items {
+                paths.push(self.upload_data_file(id, item).await);
+              }
+              Value::Array(paths)
+            },
+            value => self.upload_data_file(id, value).await,
+          };
+          uploaded.insert(key, value);
+        }
+        Value::Object(uploaded)
+      }
+
+      async fn upload_data_file(&self, id: &str, value: Value) -> Value {
+        let Some(file) = value
+          .as_str()
+          .map(|path| data_dir().join(path))
+          .filter(|file| file.is_file())
+        else {
+          return value;
+        };
+        let name = file.file_name().unwrap().to_str().unwrap().to_owned();
+        let (status, uploaded) = self.upload(id, &name, fs::read(&file).unwrap()).await;
+        assert_eq!(200, status, "{uploaded}");
+        uploaded["path"].clone()
       }
 
       pub(crate) async fn upload_replacing(
@@ -779,7 +803,6 @@ pub(crate) mod tests {
       let runs_dir = tempdir().unwrap();
       let router = create_router(
         ServerConfig {
-          examples_dir: TestApp::examples_dir(),
           runs_dir: runs_dir.path().to_path_buf(),
           max_upload_size,
           max_grid_points,
@@ -790,6 +813,10 @@ pub(crate) mod tests {
       )
       .unwrap();
       TestApp { router, runs_dir }
+    }
+
+    pub(crate) fn data_dir() -> PathBuf {
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data")
     }
 
     pub(crate) fn timetree_config() -> Value {

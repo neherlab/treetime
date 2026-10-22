@@ -18,7 +18,6 @@ use app_backend::bridge::error::ErrorCode;
 use app_backend::bridge::service::AppService;
 use app_backend::check_config::{CheckConfigRequest, CheckConfigResponse};
 use app_backend::check_inputs::{CheckInputsRequest, InputFacts};
-use app_backend::datasets::DatasetCatalog;
 use app_backend::job::JobId;
 use app_backend::results::auspice::AuspiceDocument;
 use app_backend::results::clades::{CladeInRuns, CladeRequest};
@@ -195,13 +194,6 @@ fn timed_routes() -> ApiRouter<Arc<AppState>> {
       get_with(version, |op| op.id("version").description("Version of TreeTime.")),
     )
     .api_route(
-      "/api/datasets",
-      get_with(datasets, |op| {
-        op.id("datasets")
-          .description("Example datasets and example configurations in the examples folder.")
-      }),
-    )
-    .api_route(
       "/api/check-config",
       post_with(config_check, |op| {
         op.id("configCheck")
@@ -357,10 +349,6 @@ async fn openapi(State(state): State<Arc<AppState>>) -> axum::Json<Value> {
 
 async fn version(State(state): State<Arc<AppState>>) -> Result<ApiJson<VersionInfo>, AppError> {
   call(&state, AppService::version).await.map(ApiJson)
-}
-
-async fn datasets(State(state): State<Arc<AppState>>) -> Result<ApiJson<DatasetCatalog>, AppError> {
-  call(&state, AppService::datasets).await.map(ApiJson)
 }
 
 async fn config_check(

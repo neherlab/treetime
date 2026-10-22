@@ -276,7 +276,6 @@ mod tests {
       );
       let router = create_router(
         ServerConfig {
-          examples_dir: examples.clone(),
           runs_dir: paths.runs.path.clone(),
           max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
           max_grid_points: None,

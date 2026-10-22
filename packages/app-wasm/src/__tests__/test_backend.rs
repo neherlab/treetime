@@ -63,7 +63,6 @@ mod tests {
 
     pub(super) fn config(runs_dir: PathBuf) -> ServerConfig {
       ServerConfig {
-        examples_dir: PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data"),
         runs_dir,
         max_upload_size: DEFAULT_MAX_UPLOAD_SIZE,
         max_grid_points: None,
