@@ -48,6 +48,7 @@ multiple-versions = "deny"
 wildcards = "deny"
 allow-wildcard-paths = true
 deny = [
+  { crate = "openblas-src", reason = "treetime-openblas owns the OpenBLAS link through pkg-config" },
   { crate = "serde_yaml", reason = "upstream is archived; YAML is parsed with serde-saphyr" },
   { crate = "time", reason = "dates are owned by chrono and chronoutil" },
   { crate = "xml", reason = "XML is serialized and parsed with quick-xml" },
@@ -75,6 +76,3 @@ skip = [
 [sources]
 unknown-registry = "deny"
 unknown-git = "deny"
-allow-git = [
-  "https://github.com/numrs/openblas-src",
-]

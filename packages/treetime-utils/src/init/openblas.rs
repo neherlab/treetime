@@ -8,15 +8,10 @@
 use crate::io::json::{JsonPretty, json_write_str};
 use deser::Serialize;
 use eyre::Report;
-use std::ffi::{CStr, c_char, c_int};
-
-unsafe extern "C" {
-  fn openblas_get_config() -> *const c_char;
-  fn openblas_get_corename() -> *const c_char;
-  fn openblas_get_parallel() -> c_int;
-  fn openblas_get_num_threads() -> c_int;
-  fn openblas_get_num_procs() -> c_int;
-}
+use std::ffi::{CStr, c_char};
+use treetime_openblas::{
+  openblas_get_config, openblas_get_corename, openblas_get_num_procs, openblas_get_num_threads, openblas_get_parallel,
+};
 
 pub fn get_openblas_info_str() -> Result<String, Report> {
   json_write_str(&get_openblas_info(), JsonPretty(true))

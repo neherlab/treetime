@@ -2733,7 +2733,6 @@ dependencies = [
  "katexit",
  "lapack-sys",
  "num-traits",
- "openblas-src",
  "thiserror",
 ]
 
@@ -3300,15 +3299,6 @@ name = "oorandom"
 version = "11.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
-
-[[package]]
-name = "openblas-src"
-version = "0.10.16"
-source = "git+https://github.com/numrs/openblas-src?rev=bdc5d5f#bdc5d5fb53cf812133b0a968a83acdaa04aeb681"
-dependencies = [
- "pkg-config",
- "vcpkg",
-]
 
 [[package]]
 name = "openssl-probe"
@@ -5170,6 +5160,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "treetime-openblas"
+version = "1.0.0"
+dependencies = [
+ "pkg-config",
+]
+
+[[package]]
 name = "treetime-ops"
 version = "1.0.0"
 dependencies = [
@@ -5284,6 +5281,7 @@ dependencies = [
  "smart-default",
  "strum_macros",
  "tempfile",
+ "treetime-openblas",
  "zstd",
 ]
 
@@ -5503,12 +5501,6 @@ name = "valuable"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
-
-[[package]]
-name = "vcpkg"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"

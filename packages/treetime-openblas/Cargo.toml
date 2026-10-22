@@ -1,0 +1,22 @@
+[package]
+name = "treetime-openblas"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+links = "openblas"
+
+[lib]
+doctest = false
+
+[build-dependencies]
+pkg-config = { workspace = true }
+
+[lints]
+workspace = true
