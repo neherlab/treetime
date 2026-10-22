@@ -160,6 +160,30 @@ mod tests {
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
   }
 
+  #[test]
+  fn test_tc_schedule_exponential_hazard_over_many_scales_is_finite_when_the_rate_at_the_start_overflows() {
+    let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
+    let expected = 760.0 + (1.0 - (-10.0_f64).exp()).ln() - 300.0 * LN_10;
+    let actual = schedule.hazard_between(750.0, 760.0).ln();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_hazard_is_positive_when_duration_over_tc0_is_subnormal() {
+    let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
+    let expected = 1.000_000_000_05e-310_f64.ln();
+    let actual = schedule.hazard_between(0.0, 1e-10).ln();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+  }
+
+  #[test]
+  fn test_tc_schedule_exponential_time_after_hazard_is_positive_when_tc0_over_scale_underflows() {
+    let schedule = TcSchedule::exponential(1e-300, 1e300).unwrap();
+    let expected = -300.0 * LN_10;
+    let actual = schedule.time_after_hazard(0.0, 1.0).unwrap().ln();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::piecewise_negative(  TcSchedule::constant(1.0),         -1.0,     "Hazard after time 2 must be non-negative, got -1")]
