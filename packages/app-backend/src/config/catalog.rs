@@ -144,7 +144,12 @@ fn setting_spec(
   let types = type_list(base);
 
   let (kind, options, item_kind) = if !options.is_empty() {
-    (SettingKind::Enum, options, ListItemKind::String)
+    let kind = if has_free_value(schema, base)? {
+      SettingKind::EnumOrText
+    } else {
+      SettingKind::Enum
+    };
+    (kind, options, ListItemKind::String)
   } else if types.contains(&"array") {
     let items = base.get("items").map(|items| deref(schema, items)).transpose()?;
     let item_options = items
@@ -222,7 +227,7 @@ pub struct SettingSpec {
   pub kind: SettingKind,
   /// Whether the setting can be unset.
   pub nullable: bool,
-  /// Allowed values of an `enum` or `enum-list` setting.
+  /// Allowed values of an `enum`, `enum-or-text` or `enum-list` setting.
   pub options: Vec<SettingOption>,
   /// Type of the items of a `list` setting.
   pub item_kind: ListItemKind,
@@ -280,6 +285,8 @@ pub enum SettingKind {
   Tristate,
   /// One of a set of values.
   Enum,
+  /// One of a set of values, or a value entered as text, for example `opt`, `skyline` or the time scale `10y`.
+  EnumOrText,
   /// A whole number.
   Integer,
   /// A number.
@@ -339,6 +346,19 @@ fn enum_options(schema: &Value, node: &Value) -> Result<Vec<SettingOption>, Repo
     options.extend(enum_options(schema, branch)?);
   }
   Ok(options)
+}
+
+fn has_free_value(schema: &Value, node: &Value) -> Result<bool, Report> {
+  let target = deref(schema, node)?;
+  target
+    .get("oneOf")
+    .and_then(Value::as_array)
+    .into_iter()
+    .flatten()
+    .map(|branch| deref(schema, branch))
+    .process_results(|mut branches| {
+      branches.any(|branch| branch.get("enum").is_none() && branch.get("const").is_none())
+    })
 }
 
 /// One allowed value of a setting.

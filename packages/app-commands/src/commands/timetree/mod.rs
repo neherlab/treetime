@@ -1,4 +1,5 @@
 pub mod args;
+pub mod coalescent;
 pub mod initialization;
 pub mod output;
 pub mod run;

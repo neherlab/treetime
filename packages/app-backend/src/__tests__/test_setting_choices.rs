@@ -7,12 +7,11 @@ mod tests {
   use app_commands::command::AppCommand;
   use app_commands::config::properties::setting_properties;
   use helpers::{active_choices_of, check};
-  use itertools::{Itertools, iproduct};
+  use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::collections::BTreeSet;
   use strum::IntoEnumIterator;
-  use treetime::timetree::coalescent_timescale::{CoalescentMode, coalescent_mode};
 
   #[test]
   fn test_choices_name_only_settings_of_their_command() {
@@ -67,10 +66,7 @@ mod tests {
       .collect_vec();
     assert_eq!(
       vec![
-        (
-          AppCommand::Timetree,
-          vec![ChoiceName::ClockRate, ChoiceName::CoalescentPrior, ChoiceName::Root]
-        ),
+        (AppCommand::Timetree, vec![ChoiceName::ClockRate, ChoiceName::Root]),
         (AppCommand::Clock, vec![ChoiceName::Root]),
         (AppCommand::Ancestral, vec![]),
         (AppCommand::Homoplasy, vec![]),
@@ -117,40 +113,6 @@ mod tests {
   }
 
   #[test]
-  fn test_choices_active_coalescent_prior_follows_the_core_precedence() {
-    let reported = iproduct!([None, Some(0.5)], [false, true], [false, true])
-      .filter_map(|(coalescent, coalescent_opt, coalescent_skyline)| {
-        let mut draft = fresh_draft(AppCommand::Timetree);
-        if let Some(tc) = coalescent {
-          draft.insert("coalescent".to_owned(), json!(tc));
-        }
-        draft.insert("coalescent_opt".to_owned(), json!(coalescent_opt));
-        draft.insert("coalescent_skyline".to_owned(), json!(coalescent_skyline));
-        let response = check(AppCommand::Timetree, &Value::Object(draft));
-        let CheckConfigResponse::Valid { choices, .. } = response else {
-          return None;
-        };
-        let option = choices
-          .iter()
-          .find(|choice| choice.choice == ChoiceName::CoalescentPrior)
-          .map(|choice| choice.option);
-        let expected = match coalescent_mode(coalescent, coalescent_opt, coalescent_skyline) {
-          CoalescentMode::Disabled => ChoiceOptionName::None,
-          CoalescentMode::Fixed(_) => ChoiceOptionName::Fixed,
-          CoalescentMode::Constant => ChoiceOptionName::Optimized,
-          CoalescentMode::Skyline => ChoiceOptionName::Skyline,
-        };
-        Some((option == Some(expected), expected))
-      })
-      .collect_vec();
-    let accepted_options: BTreeSet<String> = reported.iter().map(|(_, option)| format!("{option:?}")).collect();
-    assert_eq!(
-      (true, 4),
-      (reported.iter().all(|(matches, _)| *matches), accepted_options.len())
-    );
-  }
-
-  #[test]
   fn test_choices_invalid_config_that_merges_still_reports_its_options() {
     let response = check(
       AppCommand::Timetree,
@@ -164,10 +126,6 @@ mod tests {
         ActiveChoice {
           choice: ChoiceName::ClockRate,
           option: ChoiceOptionName::Estimate
-        },
-        ActiveChoice {
-          choice: ChoiceName::CoalescentPrior,
-          option: ChoiceOptionName::None
         },
         ActiveChoice {
           choice: ChoiceName::Root,

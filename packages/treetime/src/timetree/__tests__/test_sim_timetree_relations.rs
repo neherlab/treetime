@@ -38,6 +38,7 @@ mod tests {
       CaseSpec, SimulatedCase, TIMETREE_CELL_LENGTH, TIMETREE_CELL_MU, TIMETREE_CELL_TC, match_internal_nodes,
       timetree_cell, timetree_cell_params,
     };
+    use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
     use crate::timetree::params::TimetreeParams;
     use crate::timetree::pipeline;
     use eyre::Report;
@@ -73,7 +74,7 @@ mod tests {
     fn true_cell_params(clock_rate: Option<f64>) -> TimetreeParams {
       TimetreeParams {
         clock_rate,
-        coalescent: Some(TIMETREE_CELL_TC),
+        coalescent: CoalescentMode::Fixed(FixedTimescale::Years(TIMETREE_CELL_TC)),
         ..timetree_cell_params()
       }
     }

@@ -6,6 +6,7 @@ use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::test_utils::find_node_key_by_name;
+use crate::timetree::coalescent_timescale::CoalescentMode;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
@@ -71,9 +72,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     max_iter: 1,
     resolve_polytomies: false,
     relax: vec![],
-    coalescent: None,
-    coalescent_opt: false,
-    coalescent_skyline: false,
+    coalescent: CoalescentMode::Disabled,
     skyline_n_points: 0,
     skyline_stiffness: 0.0,
     coalescent_confidence: 0.0,

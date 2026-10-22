@@ -12,26 +12,15 @@ use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
 use treetime_primitives::LogLh;
 use treetime_utils::make_report;
 
-pub fn coalescent_mode(coalescent: Option<f64>, coalescent_opt: bool, coalescent_skyline: bool) -> CoalescentMode {
-  if coalescent_skyline {
-    CoalescentMode::Skyline
-  } else if coalescent_opt {
-    CoalescentMode::Constant
-  } else if let Some(tc) = coalescent {
-    CoalescentMode::Fixed(tc)
-  } else {
-    CoalescentMode::Disabled
-  }
-}
-
 pub(crate) fn coalescent_timescale(
   mode: CoalescentMode,
   skyline_params: &SkylineParams,
   expectation: &LineageExpectation,
+  clock_rate: f64,
   log: &dyn LogSink,
 ) -> Result<CoalescentTimescale, Report> {
   let n_points = match mode {
-    CoalescentMode::Fixed(tc) => return Ok(fixed_timescale(tc, expectation)),
+    CoalescentMode::Fixed(fixed) => return Ok(fixed_timescale(fixed.years(clock_rate), expectation)),
     CoalescentMode::Disabled | CoalescentMode::Constant => 1,
     CoalescentMode::Skyline => skyline_params.n_points,
   };
@@ -171,6 +160,17 @@ impl CoalescentSetup {
   pub(crate) fn prior_wanted(&self) -> bool {
     self.mode.wants_prior()
   }
+
+  pub(crate) fn rescale_fixed_timescale(&mut self, clock_rate: f64) {
+    let (CoalescentMode::Fixed(fixed), Some(lineages)) = (self.mode, self.lineages.as_mut()) else {
+      return;
+    };
+    let report = lineages.timescale.report.take();
+    lineages.timescale = CoalescentTimescale {
+      report,
+      ..CoalescentTimescale::constant(fixed.years(clock_rate))
+    };
+  }
 }
 
 pub(crate) struct LineageModel {
@@ -181,7 +181,7 @@ pub(crate) struct LineageModel {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CoalescentMode {
   Disabled,
-  Fixed(f64),
+  Fixed(FixedTimescale),
   Constant,
   Skyline,
 }
@@ -205,6 +205,21 @@ impl CoalescentMode {
       CoalescentMode::Fixed(_) => Some(CoalescentOutputMode::Fixed),
       CoalescentMode::Constant => Some(CoalescentOutputMode::Constant),
       CoalescentMode::Skyline => Some(CoalescentOutputMode::Skyline),
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FixedTimescale {
+  SubstitutionsPerSite(f64),
+  Years(f64),
+}
+
+impl FixedTimescale {
+  pub fn years(self, clock_rate: f64) -> f64 {
+    match self {
+      FixedTimescale::SubstitutionsPerSite(tc) => tc / clock_rate,
+      FixedTimescale::Years(tc) => tc,
     }
   }
 }

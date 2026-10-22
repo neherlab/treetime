@@ -14,6 +14,7 @@ use crate::commands::prune::run::run_prune;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
+use crate::config::load::read_settings;
 use crate::config::schema::command_schema;
 use app_output::output_plan::ResolvedOutputs;
 #[cfg(feature = "clap")]
@@ -26,7 +27,6 @@ use serde_json::{Map, Value};
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
-use treetime_utils::io::json::from_json_value;
 use treetime_utils::io::json::to_json_value;
 use treetime_utils::make_error;
 
@@ -236,7 +236,7 @@ impl RawConfigVisitor for ConfigOf<'_> {
   type Output = Result<CommandConfig, Report>;
 
   fn visit<R: RawConfig>(self) -> Self::Output {
-    Ok(from_json_value::<R>(self.settings)?.into_config())
+    Ok(read_settings::<R>(self.settings)?.into_config())
   }
 }
 

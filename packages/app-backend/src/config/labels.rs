@@ -1,10 +1,8 @@
 use itertools::Itertools;
 
-const LABELS: [(&str, &str); 12] = [
+const LABELS: [(&str, &str); 10] = [
   ("clock_std_dev", "Clock rate std. dev."),
-  ("coalescent", "Coalescent time scale Tc"),
-  ("coalescent_opt", "Optimize Tc"),
-  ("coalescent_skyline", "Skyline coalescent"),
+  ("coalescent", "Coalescent prior"),
   ("confidence", "Date confidence intervals"),
   ("max_iter", "Iterations"),
   ("method_anc", "Ancestral method"),

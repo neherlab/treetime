@@ -22,6 +22,9 @@ use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceA
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
+use crate::commands::timetree::coalescent::CoalescentArg;
+#[cfg(feature = "clap")]
+use crate::commands::timetree::coalescent::parse_coalescent;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -225,43 +228,22 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().max_iter, help_heading = "Branch lengths"))]
   pub max_iter: usize,
 
-  /// Coalescent time scale in years.
+  /// Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01)
+  /// or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one
   ///
-  /// Sensible values are on the order of the time from the root to the tips and are given in units of time.
-  #[schemars(example = 1.0)]
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
-  pub coalescent: Option<f64>,
-
-  /// Optimize coalescent time scale Tc to maximize coalescent likelihood.
-  ///
-  /// When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum
-  /// of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,
-  /// which used a numerical search.
+  /// A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in
+  /// substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node
+  /// times have no coalescent prior.
+  #[schemars(example = 0.01)]
   #[cfg_attr(
     feature = "clap",
-    clap(
-      long,
-      conflicts_with = "coalescent",
-      conflicts_with = "coalescent_skyline",
-      help_heading = "Coalescent prior"
-    )
+    clap(long, value_parser = parse_coalescent, value_name = "TC|opt|skyline", help_heading = "Coalescent prior")
   )]
-  pub coalescent_opt: bool,
-
-  /// Use skyline coalescent model instead of constant Tc.
-  ///
-  /// Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify
-  /// the number of grid points.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
-  #[cfg_attr(
-    feature = "clap",
-    clap(conflicts_with = "coalescent", conflicts_with = "coalescent_opt")
-  )]
-  pub coalescent_skyline: bool,
+  pub coalescent: Option<CoalescentArg>,
 
   /// Number of grid points in skyline coalescent model.
   ///
-  /// Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
+  /// Only used with --coalescent skyline. Defines how many piecewise linear segments
   /// are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
   #[default = 20]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_n_points, help_heading = "Coalescent prior"))]
@@ -274,17 +256,17 @@ pub struct TreetimeTimetreeArgsRaw {
   /// skyline segments: with z = ln Tc, the objective adds
   /// `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
   /// stiffness is dimensionless and scale-independent. Larger values enforce a
-  /// smoother Tc(t). Only used when --coalescent-skyline is set.
+  /// smoother Tc(t). Only used with --coalescent skyline.
   #[default = 2.0]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_stiffness, help_heading = "Coalescent prior"))]
   pub skyline_stiffness: f64,
 
   /// Confidence level for coalescent time scale (Tc) bands, in standard deviations.
   ///
-  /// Applies to every inferred coalescent mode (constant, --coalescent-opt, and
-  /// --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is
+  /// Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).
+  /// The band spans `Tc * exp(±confidence * σ)`, where `σ` is
   /// the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
-  /// --coalescent value is not inferred and therefore has no band.
+  /// time scale is not inferred and therefore has no band.
   #[default = 2.0]
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().coalescent_confidence, help_heading = "Coalescent prior"))]
   pub coalescent_confidence: f64,
@@ -391,9 +373,8 @@ pub struct TreetimeTimetreeArgsRaw {
 
   /// Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
   ///
-  /// Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or
-  /// `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree
-  /// span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  /// Written when a coalescent prior is set with `--coalescent`. A fixed time scale writes one
+  /// band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_coalescent_tsv: Option<PathBuf>,

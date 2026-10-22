@@ -6,6 +6,7 @@ use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::progress::LogSink;
 use crate::progress_info;
+use crate::timetree::coalescent_timescale::CoalescentMode;
 use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime_grid::MaxGridPoints;
@@ -42,9 +43,7 @@ pub struct TimetreeParams {
   pub max_iter: usize,
   pub resolve_polytomies: bool,
   pub relax: Vec<f64>,
-  pub coalescent: Option<f64>,
-  pub coalescent_opt: bool,
-  pub coalescent_skyline: bool,
+  pub coalescent: CoalescentMode,
   pub skyline_n_points: usize,
   pub skyline_stiffness: f64,
   pub coalescent_confidence: f64,

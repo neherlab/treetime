@@ -10,6 +10,7 @@
 
 roots = [
   "packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__",
+  "packages/app-commands/src/commands/timetree/__tests__/__fixtures__",
   "packages/treetime-distribution/src/__tests__/__fixtures__",
   "packages/treetime/src/gtr/__tests__/__fixtures__",
   "packages/treetime/src/gtr/infer_gtr/__tests__/__fixtures__",
@@ -47,6 +48,16 @@ files = [
   "packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__/gm_homoplasy_inputs.json",
   "packages/app-commands/src/commands/homoplasy/__tests__/__fixtures__/gm_homoplasy_outputs.json",
 ]
+
+[[reference]]
+name = "gm_timetree_coalescent_years"
+kind = "golden-master"
+test = "packages/app-commands/src/commands/timetree/__tests__/test_pipeline.rs"
+origin = "TreeTime v1 timetree node dates with a fixed coalescent time scale of 2.56 years on data/flu/h3n2/20"
+revision = "df1fd11bd, where a bare --coalescent value was a time scale in years"
+capture = "treetime timetree --tree data/flu/h3n2/20/tree.nwk --alignment data/flu/h3n2/20/aln.fasta.xz --metadata data/flu/h3n2/20/metadata.tsv --max-iter 2 --coalescent 2.56 --output-all <dir>, then the numdate of each node in <dir>/timetree.augur-node-data.json"
+normalization = "only the listed internal nodes are compared, for exact equality"
+files = ["packages/app-commands/src/commands/timetree/__tests__/__fixtures__/coalescent_years_node_dates.json"]
 
 [[reference]]
 name = "gm_overlap_boundaries"

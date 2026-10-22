@@ -79,6 +79,20 @@ describe("zod_schemas command configs", () => {
     expect(zTimetreeConfig.safeParse({ seed: -1 }).success).toBe(false);
   });
 
+  test.each([
+    { coalescent: 0.01, accepted: true },
+    { coalescent: "0.01", accepted: true },
+    { coalescent: "10y", accepted: true },
+    { coalescent: ".5w", accepted: true },
+    { coalescent: "skyline", accepted: true },
+    { coalescent: 0, accepted: false },
+    { coalescent: "0", accepted: false },
+    { coalescent: "0y", accepted: false },
+    { coalescent: "0.0e5d", accepted: false },
+  ])("timetree config accepts the coalescent prior $coalescent: $accepted", ({ coalescent, accepted }) => {
+    expect(zTimetreeConfig.safeParse({ coalescent }).success).toBe(accepted);
+  });
+
   test("clock config rejects an unknown reroot method", () => {
     expect(zClockConfig.safeParse({ reroot: "newton" }).success).toBe(false);
   });
@@ -183,7 +197,9 @@ describe("zod_schemas tagged unions", () => {
 
   test("a variant needs the fields of its tag", () => {
     expect(zCoalescentPrior.safeParse({ kind: "fixed" }).success).toBe(false);
-    expect(zCoalescentPrior.safeParse({ kind: "fixed", tc: 0.5 }).success).toBe(true);
+    expect(zCoalescentPrior.safeParse({ kind: "fixed", tc: "0.01", unit: "substitutions-per-site" }).success).toBe(
+      true,
+    );
   });
 
   test("an unknown field in a closed request object is rejected", () => {

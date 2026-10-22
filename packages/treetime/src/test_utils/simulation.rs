@@ -522,6 +522,7 @@ mod tests {
     optimize_input, recovery_check, require_passed, run_replicates, timetree_cell, timetree_cell_params,
     timetree_input,
   };
+  use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline;
   use eyre::Report;
@@ -640,7 +641,7 @@ mod tests {
     let case = timetree_cell(3)?.simulate()?;
     let params = TimetreeParams {
       clock_rate: Some(TIMETREE_CELL_MU),
-      coalescent: Some(TIMETREE_CELL_TC),
+      coalescent: CoalescentMode::Fixed(FixedTimescale::Years(TIMETREE_CELL_TC)),
       ..timetree_cell_params()
     };
 

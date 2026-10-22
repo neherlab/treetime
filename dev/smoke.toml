@@ -724,37 +724,42 @@ fail = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.m
 [[timetree]]
 variant = "coalescent"
 datasets = ["flu/h3n2/20", "ebola/20", "zika/20"]
-args = "--coalescent=10.0"
+args = "--coalescent=10y"
 
 [[timetree]]
 variant = "coalescent"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent=10.0 --max-iter=3"
+args = "--coalescent=10y --max-iter=3"
+
+[[timetree]]
+variant = "coalescent-subs"
+datasets = ["flu/h3n2/20", "ebola/20", "zika/20"]
+args = "--coalescent=0.01"
 
 [[timetree]]
 variant = "coal-opt"
 datasets = ["flu/h3n2/20", "ebola/20", "zika/20"]
-args = "--coalescent-opt"
+args = "--coalescent=opt"
 
 [[timetree]]
 variant = "coal-opt"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent-opt --max-iter=3"
+args = "--coalescent=opt --max-iter=3"
 
 [[timetree]]
 variant = "skyline"
 datasets = ["flu/h3n2/20", "ebola/20"]
-args = "--coalescent-skyline --skyline-n-points=5"
+args = "--coalescent=skyline --skyline-n-points=5"
 
 [[timetree]]
 variant = "skyline"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent-skyline --skyline-n-points=5 --max-iter=3"
+args = "--coalescent=skyline --skyline-n-points=5 --max-iter=3"
 
 [[timetree]]
 variant = "skyline"
 datasets = ["ebola/362"]
-args = "--coalescent-skyline"
+args = "--coalescent=skyline"
 tier = "quick"
 
 [[timetree]]
@@ -816,22 +821,22 @@ args = "--max-iter=4"
 [[timetree]]
 variant = "coal-polytomy"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent=10.0 --resolve-polytomies --max-iter=3"
+args = "--coalescent=10y --resolve-polytomies --max-iter=3"
 
 [[timetree]]
 variant = "coal-opt-marginal"
 datasets = ["flu/h3n2/20"]
-args = "--coalescent-opt --time-marginal=always"
+args = "--coalescent=opt --time-marginal=always"
 
 [[timetree]]
 variant = "coal-opt-marginal"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent-opt --time-marginal=always --max-iter=3"
+args = "--coalescent=opt --time-marginal=always --max-iter=3"
 
 [[timetree]]
 variant = "skyline-marginal"
 datasets = ["flu/h3n2/20"]
-args = "--coalescent-skyline --time-marginal=always"
+args = "--coalescent=skyline --time-marginal=always"
 
 [[timetree]]
 variant = "conf-marginal-final"
@@ -846,7 +851,7 @@ args = "--clock-filter=0 --keep-root"
 [[timetree]]
 variant = "skyline-conf"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"
+args = "--coalescent=skyline --skyline-n-points=5 --confidence --max-iter=3"
 
 [[timetree]]
 variant = "fast"

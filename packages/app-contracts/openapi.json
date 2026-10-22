@@ -1987,11 +1987,6 @@
             "const": "clock-rate"
           },
           {
-            "description": "The prior on node times.",
-            "type": "string",
-            "const": "coalescent-prior"
-          },
-          {
             "description": "Reroot the tree, or keep the input root.",
             "type": "string",
             "const": "root"
@@ -2007,24 +2002,9 @@
             "const": "estimate"
           },
           {
-            "description": "A fixed value: the clock rate, or the coalescent time scale Tc.",
+            "description": "A fixed clock rate.",
             "type": "string",
             "const": "fixed"
-          },
-          {
-            "description": "No coalescent prior.",
-            "type": "string",
-            "const": "none"
-          },
-          {
-            "description": "One constant coalescent time scale Tc, fitted to the tree.",
-            "type": "string",
-            "const": "optimized"
-          },
-          {
-            "description": "A coalescent time scale that changes over time.",
-            "type": "string",
-            "const": "skyline"
           },
           {
             "description": "Find the root that fits the molecular clock best.",
@@ -3154,6 +3134,21 @@
             "skyline": "#/components/schemas/CoalescentPriorSkyline"
           }
         }
+      },
+      "FixedTcUnit": {
+        "description": "Unit of a fixed coalescent time scale.",
+        "oneOf": [
+          {
+            "description": "Substitutions per site, converted to years with the clock rate of each iteration.",
+            "type": "string",
+            "const": "substitutions-per-site"
+          },
+          {
+            "description": "A time, with its unit in the value: `y` (years), `w` (weeks) or `d` (days).",
+            "type": "string",
+            "const": "time"
+          }
+        ]
       },
       "RelaxedClock": {
         "description": "Parameters of a relaxed clock.",
@@ -5411,7 +5406,7 @@
         ]
       },
       "SettingChoice": {
-        "description": "Settings that the form shows as one choice between options, for example the coalescent prior.",
+        "description": "Settings that the form shows as one choice between options, for example the clock rate.",
         "type": "object",
         "properties": {
           "choice": {
@@ -5499,7 +5494,7 @@
             "type": "boolean"
           },
           "options": {
-            "description": "Allowed values of an `enum` or `enum-list` setting.",
+            "description": "Allowed values of an `enum`, `enum-or-text` or `enum-list` setting.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SettingOption"
@@ -5609,6 +5604,11 @@
             "description": "One of a set of values.",
             "type": "string",
             "const": "enum"
+          },
+          {
+            "description": "One of a set of values, or a value entered as text, for example `opt`, `skyline` or the time scale `10y`.",
+            "type": "string",
+            "const": "enum-or-text"
           },
           {
             "description": "A whole number.",
@@ -5992,40 +5992,47 @@
             "x-cli-flag": "--max-iter"
           },
           "coalescent": {
-            "description": "Coalescent time scale in years.\n\nSensible values are on the order of the time from the root to the tips and are given in units of time.",
-            "type": "number",
-            "format": "double",
+            "description": "Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01)\nor as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one\n\nA time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in\nsubstitutions per site is converted to years with the clock rate of each iteration. Without this setting the node\ntimes have no coalescent prior.",
             "examples": [
-              1.0
+              0.01
+            ],
+            "oneOf": [
+              {
+                "description": "Fixed time scale in substitutions per site",
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "description": "Fixed time scale: a number in substitutions per site, or a number directly followed by the time unit y, w or d",
+                "type": "string",
+                "pattern": "^\\+?([0-9]*[1-9][0-9]*\\.?[0-9]*|[0-9]*\\.[0-9]*[1-9][0-9]*)([eE][+-]?[0-9]+)?[ywd]?$"
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "opt",
+                  "skyline"
+                ]
+              }
             ],
             "x-unset": true,
             "x-cli-flag": "--coalescent"
           },
-          "coalescent_opt": {
-            "description": "Optimize coalescent time scale Tc to maximize coalescent likelihood.\n\nWhen set, TreeTime finds the optimal constant Tc analytically (closed-form maximum\nof the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,\nwhich used a numerical search.",
-            "type": "boolean",
-            "x-cli-flag": "--coalescent-opt"
-          },
-          "coalescent_skyline": {
-            "description": "Use skyline coalescent model instead of constant Tc.\n\nEstimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify\nthe number of grid points.",
-            "type": "boolean",
-            "x-cli-flag": "--coalescent-skyline"
-          },
           "skyline_n_points": {
-            "description": "Number of grid points in skyline coalescent model.\n\nOnly used when --coalescent-skyline is set. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.",
+            "description": "Number of grid points in skyline coalescent model.\n\nOnly used with --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.",
             "type": "integer",
             "format": "uint",
             "minimum": 0,
             "x-cli-flag": "--skyline-n-points"
           },
           "skyline_stiffness": {
-            "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Only used when --coalescent-skyline is set.",
+            "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Only used with --coalescent skyline.",
             "type": "number",
             "format": "double",
             "x-cli-flag": "--skyline-stiffness"
           },
           "coalescent_confidence": {
-            "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies to every inferred coalescent mode (constant, --coalescent-opt, and\n--coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\n--coalescent value is not inferred and therefore has no band.",
+            "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
             "type": "number",
             "format": "double",
             "x-cli-flag": "--coalescent-confidence"
@@ -6180,7 +6187,7 @@
             "x-cli-flag": "--output-tracelog"
           },
           "output_coalescent_tsv": {
-            "description": "Path to output the coalescent time scale as a flat TSV (one row per skyline segment).\n\nWritten when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or\n`--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree\nspan. Takes precedence over paths configured with `--output-all` and `--output-selection`.",
+            "description": "Path to output the coalescent time scale as a flat TSV (one row per skyline segment).\n\nWritten when a coalescent prior is set with `--coalescent`. A fixed time scale writes one\nband-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.",
             "type": "string",
             "x-path": "output",
             "x-unset": true,
@@ -9123,9 +9130,12 @@
         "type": "object",
         "properties": {
           "tc": {
-            "description": "Coalescent time scale in years.",
-            "type": "number",
-            "format": "double"
+            "description": "Coalescent time scale as the run configuration gives it, for example `0.01` or `10y`.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit of the time scale.",
+            "$ref": "#/components/schemas/FixedTcUnit"
           },
           "kind": {
             "type": "string",
@@ -9134,7 +9144,8 @@
         },
         "required": [
           "kind",
-          "tc"
+          "tc",
+          "unit"
         ]
       },
       "CoalescentPriorOptimized": {

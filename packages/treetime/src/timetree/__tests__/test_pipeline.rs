@@ -12,6 +12,7 @@ mod tests {
     RecordingLog, RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs,
     marginal_timetree_params, sequence_source,
   };
+  use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
   use crate::timetree::params::{TimeMarginalMode, TimetreeParams};
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
@@ -245,11 +246,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::regression_rate(None)]
-  #[case::marginal_likelihood_rate(Some(ZIKA_COALESCENT_TC))]
+  #[case::regression_rate(                       CoalescentMode::Disabled)]
+  #[case::marginal_likelihood_rate(              CoalescentMode::Fixed(FixedTimescale::Years(ZIKA_COALESCENT_TC)))]
+  #[case::marginal_likelihood_rate_substitutions(CoalescentMode::Fixed(FixedTimescale::SubstitutionsPerSite(ZIKA_COALESCENT_TC * ZIKA_CLOCK_RATE)))]
   #[trace]
   fn test_pipeline_estimated_rate_dates_are_inferred_at_the_reported_rate(
-    #[case] coalescent: Option<f64>,
+    #[case] coalescent: CoalescentMode,
   ) -> Result<(), Report> {
     let params = |time_marginal| TimetreeParams {
       coalescent,

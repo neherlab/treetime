@@ -9,8 +9,6 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::two_coalescent_priors( AppCommand::Timetree, "coalescent: 1.0\ncoalescent_opt: true\n",       "config::conflict",    "`coalescent` cannot be used together with `coalescent_opt`")]
-  #[case::skyline_and_optimized( AppCommand::Timetree, "coalescent_opt: true\ncoalescent_skyline: true\n", "config::conflict",  "`coalescent_opt` cannot be used together with `coalescent_skyline`")]
   #[case::keep_root_and_reroot(  AppCommand::Clock,    "keep_root: true\nreroot: min-dev\n",             "config::conflict",    "`keep_root` cannot be used together with `reroot`")]
   #[case::keep_root_and_oldest(  AppCommand::Clock,    "keep_root: true\nreroot: oldest\n",              "config::conflict",    "`keep_root` cannot be used together with `reroot`")]
   #[case::optimize_reroot_tips(  AppCommand::Optimize, "reroot: min-dev\nreroot_tips: [A]\n",            "config::conflict",    "`reroot` cannot be used together with `reroot_tips`")]
@@ -37,7 +35,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::one_coalescent_prior(     AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\ncoalescent: 1.0\n")]
+  #[case::coalescent_number(        AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\ncoalescent: 0.01\n")]
+  #[case::coalescent_time(          AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\ncoalescent: 10y\n")]
+  #[case::coalescent_option(        AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\ncoalescent: skyline\n")]
   #[case::keep_root_alone(          AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\nkeep_root: true\n")]
   #[case::keep_root_with_default_root(AppCommand::Clock,  "tree: t.nwk\nmetadata: m.tsv\nkeep_root: true\n")]
   #[case::relax_with_two_values(    AppCommand::Timetree, "tree: t.nwk\nalignment: [a.fasta]\nrelax: [1.0, 0.0]\n")]
@@ -56,26 +56,17 @@ mod tests {
   #[test]
   fn test_cli_rules_report_every_conflict_at_its_setting() {
     let text = indoc! {"
-      coalescent: 1.0
-      coalescent_opt: true
-      coalescent_skyline: true
       keep_root: true
       reroot: min-dev
+      reroot_tips: [A]
     "};
     let report = AppCommand::Timetree.prepare_text("config.yaml", text).err().unwrap();
     let invalid = report.downcast_ref::<InvalidConfig>().unwrap();
     assert_eq!(
       vec![
-        ("`coalescent` cannot be used together with `coalescent_opt`", Some(0)),
-        (
-          "`coalescent` cannot be used together with `coalescent_skyline`",
-          Some(0)
-        ),
-        (
-          "`coalescent_opt` cannot be used together with `coalescent_skyline`",
-          Some(16)
-        ),
-        ("`keep_root` cannot be used together with `reroot`", Some(16 + 21 + 25)),
+        ("`keep_root` cannot be used together with `reroot`", Some(0)),
+        ("`keep_root` cannot be used together with `reroot_tips`", Some(0)),
+        ("`reroot` cannot be used together with `reroot_tips`", Some(16)),
       ],
       invalid
         .problems

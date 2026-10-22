@@ -3,12 +3,12 @@ use crate::results::clock::{RootToTip, has_fixed_rate, root_to_tip};
 use crate::results::tree::{DateInterval, ResultTree};
 use crate::results::year_date::YearDate;
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+use app_commands::commands::timetree::coalescent::{CoalescentArg, TimescaleUnit};
 use deser::Serialize;
 use schemars::JsonSchema;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::timetree::coalescent::CoalescentSegmentRow;
-use treetime::timetree::coalescent_timescale::{CoalescentMode, coalescent_mode};
 use treetime::timetree::convergence::metrics::ConvergenceMetrics;
 use treetime_schema::skip_serializing_optionals;
 use util_augur_node_data_json::AugurNodeDataJsonClock;
@@ -200,19 +200,25 @@ pub struct TimetreeOutputs<'a> {
 }
 
 pub fn coalescent_prior(config: &TreetimeTimetreeArgsRaw) -> CoalescentPrior {
-  match coalescent_mode(config.coalescent, config.coalescent_opt, config.coalescent_skyline) {
-    CoalescentMode::Skyline => CoalescentPrior::Skyline {
+  match config.coalescent {
+    None => CoalescentPrior::None,
+    Some(CoalescentArg::Fixed(fixed)) => CoalescentPrior::Fixed {
+      tc: fixed.to_string(),
+      unit: match fixed.unit {
+        TimescaleUnit::SubstitutionsPerSite => FixedTcUnit::SubstitutionsPerSite,
+        TimescaleUnit::Years | TimescaleUnit::Weeks | TimescaleUnit::Days => FixedTcUnit::Time,
+      },
+    },
+    Some(CoalescentArg::Opt) => CoalescentPrior::Optimized,
+    Some(CoalescentArg::Skyline) => CoalescentPrior::Skyline {
       points: config.skyline_n_points,
       stiffness: config.skyline_stiffness,
     },
-    CoalescentMode::Constant => CoalescentPrior::Optimized,
-    CoalescentMode::Fixed(tc) => CoalescentPrior::Fixed { tc },
-    CoalescentMode::Disabled => CoalescentPrior::None,
   }
 }
 
 /// Coalescent prior of a `timetree` run.
-#[derive(Clone, Copy, Debug, PartialEq, JsonSchema, Serialize)]
+#[derive(Clone, Debug, PartialEq, JsonSchema, Serialize)]
 #[schemars(tag = "kind", rename_all = "kebab-case")]
 #[deser(tag = "kind", rename_all = "kebab-case")]
 pub enum CoalescentPrior {
@@ -220,8 +226,10 @@ pub enum CoalescentPrior {
   None,
   /// Constant population size with a fixed time scale.
   Fixed {
-    /// Coalescent time scale in years.
-    tc: f64,
+    /// Coalescent time scale as the run configuration gives it, for example `0.01` or `10y`.
+    tc: String,
+    /// Unit of the time scale.
+    unit: FixedTcUnit,
   },
   /// Constant population size with an optimized time scale.
   Optimized,
@@ -232,6 +240,17 @@ pub enum CoalescentPrior {
     /// Stiffness of the skyline.
     stiffness: f64,
   },
+}
+
+/// Unit of a fixed coalescent time scale.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[schemars(rename_all = "kebab-case")]
+#[deser(rename_all = "kebab-case")]
+pub enum FixedTcUnit {
+  /// Substitutions per site, converted to years with the clock rate of each iteration.
+  SubstitutionsPerSite,
+  /// A time, with its unit in the value: `y` (years), `w` (weeks) or `d` (days).
+  Time,
 }
 
 pub fn relaxed_clock(config: &TreetimeTimetreeArgsRaw) -> Option<RelaxedClock> {

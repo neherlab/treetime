@@ -93,7 +93,7 @@ pub fn run(
     leaf_bad_branches: &initial.leaf_bad_branches,
     outliers: &initial.outliers,
   };
-  let (state, coalescent) = run_refinement_loop(
+  let (state, mut coalescent) = run_refinement_loop(
     &round_inputs,
     initial.coalescent,
     initial.state,
@@ -103,11 +103,13 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  report_coalescent_size(params, &coalescent, log);
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Postprocessing", 0.85, "");
   progress_info!(log, "### TreeTime: postprocessing");
+  let state = final_clock_model(&round_inputs, state, log);
+  coalescent.rescale_fixed_timescale(state.clock_model.clock_rate());
+  report_coalescent_size(params, &coalescent, log);
   let final_times = refine_final_times(&round_inputs, &coalescent, state, log).map_err(OperationError::classify)?;
   let results = gather_results(params, &context, &coalescent, final_times).map_err(OperationError::classify)?;
   let final_inputs = FinalInputs {
@@ -348,6 +350,19 @@ fn report_coalescent_size(params: &TimetreeParams, coalescent: &CoalescentSetup,
   }
 }
 
+fn final_clock_model(inputs: &RoundInputs<'_>, state: RoundState, log: &dyn LogSink) -> RoundState {
+  if inputs.params.clock_rate.is_some() {
+    return state;
+  }
+  let rate_std = timetree_gaussian_clock(inputs, &state, log).and_then(|clock| clock.rate_std);
+  RoundState {
+    clock_model: state
+      .clock_model
+      .estimated_at_rate(&ClockSet::from_points(&state.clock_points), rate_std),
+    ..state
+  }
+}
+
 fn refine_final_times(
   inputs: &RoundInputs<'_>,
   coalescent: &CoalescentSetup,
@@ -355,17 +370,6 @@ fn refine_final_times(
   log: &dyn LogSink,
 ) -> Result<FinalTimes, Report> {
   let params = inputs.params;
-  let state = if params.clock_rate.is_none() {
-    let rate_std = timetree_gaussian_clock(inputs, &state, log).and_then(|clock| clock.rate_std);
-    RoundState {
-      clock_model: state
-        .clock_model
-        .estimated_at_rate(&ClockSet::from_points(&state.clock_points), rate_std),
-      ..state
-    }
-  } else {
-    state
-  };
   let rate_std = if params.confidence {
     let rate_std = determine_rate_std(params.clock_std_dev, state.clock_model.rate_std())?;
     if rate_std.is_none() {

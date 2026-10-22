@@ -29,11 +29,11 @@ describe("run list", () => {
   test("the filter matches every word over title, command and changed flags", () => {
     const runs = [
       run("a", { title: "Baseline" }),
-      run("b", { title: "Skyline", changed_settings: ["coalescent_skyline"] }),
+      run("b", { title: "Skyline", changed_settings: ["coalescent"] }),
       run("c", { title: "Clock check", command: "clock" }),
     ];
 
-    expect(listedRuns(runs, "time --coalescent-skyline", null).map((listed) => listed.id)).toStrictEqual(["b"]);
+    expect(listedRuns(runs, "time --coalescent", null).map((listed) => listed.id)).toStrictEqual(["b"]);
   });
 
   test("the command filter keeps one command", () => {

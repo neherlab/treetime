@@ -9,7 +9,6 @@ use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::branch_model::BranchModel;
-use crate::timetree::coalescent_timescale::coalescent_mode;
 use crate::timetree::convergence::node_times::{NodeTimeChange, capture_node_times, measure_node_time_change};
 use crate::timetree::convergence::sequence_changes::{capture_ancestral_states, count_sequence_changes};
 use crate::timetree::inference::result::{PosteriorSummaries, TimeInference, likely_times};
@@ -410,8 +409,6 @@ pub(crate) struct RoundInputs<'a> {
 
 impl RoundInputs<'_> {
   pub(crate) fn reads_lineages(&self) -> bool {
-    let params = self.params;
-    coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline)
-      .reads_lineages(params.resolve_polytomies)
+    self.params.coalescent.reads_lineages(self.params.resolve_polytomies)
   }
 }

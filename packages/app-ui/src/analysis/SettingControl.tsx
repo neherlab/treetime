@@ -19,6 +19,8 @@ const CONTROL_HEIGHT = "h-8";
 
 const NO_EXTENSIONS: readonly string[] = [];
 
+const FREE_VALUE = "#value";
+
 interface ControlProps {
   command: AppCommand;
   spec: SettingSpec;
@@ -30,6 +32,7 @@ const CONTROLS: Record<SettingKind, (props: ControlProps) => React.ReactNode> = 
   switch: SwitchControl,
   tristate: TristateControl,
   enum: EnumControl,
+  "enum-or-text": EnumOrTextControl,
   integer: NumberControl,
   number: NumberControl,
   text: TextControl,
@@ -159,6 +162,64 @@ function EnumControl({ spec, label, className }: ControlProps) {
         </NativeSelectOption>
       ))}
     </NativeSelect>
+  );
+}
+
+function EnumOrTextControl({ spec, label, className }: ControlProps) {
+  const { value, set, unset, onBlur, invalid } = useSetting(spec);
+  const text = value === undefined ? "" : scalarText(value);
+  const isOption = spec.options.some((option) => option.value === text);
+  const selected = value === undefined ? "" : isOption ? text : FREE_VALUE;
+  const example = spec.examples[0];
+
+  const onSelect = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const next = event.target.value;
+
+      if (next === "") {
+        unset();
+      } else if (next === FREE_VALUE) {
+        set(example ?? "");
+      } else {
+        set(next);
+      }
+    },
+    [example, set, unset],
+  );
+
+  const onText = useCallback((event: React.ChangeEvent<HTMLInputElement>) => set(event.target.value), [set]);
+
+  return (
+    <div className={cn("flex min-w-0 items-center gap-2", className)}>
+      <NativeSelect
+        id={settingFieldId(spec.key)}
+        size="sm"
+        aria-label={label}
+        aria-invalid={invalid}
+        value={selected}
+        onChange={onSelect}
+      >
+        {spec.nullable && <NativeSelectOption value="">Not set</NativeSelectOption>}
+        {spec.options.map((option) => (
+          <NativeSelectOption key={option.value} value={option.value} title={option.help}>
+            {option.value}
+          </NativeSelectOption>
+        ))}
+        <NativeSelectOption value={FREE_VALUE}>Value</NativeSelectOption>
+      </NativeSelect>
+      {selected === FREE_VALUE && (
+        <Input
+          type="text"
+          aria-label={`${label} value`}
+          aria-invalid={invalid}
+          value={text}
+          placeholder={example === undefined ? "" : `For example ${scalarText(example)}`}
+          onChange={onText}
+          onBlur={onBlur}
+          className={cn(CONTROL_HEIGHT, "w-28 font-mono")}
+        />
+      )}
+    </div>
   );
 }
 

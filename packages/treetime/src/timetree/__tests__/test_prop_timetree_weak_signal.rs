@@ -4,6 +4,7 @@ mod tests {
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
   use crate::test_utils::timetree_cell_params;
+  use crate::timetree::coalescent_timescale::CoalescentMode;
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline;
   use generators::arb_weak_signal_case;
@@ -18,7 +19,7 @@ mod tests {
       let case = spec.simulate().map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
       let input = case.timetree_cell_input(spec.length).map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
       let params = TimetreeParams {
-        coalescent_opt: true,
+        coalescent: CoalescentMode::Constant,
         ..timetree_cell_params()
       };
 

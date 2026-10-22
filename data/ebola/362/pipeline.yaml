@@ -12,7 +12,7 @@
 #
 # optimize -> ancestral -> timetree, chained end to end. Each step consumes the
 # previous step's tree through `{{ steps.<name>.outputs.nwk }}`. The final
-# timetree fits a constant coalescent time scale analytically (`coalescent_opt`)
+# timetree fits a constant coalescent time scale analytically (`coalescent: opt`)
 # and writes an Auspice JSON ready for nextstrain.org.
 
 steps:
@@ -39,5 +39,5 @@ steps:
       metadata: "metadata.tsv"
       alignment:
         - "aln.fasta.xz"
-      coalescent_opt: true
+      coalescent: "opt"
       max_iter: 3

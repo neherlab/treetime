@@ -18,14 +18,14 @@ DATASETS=(
 )
 
 # Coalescent settings: "label flag_args"
-# "off" = no coalescent flag; numeric/skyline passed via --coalescent
+# "off" = no coalescent flag; a time scale in years or skyline passed via --coalescent
 COALESCENT=(
     "off      "
     # "skyline  --coalescent skyline"
-    "0.001    --coalescent 0.001"
-    "0.01     --coalescent 0.01"
-    "0.1      --coalescent 0.1"
-    # "1.0      --coalescent 1.0"
+    "0.001    --coalescent 0.001y"
+    "0.01     --coalescent 0.01y"
+    "0.1      --coalescent 0.1y"
+    # "1.0      --coalescent 1.0y"
 )
 
 mkdir -p "$OUTDIR"

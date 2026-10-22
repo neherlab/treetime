@@ -224,7 +224,6 @@ export const zRunCheck = z.object({
  */
 export const zChoiceName = z.union([
   z.literal('clock-rate'),
-  z.literal('coalescent-prior'),
   z.literal('root')
 ]);
 
@@ -234,9 +233,6 @@ export const zChoiceName = z.union([
 export const zChoiceOptionName = z.union([
   z.literal('estimate'),
   z.literal('fixed'),
-  z.literal('none'),
-  z.literal('optimized'),
-  z.literal('skyline'),
   z.literal('reroot'),
   z.literal('keep')
 ]);
@@ -559,6 +555,14 @@ export const zTraitModelSummary = z.object({
   mu: z.number(),
   states: z.array(z.string())
 });
+
+/**
+ * Unit of a fixed coalescent time scale.
+ */
+export const zFixedTcUnit = z.union([
+  z.literal('substitutions-per-site'),
+  z.literal('time')
+]);
 
 /**
  * Parameters of a relaxed clock.
@@ -1222,7 +1226,7 @@ export const zChoiceOption = z.object({
 });
 
 /**
- * Settings that the form shows as one choice between options, for example the coalescent prior.
+ * Settings that the form shows as one choice between options, for example the clock rate.
  */
 export const zSettingChoice = z.object({
   choice: zChoiceName,
@@ -1247,6 +1251,7 @@ export const zSettingKind = z.union([
   z.literal('switch'),
   z.literal('tristate'),
   z.literal('enum'),
+  z.literal('enum-or-text'),
   z.literal('integer'),
   z.literal('number'),
   z.literal('text'),
@@ -1455,9 +1460,12 @@ export const zTimetreeConfig = z.strictObject({
   resolve_polytomies: z.boolean().optional(),
   relax: z.array(z.number()).optional(),
   max_iter: z.int().gte(0).optional(),
-  coalescent: z.number().optional(),
-  coalescent_opt: z.boolean().optional(),
-  coalescent_skyline: z.boolean().optional(),
+  coalescent: z.union([
+    z.number().gt(0),
+    z.string().regex(/^\+?([0-9]*[1-9][0-9]*\.?[0-9]*|[0-9]*\.[0-9]*[1-9][0-9]*)([eE][+-]?[0-9]+)?[ywd]?$/),
+    z.literal('opt'),
+    z.literal('skyline')
+  ]).optional(),
   skyline_n_points: z.int().gte(0).optional(),
   skyline_stiffness: z.number().optional(),
   coalescent_confidence: z.number().optional(),
@@ -2274,7 +2282,8 @@ export const zCoalescentPriorNone = z.object({
  * Constant population size with a fixed time scale.
  */
 export const zCoalescentPriorFixed = z.object({
-  tc: z.number(),
+  tc: z.string(),
+  unit: zFixedTcUnit,
   kind: z.literal('fixed')
 });
 

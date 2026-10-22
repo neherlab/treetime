@@ -176,28 +176,22 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
 
   Default value: `2`
-* `--coalescent <COALESCENT>` — Coalescent time scale in years.
+* `--coalescent <TC|opt|skyline>` — Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01) or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one
 
-   Sensible values are on the order of the time from the root to the tips and are given in units of time.
-* `--coalescent-opt` — Optimize coalescent time scale Tc to maximize coalescent likelihood.
-
-   When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`, which used a numerical search.
-* `--coalescent-skyline` — Use skyline coalescent model instead of constant Tc.
-
-   Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify the number of grid points.
+   A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node times have no coalescent prior.
 * `--skyline-n-points <SKYLINE_N_POINTS>` — Number of grid points in skyline coalescent model.
 
-   Only used when --coalescent-skyline is set. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
+   Only used with --coalescent skyline. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
 
   Default value: `20`
 * `--skyline-stiffness <SKYLINE_STIFFNESS>` — Smoothing stiffness for the skyline coalescent.
 
-   Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used when --coalescent-skyline is set.
+   Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used with --coalescent skyline.
 
   Default value: `2`
 * `--coalescent-confidence <COALESCENT_CONFIDENCE>` — Confidence level for coalescent time scale (Tc) bands, in standard deviations.
 
-   Applies to every inferred coalescent mode (constant, --coalescent-opt, and --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed --coalescent value is not inferred and therefore has no band.
+   Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed time scale is not inferred and therefore has no band.
 
   Default value: `2`
 * `--clock-filter <CLOCK_FILTER>` — Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression beyond which a tip is an outlier.
@@ -319,7 +313,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-coalescent-tsv <OUTPUT_COALESCENT_TSV>` — Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
 
-   Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   Written when a coalescent prior is set with `--coalescent`. A fixed time scale writes one band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-coalescent-csv <OUTPUT_COALESCENT_CSV>` — Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
 
    Written when a coalescent model is set. Takes precedence over paths configured with `--output-all` and `--output-selection`.

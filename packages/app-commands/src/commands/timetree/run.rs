@@ -4,6 +4,7 @@ use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
+use crate::commands::timetree::coalescent::CoalescentArg;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
@@ -28,6 +29,7 @@ use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
+use treetime::timetree::coalescent_timescale::CoalescentMode;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
@@ -153,9 +155,7 @@ fn timetree_params(
     max_iter: args.max_iter,
     resolve_polytomies: args.resolve_polytomies,
     relax: args.relax.clone(),
-    coalescent: args.coalescent,
-    coalescent_opt: args.coalescent_opt,
-    coalescent_skyline: args.coalescent_skyline,
+    coalescent: args.coalescent.map_or(CoalescentMode::Disabled, CoalescentArg::mode),
     skyline_n_points: args.skyline_n_points,
     skyline_stiffness: args.skyline_stiffness,
     coalescent_confidence: args.coalescent_confidence,
@@ -201,12 +201,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
         write_coalescent(selection, coalescent, &file.path)?;
         progress_info!(log, "Wrote coalescent output to {}", file.path.display());
       },
-      None => output_unavailable(
-        selection,
-        file,
-        "no coalescent model was set (use --coalescent, --coalescent-opt, or --coalescent-skyline)",
-        log,
-      )?,
+      None => output_unavailable(selection, file, "no coalescent prior was set (use --coalescent)", log)?,
     }
   }
 

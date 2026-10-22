@@ -385,12 +385,12 @@ export type ActiveChoice = {
 /**
  * A group of settings that the form shows as one choice.
  */
-export type ChoiceName = 'clock-rate' | 'coalescent-prior' | 'root';
+export type ChoiceName = 'clock-rate' | 'root';
 
 /**
  * An option of a choice.
  */
-export type ChoiceOptionName = 'estimate' | 'fixed' | 'none' | 'optimized' | 'skyline' | 'reroot' | 'keep';
+export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'keep';
 
 /**
  * One problem found in a configuration.
@@ -1101,6 +1101,11 @@ export type CoalescentPrior = ({
 } & CoalescentPriorOptimized) | ({
   kind: 'skyline';
 } & CoalescentPriorSkyline);
+
+/**
+ * Unit of a fixed coalescent time scale.
+ */
+export type FixedTcUnit = 'substitutions-per-site' | 'time';
 
 /**
  * Parameters of a relaxed clock.
@@ -2562,7 +2567,7 @@ export type InputSlot = {
 export type InputNeed = 'required' | 'recommended' | 'optional';
 
 /**
- * Settings that the form shows as one choice between options, for example the coalescent prior.
+ * Settings that the form shows as one choice between options, for example the clock rate.
  */
 export type SettingChoice = {
   choice: ChoiceName;
@@ -2625,7 +2630,7 @@ export type SettingSpec = {
    */
   nullable: boolean;
   /**
-   * Allowed values of an `enum` or `enum-list` setting.
+   * Allowed values of an `enum`, `enum-or-text` or `enum-list` setting.
    */
   options: Array<SettingOption>;
   /**
@@ -2671,7 +2676,7 @@ export type SettingRole = 'setting' | 'input' | 'input-template' | 'output';
 /**
  * Form of a setting's value.
  */
-export type SettingKind = 'switch' | 'tristate' | 'enum' | 'integer' | 'number' | 'text' | 'list' | 'enum-list';
+export type SettingKind = 'switch' | 'tristate' | 'enum' | 'enum-or-text' | 'integer' | 'number' | 'text' | 'list' | 'enum-list';
 
 /**
  * One allowed value of a setting.
@@ -2857,30 +2862,18 @@ export type TimetreeConfig = {
    */
   max_iter?: number;
   /**
-   * Coalescent time scale in years.
+   * Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01)
+   * or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one
    *
-   * Sensible values are on the order of the time from the root to the tips and are given in units of time.
+   * A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in
+   * substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node
+   * times have no coalescent prior.
    */
-  coalescent?: number;
-  /**
-   * Optimize coalescent time scale Tc to maximize coalescent likelihood.
-   *
-   * When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum
-   * of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`,
-   * which used a numerical search.
-   */
-  coalescent_opt?: boolean;
-  /**
-   * Use skyline coalescent model instead of constant Tc.
-   *
-   * Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify
-   * the number of grid points.
-   */
-  coalescent_skyline?: boolean;
+  coalescent?: number | string | 'opt' | 'skyline';
   /**
    * Number of grid points in skyline coalescent model.
    *
-   * Only used when --coalescent-skyline is set. Defines how many piecewise linear segments
+   * Only used with --coalescent skyline. Defines how many piecewise linear segments
    * are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
    */
   skyline_n_points?: number;
@@ -2891,16 +2884,16 @@ export type TimetreeConfig = {
    * skyline segments: with z = ln Tc, the objective adds
    * `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
    * stiffness is dimensionless and scale-independent. Larger values enforce a
-   * smoother Tc(t). Only used when --coalescent-skyline is set.
+   * smoother Tc(t). Only used with --coalescent skyline.
    */
   skyline_stiffness?: number;
   /**
    * Confidence level for coalescent time scale (Tc) bands, in standard deviations.
    *
-   * Applies to every inferred coalescent mode (constant, --coalescent-opt, and
-   * --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is
+   * Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).
+   * The band spans `Tc * exp(±confidence * σ)`, where `σ` is
    * the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
-   * --coalescent value is not inferred and therefore has no band.
+   * time scale is not inferred and therefore has no band.
    */
   coalescent_confidence?: number;
   /**
@@ -3089,9 +3082,8 @@ export type TimetreeConfig = {
   /**
    * Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
    *
-   * Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or
-   * `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree
-   * span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   * Written when a coalescent prior is set with `--coalescent`. A fixed time scale writes one
+   * band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
    */
   output_coalescent_tsv?: string;
   /**
@@ -5875,9 +5867,13 @@ export type CoalescentPriorNone = {
  */
 export type CoalescentPriorFixed = {
   /**
-   * Coalescent time scale in years.
+   * Coalescent time scale as the run configuration gives it, for example `0.01` or `10y`.
    */
-  tc: number;
+  tc: string;
+  /**
+   * Unit of the time scale.
+   */
+  unit: FixedTcUnit;
   kind: 'fixed';
 };
 

@@ -42,7 +42,7 @@ OPTIMIZE = {
     'default': ('perturbed', []),
 }
 ROOTING = {'keep': ('realized', ['--keep-root']), 'reroot': ('realized', ['--reroot', 'least-squares'])}
-COALESCENT = {'none': [], 'opt': ['--coalescent-opt'], 'skyline': ['--coalescent-skyline']}
+COALESCENT = {'none': [], 'opt': ['--coalescent', 'opt'], 'skyline': ['--coalescent', 'skyline']}
 CLOCK = {'est': [], 'fixed': ['--clock-rate', '{mu}']}  # {mu} is the true rate of the sequence set
 TIMETREE_CORE = {
     f'{r}-{c}-{k}': (tree, rflags + cflags + kflags)
@@ -53,9 +53,9 @@ TIMETREE_CORE = {
 TIMETREE_EXTRA = {  # estimated clock rate
     'exact-keep-none-est': ('exact', ['--keep-root']),
     'rate-keep-none-est': ('rate', ['--keep-root']),
-    'rate-reroot-opt-est': ('rate', ['--reroot', 'least-squares', '--coalescent-opt']),
-    'keep-tc10-est': ('realized', ['--keep-root', '--coalescent', '10']),
-    'keep-skyline-est-ci': ('realized', ['--keep-root', '--coalescent-skyline', '--time-marginal', 'only-final']),
+    'rate-reroot-opt-est': ('rate', ['--reroot', 'least-squares', '--coalescent', 'opt']),
+    'keep-tc10-est': ('realized', ['--keep-root', '--coalescent', '10y']),
+    'keep-skyline-est-ci': ('realized', ['--keep-root', '--coalescent', 'skyline', '--time-marginal', 'only-final']),
 }
 EXTRA_SETS = r'/rep0[0-2]/L1000_mu0\.00[31]$'
 SMOKE_SETS = r'/rep00/L1000_'

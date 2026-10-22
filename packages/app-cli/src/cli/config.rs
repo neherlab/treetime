@@ -1,6 +1,6 @@
 use app_commands::command::RawConfig;
 use app_commands::config::cli_rules::cli_rule_diagnostics;
-use app_commands::config::load::{check_command_config, load_config_document};
+use app_commands::config::load::{check_command_config, invalid_setting_report, load_config_document, read_settings};
 use app_commands::config::schema::command_schema;
 use app_commands::config::source::{ConfigSource, escape_pointer, render_and_bail};
 use clap::ArgMatches;
@@ -12,7 +12,6 @@ use std::env;
 use std::path::{Path, PathBuf};
 use treetime_utils::io::file::is_path_stdin;
 use treetime_utils::io::fs::{absolute_path, read_file_to_string};
-use treetime_utils::io::json::from_json_value;
 use treetime_utils::io::json::to_json_value;
 use treetime_utils::make_report;
 
@@ -37,7 +36,9 @@ pub(crate) fn overlay_config<T: RawConfig>(args: &mut T, matches: &ArgMatches) -
   check_command_config(&source, &merged, &command_schema::<T>())?;
   check_cli_rules::<T>(&source, &merged, &explicit)?;
 
-  *args = from_json_value::<T>(&merged)?.with_cli_only_settings_of(args);
+  *args = read_settings::<T>(&merged)
+    .map_err(|report| invalid_setting_report(&source, report))?
+    .with_cli_only_settings_of(args);
   Ok(())
 }
 

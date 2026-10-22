@@ -110,10 +110,49 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_setting_catalog_coalescent_offers_its_options_and_a_free_time_scale() {
+    assert_eq!(
+      SettingSpec {
+        key: o!("coalescent"),
+        label: o!("Coalescent prior"),
+        flag: o!("--coalescent"),
+        group: o!("Coalescent prior"),
+        role: SettingRole::Setting,
+        kind: SettingKind::EnumOrText,
+        nullable: true,
+        options: vec![
+          SettingOption {
+            value: o!("opt"),
+            help: o!(""),
+          },
+          SettingOption {
+            value: o!("skyline"),
+            help: o!(""),
+          },
+        ],
+        item_kind: ListItemKind::String,
+        default_value: None,
+        minimum: None,
+        examples: vec![JsonValue(json!(0.01))],
+        value_names: vec_of_owned!["TC|opt|skyline"],
+        conflicts: vec![],
+        help: o!(
+          "Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example \
+           0.01) or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one"
+        ),
+        more: o!(
+          "A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in \
+           substitutions per site is converted to years with the clock rate of each iteration. Without this setting the \
+           node times have no coalescent prior."
+        ),
+      },
+      spec(AppCommand::Timetree, "coalescent")
+    );
+  }
+
   #[rustfmt::skip]
   #[rstest]
-  #[case::declared_on_the_setting( AppCommand::Timetree, "coalescent_opt",     vec_of_owned!["coalescent", "coalescent_skyline"])]
-  #[case::declared_on_the_others(  AppCommand::Timetree, "coalescent",         vec_of_owned!["coalescent_opt", "coalescent_skyline"])]
   #[case::keep_root(               AppCommand::Clock,    "keep_root",          vec_of_owned!["reroot", "reroot_tips"])]
   #[case::reroot(                  AppCommand::Clock,    "reroot",             vec_of_owned!["keep_root", "reroot_tips"])]
   #[case::none(                    AppCommand::Timetree, "max_iter",           vec![])]
@@ -238,9 +277,16 @@ mod tests {
           .iter()
           .map(|value| value.get_name().replace(['-', '_'], "").to_lowercase())
           .collect_vec();
+        let parses = |value: &str| {
+          spec.kind == SettingKind::EnumOrText
+            && cli
+              .clone()
+              .try_get_matches_from([cli.get_name().to_owned(), format!("{}={value}", spec.flag)])
+              .is_ok()
+        };
         for option in &spec.options {
           assert!(
-            spellings.contains(&option.value.replace(['-', '_'], "").to_lowercase()),
+            spellings.contains(&option.value.replace(['-', '_'], "").to_lowercase()) || parses(&option.value),
             "{command}: `{}` value `{}` has no command-line spelling among {spellings:?}",
             spec.key,
             option.value

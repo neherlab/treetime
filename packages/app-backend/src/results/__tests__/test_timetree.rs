@@ -4,11 +4,12 @@ mod tests {
   use crate::results::__tests__::test_tree::tests::helpers::fixture;
   use crate::results::clock::{ClockLine, RootToTip, RootToTipPoint, root_to_tip};
   use crate::results::timetree::{
-    CoalescentPrior, RelaxedClock, TimetreeEstimates, TimetreeOutputs, coalescent_prior, relaxed_clock,
+    CoalescentPrior, FixedTcUnit, RelaxedClock, TimetreeEstimates, TimetreeOutputs, coalescent_prior, relaxed_clock,
     timetree_results,
   };
   use crate::results::tree::{DateInterval, ResultTree};
   use crate::results::year_date::YearDate;
+  use app_commands::commands::timetree::coalescent::parse_coalescent;
   use eyre::Report;
   use helpers::{clock_model, config, fixed_clock_model, metrics, node_data_clock};
   use pretty_assertions::assert_eq;
@@ -119,19 +120,15 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::none(     (None,      false, false), CoalescentPrior::None)]
-  #[case::fixed(    (Some(0.5), false, false), CoalescentPrior::Fixed { tc: 0.5 })]
-  #[case::optimized((Some(0.5), true,  false), CoalescentPrior::Optimized)]
-  #[case::skyline(  (None,      true,  true),  CoalescentPrior::Skyline { points: 20, stiffness: 2.0 })]
+  #[case::none(         None,           CoalescentPrior::None)]
+  #[case::substitutions(Some("0.01"),   CoalescentPrior::Fixed { tc: o!("0.01"), unit: FixedTcUnit::SubstitutionsPerSite })]
+  #[case::time(         Some("26w"),    CoalescentPrior::Fixed { tc: o!("26w"), unit: FixedTcUnit::Time })]
+  #[case::optimized(    Some("opt"),    CoalescentPrior::Optimized)]
+  #[case::skyline(      Some("skyline"), CoalescentPrior::Skyline { points: 20, stiffness: 2.0 })]
   #[trace]
-  fn test_coalescent_prior_from_config(
-    #[case] (tc, optimized, skyline): (Option<f64>, bool, bool),
-    #[case] expected: CoalescentPrior,
-  ) {
+  fn test_coalescent_prior_from_config(#[case] coalescent: Option<&str>, #[case] expected: CoalescentPrior) {
     let config = config(|config| {
-      config.coalescent = tc;
-      config.coalescent_opt = optimized;
-      config.coalescent_skyline = skyline;
+      config.coalescent = coalescent.map(|text| parse_coalescent(text).unwrap());
       config.skyline_n_points = 20;
       config.skyline_stiffness = 2.0;
     });

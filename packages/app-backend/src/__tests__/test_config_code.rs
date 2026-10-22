@@ -207,6 +207,7 @@ mod tests {
           .map(|option| json!(option.value))
           .find(|value| Some(value) != default_of(spec))
           .unwrap(),
+        (_, SettingKind::EnumOrText) => spec.examples.first().map(|example| example.0.clone()).unwrap(),
         (_, SettingKind::EnumList) => json!(
           spec
             .options

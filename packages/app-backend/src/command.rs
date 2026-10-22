@@ -15,7 +15,9 @@ use app_commands::commands::shared::output_args::{
 };
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_commands::config::cli_rules::cli_rule_diagnostics;
-use app_commands::config::load::{check_command_config, load_config_document, merge_value};
+use app_commands::config::load::{
+  check_command_config, invalid_setting_report, load_config_document, merge_value, read_settings,
+};
 use app_commands::config::properties::{PathRole, setting_properties};
 use app_commands::config::schema::command_schema;
 use app_commands::config::source::{ConfigSource, render_and_bail};
@@ -36,7 +38,7 @@ use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
 use treetime_schema::skip_serializing_optionals;
 use treetime_utils::error::report_to_string;
-use treetime_utils::io::json::{JsonPretty, from_json_value, json_write_str};
+use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
 
 const REQUEST_SOURCE: &str = "config.json";
@@ -99,8 +101,6 @@ impl AppCommandExt for AppCommand {
         "clock_std_dev",
         "confidence",
         "coalescent",
-        "coalescent_opt",
-        "coalescent_skyline",
         "skyline_n_points",
         "skyline_stiffness",
         "reroot",
@@ -250,7 +250,7 @@ fn prepare<R: RunConfig>(
   let schema = command_schema::<R>();
   let merged = load_config_document::<R>(source, text, None)?;
   check_command_config(source, &merged, &schema)?;
-  let mut raw: R = from_json_value(&merged)?;
+  let mut raw: R = read_settings(&merged).map_err(|report| invalid_setting_report(source, report))?;
   let mut defaults = R::default();
   if let Some(out_dir) = run_out {
     raw.set_run_outputs(out_dir);

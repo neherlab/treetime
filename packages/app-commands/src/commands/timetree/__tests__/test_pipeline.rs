@@ -7,14 +7,17 @@ mod tests {
   use crate::commands::shared::topology_order_args::{TopologyOrderArg, TopologyOrderArgs};
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+  use crate::commands::timetree::coalescent::{CoalescentArg, parse_coalescent};
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::{Report, WrapErr};
-  use helpers::count_leaves;
+  use helpers::{coalescent_node_dates, count_leaves};
+  use std::collections::BTreeMap;
   use std::fs::read_to_string;
   use treetime::cancel::NoopCancel;
   use treetime::progress::NoopProgress;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
   use treetime_utils::io::json::{json_read_file, json_value_read_file};
+  use treetime_utils::make_report;
 
   #[test]
   fn test_pipeline_timetree_convergence() -> Result<(), Report> {
@@ -144,7 +147,7 @@ mod tests {
       },
       metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 3,
-      coalescent_skyline: true,
+      coalescent: Some(CoalescentArg::Skyline),
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..Default::default()
@@ -171,6 +174,33 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_pipeline_timetree_coalescent_in_substitutions_per_site_equals_its_time_at_a_fixed_clock_rate()
+  -> Result<(), Report> {
+    let clock_rate = 0.004;
+    let substitutions = 0.01;
+
+    let in_substitutions = coalescent_node_dates(&substitutions.to_string(), Some(clock_rate))?;
+    let in_years = coalescent_node_dates(&format!("{}y", substitutions / clock_rate), Some(clock_rate))?;
+
+    assert_eq!(in_years, in_substitutions);
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_timetree_coalescent_in_years_keeps_the_dates_of_a_fixed_time_scale() -> Result<(), Report> {
+    let expected: BTreeMap<String, f64> = json_read_file(
+      project_root()
+        .join("packages/app-commands/src/commands/timetree/__tests__/__fixtures__/coalescent_years_node_dates.json"),
+    )?;
+
+    let mut actual = coalescent_node_dates("2.56y", None)?;
+    actual.retain(|name, _| expected.contains_key(name));
+
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
 
@@ -180,6 +210,47 @@ mod tests {
       } else {
         node.children.iter().map(count_leaves).sum()
       }
+    }
+
+    pub(super) fn coalescent_node_dates(
+      coalescent: &str,
+      clock_rate: Option<f64>,
+    ) -> Result<BTreeMap<String, f64>, Report> {
+      let root = project_root();
+      let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
+      let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
+        alignment: AlignmentArgs {
+          alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
+        },
+        tree: TreeArgs {
+          tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+        },
+        metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
+        max_iter: 2,
+        clock_rate,
+        coalescent: Some(parse_coalescent(coalescent)?),
+        output: OutputCoreArgs {
+          output_all: Some(output.path().to_path_buf()),
+          ..Default::default()
+        },
+        ..TreetimeTimetreeArgsRaw::default()
+      })?;
+
+      run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
+
+      let node_data = json_value_read_file(output.path().join("timetree.augur-node-data.json"))?;
+      let nodes = node_data["nodes"]
+        .as_object()
+        .ok_or_else(|| make_report!("The augur node data has no nodes"))?;
+      nodes
+        .iter()
+        .map(|(name, node)| {
+          let date = node["numdate"]
+            .as_f64()
+            .ok_or_else(|| make_report!("Node {name} has no numdate"))?;
+          Ok((name.clone(), date))
+        })
+        .collect()
     }
   }
 }

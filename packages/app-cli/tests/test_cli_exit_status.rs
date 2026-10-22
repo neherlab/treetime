@@ -108,6 +108,35 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::command(  "timetree", "coalescent: 1e999y\n",                                      "")]
+  #[case::pipeline( "pipeline", "steps:\n  - name: tt\n    timetree:\n      coalescent: 1e999y\n", "in pipeline step `tt`: ")]
+  #[trace]
+  fn test_cli_config_value_that_passes_the_schema_and_fails_conversion_is_a_usage_error(
+    #[case] command: &str,
+    #[case] text: &str,
+    #[case] context: &str,
+  ) {
+    let dir = tempdir().unwrap();
+    let config = write_file(dir.path(), "config.yaml", text);
+    let run = treetime(&[command, "--config", &config], &[]);
+    let first_line = format!(
+      "error: invalid configuration: {context}invalid value: '1e999y' is not a coalescent prior. Give a fixed time \
+       scale as a positive number in substitutions per site (0.01, 1e-2) or as a positive number directly followed by \
+       the time unit y, w or d (10y, 26w, 90d); opt to fit a constant time scale; or skyline to fit a \
+       piecewise-constant one"
+    );
+    assert_eq!(
+      (Some(2), first_line.as_str(), false),
+      (
+        run.code,
+        run.stderr.lines().next().unwrap_or_default(),
+        run.stderr.contains("Location:")
+      )
+    );
+  }
+
   #[test]
   fn test_cli_failed_run_exits_with_one_and_shows_no_source_location() {
     let run = treetime(

@@ -6,7 +6,6 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
-use treetime::timetree::coalescent_timescale::{CoalescentMode, coalescent_mode};
 use treetime_utils::make_report;
 
 const CHOICES: &[ChoiceDef] = &[
@@ -23,38 +22,6 @@ const CHOICES: &[ChoiceDef] = &[
         name: ChoiceOptionName::Fixed,
         set: &[("clock_rate", PickedValue::Example)],
         settings: &["clock_rate", "clock_std_dev"],
-      },
-    ],
-  },
-  ChoiceDef {
-    name: ChoiceName::CoalescentPrior,
-    keys: &[
-      "coalescent",
-      "coalescent_opt",
-      "coalescent_skyline",
-      "skyline_n_points",
-      "skyline_stiffness",
-    ],
-    options: &[
-      OptionDef {
-        name: ChoiceOptionName::None,
-        set: &[],
-        settings: &[],
-      },
-      OptionDef {
-        name: ChoiceOptionName::Fixed,
-        set: &[("coalescent", PickedValue::Example)],
-        settings: &["coalescent"],
-      },
-      OptionDef {
-        name: ChoiceOptionName::Optimized,
-        set: &[("coalescent_opt", PickedValue::True)],
-        settings: &[],
-      },
-      OptionDef {
-        name: ChoiceOptionName::Skyline,
-        set: &[("coalescent_skyline", PickedValue::True)],
-        settings: &["skyline_n_points", "skyline_stiffness"],
       },
     ],
   },
@@ -100,18 +67,6 @@ pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> 
             ChoiceOptionName::Estimate
           }
         },
-        ChoiceName::CoalescentPrior => {
-          match coalescent_mode(
-            value("coalescent").and_then(Value::as_f64),
-            flag("coalescent_opt"),
-            flag("coalescent_skyline"),
-          ) {
-            CoalescentMode::Disabled => ChoiceOptionName::None,
-            CoalescentMode::Fixed(_) => ChoiceOptionName::Fixed,
-            CoalescentMode::Constant => ChoiceOptionName::Optimized,
-            CoalescentMode::Skyline => ChoiceOptionName::Skyline,
-          }
-        },
         ChoiceName::Root => {
           if flag("keep_root") {
             ChoiceOptionName::Keep
@@ -155,7 +110,7 @@ impl ChoiceDef {
   }
 }
 
-/// Settings that the form shows as one choice between options, for example the coalescent prior.
+/// Settings that the form shows as one choice between options, for example the clock rate.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 pub struct SettingChoice {
   pub choice: ChoiceName,
@@ -172,8 +127,6 @@ pub struct SettingChoice {
 pub enum ChoiceName {
   /// Estimate the clock rate, or fix it.
   ClockRate,
-  /// The prior on node times.
-  CoalescentPrior,
   /// Reroot the tree, or keep the input root.
   Root,
 }
@@ -227,14 +180,8 @@ pub struct ChoiceOption {
 pub enum ChoiceOptionName {
   /// Estimate the clock rate from the data.
   Estimate,
-  /// A fixed value: the clock rate, or the coalescent time scale Tc.
+  /// A fixed clock rate.
   Fixed,
-  /// No coalescent prior.
-  None,
-  /// One constant coalescent time scale Tc, fitted to the tree.
-  Optimized,
-  /// A coalescent time scale that changes over time.
-  Skyline,
   /// Find the root that fits the molecular clock best.
   Reroot,
   /// Keep the root of the input tree.

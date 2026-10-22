@@ -10,7 +10,7 @@
 # (`clock_rate`) skips rate estimation and is common for well-characterized
 # pathogens like seasonal influenza. `confidence` adds date confidence
 # intervals, which need a rate uncertainty (`clock_std_dev`) when the rate is
-# fixed; `coalescent_opt` fits a constant coalescent time scale analytically.
+# fixed; `coalescent: opt` fits a constant coalescent time scale analytically.
 
 tree: "tree.nwk"
 metadata: "metadata.tsv"
@@ -20,7 +20,7 @@ alignment:
 clock_rate: 0.003
 clock_std_dev: 0.0006
 confidence: true
-coalescent_opt: true
+coalescent: "opt"
 max_iter: 3
 
 # The default outputs, plus the date confidence intervals as a TSV.

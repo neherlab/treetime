@@ -10,8 +10,8 @@ mod tests {
     CoalescentBand, CoalescentInputs, CoalescentOutput, CoalescentOutputMode, CoalescentSolve,
   };
   use crate::timetree::coalescent_timescale::{
-    CoalescentMode, CoalescentReportBand, CoalescentTcReport, CoalescentTimescale, build_coalescent_output,
-    coalescent_mode, coalescent_timescale,
+    CoalescentMode, CoalescentReportBand, CoalescentTcReport, CoalescentTimescale, FixedTimescale,
+    build_coalescent_output, coalescent_timescale,
   };
   use eyre::Report;
   use maplit::btreemap;
@@ -31,22 +31,15 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::disabled(       None,       false, false, CoalescentMode::Disabled)]
-  #[case::fixed(          Some(0.25), false, false, CoalescentMode::Fixed(0.25))]
-  #[case::opt_default(    None,       true,  false, CoalescentMode::Constant)]
-  #[case::opt_value_ignored(Some(0.25), true, false, CoalescentMode::Constant)]
-  #[case::skyline_default(None,       false, true,  CoalescentMode::Skyline)]
-  #[case::skyline_over_opt(Some(0.25), true, true,  CoalescentMode::Skyline)]
+  #[case::substitutions_per_site(FixedTimescale::SubstitutionsPerSite(0.01), 1e-3, 10.0)]
+  #[case::years_ignore_the_rate( FixedTimescale::Years(10.0),                1e-3, 10.0)]
   #[trace]
-  fn test_pipeline_coalescent_mode(
-    #[case] coalescent: Option<f64>,
-    #[case] coalescent_opt: bool,
-    #[case] coalescent_skyline: bool,
-    #[case] expected: CoalescentMode,
+  fn test_fixed_timescale_years_divides_substitutions_per_site_by_the_clock_rate(
+    #[case] fixed: FixedTimescale,
+    #[case] clock_rate: f64,
+    #[case] expected: f64,
   ) {
-    let actual = coalescent_mode(coalescent, coalescent_opt, coalescent_skyline);
-
-    assert_eq!(expected, actual);
+    pretty_assert_ulps_eq!(expected, fixed.years(clock_rate), max_ulps = 1);
   }
 
   #[test]
@@ -71,10 +64,11 @@ mod tests {
       ..SkylineParams::default()
     };
     let expectation = constraint_expectation(&graph, &constraints)?;
-    let timescale = coalescent_timescale(CoalescentMode::Fixed(2.5), &params, &expectation, &NoopProgress)?;
+    let mode = CoalescentMode::Fixed(FixedTimescale::Years(2.5));
+    let timescale = coalescent_timescale(mode, &params, &expectation, 1.0, &NoopProgress)?;
 
-    let actual = build_coalescent_output(CoalescentMode::Fixed(2.5), &timescale, GEN_PER_YEAR, &params)?
-      .expect("a fixed Tc writes a coalescent output");
+    let actual =
+      build_coalescent_output(mode, &timescale, GEN_PER_YEAR, &params)?.expect("a fixed Tc writes a coalescent output");
 
     let expected = CoalescentOutput::new(
       CoalescentInputs {
@@ -206,7 +200,7 @@ mod tests {
 
     let expectation = constraint_expectation(&graph, &constraints)?;
     let solve = optimize_skyline(&params, &expectation, &NoopProgress)?;
-    let timescale = coalescent_timescale(CoalescentMode::Skyline, &params, &expectation, &NoopProgress)?;
+    let timescale = coalescent_timescale(CoalescentMode::Skyline, &params, &expectation, 1.0, &NoopProgress)?;
     let metric = timescale.expected_log_likelihood(&expectation).value();
     let report = timescale
       .report

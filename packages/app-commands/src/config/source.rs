@@ -14,23 +14,23 @@ use treetime_schema::skip_serializing_optionals;
 use treetime_utils::make_report;
 
 pub fn parse_config_document(source: &ConfigSource, text: &str) -> Result<Value, Report> {
-  match yaml_value_read_str(text) {
-    Ok(value) => Ok(value),
-    Err(err) => {
-      render_and_bail(
-        source,
-        "invalid configuration",
-        vec![RawDiagnostic::builder("config::syntax", format!("could not parse config: {err}")).build()],
-      )?;
-      unreachable!("render_and_bail returns an error whenever diagnostics are present");
-    },
-  }
+  yaml_value_read_str(text).map_err(|err| {
+    invalid_config_report(
+      source,
+      "invalid configuration",
+      vec![RawDiagnostic::builder("config::syntax", format!("could not parse config: {err}")).build()],
+    )
+  })
 }
 
 pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawDiagnostic>) -> Result<(), Report> {
   if diags.is_empty() {
     return Ok(());
   }
+  Err(invalid_config_report(source, top_message, diags))
+}
+
+pub fn invalid_config_report(source: &ConfigSource, top_message: &str, diags: Vec<RawDiagnostic>) -> Report {
   let related: Vec<ConfigDiagnostic> = diags.into_iter().map(|diag| diag.resolve(source)).collect();
   let problems = related.iter().map(|diag| diag.message.as_str()).join("; ");
   let report = ConfigReport {
@@ -39,9 +39,11 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
   };
 
   let mut rendered = String::new();
-  miette::GraphicalReportHandler::new_themed(miette::GraphicalTheme::unicode_nocolor())
+  if let Err(err) = miette::GraphicalReportHandler::new_themed(miette::GraphicalTheme::unicode_nocolor())
     .render_report(&mut rendered, &report)
-    .map_err(|err| make_report!("could not render config diagnostics: {err}"))?;
+  {
+    return make_report!("could not render config diagnostics: {err}");
+  }
   let rendered = rendered.trim_end().to_owned();
 
   let invalid = InvalidConfig {
@@ -49,7 +51,7 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
     problems: report.related.iter().map(ConfigDiagnostic::problem).collect(),
     rendered: rendered.clone(),
   };
-  Err(Report::new(invalid).with_section(move || rendered))
+  Report::new(invalid).with_section(move || rendered)
 }
 
 /// Configuration rejected by parsing or by the schema check.

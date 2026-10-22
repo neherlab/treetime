@@ -3,9 +3,7 @@ use crate::clock::gaussian::{GaussianClock, GaussianTree};
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::skyline::SkylineParams;
 use crate::progress::LogSink;
-use crate::timetree::coalescent_timescale::{
-  CoalescentMode, CoalescentSetup, LineageModel, coalescent_mode, coalescent_timescale,
-};
+use crate::timetree::coalescent_timescale::{CoalescentMode, CoalescentSetup, LineageModel, coalescent_timescale};
 use crate::timetree::inference::bad_branches::bad_leaves;
 use crate::timetree::inference::result::{TimeInference, given_times};
 use crate::timetree::inference::runner::{CLOCK_BRANCH_LENGTH_UNDAMPED, run_timetree};
@@ -57,7 +55,7 @@ pub(crate) fn initialize(
     leaf_bad_branches: &leaf_bad_branches,
     outliers: &outliers,
   };
-  let mode = coalescent_mode(params.coalescent, params.coalescent_opt, params.coalescent_skyline);
+  let mode = params.coalescent;
   let skyline_params = SkylineParams {
     n_points: params.skyline_n_points,
     stiffness: params.skyline_stiffness,
@@ -117,7 +115,13 @@ fn infer_initial_lineages(
       Some(time_inference),
     )
   };
-  let timescale = coalescent_timescale(mode, skyline_params, &seed_expectation, log)?;
+  let timescale = coalescent_timescale(
+    mode,
+    skyline_params,
+    &seed_expectation,
+    state.clock_model.clock_rate(),
+    log,
+  )?;
 
   let (time_inference, expectation) = if let Some(time_inference) = prior_free.filter(|_| !mode.wants_prior()) {
     (time_inference, seed_expectation)

@@ -78,8 +78,6 @@
         "clock_std_dev",
         "confidence",
         "coalescent",
-        "coalescent_opt",
-        "coalescent_skyline",
         "skyline_n_points",
         "skyline_stiffness",
         "reroot",
@@ -125,110 +123,6 @@
               "settings": [
                 "clock_rate",
                 "clock_std_dev"
-              ]
-            }
-          ]
-        },
-        {
-          "choice": "coalescent-prior",
-          "keys": [
-            "coalescent",
-            "coalescent_opt",
-            "coalescent_skyline",
-            "skyline_n_points",
-            "skyline_stiffness"
-          ],
-          "options": [
-            {
-              "option": "none",
-              "patch": [
-                {
-                  "key": "coalescent"
-                },
-                {
-                  "key": "coalescent_opt"
-                },
-                {
-                  "key": "coalescent_skyline"
-                },
-                {
-                  "key": "skyline_n_points"
-                },
-                {
-                  "key": "skyline_stiffness"
-                }
-              ],
-              "settings": []
-            },
-            {
-              "option": "fixed",
-              "patch": [
-                {
-                  "key": "coalescent",
-                  "value": 1.0
-                },
-                {
-                  "key": "coalescent_opt"
-                },
-                {
-                  "key": "coalescent_skyline"
-                },
-                {
-                  "key": "skyline_n_points"
-                },
-                {
-                  "key": "skyline_stiffness"
-                }
-              ],
-              "settings": [
-                "coalescent"
-              ]
-            },
-            {
-              "option": "optimized",
-              "patch": [
-                {
-                  "key": "coalescent"
-                },
-                {
-                  "key": "coalescent_opt",
-                  "value": true
-                },
-                {
-                  "key": "coalescent_skyline"
-                },
-                {
-                  "key": "skyline_n_points"
-                },
-                {
-                  "key": "skyline_stiffness"
-                }
-              ],
-              "settings": []
-            },
-            {
-              "option": "skyline",
-              "patch": [
-                {
-                  "key": "coalescent"
-                },
-                {
-                  "key": "coalescent_opt"
-                },
-                {
-                  "key": "coalescent_skyline",
-                  "value": true
-                },
-                {
-                  "key": "skyline_n_points"
-                },
-                {
-                  "key": "skyline_stiffness"
-                }
-              ],
-              "settings": [
-                "skyline_n_points",
-                "skyline_stiffness"
               ]
             }
           ]
@@ -826,70 +720,32 @@
         },
         {
           "key": "coalescent",
-          "label": "Coalescent time scale Tc",
+          "label": "Coalescent prior",
           "flag": "--coalescent",
           "group": "Coalescent prior",
           "role": "setting",
-          "kind": "number",
+          "kind": "enum-or-text",
           "nullable": true,
-          "options": [],
+          "options": [
+            {
+              "value": "opt",
+              "help": ""
+            },
+            {
+              "value": "skyline",
+              "help": ""
+            }
+          ],
           "item_kind": "string",
           "examples": [
-            1.0
+            0.01
           ],
           "value_names": [
-            "COALESCENT"
+            "TC|opt|skyline"
           ],
-          "conflicts": [
-            "coalescent_opt",
-            "coalescent_skyline"
-          ],
-          "help": "Coalescent time scale in years.",
-          "more": "Sensible values are on the order of the time from the root to the tips and are given in units of time."
-        },
-        {
-          "key": "coalescent_opt",
-          "label": "Optimize Tc",
-          "flag": "--coalescent-opt",
-          "group": "Coalescent prior",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "COALESCENT_OPT"
-          ],
-          "conflicts": [
-            "coalescent",
-            "coalescent_skyline"
-          ],
-          "help": "Optimize coalescent time scale Tc to maximize coalescent likelihood.",
-          "more": "When set, TreeTime finds the optimal constant Tc analytically (closed-form maximum of the coalescent likelihood). This is similar to Python v0's `--coalescent=opt`, which used a numerical search."
-        },
-        {
-          "key": "coalescent_skyline",
-          "label": "Skyline coalescent",
-          "flag": "--coalescent-skyline",
-          "group": "Coalescent prior",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "COALESCENT_SKYLINE"
-          ],
-          "conflicts": [
-            "coalescent",
-            "coalescent_opt"
-          ],
-          "help": "Use skyline coalescent model instead of constant Tc.",
-          "more": "Estimates a piecewise linear coalescent rate history. Requires --skyline-n-points to specify the number of grid points."
+          "conflicts": [],
+          "help": "Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01) or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one",
+          "more": "A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node times have no coalescent prior."
         },
         {
           "key": "skyline_n_points",
@@ -909,7 +765,7 @@
           ],
           "conflicts": [],
           "help": "Number of grid points in skyline coalescent model.",
-          "more": "Only used when --coalescent-skyline is set. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default."
+          "more": "Only used with --coalescent skyline. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default."
         },
         {
           "key": "skyline_stiffness",
@@ -928,7 +784,7 @@
           ],
           "conflicts": [],
           "help": "Smoothing stiffness for the skyline coalescent.",
-          "more": "Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used when --coalescent-skyline is set."
+          "more": "Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used with --coalescent skyline."
         },
         {
           "key": "coalescent_confidence",
@@ -947,7 +803,7 @@
           ],
           "conflicts": [],
           "help": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.",
-          "more": "Applies to every inferred coalescent mode (constant, --coalescent-opt, and --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed --coalescent value is not inferred and therefore has no band."
+          "more": "Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed time scale is not inferred and therefore has no band."
         },
         {
           "key": "gen_per_year",
@@ -1441,7 +1297,7 @@
           ],
           "conflicts": [],
           "help": "Path to output the coalescent time scale as a flat TSV (one row per skyline segment).",
-          "more": "Written when a coalescent model is set (`--coalescent`, `--coalescent-opt`, or `--coalescent-skyline`). A fixed `--coalescent` writes one band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          "more": "Written when a coalescent prior is set with `--coalescent`. A fixed time scale writes one band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`."
         },
         {
           "key": "output_coalescent_csv",

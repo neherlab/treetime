@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::test_utils::{arb_simulated_case, timetree_cell_params};
+  use crate::timetree::coalescent_timescale::CoalescentMode;
   use crate::timetree::params::TimetreeParams;
   use helpers::{
     as_test_failure, clade_key_set, internal_nodes_without_valid_interval, nodes_without_finite_date, run,
@@ -17,7 +18,7 @@ mod tests {
       let case = spec.simulate().map_err(|error| as_test_failure(&error))?;
       let params = TimetreeParams {
         clock_rate: Some(spec.mu),
-        coalescent_opt: true,
+        coalescent: CoalescentMode::Constant,
         ..timetree_cell_params()
       };
 

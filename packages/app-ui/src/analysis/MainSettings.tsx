@@ -48,6 +48,12 @@ const CLOCK_FILTER_KEYS = ["clock_filter"] as const satisfies readonly TimetreeK
 
 const RELAX_KEYS = ["relax"] as const satisfies readonly TimetreeKey[];
 
+const COALESCENT_KEYS = [
+  "coalescent",
+  "skyline_n_points",
+  "skyline_stiffness",
+] as const satisfies readonly TimetreeKey[];
+
 const POLYTOMY_KEYS = ["keep_polytomies"] as const satisfies readonly TimetreeKey[];
 
 const MODEL_KEYS = ["model", "model_params"] as const satisfies readonly TimetreeKey[];
@@ -66,17 +72,6 @@ const CHOICE_TEXT: Record<ChoiceName, ChoiceText> = {
       fixed: { label: "Fixed rate" },
     },
     settings: { clock_rate: "Rate", clock_std_dev: "Std. dev." },
-  },
-  "coalescent-prior": {
-    label: "Coalescent prior",
-    sub: "Prior on node times",
-    options: {
-      none: { label: "None", note: "Node times are set by the sequences and sampling dates only." },
-      fixed: { label: "Fixed Tc" },
-      optimized: { label: "Optimize Tc", note: "One constant Tc, fitted to the tree." },
-      skyline: { label: "Skyline" },
-    },
-    settings: { coalescent: "Tc in years", skyline_n_points: "Grid points", skyline_stiffness: "Stiffness" },
   },
   root: {
     label: "Root",
@@ -205,7 +200,7 @@ function TimetreeSettings({ context }: { context: RowContext }) {
     <div className="py-1">
       <ChoiceRow context={context} choice="clock-rate" />
       <IntervalsRow context={context} />
-      <ChoiceRow context={context} choice="coalescent-prior" />
+      <CoalescentRow context={context} />
       <ChoiceRow context={context} choice="root" />
       <ClockFilterRow context={context} />
       <RelaxRow context={context} />
@@ -271,6 +266,22 @@ function ChoiceRow({ context, choice: name }: { context: RowContext; choice: Cho
         </Inline>
       )}
       {note !== undefined && <Note>{note}</Note>}
+    </MainRow>
+  );
+}
+
+function CoalescentRow({ context }: { context: RowContext }) {
+  return (
+    <MainRow context={context} label="Coalescent prior" sub="Prior on node times" keys={COALESCENT_KEYS}>
+      <Inline>
+        <Control context={context} settingKey="coalescent" className="w-auto" />
+        <Labeled text="Skyline grid points">
+          <Control context={context} settingKey="skyline_n_points" className="w-20" />
+        </Labeled>
+        <Labeled text="Skyline stiffness">
+          <Control context={context} settingKey="skyline_stiffness" className="w-20" />
+        </Labeled>
+      </Inline>
     </MainRow>
   );
 }

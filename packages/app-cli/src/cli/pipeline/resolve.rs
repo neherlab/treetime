@@ -3,7 +3,9 @@ use crate::cli::pipeline::types::{RawStep, step_config};
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
 use app_commands::commands::shared::argument_error::ArgumentError;
+use app_commands::config::load::InvalidSetting;
 use app_commands::config::resolve_paths::resolve_config_paths;
+use app_commands::config::source::escape_pointer;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
 use app_output::output_plan::{OutputSelection, PathPlaceholder};
 use eyre::Report;
@@ -38,7 +40,7 @@ pub(crate) fn resolve_pipeline(
   let mut resolved_steps: Vec<ResolvedStep> = Vec::new();
   let mut index: BTreeMap<String, usize> = BTreeMap::new();
 
-  for raw in &doc.steps {
+  for (position, raw) in doc.steps.iter().enumerate() {
     let payload = substitute_step_refs(&raw.payload, &resolved_steps, &index, &raw.name, &all_names)?;
     let mut payload = interp
       .interpolate_value(&payload, &value_context)
@@ -52,7 +54,7 @@ pub(crate) fn resolve_pipeline(
       set_output_all_if_absent(&mut payload, &dir.join(&raw.name));
     }
 
-    let command = step_config(&raw.tag, &payload).map_err(|err| step_error(&raw.name, &err))?;
+    let command = step_config(&raw.tag, &payload).map_err(|err| step_config_error(position, raw, &err))?;
     let resolved = command
       .resolve_outputs()
       .map_err(|err| step_error(&raw.name, &missing_outputs_error(err)))?;
@@ -309,6 +311,16 @@ fn missing_outputs_error(err: Report) -> Report {
     )
   } else {
     err
+  }
+}
+
+fn step_config_error(position: usize, step: &RawStep, err: &Report) -> Report {
+  match err.chain().find_map(|error| error.downcast_ref::<InvalidSetting>()) {
+    Some(invalid) => Report::new(InvalidSetting {
+      pointer: format!("/steps/{position}/{}{}", escape_pointer(&step.tag), invalid.pointer),
+      message: format!("in pipeline step `{}`: {}", step.name, invalid.message),
+    }),
+    None => step_error(&step.name, err),
   }
 }
 

@@ -135,7 +135,9 @@ function timetreeSummary(record: RunRecord, estimates: TimetreeEstimates): Summa
 
 function coalescentPriorText(prior: CoalescentPrior): string {
   if (prior.kind === "fixed") {
-    return `Constant size, Tc = ${prior.tc} years`;
+    return prior.unit === "substitutions-per-site"
+      ? `Constant size, Tc = ${prior.tc} substitutions per site`
+      : `Constant size, Tc = ${prior.tc}`;
   }
 
   if (prior.kind === "optimized") {

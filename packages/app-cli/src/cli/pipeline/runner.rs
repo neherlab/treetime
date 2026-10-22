@@ -4,6 +4,7 @@ use crate::cli::pipeline::check::print_pipeline_plan;
 use crate::cli::pipeline::resolve::{PipelineDoc, ResolvedPipeline, ResolvedStep, resolve_pipeline};
 use crate::cli::pipeline::safety::validate_plan;
 use crate::cli::treetime_cli::TreetimePipelineArgs;
+use app_commands::config::load::invalid_setting_report;
 use app_commands::config::source::{ConfigSource, parse_config_document};
 use app_commands::config::suggest::suggestion_suffix;
 use eyre::Report;
@@ -40,7 +41,8 @@ pub(crate) fn load_pipeline(config: &Path, output_all: Option<&Path>) -> Result<
 
   check_pipeline(&source, &value)?;
   let doc = PipelineDoc::from_value(value)?;
-  let pipeline = resolve_pipeline(&doc, &process_env(), &config_folder(config)?, output_all)?;
+  let pipeline = resolve_pipeline(&doc, &process_env(), &config_folder(config)?, output_all)
+    .map_err(|report| invalid_setting_report(&source, report))?;
   Ok(LoadedPipeline { source, pipeline })
 }
 
