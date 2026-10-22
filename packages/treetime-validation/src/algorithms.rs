@@ -4,7 +4,7 @@ use strum::IntoEnumIterator;
 use strum_macros::{Display, EnumIter, EnumString};
 pub use treetime_ops::traits::{ConvolveAlgo, MultiplyAlgo};
 use treetime_ops::{
-  AggressiveMultiply, FftConvolve, LogScaleMultiply, NdarrayConvolve, PointwiseMultiply, RiemannConvolve,
+  AggressiveMultiply, DirectConvolve, FftConvolve, LogScaleMultiply, NdarrayConvolve, PointwiseMultiply,
 };
 use treetime_utils::make_error;
 
@@ -13,7 +13,7 @@ use treetime_utils::make_error;
 #[clap(rename_all = "kebab-case")]
 pub enum ConvolutionAlgorithm {
   All,
-  Riemann,
+  Direct,
   NdarrayConv,
   NdarrayConvFft,
 }
@@ -34,7 +34,7 @@ impl ConvolutionAlgorithm {
   pub(crate) fn instantiate(self) -> Result<Box<dyn ConvolveAlgo>, Report> {
     match self {
       Self::All => make_error!("Cannot instantiate All meta-variant; use expand() first"),
-      Self::Riemann => Ok(Box::new(RiemannConvolve)),
+      Self::Direct => Ok(Box::new(DirectConvolve)),
       Self::NdarrayConv => Ok(Box::new(NdarrayConvolve)),
       Self::NdarrayConvFft => Ok(Box::new(FftConvolve)),
     }

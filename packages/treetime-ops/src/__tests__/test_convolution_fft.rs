@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::convolution::convolve_fft;
+  use crate::convolution::{convolve_fft, trapezoid_from_overlap_sums};
   use ndarray::Array1;
   use ndarray_conv::{ConvFFTExt, ConvMode, PaddingMode};
 
@@ -61,7 +61,7 @@ mod tests {
     }
 
     pub(super) fn fresh(dx: f64, f: &Array1<f64>, g: &Array1<f64>) -> Array1<f64> {
-      &f.conv_fft(g, ConvMode::Full, PaddingMode::Zeros).unwrap() * dx
+      trapezoid_from_overlap_sums(f.conv_fft(g, ConvMode::Full, PaddingMode::Zeros).unwrap(), dx, f, g)
     }
 
     fn values(len: usize, seed: usize) -> Array1<f64> {

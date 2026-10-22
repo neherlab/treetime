@@ -1,8 +1,9 @@
 use crate::ScaledArray;
 use eyre::Report;
 use ndarray::Array1;
+use std::fmt::Debug;
 
-pub trait ConvolveAlgo: Send + Sync {
+pub trait ConvolveAlgo: Debug + Send + Sync {
   fn name(&self) -> &'static str;
 
   fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report>;

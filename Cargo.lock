@@ -5189,6 +5189,7 @@ dependencies = [
  "ndarray-conv",
  "pretty_assertions",
  "rayon",
+ "rstest",
  "treetime-utils",
 ]
 

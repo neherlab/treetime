@@ -5,7 +5,7 @@ use ndarray_conv::{ConvExt, ConvFFTExt, ConvMode, PaddingMode, get_fft_processor
 use std::any::Any;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use treetime_utils::make_internal_report;
+use treetime_utils::{make_error, make_internal_report};
 
 const FFT_PROCESSORS_PER_THREAD: usize = 8;
 const MAX_CACHED_FFT_LEN: usize = 1 << 14;
@@ -14,30 +14,31 @@ thread_local! {
   static FFT_PROCESSORS_BY_FFT_LEN: RefCell<Vec<(usize, Box<dyn Any>)>> = const { RefCell::new(Vec::new()) };
 }
 
-pub struct RiemannConvolve;
+#[derive(Debug)]
+pub struct DirectConvolve;
 
-impl ConvolveAlgo for RiemannConvolve {
+impl ConvolveAlgo for DirectConvolve {
   fn name(&self) -> &'static str {
-    "riemann"
+    "direct"
   }
 
   fn convolve(&self, dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-    convolve_riemann(dx, f_values, g_values)
+    convolve_direct(dx, f_values, g_values)
   }
 }
 
-fn convolve_riemann(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let mut result = Array1::zeros(f_values.len() + g_values.len() - 1);
-
+fn convolve_direct(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+  check_operand_lengths(f_values, g_values)?;
+  let mut overlap_sums = Array1::zeros(f_values.len() + g_values.len() - 1);
   for (i, &f_val) in f_values.iter().enumerate() {
     for (j, &g_val) in g_values.iter().enumerate() {
-      result[i + j] += f_val * g_val * dx;
+      overlap_sums[i + j] += f_val * g_val;
     }
   }
-
-  Ok(result)
+  Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
 }
 
+#[derive(Debug)]
 pub struct NdarrayConvolve;
 
 impl ConvolveAlgo for NdarrayConvolve {
@@ -51,11 +52,12 @@ impl ConvolveAlgo for NdarrayConvolve {
 }
 
 fn convolve(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
-  let discrete_conv = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
-  let continuous_conv = &discrete_conv * dx;
-  Ok(continuous_conv)
+  check_operand_lengths(f_values, g_values)?;
+  let overlap_sums = f_values.conv(g_values, ConvMode::Full, PaddingMode::Zeros)?;
+  Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
 }
 
+#[derive(Debug)]
 pub struct FftConvolve;
 
 impl ConvolveAlgo for FftConvolve {
@@ -69,9 +71,10 @@ impl ConvolveAlgo for FftConvolve {
 }
 
 pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<Array1<f64>, Report> {
+  check_operand_lengths(f_values, g_values)?;
   let padded_len = f_values.len() + 2 * g_values.len().saturating_sub(1);
   let fft_len = fft_len(padded_len.max(g_values.len()));
-  let discrete_conv = if fft_len > MAX_CACHED_FFT_LEN {
+  let overlap_sums = if fft_len > MAX_CACHED_FFT_LEN {
     f_values.conv_fft(g_values, ConvMode::Full, PaddingMode::Zeros)?
   } else {
     FFT_PROCESSORS_BY_FFT_LEN.with_borrow_mut(|processors| {
@@ -79,8 +82,36 @@ pub fn convolve_fft(dx: f64, f_values: &Array1<f64>, g_values: &Array1<f64>) -> 
       Ok::<_, Report>(f_values.conv_fft_with_processor(g_values, ConvMode::Full, PaddingMode::Zeros, processor)?)
     })?
   };
-  let continuous_conv = &discrete_conv * dx;
-  Ok(continuous_conv)
+  Ok(trapezoid_from_overlap_sums(overlap_sums, dx, f_values, g_values))
+}
+
+fn check_operand_lengths(f_values: &Array1<f64>, g_values: &Array1<f64>) -> Result<(), Report> {
+  if f_values.len() < 2 || g_values.len() < 2 {
+    return make_error!(
+      "Trapezoid convolution needs at least 2 samples per operand, got {} and {}",
+      f_values.len(),
+      g_values.len()
+    );
+  }
+  Ok(())
+}
+
+pub(crate) fn trapezoid_from_overlap_sums(
+  mut overlap_sums: Array1<f64>,
+  dx: f64,
+  f_values: &Array1<f64>,
+  g_values: &Array1<f64>,
+) -> Array1<f64> {
+  let (last_f, last_g) = (f_values.len() - 1, g_values.len() - 1);
+  let last_n = last_f + last_g;
+  for (n, sum) in overlap_sums.iter_mut().enumerate().take(last_n).skip(1) {
+    let (first_i, last_i) = (n.saturating_sub(last_g), n.min(last_f));
+    *sum -= 0.5 * (f_values[first_i] * g_values[n - first_i] + f_values[last_i] * g_values[n - last_i]);
+  }
+  overlap_sums[0] = 0.25 * f_values[0] * g_values[0];
+  overlap_sums[last_n] = 0.25 * f_values[last_f] * g_values[last_g];
+  overlap_sums *= dx;
+  overlap_sums
 }
 
 #[expect(
@@ -122,46 +153,4 @@ fn processor_for_fft_len<P: Any>(
     .1
     .downcast_mut::<P>()
     .ok_or_else(|| make_internal_report!("FFT processor cache holds a processor of another type"))
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use ndarray::array;
-  use treetime_utils::pretty_assert_ulps_eq;
-
-  #[test]
-  fn test_convolve_riemann_delta() {
-    let dx = 0.1;
-    let delta = array![0.0, 0.0, 1.0 / dx, 0.0, 0.0];
-    let f = array![1.0, 2.0, 3.0, 2.0, 1.0];
-    let result = convolve_riemann(dx, &delta, &f).unwrap();
-    assert_eq!(9, result.len());
-    pretty_assert_ulps_eq!(result[2], f[0], max_ulps = 4);
-    pretty_assert_ulps_eq!(result[4], f[2], max_ulps = 4);
-  }
-
-  #[test]
-  fn test_convolve_symmetric() {
-    let dx = 0.1;
-    let f = array![1.0, 2.0, 1.0];
-    let g = array![1.0, 1.0, 1.0];
-    let result1 = convolve(dx, &f, &g).unwrap();
-    let result2 = convolve(dx, &g, &f).unwrap();
-    for i in 0..result1.len() {
-      pretty_assert_ulps_eq!(result1[i], result2[i], max_ulps = 4);
-    }
-  }
-
-  #[test]
-  fn test_convolve_fft_matches_direct() {
-    let dx = 0.1;
-    let f = array![1.0, 2.0, 3.0, 2.0, 1.0];
-    let g = array![1.0, 1.0, 1.0];
-    let result_direct = convolve(dx, &f, &g).unwrap();
-    let result_fft = convolve_fft(dx, &f, &g).unwrap();
-    for i in 0..result_direct.len() {
-      pretty_assert_ulps_eq!(result_direct[i], result_fft[i], max_ulps = 100);
-    }
-  }
 }
