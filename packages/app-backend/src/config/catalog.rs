@@ -138,54 +138,19 @@ fn setting_spec(
     .get_help_heading()
     .ok_or_else(|| make_report!("config key `{key}` has no help heading"))?;
   let description = Description::parse(property.get("description").and_then(Value::as_str).unwrap_or(""));
-  let nullable = is_nullable(property);
+  let value = value_spec(schema, property, &key)?;
   let base = deref(schema, property)?;
-  let options = enum_options(schema, base)?;
-  let types = type_list(base);
-
-  let (kind, options, item_kind) = if !options.is_empty() {
-    let kind = if has_free_value(schema, base)? {
-      SettingKind::EnumOrText
-    } else {
-      SettingKind::Enum
-    };
-    (kind, options, ListItemKind::String)
-  } else if types.contains(&"array") {
-    let items = base.get("items").map(|items| deref(schema, items)).transpose()?;
-    let item_options = items
-      .map(|items| enum_options(schema, items))
-      .transpose()?
-      .unwrap_or_default();
-    if item_options.is_empty() {
-      let item_types = items.map(type_list).unwrap_or_default();
-      (SettingKind::List, vec![], list_item_kind(&item_types, &key)?)
-    } else {
-      (SettingKind::EnumList, item_options, ListItemKind::String)
-    }
-  } else if types.contains(&"boolean") {
-    if nullable {
-      return make_error!("setting `{key}` is an optional on/off value, which the settings form does not render");
-    }
-    (SettingKind::Switch, vec![], ListItemKind::String)
-  } else if types.contains(&"integer") {
-    (SettingKind::Integer, vec![], ListItemKind::String)
-  } else if types.contains(&"number") {
-    (SettingKind::Number, vec![], ListItemKind::String)
-  } else if types.contains(&"string") {
-    (SettingKind::Text, vec![], ListItemKind::String)
-  } else {
-    return make_error!("setting `{key}` has a schema construct the settings form does not render");
-  };
 
   Ok(SettingSpec {
     label: setting_label(&key),
     flag: format!("--{long}"),
     group: group.to_owned(),
     role: setting.path_role.into(),
-    kind,
-    nullable,
-    options,
-    item_kind,
+    kind: value.kind,
+    nullable: value.nullable,
+    options: value.options,
+    item_kind: value.item_kind,
+    fields: value.fields,
     default_value: defaults.get(&key).cloned().map(JsonValue),
     documented_default: documented_default(property, defaults.get(&key)),
     minimum: base.get("minimum").and_then(Value::as_f64),
@@ -237,6 +202,8 @@ pub struct SettingSpec {
   pub options: Vec<SettingOption>,
   /// Type of the items of a `list` setting.
   pub item_kind: ListItemKind,
+  /// Fields of the entries of a `records` setting, in the order of the configuration.
+  pub fields: Vec<RecordFieldSpec>,
   /// Value of the setting when the configuration does not set it; absent when the setting has no default.
   pub default_value: Option<JsonValue>,
   /// Value the run uses when the configuration does not set the setting, for a setting without `default_value` that
@@ -283,6 +250,147 @@ impl From<Option<PathRole>> for SettingRole {
   }
 }
 
+pub(crate) fn value_spec(schema: &Value, property: &Value, key: &str) -> Result<ValueSpec, Report> {
+  let nullable = is_nullable(property);
+  let base = deref(schema, property)?;
+  let options = enum_options(schema, base)?;
+  let types = type_list(base);
+  let value = |kind, options, item_kind| ValueSpec {
+    kind,
+    nullable,
+    options,
+    item_kind,
+    fields: vec![],
+  };
+
+  if !options.is_empty() {
+    let kind = if has_free_value(schema, base)? {
+      SettingKind::EnumOrText
+    } else {
+      SettingKind::Enum
+    };
+    return Ok(value(kind, options, ListItemKind::String));
+  }
+  if types.contains(&"array") {
+    let items = base.get("items").map(|items| deref(schema, items)).transpose()?;
+    if let Some(items) = items.filter(|items| type_list(items).contains(&"object")) {
+      return Ok(ValueSpec {
+        fields: record_fields(schema, items, key)?,
+        ..value(SettingKind::Records, vec![], ListItemKind::String)
+      });
+    }
+    let item_options = items
+      .map(|items| enum_options(schema, items))
+      .transpose()?
+      .unwrap_or_default();
+    if item_options.is_empty() {
+      let item_types = items.map(type_list).unwrap_or_default();
+      return Ok(value(SettingKind::List, vec![], list_item_kind(&item_types, key)?));
+    }
+    return Ok(value(SettingKind::EnumList, item_options, ListItemKind::String));
+  }
+  if types.contains(&"boolean") {
+    if nullable {
+      return make_error!("setting `{key}` is an optional on/off value, which the settings form does not render");
+    }
+    return Ok(value(SettingKind::Switch, vec![], ListItemKind::String));
+  }
+  let kind = if types.contains(&"integer") {
+    SettingKind::Integer
+  } else if types.contains(&"number") {
+    SettingKind::Number
+  } else if types.contains(&"string") {
+    SettingKind::Text
+  } else {
+    return make_error!("setting `{key}` has a schema construct the settings form does not render");
+  };
+  Ok(value(kind, vec![], ListItemKind::String))
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ValueSpec {
+  pub kind: SettingKind,
+  pub nullable: bool,
+  pub options: Vec<SettingOption>,
+  pub item_kind: ListItemKind,
+  pub fields: Vec<RecordFieldSpec>,
+}
+
+fn record_fields(schema: &Value, items: &Value, key: &str) -> Result<Vec<RecordFieldSpec>, Report> {
+  let properties = items
+    .get("properties")
+    .and_then(Value::as_object)
+    .filter(|properties| !properties.is_empty())
+    .ok_or_else(|| {
+      make_report!(
+        "list setting `{key}` has objects without named fields as items, which the settings form does not render"
+      )
+    })?;
+  let required = items
+    .get("required")
+    .and_then(Value::as_array)
+    .into_iter()
+    .flatten()
+    .filter_map(Value::as_str)
+    .collect_vec();
+  properties
+    .iter()
+    .map(|(name, field)| {
+      let path = format!("{key}.{name}");
+      let value = value_spec(schema, field, &path)?;
+      if value.kind == SettingKind::Records {
+        return make_error!(
+          "field `{path}` is a list of objects inside a list of objects, which the settings form does not render"
+        );
+      }
+      let description = Description::parse(field.get("description").and_then(Value::as_str).unwrap_or(""));
+      Ok(RecordFieldSpec {
+        key: name.clone(),
+        label: setting_label(name),
+        kind: value.kind,
+        nullable: value.nullable || !required.contains(&name.as_str()),
+        options: value.options,
+        item_kind: value.item_kind,
+        documented_default: field.get("default").cloned().map(JsonValue),
+        examples: field
+          .get("examples")
+          .and_then(Value::as_array)
+          .map(|examples| examples.iter().cloned().map(JsonValue).collect())
+          .unwrap_or_default(),
+        help: description.help,
+        more: description.more,
+      })
+    })
+    .collect()
+}
+
+/// One field of the entries of a `records` setting.
+#[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+pub struct RecordFieldSpec {
+  /// Key of the field in an entry, for example `name`.
+  pub key: String,
+  /// Name of the field as the form shows it, for example `Name`.
+  pub label: String,
+  /// Form of the value, which selects the control that edits it; never `records`.
+  pub kind: SettingKind,
+  /// Whether an entry can leave the field out.
+  pub nullable: bool,
+  /// Allowed values of an `enum`, `enum-or-text` or `enum-list` field.
+  pub options: Vec<SettingOption>,
+  /// Type of the items of a `list` field.
+  pub item_kind: ListItemKind,
+  /// Value the command uses when an entry leaves the field out, as the form shows it; absent when the field has none.
+  pub documented_default: Option<JsonValue>,
+  /// Typical values of the field, as the configuration spells them.
+  pub examples: Vec<JsonValue>,
+  /// First paragraph of the field's description.
+  pub help: String,
+  /// Remaining paragraphs of the field's description.
+  pub more: String,
+}
+
 /// Form of a setting's value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, JsonSchema, Serialize)]
 #[schemars(rename_all = "kebab-case")]
@@ -304,6 +412,8 @@ pub enum SettingKind {
   List,
   /// A list of values from a set.
   EnumList,
+  /// A list of entries, each with named fields of the kinds above.
+  Records,
 }
 
 fn list_item_kind(types: &[&str], key: &str) -> Result<ListItemKind, Report> {

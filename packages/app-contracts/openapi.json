@@ -5509,6 +5509,13 @@
             "description": "Type of the items of a `list` setting.",
             "$ref": "#/components/schemas/ListItemKind"
           },
+          "fields": {
+            "description": "Fields of the entries of a `records` setting, in the order of the configuration.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecordFieldSpec"
+            }
+          },
           "default_value": {
             "description": "Value of the setting when the configuration does not set it; absent when the setting has no default.",
             "$ref": "#/components/schemas/JsonValue",
@@ -5565,6 +5572,7 @@
           "nullable",
           "options",
           "item_kind",
+          "fields",
           "examples",
           "value_names",
           "conflicts",
@@ -5639,6 +5647,11 @@
             "description": "A list of values from a set.",
             "type": "string",
             "const": "enum-list"
+          },
+          {
+            "description": "A list of entries, each with named fields of the kinds above.",
+            "type": "string",
+            "const": "records"
           }
         ]
       },
@@ -5667,6 +5680,70 @@
           "string",
           "number",
           "integer"
+        ]
+      },
+      "RecordFieldSpec": {
+        "description": "One field of the entries of a `records` setting.",
+        "type": "object",
+        "properties": {
+          "key": {
+            "description": "Key of the field in an entry, for example `name`.",
+            "type": "string"
+          },
+          "label": {
+            "description": "Name of the field as the form shows it, for example `Name`.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Form of the value, which selects the control that edits it; never `records`.",
+            "$ref": "#/components/schemas/SettingKind"
+          },
+          "nullable": {
+            "description": "Whether an entry can leave the field out.",
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Allowed values of an `enum`, `enum-or-text` or `enum-list` field.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SettingOption"
+            }
+          },
+          "item_kind": {
+            "description": "Type of the items of a `list` field.",
+            "$ref": "#/components/schemas/ListItemKind"
+          },
+          "documented_default": {
+            "description": "Value the command uses when an entry leaves the field out, as the form shows it; absent when the field has none.",
+            "$ref": "#/components/schemas/JsonValue",
+            "x-unset": true
+          },
+          "examples": {
+            "description": "Typical values of the field, as the configuration spells them.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            }
+          },
+          "help": {
+            "description": "First paragraph of the field's description.",
+            "type": "string"
+          },
+          "more": {
+            "description": "Remaining paragraphs of the field's description.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "kind",
+          "nullable",
+          "options",
+          "item_kind",
+          "examples",
+          "help",
+          "more"
         ]
       },
       "SettingCatalog": {

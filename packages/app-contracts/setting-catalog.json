@@ -203,6 +203,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -222,6 +223,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -289,6 +291,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -308,6 +311,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -327,6 +331,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "METADATA"
@@ -345,6 +350,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [
             "strain",
             "name",
@@ -368,6 +374,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [
             ",",
             "\t",
@@ -391,6 +398,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "COLUMN"
@@ -409,6 +417,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": "%Y-%m-%d",
           "examples": [],
           "value_names": [
@@ -428,6 +437,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -460,6 +470,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ALPHABET"
@@ -478,6 +489,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -497,6 +509,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [
             0.001
           ],
@@ -517,6 +530,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "CLOCK_STD_DEV"
@@ -535,6 +549,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "number",
+          "fields": [],
           "default_value": [],
           "examples": [
             [
@@ -560,6 +575,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 4.0,
           "examples": [],
           "value_names": [
@@ -579,6 +595,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -611,6 +628,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "auto",
           "examples": [],
           "value_names": [
@@ -630,6 +648,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 2,
           "minimum": 0.0,
           "examples": [],
@@ -650,6 +669,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -669,6 +689,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -688,6 +709,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 1000.0,
           "examples": [
             1000000
@@ -709,6 +731,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -737,6 +760,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [
             0.01
           ],
@@ -757,6 +781,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "documented_default": 20,
           "minimum": 2.0,
           "examples": [],
@@ -777,6 +802,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "documented_default": 2.0,
           "examples": [],
           "value_names": [
@@ -796,6 +822,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "documented_default": 2.0,
           "examples": [],
           "value_names": [
@@ -815,6 +842,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "documented_default": 50.0,
           "examples": [],
           "value_names": [
@@ -847,6 +875,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "REROOT"
@@ -868,6 +897,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [
             [
@@ -894,6 +924,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -949,6 +980,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "infer",
           "examples": [],
           "value_names": [
@@ -968,6 +1000,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -996,6 +1029,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "estimate",
           "examples": [],
           "value_names": [
@@ -1028,6 +1062,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "auto",
           "examples": [],
           "value_names": [
@@ -1060,6 +1095,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "only-terminal",
           "examples": [],
           "value_names": [
@@ -1079,6 +1115,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -1098,6 +1135,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -1117,6 +1155,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -1136,6 +1175,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -1164,6 +1204,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mutations-per-site",
           "examples": [],
           "value_names": [
@@ -1183,6 +1224,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_NODE_DATA"
@@ -1201,6 +1243,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_MODEL"
@@ -1219,6 +1262,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_SEQUENCES"
@@ -1237,6 +1281,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_CLOCK_MODEL"
@@ -1255,6 +1300,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_RTT"
@@ -1273,6 +1319,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_CONFIDENCE_TSV"
@@ -1291,6 +1338,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TRACELOG"
@@ -1309,6 +1357,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_COALESCENT"
@@ -1327,6 +1376,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_COALESCENT_JSON"
@@ -1345,6 +1395,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -1376,6 +1427,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -1395,6 +1447,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -1413,6 +1466,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -1431,6 +1485,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -1449,6 +1504,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -1467,6 +1523,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -1485,6 +1542,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -1503,6 +1561,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -1590,6 +1649,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -1609,6 +1669,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -1633,6 +1694,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -1697,6 +1759,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -1715,6 +1778,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -1735,6 +1799,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -1764,6 +1829,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -1783,6 +1849,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -1927,6 +1994,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -1994,6 +2062,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -2013,6 +2082,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "METADATA"
@@ -2031,6 +2101,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [
             "strain",
             "name",
@@ -2054,6 +2125,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [
             ",",
             "\t",
@@ -2077,6 +2149,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "COLUMN"
@@ -2095,6 +2168,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": "%Y-%m-%d",
           "examples": [],
           "value_names": [
@@ -2114,6 +2188,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 4.0,
           "examples": [],
           "value_names": [
@@ -2133,6 +2208,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -2165,6 +2241,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "REROOT"
@@ -2186,6 +2263,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [
             [
@@ -2212,6 +2290,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -2234,6 +2313,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -2265,6 +2345,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -2284,6 +2365,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -2302,6 +2384,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -2320,6 +2403,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -2338,6 +2422,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -2356,6 +2441,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -2374,6 +2460,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -2392,6 +2479,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -2410,6 +2498,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_CLOCK_MODEL"
@@ -2428,6 +2517,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_RTT"
@@ -2446,6 +2536,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_RTT_CHART"
@@ -2531,6 +2622,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -2595,6 +2687,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -2613,6 +2706,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -2633,6 +2727,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -2662,6 +2757,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -2743,6 +2839,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -2762,6 +2859,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -2829,6 +2927,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -2861,6 +2960,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ALPHABET"
@@ -2879,6 +2979,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -2898,6 +2999,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -2917,6 +3019,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TRANSLATIONS"
@@ -2935,6 +3038,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -2954,6 +3058,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ANNOTATION"
@@ -3005,6 +3110,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "infer",
           "examples": [],
           "value_names": [
@@ -3024,6 +3130,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -3052,6 +3159,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "infer",
           "examples": [],
           "value_names": [
@@ -3080,6 +3188,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "marginal",
           "examples": [],
           "value_names": [
@@ -3112,6 +3221,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "auto",
           "examples": [],
           "value_names": [
@@ -3144,6 +3254,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "argmax",
           "examples": [],
           "value_names": [
@@ -3176,6 +3287,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "only-terminal",
           "examples": [],
           "value_names": [
@@ -3195,6 +3307,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -3214,6 +3327,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -3233,6 +3347,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -3252,6 +3367,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -3271,6 +3387,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "AA_ROOT_SEQUENCE"
@@ -3289,6 +3406,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_NODE_DATA"
@@ -3307,6 +3425,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_MODEL"
@@ -3325,6 +3444,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_SEQUENCES"
@@ -3343,6 +3463,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TRANSLATIONS"
@@ -3361,6 +3482,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -3392,6 +3514,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -3411,6 +3534,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -3429,6 +3553,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -3447,6 +3572,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -3465,6 +3591,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -3483,6 +3610,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -3501,6 +3629,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -3519,6 +3648,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -3586,6 +3716,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -3605,6 +3736,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -3637,6 +3769,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -3701,6 +3834,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -3719,6 +3853,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -3739,6 +3874,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -3768,6 +3904,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -3787,6 +3924,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -3870,6 +4008,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -3889,6 +4028,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -3956,6 +4096,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -3988,6 +4129,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ALPHABET"
@@ -4006,6 +4148,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -4025,6 +4168,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -4077,6 +4221,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "infer",
           "examples": [],
           "value_names": [
@@ -4096,6 +4241,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -4124,6 +4270,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "marginal",
           "examples": [],
           "value_names": [
@@ -4156,6 +4303,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "auto",
           "examples": [],
           "value_names": [
@@ -4188,6 +4336,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "only-terminal",
           "examples": [],
           "value_names": [
@@ -4207,6 +4356,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -4239,6 +4389,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "argmax",
           "examples": [],
           "value_names": [
@@ -4258,6 +4409,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -4277,6 +4429,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 0,
           "minimum": 0.0,
           "examples": [],
@@ -4297,6 +4450,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 1.0,
           "examples": [],
           "value_names": [
@@ -4316,6 +4470,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -4335,6 +4490,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "DRMS"
@@ -4353,6 +4509,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 10,
           "minimum": 0.0,
           "examples": [],
@@ -4373,6 +4530,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -4404,6 +4562,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -4423,6 +4582,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -4441,6 +4601,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -4459,6 +4620,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -4477,6 +4639,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -4495,6 +4658,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -4513,6 +4677,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -4531,6 +4696,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -4549,6 +4715,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_HOMOPLASY_STATS"
@@ -4567,6 +4734,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_HOMOPLASY_REPORT"
@@ -4626,6 +4794,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -4690,6 +4859,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -4708,6 +4878,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -4728,6 +4899,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -4757,6 +4929,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -4835,6 +5008,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -4902,6 +5076,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -4921,6 +5096,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ATTRIBUTE"
@@ -4939,6 +5115,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "METADATA"
@@ -4957,6 +5134,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "WEIGHTS"
@@ -4975,6 +5153,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [
             "strain",
             "name",
@@ -4998,6 +5177,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [
             ",",
             "\t",
@@ -5021,6 +5201,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": "?",
           "examples": [],
           "value_names": [
@@ -5040,6 +5221,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -5059,6 +5241,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TRAIT_PROBABILITIES"
@@ -5077,6 +5260,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_NODE_DATA"
@@ -5095,6 +5279,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_MODEL"
@@ -5113,6 +5298,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TRAITS"
@@ -5131,6 +5317,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -5162,6 +5349,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -5181,6 +5369,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -5199,6 +5388,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -5217,6 +5407,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -5235,6 +5426,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -5253,6 +5445,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -5271,6 +5464,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -5289,6 +5483,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -5356,6 +5551,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -5375,6 +5571,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "minimum": 0.0,
           "examples": [],
           "value_names": [
@@ -5407,6 +5604,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -5426,6 +5624,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 1.0,
           "examples": [],
           "value_names": [
@@ -5445,6 +5644,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 0.5,
           "examples": [],
           "value_names": [
@@ -5464,6 +5664,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 5,
           "minimum": 0.0,
           "examples": [],
@@ -5484,6 +5685,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "SAMPLING_BIAS_CORRECTION"
@@ -5502,6 +5704,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -5521,6 +5724,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -5585,6 +5789,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -5603,6 +5808,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -5623,6 +5829,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -5652,6 +5859,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -5801,6 +6009,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -5820,6 +6029,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -5887,6 +6097,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -5906,6 +6117,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -5938,6 +6150,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ALPHABET"
@@ -5956,6 +6169,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -6008,6 +6222,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "infer",
           "examples": [],
           "value_names": [
@@ -6027,6 +6242,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -6055,6 +6271,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "estimate",
           "examples": [],
           "value_names": [
@@ -6087,6 +6304,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "documented_default": "auto",
           "examples": [],
           "value_names": [
@@ -6119,6 +6337,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "only-terminal",
           "examples": [],
           "value_names": [
@@ -6138,6 +6357,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -6169,6 +6389,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -6188,6 +6409,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -6206,6 +6428,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -6224,6 +6447,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -6242,6 +6466,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -6260,6 +6485,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -6278,6 +6504,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -6296,6 +6523,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -6323,6 +6551,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mutations-per-site",
           "examples": [],
           "value_names": [
@@ -6342,6 +6571,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_NODE_DATA"
@@ -6360,6 +6590,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_MODEL"
@@ -6419,6 +6650,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -6438,6 +6670,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -6457,6 +6690,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 10,
           "minimum": 0.0,
           "examples": [],
@@ -6477,6 +6711,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 0.1,
           "examples": [],
           "value_names": [
@@ -6496,6 +6731,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": 0.0,
           "examples": [],
           "value_names": [
@@ -6528,6 +6764,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "auto",
           "examples": [],
           "value_names": [
@@ -6556,6 +6793,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "brent",
           "examples": [],
           "value_names": [
@@ -6575,6 +6813,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -6594,6 +6833,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -6613,6 +6853,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -6677,6 +6918,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -6695,6 +6937,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -6715,6 +6958,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -6744,6 +6988,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -6768,6 +7013,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "REROOT"
@@ -6789,6 +7035,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [
             [
@@ -6815,6 +7062,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -6897,6 +7145,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -6916,6 +7165,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TREE"
@@ -6983,6 +7233,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "classic,beast",
           "examples": [],
           "value_names": [
@@ -7002,6 +7253,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -7034,6 +7286,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "ALPHABET"
@@ -7052,6 +7305,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -7071,6 +7325,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_ALL"
@@ -7102,6 +7357,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "plain",
           "examples": [],
           "value_names": [
@@ -7121,6 +7377,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NWK"
@@ -7139,6 +7396,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_NEXUS"
@@ -7157,6 +7415,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_AUSPICE"
@@ -7175,6 +7434,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_PB"
@@ -7193,6 +7453,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_MAT_JSON"
@@ -7211,6 +7472,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_GRAPH_JSON"
@@ -7229,6 +7491,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "OUTPUT_TREE_DOT"
@@ -7280,6 +7543,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -7344,6 +7608,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "TOPOLOGY_ORDER"
@@ -7362,6 +7627,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -7382,6 +7648,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"
@@ -7411,6 +7678,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "mean",
           "examples": [],
           "value_names": [
@@ -7443,6 +7711,7 @@
             }
           ],
           "item_kind": "string",
+          "fields": [],
           "default_value": "only-terminal",
           "examples": [],
           "value_names": [
@@ -7462,6 +7731,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "LEN"
@@ -7480,6 +7750,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -7499,6 +7770,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": false,
           "examples": [],
           "value_names": [
@@ -7518,6 +7790,7 @@
           "nullable": false,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "default_value": [],
           "examples": [],
           "value_names": [
@@ -7537,6 +7810,7 @@
           "nullable": true,
           "options": [],
           "item_kind": "string",
+          "fields": [],
           "examples": [],
           "value_names": [
             "FILE"

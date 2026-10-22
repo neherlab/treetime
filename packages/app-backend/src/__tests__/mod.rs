@@ -15,5 +15,6 @@ mod test_run_limits;
 mod test_setting_catalog;
 mod test_setting_choices;
 mod test_setting_labels;
+mod test_setting_records;
 pub(crate) mod test_support;
 mod test_written_files;

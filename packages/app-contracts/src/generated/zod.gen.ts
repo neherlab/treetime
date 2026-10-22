@@ -1256,7 +1256,8 @@ export const zSettingKind = z.union([
   z.literal('number'),
   z.literal('text'),
   z.literal('list'),
-  z.literal('enum-list')
+  z.literal('enum-list'),
+  z.literal('records')
 ]);
 
 /**
@@ -1277,6 +1278,22 @@ export const zListItemKind = z.enum([
 ]);
 
 /**
+ * One field of the entries of a `records` setting.
+ */
+export const zRecordFieldSpec = z.object({
+  key: z.string(),
+  label: z.string(),
+  kind: zSettingKind,
+  nullable: z.boolean(),
+  options: z.array(zSettingOption),
+  item_kind: zListItemKind,
+  documented_default: zJsonValue.optional(),
+  examples: z.array(zJsonValue),
+  help: z.string(),
+  more: z.string()
+});
+
+/**
  * One setting of a command.
  */
 export const zSettingSpec = z.object({
@@ -1289,6 +1306,7 @@ export const zSettingSpec = z.object({
   nullable: z.boolean(),
   options: z.array(zSettingOption),
   item_kind: zListItemKind,
+  fields: z.array(zRecordFieldSpec),
   default_value: zJsonValue.optional(),
   documented_default: zJsonValue.optional(),
   minimum: z.number().optional(),

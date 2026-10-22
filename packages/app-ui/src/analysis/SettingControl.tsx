@@ -1,15 +1,28 @@
-import type { AppCommand, JsonValue, SettingKind, SettingOption, SettingSpec } from "@neherlab/app-contracts";
+import type {
+  AppCommand,
+  JsonValue,
+  RecordFieldSpec,
+  SettingKind,
+  SettingOption,
+  SettingSpec,
+  SparseConfig,
+} from "@neherlab/app-contracts";
 import { cn } from "cn";
 import { useCallback, useMemo, useState } from "react";
+import { GridList, GridListItem } from "react-aria-components";
 import { useController, useWatch } from "react-hook-form";
+import Plus from "~icons/lucide/plus";
+import Trash from "~icons/lucide/trash-2";
 
 import { baseName, pathList } from "../settings/inputs";
-import { isJsonObject, sameJson } from "../settings/json";
+import { isJsonObject, sameJson, withSetting } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
+import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Switch } from "../ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";
@@ -21,6 +34,8 @@ const NO_EXTENSIONS: readonly string[] = [];
 
 const FREE_VALUE = "#value";
 
+const NO_FIELDS: RecordFieldSpec[] = [];
+
 interface ControlProps {
   command: AppCommand;
   spec: SettingSpec;
@@ -28,15 +43,34 @@ interface ControlProps {
   className: string | undefined;
 }
 
-const CONTROLS: Record<SettingKind, (props: ControlProps) => React.ReactNode> = {
-  switch: SwitchControl,
-  enum: EnumControl,
-  "enum-or-text": EnumOrTextControl,
-  integer: NumberControl,
-  number: NumberControl,
-  text: TextControl,
-  list: ListControl,
-  "enum-list": EnumListControl,
+type EditedSetting = Pick<
+  SettingSpec,
+  "nullable" | "options" | "item_kind" | "examples" | "documented_default" | "fields"
+>;
+
+interface EditorProps {
+  id: string | undefined;
+  label: string;
+  setting: EditedSetting;
+  value: JsonValue | undefined;
+  set: (next: JsonValue) => void;
+  unset: () => void;
+  onKeyDown: ((event: React.KeyboardEvent) => void) | undefined;
+  onBlur: (() => void) | undefined;
+  invalid: boolean;
+  className: string | undefined;
+}
+
+const EDITORS: Record<SettingKind, (props: EditorProps) => React.ReactNode> = {
+  switch: SwitchEditor,
+  enum: EnumEditor,
+  "enum-or-text": EnumOrTextEditor,
+  integer: NumberEditor,
+  number: NumberEditor,
+  text: TextEditor,
+  list: ListEditor,
+  "enum-list": EnumListEditor,
+  records: RecordsEditor,
 };
 
 export function SettingControl({
@@ -67,9 +101,7 @@ export function SettingControl({
     return <PathControl command={command} spec={spec} label={label} className={className} />;
   }
 
-  const Control = CONTROLS[spec.kind];
-
-  return <Control command={command} spec={spec} label={label} className={className} />;
+  return <ValueControl command={command} spec={spec} label={label} className={className} />;
 }
 
 function PathControl({ command, spec, label, className }: ControlProps) {
@@ -97,23 +129,40 @@ function PathControl({ command, spec, label, className }: ControlProps) {
   );
 }
 
-function SwitchControl({ spec, label, className }: ControlProps) {
-  const { value, set } = useSetting(spec);
+function ValueControl({ spec, label, className }: ControlProps) {
+  const { value, set, unset, onBlur, invalid } = useSetting(spec);
+  const Editor = EDITORS[spec.kind];
 
   return (
-    <Switch
+    <Editor
       id={settingFieldId(spec.key)}
-      aria-label={label}
-      checked={value === true}
-      onCheckedChange={set}
+      label={label}
+      setting={spec}
+      value={value}
+      set={set}
+      unset={unset}
+      onBlur={onBlur}
+      onKeyDown={undefined}
+      invalid={invalid}
       className={className}
     />
   );
 }
 
-function EnumControl({ spec, label, className }: ControlProps) {
-  const { value, set, unset, invalid } = useSetting(spec);
+function SwitchEditor({ id, label, value, set, onKeyDown, className }: EditorProps) {
+  return (
+    <Switch
+      id={id}
+      aria-label={label}
+      checked={value === true}
+      onCheckedChange={set}
+      onKeyDown={onKeyDown}
+      className={className}
+    />
+  );
+}
 
+function EnumEditor({ id, label, setting, value, set, unset, invalid, onKeyDown, className }: EditorProps) {
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => (event.target.value === "" ? unset() : set(event.target.value)),
     [set, unset],
@@ -121,16 +170,17 @@ function EnumControl({ spec, label, className }: ControlProps) {
 
   return (
     <NativeSelect
-      id={settingFieldId(spec.key)}
+      id={id}
       size="sm"
       aria-label={label}
       aria-invalid={invalid}
       value={value === undefined ? "" : scalarText(value)}
       onChange={onChange}
+      onKeyDown={onKeyDown}
       className={className}
     >
-      {spec.nullable && <NativeSelectOption value="">{unsetText(spec)}</NativeSelectOption>}
-      {spec.options.map((option) => (
+      {setting.nullable && <NativeSelectOption value="">{unsetText(setting)}</NativeSelectOption>}
+      {setting.options.map((option) => (
         <NativeSelectOption key={option.value} value={option.value} title={option.help}>
           {option.value}
         </NativeSelectOption>
@@ -139,12 +189,22 @@ function EnumControl({ spec, label, className }: ControlProps) {
   );
 }
 
-function EnumOrTextControl({ spec, label, className }: ControlProps) {
-  const { value, set, unset, onBlur, invalid } = useSetting(spec);
+function EnumOrTextEditor({
+  id,
+  label,
+  setting,
+  value,
+  set,
+  unset,
+  onBlur,
+  invalid,
+  onKeyDown,
+  className,
+}: EditorProps) {
   const text = value === undefined ? "" : scalarText(value);
-  const isOption = spec.options.some((option) => option.value === text);
+  const isOption = setting.options.some((option) => option.value === text);
   const selected = value === undefined ? "" : isOption ? text : FREE_VALUE;
-  const example = spec.examples[0];
+  const example = setting.examples[0];
 
   const onSelect = useCallback(
     (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -166,15 +226,16 @@ function EnumOrTextControl({ spec, label, className }: ControlProps) {
   return (
     <div className={cn("flex min-w-0 items-center gap-2", className)}>
       <NativeSelect
-        id={settingFieldId(spec.key)}
+        id={id}
         size="sm"
         aria-label={label}
         aria-invalid={invalid}
         value={selected}
         onChange={onSelect}
+        onKeyDown={onKeyDown}
       >
-        {spec.nullable && <NativeSelectOption value="">{unsetText(spec)}</NativeSelectOption>}
-        {spec.options.map((option) => (
+        {setting.nullable && <NativeSelectOption value="">{unsetText(setting)}</NativeSelectOption>}
+        {setting.options.map((option) => (
           <NativeSelectOption key={option.value} value={option.value} title={option.help}>
             {option.value}
           </NativeSelectOption>
@@ -189,6 +250,7 @@ function EnumOrTextControl({ spec, label, className }: ControlProps) {
           value={text}
           placeholder={example === undefined ? "" : `For example ${scalarText(example)}`}
           onChange={onText}
+          onKeyDown={onKeyDown}
           onBlur={onBlur}
           className={cn(CONTROL_HEIGHT, "w-28 font-mono")}
         />
@@ -197,9 +259,7 @@ function EnumOrTextControl({ spec, label, className }: ControlProps) {
   );
 }
 
-function NumberControl({ spec, label, className }: ControlProps) {
-  const { value, set, unset, onBlur, invalid } = useSetting(spec);
-
+function NumberEditor({ id, label, setting, value, set, unset, onBlur, invalid, onKeyDown, className }: EditorProps) {
   const onValueChange = useCallback(
     (next: number | string | undefined) => (next === undefined ? unset() : set(next)),
     [set, unset],
@@ -207,81 +267,86 @@ function NumberControl({ spec, label, className }: ControlProps) {
 
   return (
     <NumberInput
-      id={settingFieldId(spec.key)}
+      id={id}
       aria-label={label}
       aria-invalid={invalid}
       value={value}
-      placeholder={spec.nullable ? unsetText(spec) : ""}
+      placeholder={setting.nullable ? unsetText(setting) : ""}
       onValueChange={onValueChange}
+      onKeyDown={onKeyDown}
       onBlur={onBlur}
       className={cn(CONTROL_HEIGHT, "font-mono", className)}
     />
   );
 }
 
-function TextControl({ spec, label, className }: ControlProps) {
-  const { value, set, unset, onBlur, invalid } = useSetting(spec);
-
+function TextEditor({ id, label, setting, value, set, unset, onBlur, invalid, onKeyDown, className }: EditorProps) {
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
-      event.target.value === "" && spec.nullable ? unset() : set(event.target.value),
-    [set, spec.nullable, unset],
+      event.target.value === "" && setting.nullable ? unset() : set(event.target.value),
+    [set, setting.nullable, unset],
   );
 
   return (
     <Input
-      id={settingFieldId(spec.key)}
+      id={id}
       type="text"
       aria-label={label}
       aria-invalid={invalid}
       value={value === undefined ? "" : scalarText(value)}
-      placeholder={spec.nullable ? unsetText(spec) : ""}
+      placeholder={setting.nullable ? unsetText(setting) : ""}
       onChange={onChange}
+      onKeyDown={onKeyDown}
       onBlur={onBlur}
       className={cn(CONTROL_HEIGHT, className)}
     />
   );
 }
 
-function ListControl({ spec, label, className }: ControlProps) {
-  const { value, set, invalid } = useSetting(spec);
+function ListEditor({ id, label, setting, value, set, unset, invalid, onKeyDown, className }: EditorProps) {
   const [text, setText] = useState(() => formatList(value));
-  const shown = sameJson(parseList(text, spec.item_kind), value) ? text : formatList(value);
+  const shown = sameJson(parseList(text, setting.item_kind), value) ? text : formatList(value);
 
   const onChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setText(event.target.value);
-      set(parseList(event.target.value, spec.item_kind));
+      const items = parseList(event.target.value, setting.item_kind);
+
+      if (items.length === 0 && setting.nullable) {
+        unset();
+      } else {
+        set(items);
+      }
     },
-    [set, spec.item_kind],
+    [set, setting.item_kind, setting.nullable, unset],
   );
 
   return (
     <Input
-      id={settingFieldId(spec.key)}
+      id={id}
       type="text"
       aria-label={label}
       aria-invalid={invalid}
       value={shown}
-      placeholder={spec.item_kind === "string" ? "Values, separated by spaces" : "Numbers, separated by spaces"}
+      placeholder={setting.item_kind === "string" ? "Values, separated by spaces" : "Numbers, separated by spaces"}
       onChange={onChange}
+      onKeyDown={onKeyDown}
       className={cn(CONTROL_HEIGHT, "font-mono", className)}
     />
   );
 }
 
-function EnumListControl({ spec, label, className }: ControlProps) {
-  const { value, set } = useSetting(spec);
+function EnumListEditor({ id, label, setting, value, set, onKeyDown, className }: EditorProps) {
   const selected = useMemo(() => (Array.isArray(value) ? value.map(scalarText) : []), [value]);
 
   const onValueChange = useCallback(
-    (next: string[]) => set(spec.options.flatMap((option) => (next.includes(option.value) ? [option.value] : []))),
-    [set, spec.options],
+    (next: string[]) => set(setting.options.flatMap((option) => (next.includes(option.value) ? [option.value] : []))),
+    [set, setting.options],
   );
 
   return (
     <ToggleGroup
-      id={settingFieldId(spec.key)}
+      id={id}
       aria-label={label}
       multiple
       variant="outline"
@@ -289,9 +354,10 @@ function EnumListControl({ spec, label, className }: ControlProps) {
       spacing={1}
       value={selected}
       onValueChange={onValueChange}
+      onKeyDown={onKeyDown}
       className={cn("flex-wrap", className)}
     >
-      {spec.options.map((option) => (
+      {setting.options.map((option) => (
         <EnumListOption key={option.value} option={option} />
       ))}
     </ToggleGroup>
@@ -306,8 +372,157 @@ function EnumListOption({ option }: { option: SettingOption }) {
   );
 }
 
-function unsetText(spec: SettingSpec): string {
-  return spec.documented_default === undefined ? "Not set" : `Default: ${scalarText(spec.documented_default)}`;
+function unsetText(setting: EditedSetting): string {
+  return setting.documented_default === undefined ? "Not set" : `Default: ${scalarText(setting.documented_default)}`;
+}
+
+function RecordsEditor({ id, label, setting, value, set, unset, invalid, className }: EditorProps) {
+  const records = useMemo(() => (Array.isArray(value) ? value.filter(isJsonObject) : []), [value]);
+  const rows = useMemo(() => records.map((record, index) => ({ id: index, record })), [records]);
+
+  const update = useCallback(
+    (next: SparseConfig[]) => (next.length === 0 && setting.nullable ? unset() : set(next)),
+    [set, setting.nullable, unset],
+  );
+
+  const setField = useCallback(
+    (index: number, key: string, next: JsonValue | undefined) =>
+      update(records.map((record, position) => (position === index ? withSetting(record, key, next) : record))),
+    [records, update],
+  );
+
+  const remove = useCallback(
+    (index: number) => update(records.filter((_, position) => position !== index)),
+    [records, update],
+  );
+
+  const add = useCallback(() => update([...records, {}]), [records, update]);
+
+  const dependencies = useMemo(
+    () => [setting.fields, label, setField, remove],
+    [setting.fields, label, setField, remove],
+  );
+
+  const renderRow = useCallback(
+    (row: RecordRow) => (
+      <RecordItem row={row} fields={setting.fields} label={label} setField={setField} remove={remove} />
+    ),
+    [label, remove, setField, setting.fields],
+  );
+
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-2", className)}>
+      <GridList
+        {...(id === undefined ? {} : { id })}
+        aria-label={label}
+        items={rows}
+        dependencies={dependencies}
+        layout="stack"
+        keyboardNavigationBehavior="tab"
+        disallowTypeAhead
+        renderEmptyState={renderNoEntries}
+        data-invalid={invalid || undefined}
+        className="data-invalid:border-destructive flex flex-col gap-2 rounded-md border p-2 outline-none"
+      >
+        {renderRow}
+      </GridList>
+      <Button type="button" variant="outline" size="sm" onClick={add} className="self-start">
+        <Plus aria-hidden />
+        Add entry
+      </Button>
+    </div>
+  );
+}
+
+function RecordItem({
+  row,
+  fields,
+  label,
+  setField,
+  remove,
+}: {
+  row: RecordRow;
+  fields: RecordFieldSpec[];
+  label: string;
+  setField: (index: number, key: string, next: JsonValue | undefined) => void;
+  remove: (index: number) => void;
+}) {
+  const entry = `${label} entry ${row.id + 1}`;
+  const onRemove = useCallback(() => remove(row.id), [remove, row.id]);
+
+  return (
+    <GridListItem
+      id={row.id}
+      textValue={entry}
+      className="focus-visible:ring-ring/50 flex items-end gap-2 rounded-md outline-none focus-visible:ring-3"
+    >
+      {fields.map((field) => (
+        <RecordField key={field.key} field={field} entry={entry} row={row} setField={setField} />
+      ))}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${entry}`} onClick={onRemove}>
+              <Trash aria-hidden />
+            </Button>
+          }
+        />
+        <TooltipContent>Remove this entry</TooltipContent>
+      </Tooltip>
+    </GridListItem>
+  );
+}
+
+function RecordField({
+  field,
+  entry,
+  row,
+  setField,
+}: {
+  field: RecordFieldSpec;
+  entry: string;
+  row: RecordRow;
+  setField: (index: number, key: string, next: JsonValue | undefined) => void;
+}) {
+  const setting = useMemo(() => ({ ...field, fields: NO_FIELDS }), [field]);
+  const set = useCallback((next: JsonValue) => setField(row.id, field.key, next), [field.key, row.id, setField]);
+  const unset = useCallback(() => setField(row.id, field.key, undefined), [field.key, row.id, setField]);
+  const Editor = EDITORS[field.kind];
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <span className="text-muted-foreground text-xs" title={field.help}>
+        {field.label}
+      </span>
+      <Editor
+        id={undefined}
+        label={`${field.label} of ${entry}`}
+        setting={setting}
+        value={row.record[field.key]}
+        set={set}
+        unset={unset}
+        onBlur={undefined}
+        onKeyDown={keepKeysInField}
+        invalid={false}
+        className={undefined}
+      />
+    </div>
+  );
+}
+
+function renderNoEntries() {
+  return <span className="text-muted-foreground px-1 text-xs">No entries</span>;
+}
+
+function keepKeysInField(event: React.KeyboardEvent) {
+  if (event.key !== "Tab") {
+    event.stopPropagation();
+  }
+}
+
+interface RecordRow {
+  id: number;
+  record: SparseConfig;
 }
 
 function scalarText(value: JsonValue): string {

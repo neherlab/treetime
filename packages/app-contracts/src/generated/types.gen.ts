@@ -2638,6 +2638,10 @@ export type SettingSpec = {
    */
   item_kind: ListItemKind;
   /**
+   * Fields of the entries of a `records` setting, in the order of the configuration.
+   */
+  fields: Array<RecordFieldSpec>;
+  /**
    * Value of the setting when the configuration does not set it; absent when the setting has no default.
    */
   default_value?: JsonValue;
@@ -2681,7 +2685,7 @@ export type SettingRole = 'setting' | 'input' | 'input-template' | 'output';
 /**
  * Form of a setting's value.
  */
-export type SettingKind = 'switch' | 'enum' | 'enum-or-text' | 'integer' | 'number' | 'text' | 'list' | 'enum-list';
+export type SettingKind = 'switch' | 'enum' | 'enum-or-text' | 'integer' | 'number' | 'text' | 'list' | 'enum-list' | 'records';
 
 /**
  * One allowed value of a setting.
@@ -2701,6 +2705,52 @@ export type SettingOption = {
  * Type of the items of a list setting.
  */
 export type ListItemKind = 'string' | 'number' | 'integer';
+
+/**
+ * One field of the entries of a `records` setting.
+ */
+export type RecordFieldSpec = {
+  /**
+   * Key of the field in an entry, for example `name`.
+   */
+  key: string;
+  /**
+   * Name of the field as the form shows it, for example `Name`.
+   */
+  label: string;
+  /**
+   * Form of the value, which selects the control that edits it; never `records`.
+   */
+  kind: SettingKind;
+  /**
+   * Whether an entry can leave the field out.
+   */
+  nullable: boolean;
+  /**
+   * Allowed values of an `enum`, `enum-or-text` or `enum-list` field.
+   */
+  options: Array<SettingOption>;
+  /**
+   * Type of the items of a `list` field.
+   */
+  item_kind: ListItemKind;
+  /**
+   * Value the command uses when an entry leaves the field out, as the form shows it; absent when the field has none.
+   */
+  documented_default?: JsonValue;
+  /**
+   * Typical values of the field, as the configuration spells them.
+   */
+  examples: Array<JsonValue>;
+  /**
+   * First paragraph of the field's description.
+   */
+  help: string;
+  /**
+   * Remaining paragraphs of the field's description.
+   */
+  more: string;
+};
 
 /**
  * Settings of every command the app runs, as the settings form shows them.
