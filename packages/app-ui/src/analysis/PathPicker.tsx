@@ -1,12 +1,17 @@
-import { type JsonValue, errorMessage, type AppCommand } from "@neherlab/app-contracts";
+import { type JsonValue, errorMessage, type AppCommand, type IndexedFile } from "@neherlab/app-contracts";
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { useToastManager } from "../ui/toast";
+import { type ExampleIndex, fetchExampleFile, localExamplePath } from "./exampleData";
+import { ExampleFilesDialog } from "./ExampleFilesDialog";
 import { dropzoneAccept } from "./fileAccept";
+import { exampleDataBase, useExampleIndex } from "./useExampleData";
 import { useInputActions } from "./useInputActions";
+
+const NO_FILES: readonly IndexedFile[] = [];
 
 interface PathPickerProps {
   command: AppCommand;
@@ -22,6 +27,8 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
   const [busy, setBusy] = useState(false);
   const toasts = useToastManager();
   const accept = useMemo(() => dropzoneAccept(extensions), [extensions]);
+  const { data: examples } = useExampleIndex();
+  const [examplesOpen, setExamplesOpen] = useState(false);
 
   const upload = useCallback(
     async (files: File[]) => {
@@ -67,6 +74,42 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
 
   const onRemove = useCallback(() => actions.clear(settingKey, emptyValue(list)), [actions, list, settingKey]);
 
+  const addExampleFile = useCallback(
+    async (example: ExampleIndex, file: IndexedFile) => {
+      if (example.origin === "local") {
+        const path = localExamplePath(example.folder, file.path);
+        actions.assign(settingKey, list ? [path] : path, { label: file.path, origin: "dataset", size: file.size });
+
+        return;
+      }
+
+      setBusy(true);
+
+      try {
+        await actions.addFiles(settingKey, [await fetchExampleFile(exampleDataBase(), file.path)], list);
+      } catch (error: unknown) {
+        toasts.add({ title: `${file.path} cannot be added`, description: errorMessage(error) });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [actions, list, settingKey, toasts],
+  );
+
+  const chooseExample = useCallback(
+    (file: IndexedFile) => {
+      setExamplesOpen(false);
+
+      if (examples !== undefined) {
+        void addExampleFile(examples, file);
+      }
+    },
+    [examples, addExampleFile],
+  );
+
+  const onOpenExamples = useCallback(() => setExamplesOpen(true), []);
+  const exampleFiles = examples?.index?.files ?? NO_FILES;
+
   return (
     <div className="flex shrink-0 gap-1">
       <input {...dialog.getInputProps()} aria-label={`${title} ${list ? "files" : "file"} to upload`} />
@@ -74,6 +117,20 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
         {busy && <Spinner />}
         {buttonText(busy, filled, list)}
       </Button>
+      {exampleFiles.length > 0 && (
+        <>
+          <Button type="button" variant="ghost" size="sm" onClick={onOpenExamples} disabled={busy}>
+            Example files
+          </Button>
+          <ExampleFilesDialog
+            open={examplesOpen}
+            onOpenChange={setExamplesOpen}
+            title={title}
+            files={exampleFiles}
+            choose={chooseExample}
+          />
+        </>
+      )}
       {filled && (
         <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
           Remove

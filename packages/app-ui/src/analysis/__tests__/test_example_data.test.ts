@@ -1,10 +1,11 @@
-import type { IndexedConfig, IndexedDataset } from "@neherlab/app-contracts";
+import type { IndexedConfig, IndexedDataset, IndexedFile } from "@neherlab/app-contracts";
 
 import {
   configInputs,
   exampleDataUrl,
   indexedDatasetInputs,
   localInputAssignment,
+  matchingExampleFiles,
   uploadedConfigInputs,
 } from "../exampleData";
 
@@ -38,6 +39,14 @@ const TIMETREE: IndexedConfig = {
   content: "tree: tree.nwk\n",
   inputs: { alignment: ["flu/h3n2/20/aln.fasta.xz"] },
 };
+
+const FILES: IndexedFile[] = [
+  { path: "ebola/20/tree.nwk", size: 1 },
+  { path: "zika/20/aln.fasta.xz", size: 2 },
+  { path: "zika/20/metadata.tsv", size: 3 },
+  { path: "zika/20/tree.nwk", size: 4 },
+  { path: "zika/country_weights.csv", size: 5 },
+];
 
 describe("example data", () => {
   test.each([
@@ -115,5 +124,15 @@ describe("example data", () => {
         alignment: { label: "aln.fasta.xz", size: 7, origin: "upload", run_id: "r1" },
       },
     });
+  });
+
+  test.each([
+    ["", FILES.map((file) => file.path)],
+    ["zika tree", ["zika/20/tree.nwk"]],
+    ["weights", ["zika/country_weights.csv"]],
+    ["nwk", ["ebola/20/tree.nwk", "zika/20/tree.nwk"]],
+    ["sars", []],
+  ])("the example files matching %j are %j", (query, paths) => {
+    expect(matchingExampleFiles(FILES, query).map((file) => file.path)).toStrictEqual(paths);
   });
 });

@@ -1,6 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import type { RunRecord, UploadedInput } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { configure, fireEvent, within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
 import pWaitFor from "p-wait-for";
@@ -40,6 +41,7 @@ const mounted: Root[] = [];
 beforeAll(() => {
   GlobalRegistrator.register();
   Object.assign(globalThis, NATIVE_FETCH);
+  process.env["BASE_URL"] = "/";
   configure({ eventWrapper: inAct });
 });
 
@@ -390,11 +392,13 @@ async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBac
   inAct(() =>
     root.render(
       <ApiContext.Provider value={api}>
-        <BrowserBackendContext.Provider value={browserBackend}>
-          <Toaster>
-            <Form />
-          </Toaster>
-        </BrowserBackendContext.Provider>
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <BrowserBackendContext.Provider value={browserBackend}>
+            <Toaster>
+              <Form />
+            </Toaster>
+          </BrowserBackendContext.Provider>
+        </QueryClientProvider>
       </ApiContext.Provider>,
     ),
   );

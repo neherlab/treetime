@@ -4,12 +4,14 @@ import {
   type ExamplesFolder,
   type IndexedConfig,
   type IndexedDataset,
+  type IndexedFile,
   type InputKind,
   type SparseConfig,
   type UiDraftSource,
   zDataIndex,
 } from "@neherlab/app-contracts";
 
+import { fuzzyFilter } from "../fuzzy";
 import { commandSettings } from "../settings/catalog";
 import { baseName, type InputAssignment } from "../settings/inputs";
 import { type StoredFile, storedSource, storedValue } from "./fileSelection";
@@ -93,6 +95,10 @@ export function uploadedConfigInputs(
     replace_inputs: Object.fromEntries(uploaded.map(({ key, value }) => [key, value])),
     sources: Object.fromEntries(uploaded.map(({ key, source }) => [key, source])),
   };
+}
+
+export function matchingExampleFiles(files: readonly IndexedFile[], query: string): IndexedFile[] {
+  return fuzzyFilter(files, query, (file) => file.path);
 }
 
 export type ExampleIndex =
