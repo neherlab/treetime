@@ -17,17 +17,20 @@ pub(crate) fn kingman_neg_log_density(nodes: &[NodeAge], tc: f64) -> Result<f64,
 }
 
 pub(crate) fn pair_exposure(nodes: &[NodeAge]) -> Result<PairExposure, Report> {
-  let exposure = nodes
+  let scan = nodes
     .iter()
     .sorted_by_key(|node| (OrderedFloat(node.age), node.n_children))
-    .fold(PairExposure::default(), PairExposure::advance);
-  if exposure.lineages != 1 {
+    .fold(ExposureScan::default(), ExposureScan::advance);
+  if scan.lineages != 1 {
     return make_error!(
       "Node ages leave {} lineages after the oldest node; a tree ends with one",
-      exposure.lineages
+      scan.lineages
     );
   }
-  Ok(exposure)
+  Ok(PairExposure {
+    pair_time: scan.pair_time,
+    mergers: scan.mergers,
+  })
 }
 
 pub(crate) fn node_ages_from_dates(graph: &Graph, dates: &BTreeMap<GraphNodeKey, f64>) -> Vec<NodeAge> {
@@ -57,15 +60,21 @@ pub(crate) struct NodeAge {
   pub n_children: usize,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct PairExposure {
   pub pair_time: f64,
   pub mergers: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct ExposureScan {
+  pair_time: f64,
+  mergers: usize,
   age: f64,
   lineages: isize,
 }
 
-impl PairExposure {
+impl ExposureScan {
   fn advance(self, node: &NodeAge) -> Self {
     let lineages = self.lineages.to_f64_exact();
     let pair_time = self.pair_time + lineages * (lineages - 1.0) / 2.0 * (node.age - self.age);

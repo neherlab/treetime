@@ -1,5 +1,5 @@
 use crate::coalescent::mean_field::CoalescentPrior;
-use crate::test_utils::reference_grid::{Ends, ExactFunction, GridWindow, convolve_windows, to_isize, to_isize_floor};
+use crate::test_utils::reference_grid::{Ends, ExactFunction, GridWindow, convolve_windows, to_isize_floor};
 use crate::timetree::inference::result::BranchLikelihood;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -46,7 +46,7 @@ pub(crate) fn reference_log_z(input: &ReferenceInput<'_>) -> Result<ReferenceLog
   };
   let wide = reference_level(input, spacing, WIDE_WINDOW_FRACTION)?;
   let domain_error = (wide.log_z - coarse.log_z).abs();
-  if !(domain_error < DOMAIN_TOLERANCE) {
+  if domain_error.is_nan() || domain_error >= DOMAIN_TOLERANCE {
     return make_error!(
       "Reference log Z changes by {domain_error:e} when the windows widen from {WINDOW_FRACTION:e} to {WIDE_WINDOW_FRACTION:e} of their peaks, above the limit {DOMAIN_TOLERANCE:e}"
     );
@@ -214,7 +214,7 @@ impl NodeFactors<'_> {
         .grid
         .iter()
         .tuple_windows()
-        .filter(|(left, right)| left == right)
+        .filter(|(left, right)| left.total_cmp(right).is_eq())
         .map(|(&time, _)| time)
         .collect(),
       Self::None | Self::Analytic(_) => vec![],
@@ -250,7 +250,7 @@ fn convergence(coarse: f64, middle: f64, fine: f64) -> Result<Convergence, Repor
     return Ok(Convergence::Converged(largest));
   }
   let order = (first / second).log2();
-  if !(order >= MIN_OBSERVED_ORDER) {
+  if order.is_nan() || order < MIN_OBSERVED_ORDER {
     return make_error!(
       "Reference log Z converges at the observed order {order} below {MIN_OBSERVED_ORDER}: {coarse}, {middle}, {fine} at the spacings h, h/2, h/4"
     );
@@ -364,12 +364,12 @@ impl LeafSource<'_> {
   }
 }
 
-fn child_message<'a>(
+fn child_message(
   subtree: Subtree,
-  branch: &'a BranchTime,
+  branch: &BranchTime,
   spacing: f64,
   fraction: f64,
-) -> Result<ChildMessage<'a>, Report> {
+) -> Result<ChildMessage<'_>, Report> {
   let window = branch_window(branch, spacing, fraction)?;
   Ok(match subtree {
     Subtree::Leaf { index, log_factor } => ChildMessage {
@@ -395,8 +395,13 @@ fn branch_window(branch: &BranchTime, spacing: f64, fraction: f64) -> Result<Gri
   let cutoff = fraction.ln();
   let mut log_values = vec![];
   let mut peak = f64::NEG_INFINITY;
-  let mut tau = first.to_f64_exact() * spacing;
-  while tau <= hi {
+  let mut beyond_hi = false;
+  for index in first.. {
+    let tau = index.to_f64_exact() * spacing;
+    if tau > hi {
+      beyond_hi = true;
+      break;
+    }
     let log_value = -branch.neg_log_outer(inner, tau)?;
     peak = peak.max(log_value);
     log_values.push(log_value);
@@ -408,9 +413,8 @@ fn branch_window(branch: &BranchTime, spacing: f64, fraction: f64) -> Result<Gri
         "Branch-time function stays above {fraction:e} of its peak over {MAX_BRANCH_POINTS} grid points of spacing {spacing}"
       );
     }
-    tau = (first + to_isize(log_values.len())).to_f64_exact() * spacing;
   }
-  let old = (tau > hi)
+  let old = beyond_hi
     .then(|| -> Result<(f64, f64), Report> { Ok((hi / spacing, -branch.neg_log(hi)?)) })
     .transpose()?;
   let log_value = |x: f64| -> Result<f64, Report> { Ok(-branch.neg_log(x * spacing)?) };

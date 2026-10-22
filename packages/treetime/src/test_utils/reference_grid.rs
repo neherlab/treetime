@@ -143,7 +143,7 @@ impl GridWindow {
     let (young, old) = (self.young_end(), self.old_end());
     let product = |x: f64| self.at(x) * weight(x);
     let interior: f64 = once(young)
-      .chain((to_isize_floor(young.floor()) + 1..=to_isize_floor(old.ceil()) - 1).map(ToF64Exact::to_f64_exact))
+      .chain(((to_isize_floor(young.floor()) + 1)..to_isize_floor(old.ceil())).map(ToF64Exact::to_f64_exact))
       .chain(once(old))
       .tuple_windows()
       .filter(|(left, right)| right > left)
@@ -418,7 +418,7 @@ pub(crate) fn convolve_windows(
   )
 }
 
-pub(crate) fn to_isize(value: usize) -> isize {
+fn to_isize(value: usize) -> isize {
   isize::try_from(value).expect("grid index must fit into isize")
 }
 
@@ -449,7 +449,7 @@ fn message_value(subtree: &GridWindow, branch: &GridWindow, reversed: &Array1<f6
     .slice(s![to_usize(k1 - branch.start)..=to_usize(k2 - branch.start)])
     .dot(&reversed.slice(s![reversed_first..=reversed_first + to_usize(k2 - k1)]));
   let (g1, g2) = (sample(k1), sample(k2));
-  sum - 0.5 * (g1 + g2)
+  sum - f64::midpoint(g1, g2)
     + 0.5 * (k1.to_f64_exact() - k_lo) * (product(k_lo) + g1)
     + 0.5 * (k_hi - k2.to_f64_exact()) * (g2 + product(k_hi))
 }
