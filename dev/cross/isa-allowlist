@@ -1,12 +1,15 @@
-# Functions of the Linux release binaries that may contain instructions above
-# the CPU baseline of their target (dev/lib/dist-flags.sh), because they run
-# only after a check of the CPU at run time. dev/cross/check reports every other
-# function with such instructions.
+# Functions of the release binaries that may contain instructions above the CPU
+# baseline of their target (dev/lib/dist-flags.sh), because they run only after
+# a check of the CPU at run time, or because the disassembler decodes data that
+# they keep in the code section as instructions. dev/cross/check reports every
+# other function with such instructions.
 #
 # Format: <arch> <extended regular expression>, matched against the demangled
-# function name. <arch> is x86_64, aarch64, or any. Add an entry only after
-# reading the code that selects the function by the CPU at run time, and name
-# that code in the comment above the entry.
+# function name, without the leading underscore of Mach-O. <arch> is x86_64,
+# aarch64, or any; an entry applies to every operating system of the
+# architecture. Add an entry only after reading the code that selects the
+# function by the CPU at run time, or the data it keeps, and name that code in
+# the comment above the entry.
 
 # OpenBLAS (DYNAMIC_ARCH): the kernels of each CPU type, which
 # driver/others/dynamic.c and dynamic_arm64.c select by CPUID or MIDR_EL1.
@@ -40,6 +43,10 @@ x86_64 ^<?(rustfft|memchr|aho_corasick|matrixmultiply|crc32fast|simdutf8|uuid_si
 # feature flags (OPENSSL_ia32cap_P) select.
 x86_64 ^ring_core_[0-9_]+_
 x86_64 ^(_aesni_ctr32_6x|_aesni_ctr32_ghash_6x|mulx4x_internal|__bn_postx4x_internal|__bn_sqrx8x_reduction|__ecp_nistz256_(mul|sqr)_montx)$
+# ring: the CRYPTOGAMS signature string that armv8-mont.S keeps after the last
+# instruction of bn_mul4x_mont. ELF marks it as data with a mapping symbol;
+# COFF and Mach-O have no such marker, so it disassembles as SVE instructions.
+aarch64 ^ring_core_[0-9_]+__bn_mul4x_mont$
 
 # The outline atomics helpers of compiler-builtins and libgcc: they run the LSE
 # instruction only after the startup check of AT_HWCAP has set their flag, and

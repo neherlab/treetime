@@ -22,11 +22,11 @@
 # - macOS: libraries in /usr/lib and frameworks in /System/Library
 #
 # It also fails when a macOS binary names another minimum macOS version than the
-# deployment target of its image, and when a Linux binary contains instructions
-# above the CPU baseline of its target (dev/lib/dist-flags.sh) outside the
-# functions of dev/cross/isa-allowlist, which run only after a check of the CPU
-# at run time. Windows binaries carry no function names to attribute
-# instructions to, and macOS arm64 builds for the oldest Apple CPU.
+# deployment target of its image, and when a binary of any target contains
+# instructions above the CPU baseline of its target (dev/lib/dist-flags.sh)
+# outside the functions of dev/cross/isa-allowlist, which run only after a check
+# of the CPU at run time. The symbol tables of the ELF, COFF, and Mach-O files
+# name the function of each instruction.
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -110,27 +110,60 @@ macos_min_version() {
 
 # Print the instructions above the CPU baseline of the target, which
 # dev/lib/dist-flags.sh sets, as <count> <function>, except in the functions of
-# dev/cross/isa-allowlist. x86_64 (x86-64-v2): VEX and EVEX instructions and
-# the BMI, LZCNT, MOVBE, and ADX instructions; TZCNT is left out, because CPUs
-# without BMI run its encoding as BSF, and compilers use it on purpose for
-# generic code. aarch64 Linux (Armv8.0): LSE atomics, RDM, the dot product,
-# LDAPR, JSCVT, CRC32, and SVE.
+# dev/cross/isa-allowlist.
+# - x86_64 (x86-64-v2): VEX and EVEX instructions and the BMI, LZCNT, MOVBE,
+#   and ADX instructions; TZCNT is left out, because CPUs without BMI run its
+#   encoding as BSF, and compilers use it on purpose for generic code
+# - aarch64 Linux (Armv8.0): LSE atomics, RDM, the dot product, LDAPR, JSCVT,
+#   CRC32, and SVE
+# - aarch64 Windows (Armv8.0 with LSE): the same without the LSE atomics
+# - aarch64 macOS (Apple M1, the features that LLVM's apple-m1 CPU enables):
+#   SVE and SME, BF16, I8MM, MTE, MOPS, CSSC, LSE128, RCPC3, WFxT, LS64, RNG,
+#   HBC, and the compare-and-branch instructions
+# COFF and Mach-O keep the labels of assembly code (L*, .L*, ltmp*) as symbols;
+# their instructions count for the function that contains them. Mach-O names C
+# functions with a leading underscore, which is removed to match the ELF names.
+# The NEON syntax is the generic one on every target, because llvm-objdump
+# prints the Apple syntax (sdot.4s) for Mach-O.
 isa_above_baseline() {
-  local file="${1}" pattern allow
+  local file="${1}" pattern allow armv8 lse sve above_m1 cssc object=""
+  armv8='sqrdmlah|sqrdmlsh|sdot|udot|usdot|sudot|ldapr[bh]?|fjcvtzs|crc32c?[bhwx]'
+  lse='(ldadd|ldclr|ldeor|ldset|ldsmax|ldsmin|ldumax|ldumin|swp|cas|casp)[albh]*'
+  sve=' z[0-9]+\.| p[0-9]+[./]'
   case "${target}" in
-  x86_64-*-linux-*)
+  x86_64-*)
     pattern='^(v[a-z0-9]+|(andn|bextr|blsi|blsmsk|blsr|bzhi|mulx|pdep|pext|rorx|sarx|shlx|shrx|lzcnt|movbe|adcx|adox)[bwlq]?)$|%[yz]mm'
     allow="x86_64"
     ;;
   aarch64-*-linux-*)
-    pattern='^((ldadd|ldclr|ldeor|ldset|ldsmax|ldsmin|ldumax|ldumin|swp|cas|casp)[albh]*|sqrdmlah|sqrdmlsh|sdot|udot|usdot|sudot|ldapr[bh]?|fjcvtzs|crc32c?[bhwx])$| z[0-9]+\.| p[0-9]+[./]'
+    pattern="^(${lse}|${armv8})\$|${sve}"
+    allow="aarch64"
+    ;;
+  aarch64-*-windows-*)
+    pattern="^(${armv8})\$|${sve}"
+    allow="aarch64"
+    ;;
+  aarch64-apple-*)
+    above_m1='smstart|smstop|bfdot|bfmmla|bfmlal[bt]|bfcvtn?2?|smmla|ummla|usmmla|usdot|sudot|irg|gmi|addg|subg|subps?|stz?2?g|stgp|ldgm?|stz?gm|cpyf?[pme][a-z]*|setg?[pme](t|n|tn)?|ctz|(ldclrp|ldsetp|swpp)(a|l|al)?|ldiapp|stilp|ldap1|stl1|wfet|wfit|ld64b|st64bv?0?|bc\..*|cbh?b?(gt|ge|hi|hs|eq|ne|lt|lo|le|ls)'
+    cssc='^[[:space:]]*[0-9a-f]+:[[:space:]]+(abs|cnt|smax|smin|umax|umin)[[:space:]]+[wx][0-9z]'
+    pattern="^(${above_m1})\$|${cssc}|mrs[[:space:]]+x[0-9]+, (RNDR|RNDRRS)\$|[{ ]za[0-9]*[hv]?[.}[]|${sve}"
     allow="aarch64"
     ;;
   *) return 0 ;;
   esac
-  /opt/llvm/bin/llvm-objdump -d --no-show-raw-insn --demangle "${file}" |
-    pattern="${pattern}" awk '
-      /^[0-9a-f]+ <.*>:$/ { fn = substr($0, index($0, "<") + 1); sub(/>:$/, "", fn); next }
+  case "${target}" in
+  *-apple-*) object="macho" ;;
+  *-windows-*) object="coff" ;;
+  esac
+  /opt/llvm/bin/llvm-objdump -d --no-show-raw-insn --demangle -mllvm=--aarch64-neon-syntax=generic "${file}" |
+    pattern="${pattern}" object="${object}" awk '
+      /^[0-9a-f]+ <.*>:$/ {
+        name = substr($0, index($0, "<") + 1); sub(/>:$/, "", name)
+        if (ENVIRON["object"] != "" && name ~ /^(\.L|L[a-z0-9_]|ltmp)/) next
+        if (ENVIRON["object"] == "macho") sub(/^_/, "", name)
+        fn = name
+        next
+      }
       $2 ~ ENVIRON["pattern"] || $0 ~ ENVIRON["pattern"] { count[fn]++ }
       END { for (f in count) print count[f], f }
     ' |
@@ -211,14 +244,12 @@ if [[ "${target}" == *-apple-darwin ]]; then
     failed=1
   fi
 fi
-if [[ "${target}" == *-linux-* ]]; then
-  above="$(isa_above_baseline "${file}")"
-  if [[ -n "${above}" ]]; then
-    printf '%s has instructions above the CPU baseline of %s outside dev/cross/isa-allowlist (count, function):\n' "${file}" "${target}" >&2
-    while IFS= read -r entry; do
-      printf '  * %s\n' "${entry}" >&2
-    done <<<"${above}"
-    failed=1
-  fi
+above="$(isa_above_baseline "${file}")"
+if [[ -n "${above}" ]]; then
+  printf '%s has instructions above the CPU baseline of %s outside dev/cross/isa-allowlist (count, function):\n' "${file}" "${target}" >&2
+  while IFS= read -r entry; do
+    printf '  * %s\n' "${entry}" >&2
+  done <<<"${above}"
+  failed=1
 fi
 [[ -z "${failed}" ]]
