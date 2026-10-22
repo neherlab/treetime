@@ -71,12 +71,6 @@ pub(crate) mod tests {
   #[rustfmt::skip]
   const FLAG_EXCEPTIONS: &[FlagException] = &[
     FlagException { flag: "--confidence",                       change: Change::Missing, commands: &[MU],                 pending: Pending::MugrationConfidenceFlag },
-    FlagException { flag: "--topology-order-target-source",     change: Change::Extra,   commands: ANALYSIS,              pending: Pending::FlagRenames },
-    FlagException { flag: "--topology-order-target-file",       change: Change::Extra,   commands: ANALYSIS,              pending: Pending::FlagRenames },
-    FlagException { flag: "--topology-order-target-aggregate",  change: Change::Extra,   commands: ANALYSIS,              pending: Pending::FlagRenames },
-    FlagException { flag: "--topology-order-tree",              change: Change::Missing, commands: ANALYSIS,              pending: Pending::FlagRenames },
-    FlagException { flag: "--topology-order-list",              change: Change::Missing, commands: ANALYSIS,              pending: Pending::FlagRenames },
-    FlagException { flag: "--topology-order-aggregate",         change: Change::Missing, commands: ANALYSIS,              pending: Pending::FlagRenames },
     FlagException { flag: "--check",                            change: Change::Extra,   commands: &[PI],                 pending: Pending::RootCommand },
     FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[PI],                 pending: Pending::RootCommand },
     FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[EXAMPLES_GET, SCHEMA_WRITE], pending: Pending::DryRun },

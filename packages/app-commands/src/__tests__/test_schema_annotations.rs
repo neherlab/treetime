@@ -142,7 +142,8 @@ mod tests {
       ("aa_root_sequence", "Input"),
       ("alignment", "Input"),
       ("annotation", "Input"),
-      ("topology_order_target_file", "Input"),
+      ("topology_order_list", "Input"),
+      ("topology_order_tree", "Input"),
       ("translations", "InputTemplate"),
       ("tree", "Input"),
     ]

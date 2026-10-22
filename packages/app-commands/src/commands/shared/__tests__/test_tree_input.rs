@@ -2,11 +2,10 @@
 mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
-  use crate::commands::shared::topology_order_args::{
-    TopologyOrderArg, TopologyOrderArgs, TopologyOrderTargetSourceArg,
-  };
+  use crate::commands::shared::topology_order_args::{TopologyOrderArg, TopologyOrderArgs};
   use crate::commands::shared::tree_input::{TreeDialectArg, TreeDialectArgs, read_input_tree};
   use clap::Parser;
+  use clap::error::ErrorKind;
   use helpers::{clock_dialect, write_tree};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -109,8 +108,7 @@ mod tests {
     let names = tree.names.clone();
     let args = TopologyOrderArgs {
       topology_order: Some(TopologyOrderArg::TargetOrder),
-      topology_order_target_source: Some(TopologyOrderTargetSourceArg::ReferenceTopology),
-      topology_order_target_file: Some(reference),
+      topology_order_tree: Some(reference),
       ..TopologyOrderArgs::default()
     };
 
@@ -122,6 +120,47 @@ mod tests {
       .map(|(key, &position)| (&names[*key], position))
       .collect();
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_tree_input_topology_order_list_sets_the_target_order() {
+    let dir = tempdir().unwrap();
+    let list = dir.path().join("order.txt");
+    std::fs::write(&list, "B\nA\n").unwrap();
+    let tree = nwk_read(b"(A:1,B:1)root;".as_slice()).unwrap();
+    let names = tree.names.clone();
+    let args = TopologyOrderArgs {
+      topology_order: Some(TopologyOrderArg::TargetOrder),
+      topology_order_list: Some(list),
+      ..TopologyOrderArgs::default()
+    };
+
+    let spec = args
+      .resolve_topology_order(&tree.graph, &names, None, NewickDialect::BEAST)
+      .unwrap();
+
+    let actual: BTreeMap<&str, usize> = spec
+      .target_order
+      .iter()
+      .map(|(key, &position)| (&names[*key], position))
+      .collect();
+    assert_eq!(btreemap! { "A" => 1, "B" => 0 }, actual);
+  }
+
+  #[test]
+  fn test_tree_input_topology_order_tree_and_list_conflict() {
+    let result = TreetimeClockArgsRaw::try_parse_from([
+      "clock",
+      "--tree=tree.nwk",
+      "--metadata=metadata.tsv",
+      "--topology-order=target-order",
+      "--topology-order-tree=order.nwk",
+      "--topology-order-list=order.txt",
+    ]);
+    assert_eq!(
+      Some(ErrorKind::ArgumentConflict),
+      result.err().map(|error| error.kind())
+    );
   }
 
   mod helpers {

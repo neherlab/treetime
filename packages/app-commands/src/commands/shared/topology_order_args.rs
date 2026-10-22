@@ -31,19 +31,32 @@ pub struct TopologyOrderArgs {
   #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
   pub topology_order: Option<TopologyOrderArg>,
 
-  /// Source for target-order topology sorting.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
-  pub topology_order_target_source: Option<TopologyOrderTargetSourceArg>,
-
-  /// File used by list or reference-topology target-order sources.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Tree ordering"))]
+  /// Tree whose leaf order sets the target order
+  ///
+  /// Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+  /// the leaf order of the input tree is the target order.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", conflicts_with = "topology_order_list", help_heading = "Tree ordering")
+  )]
   #[schemars(extend("x-path" = "input"))]
-  pub topology_order_target_file: Option<PathBuf>,
+  pub topology_order_tree: Option<PathBuf>,
+
+  /// File with leaf names in the target order, one name per line
+  ///
+  /// Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+  /// the leaf order of the input tree is the target order.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Tree ordering")
+  )]
+  #[schemars(extend("x-path" = "input"))]
+  pub topology_order_list: Option<PathBuf>,
 
   /// Aggregate used to map a subtree to a target-order position.
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TopologyOrderTargetAggregateArg::default(), help_heading = "Tree ordering"))]
   #[default(TopologyOrderTargetAggregateArg::Mean)]
-  pub topology_order_target_aggregate: TopologyOrderTargetAggregateArg,
+  pub topology_order_aggregate: TopologyOrderTargetAggregateArg,
 }
 
 impl TopologyOrderArgs {
@@ -69,14 +82,14 @@ impl TopologyOrderArgs {
     Ok(TopologyOrderSpec {
       preset,
       target_order,
-      target_aggregate: self.topology_order_target_aggregate.into(),
+      target_aggregate: self.topology_order_aggregate.into(),
     })
   }
 
   fn validate(&self) -> Result<(), Report> {
-    let target_fields_present = self.topology_order_target_source.is_some()
-      || self.topology_order_target_file.is_some()
-      || self.topology_order_target_aggregate != TopologyOrderTargetAggregateArg::Mean;
+    let target_fields_present = self.topology_order_tree.is_some()
+      || self.topology_order_list.is_some()
+      || self.topology_order_aggregate != TopologyOrderTargetAggregateArg::Mean;
     let target_mode = self
       .topology_order
       .is_some_and(|order| TopologyOrderPreset::from(order).is_target_order());
@@ -85,24 +98,11 @@ impl TopologyOrderArgs {
       return Err(argument_error(
         &[
           "topology_order",
-          "topology_order_target_source",
-          "topology_order_target_file",
-          "topology_order_target_aggregate",
+          "topology_order_tree",
+          "topology_order_list",
+          "topology_order_aggregate",
         ],
-        "--topology-order-target-* options require --topology-order=target-order or target-order-reverse",
-      ));
-    }
-
-    if target_mode
-      && matches!(
-        self.topology_order_target_source,
-        Some(TopologyOrderTargetSourceArg::ReferenceTopology | TopologyOrderTargetSourceArg::List)
-      )
-      && self.topology_order_target_file.is_none()
-    {
-      return Err(argument_error(
-        &["topology_order_target_source", "topology_order_target_file"],
-        "--topology-order-target-file is required for reference-topology and list target sources",
+        "--topology-order-tree, --topology-order-list and --topology-order-aggregate require --topology-order=target-order or target-order-reverse",
       ));
     }
 
@@ -116,11 +116,16 @@ impl TopologyOrderArgs {
     input_order: Option<Vec<GraphNodeKey>>,
     tree_dialect: NewickDialect,
   ) -> Result<BTreeMap<GraphNodeKey, usize>, Report> {
-    let target_names = match self
-      .topology_order_target_source
-      .unwrap_or(TopologyOrderTargetSourceArg::Input)
-    {
-      TopologyOrderTargetSourceArg::Input => {
+    let target_names = match (&self.topology_order_tree, &self.topology_order_list) {
+      (Some(path), _) => {
+        let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading the topology order tree")?;
+        leaf_order(&nwk_parsed.graph)
+          .into_iter()
+          .map(|key| nwk_parsed.names.pairing_name(key).to_owned())
+          .collect_vec()
+      },
+      (None, Some(path)) => name_list_read_file(path, b'\n').wrap_err("When reading the topology order list")?,
+      (None, None) => {
         let order = input_order.unwrap_or_else(|| leaf_order(graph));
         return Ok(
           order
@@ -129,28 +134,6 @@ impl TopologyOrderArgs {
             .map(|(position, key)| (key, position))
             .collect(),
         );
-      },
-      TopologyOrderTargetSourceArg::ReferenceTopology => {
-        let path = self.topology_order_target_file.as_ref().ok_or_else(|| {
-          argument_error(
-            &["topology_order_target_file"],
-            "--topology-order-target-file is required for reference-topology",
-          )
-        })?;
-        let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading target reference topology")?;
-        leaf_order(&nwk_parsed.graph)
-          .into_iter()
-          .map(|key| nwk_parsed.names.pairing_name(key).to_owned())
-          .collect_vec()
-      },
-      TopologyOrderTargetSourceArg::List => {
-        let path = self.topology_order_target_file.as_ref().ok_or_else(|| {
-          argument_error(
-            &["topology_order_target_file"],
-            "--topology-order-target-file is required for list",
-          )
-        })?;
-        name_list_read_file(path, b'\n').wrap_err("When reading the topology order target list")?
       },
     };
     Ok(target_positions(target_names, graph, names))
@@ -175,16 +158,13 @@ pub(crate) fn target_positions(
 #[deser(rename_all = "kebab-case")]
 pub enum TopologyOrderArg {
   Keep,
-  #[cfg_attr(feature = "clap", value(alias = "ladderize"))]
   DescendantCount,
-  #[cfg_attr(feature = "clap", value(alias = "ladderize-reverse"))]
   DescendantCountReverse,
   Height,
   HeightReverse,
   Divergence,
   DivergenceReverse,
   Label,
-  #[cfg_attr(feature = "clap", value(alias = "alphabetical-reverse"))]
   LabelReverse,
   TargetOrder,
   TargetOrderReverse,
@@ -206,16 +186,6 @@ impl From<TopologyOrderArg> for TopologyOrderPreset {
       TopologyOrderArg::TargetOrderReverse => Self::TargetOrderReverse,
     }
   }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum TopologyOrderTargetSourceArg {
-  Input,
-  ReferenceTopology,
-  List,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
