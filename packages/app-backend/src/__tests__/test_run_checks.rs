@@ -473,6 +473,156 @@ mod tests {
     );
   }
 
+  #[test]
+  fn test_run_checks_partitions_block_entries_that_leave_sites_out() {
+    let config = config(
+      AppCommand::Ancestral,
+      &json!({
+        "tree": "t.nwk",
+        "alignment": ["a.fasta", "b.fasta"],
+        "partition": [{ "alignment": 1, "sites": ["1-4"] }, { "alignment": 2 }],
+      }),
+    );
+    let facts = InputFacts {
+      alignments: vec![alignment(1, "a.fasta"), alignment(2, "b.fasta")],
+      ..facts_with_tree(3)
+    };
+    assert_eq!(
+      vec![(
+        o!("partitions"),
+        CheckLevel::Block,
+        o!(
+          "No partition takes 6 sites of alignment 1, the first is site 5: list them in an entry, or add an entry without `sites`, which takes the remaining sites"
+        ),
+        vec_of_owned!["partition", "alignment"],
+      )],
+      checks(AppCommand::Ancestral, Some(&config), None, Some(&facts))
+        .into_iter()
+        .map(|check| (check.id, check.level, check.text, check.settings))
+        .collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_run_checks_partitions_block_a_model_without_its_alphabet() {
+    let config = config(
+      AppCommand::Optimize,
+      &json!({ "tree": "t.nwk", "alignment": ["a.fasta"], "alphabet": "aa", "model": "hky85" }),
+    );
+    let facts = InputFacts {
+      alignments: vec![alignment(1, "a.fasta")],
+      ..facts_with_tree(3)
+    };
+    assert_eq!(
+      vec![(
+        o!(
+          "Partition 1 has the model hky85, which needs the alphabet nuc because it sets rates between nucleotides, but the alphabet is aa"
+        ),
+        vec_of_owned!["model", "model_params", "alphabet"],
+      )],
+      checks(AppCommand::Optimize, Some(&config), None, Some(&facts))
+        .into_iter()
+        .map(|check| (check.text, check.settings))
+        .collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_run_checks_partitions_need_an_alignment_file() {
+    let config = config(
+      AppCommand::Timetree,
+      &json!({ "tree": "t.nwk", "metadata": "m.tsv", "sequence_length": 1000, "partition": [{ "name": "all" }] }),
+    );
+    assert_eq!(
+      vec![
+        "--partition needs --alignment: each entry takes sites of an --alignment file, but the run has no --alignment file"
+      ],
+      texts(&checks(AppCommand::Timetree, Some(&config), None, None))
+    );
+  }
+
+  #[test]
+  fn test_run_checks_partitions_check_the_model_of_a_run_without_alignments() {
+    let config = config(
+      AppCommand::Timetree,
+      &json!({ "tree": "t.nwk", "metadata": "m.tsv", "sequence_length": 1000, "alphabet": "aa", "model": "jtt92" }),
+    );
+    assert_eq!(
+      vec![(
+        o!(
+          "The model jtt92 needs the alphabet aa-no-stop because its matrix holds the 20 amino acids without the stop '*', but the alphabet is aa"
+        ),
+        vec_of_owned!["model", "model_params", "alphabet"],
+      )],
+      checks(AppCommand::Timetree, Some(&config), None, None)
+        .into_iter()
+        .map(|check| (check.text, check.settings))
+        .collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_run_checks_partitions_wait_for_the_facts_of_every_alignment() {
+    let config = config(
+      AppCommand::Optimize,
+      &json!({ "tree": "t.nwk", "alignment": ["a.fasta", "b.fasta"], "partition": [{ "alignment": 2 }] }),
+    );
+    let facts = InputFacts {
+      alignments: vec![
+        AlignmentFacts {
+          min_length: 9,
+          ..alignment(1, "a.fasta")
+        },
+        alignment(2, "b.fasta"),
+      ],
+      ..facts_with_tree(3)
+    };
+    let without_first = InputFacts {
+      alignments: vec![alignment(2, "b.fasta")],
+      ..facts_with_tree(3)
+    };
+    assert_eq!(
+      (vec![o!("unaligned-sequences-1")], Vec::<String>::new()),
+      (
+        checks(AppCommand::Optimize, Some(&config), None, Some(&facts))
+          .into_iter()
+          .map(|check| check.id)
+          .collect::<Vec<_>>(),
+        checks(AppCommand::Optimize, Some(&config), None, Some(&without_first))
+          .into_iter()
+          .map(|check| check.id)
+          .collect::<Vec<_>>()
+      )
+    );
+  }
+
+  #[test]
+  fn test_run_checks_partitions_leave_an_entry_error_to_the_rejected_config() {
+    let config = config(
+      AppCommand::Ancestral,
+      &json!({ "tree": "t.nwk", "alignment": ["a.fasta"], "partition": [{ "model_params": ["mu=2"] }] }),
+    );
+    let facts = InputFacts {
+      alignments: vec![alignment(1, "a.fasta")],
+      ..facts_with_tree(3)
+    };
+    let message = "partition 1: model_params needs a named model: infer fits the model from the data and takes no parameters, but got 'mu=2'";
+    let settings = vec_of_owned!["partition"];
+    let rejection = ConfigRejection {
+      message,
+      causes: &[],
+      problems: &[],
+      settings: &settings,
+    };
+    assert_eq!(
+      vec![(o!("config-0"), o!(message))],
+      checks(AppCommand::Ancestral, Some(&config), Some(rejection), Some(&facts))
+        .into_iter()
+        .map(|check| (check.id, check.text))
+        .collect::<Vec<_>>()
+    );
+  }
+
   mod helpers {
     use crate::check_inputs::{AlignmentFacts, InputFacts, TreeFacts};
     use crate::check_inputs::{DateFacts, MetadataFacts};

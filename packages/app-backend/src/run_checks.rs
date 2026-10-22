@@ -1,6 +1,8 @@
 use crate::check_inputs::{AlignmentFacts, InputFacts, InputKind, InputNeed};
 use crate::command::AppCommandExt;
 use app_commands::command::AppCommand;
+use app_commands::commands::shared::argument_error::ArgumentError;
+use app_commands::commands::shared::partition::ConfigPartitions;
 use app_commands::config::settings::has_path;
 use app_commands::config::source::ConfigProblem;
 use app_commands::json_value::JsonValue;
@@ -19,12 +21,13 @@ const DATE_COLUMN_SETTING: &str = "date_column";
 
 const ALLOW_MISSING_SEQUENCES_SETTING: &str = "allow_missing_sequences";
 
-const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 8] = [
+const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 9] = [
   missing_inputs,
   unreadable_inputs,
   rejected_config,
   duplicate_names,
   unaligned_sequences,
+  partitions,
   tips_without_sequence,
   metadata,
   dates_rounded_to_the_month,
@@ -155,6 +158,57 @@ fn unaligned_sequences(context: &CheckContext<'_>) -> Vec<RunCheck> {
         ),
       )
       .concerning(&[InputKind::Alignment.setting()])
+    })
+    .collect()
+}
+
+fn partitions(context: &CheckContext<'_>) -> Vec<RunCheck> {
+  let Some(config) = context.config.filter(|_| reads(context.command, InputKind::Alignment)) else {
+    return vec![];
+  };
+  let Some(lengths) = alignment_lengths(context, config) else {
+    return vec![];
+  };
+  let resolved = ConfigPartitions::from_config(config).and_then(|partitions| partitions.resolve(&lengths));
+  let Err(report) = resolved else {
+    return vec![];
+  };
+  let message = report.to_string();
+  if context
+    .rejection
+    .as_ref()
+    .is_some_and(|rejection| rejection.message == message)
+  {
+    return vec![];
+  }
+  let settings = report
+    .downcast_ref::<ArgumentError>()
+    .map(|error| error.settings.iter().map(String::as_str).collect_vec())
+    .unwrap_or_default();
+  vec![block("partitions", sentence(&message)).concerning(&settings)]
+}
+
+fn sentence(message: &str) -> String {
+  let mut chars = message.chars();
+  chars
+    .next()
+    .map(|first| first.to_uppercase().chain(chars).collect())
+    .unwrap_or_default()
+}
+
+fn alignment_lengths(context: &CheckContext<'_>, config: &Map<String, Value>) -> Option<Vec<usize>> {
+  let n_files = config
+    .get(InputKind::Alignment.setting())
+    .and_then(Value::as_array)
+    .map_or(0, Vec::len);
+  let alignments = sequence_files(context).collect_vec();
+  (1..=n_files)
+    .map(|number| {
+      alignments
+        .iter()
+        .find(|alignment| alignment.partition == number)
+        .filter(|alignment| alignment.min_length == alignment.max_length)
+        .map(|alignment| alignment.min_length)
     })
     .collect()
 }
