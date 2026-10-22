@@ -1,4 +1,4 @@
-use argmin::core::{CostFunction, Error as ArgminError, Executor, TerminationReason, TerminationStatus};
+use argmin::core::{CostFunction, Error, Executor, TerminationReason, TerminationStatus};
 use argmin::solver::brent::BrentRoot;
 use eyre::Report;
 use itertools::Itertools;
@@ -476,12 +476,12 @@ impl CostFunction for LevelMass<'_> {
   type Param = f64;
   type Output = f64;
 
-  fn cost(&self, level: &f64) -> Result<f64, ArgminError> {
+  fn cost(&self, level: &f64) -> Result<f64, Error> {
     let region = self.solve.region(*level, LevelBound::of(*level, self.above));
     let mass = self
       .solve
       .mass(region)
-      .map_err(|report| ArgminError::msg(format!("{report:#}")))?;
+      .map_err(|report| Error::msg(format!("{report:#}")))?;
     Ok(mass - self.solve.fraction)
   }
 }
