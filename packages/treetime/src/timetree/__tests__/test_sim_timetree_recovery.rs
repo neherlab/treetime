@@ -75,14 +75,14 @@ mod tests {
     use crate::cancel::NoopCancel;
     use crate::progress::NoopProgress;
     use crate::test_utils::{
-      CaseSpec, SimulatedCase, TIMETREE_CELL_MU, TIMETREE_CELL_TC, match_internal_nodes, timetree_cell_params,
+      CaseSpec, SimulatedCase, TIMETREE_CELL_MU, TIMETREE_CELL_TC, match_internal_nodes, pair_exposure,
+      simulated_node_ages, timetree_cell_params,
     };
     use crate::timetree::confidence::CI_FRACTION;
     use crate::timetree::params::TimetreeParams;
     use crate::timetree::pipeline::{self, TimetreeOutput};
     use eyre::Report;
     use itertools::Itertools;
-    use ordered_float::OrderedFloat;
     use std::collections::BTreeMap;
     use treetime_simulation::coalescent::SimulatedTree;
     use treetime_utils::cast::ToF64Exact;
@@ -184,46 +184,11 @@ mod tests {
     }
 
     fn constant_tc_of_true_node_times(tree: &SimulatedTree) -> Result<f64, Report> {
-      let exposure = tree
-        .graph
-        .get_nodes()
-        .map(|node| (tree.tau[&node.key()], node.is_leaf()))
-        .sorted_by_key(|&(tau, _)| OrderedFloat(tau))
-        .fold(PairExposure::default(), PairExposure::advance);
+      let exposure = pair_exposure(&simulated_node_ages(tree))?;
       if exposure.mergers == 0 {
         return make_error!("The true tree has no mergers, so its constant Tc is undefined");
       }
       Ok(exposure.pair_time / exposure.mergers.to_f64_exact())
-    }
-
-    #[derive(Clone, Copy, Debug, Default)]
-    struct PairExposure {
-      tau: f64,
-      lineages: usize,
-      pair_time: f64,
-      mergers: usize,
-    }
-
-    impl PairExposure {
-      fn advance(self, (tau, is_leaf): (f64, bool)) -> Self {
-        let lineages = self.lineages.to_f64_exact();
-        let pair_time = self.pair_time + lineages * (lineages - 1.0) / 2.0 * (tau - self.tau);
-        if is_leaf {
-          Self {
-            tau,
-            lineages: self.lineages + 1,
-            pair_time,
-            mergers: self.mergers,
-          }
-        } else {
-          Self {
-            tau,
-            lineages: self.lineages - 1,
-            pair_time,
-            mergers: self.mergers + 1,
-          }
-        }
-      }
     }
   }
 }

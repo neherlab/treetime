@@ -3,11 +3,15 @@ mod clock;
 mod graph_lookup;
 mod gtr_generators;
 mod indel;
+mod kingman;
 mod marginal;
 mod progress;
 mod simulation;
 mod sparse;
 mod timetree;
+
+#[cfg(test)]
+mod __tests__;
 
 pub(crate) use alignment::{
   Columns, RSV_A_20_TRANSLATION_G_XZ, TestDataset, fasta_xz_records, get_common_length, split_at_gap_free_column,
@@ -16,6 +20,7 @@ pub(crate) use clock::{dates_by_node, half_residual_sum_of_squares};
 pub(crate) use graph_lookup::{find_edge_key, find_node_key_by_name, node_keys_named};
 pub(crate) use gtr_generators::{arb_branch_len, arb_gtr_nuc, arb_pi_nuc, arb_profile_nuc, arb_w_nuc};
 pub(crate) use indel::{deletion, insertion};
+pub(crate) use kingman::{NodeAge, kingman_neg_log_density, node_ages_from_dates, pair_exposure, simulated_node_ages};
 pub(crate) use marginal::{
   NUC_ALPHABET, ReconstructionMut, RecordingSeqSink, SingleReconstruction, ancestral_input_for_tree,
   complete_leaf_sequences, complete_sequence_source, dense_partition_with_constant_leaves, dense_reconstruction,
