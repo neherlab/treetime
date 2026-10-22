@@ -621,7 +621,7 @@ health:
 status:
     dev/app status
 
-# Start the web2 dev server, the web app on the WebAssembly back end in a web worker, in the foreground until Ctrl-C; after a Rust change run `just build-wasm` again
+# Start the web2 dev server, the web app on the WebAssembly back end in a web worker, in the foreground until Ctrl-C; after a Rust change run `just build-wasm` and `just build-wasm-mt` again
 [group("app")]
 up-web2: _js (build-wasm "dev") (build-wasm-mt "dev")
     dev/app up-web2
