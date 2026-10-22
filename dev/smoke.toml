@@ -973,3 +973,13 @@ args = "pipeline --config={data}/zika/20/pipeline.yaml --dry-run --output-all=tm
 variant = "pipeline-steps-timetree"
 args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree --output-all={out}"
 sandbox = true
+
+[[cli]]
+variant = "v0-timetree"
+args = "--tree={data}/zika/20/tree.nwk --aln={data}/zika/20/aln.fasta.xz --dates={data}/zika/20/metadata.tsv --outdir={out} --rng-seed=42"
+sandbox = true
+
+[[cli]]
+variant = "v0-ancestral"
+args = "ancestral --tree={data}/zika/20/tree.nwk --aln={data}/zika/20/aln.fasta.xz --gtr=JC69 --marginal --outdir={out} --rng-seed=42"
+sandbox = true
