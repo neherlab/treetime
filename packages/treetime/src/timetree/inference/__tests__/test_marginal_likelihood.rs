@@ -35,7 +35,7 @@ mod tests {
     #[case] rate: f64,
     #[case] tc: Option<f64>,
   ) -> Result<(), Report> {
-    let setup = helpers::setup()?;
+    let setup = helpers::setup(&helpers::COUNTS)?;
     let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
     let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
     let backward = propagate_distributions_backward(
@@ -63,7 +63,7 @@ mod tests {
     #[case] rate: f64,
     #[case] tc: Option<f64>,
   ) -> Result<(), Report> {
-    let setup = helpers::setup()?;
+    let setup = helpers::setup(&helpers::COUNTS)?;
     let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
     let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
 
@@ -77,6 +77,53 @@ mod tests {
 
     let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
     pretty_assert_abs_diff_eq!(expected, actual.log_z, epsilon = 1e-8);
+    Ok(())
+  }
+
+  // TODO: kb/issues/M-distribution-fft-convolution-hard-edge-first-order-error.md
+  // The log marginal likelihood differs from the reference by up to 9.8e-6 (coalescent prior, rate 1e-4).
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_prior_rate_1e_4(  1e-4, None,      0.05,  (1e-5, 1e-6))]
+  #[case::no_prior_rate_3e_4(  3e-4, None,      0.025, (1e-5, 1e-6))]
+  #[case::no_prior_rate_1e_3(  1e-3, None,      0.05,  (1e-4, 1e-5))]
+  #[case::coalescent_rate_1e_4(1e-4, Some(5.0), 0.05,  (1e-4, 1e-5))]
+  #[case::coalescent_rate_3e_4(3e-4, Some(5.0), 0.025, (1e-5, 1e-6))]
+  #[case::coalescent_rate_1e_3(1e-3, Some(5.0), 0.05,  (1e-4, 1e-5))]
+  #[trace]
+  fn test_marginal_likelihood_matches_the_reference_with_zero_count_branches_next_to_tips(
+    #[case] rate: f64,
+    #[case] tc: Option<f64>,
+    #[case] spacing: f64,
+    #[case] (max_error, max_reference_error): (f64, f64),
+  ) -> Result<(), Report> {
+    let setup = helpers::setup(&helpers::ZERO_TIP_COUNTS)?;
+    let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
+    let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
+    let backward = propagate_distributions_backward(
+      &setup.graph,
+      &setup.constraints,
+      model.as_ref(),
+      &setup.bad_branches,
+      branches,
+      MaxGridPoints::default(),
+    )?;
+    let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?, None)?.expect("root has a distribution");
+
+    let expected = reference_log_z(&ReferenceInput {
+      graph: &setup.graph,
+      tip_dates: &helpers::tip_dates(&setup),
+      branches: &BranchTime::from_likelihoods(branches)?,
+      factors: model.as_ref().map_or(NodeFactors::None, NodeFactors::Prior),
+      spacing,
+    })?;
+
+    assert!(
+      expected.error() < max_reference_error,
+      "reference log Z error {:.3e} cannot resolve the limit {max_error:e}",
+      expected.error()
+    );
+    pretty_assert_abs_diff_eq!(expected.log_z, actual, epsilon = max_error);
     Ok(())
   }
 
@@ -98,7 +145,9 @@ mod tests {
       ("I", 2011.0),
       ("root", 2005.0),
     ];
-    const COUNTS: [(&str, f64); 4] = [("A", 3.0), ("B", 2.0), ("I", 2.0), ("C", 5.0)];
+    pub(super) const COUNTS: [(&str, f64); 4] = [("A", 3.0), ("B", 2.0), ("I", 2.0), ("C", 5.0)];
+    pub(super) const ZERO_TIP_COUNTS: [(&str, f64); 4] = [("A", 1.0), ("B", 0.0), ("I", 1.0), ("C", 0.0)];
+    const ZERO_COUNT_SPAN: f64 = 20.0;
 
     pub(super) struct Setup {
       pub graph: Graph,
@@ -109,7 +158,7 @@ mod tests {
       pub names: NodeNames,
     }
 
-    pub(super) fn setup() -> Result<Setup, Report> {
+    pub(super) fn setup(counts: &[(&str, f64)]) -> Result<Setup, Report> {
       let parsed = nwk_read(b"((A:3,B:2)I:2,C:5)root;".as_slice())?;
       let names = parsed.names.clone();
       let graph = parsed.graph;
@@ -129,7 +178,7 @@ mod tests {
           .insert(keys[name], Some(Arc::new(Distribution::<NegLog>::point(date, 0.0))));
       }
       let mut branches = unknown_branches(&graph);
-      for (name, k) in COUNTS {
+      for &(name, k) in counts {
         branches.insert(parent_edge_key(&graph, keys[name]), poisson_branch(k)?);
       }
       let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
@@ -145,10 +194,15 @@ mod tests {
 
     fn poisson_branch(k: f64) -> Result<BranchLikelihood, Report> {
       let mean_time = k / (SITES * REFERENCE_RATE);
-      let t = Array1::linspace(1e-4, mean_time * 6.0 + 4.0, 6001);
+      let (start, end) = if k > 0.0 {
+        (1e-4, mean_time * 6.0 + 4.0)
+      } else {
+        (0.0, ZERO_COUNT_SPAN)
+      };
+      let t = Array1::linspace(start, end, 6001);
       let y = t.mapv(|t| {
         let m = t * SITES * REFERENCE_RATE;
-        m - k * m.ln() - (k - k * k.ln())
+        if k > 0.0 { m - k * m.ln() - (k - k * k.ln()) } else { m }
       });
       let f = DistributionFunction::from_start_dx_values(t[0], t[1] - t[0], y)?
         .with_left_extrap(BoundaryBehavior::Hard)?
