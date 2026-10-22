@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <tool>[=<path>]...
+#
+# Install tools of the image configuration: .config/mise.image.toml and
+# .config/mise.image.lock, which the image copies as mise.toml and mise.lock
+# into the folder mise-image next to this script. mise downloads each tool at
+# the URL of the lockfile and checks it against the checksum of the lockfile.
+# A tool given with =<path> gets a link at that path to its install folder, so
+# the image refers to the tool by a fixed path. The installs go to their own
+# mise data folder, /opt/image-tools, because `mise exec` drops every PATH
+# entry that resolves into the install folder of its own data folder before it
+# adds the tools of the current config; with one data folder, /opt/llvm/bin and
+# the Emscripten folder would leave the PATH of every `just` recipe in the
+# development image. The script removes MISE_CACHE_DIR and MISE_STATE_DIR
+# afterwards, so the layer keeps no cache or state of mise.
+#
+set -euxo pipefail
+
+this_dir="$(dirname "${BASH_SOURCE[0]}")"
+config="${this_dir%/}/mise-image"
+export MISE_TRUSTED_CONFIG_PATHS="${config}"
+export MISE_DATA_DIR="/opt/image-tools"
+
+tools=()
+links=()
+while (($# > 0)); do
+  case "${1}" in
+  -*)
+    printf 'Unknown option: %s\n' "${1}" >&2
+    exit 1
+    ;;
+  *=*)
+    tools+=("${1%%=*}")
+    links+=("${1}")
+    ;;
+  *) tools+=("${1}") ;;
+  esac
+  shift
+done
+if [[ ${#tools[@]} -eq 0 ]]; then
+  printf 'Usage: %s <tool>[=<path>]...\n' "$0" >&2
+  exit 1
+fi
+
+mise -C "${config}" install "${tools[@]}"
+
+for link in "${links[@]+"${links[@]}"}"; do
+  path="${link#*=}"
+  mkdir -p "$(dirname "${path}")"
+  ln -sfn "$(mise -C "${config}" where "${link%%=*}")" "${path}"
+done
+
+chmod -R a+rX "${MISE_DATA_DIR}"
+rm -rf "${MISE_CACHE_DIR}" "${MISE_STATE_DIR}"

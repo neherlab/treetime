@@ -3,9 +3,9 @@
 # Usage: $0 <llvm-prefix> <triplet> <gcc-prefix>
 #
 # Make the clang of an LLVM prefix compile and link for a Linux target on the
-# GCC toolchain that install-gcc-cross installed into a GCC prefix. clang reads
-# the configuration <triplet>.cfg next to it whenever it targets the triplet,
-# through --target or through the <triplet>-clang and <triplet>-clang++ links
+# crosstool-NG GCC toolchain in a GCC prefix. clang reads the configuration
+# <triplet>.cfg next to it whenever it targets the triplet, through --target
+# or through the <triplet>-clang and <triplet>-clang++ links
 # that this script creates; the configuration names the sysroot of the
 # toolchain, its GCC installation (crt files, libgcc, libstdc++), and lld. The
 # <triplet>-ar, -nm, -ranlib, -strip, -objcopy, and -readelf links to the LLVM

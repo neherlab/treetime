@@ -74,20 +74,35 @@ RUN set -euxo pipefail >/dev/null \
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
+# mise installs the build toolchains of .config/mise.image.toml here and the
+# tools of .config/mise.toml further down, each at the URLs and checksums of its
+# lockfile, so a change of the development tools keeps the toolchain layers.
+ENV MISE_DATA_DIR="/opt/mise"
+ENV MISE_CACHE_DIR="/tmp/mise/cache"
+ENV MISE_STATE_DIR="/tmp/mise/state"
+COPY dev/docker/files/install-mise dev/docker/files/mise-version /
+RUN set -euxo pipefail >/dev/null \
+&& /install-mise "/usr/local/bin" \
+&& rm /install-mise /mise-version
+COPY dev/docker/files/install-image-tools /
+COPY .config/mise.image.toml /mise-image/mise.toml
+COPY .config/mise.image.lock /mise-image/mise.lock
+
 # clang of LLVM 22 is the C compiler and link driver (`cc` and `c++`), on the C
 # library and the GCC runtime of Ubuntu; the native builds link with mold.
 # OpenBLAS, liblzma, and libzstd are the prebuilt archives of binarylandia, and
 # /.cargo/config.toml, which their install scripts write, makes cargo link them
 # instead of compiling them or asking for shared libraries.
 ENV PATH="/opt/llvm/bin:${PATH}"
-COPY dev/docker/files/install-llvm dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
+COPY dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
-&& /install-llvm "/opt/llvm" \
+&& /install-image-tools "llvm=/opt/llvm" \
+&& clang --version \
 && ln -sf "/opt/llvm/bin/clang" "/usr/local/bin/cc" \
 && ln -sf "/opt/llvm/bin/clang++" "/usr/local/bin/c++" \
 && /install-openblas "x86_64-unknown-linux-gnu" "/opt/openblas" \
 && /install-compression-libs "x86_64-unknown-linux-gnu" "/usr/local" \
-&& rm /install-llvm /install-openblas \
+&& rm /install-openblas \
 && printf 'int main(void) { return 0; }\n' | cc -x c -o /tmp/cc-check - \
 && rm /tmp/cc-check
 
@@ -116,45 +131,56 @@ RUN set -euxo pipefail >/dev/null \
 # mise installs every tool of .config/mise.toml at the URL and sha256 of .config/mise.lock and
 # links their executables into /usr/local/bin. The cargo registry that source
 # builds fetch is a BuildKit cache, so it stays out of the image.
-ENV MISE_DATA_DIR="/opt/mise"
-ENV MISE_CACHE_DIR="/tmp/mise/cache"
-ENV MISE_STATE_DIR="/tmp/mise/state"
-COPY dev/docker/files/install-mise dev/docker/files/mise-version /
 COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
   set -euxo pipefail >/dev/null \
-&& /install-mise "/usr/local/bin" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
 && mise -C "/tmp/mise/project" install \
 && for dir in $(mise -C "/tmp/mise/project" bin-paths); do \
   find -L "${dir}" -mindepth 1 -maxdepth 1 -type f -executable -exec ln -sf -t "/usr/local/bin" {} + ; \
 done \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
-&& rm -rf "/tmp/mise" "/install-mise" "/mise-version" \
+&& rm -rf "/tmp/mise" \
 && just --version \
 && cargo nextest --version \
 && cargo dylint --version
 
 # Emscripten builds the WebAssembly back end of the web2 app for
-# wasm32-unknown-emscripten: rustc links through emcc. OpenBLAS comes prebuilt
-# from binarylandia/build_openblas, and liblzma and libzstd from
-# binarylandia/staticbourg, for this Emscripten version, because Emscripten
-# gives no ABI guarantee between versions; an Emscripten upgrade needs new
-# releases of both first. The single-threaded and the threaded OpenBLAS each get
-# their own prefix, because wasm-ld rejects the single-threaded archive in a
-# threaded link and the compression libraries put their prefix on every link
-# line. Only the emcc front end goes on PATH, so the clang of Emscripten stays
-# out of native builds. The cache holds the prebuilt system libraries, the
-# threaded ones included, and stays writable for its lock and sanity files.
+# wasm32-unknown-emscripten: rustc links through emcc, which finds Node on PATH.
+# OpenBLAS comes prebuilt from binarylandia/build_openblas, and liblzma and
+# libzstd from binarylandia/staticbourg, for this Emscripten version, because
+# Emscripten gives no ABI guarantee between versions; an Emscripten upgrade
+# needs new releases of both first. The single-threaded and the threaded
+# OpenBLAS each get their own prefix, because wasm-ld rejects the
+# single-threaded archive in a threaded link and the compression libraries put
+# their prefix on every link line. Only the emcc front end goes on PATH, so the
+# clang of Emscripten stays out of native builds. emcc runs the configuration
+# .emscripten as Python at start: it names the LLVM and Binaryen of the archive
+# and drops the include paths of the native GCC, which the clang of emcc would
+# search too, mixing the glibc headers of the host into WebAssembly compiles.
+# The cache holds the prebuilt system libraries, the threaded ones included,
+# and stays writable for its lock and sanity files.
 ENV PATH="/opt/emscripten/emscripten:${PATH}"
-COPY dev/docker/files/install-emscripten dev/docker/files/install-openblas-emscripten /
+COPY dev/docker/files/install-openblas-emscripten /
 RUN set -euxo pipefail >/dev/null \
-&& /install-emscripten "/opt/emscripten" \
+&& /install-image-tools "http:emscripten=/opt/emscripten" \
+&& printf '%s\n' \
+  "import os" \
+  "" \
+  "LLVM_ROOT = '/opt/emscripten/bin'" \
+  "BINARYEN_ROOT = '/opt/emscripten'" \
+  "" \
+  "for name in ('C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH'):" \
+  "  os.environ.pop(name, None)" \
+  >"/opt/emscripten/emscripten/.emscripten" \
+&& version="$(MISE_TRUSTED_CONFIG_PATHS="/mise-image" mise -C "/mise-image" current "http:emscripten")" \
+&& grep -qxF -e "${version}-git" "/opt/emscripten/emscripten/emscripten-version.txt" \
+&& emcc --version \
 && /install-openblas-emscripten "st" "/usr/local/wasm32-unknown-emscripten-openblas" \
 && /install-openblas-emscripten "mt" "/usr/local/wasm32-unknown-emscripten-openblas-mt" \
 && /install-compression-libs "wasm32-unknown-emscripten" "/usr/local/wasm32-unknown-emscripten" \
 && chmod -R a+rwX "/opt/emscripten/emscripten/cache" \
-&& rm /install-emscripten /install-openblas-emscripten /install-compression-libs
+&& rm -rf /install-openblas-emscripten /install-compression-libs /install-image-tools /mise-image "/tmp/mise"
 
 # dev/docker/run runs as the host user with HOME=/tmp/home.
 RUN set -euxo pipefail >/dev/null \

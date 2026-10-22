@@ -728,6 +728,21 @@ tools-outdated:
 tools-lock *tools:
     mise lock --platform linux-x64,linux-arm64,macos-x64,macos-arm64 "$@"
 
+# Lock .config/mise.image.lock for the platform of the Docker images after a change to .config/mise.image.toml; name the changed tools to lock only those
+[group("deps")]
+[script]
+tools-lock-image *tools:
+    if [[ $# -eq 0 ]]; then
+      names="$(yq -p toml -o yaml '.tools | keys | .[]' .config/mise.image.toml)"
+      if [[ -z "${names}" ]]; then
+        printf 'No tools found in .config/mise.image.toml\n' >&2
+        exit 1
+      fi
+      readarray -t tools <<<"${names}"
+      set -- "${tools[@]}"
+    fi
+    MISE_ENV=image mise lock --platform linux-x64 "$@"
+
 # Install the JavaScript dependencies from bun.lock
 _js:
     [[ -n "${JS_READY:-}" ]] || bun install --frozen-lockfile --silent

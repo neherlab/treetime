@@ -6,7 +6,13 @@ locked = true
 minimum_release_age = "7d"
 # Releases of the project's own binarylandia organization are exempt from the
 # seven-day wait; their upstream sources still follow it.
-minimum_release_age_excludes = ["github:binarylandia/appville"]
+minimum_release_age_excludes = [
+  "github:binarylandia/appville",
+  "github:binarylandia/build_crosstool-ng",
+  "github:binarylandia/build_llvm",
+  "github:binarylandia/build_osxcross",
+  "github:binarylandia/wine_bcryptprimitives_dll_mock",
+]
 
 [tool_alias]
 cargo-dylint = "github:trailofbits/dylint"

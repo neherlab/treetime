@@ -45,19 +45,40 @@ RUN set -euxo pipefail >/dev/null \
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
+# mise installs the build toolchains of .config/mise.image.toml here and the
+# tools of .config/mise.toml further down, each at the URLs and checksums of its
+# lockfile, so a change of the development tools keeps the toolchain layers.
+ENV MISE_DATA_DIR="/opt/mise"
+ENV MISE_CACHE_DIR="/tmp/mise/cache"
+ENV MISE_STATE_DIR="/tmp/mise/state"
+COPY dev/docker/files/install-mise dev/docker/files/mise-version /
+RUN set -euxo pipefail >/dev/null \
+&& /install-mise "/usr/local/bin" \
+&& rm /install-mise /mise-version
+COPY dev/docker/files/install-image-tools /
+COPY .config/mise.image.toml /mise-image/mise.toml
+COPY .config/mise.image.lock /mise-image/mise.lock
+
+# The <apple-triple>-clang wrappers of osxcross run the clang, ld64.lld, and
+# LLVM tools on PATH, those of the LLVM install. The compiler-rt of osxcross
+# goes into the resource folder of that clang, where clang finds
+# libclang_rt.osx.a for every macOS link.
 ENV LLVM_DIR="/opt/llvm"
 ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
 ENV OSX_CROSS_PATH="/opt/osxcross"
 ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
-COPY dev/docker/files/install-llvm dev/docker/files/install-gcc-cross dev/docker/files/install-clang-target dev/docker/files/install-osxcross dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
+COPY dev/docker/files/install-clang-target dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
 RUN set -euxo pipefail >/dev/null \
-&& /install-llvm "${LLVM_DIR}" \
-&& /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
+&& /install-image-tools "llvm=${LLVM_DIR}" "gcc-${HOST_TUPLE}=${HOST_GCC_DIR}" "osxcross=${OSX_CROSS_PATH}" \
+&& "${LLVM_DIR}/bin/clang" --version \
+&& test -d "${HOST_GCC_DIR}/lib/gcc/${HOST_TUPLE}/16.2.0" \
+&& test -d "${HOST_GCC_DIR}/${HOST_TUPLE}/sysroot" \
 && /install-clang-target "${LLVM_DIR}" "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
-&& /install-osxcross "${OSX_CROSS_PATH}" "${LLVM_DIR}" \
+&& cp -r "${OSX_CROSS_PATH}/compiler-rt/." "$("${LLVM_DIR}/bin/clang" -print-resource-dir)/" \
+&& test -f "${OSX_CROSS_PATH}/SDK/MacOSX11.1.sdk/usr/lib/libSystem.B.tbd" \
 && /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
 && /install-compression-libs "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-llvm /install-gcc-cross /install-clang-target /install-osxcross /install-openblas /install-compression-libs
+&& rm /install-clang-target /install-openblas /install-compression-libs
 
 ENV MACOSX_DEPLOYMENT_TARGET="${CROSS_MACOS_DEPLOYMENT_TARGET}"
 ENV PATH="${OSX_CROSS_PATH}/bin:${LLVM_DIR}/bin:${PATH}"
@@ -94,19 +115,14 @@ RUN set -euxo pipefail >/dev/null \
 # prost-build runs for the UShER protobuf schemas, at the versions, URLs, and
 # sha256 of .config/mise.lock, so the cross and development images run the same
 # tools.
-ENV MISE_DATA_DIR="/opt/mise"
-ENV MISE_CACHE_DIR="/tmp/mise/cache"
-ENV MISE_STATE_DIR="/tmp/mise/state"
-COPY dev/docker/files/install-mise dev/docker/files/mise-version /
 COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
 RUN set -euxo pipefail >/dev/null \
-&& /install-mise "/usr/local/bin" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
 && mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "protoc" \
 && ln -sf -t "/usr/local/bin" \
   "$(mise -C "/tmp/mise/project" which kache)" \
   "$(mise -C "/tmp/mise/project" which protoc)" \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
-&& rm -rf "/tmp/mise" "/install-mise" "/mise-version" "/usr/local/bin/mise" \
+&& rm -rf "/tmp/mise" "/install-image-tools" "/mise-image" "/usr/local/bin/mise" \
 && kache --version \
 && protoc --version

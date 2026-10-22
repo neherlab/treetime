@@ -51,17 +51,35 @@ RUN set -euxo pipefail >/dev/null \
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
+# mise installs the build toolchains of .config/mise.image.toml here and the
+# tools of .config/mise.toml further down, each at the URLs and checksums of its
+# lockfile, so a change of the development tools keeps the toolchain layers.
+ENV MISE_DATA_DIR="/opt/mise"
+ENV MISE_CACHE_DIR="/tmp/mise/cache"
+ENV MISE_STATE_DIR="/tmp/mise/state"
+COPY dev/docker/files/install-mise dev/docker/files/mise-version /
+RUN set -euxo pipefail >/dev/null \
+&& /install-mise "/usr/local/bin" \
+&& rm /install-mise /mise-version
+COPY dev/docker/files/install-image-tools /
+COPY .config/mise.image.toml /mise-image/mise.toml
+COPY .config/mise.image.lock /mise-image/mise.lock
+
 ENV LLVM_DIR="/opt/llvm"
 ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
 ENV CROSS_GCC_DIR="/opt/gcc-${CROSS_MINGW_TRIPLET}"
-COPY dev/docker/files/install-llvm dev/docker/files/install-gcc-cross dev/docker/files/install-clang-target dev/docker/files/install-openblas /
+COPY dev/docker/files/install-clang-target dev/docker/files/install-openblas /
 RUN set -euxo pipefail >/dev/null \
-&& /install-llvm "${LLVM_DIR}" \
-&& /install-gcc-cross "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
+&& /install-image-tools "llvm=${LLVM_DIR}" "gcc-${HOST_TUPLE}=${HOST_GCC_DIR}" "gcc-${CROSS_MINGW_TRIPLET}=${CROSS_GCC_DIR}" \
+&& "${LLVM_DIR}/bin/clang" --version \
+&& for triplet in "${HOST_TUPLE}" "${CROSS_MINGW_TRIPLET}"; do \
+  test -d "/opt/gcc-${triplet}/lib/gcc/${triplet}/16.2.0" \
+  && test -d "/opt/gcc-${triplet}/${triplet}/sysroot" \
+  || exit 1; \
+done \
 && /install-clang-target "${LLVM_DIR}" "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
-&& /install-gcc-cross "${CROSS_MINGW_TRIPLET}" "${CROSS_GCC_DIR}" \
 && /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
-&& rm /install-llvm /install-gcc-cross /install-clang-target /install-openblas
+&& rm /install-clang-target /install-openblas
 
 ENV PATH="${LLVM_DIR}/bin:${CROSS_GCC_DIR}/bin:${PATH}"
 
@@ -112,19 +130,14 @@ ENV WINEDEBUG="err+all,err-winediag,err-ole,fixme-all"
 # prost-build runs for the UShER protobuf schemas, at the versions, URLs, and
 # sha256 of .config/mise.lock, so the cross and development images run the same
 # tools.
-ENV MISE_DATA_DIR="/opt/mise"
-ENV MISE_CACHE_DIR="/tmp/mise/cache"
-ENV MISE_STATE_DIR="/tmp/mise/state"
-COPY dev/docker/files/install-mise dev/docker/files/mise-version /
 COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
 RUN set -euxo pipefail >/dev/null \
-&& /install-mise "/usr/local/bin" \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
 && mise -C "/tmp/mise/project" install "github:kunobi-ninja/kache" "protoc" \
 && ln -sf -t "/usr/local/bin" \
   "$(mise -C "/tmp/mise/project" which kache)" \
   "$(mise -C "/tmp/mise/project" which protoc)" \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
-&& rm -rf "/tmp/mise" "/install-mise" "/mise-version" "/usr/local/bin/mise" \
+&& rm -rf "/tmp/mise" "/install-image-tools" "/mise-image" "/usr/local/bin/mise" \
 && kache --version \
 && protoc --version

@@ -1,0 +1,110 @@
+# Build toolchains of the Docker images in dev/docker/. Each image copies this
+# file and .config/mise.image.lock into a folder of its own and installs the
+# tools it needs with dev/docker/files/install-image-tools, at the URL and
+# checksum of the lockfile. Hosts do not load this file; `just tools-lock-image`
+# locks it (MISE_ENV=image) for linux-x64, the only platform of the images.
+
+[settings]
+lockfile = true
+locked = true
+
+[tool_alias]
+gcc-aarch64-unknown-linux-gnu = "github:binarylandia/build_crosstool-ng"
+gcc-aarch64-unknown-linux-musl = "github:binarylandia/build_crosstool-ng"
+gcc-x86_64-unknown-linux-gnu = "github:binarylandia/build_crosstool-ng"
+gcc-x86_64-unknown-linux-musl = "github:binarylandia/build_crosstool-ng"
+gcc-x86_64-w64-mingw32 = "github:binarylandia/build_crosstool-ng"
+llvm = "github:binarylandia/build_llvm"
+llvm-mingw = "github:binarylandia/build_llvm"
+osxcross = "github:binarylandia/build_osxcross"
+wine-bcryptprimitives = "github:binarylandia/wine_bcryptprimitives_dll_mock"
+
+# clang, lld, and the LLVM binary tools. The pattern excludes the llvm-mingw
+# archive of the same release.
+[tools.llvm]
+version = "22.1.8-2026-10-18_10-26-24"
+version_prefix = "llvm-"
+
+[tools.llvm.platforms]
+linux-x64 = { asset_pattern = "llvm-[0-9]*.tar.zst" }
+
+# The static UCRT MinGW sysroots of x86_64-w64-mingw32 and aarch64-w64-mingw32,
+# compiler-rt for Windows, and the <triple>-clang drivers, which load the
+# sysroot, compiler-rt, libunwind, and lld from the <triple>.cfg files next to
+# them. The Windows images copy it over the LLVM install.
+[tools.llvm-mingw]
+version = "22.1.8-2026-10-18_10-26-24"
+version_prefix = "llvm-"
+
+[tools.llvm-mingw.platforms]
+linux-x64 = { asset_pattern = "llvm-mingw-*.tar.zst" }
+
+# GCC 16 toolchains of crosstool-NG, one per triplet: the sysroot (glibc 2.17,
+# musl 1.2.6, or mingw-w64 on msvcrt), the crt files, libgcc, and libstdc++.
+# clang compiles and links on them (dev/docker/files/install-clang-target);
+# the Windows 7 image compiles with the MinGW GCC itself.
+[tools.gcc-aarch64-unknown-linux-gnu]
+version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version_prefix = "gcc-"
+
+[tools.gcc-aarch64-unknown-linux-gnu.platforms]
+linux-x64 = { asset_pattern = "gcc-16.2.0-aarch64-unknown-linux-gnu-*.tar.xz" }
+
+[tools.gcc-aarch64-unknown-linux-musl]
+version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version_prefix = "gcc-"
+
+[tools.gcc-aarch64-unknown-linux-musl.platforms]
+linux-x64 = { asset_pattern = "gcc-16.2.0-aarch64-unknown-linux-musl-*.tar.xz" }
+
+[tools.gcc-x86_64-unknown-linux-gnu]
+version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version_prefix = "gcc-"
+
+[tools.gcc-x86_64-unknown-linux-gnu.platforms]
+linux-x64 = { asset_pattern = "gcc-16.2.0-x86_64-unknown-linux-gnu-*.tar.xz" }
+
+[tools.gcc-x86_64-unknown-linux-musl]
+version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version_prefix = "gcc-"
+
+[tools.gcc-x86_64-unknown-linux-musl.platforms]
+linux-x64 = { asset_pattern = "gcc-16.2.0-x86_64-unknown-linux-musl-*.tar.xz" }
+
+[tools.gcc-x86_64-w64-mingw32]
+version = "15.3.0_16.2.0-2026-10-18_08-33-54"
+version_prefix = "gcc-"
+
+[tools.gcc-x86_64-w64-mingw32.platforms]
+linux-x64 = { asset_pattern = "gcc-16.2.0-x86_64-w64-mingw32-*.tar.xz" }
+
+# osxcross (llvm flavor) with the macOS 11.1 SDK and compiler-rt. Its
+# <apple-triple>-clang wrappers run the clang, ld64.lld, and LLVM tools on PATH.
+[tools.osxcross]
+version = "27d21e4-sdk11.1-2026-10-18_09-15-29"
+version_prefix = "osxcross-"
+
+[tools.osxcross.platforms]
+linux-x64 = { asset_pattern = "osxcross-*.tar.zst" }
+
+# The archive that `emsdk install <version>` downloads: emcc, the LLVM and
+# Binaryen it runs, and its prebuilt system libraries. The build id in the URL
+# is the entry of the version in emscripten-releases-tags.json of emsdk. Google
+# publishes no checksum, so the reviewed sha256 is given here.
+[tools."http:emscripten"]
+version = "6.0.10"
+url = "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/666337b525e673e769121856d175f6f52b8ead64/wasm-binaries.tar.xz"
+checksum = "sha256:a51dd2829bdf725d268974728e032533b106ea01cb482a62288ec12627a7abbe"
+strip_components = 1
+
+# A bcryptprimitives.dll stub, which Rust programs need to start under Wine;
+# dev/cross/run copies it into the Wine prefix. The release publishes no
+# checksum, so the reviewed sha256 is given here; the lockfile holds the blake3
+# that mise computed from the download that matched it.
+[tools.wine-bcryptprimitives]
+version = "2024-11-04_16-27-34"
+bin = "bcryptprimitives.dll"
+checksum = "sha256:507925300ab075f09f6aa20db3eb004fe0aec0dbc5565ef1abb4ad35499c2961"
+
+[tools.wine-bcryptprimitives.platforms]
+linux-x64 = { asset_pattern = "bcryptprimitives.dll-*.gz" }
