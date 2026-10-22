@@ -25,8 +25,8 @@ pub(crate) fn validate_aa_args(
 
   let Some(template) = translations else {
     return Err(argument_error(
-      &["translations", "cdses", "annotation", "aa_root_sequence"],
-      "--translations is required when using --cdses, --annotation, or --aa-root-sequence",
+      &["translations", "cds_selection", "annotation", "aa_root_sequence"],
+      "--translations is required when using --cds-selection, --annotation, or --aa-root-sequence",
     ));
   };
 
@@ -52,8 +52,8 @@ pub(crate) fn validate_aa_args(
 
   if cdses.is_empty() && annotation.is_none() {
     return Err(argument_error(
-      &["cdses", "annotation"],
-      "--cdses must list at least one CDS, or pass --annotation to derive the CDS set",
+      &["cds_selection", "annotation"],
+      "--cds-selection must list at least one CDS, or pass --annotation to derive the CDS set",
     ));
   }
 
@@ -63,12 +63,15 @@ pub(crate) fn validate_aa_args(
   let mut seen = BTreeSet::new();
   for cds in cdses {
     if cds.is_empty() {
-      return Err(argument_error(&["cdses"], "--cdses must not contain an empty CDS name"));
+      return Err(argument_error(
+        &["cds_selection"],
+        "--cds-selection must not contain an empty CDS name",
+      ));
     }
     if !seen.insert(cds) {
       return Err(argument_error(
-        &["cdses"],
-        format!("--cdses contains duplicate CDS '{cds}'"),
+        &["cds_selection"],
+        format!("--cds-selection contains duplicate CDS '{cds}'"),
       ));
     }
   }

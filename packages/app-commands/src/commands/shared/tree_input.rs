@@ -77,12 +77,12 @@ pub struct TreeDialectArgs {
     clap(long, value_enum, default_value_t = TreeDialectArg::default(), help_heading = "Input data")
   )]
   #[deser(as = DisplayFromStr)]
-  pub tree_dialect: TreeDialectArg,
+  pub newick_dialect: TreeDialectArg,
 }
 
 impl TreeDialectArgs {
   pub fn dialect(&self) -> NewickDialect {
-    self.tree_dialect.dialect()
+    self.newick_dialect.dialect()
   }
 }
 

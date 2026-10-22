@@ -126,7 +126,7 @@ impl AppCommandExt for AppCommand {
       Self::Homoplasy => &["method_anc", "model", "gap_fill", "constant_sites", "drms", "rescale"],
       Self::Mugration => &["attribute", "weights", "pc", "missing_data", "sampling_bias_correction"],
       Self::Optimize => &[
-        "opt_method",
+        "optimizer",
         "reroot",
         "outgroup",
         "keep_root",

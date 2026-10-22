@@ -8,7 +8,7 @@ const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 
 /// Metadata identity and delimiter options shared by every command that reads a metadata table.
 ///
-/// `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
+/// `--metadata-id-columns` lists the candidate columns holding the taxon
 /// identifier that links a metadata row to a tree tip; the first column present in the header wins.
 /// Matching is case-insensitive (see `treetime-io` column detection). `--metadata-delimiters` lists
 /// candidate field separators; the delimiter actually present in the file is used.
@@ -25,8 +25,7 @@ pub struct MetadataIdArgs {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long = "metadata-id-columns",
-      visible_alias = "name-column",
+      long,
       num_args = 1..,
       value_delimiter = ',',
       value_name = "COLUMN",

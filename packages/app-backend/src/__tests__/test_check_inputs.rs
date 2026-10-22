@@ -239,7 +239,7 @@ mod tests {
           &[]
         };
         let reads_tree = command.inputs().iter().any(|input| input.kind == InputKind::Tree);
-        let tree_keys: &[&str] = if reads_tree { &["tree_dialect"] } else { &[] };
+        let tree_keys: &[&str] = if reads_tree { &["newick_dialect"] } else { &[] };
         command
           .inputs()
           .iter()
@@ -261,15 +261,15 @@ mod tests {
   #[case::default_dialect(  json!(null),            (Some(4), vec![]))]
   #[trace]
   fn test_check_inputs_reads_the_tree_in_the_configured_dialect(
-    #[case] tree_dialect: serde_json::Value,
+    #[case] newick_dialect: serde_json::Value,
     #[case] expected: (Option<usize>, Vec<InputKind>),
   ) {
     let dir = tempdir().unwrap();
     let tree = dir.path().join("tree.nwk");
     fs::write(&tree, "((A:1,(B:1)#H0:0.5):1,(#H0:0.7,C:1):1);\n").unwrap();
     let mut config = json!({ "tree": tree });
-    if !tree_dialect.is_null() {
-      config["tree_dialect"] = tree_dialect;
+    if !newick_dialect.is_null() {
+      config["newick_dialect"] = newick_dialect;
     }
 
     let facts = check_inputs(&request(AppCommand::Clock, config)).unwrap();

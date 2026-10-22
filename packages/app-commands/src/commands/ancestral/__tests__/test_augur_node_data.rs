@@ -455,7 +455,7 @@ mod tests {
           ..ModelArgs::default()
         },
         translations: Some(template),
-        cdses: vec![o!("S"), o!("M")],
+        cds_selection: vec![o!("S"), o!("M")],
         output: OutputCoreArgs {
           output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
           ..Default::default()

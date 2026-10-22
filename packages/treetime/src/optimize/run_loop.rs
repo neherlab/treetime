@@ -435,7 +435,7 @@ pub(crate) fn apply_initial_guess_mode(
     InitialGuessMode::Never => {
       if !invalid_branch_lengths.is_empty() {
         return make_error!(
-          "--branch-length-initial-guess=never requires every edge to have a finite, non-negative branch length. \
+          "--initial-branch-lengths=never requires every edge to have a finite, non-negative branch length. \
            Invalid edges:\n  {}\n\
            Use 'auto' to fill in missing values or 'always' to recompute all branch lengths",
           invalid_branch_lengths.join("\n  ")
@@ -443,7 +443,7 @@ pub(crate) fn apply_initial_guess_mode(
       }
       if indels.has_indel_edge_with_zero_length(graph, branch_lengths) {
         return make_error!(
-          "--branch-length-initial-guess=never requires non-zero branch lengths on edges that carry indels, \
+          "--initial-branch-lengths=never requires non-zero branch lengths on edges that carry indels, \
            but some indel-bearing edges have branch length zero. \
            The Poisson indel log-likelihood diverges at t=0 when k>0, so zero is not a valid input there. \
            Use 'auto' or 'always' to bootstrap these edges, or provide positive branch lengths"
@@ -458,8 +458,8 @@ pub(super) fn invalid_branch_length_warning(invalid_branch_lengths: &[String]) -
   (!invalid_branch_lengths.is_empty()).then(|| {
     format!(
       "Input tree contains invalid branch lengths (expected finite values >= 0):\n  {}\n\
-       Use --branch-length-initial-guess=auto to replace invalid values or \
-       --branch-length-initial-guess=always to recompute all branch lengths",
+       Use --initial-branch-lengths=auto to replace invalid values or \
+       --initial-branch-lengths=always to recompute all branch lengths",
       invalid_branch_lengths.join("\n  ")
     )
   })

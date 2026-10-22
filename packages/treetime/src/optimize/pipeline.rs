@@ -74,13 +74,13 @@ pub fn run(
     if !params.loop_settings.topology_ops.merge_siblings {
       progress_warn!(
         log,
-        "--no-merge-siblings has no effect with --representation dense: sibling merging requires the sparse sequence representation"
+        "--no-merge-shared-mutations has no effect with --representation dense: sibling merging requires the sparse sequence representation"
       );
     }
     if !params.loop_settings.topology_ops.flip_parent_child {
       progress_warn!(
         log,
-        "--no-flip-parent-child has no effect with --representation dense: the reversion hoist requires the sparse sequence representation"
+        "--no-hoist-reversions has no effect with --representation dense: the reversion hoist requires the sparse sequence representation"
       );
     }
   }

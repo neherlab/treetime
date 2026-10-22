@@ -39,7 +39,7 @@ pub fn run_prune(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let parse = read_input_tree(args.tree(), args.tree_dialect.dialect(), log)?;
+  let parse = read_input_tree(args.tree(), args.newick_dialect.dialect(), log)?;
   let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths_input = parse.branch_lengths;
@@ -110,7 +110,7 @@ pub fn run_prune(
   let topology_order =
     args
       .topology_order
-      .resolve_topology_order(&graph, &names, Some(input_order), args.tree_dialect.dialect())?;
+      .resolve_topology_order(&graph, &names, Some(input_order), args.newick_dialect.dialect())?;
   topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   stages.report("Writing output", 0.8, "");
 

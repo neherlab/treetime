@@ -11,7 +11,7 @@
       "x-unset": true,
       "x-cli-flag": "--tree"
     },
-    "tree_dialect": {
+    "newick_dialect": {
       "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
       "type": "string",
       "enum": [
@@ -29,7 +29,7 @@
         "rich,mrbayes"
       ],
       "default": "classic,beast",
-      "x-cli-flag": "--tree-dialect"
+      "x-cli-flag": "--newick-dialect"
     },
     "attribute": {
       "description": "Attribute to reconstruct, e.g. country",
@@ -106,13 +106,13 @@
       "default": 0.5,
       "x-cli-flag": "--missing-weights-threshold"
     },
-    "iterations": {
+    "model_iterations": {
       "description": "Number of iterations for GTR model refinement from data.",
       "type": "integer",
       "format": "uint",
       "minimum": 0,
       "default": 5,
-      "x-cli-flag": "--iterations"
+      "x-cli-flag": "--model-iterations"
     },
     "sampling_bias_correction": {
       "description": "Rough estimate of how many more events would have been observed if sequences represented an\neven sample.",

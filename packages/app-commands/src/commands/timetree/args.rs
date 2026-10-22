@@ -253,7 +253,7 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub tree_dialect: TreeDialectArgs,
+  pub newick_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -486,7 +486,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Path to output iteration-statistics tracelog CSV (monitors convergence).
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, visible_alias = "tracelog", value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tracelog: Option<PathBuf>,
 

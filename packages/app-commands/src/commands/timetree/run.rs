@@ -289,7 +289,7 @@ fn write_result_outputs(
     &graph,
     &names,
     Some(inputs.input_leaf_order),
-    args.tree_dialect.dialect(),
+    args.newick_dialect.dialect(),
   )?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
 

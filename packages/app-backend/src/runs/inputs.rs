@@ -122,7 +122,7 @@ pub fn template_input_paths(config: &Map<String, Value>, key: &str) -> Result<Ve
     return Ok(vec![]);
   };
   let cdses = config
-    .get("cdses")
+    .get("cds_selection")
     .and_then(Value::as_array)
     .map(|names| names.iter().filter_map(Value::as_str).map(str::to_owned).collect_vec())
     .unwrap_or_default();

@@ -188,16 +188,21 @@ mod tests {
   }
 
   #[test]
-  fn test_timetree_output_tracelog_parses_with_alias() {
-    let canonical =
+  fn test_timetree_output_tracelog_parses() {
+    let args =
       TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-tracelog=/tmp/trace.csv"])
         .unwrap();
-    assert_eq!(canonical.output_tracelog.as_deref(), Some(Path::new("/tmp/trace.csv")));
+    assert_eq!(args.output_tracelog.as_deref(), Some(Path::new("/tmp/trace.csv")));
+  }
 
-    let aliased =
-      TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--tracelog=/tmp/trace.csv"])
-        .unwrap();
-    assert_eq!(aliased.output_tracelog.as_deref(), Some(Path::new("/tmp/trace.csv")));
+  #[test]
+  fn test_timetree_rejects_tracelog_without_output_prefix() {
+    let result =
+      TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--tracelog=/tmp/trace.csv"]);
+    assert_eq!(
+      Err(ErrorKind::UnknownArgument),
+      result.map(|_| ()).map_err(|error| error.kind())
+    );
   }
 
   #[test]

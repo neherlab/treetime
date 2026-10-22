@@ -35,10 +35,10 @@ ANCESTRAL = {
     'marginal': ('exact', []),
     'parsimony': ('exact', ['--method-anc', 'parsimony']),
 }
-KEEP_TOPOLOGY = ['--no-collapse-short-branches', '--no-merge-siblings', '--no-flip-parent-child']
+KEEP_TOPOLOGY = ['--no-collapse-zero-branches', '--no-merge-shared-mutations', '--no-hoist-reversions']
 OPTIMIZE = {
     'fixed-topo': ('perturbed', KEEP_TOPOLOGY),
-    'fixed-topo-dense': ('perturbed', ['--no-collapse-short-branches', '--representation', 'dense']),
+    'fixed-topo-dense': ('perturbed', ['--no-collapse-zero-branches', '--representation', 'dense']),
     'default': ('perturbed', []),
 }
 ROOTING = {'keep': ('realized', ['--keep-root']), 'reroot': ('realized', ['--reroot', 'least-squares'])}

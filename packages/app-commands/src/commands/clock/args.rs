@@ -73,7 +73,7 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub tree_dialect: TreeDialectArgs,
+  pub newick_dialect: TreeDialectArgs,
 
   /// Metadata table (CSV or TSV) with one row per sample
   ///

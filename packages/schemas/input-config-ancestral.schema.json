@@ -21,7 +21,7 @@
       "x-unset": true,
       "x-cli-flag": "--tree"
     },
-    "tree_dialect": {
+    "newick_dialect": {
       "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
       "type": "string",
       "enum": [
@@ -39,7 +39,7 @@
         "rich,mrbayes"
       ],
       "default": "classic,beast",
-      "x-cli-flag": "--tree-dialect"
+      "x-cli-flag": "--newick-dialect"
     },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -146,23 +146,23 @@
       "x-cli-flag": "--output-reconstructed-nuc-fasta"
     },
     "translations": {
-      "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cdses` (or each\nCDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
+      "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each\nCDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
       "type": "string",
       "x-path": "input-template",
       "x-unset": true,
       "x-cli-flag": "--translations"
     },
-    "cdses": {
+    "cds_selection": {
       "description": "CDS names to reconstruct from `--translations`.\n\nWhen omitted, the CDS set is derived from `--annotation`.",
       "type": "array",
       "items": {
         "type": "string"
       },
       "default": [],
-      "x-cli-flag": "--cdses"
+      "x-cli-flag": "--cds-selection"
     },
     "annotation": {
-      "description": "GFF3 file with CDS coordinates for Augur node data annotations.\n\nAlso supplies the CDS set when `--cdses` is omitted.",
+      "description": "GFF3 file with CDS coordinates for Augur node data annotations.\n\nAlso supplies the CDS set when `--cds-selection` is omitted.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,

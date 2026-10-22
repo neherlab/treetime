@@ -111,13 +111,13 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::no_merge_siblings_dense(         &["--representation", "dense", "--no-merge-siblings"],            Some((o!("--no-merge-siblings applies only to the sparse representation, but --representation is dense"), ["no_merge_siblings", "representation"])))]
-  #[case::no_flip_parent_child_dense(      &["--representation", "dense", "--no-flip-parent-child"],         Some((o!("--no-flip-parent-child applies only to the sparse representation, but --representation is dense"), ["no_flip_parent_child", "representation"])))]
-  #[case::no_merge_siblings_sparse(        &["--representation", "sparse", "--no-merge-siblings"],           None)]
-  #[case::no_merge_siblings_auto(          &["--no-merge-siblings", "--no-flip-parent-child"],                None)]
-  #[case::partition_rates_one_file(        &["--partition-rates", "estimate"],                                Some((o!("--partition-rates applies only with two or more partitions, but the run has 1 partition: each --alignment file is one partition"), ["partition_rates", "alignment"])))]
-  #[case::partition_rates_two_files(       &["--partition-rates", "estimate", "--alignment", "b.fasta"],      None)]
-  #[case::documented_defaults(             &["--representation", "dense"],                                    None)]
+  #[case::no_merge_shared_mutations_dense(  &["--representation", "dense", "--no-merge-shared-mutations"],  Some((o!("--no-merge-shared-mutations applies only to the sparse representation, but --representation is dense"), ["no_merge_shared_mutations", "representation"])))]
+  #[case::no_hoist_reversions_dense(        &["--representation", "dense", "--no-hoist-reversions"],        Some((o!("--no-hoist-reversions applies only to the sparse representation, but --representation is dense"), ["no_hoist_reversions", "representation"])))]
+  #[case::no_merge_shared_mutations_sparse( &["--representation", "sparse", "--no-merge-shared-mutations"], None)]
+  #[case::no_merge_shared_mutations_auto(   &["--no-merge-shared-mutations", "--no-hoist-reversions"],      None)]
+  #[case::partition_rates_one_file(         &["--partition-rates", "estimate"],                             Some((o!("--partition-rates applies only with two or more partitions, but the run has 1 partition: each --alignment file is one partition"), ["partition_rates", "alignment"])))]
+  #[case::partition_rates_two_files(        &["--partition-rates", "estimate", "--alignment", "b.fasta"],   None)]
+  #[case::documented_defaults(              &["--representation", "dense"],                                 None)]
   #[trace]
   fn test_dependent_settings_optimize(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {
     let argv = [&["optimize", "--tree", "t.nwk", "--alignment", "a.fasta"][..], extra].concat();

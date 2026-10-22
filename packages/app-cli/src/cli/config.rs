@@ -123,10 +123,10 @@ mod tests {
 
   #[test]
   fn test_config_apply_cli_overrides_replaces_array_leaf_wholesale() {
-    let mut merged = json!({ "cdses": ["a", "b", "c"] });
-    let cli = json!({ "cdses": ["x"] });
-    apply_cli_overrides(&mut merged, &cli, &ids(&["cdses"]));
-    assert_eq!(json!({ "cdses": ["x"] }), merged);
+    let mut merged = json!({ "cds_selection": ["a", "b", "c"] });
+    let cli = json!({ "cds_selection": ["x"] });
+    apply_cli_overrides(&mut merged, &cli, &ids(&["cds_selection"]));
+    assert_eq!(json!({ "cds_selection": ["x"] }), merged);
   }
 
   mod end_to_end {

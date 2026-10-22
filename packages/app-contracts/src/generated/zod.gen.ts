@@ -1432,7 +1432,7 @@ export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',
@@ -1539,7 +1539,7 @@ export const zClockOutputSelection = z.enum([
  */
 export const zClockConfig = z.strictObject({
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',
@@ -1635,7 +1635,7 @@ export const zAncestralAmbiguityOutput = z.union([
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',
@@ -1666,7 +1666,7 @@ export const zAncestralConfig = z.strictObject({
   output_gtr: z.string().optional(),
   output_reconstructed_nuc_fasta: z.string().optional(),
   translations: z.string().optional(),
-  cdses: z.array(z.string()).optional(),
+  cds_selection: z.array(z.string()).optional(),
   annotation: z.string().optional(),
   aa_root_sequence: z.string().optional(),
   aa_model: zAaModelName.optional(),
@@ -1712,7 +1712,7 @@ export const zHomoplasyOutputSelection = z.enum([
 export const zHomoplasyConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',
@@ -1786,7 +1786,7 @@ export const zMugrationAmbiguityOutput = z.union([
  */
 export const zMugrationConfig = z.strictObject({
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',
@@ -1809,7 +1809,7 @@ export const zMugrationConfig = z.strictObject({
   pc: z.number().optional(),
   missing_data: z.string().optional(),
   missing_weights_threshold: z.number().optional(),
-  iterations: z.int().gte(0).optional(),
+  model_iterations: z.int().gte(0).optional(),
   sampling_bias_correction: z.number().optional(),
   smooth_initial_pi: z.boolean().optional(),
   filter_uninformative_root: z.boolean().optional(),
@@ -1887,7 +1887,7 @@ export const zOptimizeRerootMethod = z.enum(['min-dev']);
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',
@@ -1927,16 +1927,16 @@ export const zOptimizeConfig = z.strictObject({
   topology_order_target_file: z.string().optional(),
   topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   max_iter: z.int().gte(0).optional(),
-  dp: z.number().optional(),
+  tolerance: z.number().optional(),
   damping: z.number().optional(),
-  branch_length_initial_guess: zInitialGuessMode.optional(),
-  opt_method: zBranchOptMethod.optional(),
+  initial_branch_lengths: zInitialGuessMode.optional(),
+  optimizer: zBranchOptMethod.optional(),
   reroot: zOptimizeRerootMethod.optional(),
   outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
-  no_collapse_short_branches: z.boolean().optional(),
-  no_merge_siblings: z.boolean().optional(),
-  no_flip_parent_child: z.boolean().optional(),
+  no_collapse_zero_branches: z.boolean().optional(),
+  no_merge_shared_mutations: z.boolean().optional(),
+  no_hoist_reversions: z.boolean().optional(),
   gap_fill: zGapFill.optional()
 });
 
@@ -1961,7 +1961,7 @@ export const zPruneOutputSelection = z.enum([
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
-  tree_dialect: z.enum([
+  newick_dialect: z.enum([
     'classic,plain',
     'classic,beast',
     'classic,nhx',

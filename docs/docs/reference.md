@@ -114,11 +114,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `-a`, `--alignment <FILEPATH>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -132,7 +132,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — Metadata table (CSV or TSV) with one row per sample
 
    `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
-* `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
+* `--metadata-id-columns <COLUMN>` — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
 
    The first listed column that is present in the header is used. Matching is case-insensitive.
 
@@ -203,10 +203,10 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    With one tip, the root is placed on the branch leading to that tip.
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+* `--model-params <MODEL_PARAMS>` — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
    The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-* `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
+* `--model <MODEL>` — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
@@ -309,7 +309,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--output-confidence-tsv <OUTPUT_CONFIDENCE_TSV>` — Path to output date-confidence-interval TSV.
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
-* `--output-tracelog <OUTPUT_TRACELOG>` [alias: `tracelog`] — Path to output iteration-statistics tracelog CSV (monitors convergence).
+* `--output-tracelog <OUTPUT_TRACELOG>` — Path to output iteration-statistics tracelog CSV (monitors convergence).
 
    Takes precedence over paths configured with `--output-all` and `--output-selection`.
 * `--output-coalescent-tsv <OUTPUT_COALESCENT_TSV>` — Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
@@ -435,7 +435,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Possible values: `mean`, `median`
 
-* `--seed <SEED>` [alias: `rng-seed`] — Random seed
+* `--seed <SEED>` — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
@@ -472,11 +472,11 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `-a`, `--alignment <FILEPATH>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -496,10 +496,10 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--zero-based` — Report sequence positions counted from 0 instead of 1.
 
    Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+* `--model-params <MODEL_PARAMS>` — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
    The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-* `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
+* `--model <MODEL>` — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
@@ -669,13 +669,13 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
 
   Default value: `10`
-* `--dp <DP>` — Likelihood convergence threshold. The loop stops when successive likelihoods differ by less than this value, or when a 2-cycle with amplitude below this value is detected
+* `--tolerance <TOLERANCE>` — Likelihood convergence threshold. The loop stops when successive likelihoods differ by less than this value, or when a 2-cycle with amplitude below this value is detected
 
   Default value: `0.1`
 * `--damping <DAMPING>` — Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$, where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation; zero disables damping. Must be in $[0,1)$
 
   Default value: `0`
-* `--branch-length-initial-guess <BRANCH_LENGTH_INITIAL_GUESS>` — Initial branch length estimate before the per-edge optimization.
+* `--initial-branch-lengths <INITIAL_BRANCH_LENGTHS>` — Initial branch length estimate before the per-edge optimization.
 
    - auto: estimate only edges with missing or invalid branch lengths, preserve valid input values (default) - always: estimate all edges, overwriting input branch lengths - never: use input branch lengths as-is; fails if any are missing
 
@@ -689,7 +689,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
   - `never`:
     Use input branch lengths as-is. Fails if any edge has a missing or invalid branch length
 
-* `--opt-method <OPT_METHOD>` — Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are `brent` (default) and `newton`
+* `--optimizer <OPTIMIZER>` — Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are `brent` (default) and `newton`
 
   Default value: `brent`
 
@@ -709,13 +709,13 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
    With one tip, the root is placed on the branch leading to that tip.
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
-* `--no-collapse-short-branches` — Disable collapsing of internal branches whose optimized length is zero.
+* `--no-collapse-zero-branches` — Disable collapsing of internal branches whose optimized length is zero.
 
    By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero.
-* `--no-merge-siblings` — Disable merging of polytomy siblings that share substitutions.
+* `--no-merge-shared-mutations` — Disable merging of polytomy siblings that share substitutions.
 
    By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. The step and the flag apply only to the sparse representation.
-* `--no-flip-parent-child` — Disable the flip-parent-child step (reversion hoist) in polytomies.
+* `--no-hoist-reversions` — Disable the reversion hoist in polytomies.
 
    By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. The step and the flag apply only to the sparse representation.
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
@@ -740,11 +740,11 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `-a`, `--alignment <FILEPATH>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -918,11 +918,11 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `-a`, `--alignment <FILEPATH>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -936,10 +936,10 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+* `--model-params <MODEL_PARAMS>` — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
    The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-* `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
+* `--model <MODEL>` — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
@@ -1025,13 +1025,13 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
    With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 * `--translations <TRANSLATIONS>` — Path template for per-CDS amino-acid FASTA alignments.
 
-   The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade `--output-translations`) and `%GENE` (augur) placeholders are accepted.
-* `--cdses <CDS>` [alias: `genes`] — CDS names to reconstruct from `--translations`.
+   The template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each CDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade `--output-translations`) and `%GENE` (augur) placeholders are accepted.
+* `--cds-selection <CDS>` — CDS names to reconstruct from `--translations`.
 
    When omitted, the CDS set is derived from `--annotation`.
 * `--annotation <ANNOTATION>` — GFF3 file with CDS coordinates for Augur node data annotations.
 
-   Also supplies the CDS set when `--cdses` is omitted.
+   Also supplies the CDS set when `--cds-selection` is omitted.
 * `--aa-root-sequence <AA_ROOT_SEQUENCE>` — FASTA file with one amino-acid root/reference sequence per CDS.
 
    The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and always omit `X` and gaps.
@@ -1168,7 +1168,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Possible values: `mean`, `median`
 
-* `--seed <SEED>` [alias: `rng-seed`] — Random seed
+* `--seed <SEED>` — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
@@ -1186,7 +1186,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -1197,7 +1197,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — Metadata table (CSV or TSV) with one row per sample
 
    `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
-* `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
+* `--metadata-id-columns <COLUMN>` — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
 
    The first listed column that is present in the header is used. Matching is case-insensitive.
 
@@ -1359,11 +1359,11 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+* `-a`, `--alignment <FILEPATH>` — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -1377,10 +1377,10 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+* `--model-params <MODEL_PARAMS>` — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
    The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-* `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
+* `--model <MODEL>` — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
@@ -1444,7 +1444,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `argmax`, `root`, `all`
 
-* `--seed <SEED>` [alias: `rng-seed`] — Random seed
+* `--seed <SEED>` — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
@@ -1594,7 +1594,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
 * `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-t`, `--tree <TREE>` — Tree in Newick format
-* `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
+* `--newick-dialect <NEWICK_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
    A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
 
@@ -1607,7 +1607,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
    `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
 * `-w`, `--weights <WEIGHTS>` — CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
-* `--metadata-id-columns <COLUMN>` [alias: `name-column`] — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
+* `--metadata-id-columns <COLUMN>` — Candidate column name(s) holding the taxon identifier that links metadata to tree tips
 
    The first listed column that is present in the header is used. Matching is case-insensitive.
 
@@ -1629,7 +1629,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 * `--missing-weights-threshold <MISSING_WEIGHTS_THRESHOLD>` — Portion of attribute values that is allowed to not have weights in the weights file
 
   Default value: `0.5`
-* `--iterations <ITERATIONS>` — Number of iterations for GTR model refinement from data
+* `--model-iterations <MODEL_ITERATIONS>` — Number of iterations for GTR model refinement from data
 
   Default value: `5`
 * `--sampling-bias-correction <SAMPLING_BIAS_CORRECTION>` — Rough estimate of how many more events would have been observed if sequences represented an even sample

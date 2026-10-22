@@ -91,7 +91,7 @@ pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub tree_dialect: TreeDialectArgs,
+  pub newick_dialect: TreeDialectArgs,
 
   /// Attribute to reconstruct, e.g. country
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
@@ -159,7 +159,7 @@ pub struct TreetimeMugrationArgsRaw {
     clap(long, default_value_t = 5, help_heading = "Substitution model")
   )]
   #[default = 5]
-  pub iterations: usize,
+  pub model_iterations: usize,
 
   /// Rough estimate of how many more events would have been observed if sequences represented an
   /// even sample.

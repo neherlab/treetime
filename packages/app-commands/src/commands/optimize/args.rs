@@ -39,8 +39,8 @@ pub struct TreetimeOptimizeArgs {
   #[deref_mut]
   pub(crate) raw: TreetimeOptimizeArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) branch_length_initial_guess: InitialGuessMode,
-  pub(crate) opt_method: BranchOptMethod,
+  pub(crate) initial_branch_lengths: InitialGuessMode,
+  pub(crate) optimizer: BranchOptMethod,
   pub(crate) indel_policy: IndelPolicy,
   pub(crate) topology_ops: TopologyOps,
   pub(crate) model: GtrModel,
@@ -84,13 +84,13 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
     check_dependent_settings(&raw)?;
     Ok(Self {
       tree,
-      branch_length_initial_guess: raw.branch_length_initial_guess.into(),
-      opt_method: raw.opt_method.into(),
+      initial_branch_lengths: raw.initial_branch_lengths.into(),
+      optimizer: raw.optimizer.into(),
       indel_policy: raw.branch_lengths.indel_policy(),
       topology_ops: TopologyOps {
-        collapse_short_branches: !raw.no_collapse_short_branches,
-        merge_siblings: !raw.no_merge_siblings,
-        flip_parent_child: !raw.no_flip_parent_child,
+        collapse_short_branches: !raw.no_collapse_zero_branches,
+        merge_siblings: !raw.no_merge_shared_mutations,
+        flip_parent_child: !raw.no_hoist_reversions,
       },
       model: raw.model_args.model()?,
       raw,
@@ -104,8 +104,8 @@ fn check_dependent_settings(raw: &TreetimeOptimizeArgsRaw) -> Result<(), Report>
     .check_partitions(raw.alignment.alignment.len())?;
   let dense = raw.representation.dense() == Some(true);
   for (setting, given) in [
-    ("no_merge_siblings", raw.no_merge_siblings),
-    ("no_flip_parent_child", raw.no_flip_parent_child),
+    ("no_merge_shared_mutations", raw.no_merge_shared_mutations),
+    ("no_hoist_reversions", raw.no_hoist_reversions),
   ] {
     check_applies(setting, given, "representation", !dense, || {
       o!("applies only to the sparse representation, but --representation is dense")
@@ -142,7 +142,7 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub tree_dialect: TreeDialectArgs,
+  pub newick_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -222,7 +222,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// amplitude below this value is detected.
   #[cfg_attr(feature = "clap", clap(long, default_value_t = 0.1, help_heading = "Branch lengths"))]
   #[default = 0.1]
-  pub dp: f64,
+  pub tolerance: f64,
 
   /// Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
   /// where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
@@ -237,13 +237,13 @@ pub struct TreetimeOptimizeArgsRaw {
   ///   preserve valid input values (default)
   /// - always: estimate all edges, overwriting input branch lengths
   /// - never: use input branch lengths as-is; fails if any are missing
-  #[cfg_attr(feature = "clap", clap(long = "branch-length-initial-guess", value_enum, default_value_t = InitialGuessModeCli::Auto, help_heading = "Branch lengths"))]
-  pub branch_length_initial_guess: InitialGuessModeCli,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = InitialGuessModeCli::Auto, help_heading = "Branch lengths"))]
+  pub initial_branch_lengths: InitialGuessModeCli,
 
   /// Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
   /// `brent` (default) and `newton`.
-  #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
-  pub opt_method: BranchOptMethodCli,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
+  pub optimizer: BranchOptMethodCli,
 
   /// Reroot the tree by minimizing root-to-tip divergence variance.
   ///
@@ -266,23 +266,23 @@ pub struct TreetimeOptimizeArgsRaw {
   /// exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
   /// polytomies. When set, such edges are kept in the output tree with length zero.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_collapse_short_branches: bool,
+  pub no_collapse_zero_branches: bool,
 
   /// Disable merging of polytomy siblings that share substitutions.
   ///
   /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
   /// under a new internal node. The step and the flag apply only to the sparse representation.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_merge_siblings: bool,
+  pub no_merge_shared_mutations: bool,
 
-  /// Disable the flip-parent-child step (reversion hoist) in polytomies.
+  /// Disable the reversion hoist in polytomies.
   ///
   /// By default, when a child branch carries the exact reversion of a substitution on the node's
   /// parent branch, a new node is inserted that groups the node with that child, removing one
   /// mutation per reverted position. When set, those reversions are left in place. The step and the flag apply
   /// only to the sparse representation.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_flip_parent_child: bool,
+  pub no_hoist_reversions: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

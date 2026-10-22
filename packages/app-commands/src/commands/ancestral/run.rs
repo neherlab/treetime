@@ -50,7 +50,7 @@ pub fn run_ancestral_reconstruction(
 ) -> Result<(), Report> {
   validate_aa_args(
     args.translations.as_deref(),
-    &args.cdses,
+    &args.cds_selection,
     args.annotation.as_deref(),
     args.aa_root_sequence.as_deref(),
     args.alignment.alignment.len(),
@@ -59,7 +59,7 @@ pub fn run_ancestral_reconstruction(
   let sequence_args = SequenceInputArgs {
     alignment: &args.alignment,
     tree: args.tree(),
-    tree_dialect: args.tree_dialect.dialect(),
+    newick_dialect: args.newick_dialect.dialect(),
     alphabet_args: &args.alphabet_args,
     gap_fill_args: &args.gap_fill_args,
     missing_leaves: args.missing_sequences.limit(),
@@ -82,7 +82,7 @@ pub fn run_ancestral_reconstruction(
   let topology_order =
     args
       .topology_order
-      .resolve_topology_order(&input.graph, &names, None, args.tree_dialect.dialect())?;
+      .resolve_topology_order(&input.graph, &names, None, args.newick_dialect.dialect())?;
 
   let resolved = args.resolve_outputs()?;
   let ambiguity = &args.ambiguity_outputs;
@@ -190,8 +190,8 @@ fn plan_aa_reconstructions<'a>(
     }
     return Ok(None);
   };
-  let annotations = read_gff3_annotations(args.annotation.as_deref(), &args.cdses)?;
-  let cdses = selected_cdses(&args.cdses, &annotations);
+  let annotations = read_gff3_annotations(args.annotation.as_deref(), &args.cds_selection)?;
+  let cdses = selected_cdses(&args.cds_selection, &annotations);
   let fasta_paths = aa_fasta
     .map(|file| planned_aa_fasta_paths(resolved, &file.path, &cdses))
     .transpose()?;

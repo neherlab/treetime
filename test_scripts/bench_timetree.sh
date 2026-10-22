@@ -52,7 +52,7 @@ for ds_entry in "${DATASETS[@]}"; do
 
         cmd=(timeout "$TIMEOUT_SEC" "$BIN" timetree -j1 \
             --tree "$tree" \
-            --aln "$aln" \
+            --alignment "$aln" \
             --dates "$dates" \
             --output-tree-auspice "$out_json")
         [[ -n "$coal_flag" ]] && cmd+=($coal_flag)

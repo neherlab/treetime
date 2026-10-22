@@ -32,7 +32,7 @@ pub(crate) fn read_tree_and_sources(
 
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-  let tree = read_input_tree(args.tree, args.tree_dialect, log)?;
+  let tree = read_input_tree(args.tree, args.newick_dialect, log)?;
   let settings = SourceSettings {
     alphabet: &alphabet,
     gap_fill: Some(args.gap_fill_args.gap_fill()),
@@ -93,7 +93,7 @@ impl MissingSequenceArgs {
 pub(crate) struct SequenceInputArgs<'a> {
   pub(crate) alignment: &'a AlignmentArgs,
   pub(crate) tree: &'a Path,
-  pub(crate) tree_dialect: NewickDialect,
+  pub(crate) newick_dialect: NewickDialect,
   pub(crate) alphabet_args: &'a AlphabetArgs,
   pub(crate) gap_fill_args: &'a GapFillArgs,
   pub(crate) missing_leaves: MissingLeafLimit,

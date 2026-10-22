@@ -121,7 +121,7 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub tree_dialect: TreeDialectArgs,
+  pub newick_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

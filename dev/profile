@@ -28,7 +28,7 @@
 #
 # Examples:
 #   $0 --perf treetime -- ancestral --representation=sparse --tree=data/mpox/clade-ii/2000/tree.nwk \
-#     --aln=data/mpox/clade-ii/2000/aln.fasta.xz --output-all=tmp/anc -j 1 --silent
+#     --alignment=data/mpox/clade-ii/2000/aln.fasta.xz --output-all=tmp/anc -j 1 --silent
 #   $0 treetime -- clock --tree=data/flu/h3n2/200/tree.nwk --dates=data/flu/h3n2/200/metadata.tsv
 #
 # Requirements (host):

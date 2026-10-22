@@ -73,7 +73,7 @@ mod tests {
           ..ModelArgs::default()
         },
         translations: Some(format!("{}/%GENE.fasta", dir.display())),
-        cdses: vec_of_owned!["S"],
+        cds_selection: vec_of_owned!["S"],
         output_reconstructed_aa_fasta: Some(aa_fasta),
         gtr_output: GtrOutputArgs { output_gtr: gtr },
         ..TreetimeAncestralArgsRaw::default()

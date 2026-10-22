@@ -16,10 +16,7 @@ pub struct SeedArgs {
   /// Random seed
   ///
   /// Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, visible_alias = "rng-seed", help_heading = "Reproducibility")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Reproducibility"))]
   pub seed: Option<u64>,
 }
 

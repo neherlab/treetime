@@ -36,7 +36,6 @@ mod tests {
     ShortFlagException { commands: &[TT, CL],             long: "metadata",               short: Some('d'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[MU],                 long: "metadata",               short: Some('s'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[MU],                 long: "weights",                short: Some('w'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[TT, AN, HO, OP],     long: "model",                  short: Some('g'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PR],                 long: "prune-short",            short: Some('s'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PR],                 long: "prune-empty",            short: Some('e'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PR],                 long: "merge-shared-mutations", short: Some('m'), pending: Pending::FlagRenames },

@@ -2770,7 +2770,7 @@ export type TimetreeConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *
@@ -3328,7 +3328,7 @@ export type ClockConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Metadata table (CSV or TSV) with one row per sample
    *
@@ -3625,7 +3625,7 @@ export type AncestralConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Sequence alphabet
    *
@@ -3756,8 +3756,8 @@ export type AncestralConfig = {
   /**
    * Path template for per-CDS amino-acid FASTA alignments.
    *
-   * The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each
-   * CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade
+   * The template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each
+   * CDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade
    * `--output-translations`) and `%GENE` (augur) placeholders are accepted.
    */
   translations?: string;
@@ -3766,11 +3766,11 @@ export type AncestralConfig = {
    *
    * When omitted, the CDS set is derived from `--annotation`.
    */
-  cdses?: Array<string>;
+  cds_selection?: Array<string>;
   /**
    * GFF3 file with CDS coordinates for Augur node data annotations.
    *
-   * Also supplies the CDS set when `--cdses` is omitted.
+   * Also supplies the CDS set when `--cds-selection` is omitted.
    */
   annotation?: string;
   /**
@@ -4008,7 +4008,7 @@ export type HomoplasyConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Sequence alphabet
    *
@@ -4329,7 +4329,7 @@ export type MugrationConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Attribute to reconstruct, e.g. country
    */
@@ -4378,7 +4378,7 @@ export type MugrationConfig = {
   /**
    * Number of iterations for GTR model refinement from data.
    */
-  iterations?: number;
+  model_iterations?: number;
   /**
    * Rough estimate of how many more events would have been observed if sequences represented an
    * even sample.
@@ -4656,7 +4656,7 @@ export type OptimizeConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *
@@ -4923,7 +4923,7 @@ export type OptimizeConfig = {
    * likelihoods differ by less than this value, or when a 2-cycle with
    * amplitude below this value is detected.
    */
-  dp?: number;
+  tolerance?: number;
   /**
    * Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,
    * where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;
@@ -4938,12 +4938,12 @@ export type OptimizeConfig = {
    * - always: estimate all edges, overwriting input branch lengths
    * - never: use input branch lengths as-is; fails if any are missing
    */
-  branch_length_initial_guess?: InitialGuessMode;
+  initial_branch_lengths?: InitialGuessMode;
   /**
    * Per-edge optimizer. Both methods optimize in $\sqrt{t}$ space. Values are
    * `brent` (default) and `newton`.
    */
-  opt_method?: BranchOptMethod;
+  optimizer?: BranchOptMethod;
   /**
    * Reroot the tree by minimizing root-to-tip divergence variance.
    *
@@ -4968,23 +4968,23 @@ export type OptimizeConfig = {
    * exactly zero that carry no substitutions or indels, turning the resulting binary nodes into
    * polytomies. When set, such edges are kept in the output tree with length zero.
    */
-  no_collapse_short_branches?: boolean;
+  no_collapse_zero_branches?: boolean;
   /**
    * Disable merging of polytomy siblings that share substitutions.
    *
    * By default, sibling branches in a polytomy that carry identical substitutions are grouped
    * under a new internal node. The step and the flag apply only to the sparse representation.
    */
-  no_merge_siblings?: boolean;
+  no_merge_shared_mutations?: boolean;
   /**
-   * Disable the flip-parent-child step (reversion hoist) in polytomies.
+   * Disable the reversion hoist in polytomies.
    *
    * By default, when a child branch carries the exact reversion of a substitution on the node's
    * parent branch, a new node is inserted that groups the node with that child, removing one
    * mutation per reverted position. When set, those reversions are left in place. The step and the flag apply
    * only to the sparse representation.
    */
-  no_flip_parent_child?: boolean;
+  no_hoist_reversions?: boolean;
   /**
    * How to handle gap characters in input sequences
    *
@@ -5024,7 +5024,7 @@ export type PruneConfig = {
    * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
-  tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
    * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *

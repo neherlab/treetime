@@ -53,7 +53,7 @@ model_args: ModelArgs {
       },
 representation: RepresentationArgs { representation: Some(representation) },
 translations: Some(format!("{}/%GENE.fasta", dir.path().display())),
-cdses: vec_of_owned!["S"],
+cds_selection: vec_of_owned!["S"],
 output: OutputCoreArgs {
         output_tree_mat_json: Some(mat_json_path.clone()),
         output_tree_mat_pb: Some(mat_pb_path.clone()),

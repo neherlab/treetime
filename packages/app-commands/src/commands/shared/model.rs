@@ -59,9 +59,8 @@ pub fn parse_model_params(model: GtrModelNameCli, items: &[String]) -> Result<Gt
 
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
 ///
-/// One flag name (`--model`, short `-g`, alias `--gtr`) serves every command; the value set includes
-/// non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`) carries
-/// model-specific `key=value` parameters.
+/// One flag name (`--model`) serves every command; the value set includes non-GTR models (for example `jtt92`).
+/// `--model-params` carries model-specific `key=value` parameters.
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -77,13 +76,7 @@ pub struct ModelArgs {
   /// name the model type. If the named model takes parameters, use `--model-params` to set them.
   #[cfg_attr(
     feature = "clap",
-    clap(
-      long = "model",
-      short = 'g',
-      visible_alias = "gtr",
-      value_enum,
-      help_heading = "Substitution model"
-    )
+    clap(long, value_enum, ignore_case = true, help_heading = "Substitution model")
   )]
   #[schemars(transform = documented_default(&MODEL_DEFAULT))]
   pub model: Option<GtrModelNameCli>,
@@ -100,8 +93,7 @@ pub struct ModelArgs {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long = "model-params",
-      visible_alias = "gtr-params",
+      long,
       num_args = 1..,
       help_heading = "Substitution model"
     )

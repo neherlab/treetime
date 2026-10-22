@@ -36,7 +36,7 @@ pub fn run_optimize(
   stages.report("Reading input", 0.0, "");
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-  let nwk_parsed = read_input_tree(args.tree(), args.tree_dialect.dialect(), log)?;
+  let nwk_parsed = read_input_tree(args.tree(), args.newick_dialect.dialect(), log)?;
   let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
@@ -55,13 +55,13 @@ pub fn run_optimize(
   let params = OptimizeParams {
     model: args.model.clone(),
     dense: args.representation.dense(),
-    initial_guess: args.branch_length_initial_guess,
+    initial_guess: args.initial_branch_lengths,
     reroot_spec: args.reroot_spec(&graph, &names)?,
     loop_settings: OptimizeLoopSettings {
       max_iter: args.max_iter,
-      dp: args.dp,
+      dp: args.tolerance,
       damping: args.damping,
-      opt_method: args.opt_method,
+      opt_method: args.optimizer,
       indel_policy: args.indel_policy,
       topology_ops: args.topology_ops,
       partition_rates: args.partition_rates_args.partition_rates(),
@@ -94,9 +94,10 @@ pub fn run_optimize(
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
 
-  let topology_order = args
-    .topology_order
-    .resolve_topology_order(&graph, &names, None, args.tree_dialect.dialect())?;
+  let topology_order =
+    args
+      .topology_order
+      .resolve_topology_order(&graph, &names, None, args.newick_dialect.dialect())?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 

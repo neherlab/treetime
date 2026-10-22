@@ -116,7 +116,7 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] Polytomies resolved count (n_resolved)
 - [x] Sequence log-likelihood (`log_lh_seq`)
 - [x] Node-time log marginal likelihood (`log_lh_time`): the backward pass's integral over node times, like v0's marginal-mode `positional_LH` (the integral of the root's marginal distribution); v0's joint-mode `positional_LH` sums branch-length likelihoods at the inferred lengths and has no v1 equivalent
-- [x] Tracelog CSV output (`--tracelog`)
+- [x] Tracelog CSV output (`--output-tracelog`)
 - [x] Coalescent log-likelihood in metrics (`log_lh_coal`)
 - [x] Typed aggregate likelihood components (`LogLh`) with unchanged numeric CSV serialization
 

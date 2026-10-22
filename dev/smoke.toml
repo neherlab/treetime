@@ -37,7 +37,7 @@ large = { tier = "full", timeout = 1800 }
 #   command_args         extra arguments per command
 #   timeout_factor       multiplies the size timeout, for long genomes
 [families.dengue]
-metadata_args = "--name-column=genbank_accession"
+metadata_args = "--metadata-id-columns=genbank_accession"
 mugration_attribute = "country"
 
 [families.ebola]
@@ -46,24 +46,24 @@ mugration_attribute = "country"
 mugration_attribute = "location"
 
 [families."lassa/L"]
-metadata_args = "--name-column=accession"
+metadata_args = "--metadata-id-columns=accession"
 mugration_attribute = "country"
 
 [families."mpox/clade-ii"]
-metadata_args = "--name-column=accession"
+metadata_args = "--metadata-id-columns=accession"
 mugration_attribute = "country"
 timeout_factor = 5.0
 
 [families."rsv/a"]
-metadata_args = "--name-column=accession"
+metadata_args = "--metadata-id-columns=accession"
 mugration_attribute = "country"
 
 [families.sc2]
-metadata_args = "--name-column=strain"
+metadata_args = "--metadata-id-columns=strain"
 mugration_attribute = "country"
 
 [families.tb]
-metadata_args = "--name-column=strain"
+metadata_args = "--metadata-id-columns=strain"
 mugration_attribute = "cluster"
 
 [families.zika]
@@ -81,7 +81,7 @@ mugration_attribute = "country"
 # `timetree` also write the leaf sequences (`--include-leaves`). A row sets its own `selection` only when the
 # selection is what it tests, or when one output fails for a reason that its own row declares.
 [commands.ancestral]
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+args = "--tree={dataset}/tree.nwk --alignment={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
 seeded = true
 outputs = ["ancestral.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta,mat-pb,mat-json"
@@ -92,7 +92,7 @@ outputs = ["clock.nwk"]
 selection = "all"
 
 [commands.homoplasy]
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
+args = "--tree={dataset}/tree.nwk --alignment={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["homoplasy.nwk", "homoplasy.stats.json", "homoplasy.report.txt"]
 selection = "all"
 
@@ -102,17 +102,17 @@ outputs = ["mugration.nwk"]
 selection = "all"
 
 [commands.optimize]
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
+args = "--tree={dataset}/tree.nwk --alignment={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["optimize.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,mat-pb,mat-json"
 
 [commands.prune]
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --output-all={out}"
+args = "--tree={dataset}/tree.nwk --alignment={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["prune.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,gtr,mat-pb,mat-json"
 
 [commands.timetree]
-args = "--tree={dataset}/tree.nwk --dates={metadata} --aln={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+args = "--tree={dataset}/tree.nwk --dates={metadata} --alignment={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
 seeded = true
 outputs = ["timetree.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json,mat-pb,mat-json"
@@ -247,7 +247,7 @@ args = "--tree={data}/zika/86/tree.nwk --allow-missing-sequences"
 [[ancestral]]
 variant = "translations"
 datasets = ["rsv/a/20"]
-args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+args = "--method-anc=marginal --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cds-selection=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
 outputs = [
   "ancestral.nwk",
   "ancestral.reconstructed-aa.NS1.fasta",
@@ -269,9 +269,9 @@ outputs = [
 [[ancestral]]
 variant = "translations-parsimony"
 datasets = ["rsv/a/20"]
-args = "--method-anc=parsimony --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cdses=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+args = "--method-anc=parsimony --translations=data/rsv/a/20/translations/%GENE.fasta.xz --cds-selection=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
 
-# The CDSes from the GFF3 annotation instead of `--cdses`
+# The CDSes from the GFF3 annotation instead of `--cds-selection`
 [[ancestral]]
 variant = "annotation"
 datasets = ["rsv/a/20"]
@@ -287,7 +287,7 @@ args = "--tree={dataset}/tree.nex --method-anc=marginal"
 [[ancestral]]
 variant = "input-phylip-alignment"
 datasets = ["flu/h3n2/20"]
-args = "--aln={dataset}/aln.phylip --method-anc=marginal"
+args = "--alignment={dataset}/aln.phylip --method-anc=marginal"
 fail = "kb/issues/M-io-phylip-alignment-input-unsupported.md"
 
 # Tree ordering and output options, shared by every command that writes a tree
@@ -419,14 +419,14 @@ datasets = ["zika/20"]
 args = "--pc=0.1"
 
 [[mugration]]
-variant = "iterations-1"
+variant = "model-iterations-1"
 datasets = ["zika/20"]
-args = "--pc=1.0 --iterations=1"
+args = "--pc=1.0 --model-iterations=1"
 
 [[mugration]]
-variant = "iterations-20"
+variant = "model-iterations-20"
 datasets = ["zika/20"]
-args = "--pc=1.0 --iterations=20"
+args = "--pc=1.0 --model-iterations=20"
 
 [[mugration]]
 variant = "sampling-bias-correction"
@@ -470,7 +470,7 @@ args = "--representation=dense"
 [[optimize]]
 variant = "newton"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --opt-method=newton"
+args = "--representation=sparse --optimizer=newton"
 
 [[optimize]]
 variant = "reroot-min-dev"
@@ -482,7 +482,7 @@ args = "--representation=sparse --reroot=min-dev"
 variant = "individual-outputs"
 datasets = "small"
 standalone = true
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --representation=sparse --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={dataset}/tree.nwk --alignment={dataset}/aln.fasta.xz --representation=sparse --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 # An already rerooted input tree
@@ -490,7 +490,7 @@ outputs = ["bl.json", "opti.auspice.json"]
 variant = "rerooted-input"
 datasets = ["mpox/clade-ii/1000"]
 standalone = true
-args = "--tree={dataset}/tree_opt.nwk --aln={dataset}/aln.fasta.xz --representation=sparse --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={dataset}/tree_opt.nwk --alignment={dataset}/aln.fasta.xz --representation=sparse --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 [[optimize]]
@@ -509,9 +509,9 @@ datasets = ["flu/h3n2/20"]
 args = "--representation=dense --model=hky85"
 
 [[optimize]]
-variant = "dp-0.01"
+variant = "tolerance-0.01"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --dp=0.01"
+args = "--representation=sparse --tolerance=0.01"
 
 [[optimize]]
 variant = "damping-0.5"
@@ -531,17 +531,17 @@ args = "--representation=sparse --max-iter=30"
 [[optimize]]
 variant = "guess-always"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --branch-length-initial-guess=always"
+args = "--representation=sparse --initial-branch-lengths=always"
 
 [[optimize]]
 variant = "guess-always-dense"
 datasets = ["flu/h3n2/20"]
-args = "--representation=dense --branch-length-initial-guess=always"
+args = "--representation=dense --initial-branch-lengths=always"
 
 [[optimize]]
 variant = "guess-never"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --branch-length-initial-guess=never"
+args = "--representation=sparse --initial-branch-lengths=never"
 
 [[optimize]]
 variant = "no-indels"
@@ -564,29 +564,29 @@ datasets = ["flu/h3n2/20"]
 args = "--representation=sparse --keep-root"
 
 [[optimize]]
-variant = "no-collapse-short-branches"
+variant = "no-collapse-zero-branches"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --no-collapse-short-branches"
+args = "--representation=sparse --no-collapse-zero-branches"
 
 [[optimize]]
-variant = "no-merge-siblings"
+variant = "no-merge-shared-mutations"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --no-merge-siblings"
+args = "--representation=sparse --no-merge-shared-mutations"
 
 [[optimize]]
-variant = "no-flip-parent-child"
+variant = "no-hoist-reversions"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --no-flip-parent-child"
+args = "--representation=sparse --no-hoist-reversions"
 
 [[optimize]]
 variant = "no-topology-ops"
 datasets = ["flu/h3n2/20"]
-args = "--representation=sparse --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
+args = "--representation=sparse --no-collapse-zero-branches --no-merge-shared-mutations --no-hoist-reversions"
 
 [[optimize]]
 variant = "no-topology-ops-dense"
 datasets = ["flu/h3n2/20"]
-args = "--representation=dense --no-collapse-short-branches"
+args = "--representation=dense --no-collapse-zero-branches"
 
 [[optimize]]
 variant = "gap-fill-all"
@@ -794,12 +794,12 @@ args = "--clock-filter=10"
 [[timetree]]
 variant = "jc69"
 datasets = ["flu/h3n2/20"]
-args = "--gtr=jc69"
+args = "--model=jc69"
 
 [[timetree]]
 variant = "dense"
 datasets = ["flu/h3n2/20"]
-args = "--representation=dense --gtr=jc69"
+args = "--representation=dense --model=jc69"
 
 [[timetree]]
 variant = "iter0"

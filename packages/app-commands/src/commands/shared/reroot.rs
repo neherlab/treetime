@@ -81,7 +81,6 @@ pub fn resolve_outgroup(tips: &[String], graph: &Graph, names: &NodeNames) -> Re
 #[schemars(rename = "RerootMethod")]
 pub enum RerootMethodCli {
   #[default]
-  #[cfg_attr(feature = "clap", value(alias = "best"))]
   LeastSquares,
   MinDev,
   Oldest,

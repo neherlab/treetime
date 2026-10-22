@@ -5880,7 +5880,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -5897,7 +5897,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "allow_missing_sequences": {
             "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
@@ -6395,7 +6395,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -6412,7 +6412,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "metadata": {
             "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
@@ -6702,7 +6702,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -6719,7 +6719,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "alphabet": {
             "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -6814,22 +6814,22 @@
             "x-cli-flag": "--output-reconstructed-nuc-fasta"
           },
           "translations": {
-            "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cdses` (or each\nCDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
+            "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each\nCDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
             "type": "string",
             "x-path": "input-template",
             "x-unset": true,
             "x-cli-flag": "--translations"
           },
-          "cdses": {
+          "cds_selection": {
             "description": "CDS names to reconstruct from `--translations`.\n\nWhen omitted, the CDS set is derived from `--annotation`.",
             "type": "array",
             "items": {
               "type": "string"
             },
-            "x-cli-flag": "--cdses"
+            "x-cli-flag": "--cds-selection"
           },
           "annotation": {
-            "description": "GFF3 file with CDS coordinates for Augur node data annotations.\n\nAlso supplies the CDS set when `--cdses` is omitted.",
+            "description": "GFF3 file with CDS coordinates for Augur node data annotations.\n\nAlso supplies the CDS set when `--cds-selection` is omitted.",
             "type": "string",
             "x-path": "input",
             "x-unset": true,
@@ -7009,7 +7009,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -7026,7 +7026,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "alphabet": {
             "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -7281,7 +7281,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -7298,7 +7298,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "attribute": {
             "description": "Attribute to reconstruct, e.g. country",
@@ -7362,12 +7362,12 @@
             "format": "double",
             "x-cli-flag": "--missing-weights-threshold"
           },
-          "iterations": {
+          "model_iterations": {
             "description": "Number of iterations for GTR model refinement from data.",
             "type": "integer",
             "format": "uint",
             "minimum": 0,
-            "x-cli-flag": "--iterations"
+            "x-cli-flag": "--model-iterations"
           },
           "sampling_bias_correction": {
             "description": "Rough estimate of how many more events would have been observed if sequences represented an\neven sample.",
@@ -7596,7 +7596,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -7613,7 +7613,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "allow_missing_sequences": {
             "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
@@ -7781,11 +7781,11 @@
             "minimum": 0,
             "x-cli-flag": "--max-iter"
           },
-          "dp": {
+          "tolerance": {
             "description": "Likelihood convergence threshold. The loop stops when successive\nlikelihoods differ by less than this value, or when a 2-cycle with\namplitude below this value is detected.",
             "type": "number",
             "format": "double",
-            "x-cli-flag": "--dp"
+            "x-cli-flag": "--tolerance"
           },
           "damping": {
             "description": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$,\nwhere $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation;\nzero disables damping. Must be in $[0,1)$.",
@@ -7793,15 +7793,15 @@
             "format": "double",
             "x-cli-flag": "--damping"
           },
-          "branch_length_initial_guess": {
+          "initial_branch_lengths": {
             "description": "Initial branch length estimate before the per-edge optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
             "$ref": "#/components/schemas/InitialGuessMode",
-            "x-cli-flag": "--branch-length-initial-guess"
+            "x-cli-flag": "--initial-branch-lengths"
           },
-          "opt_method": {
+          "optimizer": {
             "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent` (default) and `newton`.",
             "$ref": "#/components/schemas/BranchOptMethod",
-            "x-cli-flag": "--opt-method"
+            "x-cli-flag": "--optimizer"
           },
           "reroot": {
             "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting.\nDate-dependent methods (least-squares, oldest) are available in the timetree and clock commands.",
@@ -7827,20 +7827,20 @@
             "type": "boolean",
             "x-cli-flag": "--keep-root"
           },
-          "no_collapse_short_branches": {
+          "no_collapse_zero_branches": {
             "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
             "type": "boolean",
-            "x-cli-flag": "--no-collapse-short-branches"
+            "x-cli-flag": "--no-collapse-zero-branches"
           },
-          "no_merge_siblings": {
+          "no_merge_shared_mutations": {
             "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
             "type": "boolean",
-            "x-cli-flag": "--no-merge-siblings"
+            "x-cli-flag": "--no-merge-shared-mutations"
           },
-          "no_flip_parent_child": {
-            "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
+          "no_hoist_reversions": {
+            "description": "Disable the reversion hoist in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
             "type": "boolean",
-            "x-cli-flag": "--no-flip-parent-child"
+            "x-cli-flag": "--no-hoist-reversions"
           },
           "gap_fill": {
             "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -7884,7 +7884,7 @@
             "x-unset": true,
             "x-cli-flag": "--tree"
           },
-          "tree_dialect": {
+          "newick_dialect": {
             "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
             "type": "string",
             "enum": [
@@ -7901,7 +7901,7 @@
               "rich,nhx",
               "rich,mrbayes"
             ],
-            "x-cli-flag": "--tree-dialect"
+            "x-cli-flag": "--newick-dialect"
           },
           "allow_missing_sequences": {
             "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",

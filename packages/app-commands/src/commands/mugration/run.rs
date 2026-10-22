@@ -35,7 +35,7 @@ pub fn run_mugration(
 ) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-  let parse = read_input_tree(&mugration_args.tree, mugration_args.tree_dialect.dialect(), log)?;
+  let parse = read_input_tree(&mugration_args.tree, mugration_args.newick_dialect.dialect(), log)?;
   let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;
@@ -82,7 +82,7 @@ pub fn run_mugration(
     missing_data: mugration_args.missing_data.clone(),
     pc: mugration_args.pc,
     missing_weights_threshold: mugration_args.missing_weights_threshold,
-    iterations: mugration_args.iterations,
+    iterations: mugration_args.model_iterations,
     sampling_bias_correction: mugration_args.sampling_bias_correction,
     smooth_initial_pi: mugration_args.smooth_initial_pi,
     filter_uninformative_root: mugration_args.filter_uninformative_root,
@@ -101,7 +101,7 @@ pub fn run_mugration(
     &output.graph,
     &names,
     None,
-    mugration_args.tree_dialect.dialect(),
+    mugration_args.newick_dialect.dialect(),
   )?;
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");

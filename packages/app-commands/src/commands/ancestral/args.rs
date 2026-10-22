@@ -133,7 +133,7 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub tree_dialect: TreeDialectArgs,
+  pub newick_dialect: TreeDialectArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -211,8 +211,8 @@ pub struct TreetimeAncestralArgsRaw {
 
   /// Path template for per-CDS amino-acid FASTA alignments.
   ///
-  /// The template must contain a CDS placeholder, replaced with each value from `--cdses` (or each
-  /// CDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade
+  /// The template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each
+  /// CDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade
   /// `--output-translations`) and `%GENE` (augur) placeholders are accepted.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
@@ -225,20 +225,19 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long = "cdses",
-      visible_alias = "genes",
+      long,
       value_name = "CDS",
       num_args = 1..,
       value_delimiter = ',',
       help_heading = "Input data"
     )
   )]
-  pub cdses: Vec<String>,
+  pub cds_selection: Vec<String>,
 
   /// GFF3 file with CDS coordinates for Augur node data annotations.
   ///
-  /// Also supplies the CDS set when `--cdses` is omitted.
-  #[cfg_attr(feature = "clap", clap(long, alias = "annotation-gff", help_heading = "Input data"))]
+  /// Also supplies the CDS set when `--cds-selection` is omitted.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub annotation: Option<PathBuf>,
@@ -253,7 +252,7 @@ pub struct TreetimeAncestralArgsRaw {
   pub aa_root_sequence: Option<PathBuf>,
 
   /// Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = AaModelName::default(), help_heading = "Substitution model"))]
+  #[cfg_attr(feature = "clap", clap(long, value_enum, ignore_case = true, default_value_t = AaModelName::default(), help_heading = "Substitution model"))]
   pub aa_model: AaModelName,
 
   /// Path template for per-CDS reconstructed amino-acid FASTA output (including internal nodes).

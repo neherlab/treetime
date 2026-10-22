@@ -13,22 +13,19 @@ const LABELS: [(&str, &str); 10] = [
   ("reroot", "Reroot method"),
 ];
 
-const WORDS: [(&str, &str); 19] = [
+const WORDS: [(&str, &str); 16] = [
   ("aa", "amino-acid"),
   ("anc", "ancestral"),
   ("aln", "alignment"),
-  ("alns", "alignments"),
-  ("cdses", "CDSes"),
+  ("cds", "CDS"),
   ("csv", "CSV"),
   ("dot", "DOT"),
-  ("dp", "DP"),
   ("gtr", "GTR"),
   ("json", "JSON"),
   ("mat", "MAT"),
   ("n", "number of"),
   ("nuc", "nucleotide"),
   ("nwk", "Newick"),
-  ("opt", "optimization"),
   ("pb", "protobuf"),
   ("pc", "pseudocount"),
   ("pi", "pi"),

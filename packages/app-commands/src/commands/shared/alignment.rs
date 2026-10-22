@@ -36,9 +36,8 @@ pub struct AlignmentArgs {
   #[cfg_attr(
     feature = "clap",
     clap(
-      long = "alignment",
+      long,
       short = 'a',
-      visible_alias = "aln",
       value_hint = ValueHint::FilePath,
       value_name = "FILEPATH",
       display_order = 1,

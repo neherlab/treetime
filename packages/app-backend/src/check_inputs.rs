@@ -93,11 +93,11 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     });
   };
 
-  let tree_dialect = request.tree_dialect.dialect();
+  let newick_dialect = request.newick_dialect.dialect();
   let tree = request
     .tree
     .as_deref()
-    .map(|path| read_tree(path, tree_dialect))
+    .map(|path| read_tree(path, newick_dialect))
     .transpose();
   let tree = tree.unwrap_or_else(|report| {
     problem(InputKind::Tree, None, &report);
@@ -189,7 +189,7 @@ pub struct CheckInputsRequest {
 struct InputSettings {
   tree: Option<PathBuf>,
   #[deser(as = DisplayFromStr)]
-  tree_dialect: TreeDialectArg,
+  newick_dialect: TreeDialectArg,
   metadata: Option<PathBuf>,
   alignment: Vec<PathBuf>,
   metadata_id_columns: Vec<String>,

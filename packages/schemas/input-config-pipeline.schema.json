@@ -178,7 +178,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
@@ -1425,7 +1425,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
@@ -1888,7 +1888,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
@@ -2086,7 +2086,7 @@
         "translations": {
           "anyOf": [
             {
-              "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cdses` (or each\nCDS in `--annotation` when `--cdses` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
+              "description": "Path template for per-CDS amino-acid FASTA alignments.\n\nThe template must contain a CDS placeholder, replaced with each value from `--cds-selection` (or each\nCDS in `--annotation` when `--cds-selection` is omitted). Both `{cds}` (Nextclade\n`--output-translations`) and `%GENE` (augur) placeholders are accepted.",
               "type": "string",
               "x-path": "input-template",
               "x-unset": true
@@ -2097,7 +2097,7 @@
             }
           ]
         },
-        "cdses": {
+        "cds_selection": {
           "description": "CDS names to reconstruct from `--translations`.\n\nWhen omitted, the CDS set is derived from `--annotation`.",
           "type": "array",
           "items": {
@@ -2116,7 +2116,7 @@
         "annotation": {
           "anyOf": [
             {
-              "description": "GFF3 file with CDS coordinates for Augur node data annotations.\n\nAlso supplies the CDS set when `--cdses` is omitted.",
+              "description": "GFF3 file with CDS coordinates for Augur node data annotations.\n\nAlso supplies the CDS set when `--cds-selection` is omitted.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -2520,7 +2520,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
@@ -2946,7 +2946,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
@@ -3111,7 +3111,7 @@
             }
           ]
         },
-        "iterations": {
+        "model_iterations": {
           "anyOf": [
             {
               "description": "Number of iterations for GTR model refinement from data.",
@@ -3491,7 +3491,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",
@@ -3798,7 +3798,7 @@
             }
           ]
         },
-        "dp": {
+        "tolerance": {
           "anyOf": [
             {
               "description": "Likelihood convergence threshold. The loop stops when successive\nlikelihoods differ by less than this value, or when a 2-cycle with\namplitude below this value is detected.",
@@ -3826,12 +3826,12 @@
             }
           ]
         },
-        "branch_length_initial_guess": {
+        "initial_branch_lengths": {
           "description": "Initial branch length estimate before the per-edge optimization.\n\n- auto: estimate only edges with missing or invalid branch lengths,\n  preserve valid input values (default)\n- always: estimate all edges, overwriting input branch lengths\n- never: use input branch lengths as-is; fails if any are missing",
           "$ref": "#/$defs/InitialGuessMode",
           "default": "auto"
         },
-        "opt_method": {
+        "optimizer": {
           "description": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are\n`brent` (default) and `newton`.",
           "$ref": "#/$defs/BranchOptMethod",
           "default": "brent"
@@ -3875,7 +3875,7 @@
             }
           ]
         },
-        "no_collapse_short_branches": {
+        "no_collapse_zero_branches": {
           "anyOf": [
             {
               "description": "Disable collapsing of internal branches whose optimized length is zero.\n\nBy default the optimize loop contracts internal edges the per-edge optimizer drove to\nexactly zero that carry no substitutions or indels, turning the resulting binary nodes into\npolytomies. When set, such edges are kept in the output tree with length zero.",
@@ -3888,7 +3888,7 @@
             }
           ]
         },
-        "no_merge_siblings": {
+        "no_merge_shared_mutations": {
           "anyOf": [
             {
               "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
@@ -3901,10 +3901,10 @@
             }
           ]
         },
-        "no_flip_parent_child": {
+        "no_hoist_reversions": {
           "anyOf": [
             {
-              "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
+              "description": "Disable the reversion hoist in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
               "type": "boolean",
               "default": false
             },
@@ -4070,7 +4070,7 @@
             }
           ]
         },
-        "tree_dialect": {
+        "newick_dialect": {
           "anyOf": [
             {
               "description": "Newick dialect of the tree inputs (the tree and the reference topology)\n\nA dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure\nis classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support\nand probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx\n([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations\nand classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.",

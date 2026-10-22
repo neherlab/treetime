@@ -91,7 +91,7 @@ pub(super) mod tests {
     let warning = invalid_branch_length_warning(&descriptions).expect("invalid edges produce a warning");
     assert!(warning.contains("AB -> A: -0.1"));
     assert!(warning.contains("root -> C: inf"));
-    assert!(warning.contains("--branch-length-initial-guess=always"));
+    assert!(warning.contains("--initial-branch-lengths=always"));
     assert_eq!(None, invalid_branch_length_warning(&[]));
     Ok(())
   }
@@ -297,7 +297,7 @@ pub(super) mod tests {
     let err = result.expect_err("Never mode must reject a tree with NaN branch lengths");
     let msg = format!("{err:?}");
     assert!(
-      msg.contains("--branch-length-initial-guess=never"),
+      msg.contains("--initial-branch-lengths=never"),
       "Never-mode error must mention the offending flag, got: {msg}"
     );
     Ok(())
@@ -344,7 +344,7 @@ pub(super) mod tests {
     let err = result.expect_err("Never mode must reject zero branch length on an indel-bearing edge");
     let msg = format!("{err:?}");
     assert!(
-      msg.contains("--branch-length-initial-guess=never"),
+      msg.contains("--initial-branch-lengths=never"),
       "Never-mode error must mention the offending flag, got: {msg}"
     );
     assert!(

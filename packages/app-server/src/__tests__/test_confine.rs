@@ -179,7 +179,7 @@ mod tests {
     let mut config = json!({
       "tree": root.join("sub/tree.nwk"),
       "translations": root.join("sub/translation_{cds}.fasta"),
-      "cdses": ["E"],
+      "cds_selection": ["E"],
     });
     policy.confine(AppCommand::Ancestral, &mut config).unwrap();
 
@@ -187,7 +187,7 @@ mod tests {
     let mut config = json!({
       "tree": root.join("sub/tree.nwk"),
       "translations": root.join("sub/{cds}.nwk"),
-      "cdses": [escape],
+      "cds_selection": [escape],
     });
     assert_error!(
       policy.confine(AppCommand::Ancestral, &mut config),
@@ -205,7 +205,7 @@ mod tests {
     let mut config = json!({
       "tree": data.path().join("sub/tree.nwk"),
       "translations": "src/{cds}.rs",
-      "cdses": ["lib"],
+      "cds_selection": ["lib"],
     });
     policy.confine(AppCommand::Ancestral, &mut config).unwrap();
     assert_eq!(
@@ -221,7 +221,7 @@ mod tests {
     let mut config = json!({
       "tree": data.path().join("sub/tree.nwk"),
       "translations": "src/{cds}.rs",
-      "cdses": ["lib"],
+      "cds_selection": ["lib"],
     });
     assert_error!(
       policy.confine(AppCommand::Ancestral, &mut config),

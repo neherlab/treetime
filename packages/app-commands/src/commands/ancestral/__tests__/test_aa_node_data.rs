@@ -49,7 +49,7 @@ mod tests {
   fn test_validate_aa_args_empty_cdses_no_annotation_errors() {
     assert_error!(
       validate_aa_args(Some(CDS_TEMPLATE), &[], None, None, 1),
-      "--cdses must list at least one CDS, or pass --annotation to derive the CDS set"
+      "--cds-selection must list at least one CDS, or pass --annotation to derive the CDS set"
     );
   }
 
