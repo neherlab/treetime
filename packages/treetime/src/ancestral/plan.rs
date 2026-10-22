@@ -26,12 +26,6 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_utils::{make_internal_report, make_report};
 
 pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPlan, OperationError> {
-  if params.site_specific_gtr {
-    return Err(OperationError::InvalidParams(make_report!(
-      "--site-specific-gtr is not implemented"
-    )));
-  }
-
   if params.sample_from_profile != SampleMode::Argmax && params.method != MethodAncestral::Marginal {
     return Err(OperationError::InvalidParams(make_report!(
       "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \

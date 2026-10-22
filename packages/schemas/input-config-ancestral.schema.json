@@ -14,13 +14,6 @@
       "x-path": "input",
       "x-cli-flag": "--alignment"
     },
-    "vcf_reference": {
-      "description": "FASTA file of the sequence the VCF was mapped to (only for vcf input)",
-      "type": "string",
-      "x-path": "input",
-      "x-unset": true,
-      "x-cli-flag": "--vcf-reference"
-    },
     "tree": {
       "description": "Tree in Newick format.",
       "type": "string",
@@ -92,12 +85,6 @@
       "$ref": "#/$defs/GapFill",
       "default": "only-terminal",
       "x-cli-flag": "--gap-fill"
-    },
-    "keep_overhangs": {
-      "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--keep-overhangs"
     },
     "zero_based": {
       "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
@@ -290,12 +277,6 @@
       "default": [],
       "x-cli-flag": "--ambiguity-outputs"
     },
-    "ladderize": {
-      "description": "Order tree topology before writing output files.",
-      "$ref": "#/$defs/LadderizeArg",
-      "x-unset": true,
-      "x-cli-flag": "--ladderize"
-    },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
       "$ref": "#/$defs/TopologyOrderArg",
@@ -321,12 +302,6 @@
       "default": "mean",
       "x-cli-flag": "--topology-order-target-aggregate"
     },
-    "site_specific_gtr": {
-      "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--site-specific-gtr"
-    },
     "seed": {
       "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
       "type": "integer",
@@ -334,25 +309,6 @@
       "minimum": 0,
       "x-unset": true,
       "x-cli-flag": "--seed"
-    },
-    "aa": {
-      "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--aa"
-    },
-    "marginal": {
-      "description": "Shortcut for `--method-anc=marginal` (v0 compat)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--marginal"
-    },
-    "custom_gtr": {
-      "description": "Load a custom GTR model from file (not yet implemented)",
-      "type": "string",
-      "x-path": "input",
-      "x-unset": true,
-      "x-cli-flag": "--custom-gtr"
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
@@ -471,14 +427,6 @@
           "type": "string",
           "const": "augur-node-data"
         }
-      ]
-    },
-    "LadderizeArg": {
-      "type": "string",
-      "enum": [
-        "none",
-        "ascending",
-        "descending"
       ]
     },
     "TopologyOrderArg": {

@@ -43,7 +43,7 @@ pub fn run_optimize(
   let branch_lengths = nwk_parsed.branch_lengths;
   let settings = SourceSettings {
     alphabet: &alphabet,
-    gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
+    gap_fill: Some(args.gap_fill_args.gap_fill()),
     missing_leaves: MissingLeafLimit::Enforced,
   };
   let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?

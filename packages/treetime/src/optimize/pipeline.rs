@@ -274,9 +274,7 @@ fn reroot_optimize(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
-  if let RerootSpec::Method(method @ (RerootMethod::LeastSquares | RerootMethod::Oldest | RerootMethod::ClockFilter)) =
-    spec
-  {
+  if let RerootSpec::Method(method @ (RerootMethod::LeastSquares | RerootMethod::Oldest)) = spec {
     return make_internal_error!("optimize cannot reroot with a date-dependent method: {method:?}");
   }
   let reroot_result = reroot_undated(graph, names, branch_lengths, spec, log)?;

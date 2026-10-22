@@ -1,4 +1,5 @@
 use crate::commands::shared::leaf_order::leaf_order;
+#[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
@@ -15,7 +16,6 @@ use treetime_graph::topology_order::{TopologyOrderPreset, TopologyOrderSpec, Top
 use treetime_io::name_list::name_list_read_file;
 use treetime_io::nwk::NewickDialect;
 use treetime_io::tree::tree_read_file;
-#[cfg(feature = "clap")]
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::{make_error, make_report};
 
@@ -27,14 +27,6 @@ use treetime_utils::{make_error, make_report};
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct TopologyOrderArgs {
-  /// Order tree topology before writing output files.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
-  #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order"))]
-  #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order_target_source"))]
-  #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order_target_file"))]
-  #[cfg_attr(feature = "clap", clap(conflicts_with = "topology_order_target_aggregate"))]
-  pub ladderize: Option<LadderizeArg>,
-
   /// Canonical topology ordering preset.
   #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Tree ordering"))]
   pub topology_order: Option<TopologyOrderArg>,
@@ -64,16 +56,9 @@ impl TopologyOrderArgs {
   ) -> Result<TopologyOrderSpec, Report> {
     self.validate()?;
 
-    let preset = match (self.ladderize, self.topology_order) {
-      (Some(LadderizeArg::None), None) => TopologyOrderPreset::Keep,
-      (Some(LadderizeArg::Ascending), None) => TopologyOrderPreset::DescendantCount,
-      (Some(LadderizeArg::Descending), None) => TopologyOrderPreset::DescendantCountReverse,
-      (None, Some(topology_order)) => topology_order.into(),
-      (None, None) => TopologyOrderPreset::DescendantCount,
-      (Some(_), Some(_)) => {
-        return make_error!("--ladderize cannot be combined with --topology-order");
-      },
-    };
+    let preset = self
+      .topology_order
+      .map_or(TopologyOrderPreset::DescendantCount, Into::into);
 
     let target_order = if preset.is_target_order() {
       self.target_order(graph, names, input_order, tree_dialect)?
@@ -89,15 +74,6 @@ impl TopologyOrderArgs {
   }
 
   fn validate(&self) -> Result<(), Report> {
-    if self.ladderize.is_some()
-      && (self.topology_order.is_some()
-        || self.topology_order_target_source.is_some()
-        || self.topology_order_target_file.is_some()
-        || self.topology_order_target_aggregate != TopologyOrderTargetAggregateArg::Mean)
-    {
-      return make_error!("--ladderize cannot be combined with --topology-order* options");
-    }
-
     let target_fields_present = self.topology_order_target_source.is_some()
       || self.topology_order_target_file.is_some()
       || self.topology_order_target_aggregate != TopologyOrderTargetAggregateArg::Mean;
@@ -178,16 +154,6 @@ pub(crate) fn target_positions(
     .enumerate()
     .map(|(position, name)| (name, position));
   pair_by_name(graph.get_leaves().map(|leaf| leaf.key()), names, positions).by_node
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-pub enum LadderizeArg {
-  None,
-  Ascending,
-  Descending,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]

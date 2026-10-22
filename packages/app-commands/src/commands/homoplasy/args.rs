@@ -34,7 +34,6 @@ pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> An
     include_leaves: false,
     report_ambiguous: true,
     impute_missing_data: args.impute_missing_data.impute_missing_data,
-    site_specific_gtr: args.site_specific_gtr,
     seed,
     sample_from_profile: args.sample_from_profile,
   }
@@ -147,14 +146,6 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub missing_sequences: MissingSequenceArgs,
-
-  /// Use site-specific GTR model with per-site equilibrium frequencies.
-  ///
-  /// Requires `--model infer` and `--dense true`. Incompatible with sequence compression
-  /// (sparse representation). When enabled, each alignment position gets its own
-  /// eigendecomposition based on position-specific base composition.
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
-  pub site_specific_gtr: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

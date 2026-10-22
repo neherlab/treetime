@@ -45,36 +45,19 @@ mod tests {
     assert!(matches!(model, GtrModelName::HKY85));
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::site_specific_gtr(
-    MethodAncestral::Marginal, true, SampleMode::Argmax,
-    "--site-specific-gtr is not implemented"
-  )]
-  #[case::site_specific_gtr_before_sampling(
-    MethodAncestral::Parsimony, true, SampleMode::Root,
-    "--site-specific-gtr is not implemented"
-  )]
-  #[case::sampling_with_parsimony(
-    MethodAncestral::Parsimony, false, SampleMode::Root,
-    "--sample-from-profile=Root requires --method-anc=marginal. Posterior sampling is only defined for marginal reconstruction; Parsimony has no posterior profile to sample."
-  )]
-  #[trace]
-  fn test_plan_rejects_invalid_params(
-    #[case] method: MethodAncestral,
-    #[case] site_specific_gtr: bool,
-    #[case] sample_from_profile: SampleMode,
-    #[case] expected: &str,
-  ) {
+  #[test]
+  fn test_plan_rejects_sampling_with_parsimony() {
     let params = AncestralParams {
-      site_specific_gtr,
-      sample_from_profile,
-      ..helpers::params(method)
+      sample_from_profile: SampleMode::Root,
+      ..helpers::params(MethodAncestral::Parsimony)
     };
     let Err(OperationError::InvalidParams(report)) = resolve_plan(&params) else {
       panic!("expected an invalid-params rejection");
     };
-    assert_eq!(expected, report.to_string());
+    assert_eq!(
+      "--sample-from-profile=Root requires --method-anc=marginal. Posterior sampling is only defined for marginal reconstruction; Parsimony has no posterior profile to sample.",
+      report.to_string()
+    );
   }
 
   mod helpers {
@@ -88,7 +71,6 @@ mod tests {
         include_leaves: false,
         report_ambiguous: true,
         impute_missing_data: false,
-        site_specific_gtr: false,
         seed: 0,
         sample_from_profile: SampleMode::Argmax,
       }

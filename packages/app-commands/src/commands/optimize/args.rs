@@ -214,7 +214,7 @@ pub struct TreetimeOptimizeArgsRaw {
   ///
   /// By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
   /// to enable divergence-based rerooting. Date-dependent methods (least-squares,
-  /// oldest, clock-filter) are available in the timetree and clock commands.
+  /// oldest) are available in the timetree and clock commands.
   #[cfg_attr(feature = "clap", clap(
     long,
     value_enum,
@@ -265,7 +265,7 @@ pub struct TreetimeOptimizeArgsRaw {
 /// Reroot methods available in the optimize command.
 ///
 /// Only date-free methods are valid here because optimize has no sampling dates.
-/// Date-dependent methods (least-squares, oldest, clock-filter) are available
+/// Date-dependent methods (least-squares, oldest) are available
 /// in the timetree and clock commands.
 #[derive(Copy, Debug, Clone, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]

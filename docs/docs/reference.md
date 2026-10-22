@@ -32,7 +32,6 @@ If you have TreeTime CLI installed, you can type `treetime --help` to read the l
 * [`treetime homoplasy`↴](#treetime-homoplasy)
 * [`treetime mugration`↴](#treetime-mugration)
 * [`treetime pipeline`↴](#treetime-pipeline)
-* [`treetime arg`↴](#treetime-arg)
 * [`treetime schema`↴](#treetime-schema)
 * [`treetime help-markdown`↴](#treetime-help-markdown)
 
@@ -56,7 +55,6 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 * `homoplasy` — Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar
 * `mugration` — Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred
 * `pipeline` — Runs an ordered list of analysis commands from one config file, on one dataset, in one process
-* `arg` — Estimates ancestral reassortment graph (ARG)
 * `schema` — Write JSON Schema definitions for TreeTime data types
 * `help-markdown` — Print CLI reference documentation in Markdown format
 
@@ -120,7 +118,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
 
-* `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — Metadata table (CSV or TSV) with one row per sample
 
    `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
@@ -195,8 +192,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    Applies to every inferred coalescent mode (constant, --coalescent-opt, and --coalescent-skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed --coalescent value is not inferred and therefore has no band.
 
   Default value: `2`
-* `--tip-labels` — add tip labels (default for small trees with <30 leaves)
-* `--no-tip-labels` — don't show tip labels (default for trees with >=30 leaves)
 * `--clock-filter <CLOCK_FILTER>` — Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression beyond which a tip is an outlier.
 
    0 switches the filter off.
@@ -205,12 +200,11 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
-* `--n-iqd <N_IQD>` — Number of IQD (interquartile distance) for clock filter outlier detection
 * `--reroot <REROOT>` — Reroot the tree by temporal-signal optimization.
 
    Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
 
-  Possible values: `least-squares`, `min-dev`, `oldest`, `clock-filter`
+  Possible values: `least-squares`, `min-dev`, `oldest`
 
 * `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
@@ -247,12 +241,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
     Estimate one relative rate per partition, normalized to a site-weighted mean of 1
   - `equal`:
     Fix the relative rate of every partition at 1
-
-* `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
-
-  Default value: `marginal`
-
-  Possible values: `marginal`, `parsimony`
 
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
@@ -426,10 +414,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   Possible values:
   - `reconstructed-nuc-fasta`:
     Reconstructed nucleotide FASTA
-
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
 
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
@@ -627,10 +611,6 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `augur-node-data`, `gtr`
 
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
-
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
   Possible values: `keep`, `descendant-count`, `descendant-count-reverse`, `height`, `height-reverse`, `divergence`, `divergence-reverse`, `label`, `label-reverse`, `target-order`, `target-order-reverse`
@@ -683,7 +663,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 * `--reroot <REROOT>` — Reroot the tree by minimizing root-to-tip divergence variance.
 
-   By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest, clock-filter) are available in the timetree and clock commands.
+   By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands.
 
   Possible values: `min-dev`
 
@@ -823,10 +803,6 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `gtr`
 
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
-
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
   Possible values: `keep`, `descendant-count`, `descendant-count-reverse`, `height`, `height-reverse`, `divergence`, `divergence-reverse`, `label`, `label-reverse`, `target-order`, `target-order-reverse`
@@ -893,7 +869,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
-* `-r`, `--vcf-reference <VCF_REFERENCE>` — FASTA file of the sequence the VCF was mapped to (only for vcf input)
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1116,10 +1091,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
   - `augur-node-data`:
     Node sequences in the augur node data
 
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
-
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
   Possible values: `keep`, `descendant-count`, `descendant-count-reverse`, `height`, `height-reverse`, `divergence`, `divergence-reverse`, `label`, `label-reverse`, `target-order`, `target-order-reverse`
@@ -1150,9 +1121,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
-* `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
-
-   Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1162,7 +1130,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
   Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
 
-* `-r`, `--vcf-reference <VCF_REFERENCE>` — Only for vcf input: fasta file of the sequence the VCF was mapped to
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — Metadata table (CSV or TSV) with one row per sample
 
    `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
@@ -1180,38 +1147,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 * `--date-format <FORMAT>` — Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
 
   Default value: `%Y-%m-%d`
-* `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
-
-   `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
-
-  Default value: `infer`
-
-  Possible values:
-  - `infer`:
-    Infer GTR parameters from data via Fitch parsimony substitution counts
-  - `jc69`
-  - `k80`
-  - `f81`
-  - `hky85`
-  - `t92`
-  - `tn93`
-  - `jtt92`
-
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
-
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-* `--branch-length-mode <BRANCH_LENGTH_MODE>` — If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances
-
-  Default value: `marginal`
-
-  Possible values: `input`, `marginal`
-
-* `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
-
-  Default value: `marginal`
-
-  Possible values: `marginal`, `parsimony`
-
 * `--clock-filter <CLOCK_FILTER>` — Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression beyond which a tip is an outlier.
 
    0 switches the filter off.
@@ -1224,11 +1159,10 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
    Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
 
-  Possible values: `least-squares`, `min-dev`, `oldest`, `clock-filter`
+  Possible values: `least-squares`, `min-dev`, `oldest`
 
 * `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
-* `--prune-short`
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
    Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.
@@ -1327,10 +1261,6 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
    A selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `clock-model`, `clock-csv`, `clock-chart-svg`, `clock-chart-png`, `clock-chart-pdf`
-
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
 
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
@@ -1554,10 +1484,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `all`, `nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`, `homoplasy-stats`, `homoplasy-report`
 
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
-
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
   Possible values: `keep`, `descendant-count`, `descendant-count-reverse`, `height`, `height-reverse`, `divergence`, `divergence-reverse`, `label`, `label-reverse`, `target-order`, `target-order-reverse`
@@ -1743,10 +1669,6 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
   - `auspice`:
     Extra node attribute `<attribute>_ambiguous` in the Auspice JSON
 
-* `--ladderize <LADDERIZE>` — Order tree topology before writing output files
-
-  Possible values: `none`, `ascending`, `descending`
-
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
   Possible values: `keep`, `descendant-count`, `descendant-count-reverse`, `height`, `height-reverse`, `divergence`, `divergence-reverse`, `label`, `label-reverse`, `target-order`, `target-order-reverse`
@@ -1783,14 +1705,6 @@ The config file (JSON or YAML) lists named steps, each an analysis command with 
 
    A referenced upstream step that is not selected must already have its outputs on disk.
 * `--check` — Resolve and print the plan (steps, inputs, outputs) without running any step
-
-
-
-## `treetime arg`
-
-Estimates ancestral reassortment graph (ARG)
-
-**Usage:** `treetime arg`
 
 
 

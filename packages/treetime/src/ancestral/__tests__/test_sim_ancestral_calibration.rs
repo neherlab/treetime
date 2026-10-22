@@ -216,7 +216,6 @@ pub(crate) mod tests {
           include_leaves: false,
           report_ambiguous: false,
           impute_missing_data: false,
-          site_specific_gtr: false,
           seed: 0,
           sample_from_profile: SampleMode::Argmax,
         };

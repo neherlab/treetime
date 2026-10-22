@@ -49,7 +49,6 @@ mod tests {
         include_leaves,
         report_ambiguous: true,
         impute_missing_data: impute,
-        site_specific_gtr: false,
         seed,
         sample_from_profile,
       };

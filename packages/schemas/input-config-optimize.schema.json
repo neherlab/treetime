@@ -174,12 +174,6 @@
       "default": [],
       "x-cli-flag": "--output-selection"
     },
-    "ladderize": {
-      "description": "Order tree topology before writing output files.",
-      "$ref": "#/$defs/LadderizeArg",
-      "x-unset": true,
-      "x-cli-flag": "--ladderize"
-    },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
       "$ref": "#/$defs/TopologyOrderArg",
@@ -240,7 +234,7 @@
       "x-cli-flag": "--opt-method"
     },
     "reroot": {
-      "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest, clock-filter) are available in the timetree and clock commands.",
+      "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest) are available in the timetree and clock commands.",
       "$ref": "#/$defs/OptimizeRerootMethod",
       "x-unset": true,
       "x-cli-flag": "--reroot"
@@ -283,12 +277,6 @@
       "$ref": "#/$defs/GapFill",
       "default": "only-terminal",
       "x-cli-flag": "--gap-fill"
-    },
-    "keep_overhangs": {
-      "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--keep-overhangs"
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
@@ -371,14 +359,6 @@
         "gtr"
       ]
     },
-    "LadderizeArg": {
-      "type": "string",
-      "enum": [
-        "none",
-        "ascending",
-        "descending"
-      ]
-    },
     "TopologyOrderArg": {
       "type": "string",
       "enum": [
@@ -446,7 +426,7 @@
       ]
     },
     "OptimizeRerootMethod": {
-      "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest, clock-filter) are available\nin the timetree and clock commands.",
+      "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest) are available\nin the timetree and clock commands.",
       "type": "string",
       "enum": [
         "min-dev"

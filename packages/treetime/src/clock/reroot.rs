@@ -117,9 +117,7 @@ fn select_root(
   log: &dyn LogSink,
 ) -> Result<(Option<GraphEdgeKey>, f64), Report> {
   let (force_positive, objective) = match &reroot_params.spec {
-    RerootSpec::Method(RerootMethod::LeastSquares | RerootMethod::ClockFilter) => {
-      (reroot_params.force_positive_rate, reroot_params.objective)
-    },
+    RerootSpec::Method(RerootMethod::LeastSquares) => (reroot_params.force_positive_rate, reroot_params.objective),
     RerootSpec::Method(RerootMethod::MinDev) => (false, RootObjective::FixedRate(0.0)),
     RerootSpec::Method(RerootMethod::Oldest) => return named_root_point(graph, oldest_tip(graph, inputs)?),
     RerootSpec::Tips(tips) => return named_root_point(graph, tip_group_mrca(graph, tips)?),

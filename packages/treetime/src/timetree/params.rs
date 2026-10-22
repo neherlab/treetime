@@ -49,7 +49,6 @@ pub struct TimetreeParams {
   pub skyline_stiffness: f64,
   pub coalescent_confidence: f64,
   pub gen_per_year: f64,
-  pub n_branches_posterior: Option<usize>,
   pub time_marginal: TimeMarginalMode,
   pub confidence: bool,
   pub include_leaves: bool,

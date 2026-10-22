@@ -90,10 +90,9 @@ pub enum RerootMethodCli {
   LeastSquares,
   MinDev,
   Oldest,
-  ClockFilter,
 }
 
-impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest, ClockFilter });
+impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest });
 
 #[cfg(test)]
 mod tests {

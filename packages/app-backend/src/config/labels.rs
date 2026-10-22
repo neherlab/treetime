@@ -15,7 +15,7 @@ const LABELS: [(&str, &str); 12] = [
   ("reroot", "Reroot method"),
 ];
 
-const WORDS: [(&str, &str); 22] = [
+const WORDS: [(&str, &str); 19] = [
   ("aa", "amino-acid"),
   ("anc", "ancestral"),
   ("aln", "alignment"),
@@ -25,7 +25,6 @@ const WORDS: [(&str, &str); 22] = [
   ("dot", "DOT"),
   ("dp", "DP"),
   ("gtr", "GTR"),
-  ("iqd", "IQD"),
   ("json", "JSON"),
   ("mat", "MAT"),
   ("n", "number of"),
@@ -35,9 +34,7 @@ const WORDS: [(&str, &str); 22] = [
   ("pb", "protobuf"),
   ("pc", "pseudocount"),
   ("pi", "pi"),
-  ("rtt", "root-to-tip"),
   ("tsv", "TSV"),
-  ("vcf", "VCF"),
 ];
 
 pub fn setting_label(key: &str) -> String {

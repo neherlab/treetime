@@ -29,7 +29,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
   } else {
     let settings = SourceSettings {
       alphabet: &alphabet,
-      gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
+      gap_fill: Some(args.gap_fill_args.gap_fill()),
       missing_leaves: MissingLeafLimit::Enforced,
     };
     read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?

@@ -35,7 +35,7 @@ pub(crate) fn read_tree_and_sources(
   let tree = read_input_tree(args.tree, args.tree_dialect, log)?;
   let settings = SourceSettings {
     alphabet: &alphabet,
-    gap_fill: Some(args.gap_fill_args.effective_gap_fill()),
+    gap_fill: Some(args.gap_fill_args.gap_fill()),
     missing_leaves: MissingLeafLimit::Overridable {
       ignored: args.ignore_missing_alns,
     },

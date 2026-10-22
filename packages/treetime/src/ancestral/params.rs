@@ -8,7 +8,6 @@ pub struct AncestralParams {
   pub include_leaves: bool,
   pub report_ambiguous: bool,
   pub impute_missing_data: bool,
-  pub site_specific_gtr: bool,
   pub seed: u64,
   pub sample_from_profile: SampleMode,
 }

@@ -225,12 +225,6 @@ datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--method-anc=marginal --impute-missing-data"
 
 [[ancestral]]
-variant = "site-specific-gtr"
-datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --site-specific-gtr"
-fail = "kb/issues/M-gtr-site-specific-model-not-implemented.md"
-
-[[ancestral]]
 variant = "sample-root"
 datasets = ["flu/h3n2/20"]
 args = "--method-anc=marginal --sample-from-profile=root"
@@ -298,14 +292,9 @@ fail = "kb/issues/M-io-phylip-alignment-input-unsupported.md"
 
 # Tree ordering and output options, shared by every command that writes a tree
 [[ancestral]]
-variant = "ladderize-ascending"
+variant = "order-descendant-count-reverse"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --ladderize=ascending"
-
-[[ancestral]]
-variant = "ladderize-descending"
-datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --ladderize=descending"
+args = "--method-anc=marginal --topology-order=descendant-count-reverse"
 
 [[ancestral]]
 variant = "order-height"
@@ -364,11 +353,6 @@ args = "--reroot=min-dev"
 variant = "reroot-oldest"
 datasets = ["flu/h3n2/20"]
 args = "--reroot=oldest"
-
-[[clock]]
-variant = "reroot-clock-filter"
-datasets = ["flu/h3n2/20"]
-args = "--reroot=clock-filter"
 
 [[clock]]
 variant = "reroot-tips"
@@ -800,11 +784,6 @@ datasets = ["sc2/4500"]
 args = "--clock-filter=10"
 
 [[timetree]]
-variant = "parsimony"
-datasets = ["flu/h3n2/20"]
-args = "--method-anc=parsimony --max-iter=1"
-
-[[timetree]]
 variant = "jc69"
 datasets = ["flu/h3n2/20"]
 args = "--gtr=jc69"
@@ -862,7 +841,7 @@ args = "--coalescent-skyline --skyline-n-points=5 --confidence --max-iter=3"
 [[timetree]]
 variant = "fast"
 datasets = ["flu/h3n2/200"]
-args = "--method-anc=parsimony --max-iter=1 --keep-polytomies"
+args = "--max-iter=1 --keep-polytomies"
 
 [[timetree]]
 variant = "relaxed-corr"
@@ -931,7 +910,6 @@ outputs = ["timetree.mat.pb", "timetree.mat.json"]
 [help]
 subcommands = [
   "ancestral",
-  "arg",
   "clock",
   "completions",
   "help-markdown",

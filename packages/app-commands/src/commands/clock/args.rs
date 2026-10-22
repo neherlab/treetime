@@ -1,10 +1,6 @@
-use crate::commands::shared::alignment::AlignmentArgs;
-use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
-use crate::commands::shared::method_anc::MethodAncArgs;
-use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{ClockOutputArgs, ClockOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootArgs, RootingArgs};
@@ -71,24 +67,12 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  #[schemars(extend("x-path" = "input"))]
-  pub alignment: AlignmentArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
   pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree_dialect: TreeDialectArgs,
-
-  /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
-  #[cfg_attr(feature = "clap", clap(long, short = 'r', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub vcf_reference: Option<PathBuf>,
 
   /// Metadata table (CSV or TSV) with one row per sample
   ///
@@ -115,20 +99,6 @@ pub struct TreetimeClockArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
-  pub model_args: ModelArgs,
-
-  /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default(), help_heading = "Branch lengths"))]
-  pub branch_length_mode: BranchLengthModeCli,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub method_anc: MethodAncArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
   pub clock_filter: ClockFilterArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -140,9 +110,6 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub rooting: RootingArgs,
-
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub prune_short: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -184,18 +151,4 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
-
-  /// Method for clock filter outlier detection (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Molecular clock"))]
-  pub clock_filter_method: Option<String>,
-
-  /// Filename to save root-to-tip regression plot (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Plots"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "output"))]
-  pub plot_rtt: Option<PathBuf>,
-
-  /// Prune clock outlier tips from the tree (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Molecular clock"))]
-  pub prune_outliers: bool,
 }

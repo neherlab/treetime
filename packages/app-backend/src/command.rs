@@ -50,9 +50,8 @@ impl AppCommandExt for AppCommand {
     const ALIGNMENT_OPTIONAL: CommandInput = CommandInput::new(InputKind::Alignment, InputNeed::Optional);
     match self {
       Self::Timetree => &[TREE, METADATA, ALIGNMENT_RECOMMENDED],
-      Self::Clock => &[TREE, METADATA, ALIGNMENT_OPTIONAL],
+      Self::Clock | Self::Mugration => &[TREE, METADATA],
       Self::Ancestral | Self::Homoplasy | Self::Optimize => &[TREE, ALIGNMENT],
-      Self::Mugration => &[TREE, METADATA],
       Self::Prune => &[TREE, ALIGNMENT_OPTIONAL],
     }
   }
@@ -406,8 +405,7 @@ fn alignment_paths(args: &CommandArgs) -> &[PathBuf] {
     CommandArgs::Prune(args) => &args.alignment.alignment,
     CommandArgs::Ancestral(args) => &args.alignment.alignment,
     CommandArgs::Homoplasy(args) => &args.alignment.alignment,
-    CommandArgs::Clock(args) => &args.alignment.alignment,
-    CommandArgs::Mugration(_) => &[],
+    CommandArgs::Clock(_) | CommandArgs::Mugration(_) => &[],
   }
 }
 

@@ -8,7 +8,6 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
-use crate::commands::shared::method_anc::MethodAncArgs;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{ClockOutputArgs, OutputCoreArgs, TimetreeOutputSelectionArgs};
@@ -35,7 +34,6 @@ use treetime::optimize::params::BranchLengthMode;
 use treetime::timetree::params::TimeMarginalMode;
 use treetime_grid::MaxGridPoints;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
-use treetime_utils::make_error;
 
 #[cfg(feature = "clap")]
 fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
@@ -65,12 +63,6 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeTimetreeArgsRaw) -> Result<Self, Report> {
-    if raw.plot_rtt.is_some() {
-      return make_error!("--plot-rtt is not yet implemented");
-    }
-    if raw.plot_tree.is_some() {
-      return make_error!("--plot-tree is not yet implemented");
-    }
     let tree = raw
       .tree
       .tree
@@ -139,12 +131,6 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree_dialect: TreeDialectArgs,
-
-  /// Only for vcf input: fasta file of the sequence the VCF was mapped to.
-  #[cfg_attr(feature = "clap", clap(long, short = 'r', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub vcf_reference: Option<PathBuf>,
 
   /// Metadata table (CSV or TSV) with one row per sample
   ///
@@ -301,42 +287,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().coalescent_confidence, help_heading = "Coalescent prior"))]
   pub coalescent_confidence: f64,
 
-  /// add posterior LH to coalescent model: use the posterior probability distributions of
-  /// divergence times for estimating the number of branches when calculating the coalescent
-  /// mergerrate or use inferred time before present (default).
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Dating"))]
-  pub n_branches_posterior: Option<usize>,
-
-  /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-  /// default=pdf)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Plots"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "output"))]
-  pub plot_tree: Option<PathBuf>,
-
-  /// filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-  /// default=pdf)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Plots"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "output"))]
-  pub plot_rtt: Option<PathBuf>,
-
-  /// add tip labels (default for small trees with <30 leaves)
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Plots"))]
-  pub tip_labels: bool,
-
-  /// don't show tip labels (default for trees with >=30 leaves)
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Plots"))]
-  pub no_tip_labels: bool,
-
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub clock_filter: ClockFilterArgs,
-
-  /// Number of IQD (interquartile distance) for clock filter outlier detection
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
-  pub n_iqd: Option<f64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -357,11 +311,6 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub partition_rates_args: PartitionRatesArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub method_anc: MethodAncArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -487,20 +436,6 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub seed_args: SeedArgs,
-
-  /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Input data"))]
-  pub aa: bool,
-
-  /// Load a custom GTR model from file (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub custom_gtr: Option<PathBuf>,
-
-  /// Method for clock filter outlier detection (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Molecular clock"))]
-  pub clock_filter_method: Option<String>,
 
   /// Generations per year for converting the coalescent time scale Tc into an effective
   /// population size.

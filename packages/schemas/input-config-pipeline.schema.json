@@ -205,20 +205,6 @@
             }
           ]
         },
-        "vcf_reference": {
-          "anyOf": [
-            {
-              "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-              "type": "string",
-              "x-path": "input",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
         "metadata": {
           "anyOf": [
             {
@@ -538,75 +524,6 @@
             }
           ]
         },
-        "n_branches_posterior": {
-          "anyOf": [
-            {
-              "description": "add posterior LH to coalescent model: use the posterior probability distributions of\ndivergence times for estimating the number of branches when calculating the coalescent\nmergerrate or use inferred time before present (default).",
-              "type": "integer",
-              "format": "uint",
-              "minimum": 0,
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "plot_tree": {
-          "anyOf": [
-            {
-              "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-              "type": "string",
-              "x-path": "output",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "plot_rtt": {
-          "anyOf": [
-            {
-              "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-              "type": "string",
-              "x-path": "output",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "tip_labels": {
-          "anyOf": [
-            {
-              "description": "add tip labels (default for small trees with <30 leaves)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "no_tip_labels": {
-          "anyOf": [
-            {
-              "description": "don't show tip labels (default for trees with >=30 leaves)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
         "clock_filter": {
           "anyOf": [
             {
@@ -627,20 +544,6 @@
               "description": "Allow negative clock rates.\n\nBy default, rates are forced to be positive. For trees with little temporal signal, removing this restriction\ngives essentially mid-point rooting.",
               "type": "boolean",
               "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "n_iqd": {
-          "anyOf": [
-            {
-              "description": "Number of IQD (interquartile distance) for clock filter outlier detection",
-              "type": "number",
-              "format": "double",
-              "x-unset": true
             },
             {
               "type": "string",
@@ -708,11 +611,6 @@
           "$ref": "#/$defs/PartitionRates",
           "default": "estimate"
         },
-        "method_anc": {
-          "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-          "$ref": "#/$defs/MethodAncestral",
-          "default": "marginal"
-        },
         "alphabet": {
           "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
           "$ref": "#/$defs/AlphabetName",
@@ -735,19 +633,6 @@
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
           "$ref": "#/$defs/GapFill",
           "default": "only-terminal"
-        },
-        "keep_overhangs": {
-          "anyOf": [
-            {
-              "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
         },
         "zero_based": {
           "anyOf": [
@@ -1123,11 +1008,6 @@
           },
           "default": []
         },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
-        },
         "topology_order": {
           "description": "Canonical topology ordering preset.",
           "$ref": "#/$defs/TopologyOrderArg",
@@ -1164,46 +1044,6 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0,
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "aa": {
-          "anyOf": [
-            {
-              "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "custom_gtr": {
-          "anyOf": [
-            {
-              "description": "Load a custom GTR model from file (not yet implemented)",
-              "type": "string",
-              "x-path": "input",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "clock_filter_method": {
-          "anyOf": [
-            {
-              "description": "Method for clock filter outlier detection (not yet implemented)",
-              "type": "string",
               "x-unset": true
             },
             {
@@ -1267,8 +1107,7 @@
           "enum": [
             "least-squares",
             "min-dev",
-            "oldest",
-            "clock-filter"
+            "oldest"
           ]
         },
         {
@@ -1341,21 +1180,6 @@
               "pattern": "\\{\\{.*\\}\\}"
             }
           ]
-        }
-      ]
-    },
-    "MethodAncestral": {
-      "anyOf": [
-        {
-          "type": "string",
-          "enum": [
-            "marginal",
-            "parsimony"
-          ]
-        },
-        {
-          "type": "string",
-          "pattern": "\\{\\{.*\\}\\}"
         }
       ]
     },
@@ -1471,22 +1295,6 @@
         }
       ]
     },
-    "LadderizeArg": {
-      "anyOf": [
-        {
-          "type": "string",
-          "enum": [
-            "none",
-            "ascending",
-            "descending"
-          ]
-        },
-        {
-          "type": "string",
-          "pattern": "\\{\\{.*\\}\\}"
-        }
-      ]
-    },
     "TopologyOrderArg": {
       "anyOf": [
         {
@@ -1543,26 +1351,9 @@
       ]
     },
     "ClockConfig": {
-      "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
+      "description": "Newick dialect of the tree inputs, shared by every command that reads a tree.",
       "type": "object",
       "properties": {
-        "alignment": {
-          "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
-          "type": "array",
-          "items": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "string",
-                "pattern": "\\{\\{.*\\}\\}"
-              }
-            ]
-          },
-          "default": [],
-          "x-path": "input"
-        },
         "tree": {
           "anyOf": [
             {
@@ -1597,20 +1388,6 @@
                 "rich,mrbayes"
               ],
               "default": "classic,beast"
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "vcf_reference": {
-          "anyOf": [
-            {
-              "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-              "type": "string",
-              "x-path": "input",
-              "x-unset": true
             },
             {
               "type": "string",
@@ -1700,37 +1477,6 @@
             }
           ]
         },
-        "model": {
-          "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
-          "$ref": "#/$defs/GtrModelName",
-          "default": "infer"
-        },
-        "model_params": {
-          "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model\nk80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
-          "type": "array",
-          "items": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "string",
-                "pattern": "\\{\\{.*\\}\\}"
-              }
-            ]
-          },
-          "default": []
-        },
-        "branch_length_mode": {
-          "description": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
-          "$ref": "#/$defs/BranchLengthMode",
-          "default": "marginal"
-        },
-        "method_anc": {
-          "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-          "$ref": "#/$defs/MethodAncestral",
-          "default": "marginal"
-        },
         "clock_filter": {
           "anyOf": [
             {
@@ -1783,18 +1529,6 @@
           "anyOf": [
             {
               "description": "Keep the root of the input tree instead of rerooting it.",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "prune_short": {
-          "anyOf": [
-            {
               "type": "boolean",
               "default": false
             },
@@ -2002,11 +1736,6 @@
           },
           "default": []
         },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
-        },
         "topology_order": {
           "description": "Canonical topology ordering preset.",
           "$ref": "#/$defs/TopologyOrderArg",
@@ -2035,46 +1764,6 @@
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
-        },
-        "clock_filter_method": {
-          "anyOf": [
-            {
-              "description": "Method for clock filter outlier detection (not yet implemented)",
-              "type": "string",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "plot_rtt": {
-          "anyOf": [
-            {
-              "description": "Filename to save root-to-tip regression plot (not yet implemented)",
-              "type": "string",
-              "x-path": "output",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "prune_outliers": {
-          "anyOf": [
-            {
-              "description": "Prune clock outlier tips from the tree (not yet implemented)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
         }
       },
       "additionalProperties": false
@@ -2125,20 +1814,6 @@
           },
           "default": [],
           "x-path": "input"
-        },
-        "vcf_reference": {
-          "anyOf": [
-            {
-              "description": "FASTA file of the sequence the VCF was mapped to (only for vcf input)",
-              "type": "string",
-              "x-path": "input",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
         },
         "tree": {
           "anyOf": [
@@ -2234,19 +1909,6 @@
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
           "$ref": "#/$defs/GapFill",
           "default": "only-terminal"
-        },
-        "keep_overhangs": {
-          "anyOf": [
-            {
-              "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
         },
         "zero_based": {
           "anyOf": [
@@ -2596,11 +2258,6 @@
           },
           "default": []
         },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
-        },
         "topology_order": {
           "description": "Canonical topology ordering preset.",
           "$ref": "#/$defs/TopologyOrderArg",
@@ -2630,19 +2287,6 @@
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
         },
-        "site_specific_gtr": {
-          "anyOf": [
-            {
-              "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
         "seed": {
           "anyOf": [
             {
@@ -2657,49 +2301,24 @@
               "pattern": "\\{\\{.*\\}\\}"
             }
           ]
-        },
-        "aa": {
-          "anyOf": [
-            {
-              "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "marginal": {
-          "anyOf": [
-            {
-              "description": "Shortcut for `--method-anc=marginal` (v0 compat)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "custom_gtr": {
-          "anyOf": [
-            {
-              "description": "Load a custom GTR model from file (not yet implemented)",
-              "type": "string",
-              "x-path": "input",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
         }
       },
       "additionalProperties": false
+    },
+    "MethodAncestral": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "marginal",
+            "parsimony"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "\\{\\{.*\\}\\}"
+        }
+      ]
     },
     "SampleMode": {
       "anyOf": [
@@ -2927,19 +2546,6 @@
           "$ref": "#/$defs/GapFill",
           "default": "only-terminal"
         },
-        "keep_overhangs": {
-          "anyOf": [
-            {
-              "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
         "zero_based": {
           "anyOf": [
             {
@@ -2970,19 +2576,6 @@
           "anyOf": [
             {
               "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.\nUseful when consuming per-CDS translations where some samples have no peptide for a given CDS.",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "site_specific_gtr": {
-          "anyOf": [
-            {
-              "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
               "type": "boolean",
               "default": false
             },
@@ -3238,11 +2831,6 @@
             "$ref": "#/$defs/HomoplasyOutputSelection"
           },
           "default": []
-        },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
         },
         "topology_order": {
           "description": "Canonical topology ordering preset.",
@@ -3730,11 +3318,6 @@
           },
           "default": []
         },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
-        },
         "topology_order": {
           "description": "Canonical topology ordering preset.",
           "$ref": "#/$defs/TopologyOrderArg",
@@ -4115,11 +3698,6 @@
           },
           "default": []
         },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
-        },
         "topology_order": {
           "description": "Canonical topology ordering preset.",
           "$ref": "#/$defs/TopologyOrderArg",
@@ -4203,7 +3781,7 @@
           "default": "brent"
         },
         "reroot": {
-          "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest, clock-filter) are available in the timetree and clock commands.",
+          "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest) are available in the timetree and clock commands.",
           "$ref": "#/$defs/OptimizeRerootMethod",
           "x-unset": true
         },
@@ -4279,19 +3857,6 @@
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
           "$ref": "#/$defs/GapFill",
           "default": "only-terminal"
-        },
-        "keep_overhangs": {
-          "anyOf": [
-            {
-              "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
         }
       },
       "additionalProperties": false
@@ -4397,7 +3962,7 @@
     "OptimizeRerootMethod": {
       "anyOf": [
         {
-          "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest, clock-filter) are available\nin the timetree and clock commands.",
+          "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest) are available\nin the timetree and clock commands.",
           "type": "string",
           "enum": [
             "min-dev"
@@ -4617,11 +4182,6 @@
             "$ref": "#/$defs/PruneOutputSelection"
           },
           "default": []
-        },
-        "ladderize": {
-          "description": "Order tree topology before writing output files.",
-          "$ref": "#/$defs/LadderizeArg",
-          "x-unset": true
         },
         "topology_order": {
           "description": "Canonical topology ordering preset.",

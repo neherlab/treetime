@@ -41,13 +41,6 @@
       "default": "classic,beast",
       "x-cli-flag": "--tree-dialect"
     },
-    "vcf_reference": {
-      "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-      "type": "string",
-      "x-path": "input",
-      "x-unset": true,
-      "x-cli-flag": "--vcf-reference"
-    },
     "metadata": {
       "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
       "type": "string",
@@ -229,40 +222,6 @@
       "default": 2.0,
       "x-cli-flag": "--coalescent-confidence"
     },
-    "n_branches_posterior": {
-      "description": "add posterior LH to coalescent model: use the posterior probability distributions of\ndivergence times for estimating the number of branches when calculating the coalescent\nmergerrate or use inferred time before present (default).",
-      "type": "integer",
-      "format": "uint",
-      "minimum": 0,
-      "x-unset": true,
-      "x-cli-flag": "--n-branches-posterior"
-    },
-    "plot_tree": {
-      "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--plot-tree"
-    },
-    "plot_rtt": {
-      "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-      "type": "string",
-      "x-path": "output",
-      "x-unset": true,
-      "x-cli-flag": "--plot-rtt"
-    },
-    "tip_labels": {
-      "description": "add tip labels (default for small trees with <30 leaves)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--tip-labels"
-    },
-    "no_tip_labels": {
-      "description": "don't show tip labels (default for trees with >=30 leaves)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--no-tip-labels"
-    },
     "clock_filter": {
       "description": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression\nbeyond which a tip is an outlier.\n\n0 switches the filter off.",
       "type": "number",
@@ -275,13 +234,6 @@
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--allow-negative-rate"
-    },
-    "n_iqd": {
-      "description": "Number of IQD (interquartile distance) for clock filter outlier detection",
-      "type": "number",
-      "format": "double",
-      "x-unset": true,
-      "x-cli-flag": "--n-iqd"
     },
     "reroot": {
       "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
@@ -325,12 +277,6 @@
       "default": "estimate",
       "x-cli-flag": "--partition-rates"
     },
-    "method_anc": {
-      "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-      "$ref": "#/$defs/MethodAncestral",
-      "default": "marginal",
-      "x-cli-flag": "--method-anc"
-    },
     "alphabet": {
       "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
       "$ref": "#/$defs/AlphabetName",
@@ -348,12 +294,6 @@
       "$ref": "#/$defs/GapFill",
       "default": "only-terminal",
       "x-cli-flag": "--gap-fill"
-    },
-    "keep_overhangs": {
-      "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--keep-overhangs"
     },
     "zero_based": {
       "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
@@ -558,12 +498,6 @@
       "default": [],
       "x-cli-flag": "--ambiguity-outputs"
     },
-    "ladderize": {
-      "description": "Order tree topology before writing output files.",
-      "$ref": "#/$defs/LadderizeArg",
-      "x-unset": true,
-      "x-cli-flag": "--ladderize"
-    },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
       "$ref": "#/$defs/TopologyOrderArg",
@@ -596,25 +530,6 @@
       "minimum": 0,
       "x-unset": true,
       "x-cli-flag": "--seed"
-    },
-    "aa": {
-      "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--aa"
-    },
-    "custom_gtr": {
-      "description": "Load a custom GTR model from file (not yet implemented)",
-      "type": "string",
-      "x-path": "input",
-      "x-unset": true,
-      "x-cli-flag": "--custom-gtr"
-    },
-    "clock_filter_method": {
-      "description": "Method for clock filter outlier detection (not yet implemented)",
-      "type": "string",
-      "x-unset": true,
-      "x-cli-flag": "--clock-filter-method"
     },
     "gen_per_year": {
       "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.",
@@ -650,8 +565,7 @@
       "enum": [
         "least-squares",
         "min-dev",
-        "oldest",
-        "clock-filter"
+        "oldest"
       ]
     },
     "GtrModelName": {
@@ -687,13 +601,6 @@
           "type": "string",
           "const": "equal"
         }
-      ]
-    },
-    "MethodAncestral": {
-      "type": "string",
-      "enum": [
-        "marginal",
-        "parsimony"
       ]
     },
     "AlphabetName": {
@@ -758,14 +665,6 @@
           "type": "string",
           "const": "reconstructed-nuc-fasta"
         }
-      ]
-    },
-    "LadderizeArg": {
-      "type": "string",
-      "enum": [
-        "none",
-        "ascending",
-        "descending"
       ]
     },
     "TopologyOrderArg": {

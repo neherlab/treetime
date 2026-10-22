@@ -46,7 +46,6 @@ mod tests {
         "Dating",
         "Polytomies",
         "Coalescent prior",
-        "Plots",
         "Rooting",
         "Substitution model",
         "Ancestral reconstruction",
@@ -180,7 +179,7 @@ mod tests {
   #[case::input_list(    AppCommand::Ancestral, "alignment",          SettingRole::Input)]
   #[case::input_template(AppCommand::Ancestral, "translations",       SettingRole::InputTemplate)]
   #[case::output(        AppCommand::Timetree,  "output_clock_model", SettingRole::Output)]
-  #[case::plot(          AppCommand::Clock,     "plot_rtt",           SettingRole::Output)]
+  #[case::chart(         AppCommand::Clock,     "output_clock_chart_svg", SettingRole::Output)]
   #[trace]
   fn test_setting_catalog_role(#[case] command: AppCommand, #[case] key: &str, #[case] role: SettingRole) {
     assert_eq!(role, spec(command, key).role);
@@ -195,10 +194,7 @@ mod tests {
   fn test_setting_catalog_optional_enum_lists_its_values() {
     let reroot = spec(AppCommand::Timetree, "reroot");
     assert_eq!(
-      (
-        SettingKind::Enum,
-        vec_of_owned!["least-squares", "min-dev", "oldest", "clock-filter"]
-      ),
+      (SettingKind::Enum, vec_of_owned!["least-squares", "min-dev", "oldest"]),
       (
         reroot.kind,
         reroot.options.into_iter().map(|option| option.value).collect_vec()
@@ -257,7 +253,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::timetree( AppCommand::Timetree,  true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required), (InputKind::Alignment, InputNeed::Recommended)])]
-  #[case::clock(    AppCommand::Clock,     true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required), (InputKind::Alignment, InputNeed::Optional)])]
+  #[case::clock(    AppCommand::Clock,     true,  &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required)])]
   #[case::ancestral(AppCommand::Ancestral, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
   #[case::homoplasy(AppCommand::Homoplasy, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Alignment, InputNeed::Required)])]
   #[case::mugration(AppCommand::Mugration, false, &[(InputKind::Tree, InputNeed::Required), (InputKind::Metadata, InputNeed::Required)])]

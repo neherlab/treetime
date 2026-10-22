@@ -146,19 +146,3 @@ distribution of the same mean to detect sites that are mutated suspiciously ofte
 - statistics JSON (`homoplasy.stats.json`) and text report (`homoplasy.report.txt`); the report is also logged at info
   level (`-v`)
 - tree outputs with the branch mutations (`homoplasy.nwk`, `homoplasy.nexus`, and the other tree formats)
-
-## `arg`
-
-What is ARG?
-
-#### Inputs:
-
-- ...
-
-#### Steps:
-
-- ...
-
-#### Outputs:
-
-- ...

@@ -197,11 +197,6 @@ pub struct TimetreeOutput {
 }
 
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
-  if params.n_branches_posterior.is_some() {
-    return Err(OperationError::InvalidParams(make_report!(
-      "--n-branches-posterior is not yet implemented"
-    )));
-  }
   if has_seq_sink && params.branch_length_mode == BranchLengthMode::Input {
     return Err(OperationError::InvalidParams(make_report!(
       "Reconstructed sequence output requires ancestral reconstruction; \

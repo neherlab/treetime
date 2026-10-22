@@ -142,9 +142,6 @@ pub(crate) enum TreetimeCommands {
   /// running anything, and `--steps` to run only a subset.
   Pipeline(TreetimePipelineArgs),
 
-  /// Estimates ancestral reassortment graph (ARG).
-  Arg(TreetimeAncestralReassortmentGraphArgs),
-
   /// Write JSON Schema definitions for TreeTime data types
   Schema(TreetimeSchemaArgs),
 
@@ -192,9 +189,6 @@ pub(crate) struct TreetimeSchemaArgs {
   #[clap(short = 'o', long, value_hint = ValueHint::AnyPath)]
   pub output: Option<PathBuf>,
 }
-
-#[derive(Parser, Debug, Serialize)]
-pub(crate) struct TreetimeAncestralReassortmentGraphArgs;
 
 fn resolve<T: RawConfig>(args: &mut T, matches: &ArgMatches) -> Result<(), Report> {
   overlay_config(args, matches)

@@ -52,21 +52,6 @@ mod tests {
   const TIP_PAST_OPTIMUM_SEQUENCE_LENGTH: usize = 1000;
 
   #[test]
-  fn test_pipeline_rejects_n_branches_posterior_before_any_inference() -> Result<(), Report> {
-    let params = TimetreeParams {
-      n_branches_posterior: Some(2),
-      ..marginal_timetree_params()
-    };
-    let input = helpers::star_input(None)?;
-
-    assert_error!(
-      helpers::run(&params, input, None),
-      "--n-branches-posterior is not yet implemented"
-    );
-    Ok(())
-  }
-
-  #[test]
   fn test_pipeline_marginal_mode_requires_an_alignment() -> Result<(), Report> {
     let params = TimetreeParams {
       clock_rate: Some(STAR_CLOCK_RATE),

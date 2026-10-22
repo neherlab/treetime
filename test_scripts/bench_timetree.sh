@@ -54,8 +54,7 @@ for ds_entry in "${DATASETS[@]}"; do
             --tree "$tree" \
             --aln "$aln" \
             --dates "$dates" \
-            --output-tree-auspice "$out_json" \
-            --ladderize ascending)
+            --output-tree-auspice "$out_json")
         [[ -n "$coal_flag" ]] && cmd+=($coal_flag)
 
         t_start=$(date +%s%N)

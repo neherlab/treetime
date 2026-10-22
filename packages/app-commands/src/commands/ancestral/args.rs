@@ -39,7 +39,6 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralPar
     include_leaves: args.include_leaves,
     report_ambiguous: args.tip_sequences.report_ambiguous,
     impute_missing_data: args.impute_missing_data,
-    site_specific_gtr: args.site_specific_gtr,
     seed,
     sample_from_profile: args.sample_from_profile,
   }
@@ -104,12 +103,6 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
-
-  /// FASTA file of the sequence the VCF was mapped to (only for vcf input)
-  #[cfg_attr(feature = "clap", clap(long, short = 'r', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub vcf_reference: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -273,30 +266,8 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
-  /// Use site-specific GTR model with per-site equilibrium frequencies.
-  ///
-  /// Requires `--model infer` and `--dense true`. Incompatible with sequence compression
-  /// (sparse representation). When enabled, each alignment position gets its own
-  /// eigendecomposition based on position-specific base composition.
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
-  pub site_specific_gtr: bool,
-
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub seed_args: SeedArgs,
-
-  /// Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Input data"))]
-  pub aa: bool,
-
-  /// Shortcut for `--method-anc=marginal` (v0 compat)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Ancestral reconstruction"))]
-  pub marginal: bool,
-
-  /// Load a custom GTR model from file (not yet implemented)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub custom_gtr: Option<PathBuf>,
 }

@@ -2,12 +2,11 @@ use app_commands::command_config::CommandConfig;
 use eyre::Report;
 use serde_json::Value;
 
-const INPUT_FIELDS: [(&str, &[&str]); 5] = [
+const INPUT_FIELDS: [(&str, &[&str]); 4] = [
   ("tree", &["tree"]),
   ("alignment", &["alignment"]),
   ("metadata", &["metadata"]),
   ("weights", &["weights"]),
-  ("vcf-reference", &["vcf_reference"]),
 ];
 
 pub(crate) fn input_paths(command: &CommandConfig) -> Result<Vec<String>, Report> {

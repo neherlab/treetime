@@ -64,7 +64,6 @@ mod tests {
   #[case::shared_alignment(  AppCommand::Ancestral, "alignment",                   "Input data")]
   #[case::shared_order(      AppCommand::Mugration, "topology_order",              "Tree ordering")]
   #[case::output_path(       AppCommand::Timetree,  "output_clock_model",          "Output")]
-  #[case::hidden_plot(       AppCommand::Timetree,  "plot_tree",                   "Plots")]
   #[trace]
   fn test_schema_annotations_help_heading_of_setting(
     #[case] command: AppCommand,
@@ -113,11 +112,11 @@ mod tests {
   }
 
   #[test]
-  fn test_schema_annotations_output_paths_are_the_output_and_plot_settings() {
+  fn test_schema_annotations_output_paths_are_the_output_settings() {
     for command in AppCommand::iter() {
       for setting in setting_properties(command.config_schema().as_value()).unwrap() {
         let key = setting.key.as_str();
-        let is_output_key = key.starts_with("output_") || key.starts_with("plot_");
+        let is_output_key = key.starts_with("output_");
         let is_output_role = setting.path_role == Some(PathRole::Output);
         assert_eq!(
           is_output_key && setting.path_role.is_some(),
@@ -143,11 +142,9 @@ mod tests {
       ("aa_root_sequence", "Input"),
       ("alignment", "Input"),
       ("annotation", "Input"),
-      ("custom_gtr", "Input"),
       ("topology_order_target_file", "Input"),
       ("translations", "InputTemplate"),
       ("tree", "Input"),
-      ("vcf_reference", "Input"),
     ]
     .into_iter()
     .map(|(key, role)| (key.to_owned(), role.to_owned()))

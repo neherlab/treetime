@@ -33,11 +33,10 @@ mod tests {
 
   #[rustfmt::skip]
   const SHORT_FLAG_EXCEPTIONS: &[ShortFlagException] = &[
-    ShortFlagException { commands: &[TT, AN, CL],         long: "vcf-reference",          short: Some('r'), pending: Pending::RemoveFlagsWithoutEffect },
     ShortFlagException { commands: &[TT, CL],             long: "metadata",               short: Some('d'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[MU],                 long: "metadata",               short: Some('s'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[MU],                 long: "weights",                short: Some('w'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[TT, AN, CL, HO, OP], long: "model",                  short: Some('g'), pending: Pending::FlagRenames },
+    ShortFlagException { commands: &[TT, AN, HO, OP],     long: "model",                  short: Some('g'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PR],                 long: "prune-short",            short: Some('s'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PR],                 long: "prune-empty",            short: Some('e'), pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PR],                 long: "merge-shared-mutations", short: Some('m'), pending: Pending::FlagRenames },

@@ -1326,8 +1326,7 @@ export const zTimeMarginalMode = z.enum([
 export const zRerootMethod = z.enum([
   'least-squares',
   'min-dev',
-  'oldest',
-  'clock-filter'
+  'oldest'
 ]);
 
 export const zGtrModelName = z.union([
@@ -1345,8 +1344,6 @@ export const zPartitionRates = z.union([
   z.literal('estimate'),
   z.literal('equal')
 ]);
-
-export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
 
 export const zAlphabetName = z.enum([
   'nuc',
@@ -1397,12 +1394,6 @@ export const zTimetreeOutputSelection = z.enum([
  */
 export const zTimetreeAmbiguityOutput = z.literal('reconstructed-nuc-fasta');
 
-export const zLadderizeArg = z.enum([
-  'none',
-  'ascending',
-  'descending'
-]);
-
 export const zTopologyOrderArg = z.enum([
   'keep',
   'descendant-count',
@@ -1448,7 +1439,6 @@ export const zTimetreeConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
-  vcf_reference: z.string().optional(),
   metadata: z.string().optional(),
   metadata_id_columns: z.array(z.string()).optional(),
   metadata_delimiters: z.array(z.string().length(1)).optional(),
@@ -1471,25 +1461,17 @@ export const zTimetreeConfig = z.strictObject({
   skyline_n_points: z.int().gte(0).optional(),
   skyline_stiffness: z.number().optional(),
   coalescent_confidence: z.number().optional(),
-  n_branches_posterior: z.int().gte(0).optional(),
-  plot_tree: z.string().optional(),
-  plot_rtt: z.string().optional(),
-  tip_labels: z.boolean().optional(),
-  no_tip_labels: z.boolean().optional(),
   clock_filter: z.number().optional(),
   allow_negative_rate: z.boolean().optional(),
-  n_iqd: z.number().optional(),
   reroot: zRerootMethod.optional(),
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
-  method_anc: zMethodAncestral.optional(),
   alphabet: zAlphabetName.optional(),
   dense: z.boolean().optional(),
   gap_fill: zGapFill.optional(),
-  keep_overhangs: z.boolean().optional(),
   zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
   reconstruct_tip_states: z.boolean().optional(),
@@ -1519,15 +1501,11 @@ export const zTimetreeConfig = z.strictObject({
   output_selection: z.array(zTimetreeOutputSelection).optional(),
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zTimetreeAmbiguityOutput).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
   topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
-  aa: z.boolean().optional(),
-  custom_gtr: z.string().optional(),
-  clock_filter_method: z.string().optional(),
   gen_per_year: z.number().optional()
 });
 
@@ -1548,13 +1526,9 @@ export const zClockOutputSelection = z.enum([
 ]);
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
- *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Newick dialect of the tree inputs, shared by every command that reads a tree.
  */
 export const zClockConfig = z.strictObject({
-  alignment: z.array(z.string()).optional(),
   tree: z.string().optional(),
   tree_dialect: z.enum([
     'classic,plain',
@@ -1570,22 +1544,16 @@ export const zClockConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
-  vcf_reference: z.string().optional(),
   metadata: z.string().optional(),
   metadata_id_columns: z.array(z.string()).optional(),
   metadata_delimiters: z.array(z.string().length(1)).optional(),
   date_column: z.string().optional(),
   date_format: z.string().optional(),
-  model: zGtrModelName.optional(),
-  model_params: z.array(z.string()).optional(),
-  branch_length_mode: zBranchLengthMode.optional(),
-  method_anc: zMethodAncestral.optional(),
   clock_filter: z.number().optional(),
   allow_negative_rate: z.boolean().optional(),
   reroot: zRerootMethod.optional(),
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
-  prune_short: z.boolean().optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),
   output_tree_nwk: z.string().optional(),
@@ -1601,15 +1569,13 @@ export const zClockConfig = z.strictObject({
   output_clock_chart_png: z.string().optional(),
   output_clock_chart_pdf: z.string().optional(),
   output_selection: z.array(zClockOutputSelection).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  clock_filter_method: z.string().optional(),
-  plot_rtt: z.string().optional(),
-  prune_outliers: z.boolean().optional()
+  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
+
+export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
 
 export const zSampleMode = z.enum([
   'argmax',
@@ -1659,7 +1625,6 @@ export const zAncestralAmbiguityOutput = z.union([
  */
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
-  vcf_reference: z.string().optional(),
   tree: z.string().optional(),
   tree_dialect: z.enum([
     'classic,plain',
@@ -1682,7 +1647,6 @@ export const zAncestralConfig = z.strictObject({
   dense: z.boolean().optional(),
   sample_from_profile: zSampleMode.optional(),
   gap_fill: zGapFill.optional(),
-  keep_overhangs: z.boolean().optional(),
   zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
   reconstruct_tip_states: z.boolean().optional(),
@@ -1710,16 +1674,11 @@ export const zAncestralConfig = z.strictObject({
   output_selection: z.array(zAncestralOutputSelection).optional(),
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zAncestralAmbiguityOutput).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
   topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  site_specific_gtr: z.boolean().optional(),
-  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
-  aa: z.boolean().optional(),
-  marginal: z.boolean().optional(),
-  custom_gtr: z.string().optional()
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 export const zHomoplasyOutputSelection = z.enum([
@@ -1764,11 +1723,9 @@ export const zHomoplasyConfig = z.strictObject({
   method_anc: zMethodAncestral.optional(),
   dense: z.boolean().optional(),
   gap_fill: zGapFill.optional(),
-  keep_overhangs: z.boolean().optional(),
   zero_based: z.boolean().optional(),
   impute_missing_data: z.boolean().optional(),
   ignore_missing_alns: z.boolean().optional(),
-  site_specific_gtr: z.boolean().optional(),
   sample_from_profile: zSampleMode.optional(),
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   constant_sites: z.int().gte(0).optional(),
@@ -1788,7 +1745,6 @@ export const zHomoplasyConfig = z.strictObject({
   output_homoplasy_stats: z.string().optional(),
   output_homoplasy_report: z.string().optional(),
   output_selection: z.array(zHomoplasyOutputSelection).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
@@ -1863,7 +1819,6 @@ export const zMugrationConfig = z.strictObject({
   output_selection: z.array(zMugrationOutputSelection).optional(),
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zMugrationAmbiguityOutput).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
@@ -1909,7 +1864,7 @@ export const zBranchOptMethod = z.union([
  * Reroot methods available in the optimize command.
  *
  * Only date-free methods are valid here because optimize has no sampling dates.
- * Date-dependent methods (least-squares, oldest, clock-filter) are available
+ * Date-dependent methods (least-squares, oldest) are available
  * in the timetree and clock commands.
  */
 export const zOptimizeRerootMethod = z.enum(['min-dev']);
@@ -1956,7 +1911,6 @@ export const zOptimizeConfig = z.strictObject({
   output_augur_node_data: z.string().optional(),
   output_gtr: z.string().optional(),
   output_selection: z.array(zOptimizeOutputSelection).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
@@ -1972,8 +1926,7 @@ export const zOptimizeConfig = z.strictObject({
   no_collapse_short_branches: z.boolean().optional(),
   no_merge_siblings: z.boolean().optional(),
   no_flip_parent_child: z.boolean().optional(),
-  gap_fill: zGapFill.optional(),
-  keep_overhangs: z.boolean().optional()
+  gap_fill: zGapFill.optional()
 });
 
 export const zPruneOutputSelection = z.enum([
@@ -2023,7 +1976,6 @@ export const zPruneConfig = z.strictObject({
   output_tree_dot: z.string().optional(),
   output_gtr: z.string().optional(),
   output_selection: z.array(zPruneOutputSelection).optional(),
-  ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),

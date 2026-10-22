@@ -245,12 +245,6 @@
       "default": [],
       "x-cli-flag": "--ambiguity-outputs"
     },
-    "ladderize": {
-      "description": "Order tree topology before writing output files.",
-      "$ref": "#/$defs/LadderizeArg",
-      "x-unset": true,
-      "x-cli-flag": "--ladderize"
-    },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
       "$ref": "#/$defs/TopologyOrderArg",
@@ -326,14 +320,6 @@
           "type": "string",
           "const": "auspice"
         }
-      ]
-    },
-    "LadderizeArg": {
-      "type": "string",
-      "enum": [
-        "none",
-        "ascending",
-        "descending"
       ]
     },
     "TopologyOrderArg": {

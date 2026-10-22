@@ -20,7 +20,6 @@ pub enum RerootMethod {
   LeastSquares,
   MinDev,
   Oldest,
-  ClockFilter,
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, SmartDefault)]

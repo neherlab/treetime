@@ -40,7 +40,6 @@ mod tests {
       include_leaves: false,
       report_ambiguous: true,
       impute_missing_data: false,
-      site_specific_gtr: false,
       seed: 0,
       sample_from_profile: SampleMode::Root,
     };
@@ -83,7 +82,6 @@ mod tests {
         include_leaves: false,
         report_ambiguous: true,
         impute_missing_data: false,
-        site_specific_gtr: false,
         seed,
         sample_from_profile: mode,
       };

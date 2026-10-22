@@ -80,12 +80,6 @@
       "default": "only-terminal",
       "x-cli-flag": "--gap-fill"
     },
-    "keep_overhangs": {
-      "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--keep-overhangs"
-    },
     "zero_based": {
       "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
       "type": "boolean",
@@ -103,12 +97,6 @@
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--ignore-missing-alns"
-    },
-    "site_specific_gtr": {
-      "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--site-specific-gtr"
     },
     "sample_from_profile": {
       "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -248,12 +236,6 @@
       "default": [],
       "x-cli-flag": "--output-selection"
     },
-    "ladderize": {
-      "description": "Order tree topology before writing output files.",
-      "$ref": "#/$defs/LadderizeArg",
-      "x-unset": true,
-      "x-cli-flag": "--ladderize"
-    },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
       "$ref": "#/$defs/TopologyOrderArg",
@@ -360,14 +342,6 @@
         "dot",
         "homoplasy-stats",
         "homoplasy-report"
-      ]
-    },
-    "LadderizeArg": {
-      "type": "string",
-      "enum": [
-        "none",
-        "ascending",
-        "descending"
       ]
     },
     "TopologyOrderArg": {

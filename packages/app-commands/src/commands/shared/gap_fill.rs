@@ -6,8 +6,6 @@ use treetime::seq::gap_fill::GapFill;
 use treetime_schema::schema_defaults;
 
 /// Gap-handling policy shared by every command that reads sequences.
-///
-/// The hidden `--keep-overhangs` flag, which v0 invocations use, overrides `--gap-fill` to `none`.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
@@ -21,22 +19,14 @@ pub struct GapFillArgs {
   /// 'none': leave all gap characters unchanged.
   #[cfg_attr(
     feature = "clap",
-    clap(long, value_enum, default_value_t = GapFillCli::default(), conflicts_with = "keep_overhangs", help_heading = "Ancestral reconstruction")
+    clap(long, value_enum, default_value_t = GapFillCli::default(), help_heading = "Ancestral reconstruction")
   )]
   gap_fill: GapFillCli,
-
-  /// Do not fill terminal gaps (deprecated: use --gap-fill=none)
-  #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Ancestral reconstruction"))]
-  keep_overhangs: bool,
 }
 
 impl GapFillArgs {
-  pub fn effective_gap_fill(&self) -> GapFill {
-    if self.keep_overhangs {
-      GapFill::None
-    } else {
-      self.gap_fill.into()
-    }
+  pub fn gap_fill(&self) -> GapFill {
+    self.gap_fill.into()
   }
 }
 

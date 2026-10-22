@@ -158,7 +158,6 @@ fn timetree_params(
     skyline_stiffness: args.skyline_stiffness,
     coalescent_confidence: args.coalescent_confidence,
     gen_per_year: args.gen_per_year,
-    n_branches_posterior: args.n_branches_posterior,
     time_marginal: args.time_marginal,
     confidence: args.confidence,
     include_leaves: args.include_leaves,

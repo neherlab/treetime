@@ -56,7 +56,6 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
     TreetimeCommands::Pipeline(pipeline_args) => {
       run_pipeline_command(&pipeline_args, stages, log)?;
     },
-    TreetimeCommands::Arg(_) => {},
     TreetimeCommands::Schema(TreetimeSchemaArgs { target, output }) => {
       generate_schema(target, output.as_ref())?;
     },

@@ -66,7 +66,6 @@
         "Dating",
         "Polytomies",
         "Coalescent prior",
-        "Plots",
         "Rooting",
         "Substitution model",
         "Ancestral reconstruction",
@@ -378,24 +377,6 @@
           "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
-          "key": "vcf_reference",
-          "label": "VCF reference",
-          "flag": "--vcf-reference",
-          "group": "Input data",
-          "role": "input",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "VCF_REFERENCE"
-          ],
-          "conflicts": [],
-          "help": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-          "more": ""
-        },
-        {
           "key": "metadata",
           "label": "Metadata",
           "flag": "--metadata",
@@ -566,25 +547,6 @@
           "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
-          "key": "aa",
-          "label": "Amino-acid",
-          "flag": "--aa",
-          "group": "Input data",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "AA"
-          ],
-          "conflicts": [],
-          "help": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-          "more": ""
-        },
-        {
           "key": "clock_rate",
           "label": "Clock rate",
           "flag": "--clock-rate",
@@ -684,42 +646,6 @@
           "conflicts": [],
           "help": "Allow negative clock rates.",
           "more": "By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting."
-        },
-        {
-          "key": "n_iqd",
-          "label": "Number of IQD",
-          "flag": "--n-iqd",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "number",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "N_IQD"
-          ],
-          "conflicts": [],
-          "help": "Number of IQD (interquartile distance) for clock filter outlier detection",
-          "more": ""
-        },
-        {
-          "key": "clock_filter_method",
-          "label": "Clock filter method",
-          "flag": "--clock-filter-method",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "CLOCK_FILTER_METHOD"
-          ],
-          "conflicts": [],
-          "help": "Method for clock filter outlier detection (not yet implemented)",
-          "more": ""
         },
         {
           "key": "branch_length_mode",
@@ -859,25 +785,6 @@
           "conflicts": [],
           "help": "Largest number of points of one probability grid during time inference.",
           "more": "A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000."
-        },
-        {
-          "key": "n_branches_posterior",
-          "label": "Number of branches posterior",
-          "flag": "--n-branches-posterior",
-          "group": "Dating",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "N_BRANCHES_POSTERIOR"
-          ],
-          "conflicts": [],
-          "help": "add posterior LH to coalescent model: use the posterior probability distributions of divergence times for estimating the number of branches when calculating the coalescent mergerrate or use inferred time before present (default).",
-          "more": ""
         },
         {
           "key": "keep_polytomies",
@@ -1062,80 +969,6 @@
           "more": "The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference."
         },
         {
-          "key": "plot_tree",
-          "label": "Plot tree",
-          "flag": "--plot-tree",
-          "group": "Plots",
-          "role": "output",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "PLOT_TREE"
-          ],
-          "conflicts": [],
-          "help": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg, default=pdf)",
-          "more": ""
-        },
-        {
-          "key": "plot_rtt",
-          "label": "Plot root-to-tip",
-          "flag": "--plot-rtt",
-          "group": "Plots",
-          "role": "output",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "PLOT_RTT"
-          ],
-          "conflicts": [],
-          "help": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg, default=pdf)",
-          "more": ""
-        },
-        {
-          "key": "tip_labels",
-          "label": "Tip labels",
-          "flag": "--tip-labels",
-          "group": "Plots",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "TIP_LABELS"
-          ],
-          "conflicts": [],
-          "help": "add tip labels (default for small trees with <30 leaves)",
-          "more": ""
-        },
-        {
-          "key": "no_tip_labels",
-          "label": "No tip labels",
-          "flag": "--no-tip-labels",
-          "group": "Plots",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "NO_TIP_LABELS"
-          ],
-          "conflicts": [],
-          "help": "don't show tip labels (default for trees with >=30 leaves)",
-          "more": ""
-        },
-        {
           "key": "reroot",
           "label": "Reroot method",
           "flag": "--reroot",
@@ -1154,10 +987,6 @@
             },
             {
               "value": "oldest",
-              "help": ""
-            },
-            {
-              "value": "clock-filter",
               "help": ""
             }
           ],
@@ -1317,52 +1146,6 @@
           "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate."
         },
         {
-          "key": "custom_gtr",
-          "label": "Custom GTR",
-          "flag": "--custom-gtr",
-          "group": "Substitution model",
-          "role": "input",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "CUSTOM_GTR"
-          ],
-          "conflicts": [],
-          "help": "Load a custom GTR model from file (not yet implemented)",
-          "more": ""
-        },
-        {
-          "key": "method_anc",
-          "label": "Ancestral method",
-          "flag": "--method-anc",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "marginal",
-              "help": ""
-            },
-            {
-              "value": "parsimony",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "marginal",
-          "examples": [],
-          "value_names": [
-            "METHOD_ANC"
-          ],
-          "conflicts": [],
-          "help": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-          "more": ""
-        },
-        {
           "key": "dense",
           "label": "Dense",
           "flag": "--dense",
@@ -1408,32 +1191,9 @@
           "value_names": [
             "GAP_FILL"
           ],
-          "conflicts": [
-            "keep_overhangs"
-          ],
+          "conflicts": [],
           "help": "How to handle gap characters in input sequences",
           "more": "'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged."
-        },
-        {
-          "key": "keep_overhangs",
-          "label": "Keep overhangs",
-          "flag": "--keep-overhangs",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "KEEP_OVERHANGS"
-          ],
-          "conflicts": [
-            "gap_fill"
-          ],
-          "help": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-          "more": ""
         },
         {
           "key": "include_leaves",
@@ -2031,42 +1791,6 @@
           "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -2125,9 +1849,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -2158,9 +1880,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -2178,9 +1898,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -2208,9 +1926,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         },
@@ -2274,36 +1990,15 @@
             "gz"
           ],
           "list": false
-        },
-        {
-          "kind": "alignment",
-          "need": "optional",
-          "label": "Alignment",
-          "formats": "Aligned FASTA",
-          "extensions": [
-            "fasta",
-            "fa",
-            "fas",
-            "aln",
-            "bz2",
-            "xz",
-            "zst",
-            "gz"
-          ],
-          "list": true
         }
       ],
       "uses_dates": true,
       "groups": [
         "Input data",
-        "Substitution model",
-        "Branch lengths",
-        "Ancestral reconstruction",
         "Molecular clock",
         "Rooting",
         "Output",
-        "Tree ordering",
-        "Plots"
+        "Tree ordering"
       ],
       "main_settings": [
         "reroot",
@@ -2351,25 +2046,6 @@
         }
       ],
       "settings": [
-        {
-          "key": "alignment",
-          "label": "Alignment",
-          "flag": "--alignment",
-          "group": "Input data",
-          "role": "input",
-          "kind": "list",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": [],
-          "examples": [],
-          "value_names": [
-            "FILEPATH"
-          ],
-          "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
-        },
         {
           "key": "tree",
           "label": "Tree",
@@ -2455,24 +2131,6 @@
           "conflicts": [],
           "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
           "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
-        },
-        {
-          "key": "vcf_reference",
-          "label": "VCF reference",
-          "flag": "--vcf-reference",
-          "group": "Input data",
-          "role": "input",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "VCF_REFERENCE"
-          ],
-          "conflicts": [],
-          "help": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-          "more": ""
         },
         {
           "key": "metadata",
@@ -2576,152 +2234,6 @@
           "more": ""
         },
         {
-          "key": "model",
-          "label": "Substitution model",
-          "flag": "--model",
-          "group": "Substitution model",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "jc69",
-              "help": ""
-            },
-            {
-              "value": "k80",
-              "help": ""
-            },
-            {
-              "value": "f81",
-              "help": ""
-            },
-            {
-              "value": "hky85",
-              "help": ""
-            },
-            {
-              "value": "t92",
-              "help": ""
-            },
-            {
-              "value": "tn93",
-              "help": ""
-            },
-            {
-              "value": "jtt92",
-              "help": ""
-            },
-            {
-              "value": "infer",
-              "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "infer",
-          "examples": [],
-          "value_names": [
-            "MODEL"
-          ],
-          "conflicts": [],
-          "help": "Substitution model to use",
-          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
-        },
-        {
-          "key": "model_params",
-          "label": "Model params",
-          "flag": "--model-params",
-          "group": "Substitution model",
-          "role": "setting",
-          "kind": "list",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": [],
-          "examples": [],
-          "value_names": [
-            "MODEL_PARAMS"
-          ],
-          "conflicts": [],
-          "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
-          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
-        },
-        {
-          "key": "branch_length_mode",
-          "label": "Branch length mode",
-          "flag": "--branch-length-mode",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "marginal",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "marginal",
-          "examples": [],
-          "value_names": [
-            "BRANCH_LENGTH_MODE"
-          ],
-          "conflicts": [],
-          "help": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
-          "more": ""
-        },
-        {
-          "key": "prune_short",
-          "label": "Prune short",
-          "flag": "--prune-short",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "PRUNE_SHORT"
-          ],
-          "conflicts": [],
-          "help": "",
-          "more": ""
-        },
-        {
-          "key": "method_anc",
-          "label": "Ancestral method",
-          "flag": "--method-anc",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "marginal",
-              "help": ""
-            },
-            {
-              "value": "parsimony",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "marginal",
-          "examples": [],
-          "value_names": [
-            "METHOD_ANC"
-          ],
-          "conflicts": [],
-          "help": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-          "more": ""
-        },
-        {
           "key": "clock_filter",
           "label": "Clock filter",
           "flag": "--clock-filter",
@@ -2760,43 +2272,6 @@
           "more": "By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting."
         },
         {
-          "key": "clock_filter_method",
-          "label": "Clock filter method",
-          "flag": "--clock-filter-method",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "CLOCK_FILTER_METHOD"
-          ],
-          "conflicts": [],
-          "help": "Method for clock filter outlier detection (not yet implemented)",
-          "more": ""
-        },
-        {
-          "key": "prune_outliers",
-          "label": "Prune outliers",
-          "flag": "--prune-outliers",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "PRUNE_OUTLIERS"
-          ],
-          "conflicts": [],
-          "help": "Prune clock outlier tips from the tree (not yet implemented)",
-          "more": ""
-        },
-        {
           "key": "reroot",
           "label": "Reroot method",
           "flag": "--reroot",
@@ -2815,10 +2290,6 @@
             },
             {
               "value": "oldest",
-              "help": ""
-            },
-            {
-              "value": "clock-filter",
               "help": ""
             }
           ],
@@ -3217,42 +2688,6 @@
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -3311,9 +2746,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -3344,9 +2777,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -3364,9 +2795,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -3394,28 +2823,8 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
-          "help": "Aggregate used to map a subtree to a target-order position.",
-          "more": ""
-        },
-        {
-          "key": "plot_rtt",
-          "label": "Plot root-to-tip",
-          "flag": "--plot-rtt",
-          "group": "Plots",
-          "role": "output",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "PLOT_RTT"
-          ],
           "conflicts": [],
-          "help": "Filename to save root-to-tip regression plot (not yet implemented)",
+          "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         }
       ]
@@ -3498,24 +2907,6 @@
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
           "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
-        },
-        {
-          "key": "vcf_reference",
-          "label": "VCF reference",
-          "flag": "--vcf-reference",
-          "group": "Input data",
-          "role": "input",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "VCF_REFERENCE"
-          ],
-          "conflicts": [],
-          "help": "FASTA file of the sequence the VCF was mapped to (only for vcf input)",
-          "more": ""
         },
         {
           "key": "tree",
@@ -3728,25 +3119,6 @@
           "more": "Also supplies the CDS set when `--cdses` is omitted."
         },
         {
-          "key": "aa",
-          "label": "Amino-acid",
-          "flag": "--aa",
-          "group": "Input data",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "AA"
-          ],
-          "conflicts": [],
-          "help": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-          "more": ""
-        },
-        {
           "key": "model",
           "label": "Substitution model",
           "flag": "--model",
@@ -3843,43 +3215,6 @@
           ],
           "conflicts": [],
           "help": "Amino-acid substitution model. Mirrors the nucleotide `--model`; default `infer` matches augur.",
-          "more": ""
-        },
-        {
-          "key": "site_specific_gtr",
-          "label": "Site specific GTR",
-          "flag": "--site-specific-gtr",
-          "group": "Substitution model",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "SITE_SPECIFIC_GTR"
-          ],
-          "conflicts": [],
-          "help": "Use site-specific GTR model with per-site equilibrium frequencies.",
-          "more": "Requires `--model infer` and `--dense true`. Incompatible with sequence compression (sparse representation). When enabled, each alignment position gets its own eigendecomposition based on position-specific base composition."
-        },
-        {
-          "key": "custom_gtr",
-          "label": "Custom GTR",
-          "flag": "--custom-gtr",
-          "group": "Substitution model",
-          "role": "input",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "CUSTOM_GTR"
-          ],
-          "conflicts": [],
-          "help": "Load a custom GTR model from file (not yet implemented)",
           "more": ""
         },
         {
@@ -3988,32 +3323,9 @@
           "value_names": [
             "GAP_FILL"
           ],
-          "conflicts": [
-            "keep_overhangs"
-          ],
+          "conflicts": [],
           "help": "How to handle gap characters in input sequences",
           "more": "'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged."
-        },
-        {
-          "key": "keep_overhangs",
-          "label": "Keep overhangs",
-          "flag": "--keep-overhangs",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "KEEP_OVERHANGS"
-          ],
-          "conflicts": [
-            "gap_fill"
-          ],
-          "help": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-          "more": ""
         },
         {
           "key": "include_leaves",
@@ -4108,25 +3420,6 @@
           "conflicts": [],
           "help": "FASTA file with one amino-acid root/reference sequence per CDS.",
           "more": "The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and always omit `X` and gaps."
-        },
-        {
-          "key": "marginal",
-          "label": "Marginal",
-          "flag": "--marginal",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "MARGINAL"
-          ],
-          "conflicts": [],
-          "help": "Shortcut for `--method-anc=marginal` (v0 compat)",
-          "more": ""
         },
         {
           "key": "output_augur_node_data",
@@ -4496,42 +3789,6 @@
           "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -4590,9 +3847,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -4623,9 +3878,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -4643,9 +3896,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -4673,9 +3924,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         },
@@ -5008,25 +4257,6 @@
           "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
-          "key": "site_specific_gtr",
-          "label": "Site specific GTR",
-          "flag": "--site-specific-gtr",
-          "group": "Substitution model",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "SITE_SPECIFIC_GTR"
-          ],
-          "conflicts": [],
-          "help": "Use site-specific GTR model with per-site equilibrium frequencies.",
-          "more": "Requires `--model infer` and `--dense true`. Incompatible with sequence compression (sparse representation). When enabled, each alignment position gets its own eigendecomposition based on position-specific base composition."
-        },
-        {
           "key": "method_anc",
           "label": "Ancestral method",
           "flag": "--method-anc",
@@ -5100,32 +4330,9 @@
           "value_names": [
             "GAP_FILL"
           ],
-          "conflicts": [
-            "keep_overhangs"
-          ],
+          "conflicts": [],
           "help": "How to handle gap characters in input sequences",
           "more": "'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged."
-        },
-        {
-          "key": "keep_overhangs",
-          "label": "Keep overhangs",
-          "flag": "--keep-overhangs",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "KEEP_OVERHANGS"
-          ],
-          "conflicts": [
-            "gap_fill"
-          ],
-          "help": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-          "more": ""
         },
         {
           "key": "impute_missing_data",
@@ -5566,42 +4773,6 @@
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -5660,9 +4831,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -5693,9 +4862,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -5713,9 +4880,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -5743,9 +4908,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         }
@@ -6495,42 +5658,6 @@
           "more": "Off by default (TreeTime v0 always folds the root's most-likely state into the prior). Enabling this drops root positions whose posterior carries no phylogenetic signal, removing a state-order-dependent bias at ambiguous roots."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -6589,9 +5716,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -6622,9 +5747,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -6642,9 +5765,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -6672,9 +5793,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         }
@@ -7059,32 +6178,9 @@
           "value_names": [
             "GAP_FILL"
           ],
-          "conflicts": [
-            "keep_overhangs"
-          ],
+          "conflicts": [],
           "help": "How to handle gap characters in input sequences",
           "more": "'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged."
-        },
-        {
-          "key": "keep_overhangs",
-          "label": "Keep overhangs",
-          "flag": "--keep-overhangs",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "KEEP_OVERHANGS"
-          ],
-          "conflicts": [
-            "gap_fill"
-          ],
-          "help": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-          "more": ""
         },
         {
           "key": "output_all",
@@ -7581,42 +6677,6 @@
           "more": "By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -7675,9 +6735,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -7708,9 +6766,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -7728,9 +6784,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -7758,9 +6812,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         },
@@ -7788,7 +6840,7 @@
             "reroot_tips"
           ],
           "help": "Reroot the tree by minimizing root-to-tip divergence variance.",
-          "more": "By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest, clock-filter) are available in the timetree and clock commands."
+          "more": "By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands."
         },
         {
           "key": "reroot_tips",
@@ -8280,42 +7332,6 @@
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
-          "key": "ladderize",
-          "label": "Ladderize",
-          "flag": "--ladderize",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "none",
-              "help": ""
-            },
-            {
-              "value": "ascending",
-              "help": ""
-            },
-            {
-              "value": "descending",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "LADDERIZE"
-          ],
-          "conflicts": [
-            "topology_order",
-            "topology_order_target_aggregate",
-            "topology_order_target_file",
-            "topology_order_target_source"
-          ],
-          "help": "Order tree topology before writing output files.",
-          "more": ""
-        },
-        {
           "key": "topology_order",
           "label": "Topology order",
           "flag": "--topology-order",
@@ -8374,9 +7390,7 @@
           "value_names": [
             "TOPOLOGY_ORDER"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Canonical topology ordering preset.",
           "more": ""
         },
@@ -8407,9 +7421,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_SOURCE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Source for target-order topology sorting.",
           "more": ""
         },
@@ -8427,9 +7439,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_FILE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "File used by list or reference-topology target-order sources.",
           "more": ""
         },
@@ -8457,9 +7467,7 @@
           "value_names": [
             "TOPOLOGY_ORDER_TARGET_AGGREGATE"
           ],
-          "conflicts": [
-            "ladderize"
-          ],
+          "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
           "more": ""
         },

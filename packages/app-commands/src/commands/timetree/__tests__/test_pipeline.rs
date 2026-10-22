@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
-  use crate::commands::shared::topology_order_args::{LadderizeArg, TopologyOrderArgs};
+  use crate::commands::shared::topology_order_args::{TopologyOrderArg, TopologyOrderArgs};
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
@@ -93,7 +93,7 @@ mod tests {
   }
 
   #[test]
-  fn test_pipeline_timetree_ladderize_applies_to_auspice() -> Result<(), Report> {
+  fn test_pipeline_timetree_topology_order_applies_to_auspice() -> Result<(), Report> {
     let root = project_root();
     let output = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
@@ -113,7 +113,7 @@ mod tests {
         output_selection: vec![TimetreeOutputSelection::Auspice],
       },
       topology_order: TopologyOrderArgs {
-        ladderize: Some(LadderizeArg::Descending),
+        topology_order: Some(TopologyOrderArg::DescendantCountReverse),
         ..TopologyOrderArgs::default()
       },
       ..TreetimeTimetreeArgsRaw::default()

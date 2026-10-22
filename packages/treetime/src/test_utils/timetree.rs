@@ -78,7 +78,6 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     skyline_stiffness: 0.0,
     coalescent_confidence: 0.0,
     gen_per_year: 0.0,
-    n_branches_posterior: None,
     time_marginal: TimeMarginalMode::Never,
     confidence: false,
     include_leaves: false,

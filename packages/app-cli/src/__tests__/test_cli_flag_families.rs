@@ -66,32 +66,10 @@ pub(crate) mod tests {
   #[rustfmt::skip]
   const COMMAND_EXCEPTIONS: &[CommandException] = &[
     CommandException::Renamed { target: SCHEMA_WRITE, today: "schema", pending: Pending::RootCommand },
-    CommandException::Extra   { today: "arg",                          pending: Pending::RemoveFlagsWithoutEffect },
   ];
 
   #[rustfmt::skip]
   const FLAG_EXCEPTIONS: &[FlagException] = &[
-    FlagException { flag: "--method-anc",                       change: Change::Extra,   commands: &[TT, CL],             pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--vcf-reference",                    change: Change::Extra,   commands: &[TT, AN, CL],         pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--clock-filter-method",              change: Change::Extra,   commands: &[TT, CL],             pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--plot-rtt",                         change: Change::Extra,   commands: &[TT, CL],             pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--aa",                               change: Change::Extra,   commands: &[TT, AN],             pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--custom-gtr",                       change: Change::Extra,   commands: &[TT, AN],             pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--n-iqd",                            change: Change::Extra,   commands: &[TT],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--tip-labels",                       change: Change::Extra,   commands: &[TT],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--no-tip-labels",                    change: Change::Extra,   commands: &[TT],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--plot-tree",                        change: Change::Extra,   commands: &[TT],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--n-branches-posterior",             change: Change::Extra,   commands: &[TT],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--alignment",                        change: Change::Extra,   commands: &[CL],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--model",                            change: Change::Extra,   commands: &[CL],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--model-params",                     change: Change::Extra,   commands: &[CL],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--branch-length-mode",               change: Change::Extra,   commands: &[CL],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--prune-short",                      change: Change::Extra,   commands: &[CL],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--prune-outliers",                   change: Change::Extra,   commands: &[CL],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--marginal",                         change: Change::Extra,   commands: &[AN],                 pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--site-specific-gtr",                change: Change::Extra,   commands: &[AN, HO],             pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--keep-overhangs",                   change: Change::Extra,   commands: &[TT, AN, HO, OP],     pending: Pending::RemoveFlagsWithoutEffect },
-    FlagException { flag: "--ladderize",                        change: Change::Extra,   commands: ANALYSIS,              pending: Pending::RemoveFlagsWithoutEffect },
     FlagException { flag: "--zero-based",                       change: Change::Missing, commands: &[OP, PR],             pending: Pending::ZeroBasedInEverySequenceCommand },
     FlagException { flag: "--coalescent-opt",                   change: Change::Extra,   commands: &[TT],                 pending: Pending::OneCoalescentFlag },
     FlagException { flag: "--coalescent-skyline",               change: Change::Extra,   commands: &[TT],                 pending: Pending::OneCoalescentFlag },
@@ -158,12 +136,6 @@ pub(crate) mod tests {
     let expected: BTreeSet<String> = EVERY
       .iter()
       .map(|path| today_path(path, COMMAND_EXCEPTIONS).to_owned())
-      .chain(
-        COMMAND_EXCEPTIONS
-          .iter()
-          .filter_map(CommandException::extra)
-          .map(str::to_owned),
-      )
       .collect();
 
     let actual: BTreeSet<String> = leaf_commands(&root).into_iter().map(|(path, _)| path).collect();
@@ -245,24 +217,12 @@ pub(crate) mod tests {
         today: &'static str,
         pending: Pending,
       },
-      Extra {
-        today: &'static str,
-        pending: Pending,
-      },
     }
 
     impl CommandException {
-      pub(super) fn extra(&self) -> Option<&'static str> {
-        match self {
-          Self::Renamed { .. } => None,
-          Self::Extra { today, .. } => Some(today),
-        }
-      }
-
       pub(super) fn describe(&self) -> String {
         match self {
           Self::Renamed { target, today, pending } => format!("{target} is {today} until {pending:?}"),
-          Self::Extra { today, pending } => format!("{today} exists until {pending:?}"),
         }
       }
     }
@@ -283,10 +243,7 @@ pub(crate) mod tests {
     pub(super) fn today_path<'a>(path: &'a str, exceptions: &[CommandException]) -> &'a str {
       exceptions
         .iter()
-        .find_map(|exception| match exception {
-          CommandException::Renamed { target, today, .. } if *target == path => Some(*today),
-          _ => None,
-        })
+        .find_map(|CommandException::Renamed { target, today, .. }| (*target == path).then_some(*today))
         .unwrap_or(path)
     }
 

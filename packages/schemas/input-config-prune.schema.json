@@ -128,12 +128,6 @@
       "default": [],
       "x-cli-flag": "--output-selection"
     },
-    "ladderize": {
-      "description": "Order tree topology before writing output files.",
-      "$ref": "#/$defs/LadderizeArg",
-      "x-unset": true,
-      "x-cli-flag": "--ladderize"
-    },
     "topology_order": {
       "description": "Canonical topology ordering preset.",
       "$ref": "#/$defs/TopologyOrderArg",
@@ -243,14 +237,6 @@
         "graph-json",
         "dot",
         "gtr"
-      ]
-    },
-    "LadderizeArg": {
-      "type": "string",
-      "enum": [
-        "none",
-        "ascending",
-        "descending"
       ]
     },
     "TopologyOrderArg": {

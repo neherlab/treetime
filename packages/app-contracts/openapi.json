@@ -5700,8 +5700,7 @@
         "enum": [
           "least-squares",
           "min-dev",
-          "oldest",
-          "clock-filter"
+          "oldest"
         ]
       },
       "GtrModelName": {
@@ -5737,13 +5736,6 @@
             "type": "string",
             "const": "equal"
           }
-        ]
-      },
-      "MethodAncestral": {
-        "type": "string",
-        "enum": [
-          "marginal",
-          "parsimony"
         ]
       },
       "AlphabetName": {
@@ -5808,14 +5800,6 @@
             "type": "string",
             "const": "reconstructed-nuc-fasta"
           }
-        ]
-      },
-      "LadderizeArg": {
-        "type": "string",
-        "enum": [
-          "none",
-          "ascending",
-          "descending"
         ]
       },
       "TopologyOrderArg": {
@@ -5887,13 +5871,6 @@
               "rich,mrbayes"
             ],
             "x-cli-flag": "--tree-dialect"
-          },
-          "vcf_reference": {
-            "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-            "type": "string",
-            "x-path": "input",
-            "x-unset": true,
-            "x-cli-flag": "--vcf-reference"
           },
           "metadata": {
             "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
@@ -6053,38 +6030,6 @@
             "format": "double",
             "x-cli-flag": "--coalescent-confidence"
           },
-          "n_branches_posterior": {
-            "description": "add posterior LH to coalescent model: use the posterior probability distributions of\ndivergence times for estimating the number of branches when calculating the coalescent\nmergerrate or use inferred time before present (default).",
-            "type": "integer",
-            "format": "uint",
-            "minimum": 0,
-            "x-unset": true,
-            "x-cli-flag": "--n-branches-posterior"
-          },
-          "plot_tree": {
-            "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-            "type": "string",
-            "x-path": "output",
-            "x-unset": true,
-            "x-cli-flag": "--plot-tree"
-          },
-          "plot_rtt": {
-            "description": "filename to save the plot to. Suffix will determine format (choices pdf, png, svg,\ndefault=pdf)",
-            "type": "string",
-            "x-path": "output",
-            "x-unset": true,
-            "x-cli-flag": "--plot-rtt"
-          },
-          "tip_labels": {
-            "description": "add tip labels (default for small trees with <30 leaves)",
-            "type": "boolean",
-            "x-cli-flag": "--tip-labels"
-          },
-          "no_tip_labels": {
-            "description": "don't show tip labels (default for trees with >=30 leaves)",
-            "type": "boolean",
-            "x-cli-flag": "--no-tip-labels"
-          },
           "clock_filter": {
             "description": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression\nbeyond which a tip is an outlier.\n\n0 switches the filter off.",
             "type": "number",
@@ -6095,13 +6040,6 @@
             "description": "Allow negative clock rates.\n\nBy default, rates are forced to be positive. For trees with little temporal signal, removing this restriction\ngives essentially mid-point rooting.",
             "type": "boolean",
             "x-cli-flag": "--allow-negative-rate"
-          },
-          "n_iqd": {
-            "description": "Number of IQD (interquartile distance) for clock filter outlier detection",
-            "type": "number",
-            "format": "double",
-            "x-unset": true,
-            "x-cli-flag": "--n-iqd"
           },
           "reroot": {
             "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
@@ -6140,11 +6078,6 @@
             "$ref": "#/components/schemas/PartitionRates",
             "x-cli-flag": "--partition-rates"
           },
-          "method_anc": {
-            "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-            "$ref": "#/components/schemas/MethodAncestral",
-            "x-cli-flag": "--method-anc"
-          },
           "alphabet": {
             "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
             "$ref": "#/components/schemas/AlphabetName",
@@ -6161,11 +6094,6 @@
             "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
             "$ref": "#/components/schemas/GapFill",
             "x-cli-flag": "--gap-fill"
-          },
-          "keep_overhangs": {
-            "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-            "type": "boolean",
-            "x-cli-flag": "--keep-overhangs"
           },
           "zero_based": {
             "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
@@ -6360,12 +6288,6 @@
             },
             "x-cli-flag": "--ambiguity-outputs"
           },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
-          },
           "topology_order": {
             "description": "Canonical topology ordering preset.",
             "$ref": "#/components/schemas/TopologyOrderArg",
@@ -6398,24 +6320,6 @@
             "x-unset": true,
             "x-cli-flag": "--seed"
           },
-          "aa": {
-            "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-            "type": "boolean",
-            "x-cli-flag": "--aa"
-          },
-          "custom_gtr": {
-            "description": "Load a custom GTR model from file (not yet implemented)",
-            "type": "string",
-            "x-path": "input",
-            "x-unset": true,
-            "x-cli-flag": "--custom-gtr"
-          },
-          "clock_filter_method": {
-            "description": "Method for clock filter outlier detection (not yet implemented)",
-            "type": "string",
-            "x-unset": true,
-            "x-cli-flag": "--clock-filter-method"
-          },
           "gen_per_year": {
             "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.",
             "type": "number",
@@ -6444,18 +6348,9 @@
         ]
       },
       "ClockConfig": {
-        "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
+        "description": "Newick dialect of the tree inputs, shared by every command that reads a tree.",
         "type": "object",
         "properties": {
-          "alignment": {
-            "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "x-cli-flag": "--alignment",
-            "x-path": "input"
-          },
           "tree": {
             "description": "Tree in Newick format.",
             "type": "string",
@@ -6481,13 +6376,6 @@
               "rich,mrbayes"
             ],
             "x-cli-flag": "--tree-dialect"
-          },
-          "vcf_reference": {
-            "description": "Only for vcf input: fasta file of the sequence the VCF was mapped to.",
-            "type": "string",
-            "x-path": "input",
-            "x-unset": true,
-            "x-cli-flag": "--vcf-reference"
           },
           "metadata": {
             "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
@@ -6525,29 +6413,6 @@
             "type": "string",
             "x-cli-flag": "--date-format"
           },
-          "model": {
-            "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
-            "$ref": "#/components/schemas/GtrModelName",
-            "x-cli-flag": "--model"
-          },
-          "model_params": {
-            "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model\nk80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "x-cli-flag": "--model-params"
-          },
-          "branch_length_mode": {
-            "description": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
-            "$ref": "#/components/schemas/BranchLengthMode",
-            "x-cli-flag": "--branch-length-mode"
-          },
-          "method_anc": {
-            "description": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
-            "$ref": "#/components/schemas/MethodAncestral",
-            "x-cli-flag": "--method-anc"
-          },
           "clock_filter": {
             "description": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression\nbeyond which a tip is an outlier.\n\n0 switches the filter off.",
             "type": "number",
@@ -6577,10 +6442,6 @@
             "description": "Keep the root of the input tree instead of rerooting it.",
             "type": "boolean",
             "x-cli-flag": "--keep-root"
-          },
-          "prune_short": {
-            "type": "boolean",
-            "x-cli-flag": "--prune-short"
           },
           "output_all": {
             "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{partition}`, which is replaced by the number. Other tree outputs with\n`{partition}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
@@ -6689,12 +6550,6 @@
             },
             "x-cli-flag": "--output-selection"
           },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
-          },
           "topology_order": {
             "description": "Canonical topology ordering preset.",
             "$ref": "#/components/schemas/TopologyOrderArg",
@@ -6718,27 +6573,16 @@
             "description": "Aggregate used to map a subtree to a target-order position.",
             "$ref": "#/components/schemas/TopologyOrderTargetAggregateArg",
             "x-cli-flag": "--topology-order-target-aggregate"
-          },
-          "clock_filter_method": {
-            "description": "Method for clock filter outlier detection (not yet implemented)",
-            "type": "string",
-            "x-unset": true,
-            "x-cli-flag": "--clock-filter-method"
-          },
-          "plot_rtt": {
-            "description": "Filename to save root-to-tip regression plot (not yet implemented)",
-            "type": "string",
-            "x-path": "output",
-            "x-unset": true,
-            "x-cli-flag": "--plot-rtt"
-          },
-          "prune_outliers": {
-            "description": "Prune clock outlier tips from the tree (not yet implemented)",
-            "type": "boolean",
-            "x-cli-flag": "--prune-outliers"
           }
         },
         "additionalProperties": false
+      },
+      "MethodAncestral": {
+        "type": "string",
+        "enum": [
+          "marginal",
+          "parsimony"
+        ]
       },
       "SampleMode": {
         "type": "string",
@@ -6812,13 +6656,6 @@
             "x-cli-flag": "--alignment",
             "x-path": "input"
           },
-          "vcf_reference": {
-            "description": "FASTA file of the sequence the VCF was mapped to (only for vcf input)",
-            "type": "string",
-            "x-path": "input",
-            "x-unset": true,
-            "x-cli-flag": "--vcf-reference"
-          },
           "tree": {
             "description": "Tree in Newick format.",
             "type": "string",
@@ -6884,11 +6721,6 @@
             "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
             "$ref": "#/components/schemas/GapFill",
             "x-cli-flag": "--gap-fill"
-          },
-          "keep_overhangs": {
-            "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-            "type": "boolean",
-            "x-cli-flag": "--keep-overhangs"
           },
           "zero_based": {
             "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
@@ -7070,12 +6902,6 @@
             },
             "x-cli-flag": "--ambiguity-outputs"
           },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
-          },
           "topology_order": {
             "description": "Canonical topology ordering preset.",
             "$ref": "#/components/schemas/TopologyOrderArg",
@@ -7100,11 +6926,6 @@
             "$ref": "#/components/schemas/TopologyOrderTargetAggregateArg",
             "x-cli-flag": "--topology-order-target-aggregate"
           },
-          "site_specific_gtr": {
-            "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
-            "type": "boolean",
-            "x-cli-flag": "--site-specific-gtr"
-          },
           "seed": {
             "description": "Random seed\n\nWithout a seed, a run with a random step draws one and logs it, so the run can be reproduced.",
             "type": "integer",
@@ -7112,23 +6933,6 @@
             "minimum": 0,
             "x-unset": true,
             "x-cli-flag": "--seed"
-          },
-          "aa": {
-            "description": "Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)",
-            "type": "boolean",
-            "x-cli-flag": "--aa"
-          },
-          "marginal": {
-            "description": "Shortcut for `--method-anc=marginal` (v0 compat)",
-            "type": "boolean",
-            "x-cli-flag": "--marginal"
-          },
-          "custom_gtr": {
-            "description": "Load a custom GTR model from file (not yet implemented)",
-            "type": "string",
-            "x-path": "input",
-            "x-unset": true,
-            "x-cli-flag": "--custom-gtr"
           }
         },
         "additionalProperties": false
@@ -7222,11 +7026,6 @@
             "$ref": "#/components/schemas/GapFill",
             "x-cli-flag": "--gap-fill"
           },
-          "keep_overhangs": {
-            "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-            "type": "boolean",
-            "x-cli-flag": "--keep-overhangs"
-          },
           "zero_based": {
             "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
             "type": "boolean",
@@ -7241,11 +7040,6 @@
             "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.\nUseful when consuming per-CDS translations where some samples have no peptide for a given CDS.",
             "type": "boolean",
             "x-cli-flag": "--ignore-missing-alns"
-          },
-          "site_specific_gtr": {
-            "description": "Use site-specific GTR model with per-site equilibrium frequencies.\n\nRequires `--model infer` and `--dense true`. Incompatible with sequence compression\n(sparse representation). When enabled, each alignment position gets its own\neigendecomposition based on position-specific base composition.",
-            "type": "boolean",
-            "x-cli-flag": "--site-specific-gtr"
           },
           "sample_from_profile": {
             "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -7377,12 +7171,6 @@
               "$ref": "#/components/schemas/HomoplasyOutputSelection"
             },
             "x-cli-flag": "--output-selection"
-          },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
           },
           "topology_order": {
             "description": "Canonical topology ordering preset.",
@@ -7672,12 +7460,6 @@
             },
             "x-cli-flag": "--ambiguity-outputs"
           },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
-          },
           "topology_order": {
             "description": "Canonical topology ordering preset.",
             "$ref": "#/components/schemas/TopologyOrderArg",
@@ -7756,7 +7538,7 @@
         ]
       },
       "OptimizeRerootMethod": {
-        "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest, clock-filter) are available\nin the timetree and clock commands.",
+        "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest) are available\nin the timetree and clock commands.",
         "type": "string",
         "enum": [
           "min-dev"
@@ -7927,12 +7709,6 @@
             },
             "x-cli-flag": "--output-selection"
           },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
-          },
           "topology_order": {
             "description": "Canonical topology ordering preset.",
             "$ref": "#/components/schemas/TopologyOrderArg",
@@ -7987,7 +7763,7 @@
             "x-cli-flag": "--opt-method"
           },
           "reroot": {
-            "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest, clock-filter) are available in the timetree and clock commands.",
+            "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest) are available in the timetree and clock commands.",
             "$ref": "#/components/schemas/OptimizeRerootMethod",
             "x-unset": true,
             "x-cli-flag": "--reroot"
@@ -8024,11 +7800,6 @@
             "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
             "$ref": "#/components/schemas/GapFill",
             "x-cli-flag": "--gap-fill"
-          },
-          "keep_overhangs": {
-            "description": "Do not fill terminal gaps (deprecated: use --gap-fill=none)",
-            "type": "boolean",
-            "x-cli-flag": "--keep-overhangs"
           }
         },
         "additionalProperties": false
@@ -8170,12 +7941,6 @@
               "$ref": "#/components/schemas/PruneOutputSelection"
             },
             "x-cli-flag": "--output-selection"
-          },
-          "ladderize": {
-            "description": "Order tree topology before writing output files.",
-            "$ref": "#/components/schemas/LadderizeArg",
-            "x-unset": true,
-            "x-cli-flag": "--ladderize"
           },
           "topology_order": {
             "description": "Canonical topology ordering preset.",

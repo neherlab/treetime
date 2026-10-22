@@ -305,7 +305,7 @@ fn run_aa_reconstructions(
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let aa_model = ancestral_args.aa_model.resolve();
   let recon_alphabet = Alphabet::new(aa_model.alphabet)?;
-  let gap_fill_mode = ancestral_args.gap_fill_args.effective_gap_fill();
+  let gap_fill_mode = ancestral_args.gap_fill_args.gap_fill();
 
   let aa_root_sequences = read_aa_root_sequences(ancestral_args.aa_root_sequence.as_deref(), &cdses, &recon_alphabet)?;
 

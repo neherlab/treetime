@@ -2706,13 +2706,11 @@ export type BranchLengthMode = 'input' | 'marginal';
 
 export type TimeMarginalMode = 'never' | 'always' | 'only-final';
 
-export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'clock-filter';
+export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest';
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
 
 export type PartitionRates = 'estimate' | 'equal';
-
-export type MethodAncestral = 'marginal' | 'parsimony';
 
 export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
 
@@ -2731,8 +2729,6 @@ export type TimetreeOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat
  * Reconstructed nucleotide FASTA
  */
 export type TimetreeAmbiguityOutput = 'reconstructed-nuc-fasta';
-
-export type LadderizeArg = 'none' | 'ascending' | 'descending';
 
 export type TopologyOrderArg = 'keep' | 'descendant-count' | 'descendant-count-reverse' | 'height' | 'height-reverse' | 'divergence' | 'divergence-reverse' | 'label' | 'label-reverse' | 'target-order' | 'target-order-reverse';
 
@@ -2768,10 +2764,6 @@ export type TimetreeConfig = {
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
-  /**
-   * Only for vcf input: fasta file of the sequence the VCF was mapped to.
-   */
-  vcf_reference?: string;
   /**
    * Metadata table (CSV or TSV) with one row per sample
    *
@@ -2912,30 +2904,6 @@ export type TimetreeConfig = {
    */
   coalescent_confidence?: number;
   /**
-   * add posterior LH to coalescent model: use the posterior probability distributions of
-   * divergence times for estimating the number of branches when calculating the coalescent
-   * mergerrate or use inferred time before present (default).
-   */
-  n_branches_posterior?: number;
-  /**
-   * filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-   * default=pdf)
-   */
-  plot_tree?: string;
-  /**
-   * filename to save the plot to. Suffix will determine format (choices pdf, png, svg,
-   * default=pdf)
-   */
-  plot_rtt?: string;
-  /**
-   * add tip labels (default for small trees with <30 leaves)
-   */
-  tip_labels?: boolean;
-  /**
-   * don't show tip labels (default for trees with >=30 leaves)
-   */
-  no_tip_labels?: boolean;
-  /**
    * Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression
    * beyond which a tip is an outlier.
    *
@@ -2949,10 +2917,6 @@ export type TimetreeConfig = {
    * gives essentially mid-point rooting.
    */
   allow_negative_rate?: boolean;
-  /**
-   * Number of IQD (interquartile distance) for clock filter outlier detection
-   */
-  n_iqd?: number;
   /**
    * Reroot the tree by temporal-signal optimization.
    *
@@ -2995,10 +2959,6 @@ export type TimetreeConfig = {
    */
   partition_rates?: PartitionRates;
   /**
-   * Method used for reconstructing ancestral sequences, which places the mutations on the branches
-   */
-  method_anc?: MethodAncestral;
-  /**
    * Sequence alphabet
    *
    * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
@@ -3021,10 +2981,6 @@ export type TimetreeConfig = {
    * 'none': leave all gap characters unchanged.
    */
   gap_fill?: GapFill;
-  /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
   /**
    * Report sequence positions counted from 0 instead of 1.
    *
@@ -3311,10 +3267,6 @@ export type TimetreeConfig = {
    */
   ambiguity_outputs?: Array<TimetreeAmbiguityOutput>;
   /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
-  /**
    * Canonical topology ordering preset.
    */
   topology_order?: TopologyOrderArg;
@@ -3337,18 +3289,6 @@ export type TimetreeConfig = {
    */
   seed?: number;
   /**
-   * Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-   */
-  aa?: boolean;
-  /**
-   * Load a custom GTR model from file (not yet implemented)
-   */
-  custom_gtr?: string;
-  /**
-   * Method for clock filter outlier detection (not yet implemented)
-   */
-  clock_filter_method?: string;
-  /**
    * Generations per year for converting the coalescent time scale Tc into an effective
    * population size.
    *
@@ -3362,19 +3302,9 @@ export type TimetreeConfig = {
 export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'clock-model' | 'clock-csv' | 'clock-chart-svg' | 'clock-chart-png' | 'clock-chart-pdf';
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
- *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Newick dialect of the tree inputs, shared by every command that reads a tree.
  */
 export type ClockConfig = {
-  /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
-   *
-   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
-   * uncompressed FASTA from standard input; `-` may appear at most once.
-   */
-  alignment?: Array<string>;
   /**
    * Tree in Newick format.
    */
@@ -3389,10 +3319,6 @@ export type ClockConfig = {
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
-  /**
-   * Only for vcf input: fasta file of the sequence the VCF was mapped to.
-   */
-  vcf_reference?: string;
   /**
    * Metadata table (CSV or TSV) with one row per sample
    *
@@ -3421,28 +3347,6 @@ export type ClockConfig = {
    */
   date_format?: string;
   /**
-   * Substitution model to use
-   *
-   * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
-   * name the model type. If the named model takes parameters, use `--model-params` to set them.
-   */
-  model?: GtrModelName;
-  /**
-   * Parameters for the model selected by `--model`, given as space-separated `key=value` items
-   *
-   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
-   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
-   */
-  model_params?: Array<string>;
-  /**
-   * If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
-   */
-  branch_length_mode?: BranchLengthMode;
-  /**
-   * Method used for reconstructing ancestral sequences, which places the mutations on the branches
-   */
-  method_anc?: MethodAncestral;
-  /**
    * Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression
    * beyond which a tip is an outlier.
    *
@@ -3470,7 +3374,6 @@ export type ClockConfig = {
    * Keep the root of the input tree instead of rerooting it.
    */
   keep_root?: boolean;
-  prune_short?: boolean;
   /**
    * Write all default output files into this directory.
    *
@@ -3645,10 +3548,6 @@ export type ClockConfig = {
    */
   output_selection?: Array<ClockOutputSelection>;
   /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
-  /**
    * Canonical topology ordering preset.
    */
   topology_order?: TopologyOrderArg;
@@ -3664,19 +3563,9 @@ export type ClockConfig = {
    * Aggregate used to map a subtree to a target-order position.
    */
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
-  /**
-   * Method for clock filter outlier detection (not yet implemented)
-   */
-  clock_filter_method?: string;
-  /**
-   * Filename to save root-to-tip regression plot (not yet implemented)
-   */
-  plot_rtt?: string;
-  /**
-   * Prune clock outlier tips from the tree (not yet implemented)
-   */
-  prune_outliers?: boolean;
 };
+
+export type MethodAncestral = 'marginal' | 'parsimony';
 
 export type SampleMode = 'argmax' | 'root' | 'all';
 
@@ -3708,10 +3597,6 @@ export type AncestralConfig = {
    * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
-  /**
-   * FASTA file of the sequence the VCF was mapped to (only for vcf input)
-   */
-  vcf_reference?: string;
   /**
    * Tree in Newick format.
    */
@@ -3777,10 +3662,6 @@ export type AncestralConfig = {
    * 'none': leave all gap characters unchanged.
    */
   gap_fill?: GapFill;
-  /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
   /**
    * Report sequence positions counted from 0 instead of 1.
    *
@@ -4052,10 +3933,6 @@ export type AncestralConfig = {
    */
   ambiguity_outputs?: Array<AncestralAmbiguityOutput>;
   /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
-  /**
    * Canonical topology ordering preset.
    */
   topology_order?: TopologyOrderArg;
@@ -4072,31 +3949,11 @@ export type AncestralConfig = {
    */
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
   /**
-   * Use site-specific GTR model with per-site equilibrium frequencies.
-   *
-   * Requires `--model infer` and `--dense true`. Incompatible with sequence compression
-   * (sparse representation). When enabled, each alignment position gets its own
-   * eigendecomposition based on position-specific base composition.
-   */
-  site_specific_gtr?: boolean;
-  /**
    * Random seed
    *
    * Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
    */
   seed?: number;
-  /**
-   * Use amino-acid alphabet (v0 compat, equivalent to `--alphabet=aa`)
-   */
-  aa?: boolean;
-  /**
-   * Shortcut for `--method-anc=marginal` (v0 compat)
-   */
-  marginal?: boolean;
-  /**
-   * Load a custom GTR model from file (not yet implemented)
-   */
-  custom_gtr?: string;
 };
 
 export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'homoplasy-stats' | 'homoplasy-report';
@@ -4171,10 +4028,6 @@ export type HomoplasyConfig = {
    */
   gap_fill?: GapFill;
   /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
-  /**
    * Report sequence positions counted from 0 instead of 1.
    *
    * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
@@ -4196,14 +4049,6 @@ export type HomoplasyConfig = {
    * Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
    */
   ignore_missing_alns?: boolean;
-  /**
-   * Use site-specific GTR model with per-site equilibrium frequencies.
-   *
-   * Requires `--model infer` and `--dense true`. Incompatible with sequence compression
-   * (sparse representation). When enabled, each alignment position gets its own
-   * eigendecomposition based on position-specific base composition.
-   */
-  site_specific_gtr?: boolean;
   /**
    * How to pick ancestral states from the marginal posterior profile.
    *
@@ -4414,10 +4259,6 @@ export type HomoplasyConfig = {
    * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<HomoplasyOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
   /**
    * Canonical topology ordering preset.
    */
@@ -4712,10 +4553,6 @@ export type MugrationConfig = {
    */
   ambiguity_outputs?: Array<MugrationAmbiguityOutput>;
   /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
-  /**
    * Canonical topology ordering preset.
    */
   topology_order?: TopologyOrderArg;
@@ -4754,7 +4591,7 @@ export type BranchOptMethod = 'brent' | 'newton';
  * Reroot methods available in the optimize command.
  *
  * Only date-free methods are valid here because optimize has no sampling dates.
- * Date-dependent methods (least-squares, oldest, clock-filter) are available
+ * Date-dependent methods (least-squares, oldest) are available
  * in the timetree and clock commands.
  */
 export type OptimizeRerootMethod = 'min-dev';
@@ -5005,10 +4842,6 @@ export type OptimizeConfig = {
    */
   output_selection?: Array<OptimizeOutputSelection>;
   /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
-  /**
    * Canonical topology ordering preset.
    */
   topology_order?: TopologyOrderArg;
@@ -5061,7 +4894,7 @@ export type OptimizeConfig = {
    *
    * By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
    * to enable divergence-based rerooting. Date-dependent methods (least-squares,
-   * oldest, clock-filter) are available in the timetree and clock commands.
+   * oldest) are available in the timetree and clock commands.
    */
   reroot?: OptimizeRerootMethod;
   /**
@@ -5106,10 +4939,6 @@ export type OptimizeConfig = {
    * 'none': leave all gap characters unchanged.
    */
   gap_fill?: GapFill;
-  /**
-   * Do not fill terminal gaps (deprecated: use --gap-fill=none)
-   */
-  keep_overhangs?: boolean;
 };
 
 export type PruneOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'gtr';
@@ -5296,10 +5125,6 @@ export type PruneConfig = {
    * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<PruneOutputSelection>;
-  /**
-   * Order tree topology before writing output files.
-   */
-  ladderize?: LadderizeArg;
   /**
    * Canonical topology ordering preset.
    */

@@ -62,10 +62,6 @@ mod tests {
   #[rustfmt::skip]
   const KNOWN_EXCEPTIONS: &[(&str, &[Property], Pending)] = &[
     ("--metadata",      &[Property::Aliases],                                                    Pending::FlagRenames),
-    ("--vcf-reference", &[Property::Help],                                                       Pending::RemoveFlagsWithoutEffect),
-    ("--plot-rtt",      &[Property::Help],                                                       Pending::RemoveFlagsWithoutEffect),
-    ("--prune-short",   &[Property::ValueType, Property::Action, Property::NumArgs, Property::ValueNames, Property::Defaults,
-                          Property::Heading, Property::Help, Property::LongHelp],                Pending::RemoveFlagsWithoutEffect),
     ("--confidence",    &[Property::ValueType, Property::Action, Property::NumArgs, Property::ValueNames, Property::Defaults,
                           Property::Aliases, Property::Heading, Property::Help, Property::LongHelp],
                                                                                                  Pending::MugrationConfidenceFlag),
