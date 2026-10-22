@@ -9,8 +9,8 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, TopologyOps};
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
-  use crate::progress::NoopProgress;
-  use crate::test_utils::SingleReconstruction;
+  use crate::progress::{LogLevel, NoopProgress};
+  use crate::test_utils::{RecordingLog, SingleReconstruction};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
   use approx::assert_abs_diff_eq;
   use eyre::Report;
@@ -134,6 +134,50 @@ mod tests {
 
     assert_eq!(Some((1, ConvergenceReason::Converged)), result.stopped_at);
     assert_eq!(2, result.lh_history.len());
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::converged(      (50, f64::INFINITY), "Optimization loop stopped at iteration 2: the log-likelihood changed by less than inf")]
+  #[case::iteration_limit((1,  0.0),           "Optimization loop reached the iteration limit of 1")]
+  #[case::zero_max_iter(  (0,  1e-2),          "Optimization loop skipped: the iteration limit is 0")]
+  #[trace]
+  fn test_run_optimize_loop_logs_stop_reason(
+    #[case] (max_iter, dp): (usize, f64),
+    #[case] expected: &str,
+  ) -> Result<(), Report> {
+    let aln = simple_alignment()?;
+    let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
+    let names = nwk_parsed.names.clone();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+    let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
+    let log = RecordingLog::default();
+
+    run_optimize_loop(
+      &mut graph,
+      reconstruction,
+      &OptimizeLoopSettings {
+        max_iter,
+        dp,
+        damping: 0.0,
+        opt_method: BranchOptMethod::Brent,
+        indel_policy: IndelPolicy::Include,
+        topology_ops: TopologyOps::default(),
+        partition_rates: PartitionRates::Estimate,
+      },
+      branch_lengths,
+      names,
+      &log,
+    )?;
+
+    let stop_messages = log
+      .messages(LogLevel::Info)
+      .into_iter()
+      .filter(|message| message.starts_with("Optimization loop"))
+      .collect::<Vec<_>>();
+    assert_eq!(vec![expected.to_owned()], stop_messages);
     Ok(())
   }
 

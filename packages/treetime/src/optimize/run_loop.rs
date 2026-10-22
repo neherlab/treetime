@@ -12,7 +12,7 @@ use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
 use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
-use crate::progress_warn;
+use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -22,7 +22,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
-use treetime_utils::make_error;
+use treetime_utils::{make_error, o};
 
 pub(crate) fn run_optimize_loop(
   graph: &mut Graph,
@@ -92,6 +92,8 @@ pub(crate) fn run_optimize_loop(
       record_if_best(&mut best, max_iter, lh, &state.branch_lengths, &partitions, &indels);
     }
   }
+
+  log_stop(log, stopped_at, max_iter, dp);
 
   if let Some(best) = best
     && best.iteration + 1 != lh_history.len()
@@ -177,6 +179,24 @@ impl BestIteration {
         .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
         .0,
     )
+  }
+}
+
+fn log_stop(log: &dyn LogSink, stopped_at: Option<(usize, ConvergenceReason)>, max_iter: usize, dp: f64) {
+  match stopped_at {
+    Some((i, reason)) => {
+      let cause = match reason {
+        ConvergenceReason::Converged => format!("the log-likelihood changed by less than {dp}"),
+        ConvergenceReason::Oscillating => {
+          format!("the log-likelihood is within {dp} of the iteration before the previous one")
+        },
+        ConvergenceReason::Worsened => o!("the log-likelihood decreased"),
+        ConvergenceReason::NumericalFailure => o!("the log-likelihood is not finite"),
+      };
+      progress_info!(log, "Optimization loop stopped at iteration {}: {cause}", i + 1);
+    },
+    None if max_iter == 0 => progress_info!(log, "Optimization loop skipped: the iteration limit is 0"),
+    None => progress_info!(log, "Optimization loop reached the iteration limit of {max_iter}"),
   }
 }
 

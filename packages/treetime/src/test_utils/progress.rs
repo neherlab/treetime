@@ -9,11 +9,15 @@ pub(crate) struct RecordingLog {
 
 impl RecordingLog {
   pub(crate) fn warnings(&self) -> Vec<String> {
+    self.messages(LogLevel::Warn)
+  }
+
+  pub(crate) fn messages(&self, level: LogLevel) -> Vec<String> {
     self
       .events
       .lock()
       .iter()
-      .filter(|event| event.level == LogLevel::Warn)
+      .filter(|event| event.level == level)
       .map(|event| event.message.clone())
       .collect()
   }
