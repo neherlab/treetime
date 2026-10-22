@@ -1728,40 +1728,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -1770,16 +1739,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -1798,7 +1789,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
@@ -2657,40 +2648,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -2699,16 +2659,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -2727,7 +2709,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
@@ -3772,40 +3754,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -3814,16 +3765,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -3842,7 +3815,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
@@ -4770,40 +4743,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -4812,16 +4754,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -4840,7 +4804,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
@@ -5655,40 +5619,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -5697,16 +5630,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -5725,7 +5680,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
@@ -6756,40 +6711,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -6798,16 +6722,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -6826,7 +6772,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",
@@ -7454,40 +7400,9 @@
           "more": ""
         },
         {
-          "key": "topology_order_target_source",
-          "label": "Topology order target source",
-          "flag": "--topology-order-target-source",
-          "group": "Tree ordering",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": true,
-          "options": [
-            {
-              "value": "input",
-              "help": ""
-            },
-            {
-              "value": "reference-topology",
-              "help": ""
-            },
-            {
-              "value": "list",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "TOPOLOGY_ORDER_TARGET_SOURCE"
-          ],
-          "conflicts": [],
-          "help": "Source for target-order topology sorting.",
-          "more": ""
-        },
-        {
-          "key": "topology_order_target_file",
-          "label": "Topology order target file",
-          "flag": "--topology-order-target-file",
+          "key": "topology_order_tree",
+          "label": "Topology order tree",
+          "flag": "--topology-order-tree",
           "group": "Tree ordering",
           "role": "input",
           "kind": "text",
@@ -7496,16 +7411,38 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_FILE"
+            "FILE"
           ],
-          "conflicts": [],
-          "help": "File used by list or reference-topology target-order sources.",
-          "more": ""
+          "conflicts": [
+            "topology_order_list"
+          ],
+          "help": "Tree whose leaf order sets the target order",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`, the leaf order of the input tree is the target order."
         },
         {
-          "key": "topology_order_target_aggregate",
-          "label": "Topology order target aggregate",
-          "flag": "--topology-order-target-aggregate",
+          "key": "topology_order_list",
+          "label": "Topology order list",
+          "flag": "--topology-order-list",
+          "group": "Tree ordering",
+          "role": "input",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "FILE"
+          ],
+          "conflicts": [
+            "topology_order_tree"
+          ],
+          "help": "File with leaf names in the target order, one name per line",
+          "more": "Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`, the leaf order of the input tree is the target order."
+        },
+        {
+          "key": "topology_order_aggregate",
+          "label": "Topology order aggregate",
+          "flag": "--topology-order-aggregate",
           "group": "Tree ordering",
           "role": "setting",
           "kind": "enum",
@@ -7524,7 +7461,7 @@
           "default_value": "mean",
           "examples": [],
           "value_names": [
-            "TOPOLOGY_ORDER_TARGET_AGGREGATE"
+            "TOPOLOGY_ORDER_AGGREGATE"
           ],
           "conflicts": [],
           "help": "Aggregate used to map a subtree to a target-order position.",

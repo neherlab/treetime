@@ -4,9 +4,7 @@ pub(crate) mod tests {
     AN, ANALYSIS, CL, COMPLETIONS, EVERY, EXAMPLES_GET, HELP_MARKDOWN, HO, MU, OP, PI, PR, Pending, RUN, SCHEMA_WRITE,
     TT, find_command, leaf_commands, long_flags, treetime_command,
   };
-  use helpers::{
-    Change, CommandException, FlagException, describe_exceptions, expected_flags, per_file_output_flags, today_path,
-  };
+  use helpers::{Change, FlagException, describe_exceptions, expected_flags, per_file_output_flags};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -64,34 +62,19 @@ pub(crate) mod tests {
   ];
 
   #[rustfmt::skip]
-  const COMMAND_EXCEPTIONS: &[CommandException] = &[
-    CommandException::Renamed { target: SCHEMA_WRITE, today: "schema", pending: Pending::RootCommand },
-  ];
-
-  #[rustfmt::skip]
   const FLAG_EXCEPTIONS: &[FlagException] = &[
     FlagException { flag: "--confidence",                       change: Change::Missing, commands: &[MU],                 pending: Pending::MugrationConfidenceFlag },
-    FlagException { flag: "--check",                            change: Change::Extra,   commands: &[PI],                 pending: Pending::RootCommand },
-    FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[PI],                 pending: Pending::RootCommand },
     FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[EXAMPLES_GET, SCHEMA_WRITE], pending: Pending::DryRun },
   ];
 
   #[test]
   fn test_cli_flag_families_cover_every_command() {
     let root = treetime_command();
-    let expected: BTreeSet<String> = EVERY
-      .iter()
-      .map(|path| today_path(path, COMMAND_EXCEPTIONS).to_owned())
-      .collect();
+    let expected: BTreeSet<String> = EVERY.iter().map(|path| (*path).to_owned()).collect();
 
     let actual: BTreeSet<String> = leaf_commands(&root).into_iter().map(|(path, _)| path).collect();
 
-    assert_eq!(
-      expected,
-      actual,
-      "{}",
-      COMMAND_EXCEPTIONS.iter().map(CommandException::describe).join("\n")
-    );
+    assert_eq!(expected, actual);
   }
 
   #[test]
@@ -136,7 +119,7 @@ pub(crate) mod tests {
   #[trace]
   fn test_cli_flag_families_give_each_command_exactly_its_flags(#[case] path: &str) {
     let root = treetime_command();
-    let command = find_command(&root, today_path(path, COMMAND_EXCEPTIONS)).unwrap();
+    let command = find_command(&root, path).unwrap();
     let expected = expected_flags(path, FAMILIES, OWN_FLAGS, FLAG_EXCEPTIONS);
 
     let per_file_outputs = per_file_output_flags(command);
@@ -157,22 +140,6 @@ pub(crate) mod tests {
     use std::collections::BTreeSet;
     use std::path::PathBuf;
 
-    pub(super) enum CommandException {
-      Renamed {
-        target: &'static str,
-        today: &'static str,
-        pending: Pending,
-      },
-    }
-
-    impl CommandException {
-      pub(super) fn describe(&self) -> String {
-        match self {
-          Self::Renamed { target, today, pending } => format!("{target} is {today} until {pending:?}"),
-        }
-      }
-    }
-
     pub(super) struct FlagException {
       pub(super) flag: &'static str,
       pub(super) change: Change,
@@ -184,13 +151,6 @@ pub(crate) mod tests {
     pub(super) enum Change {
       Extra,
       Missing,
-    }
-
-    pub(super) fn today_path<'a>(path: &'a str, exceptions: &[CommandException]) -> &'a str {
-      exceptions
-        .iter()
-        .find_map(|CommandException::Renamed { target, today, .. }| (*target == path).then_some(*today))
-        .unwrap_or(path)
     }
 
     pub(super) fn expected_flags(

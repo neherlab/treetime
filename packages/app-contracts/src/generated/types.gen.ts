@@ -2739,8 +2739,6 @@ export type TimetreeAmbiguityOutput = 'reconstructed-nuc-fasta';
 
 export type TopologyOrderArg = 'keep' | 'descendant-count' | 'descendant-count-reverse' | 'height' | 'height-reverse' | 'divergence' | 'divergence-reverse' | 'label' | 'label-reverse' | 'target-order' | 'target-order-reverse';
 
-export type TopologyOrderTargetSourceArg = 'input' | 'reference-topology' | 'list';
-
 export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
 
 /**
@@ -3280,17 +3278,23 @@ export type TimetreeConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
   /**
    * Random seed
    *
@@ -3567,17 +3571,23 @@ export type ClockConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
 };
 
 export type MethodAncestral = 'marginal' | 'parsimony';
@@ -3960,17 +3970,23 @@ export type AncestralConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
   /**
    * Random seed
    *
@@ -4295,17 +4311,23 @@ export type HomoplasyConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
 };
 
 export type MugrationOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'confidence-csv' | 'traits-csv';
@@ -4590,17 +4612,23 @@ export type MugrationConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
 };
 
 export type OptimizeOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr';
@@ -4901,17 +4929,23 @@ export type OptimizeConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
   /**
    * Maximum number of iterations of the inference loop
    *
@@ -5201,17 +5235,23 @@ export type PruneConfig = {
    */
   topology_order?: TopologyOrderArg;
   /**
-   * Source for target-order topology sorting.
+   * Tree whose leaf order sets the target order
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_source?: TopologyOrderTargetSourceArg;
+  topology_order_tree?: string;
   /**
-   * File used by list or reference-topology target-order sources.
+   * File with leaf names in the target order, one name per line
+   *
+   * Used by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,
+   * the leaf order of the input tree is the target order.
    */
-  topology_order_target_file?: string;
+  topology_order_list?: string;
   /**
    * Aggregate used to map a subtree to a target-order position.
    */
-  topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
+  topology_order_aggregate?: TopologyOrderTargetAggregateArg;
   /**
    * How to handle gap characters in input sequences
    *

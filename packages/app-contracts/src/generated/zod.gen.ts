@@ -1415,12 +1415,6 @@ export const zTopologyOrderArg = z.enum([
   'target-order-reverse'
 ]);
 
-export const zTopologyOrderTargetSourceArg = z.enum([
-  'input',
-  'reference-topology',
-  'list'
-]);
-
 export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 
 /**
@@ -1511,9 +1505,9 @@ export const zTimetreeConfig = z.strictObject({
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zTimetreeAmbiguityOutput).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   gen_per_year: z.number().optional()
 });
@@ -1579,9 +1573,9 @@ export const zClockConfig = z.strictObject({
   output_clock_chart_pdf: z.string().optional(),
   output_selection: z.array(zClockOutputSelection).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional()
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
 
 export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
@@ -1684,9 +1678,9 @@ export const zAncestralConfig = z.strictObject({
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zAncestralAmbiguityOutput).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
@@ -1755,9 +1749,9 @@ export const zHomoplasyConfig = z.strictObject({
   output_homoplasy_report: z.string().optional(),
   output_selection: z.array(zHomoplasyOutputSelection).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional()
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
 
 export const zMugrationOutputSelection = z.enum([
@@ -1829,9 +1823,9 @@ export const zMugrationConfig = z.strictObject({
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zMugrationAmbiguityOutput).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional()
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
 
 export const zOptimizeOutputSelection = z.enum([
@@ -1923,9 +1917,9 @@ export const zOptimizeConfig = z.strictObject({
   output_gtr: z.string().optional(),
   output_selection: z.array(zOptimizeOutputSelection).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   max_iter: z.int().gte(0).optional(),
   tolerance: z.number().optional(),
   damping: z.number().optional(),
@@ -1990,9 +1984,9 @@ export const zPruneConfig = z.strictObject({
   output_gtr: z.string().optional(),
   output_selection: z.array(zPruneOutputSelection).optional(),
   topology_order: zTopologyOrderArg.optional(),
-  topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
-  topology_order_target_file: z.string().optional(),
-  topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  topology_order_tree: z.string().optional(),
+  topology_order_list: z.string().optional(),
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
   gap_fill: zGapFill.optional(),
   collapse_short: z.number().optional(),
   collapse_empty: z.boolean().optional(),

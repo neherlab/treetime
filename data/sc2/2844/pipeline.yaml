@@ -7,7 +7,7 @@
 #   treetime pipeline --config data/sc2/2844/pipeline.yaml --output-all tmp/examples/sc2/2844/pipeline
 #
 # Preview the plan without running anything:
-#   treetime pipeline --config data/sc2/2844/pipeline.yaml --check --output-all tmp/examples/sc2/2844/pipeline
+#   treetime pipeline --config data/sc2/2844/pipeline.yaml --dry-run --output-all tmp/examples/sc2/2844/pipeline
 #
 # A date-free build on 2844 SARS-CoV-2 genomes: `optimize` re-estimates branch
 # lengths and reroots on the minimum-divergence branch, then `ancestral` maps

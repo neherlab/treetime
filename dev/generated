@@ -33,7 +33,7 @@ all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs dat
 # at their repository-relative paths, and prints those paths.
 produce_schemas() {
   mkdir -p "${1}/packages/schemas"
-  cargo run --locked --quiet --bin treetime -- schema --for all -o "${1}/packages/schemas" >&2
+  cargo run --locked --quiet --bin treetime -- schema write --for all -o "${1}/packages/schemas" >&2
   printf 'packages/schemas\n'
 }
 

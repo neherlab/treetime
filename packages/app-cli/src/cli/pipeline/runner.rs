@@ -26,7 +26,7 @@ pub(crate) fn run_pipeline_command(
   let LoadedPipeline { source, pipeline } = load_pipeline(&args.config, output_all.as_deref())?;
   let selected = (!args.steps.is_empty()).then(|| args.steps.iter().cloned().collect::<BTreeSet<String>>());
   validate_plan(&pipeline, &source, selected.as_ref())?;
-  if args.check {
+  if args.dry_run {
     print_pipeline_plan(&pipeline, selected.as_ref())
   } else {
     run_pipeline(&pipeline, selected.as_ref(), stages, log)

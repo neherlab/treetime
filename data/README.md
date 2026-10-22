@@ -43,25 +43,25 @@ Run a pipeline, preview its plan, or run only part of it:
 
 ```bash
 treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline
-treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --check
+treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --dry-run
 treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --steps mugration
 ```
 
-`--check` resolves the whole plan (each step's inputs, its concrete output files, and every chained path) and prints it without running anything. `--steps` runs a named subset in list order; a referenced upstream step that is not selected must already have its outputs on disk. When a step fails, the error names the completed steps and prints the exact `--steps` value that resumes the rest.
+`--dry-run` resolves the whole plan (each step's inputs, its concrete output files, and every chained path) and prints it without running anything. `--steps` runs a named subset in list order; a referenced upstream step that is not selected must already have its outputs on disk. When a step fails, the error names the completed steps and prints the exact `--steps` value that resumes the rest.
 
 ## Why a config or pipeline instead of a shell command
 
 - One file, not one long flag string. The invocation is reviewable in a pull request, diffable across runs, and stored next to the data it analyzes.
 - No repetition. `vars` holds a shared value such as the clock rate once; every step references it. A whole-value reference such as `{{ vars.clock_rate }}` keeps its JSON type, so a number stays a number.
 - No path bookkeeping. `{{ steps.optimize.outputs.nwk }}` resolves to the optimized tree the first step actually writes. Rename an output directory in one place and the chain follows.
-- Errors before computation. `--check` resolves and type-checks the whole plan up front. A misspelled key is rejected with a suggestion (`unknown field opt_methd`; `unknown top-level key step; did you mean steps?`) rather than running silently or halfway.
+- Errors before computation. `--dry-run` resolves and type-checks the whole plan up front. A misspelled key is rejected with a suggestion (`unknown field opt_methd`; `unknown top-level key step; did you mean steps?`) rather than running silently or halfway.
 - One process. Steps share the thread pool; there is no shell loop, no temporary files to name, and no second tool to install.
 
 ## Why a pipeline instead of Snakemake for the TreeTime part
 
 - No workflow engine to stand up. A Snakemake build needs a `Snakefile`, a `config.yaml`, wildcards, and one rule per tool. The pipeline file needs only the TreeTime binary.
 - Chaining by output identity, not by string. A Snakemake rule wires steps with literal `input:`/`output:` path strings that must match each tool's real filenames. The pipeline references an output by its selection tag (`nwk`, `auspice`, ...) and resolves the concrete path itself.
-- Validation is static and typed. `--check` and the JSON-schema-backed argument objects catch a bad parameter or a dangling step reference before anything runs; a Snakemake rule only surfaces a bad TreeTime parameter when that rule executes.
+- Validation is static and typed. `--dry-run` and the JSON-schema-backed argument objects catch a bad parameter or a dangling step reference before anything runs; a Snakemake rule only surfaces a bad TreeTime parameter when that rule executes.
 - Reproducible and portable. The config is the exact serialized argument shape, with one dependency, committed beside the data.
 
 This is not a replacement for a full multi-sample workflow manager: incremental rebuilds, cluster scheduling, and non-TreeTime rules (subsampling, alignment, tree building, export) still belong to Snakemake and Augur. The pipeline replaces the TreeTime glue inside such a build. On the Nextstrain mpox `WIP/new_tt` phylogenetic workflow, for instance, three Snakemake rules drive TreeTime: `treetime optimize` replaces `augur refine` (branch-length optimization), `treetime ancestral` folds in `augur translate`, and `treetime timetree` dates the tree. The [`mpox/clade-ii/1000/pipeline.yaml`](mpox/clade-ii/1000/pipeline.yaml) example runs that chain as three steps in one file.
@@ -74,4 +74,4 @@ Each example begins with a `yaml-language-server` modeline pointing at the commi
 # yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
 ```
 
-A JSON config, which cannot carry a comment, uses a top-level `$schema` key with the same URL instead; the loader accepts and ignores it either way. Regenerate the schemas after changing any command's arguments with `treetime schema --for all -o packages/schemas`.
+A JSON config, which cannot carry a comment, uses a top-level `$schema` key with the same URL instead; the loader accepts and ignores it either way. Regenerate the schemas after changing any command's arguments with `treetime schema write --for all -o packages/schemas`.

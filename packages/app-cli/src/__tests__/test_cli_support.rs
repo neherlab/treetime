@@ -39,9 +39,7 @@ pub(crate) mod tests {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub(crate) enum Pending {
       MugrationConfidenceFlag,
-      FlagRenames,
       ShortHelp,
-      RootCommand,
       DryRun,
     }
 

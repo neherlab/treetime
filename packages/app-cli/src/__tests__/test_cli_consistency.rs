@@ -53,6 +53,11 @@ mod tests {
       "pipeline requires its config, which names the pipeline file",
     ),
     (
+      "--dry-run",
+      &[Property::Help, Property::Heading],
+      "pipeline prints the plan of every step instead of the settings of one command",
+    ),
+    (
       "--output-all",
       &[Property::Help, Property::LongHelp, Property::Heading],
       "pipeline writes the outputs of each step into a subfolder",

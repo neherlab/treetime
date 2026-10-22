@@ -101,12 +101,12 @@ mod tests {
       (
         vec![
           ("timetree", false),
-          ("optimize", false),
-          ("prune", false),
           ("ancestral", false),
           ("clock", false),
-          ("homoplasy", false),
           ("mugration", false),
+          ("homoplasy", false),
+          ("optimize", false),
+          ("prune", false),
           ("pipeline", false),
         ],
         vec![false; 8]

@@ -229,24 +229,25 @@
       "x-unset": true,
       "x-cli-flag": "--topology-order"
     },
-    "topology_order_target_source": {
-      "description": "Source for target-order topology sorting.",
-      "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-      "x-unset": true,
-      "x-cli-flag": "--topology-order-target-source"
-    },
-    "topology_order_target_file": {
-      "description": "File used by list or reference-topology target-order sources.",
+    "topology_order_tree": {
+      "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
       "type": "string",
       "x-path": "input",
       "x-unset": true,
-      "x-cli-flag": "--topology-order-target-file"
+      "x-cli-flag": "--topology-order-tree"
     },
-    "topology_order_target_aggregate": {
+    "topology_order_list": {
+      "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+      "type": "string",
+      "x-path": "input",
+      "x-unset": true,
+      "x-cli-flag": "--topology-order-list"
+    },
+    "topology_order_aggregate": {
       "description": "Aggregate used to map a subtree to a target-order position.",
       "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
       "default": "mean",
-      "x-cli-flag": "--topology-order-target-aggregate"
+      "x-cli-flag": "--topology-order-aggregate"
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
@@ -303,14 +304,6 @@
         "label-reverse",
         "target-order",
         "target-order-reverse"
-      ]
-    },
-    "TopologyOrderTargetSourceArg": {
-      "type": "string",
-      "enum": [
-        "input",
-        "reference-topology",
-        "list"
       ]
     },
     "TopologyOrderTargetAggregateArg": {

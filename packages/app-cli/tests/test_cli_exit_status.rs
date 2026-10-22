@@ -222,6 +222,54 @@ mod tests {
     assert_eq!(expected, treetime(args, &[]).code);
   }
 
+  #[test]
+  fn test_cli_schema_write_prints_the_config_schema() {
+    let run = treetime(&["schema", "write", "--for", "timetree", "-o", "-"], &[]);
+    let schema: serde_json::Value = serde_json::from_str(&run.stdout).unwrap();
+    assert_eq!((Some(0), Some("TimetreeConfig")), (run.code, schema["title"].as_str()));
+  }
+
+  #[test]
+  fn test_cli_pipeline_dry_run_prints_the_plan_and_writes_nothing() {
+    let dir = tempdir().unwrap();
+    let out = dir.path().join("out");
+    let run = treetime(
+      &[
+        "pipeline",
+        "--config",
+        &data_path("zika/20/pipeline.yaml"),
+        "--dry-run",
+        "-O",
+        out.to_str().unwrap(),
+      ],
+      &[],
+    );
+    assert_eq!(
+      (Some(0), true, false),
+      (run.code, run.stdout.contains(out.to_str().unwrap()), out.exists())
+    );
+  }
+
+  #[test]
+  fn test_cli_examples_get_checks_the_folder_of_the_short_flag_before_any_download() {
+    let dir = tempdir().unwrap();
+    write_file(dir.path(), "kept.txt", "");
+    let folder = dir.path().to_str().unwrap();
+    let run = treetime(
+      &[
+        "examples",
+        "get",
+        "-o",
+        folder,
+        "--url",
+        "http://127.0.0.1:9/examples.zip",
+      ],
+      &[],
+    );
+    let message = format!("the folder '{folder}' is not empty");
+    assert_eq!((Some(1), true), (run.code, run.stderr.contains(&message)));
+  }
+
   mod helpers {
     use std::fs;
     use std::path::Path;

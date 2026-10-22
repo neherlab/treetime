@@ -7,7 +7,7 @@
 #   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --output-all tmp/examples/mpox/clade-ii/1000/pipeline
 #
 # Preview the whole plan, or resume after a failure, without recomputing earlier steps:
-#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --check --output-all tmp/examples/mpox/clade-ii/1000/pipeline
+#   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --dry-run --output-all tmp/examples/mpox/clade-ii/1000/pipeline
 #   treetime pipeline --config data/mpox/clade-ii/1000/pipeline.yaml --steps ancestral,timetree --output-all tmp/examples/mpox/clade-ii/1000/pipeline
 #
 # On the nextstrain/mpox `WIP/new_tt` phylogenetic workflow, three Snakemake

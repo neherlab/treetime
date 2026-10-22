@@ -7,7 +7,7 @@
 #   treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/examples/zika/20/pipeline
 #
 # Inspect the plan first, or rerun only the second step after editing it:
-#   treetime pipeline --config data/zika/20/pipeline.yaml --check --output-all tmp/examples/zika/20/pipeline
+#   treetime pipeline --config data/zika/20/pipeline.yaml --dry-run --output-all tmp/examples/zika/20/pipeline
 #   treetime pipeline --config data/zika/20/pipeline.yaml --steps timetree --output-all tmp/examples/zika/20/pipeline
 #   treetime pipeline --config data/zika/20/pipeline.yaml --steps mugration --output-all tmp/examples/zika/20/pipeline
 #

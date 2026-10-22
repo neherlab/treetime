@@ -74,8 +74,8 @@ pub(crate) fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Resu
 #[clap(after_help = "Exit status: 0 on success, 1 on failure, 2 on a usage error (invalid flags or config file)")]
 /// Maximum-likelihood phylodynamic inference
 ///
-/// Documentation: https://treetime.readthedocs.io/en/stable/
-/// Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
+/// Repository:  https://github.com/neherlab/treetime
+/// Publication: https://academic.oup.com/ve/article/4/1/vex042/4794731
 pub(crate) struct TreetimeArgs {
   #[clap(flatten, next_help_heading = "Verbosity")]
   pub verbosity: Verbosity,
@@ -104,6 +104,41 @@ fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) 
 #[clap(verbatim_doc_comment)]
 #[deser(rename_all = "kebab-case")]
 pub(crate) enum TreetimeCommands {
+  /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
+  Timetree(Box<TreetimeTimetreeArgsRaw>),
+
+  /// Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based positions.
+  Ancestral(TreetimeAncestralArgsRaw),
+
+  /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`.
+  Clock(TreetimeClockArgsRaw),
+
+  /// Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred.
+  Mugration(TreetimeMugrationArgsRaw),
+
+  /// Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar.
+  Homoplasy(TreetimeHomoplasyArgsRaw),
+
+  /// Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences.
+  Optimize(TreetimeOptimizeArgsRaw),
+
+  /// Prunes short branches and/or branches without mutations from a phylogenetic tree.
+  Prune(TreetimePruneArgsRaw),
+
+  /// Runs an ordered list of analysis commands from one config file, on one dataset, in one process.
+  ///
+  /// The config file (JSON or YAML) lists named steps, each an analysis command with its arguments.
+  /// Steps run sequentially; a step may reference an earlier step's outputs with
+  /// `{{ steps.<name>.outputs.<selection> }}`. Use `--dry-run` to print the resolved plan without
+  /// running anything, and `--steps` to run only a subset.
+  Pipeline(TreetimePipelineArgs),
+
+  /// Write JSON Schema definitions for TreeTime data types
+  Schema {
+    #[clap(subcommand)]
+    command: TreetimeSchemaCommands,
+  },
+
   /// Generate shell completions.
   ///
   /// This will print the completions file contents to the console. Refer to your shell's documentation on how to install the completions.
@@ -117,38 +152,6 @@ pub(crate) enum TreetimeCommands {
     #[clap(value_name = "SHELL", default_value_t = String::from("bash"), value_parser = SHELLS.clone())]
     shell: String,
   },
-
-  /// Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional).
-  Timetree(Box<TreetimeTimetreeArgsRaw>),
-
-  /// Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences.
-  Optimize(TreetimeOptimizeArgsRaw),
-
-  /// Prunes short branches and/or branches without mutations from a phylogenetic tree.
-  Prune(TreetimePruneArgsRaw),
-
-  /// Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based positions.
-  Ancestral(TreetimeAncestralArgsRaw),
-
-  /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`.
-  Clock(TreetimeClockArgsRaw),
-
-  /// Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar.
-  Homoplasy(TreetimeHomoplasyArgsRaw),
-
-  /// Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred.
-  Mugration(TreetimeMugrationArgsRaw),
-
-  /// Runs an ordered list of analysis commands from one config file, on one dataset, in one process.
-  ///
-  /// The config file (JSON or YAML) lists named steps, each an analysis command with its arguments.
-  /// Steps run sequentially; a step may reference an earlier step's outputs with
-  /// `{{ steps.<name>.outputs.<selection> }}`. Use `--check` to print the resolved plan without
-  /// running anything, and `--steps` to run only a subset.
-  Pipeline(TreetimePipelineArgs),
-
-  /// Write JSON Schema definitions for TreeTime data types
-  Schema(TreetimeSchemaArgs),
 
   /// Print CLI reference documentation in Markdown format
   #[clap(name = "help-markdown")]
@@ -170,7 +173,7 @@ pub(crate) struct TreetimePipelineArgs {
 
   /// Folder of the outputs: each step writes into a subfolder named after the step. Takes precedence over the
   /// top-level `output_all` of the pipeline file. A relative path resolves from the working directory.
-  #[clap(long, value_hint = ValueHint::DirPath)]
+  #[clap(long, short = 'O', value_hint = ValueHint::DirPath)]
   pub output_all: Option<PathBuf>,
 
   /// Run only these named steps, in the pipeline's list order.
@@ -181,7 +184,7 @@ pub(crate) struct TreetimePipelineArgs {
 
   /// Resolve and print the plan (steps, inputs, outputs) without running any step.
   #[clap(long)]
-  pub check: bool,
+  pub dry_run: bool,
 
   #[clap(flatten)]
   pub jobs_args: JobsArgs,
@@ -198,9 +201,20 @@ impl TreetimeCommands {
       Self::Homoplasy(args) => Some(args.jobs_args.jobs),
       Self::Mugration(args) => Some(args.jobs_args.jobs),
       Self::Pipeline(args) => Some(args.jobs_args.jobs),
-      Self::Completions { .. } | Self::Schema(_) | Self::HelpMarkdown | Self::Debug => None,
+      Self::Completions { .. } | Self::Schema { .. } | Self::HelpMarkdown | Self::Debug => None,
     }
   }
+}
+
+#[derive(Subcommand, Debug, Serialize)]
+#[deser(rename_all = "kebab-case")]
+pub(crate) enum TreetimeSchemaCommands {
+  /// Write the JSON schema of a config file or of all TreeTime data types.
+  ///
+  /// For example:
+  ///
+  ///    treetime schema write --for timetree -o timetree.schema.json
+  Write(TreetimeSchemaArgs),
 }
 
 #[derive(Parser, Debug, Serialize)]
@@ -220,12 +234,39 @@ fn resolve<T: RawConfig>(args: &mut T, matches: &ArgMatches) -> Result<(), Repor
 
 #[cfg(test)]
 mod tests {
+  use super::TreetimeArgs;
   use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
-  use clap::Parser;
   use clap::error::ErrorKind;
+  use clap::{Command, CommandFactory, Parser};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::pretty_assert_ulps_eq;
+
+  #[test]
+  fn test_treetime_cli_root_lists_the_analysis_commands_first() {
+    let command = TreetimeArgs::command();
+    let actual: Vec<&str> = command
+      .get_subcommands()
+      .filter(|subcommand| !subcommand.is_hide_set())
+      .map(Command::get_name)
+      .collect();
+    assert_eq!(
+      vec![
+        "timetree",
+        "ancestral",
+        "clock",
+        "mugration",
+        "homoplasy",
+        "optimize",
+        "prune",
+        "pipeline",
+        "schema",
+        "completions",
+        "help-markdown",
+      ],
+      actual
+    );
+  }
 
   fn parse_timetree(extra: &[&str]) -> Result<TreetimeTimetreeArgsRaw, clap::Error> {
     let argv = std::iter::once("timetree").chain(extra.iter().copied());

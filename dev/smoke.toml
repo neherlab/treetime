@@ -940,11 +940,11 @@ pattern = "*.yaml"
 # baseline; a `sandbox = true` row runs in a sandbox directory and its written files are compared instead.
 [[cli]]
 variant = "schema-timetree"
-args = "schema --for=timetree --output=-"
+args = "schema write --for=timetree --output=-"
 
 [[cli]]
 variant = "schema-pipeline"
-args = "schema --for=pipeline --output=-"
+args = "schema write --for=pipeline --output=-"
 
 [[cli]]
 variant = "completions-bash"
@@ -959,8 +959,8 @@ variant = "help-markdown"
 args = "help-markdown"
 
 [[cli]]
-variant = "pipeline-check"
-args = "pipeline --config={data}/zika/20/pipeline.yaml --check --output-all=tmp/pipeline-check"
+variant = "pipeline-dry-run"
+args = "pipeline --config={data}/zika/20/pipeline.yaml --dry-run --output-all=tmp/pipeline-dry-run"
 
 [[cli]]
 variant = "pipeline-steps-timetree"

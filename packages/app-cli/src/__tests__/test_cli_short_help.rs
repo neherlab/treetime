@@ -2,8 +2,7 @@
 mod tests {
   use crate::__tests__::test_cli_flag_families::tests::{FAMILIES, Family};
   use crate::__tests__::test_cli_support::tests::helpers::{
-    AN, CL, EXAMPLES_GET, HO, MU, OP, PI, PR, Pending, ROOT, SCHEMA_WRITE, TT, all_commands, find_command,
-    treetime_command,
+    AN, CL, EXAMPLES_GET, HO, MU, OP, PR, Pending, ROOT, SCHEMA_WRITE, TT, all_commands, find_command, treetime_command,
   };
   use helpers::{
     Scope, ShortFlag, ShortFlagException, ShortFlagUse, ShortHelpDeviation, short_flag_deviations, short_help_deviation,
@@ -33,9 +32,6 @@ mod tests {
 
   #[rustfmt::skip]
   const SHORT_FLAG_EXCEPTIONS: &[ShortFlagException] = &[
-    ShortFlagException { commands: &[PI],                 long: "output-all",             short: None,      pending: Pending::RootCommand },
-    ShortFlagException { commands: &[EXAMPLES_GET],       long: "output-dir",             short: None,      pending: Pending::RootCommand },
-    ShortFlagException { commands: &["schema"],           long: "output",                 short: Some('o'), pending: Pending::RootCommand },
   ];
 
   #[rustfmt::skip]

@@ -1015,15 +1015,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -1034,7 +1029,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
@@ -1368,22 +1377,6 @@
             "label-reverse",
             "target-order",
             "target-order-reverse"
-          ]
-        },
-        {
-          "type": "string",
-          "pattern": "\\{\\{.*\\}\\}"
-        }
-      ]
-    },
-    "TopologyOrderTargetSourceArg": {
-      "anyOf": [
-        {
-          "type": "string",
-          "enum": [
-            "input",
-            "reference-topology",
-            "list"
           ]
         },
         {
@@ -1800,15 +1793,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -1819,7 +1807,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
@@ -2313,15 +2315,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -2332,7 +2329,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
@@ -2878,15 +2889,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -2897,7 +2903,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
@@ -3361,15 +3381,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -3380,7 +3395,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
@@ -3759,15 +3788,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -3778,7 +3802,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
@@ -4272,15 +4310,10 @@
           "$ref": "#/$defs/TopologyOrderArg",
           "x-unset": true
         },
-        "topology_order_target_source": {
-          "description": "Source for target-order topology sorting.",
-          "$ref": "#/$defs/TopologyOrderTargetSourceArg",
-          "x-unset": true
-        },
-        "topology_order_target_file": {
+        "topology_order_tree": {
           "anyOf": [
             {
-              "description": "File used by list or reference-topology target-order sources.",
+              "description": "Tree whose leaf order sets the target order\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-list`,\nthe leaf order of the input tree is the target order.",
               "type": "string",
               "x-path": "input",
               "x-unset": true
@@ -4291,7 +4324,21 @@
             }
           ]
         },
-        "topology_order_target_aggregate": {
+        "topology_order_list": {
+          "anyOf": [
+            {
+              "description": "File with leaf names in the target order, one name per line\n\nUsed by `--topology-order target-order` and `target-order-reverse`. Without this flag and `--topology-order-tree`,\nthe leaf order of the input tree is the target order.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        "topology_order_aggregate": {
           "description": "Aggregate used to map a subtree to a target-order position.",
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"

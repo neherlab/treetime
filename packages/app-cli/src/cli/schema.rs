@@ -182,7 +182,7 @@ mod tests {
       let committed: Value = serde_json::from_str(&fs::read_to_string(committed_dir.join(filename)).unwrap()).unwrap();
       assert_eq!(
         committed, generated,
-        "committed schema `{filename}` is stale; regenerate with `treetime schema --for all -o packages/schemas`"
+        "committed schema `{filename}` is stale; regenerate with `treetime schema write --for all -o packages/schemas`"
       );
     }
   }

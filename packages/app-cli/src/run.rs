@@ -6,8 +6,8 @@ use crate::cli::progress::{BarProgress, TextProgress};
 use crate::cli::rtt_chart::print_clock_regression_chart;
 use crate::cli::schema::generate_schema;
 use crate::cli::treetime_cli::{
-  TreetimeArgs, TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, resolve_args,
-  treetime_parse_cli_args,
+  TreetimeArgs, TreetimeCommands, TreetimeSchemaArgs, TreetimeSchemaCommands, generate_shell_completions,
+  resolve_args, treetime_parse_cli_args,
 };
 use crate::cli::verbosity::Verbosity;
 use app_commands::command::CommandArgs;
@@ -112,7 +112,9 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
     TreetimeCommands::Pipeline(pipeline_args) => {
       run_pipeline_command(&pipeline_args, stages, log)?;
     },
-    TreetimeCommands::Schema(TreetimeSchemaArgs { target, output }) => {
+    TreetimeCommands::Schema {
+      command: TreetimeSchemaCommands::Write(TreetimeSchemaArgs { target, output }),
+    } => {
       generate_schema(target, output.as_ref())?;
     },
     TreetimeCommands::HelpMarkdown => {

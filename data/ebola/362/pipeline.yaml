@@ -7,7 +7,7 @@
 #   treetime pipeline --config data/ebola/362/pipeline.yaml --output-all tmp/examples/ebola/362/pipeline
 #
 # Preview the plan, or resume from a step after a failure:
-#   treetime pipeline --config data/ebola/362/pipeline.yaml --check --output-all tmp/examples/ebola/362/pipeline
+#   treetime pipeline --config data/ebola/362/pipeline.yaml --dry-run --output-all tmp/examples/ebola/362/pipeline
 #   treetime pipeline --config data/ebola/362/pipeline.yaml --steps ancestral,timetree --output-all tmp/examples/ebola/362/pipeline
 #
 # optimize -> ancestral -> timetree, chained end to end. Each step consumes the

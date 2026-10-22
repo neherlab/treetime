@@ -7,7 +7,7 @@
 #   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all tmp/examples/flu/h3n2/500/pipeline
 #
 # Preview the plan, or resume from a later step after editing it:
-#   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml --check --output-all tmp/examples/flu/h3n2/500/pipeline
+#   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml --dry-run --output-all tmp/examples/flu/h3n2/500/pipeline
 #   treetime pipeline --config data/flu/h3n2/500/pipeline.yaml --steps timetree --output-all tmp/examples/flu/h3n2/500/pipeline
 #
 # optimize -> ancestral -> timetree on 500 H3N2 hemagglutinin sequences. Seasonal
