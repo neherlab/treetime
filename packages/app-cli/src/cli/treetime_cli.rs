@@ -143,12 +143,6 @@ pub(crate) enum TreetimeCommands {
   /// running anything, and `--steps` to run only a subset.
   Pipeline(TreetimePipelineArgs),
 
-  /// Downloads the example datasets: trees, alignments, metadata, and example configs.
-  Examples {
-    #[clap(subcommand)]
-    command: TreetimeExamplesCommands,
-  },
-
   /// Estimates ancestral reassortment graph (ARG).
   Arg(TreetimeAncestralReassortmentGraphArgs),
 
@@ -187,31 +181,6 @@ pub(crate) struct TreetimePipelineArgs {
   /// Resolve and print the plan (steps, inputs, outputs) without running any step.
   #[clap(long)]
   pub check: bool,
-}
-
-#[derive(Subcommand, Debug, Serialize)]
-#[deser(rename_all = "kebab-case")]
-pub(crate) enum TreetimeExamplesCommands {
-  /// Download the example datasets of this TreeTime release from GitHub and unpack them into a folder.
-  ///
-  /// The folder must be empty or missing. Each dataset folder holds its input files and example configs, whose
-  /// relative paths resolve from that folder, for example:
-  ///
-  ///    treetime examples get --output-dir examples
-  ///
-  ///    treetime ancestral --config examples/zika/20/ancestral.yaml --output-all out/zika-ancestral
-  Get(TreetimeExamplesGetArgs),
-}
-
-#[derive(Parser, Debug, Serialize)]
-pub(crate) struct TreetimeExamplesGetArgs {
-  /// Folder to unpack the example datasets into. It must be empty or missing.
-  #[clap(long, value_hint = ValueHint::DirPath)]
-  pub output_dir: PathBuf,
-
-  /// Address of another example archive (a ZIP file) to download instead of the one of this release.
-  #[clap(long, value_hint = ValueHint::Url)]
-  pub url: Option<String>,
 }
 
 #[derive(Parser, Debug, Serialize)]

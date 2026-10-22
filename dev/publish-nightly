@@ -146,7 +146,7 @@ generate_install_table() {
   generate_install_subtable "⌨️ <b>CLI</b>" "treetime-" "${CLI_ROWS[@]}"
 
   if [[ -n "${unlisted[${EXAMPLES_ASSET}]:-}" ]]; then
-    printf "<tr><td>🧬 <b>Example datasets</b></td><td><a href=\"%s/%s\">%s</a> (%s): <code>treetime examples get --output-dir &lt;dir&gt;</code> downloads and unpacks it</td></tr>\n" \
+    printf "<tr><td>🧬 <b>Example datasets</b></td><td><a href=\"%s/%s\">%s</a> (%s)</td></tr>\n" \
       "${base_url}" "${EXAMPLES_ASSET}" "${EXAMPLES_ASSET}" "$(format_size "$(wc -c <"${unlisted[${EXAMPLES_ASSET}]}")")"
     unset "unlisted[${EXAMPLES_ASSET}]"
   fi
