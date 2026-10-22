@@ -1,4 +1,4 @@
-name: "Nightly release and web deploy"
+name: "Nightly release"
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ on:
         type: boolean
         default: false
       only:
-        description: "What to run: cli (CLI release), desktop (desktop app release), web (web app deploy), or all"
+        description: "What to run: cli (CLI release), desktop (desktop app release), or all"
         required: false
         type: string
         default: "all"
@@ -44,9 +44,9 @@ jobs:
           ONLY: ${{ inputs.only }}
         run: |
           case "${ONLY}" in
-          cli | desktop | web | all) ;;
+          cli | desktop | all) ;;
           *)
-            printf 'Invalid input only: "%s". Expected cli, desktop, web, or all\n' "${ONLY}" >&2
+            printf 'Invalid input only: "%s". Expected cli, desktop, or all\n' "${ONLY}" >&2
             exit 1
             ;;
           esac
@@ -97,7 +97,7 @@ jobs:
   publish:
     name: "Publish nightly release"
     needs: [prepare, build, build-desktop]
-    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' && inputs.only != 'web' }}
+    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' }}
     runs-on: ubuntu-24.04
     steps:
       - name: "Checkout rust revision"
@@ -131,16 +131,3 @@ jobs:
             --release_repo "${RELEASE_REPOSITORY}" \
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
             --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
-
-  # Independent of build and publish, so a failure of the web deploy or of the
-  # CLI release never blocks the other. should_build compares only with the
-  # latest CLI release, so the cron deploys exactly when a CLI nightly is built,
-  # and a manual web-only run always deploys.
-  deploy-web:
-    name: "Deploy web app"
-    needs: prepare
-    if: (inputs.only == 'all' && needs.prepare.outputs.should_build == 'true') || inputs.only == 'web'
-    uses: neherlab/treetime/.github/workflows/web-deploy.yml@rust
-    with:
-      source_ref: ${{ needs.prepare.outputs.source_sha }}
-    secrets: inherit

@@ -125,7 +125,7 @@ check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-wasm lint-
 check_full := checks_format + " " + checks_clippy + " " + checks_dylint + " " + checks_tests + " " + checks_generated + " " + checks_typescript + " " + checks_hawk
 lint_fast := "lint-rs lint-wasm lint-wasm-mt lint-ts"
 lint_full := "lint-rs lint-wasm lint-wasm-mt lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
-dockerfiles := "dev/docker/*.dockerfile dev/deploy/*.dockerfile"
+dockerfiles := "dev/docker/*.dockerfile"
 
 alias b := build
 alias br := build-release

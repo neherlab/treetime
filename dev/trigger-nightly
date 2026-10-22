@@ -4,23 +4,21 @@
 #
 # Trigger a nightly build and release via GitHub Actions.
 #
-# Dispatches the default-branch scheduler, which builds rust, publishes the CLI
-# binaries and the desktop apps in the release repository, and deploys the web
-# app to the nightly server.
+# Dispatches the default-branch scheduler, which builds rust and publishes the
+# CLI binaries and the desktop apps in the release repository.
 #
 # Options:
 #   -h, --help                         Show this help
 #   -f, --force                        Build even when source has not changed since the latest nightly
-#   -o, --only <cli|desktop|web|all>   Run only the CLI release (cli), only the desktop app release
-#                                      (desktop), only the web app deploy (web), or all (default).
-#                                      Desktop-only and web-only runs also run when the source is unchanged
+#   -o, --only <cli|desktop|all>       Run only the CLI release (cli), only the desktop app release
+#                                      (desktop), or all (default). Desktop-only runs also run when the
+#                                      source is unchanged
 #
 # Environment:
 #   GH_TOKEN or GITHUB_TOKEN must be set for gh authentication.
 #
 # Examples:
 #   $0
-#   $0 --only web
 #   $0 --only desktop
 #   $0 --force --only cli
 #
@@ -70,9 +68,9 @@ main() {
   # shfmt:on
 
   case "${only}" in
-  cli | desktop | web | all) ;;
+  cli | desktop | all) ;;
   *)
-    printf "Invalid value of --only: '%s'. Expected cli, desktop, web, or all\n" "${only}" >&2
+    printf "Invalid value of --only: '%s'. Expected cli, desktop, or all\n" "${only}" >&2
     exit 1
     ;;
   esac
