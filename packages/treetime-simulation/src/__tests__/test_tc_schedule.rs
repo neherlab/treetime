@@ -144,6 +144,24 @@ mod tests {
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::exponential_one_scale(TcSchedule::exponential(10.0, 5.0),                           5.0, 10.0, 0.5 * E * (E - 1.0), 3)]
+  #[case::piecewise_into_second(TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  2.0,  5.5, 0.3 + 0.5,            1)]
+  #[case::piecewise_into_last(  TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  5.5,  9.0, 0.5 + 1.0,            0)]
+  #[case::piecewise_from_break( TcSchedule::piecewise(vec![5.0, 6.0], vec![10.0, 1.0, 3.0]),  5.0,  7.5, 1.0 + 0.5,            0)]
+  #[trace]
+  fn test_tc_schedule_hazard_from_a_later_time_matches_closed_form(
+    #[case] schedule: Result<TcSchedule, Report>,
+    #[case] from: f64,
+    #[case] to: f64,
+    #[case] expected: f64,
+    #[case] max_ulps: u32,
+  ) {
+    let actual = schedule.unwrap().hazard_between(from, to);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = max_ulps);
+  }
+
   #[test]
   fn test_tc_schedule_exponential_tc_is_positive_when_the_decay_underflows() {
     let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
