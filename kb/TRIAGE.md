@@ -49,10 +49,7 @@ Each line names the issue and the options that a maintainer must choose from.
 - **[kb/issues/M-timetree-reroot-schedule-diverges-from-v0.md](issues/M-timetree-reroot-schedule-diverges-from-v0.md)**: restore each of the three reroot steps that differ from v0, or record its divergence
 - **[kb/issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md](issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md)**: define the values of `--time-marginal` by what they do in v1, or replace the flag with options named after what they control
 - **[kb/issues/M-timetree-tree-inference-unimplemented.md](issues/M-timetree-tree-inference-unimplemented.md)**: keep the error for a run without `--tree`, call an external tree program as v0 does, or build the tree internally for low-divergence data
-- **[kb/issues/M-web2-offers-no-example-datasets.md](issues/M-web2-offers-no-example-datasets.md)**: download `examples.zip` of the release, serve the small datasets next to the page, or offer no examples
-- **[kb/issues/M-web2-run-blocks-the-back-end-worker.md](issues/M-web2-run-blocks-the-back-end-worker.md)**: run each job in its own worker, use WebAssembly threads, or keep runs in the back-end worker and show a waiting state
-- **[kb/issues/M-web2-runs-are-lost-on-reload.md](issues/M-web2-runs-are-lost-on-reload.md)**: keep no runs across page loads, store them in IndexedDB through IDBFS, or store them in the origin private file system
-- **[kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](issues/M-web2-wasm-panic-loses-the-back-end-state.md)**: accept the abort and limit the loss with stored runs, or build with `panic = "unwind"` once wasm-bindgen supports it on Emscripten
+- **[kb/issues/M-web2-wasm-panic-loses-the-back-end-state.md](issues/M-web2-wasm-panic-loses-the-back-end-state.md)**: accept the loss of every run when the back-end worker crashes, keep runs in a store that outlives the worker, or build with `panic = "unwind"` once wasm-bindgen supports it on Emscripten
 - **[kb/issues/N-alphabet-serialization-format-design.md](issues/N-alphabet-serialization-format-design.md)**: choose the user-facing alphabet format and its internal representation, which no command needs yet
 - **[kb/issues/N-amino-acid-mutation-indel-representation-undecided.md](issues/N-amino-acid-mutation-indel-representation-undecided.md)**: keep only substitutions on the amino-acid track, or keep range-based indels after a check of their coordinates against augur
 - **[kb/issues/N-ancestral-auspice-missing-v0-attributes-and-default.md](issues/N-ancestral-auspice-missing-v0-attributes-and-default.md)**: write `confidence` and `bad_branch` in the Auspice payload as v0 does, or approve a subset
@@ -155,7 +152,7 @@ Each line names the issue and the measurement or analysis that must come first.
 - **[kb/issues/N-timetree-forward-fine-fallback-can-build-large-grids.md](issues/N-timetree-forward-fine-fallback-can-build-large-grids.md)**: find which forward stage builds the 67 449-point grid and why its window is so wide
 - **[kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md](issues/N-timetree-gm-runner-dataset-cases-disabled.md)**: find out why the v0 capture does not reproduce the committed fixture, and why the dense `mpox_clade_ii_20` case is slow
 - **[kb/issues/N-timetree-parallel-cpu-efficiency-low.md](issues/N-timetree-parallel-cpu-efficiency-low.md)**: count FFT plans per thread and compare CPU profiles at 1 and 20 threads
-- **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the worker memory in the browsers and after several large runs in one page session
+- **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the memory of the tab in the browsers with runs computing at the same time and after several large runs in one page session
 
 ## Fix now
 
