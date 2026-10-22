@@ -61,7 +61,6 @@ mod tests {
 
   #[rustfmt::skip]
   const KNOWN_EXCEPTIONS: &[(&str, &[Property], Pending)] = &[
-    ("--metadata",      &[Property::Aliases],                                                    Pending::FlagRenames),
     ("--confidence",    &[Property::ValueType, Property::Action, Property::NumArgs, Property::ValueNames, Property::Defaults,
                           Property::Aliases, Property::Heading, Property::Help, Property::LongHelp],
                                                                                                  Pending::MugrationConfidenceFlag),

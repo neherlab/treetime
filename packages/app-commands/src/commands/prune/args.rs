@@ -114,10 +114,7 @@ pub struct TreetimePruneArgsRaw {
   /// Threshold value for pruning of branches
   ///
   /// If set, prune branches with a length below this value
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, short = 's', value_name = "THRESHOLD", help_heading = "Pruning")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, value_name = "THRESHOLD", help_heading = "Pruning"))]
   pub prune_short: Option<f64>,
 
   /// Prune empty branches
@@ -125,7 +122,7 @@ pub struct TreetimePruneArgsRaw {
   /// If set, prune any branch that does not have a mutation or other state transition mapped to it.
   ///
   /// Requires --alignment
-  #[cfg_attr(feature = "clap", clap(long, short = 'e', help_heading = "Pruning"))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Pruning"))]
   pub prune_empty: bool,
 
   /// Merge branches in polytomies that share identical mutations
@@ -136,7 +133,7 @@ pub struct TreetimePruneArgsRaw {
   /// Reduces tree builder artifacts from arbitrary binary resolution of polytomies.
   ///
   /// Requires --alignment
-  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Pruning"))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Pruning"))]
   pub merge_shared_mutations: bool,
 
   /// List of node names to prune
@@ -144,10 +141,7 @@ pub struct TreetimePruneArgsRaw {
   /// List of node names to remove from the tree, comma-separated (,)
   ///
   /// Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, short = 'n', value_name = "NODE_NAMES", help_heading = "Pruning")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, value_name = "NODE_NAMES", help_heading = "Pruning"))]
   pub prune_nodes_list: Option<String>,
 
   /// Name separator for `--prune-nodes-list`
@@ -167,7 +161,7 @@ pub struct TreetimePruneArgsRaw {
   /// Use '-' to read from standard input (stdin).
   ///
   /// Use --prune-nodes-list-file-delimiter to specify a different delimiter.
-  #[cfg_attr(feature = "clap", clap(long, short = 'N', value_hint = ValueHint::FilePath, value_name = "FILEPATH", help_heading = "Pruning"))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, value_name = "FILEPATH", help_heading = "Pruning"))]
   #[schemars(extend("x-path" = "input"))]
   pub prune_nodes_list_file: Option<PathBuf>,
 

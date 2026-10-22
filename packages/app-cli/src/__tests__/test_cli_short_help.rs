@@ -2,7 +2,7 @@
 mod tests {
   use crate::__tests__::test_cli_flag_families::tests::{FAMILIES, Family};
   use crate::__tests__::test_cli_support::tests::helpers::{
-    AN, ANALYSIS, CL, EXAMPLES_GET, HO, MU, OP, PI, PR, Pending, ROOT, SCHEMA_WRITE, TT, all_commands, find_command,
+    AN, CL, EXAMPLES_GET, HO, MU, OP, PI, PR, Pending, ROOT, SCHEMA_WRITE, TT, all_commands, find_command,
     treetime_command,
   };
   use helpers::{
@@ -33,15 +33,6 @@ mod tests {
 
   #[rustfmt::skip]
   const SHORT_FLAG_EXCEPTIONS: &[ShortFlagException] = &[
-    ShortFlagException { commands: &[TT, CL],             long: "metadata",               short: Some('d'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[MU],                 long: "metadata",               short: Some('s'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[MU],                 long: "weights",                short: Some('w'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[PR],                 long: "prune-short",            short: Some('s'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[PR],                 long: "prune-empty",            short: Some('e'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[PR],                 long: "merge-shared-mutations", short: Some('m'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[PR],                 long: "prune-nodes-list",       short: Some('n'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: &[PR],                 long: "prune-nodes-list-file",  short: Some('N'), pending: Pending::FlagRenames },
-    ShortFlagException { commands: ANALYSIS,              long: "output-selection",       short: None,      pending: Pending::FlagRenames },
     ShortFlagException { commands: &[PI],                 long: "output-all",             short: None,      pending: Pending::RootCommand },
     ShortFlagException { commands: &[EXAMPLES_GET],       long: "output-dir",             short: None,      pending: Pending::RootCommand },
     ShortFlagException { commands: &["schema"],           long: "output",                 short: Some('o'), pending: Pending::RootCommand },

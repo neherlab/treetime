@@ -87,7 +87,7 @@ outputs = ["ancestral.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,reconstructed-aa-fasta,mat-pb,mat-json"
 
 [commands.clock]
-args = "--tree={dataset}/tree.nwk --dates={metadata} --output-all={out}"
+args = "--tree={dataset}/tree.nwk --metadata={metadata} --output-all={out}"
 outputs = ["clock.nwk"]
 selection = "all"
 
@@ -97,7 +97,7 @@ outputs = ["homoplasy.nwk", "homoplasy.stats.json", "homoplasy.report.txt"]
 selection = "all"
 
 [commands.mugration]
-args = "--tree={dataset}/tree.nwk --states={metadata} --attribute={attribute} --output-all={out}"
+args = "--tree={dataset}/tree.nwk --metadata={metadata} --attribute={attribute} --output-all={out}"
 outputs = ["mugration.nwk"]
 selection = "all"
 
@@ -112,7 +112,7 @@ outputs = ["prune.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,gtr,mat-pb,mat-json"
 
 [commands.timetree]
-args = "--tree={dataset}/tree.nwk --dates={metadata} --alignment={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
+args = "--tree={dataset}/tree.nwk --metadata={metadata} --alignment={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
 seeded = true
 outputs = ["timetree.nwk"]
 selection = "nwk,nexus,auspice,graph-json,dot,augur-node-data,gtr,reconstructed-nuc-fasta,clock-model,clock-csv,confidence-tsv,tracelog,coalescent-tsv,coalescent-csv,coalescent-json,mat-pb,mat-json"

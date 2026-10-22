@@ -101,21 +101,13 @@ pub struct TreetimeMugrationArgsRaw {
   ///
   /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
   /// sample, such as its sampling date or its traits.
-  #[cfg_attr(
-    feature = "clap",
-    clap(
-      long = "metadata",
-      visible_alias = "states",
-      short = 's',
-      help_heading = "Input data"
-    )
-  )]
+  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub metadata: Option<PathBuf>,
 
   /// CSV or TSV file with probabilities of that a randomly sampled sequence at equilibrium has a particular state. E.g. population of different continents or countries. E.g.: #country,weight micronesia,0.1 ...
-  #[cfg_attr(feature = "clap", clap(long, short = 'w', help_heading = "Input data"))]
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub weights: Option<PathBuf>,

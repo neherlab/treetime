@@ -79,10 +79,7 @@ pub struct TreetimeClockArgsRaw {
   ///
   /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
   /// sample, such as its sampling date or its traits.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long = "metadata", visible_alias = "dates", short = 'd', help_heading = "Input data")
-  )]
+  #[cfg_attr(feature = "clap", clap(long, short = 'm', help_heading = "Input data"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub metadata: Option<PathBuf>,

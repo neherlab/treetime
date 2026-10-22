@@ -69,7 +69,7 @@ macro_rules! command_outputs {
       /// model of a run that fits none. A per-file flag for such an output fails.
       #[cfg_attr(
         feature = "clap",
-        clap(long, num_args = 1.., value_delimiter = ',', requires = "output_all", help_heading = "Output")
+        clap(long, short = 's', num_args = 1.., value_delimiter = ',', requires = "output_all", help_heading = "Output")
       )]
       pub output_selection: Vec<$name>,
     }

@@ -36,7 +36,7 @@ multiplies `mu` by the raw average rate.
 ```
 data/<coal>/rep<NN>/        10 tips per sample time; data_n30/ and data_n100/ have the same layout
   tree.nwk            true time tree, named nodes, branch lengths in years
-  tip_dates.tsv       name, date, tau   (TreeTime --dates format)
+  tip_dates.tsv       name, date, tau   (TreeTime --metadata format)
   node_dates.tsv      name, date, tau   for internal nodes incl. node_root
   L<L>_mu<mu>/
     tips.fasta.xz
