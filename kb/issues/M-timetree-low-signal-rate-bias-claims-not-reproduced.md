@@ -1,0 +1,37 @@
+# Claims about the low-signal clock rate bias are not reproduced
+
+[kb/reports/timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md) and the change it describes make claims about the log marginal likelihood of node times ($\log Z$, `log_lh_time`) and the clock rate at low signal. Three of them are reproduced: the rectangle sum of the convolution converges at first order at hard grid ends and the trapezoid rule at second order ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)); the wider dense-to-sparse difference of node times is explained ([H-timetree-sparse-dense-node-times-differ.md](H-timetree-sparse-dense-node-times-differ.md)); and the normalized mean-field prior at point-mass posteriors equals the Kingman density ([kb/decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md](../decisions/timetree-frozen-lineage-counts-for-coalescent-prior.md)). The claims below are not. Until they are, the size of the low-signal rate bias that remains after the trapezoid rule, and how much of the earlier bias the convolution error caused, are not known.
+
+The claims refer to validation `const` sets ($T_c = 10$, 400 tips) with $L$ the sequence length and $\mu$ the clock rate.
+
+## Claims
+
+- **Root log mass error on 400 tips.** On `const/rep00` ($L = 10^3$, true $\mu = 3\cdot10^{-4}$), $\log Z$ minus an independent fine-grid backward pass with identical branch likelihoods and prior factors: with the prior, $+121$ at $\mu = 10^{-4}$ and $+61$ at $\mu = 3\cdot10^{-4}$ with the rectangle sum, $-1.7$ and $+2.2$ with the trapezoid rule; without a prior, $+9.2$ and $+9.5$ before, $+0.3$ and $+0.9$ after; with a 10 times finer branch grid and the rectangle sum, $+11.6$ and $+4.2$
+  - Status: not reproduced. A converged reference of $\log Z$ (uniform grid with per-cell corrections and Richardson extrapolation) is validated against closed forms and `fn piecewise_log_z()` on small trees, but one evaluation on 400 tips costs 220 s to 860 s per spacing, and the run over rates and seeds was dropped. One data point exists: on a tree from `treetime-simulation` with the same layout (seed 1) at $\mu = 3\cdot10^{-4}$ with the prior, TreeTime's $\log Z$ without the normalization is $-3020.32$ against the reference $-3014.64 \pm 0.05$, a difference of $-5.7$ with the trapezoid rule
+  - Evidence to settle it: the reference against TreeTime at $\mu \in \{10^{-4}, 3\cdot10^{-4}\}$, with and without the prior, on several trees of the layout, with both convolution rules
+- **Maximum of $\log Z$ at a quarter of the true rate.** With the rectangle sum, at $L = 10^3$, $\mu = 3\cdot10^{-4}$, the maximum of $\log Z$ lay at about 1/4 of the true rate in 10 of 10 replicates, and a rate that followed the slope every round ran down to about $8\cdot10^{-5}$
+  - Status: not measured
+  - Evidence to settle it: the profile of $\log Z$ over the rate with the frozen prior of one run (the rate probes of `fn marginal_log_lh_at_rate()`) on the 10 replicates, with both convolution rules. A profile over separate CLI runs at fixed `--clock-rate` (`test_scripts/timetree_log_z_profile.py`) is a different objective, because each run builds its own prior; on one set with the trapezoid rule its largest value lies at 1.9 times the true rate and the profile is not smooth between neighboring rates
+- **Exact maximum of the marginal likelihood.** An MCMC over the node times with the exact Kingman density and Poisson branch likelihoods puts the maximum of the marginal likelihood at 0.97 to 1.39 times the true rate in 7 replicates
+  - Status: not verified. The MCMC used for the claim had a root move without a Hastings correction, which shortens the root age and raises the slope over the rate; it failed 17 of 21 checks against exact values by up to 15.5 standard errors. `test_scripts/poisson_timetree_surface.py` has the repaired move and passes 21 of 21 checks within 3 standard errors (`validate` subcommand). The maximum was not measured again
+  - Evidence to settle it: the slope of the marginal likelihood from the repaired sampler at several rates on the 7 replicates (about 27 ms per sweep on 400 tips, autocorrelation time of the slope about 20 sweeps)
+- **Rate step misses the maximum.** With the trapezoid rule, the final rates of the default rate step are 0.52 to 1.99 times the true rate in 7 replicates, because the three-probe parabola overshoots on the flat top of $\log Z$ and the interior window then holds the rate
+  - Status: not measured
+  - Evidence to settle it: the final rates of default `timetree` runs on the replicates against the maximum of the rate-probe profile of the same runs
+- **Normalization closes the gap between estimated-rate and fixed-rate runs.** The median $\lvert \log Z \rvert$ gap between an estimated-rate run and a fixed-rate run at the same final rate falls from 165, 461 and 985 to 0.5, 0.4 and 31 (largest after: 5.3, 8.1 and 79) at $L = 10^4$, $\mu = 3\cdot10^{-4}$; $L = 10^3$, $\mu = 10^{-3}$; and $L = 10^3$, $\mu = 3\cdot10^{-4}$, on 30 `const` sets with `--coalescent 10 --keep-root --clock-filter 0 --max-iter 4` on the realized tree ([kb/algo/coalescent-contribution-refactor.md](../algo/coalescent-contribution-refactor.md))
+  - Status: not measured
+  - Evidence to settle it: the same comparison on the current code, with the normalization and with `log_normalization()` set to 0
+- **Survival functions on probability levels change no result.** No new failure in the timetree validation suite, median changes of date RMSE, date bias and rate error below $2\cdot10^{-3}$, 90% coverage 0.898 on 80 calibration runs, peak memory down from 56.5 to 47.0 MB, and run time down by 12% to 18% with a coalescent prior (8% in [kb/decisions/timetree-posterior-statistics-count-tail-mass.md](../decisions/timetree-posterior-statistics-count-tail-mass.md))
+  - Status: not measured. These numbers come without the commands, data sets and code states that produced them
+  - Evidence to settle it: an end-to-end comparison of `rust` before and after the survival levels on real data sets: `log_lh_time`, clock rate, root date, run time and peak memory
+
+- **$\log Z$ at 300 grid points.** $\log Z$ lies 5 to 32 nats above its converged value at 300 grid points, and the gap halves with each doubling of the points (first order)
+  - Status: not measured. This is the target of [H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md), whose numbers predate the trapezoid rule
+  - Evidence to settle it: $\log Z$ at 300, 600, 1200, 2400 and 4800 grid points on the sets of that issue with the current code
+- **The low-signal tilt came from the convolution.** The tilt of $\log Z$ toward slow rates at $L = 10^3$, $\mu = 3\cdot10^{-4}$ (about 77 per unit of $\ln \mu$), which [kb/decisions/timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#rate-window) attributes to the frozen prior, came mostly from the convolution error
+  - Status: not measured
+  - Evidence to settle it: the slope of $\log Z$ per unit of $\ln \mu$ over the rate probes on those sets, with both convolution rules
+
+## Validation
+
+Each claim is reproduced with new numbers, or corrected in the report and in the decision files that cite it. Delete this issue when no claim remains.

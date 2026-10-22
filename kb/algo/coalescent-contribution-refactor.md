@@ -38,6 +38,9 @@ At point-mass posteriors the linearization is exact, and the normalized product 
 
 Before the normalization, `log_lh_time` depended on the rate at which the lineage counts were frozen. An estimated-rate run starts from the regression rate, a run with `--clock-rate` from the given rate, and the two put $g_0$ at different times. On 30 `const` validation sets, the two runs at the same final rate differed by the medians below; the gap that remains is the second-order dependence on the frozen expectation:
 
+> [!WARNING]
+> **Needs review.** The gaps in this table have not been reproduced: [kb/issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md](../issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md).
+
 | Set | Median gap before | Median gap after | Largest gap after |
 | --- | --- | --- | --- |
 | $L=10^4$, $\mu=3\cdot10^{-4}$ | 165 | 0.5 | 5.3 |

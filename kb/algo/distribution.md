@@ -69,7 +69,7 @@ v1: `multiply_many_lazy_normalize()` (`#multiply_many_lazy_normalize`) in [`pack
 
 ## Distribution Convolution
 
-Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and calls the FFT wrapper `treetime_ops::convolve_fft()`. The direct and Riemann implementations in `treetime-ops` are not used by distribution code. Point distributions short-circuit to a shift. Formula convolution returns an error.
+Polymorphic convolution dispatches across Point, Range, and Function variants. Function-Function convolution resamples both inputs to a common uniform grid and calls the FFT wrapper `treetime_ops::convolve_fft()`, which integrates each overlap by the trapezoid rule ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). The direct and ndarray-conv implementations in `treetime-ops` apply the same rule; distribution code does not use them. Point distributions short-circuit to a shift. Formula convolution returns an error.
 
 v1: `distribution_convolution()` (`#distribution_convolution`) in [`packages/treetime-distribution/src/distribution_ops/convolve.rs#L13-L43`](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L13-L43).
 
@@ -85,8 +85,9 @@ v1: `distribution_multiplication()` (`#distribution_multiplication`) in [`packag
 
 ## Additional Algorithms
 
-- Riemann Sum Convolution: `convolve_riemann()` (`#convolve_riemann`) in [`packages/treetime-ops/src/convolution.rs#L9-L19`](../../packages/treetime-ops/src/convolution.rs#L9-L19) - Explicit $O(nm)$ summation used as an independent validation oracle and available operation.
-- Direct Library Convolution: `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L24-L28`](../../packages/treetime-ops/src/convolution.rs#L24-L28) - Delegates to ndarray-conv crate.
+- Direct Convolution: `DirectConvolve`, `convolve_direct()` (`#convolve_direct`) in [`packages/treetime-ops/src/convolution.rs#L17-L39`](../../packages/treetime-ops/src/convolution.rs#L17-L39) - Explicit $O(nm)$ summation of the overlap sums, used by `treetime-validation` as an independent check of the FFT.
+- Library Convolution: `NdarrayConvolve`, `convolve()` (`#convolve`) in [`packages/treetime-ops/src/convolution.rs#L41-L58`](../../packages/treetime-ops/src/convolution.rs#L41-L58) - Overlap sums from the ndarray-conv crate.
+- Trapezoid rule: `trapezoid_from_overlap_sums()` (`#trapezoid_from_overlap_sums`) in [`packages/treetime-ops/src/convolution.rs#L99-L118`](../../packages/treetime-ops/src/convolution.rs#L99-L118) - Turns the overlap sums of every algorithm (direct, ndarray-conv, FFT) into trapezoid sums over each overlap; the two extreme outputs hold a quarter of the end products. Operands with fewer than 2 samples are rejected.
 - Distribution Division: `distribution_division()` (`#distribution_division`) in [`packages/treetime-distribution/src/distribution_ops/divide.rs#L16`](../../packages/treetime-distribution/src/distribution_ops/divide.rs#L16) - Cavity computation via pointwise division (subtraction in neg-log). Division reuses multiplication's support rule (`fn multiplication_support_intersection()`): per side the innermost hard bound when any operand is hard there, else the outermost soft bound. A soft divisor tail therefore extends the quotient -- sampled as bulk -- instead of truncating it, because the cavity dividend is a product containing the divisor as a factor so the quotient decays rather than spiking. Soft result sides are refit from the combined grid; a hard dividend edge bounds the quotient to zero (`Hard`), a divisor hard or `Error` edge yields `Error` beyond it. Exact endpoint contact is a Point distribution. [kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md) defines the tails. Plain division floors small denominators at $10^{-10}$, changing the quotient; Formula division is unsupported (returns an error). The scientific small-divisor policy is unresolved.
 - Distribution Negation: `distribution_negation()` (`#distribution_negation`) in [`packages/treetime-distribution/src/distribution_ops/negate.rs#L10-L18`](../../packages/treetime-distribution/src/distribution_ops/negate.rs#L10-L18) - Time reversal via `f(x) -> f(-x)`.
 
@@ -117,7 +118,7 @@ See [unimplemented](unimplemented.md) for full details:
 
 | File                                                                                                                   | Algorithms                                      |
 | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)                           | Riemann, direct, FFT convolution                |
+| [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)                           | Direct, ndarray-conv, FFT trapezoid convolution |
 | [`packages/treetime-ops/src/multiplication.rs`](../../packages/treetime-ops/src/multiplication.rs)                     | Naive, aggressive, lazy multiplication          |
 | [`packages/treetime-analytical/src/`](../../packages/treetime-analytical/src/)                                         | Gaussian, exponential analytical ops            |
 | [`packages/treetime-distribution/src/distribution_core/`](../../packages/treetime-distribution/src/distribution_core/) | Distribution type                               |

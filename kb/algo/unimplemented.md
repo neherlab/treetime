@@ -146,7 +146,7 @@ v1: has FFT in treetime-ops but not the delta approximation or tail extrapolatio
 Non-uniform-grid convolution that evaluates each output point by composite Simpson quadrature, then adaptively refines the output grid where interpolation error is large. It is more flexible than the uniform-grid FFT path for irregular distributions, at the cost of evaluating many convolution integrals.
 
 v0: `NodeInterpolator.convolve()` (`#NodeInterpolator`, `#convolve`), `_evaluate_convolution()` (`#_evaluate_convolution`) in [`packages/legacy/treetime/treetime/node_interpolator.py#L268-L409`](../../packages/legacy/treetime/treetime/node_interpolator.py#L268-L409).
-v1: not ported. v1 uses grid-based Riemann sum for all convolutions.
+v1: not ported. v1 convolves two functions on a uniform grid by the trapezoid rule over each overlap ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)).
 
 ### Algorithm
 

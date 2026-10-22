@@ -14,6 +14,9 @@ The rate step probes $\log Z$ at $\mu/1.25$ and $1.25\mu$, with the target cappe
 - The bias, not the width, limits date coverage: `--confidence` raised the 90% coverage only from 0.885 to 0.887 overall and from 0.854 to 0.866 for nodes older than 10 years, while the low-signal set stays at 0.83
 - Compare the Gaussian curvature with the curvature of $\log Z$ under the mean-field prior on rate $z$-scores, and report the better calibrated one
 
+> [!WARNING]
+> **Needs review.** The tilt of about 77 per unit of $\ln$ rate was measured with the rectangle sum in the convolution of two time functions, which biased $\log Z$ toward slow rates ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). The report [kb/reports/timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md) attributes most of the tilt to that error, not to the frozen prior. Neither the tilt nor that attribution has been measured on the current code: [M-timetree-low-signal-rate-bias-claims-not-reproduced.md](M-timetree-low-signal-rate-bias-claims-not-reproduced.md).
+
 The low-signal marginal likelihood is not flat: at $L=10^3$, $\mu=3\cdot10^{-4}$ it slopes toward low rates by about 77 per unit of $\ln$ rate. A log-normal rate prior centred at the Gaussian rate therefore either changes nothing (log std 1 or 2) or overrides the likelihood (log std near 0.1, or the Gaussian rate standard deviation). `--clock-std-dev` sets the rate uncertainty of the intervals only.
 
 ## Cheaper rate term of `--confidence`

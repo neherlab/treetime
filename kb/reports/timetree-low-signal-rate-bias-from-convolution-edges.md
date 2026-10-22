@@ -2,6 +2,9 @@
 
 Date: 2026-10-21
 
+> [!WARNING]
+> **Needs review.** The convergence claim is reproduced: the rectangle sum converges at first order at hard grid ends and the trapezoid rule at second order ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). The numbers on 400 tips (the root log mass errors, the maximum of $\log Z$ at a quarter of the true rate, the MCMC maximum, and the final rates of the rate step) are not reproduced, and the MCMC used for them had a biased root move: [kb/issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md](../issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md).
+
 ## Problem
 
 At low temporal signal, the log marginal likelihood of the node times (`log_lh_time`) under a coalescent prior rose toward slow clock rates. On validation `const` sets with $L=10^3$, $\mu=3\cdot10^{-4}$ and $T_c=10$, its maximum lay at about a quarter of the true rate in 10 of 10 replicates. A rate that followed the slope every round ran down to about $8\cdot10^{-5}$. The rate window of [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#rate-window) hid the drift, but left the rate wherever the first step landed.
@@ -28,11 +31,11 @@ On `const/rep00` (400 tips), every subtree log mass was compared with an indepen
 
 An MCMC over the 399 node times with the exact Kingman density and Poisson branch likelihoods puts the maximum of the marginal likelihood at 0.97–1.39 times the true rate in 7 replicates. The mean-field posterior of TreeTime was already close to the exact posterior: its $\sum k - \mu L\,\mathbb E[\sum\tau]$ matched the exact slope (+9.3 against +7.6 at $3\cdot10^{-4}$). Only the computed $\log Z$ was wrong.
 
-Ruled out along the way: the normalization of the mean-field prior (useful for comparing runs, and added in `769b53ef4`, but rate-neutral), the linearization of the prior, the branch-length model, and the number of message grid points.
+Ruled out along the way: the normalization of the mean-field prior (useful for comparing runs, `CoalescentPrior::log_normalization()`, but rate-neutral), the linearization of the prior, the branch-length model, and the number of message grid points.
 
 ## Fix
 
-`cc1693af9` integrates each overlap by the trapezoid rule. It halves the end samples of both operands and restores the quarter that is lost where an overlap ends at a grid end of both operands. The result converges at second order (test in `b5ed7a579`). v0 takes the same Riemann sum ([packages/legacy/treetime/treetime/node_interpolator.py#L214-L227](../../packages/legacy/treetime/treetime/node_interpolator.py#L214-L227)), so this is a divergence from v0 and needs a decision file.
+`fn trapezoid_from_overlap_sums()` in [packages/treetime-ops/src/convolution.rs](../../packages/treetime-ops/src/convolution.rs) integrates each overlap by the trapezoid rule, for every convolution algorithm of `treetime-ops`. The result converges at second order (`test_convolution_function_function_hard_edges_converge_at_second_order`). v0 takes the same Riemann sum ([packages/legacy/treetime/treetime/node_interpolator.py#L214-L227](../../packages/legacy/treetime/treetime/node_interpolator.py#L214-L227)), so this is a divergence from v0: [kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md).
 
 ## Remaining problems and options
 

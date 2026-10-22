@@ -102,6 +102,9 @@ $\ln$ rate at high signal, against 0.11 left after 12 rounds, most of it the lin
 
 ## Rate window
 
+> [!WARNING]
+> **Needs review.** The tilt of about 77 per unit of $\ln$ rate was measured with the rectangle sum in the convolution of two time functions, which biased $\log Z$ toward slow rates ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)). The report [kb/reports/timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md) attributes most of the tilt to that error, not to the frozen prior. Neither the tilt nor that attribution has been measured on the current code: [kb/issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md](../issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md).
+
 At low signal the rate drifted with the number of rounds: at $L=10^3$, $\mu=3\cdot10^{-4}$ the median
 $\lvert\ln\rvert$ rate error grew from 0.51 after two rounds to 1.26 after six, and the node date RMSE from 0.49 to
 1.1 years. The probes see the mean-field prior frozen in calendar time while the tree stretches, which tilts

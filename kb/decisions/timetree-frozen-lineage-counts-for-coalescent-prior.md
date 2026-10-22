@@ -23,6 +23,7 @@ the feedback to matter.
 > from the Gaussian node marginals and rebuilt once from the posteriors of its time pass, and again after a round in
 > which polytomy resolution changed the topology (the new mergers enter as points for that round's pass); the statistic ($T_c$ fit,
 > reported likelihood, convergence metric) is the expectation of the current posteriors. Phase 5 supersedes this file.
+> [Normalization of `log_lh_time`](#normalization-of-log_lh_time) describes the current code.
 
 ## The two roles
 
@@ -115,6 +116,34 @@ calibrated per polytomy to the very time window the sampled history has to fit i
 is not the objective the loop maximizes and is not guaranteed monotone. Its *stability* across
 rounds is the useful signal. This is deliberate: the statistic should describe the tree you
 actually have.
+
+## Normalization of `log_lh_time`
+
+The mean-field prior applies one factor per node, built from the frozen expected lineage counts $\bar k(t)$. The product of these factors leaves out two terms of the linearized Kingman density that do not depend on the node times:
+
+$$
+P = \int \tfrac12\Big(\bar k(t)^2 - \sum_v w_v^2\, \bar S_v(t)^2\Big)\frac{dt}{T_c(t)}, \qquad R = \sum_v w_v^2\, H\big(t_v^{\text{first}}\big)
+$$
+
+where:
+
+- $v$: every node with a time, leaves and internal nodes
+- $w_v = 1 - c_v$: the signed weight of node $v$ with $c_v$ children ($+1$ for a leaf, $-1$ for a binary internal node, $1 - m$ for a polytomy with $m$ children)
+- $\bar S_v(t)$: the survival function of node $v$ in the frozen expectation (a step function for a leaf at its date)
+- $T_c(t)$: the coalescent timescale
+- $H(t) = \int_{g_0}^{t} T_c^{-1}\,dt'$, with $g_0$ the first point of the lineage grid
+- $t_v^{\text{first}}$: the first knot of the survival function of $v$
+
+`CoalescentPrior::log_normalization()` computes $P + R$ once per prior ([packages/treetime/src/coalescent/mean_field.rs](../../packages/treetime/src/coalescent/mean_field.rs)). `fn log_marginal_likelihood()` adds it to the log mass of the root's subtree distribution when the run has a coalescent prior ([packages/treetime/src/timetree/inference/result.rs#L20-L31](../../packages/treetime/src/timetree/inference/result.rs#L20-L31)); in negative log terms, $P + R$ is subtracted from the sum of the node factors. The reported `log_lh_time` (log line and tracelog column) and the rate probes include it. The constant cancels in the posteriors and in the rate step, so inference does not change.
+
+Reason: with $P + R$, the sum of the node factors at point-mass posteriors equals the Kingman negative log density $M \ln T_c + \int \binom{k(t)}{2} \frac{dt}{T_c}$ for a constant $T_c$, where $M$ is the number of mergers (a polytomy with $m$ children counts as $m - 1$) and $k(t)$ the number of lineages. Without it, `log_lh_time` carries an offset that depends on where the lineage grid starts, so on the rate at which the counts were frozen, and runs that froze their counts at different rates report values that cannot be compared. Derivation: [kb/algo/coalescent-contribution-refactor.md](../algo/coalescent-contribution-refactor.md#normalization).
+
+Tests:
+
+- `test_mean_field_normalized_prior_at_its_point_times_is_the_kingman_density` (`packages/treetime/src/coalescent/__tests__/test_mean_field.rs`): a binary tree and a polytomy
+- `test_prop_mean_field_normalized_point_prior_matches_the_kingman_density` (`packages/treetime/src/coalescent/__tests__/test_prop_mean_field_normalization.rs`): simulated trees, within $10^{-9}$. Without the normalization it fails; the smallest failing input is two tips at time 0 with $T_c = 0.5$, where the Kingman value is $-0.4961$ and the factor sum $0.0951$
+
+v0 has no mean-field prior, so no v0 value of `log_lh_time` exists to compare with.
 
 ## Results
 

@@ -9,6 +9,20 @@ Branch-length distributions are windowed at $\epsilon = 5 \cdot 10^{-4}$ of the 
 
 Investigated 2026-10-19 (prototype commit `6d06d211a`, extending `Linear` tails onto the grid): no gain in low-signal coverage (0.830 to 0.817 at $L=10^3$, $\mu=3\cdot10^{-4}$), interval widths within 1% at a fixed rate; see [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md#operand-tails-issue-3).
 
+## Effect of the trapezoid rule at soft ends
+
+The convolution integrates each overlap by the trapezoid rule ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). At a soft grid end the operand continues beyond the grid, and the convolution drops that tail. The rectangle sum gave the end sample an extra half weight, which partly offset the dropped mass; the trapezoid rule removes that offset. In the analytic validation suite of `treetime-validation`, Gaussians cut at a soft grid end are 1% to 26% worse in relative L2 error with the trapezoid rule than with the rectangle sum (identical for every convolution algorithm):
+
+| suite | case | points | domain | relative L2, rectangle | trapezoid | mass error, rectangle | trapezoid |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `conv-gaussian-gaussian` | `python_notebook_case_1` | 101 | $[-5, 5]$ | 3.01e-5 | 3.80e-5 | 2.59e-5 | 3.27e-5 |
+| `conv-gaussian-gaussian` | `python_notebook_case_2` | 101 | $[-5, 5]$ | 1.14e-2 | 1.23e-2 | 1.16e-2 | 1.24e-2 |
+| `conv-gaussian-gaussian` | `tight_truncation` | 1201 | $[-6, 6]$ | 2.67e-3 | 2.70e-3 | 2.68e-3 | 2.70e-3 |
+| `conv-gaussian-gaussian` | `coarse_grid` | 161 | $[-8, 8]$ | 2.6e-14 | 4.1e-14 | 2.5e-14 | 3.8e-14 |
+| `conv-gaussian-exponential` | `tight_truncation` | 201 | $[-2, 15]$ | 2.32e-2 | 2.58e-2 | 1.99e-2 | 2.22e-2 |
+
+The other Gaussian cases are at round-off ($10^{-14}$ to $10^{-11}$) and unchanged. Extending the soft tails onto the grid (see Fix direction) removes the dropped mass, and with it the difference between the two rules.
+
 ## Fix direction
 
 Options, in order of scope:
