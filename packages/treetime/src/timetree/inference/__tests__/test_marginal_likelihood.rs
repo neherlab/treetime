@@ -2,7 +2,10 @@
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
   use crate::coalescent::mean_field::CoalescentPrior;
-  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_coalescent_prior, unknown_branches};
+  use crate::test_utils::{
+    BranchTime, NodeFactors, ReferenceInput, find_node_key_by_name, parent_edge_key, point_coalescent_prior,
+    reference_log_z, unknown_branches,
+  };
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::result::{BranchLikelihood, log_marginal_likelihood};
   use crate::timetree::optimization::marginal_clock_rate::branches_at_rate;
@@ -49,11 +52,40 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[case::no_prior_reference_rate(1e-3, None)]
+  #[case::no_prior_slower(0.5e-3, None)]
+  #[case::coalescent_reference_rate(1e-3, Some(5.0))]
+  #[case::coalescent_slower(0.5e-3, Some(5.0))]
+  #[case::coalescent_faster_long_tc(2e-3, Some(20.0))]
+  #[trace]
+  fn test_marginal_likelihood_reference_backward_pass_matches_piecewise_integration(
+    #[case] rate: f64,
+    #[case] tc: Option<f64>,
+  ) -> Result<(), Report> {
+    let setup = helpers::setup()?;
+    let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
+    let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
+
+    let actual = reference_log_z(&ReferenceInput {
+      graph: &setup.graph,
+      tip_dates: &helpers::tip_dates(&setup),
+      branches: &BranchTime::from_likelihoods(branches)?,
+      factors: model.as_ref().map_or(NodeFactors::None, NodeFactors::Prior),
+      spacing: helpers::REFERENCE_SPACING,
+    })?;
+
+    let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
+    pretty_assert_abs_diff_eq!(expected, actual.log_z, epsilon = 1e-8);
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use treetime_graph::node_names::NodeNames;
 
     pub(super) const REFERENCE_RATE: f64 = 1e-3;
+    pub(super) const REFERENCE_SPACING: f64 = 0.05;
     const SITES: f64 = 1000.0;
     const TIP_DATE_A: f64 = 2015.0;
     const TIP_DATE_B: f64 = 2014.0;
@@ -125,6 +157,10 @@ mod tests {
         distribution: Some(Arc::new(Distribution::Function(f))),
         time_length: Some(mean_time),
       })
+    }
+
+    pub(super) fn tip_dates(setup: &Setup) -> BTreeMap<GraphNodeKey, f64> {
+      TIPS.iter().map(|&(name, date)| (setup.keys[name], date)).collect()
     }
 
     pub(super) fn coalescent(setup: &Setup, tc: f64) -> Result<CoalescentPrior, Report> {

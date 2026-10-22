@@ -26,7 +26,7 @@ const TRUNCATED_NORMAL_SPAN: f64 = 8.0;
 
 #[derive(Clone, Debug)]
 pub(crate) struct CoalescentPrior {
-  expectation: Arc<LineageExpectation>,
+  pub(crate) expectation: Arc<LineageExpectation>,
   tc: Distribution,
   cell_rate: Vec<f64>,
   inverse_tc_integral: Vec<f64>,
@@ -276,7 +276,7 @@ impl CellRates<'_> {
 
 #[derive(Clone, Debug)]
 pub(crate) struct LineageExpectation {
-  grid: Vec<f64>,
+  pub(crate) grid: Vec<f64>,
   expected: Vec<f64>,
   expected_pairs: Vec<f64>,
   variance: Vec<f64>,

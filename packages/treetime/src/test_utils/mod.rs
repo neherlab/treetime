@@ -5,7 +5,10 @@ mod gtr_generators;
 mod indel;
 mod kingman;
 mod marginal;
+mod poisson_cherry;
 mod progress;
+mod reference_grid;
+mod reference_log_z;
 mod simulation;
 mod sparse;
 mod timetree;
@@ -29,7 +32,11 @@ pub(crate) use marginal::{
   run_sparse_marginal_with_newick, sequence_source, sparse_reconstruction, sparse_reconstruction_mut,
   sparse_topology_partition, sparse_topology_partitions,
 };
+pub(crate) use poisson_cherry::PoissonCherry;
 pub(crate) use progress::RecordingLog;
+pub(crate) use reference_log_z::{
+  AnalyticBranch, BranchTime, NodeFactors, ReferenceInput, ReferenceLogZ, reference_log_z,
+};
 pub(crate) use simulation::{
   CaseSpec, MeanCheck, ModelFamily, SimulatedCase, TIMETREE_CELL_LENGTH, TIMETREE_CELL_MU, TIMETREE_CELL_TC,
   ancestral_input, arb_simulated_case, decrease_check, exact_tip_dates, first_columns, gtr_from_model,
