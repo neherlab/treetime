@@ -22,9 +22,12 @@ mod tests {
   }
 
   #[test]
-  fn test_openapi_contract_every_component_is_reachable_from_a_route_or_the_catalog() {
+  fn test_openapi_contract_every_component_is_reachable_from_a_route_or_an_added_type() {
     let doc = api_doc().unwrap();
-    assert_eq!(Vec::<String>::new(), unreachable_components(&doc, &["SettingCatalog"]));
+    assert_eq!(
+      Vec::<String>::new(),
+      unreachable_components(&doc, &["SettingCatalog", "DataIndex"])
+    );
   }
 
   #[test]

@@ -1,5 +1,6 @@
 use aide::openapi::{Components, OpenApi, SchemaObject};
 use app_backend::config::catalog::SettingCatalog;
+use app_backend::datasets::DataIndex;
 use app_commands::command::AppCommand;
 use app_commands::config::cli_flags::annotated_config_schema;
 use app_commands::config::schema::SCHEMA_KEY;
@@ -28,6 +29,7 @@ const SCHEMA_SINGLES: &[&str] = &["items", "additionalProperties", "not", "if", 
 pub(crate) fn add_components(api: &mut OpenApi, settings: &SchemaSettings) -> Result<(), Report> {
   let mut components = Map::new();
   add_type::<SettingCatalog>(&mut components, settings)?;
+  add_type::<DataIndex>(&mut components, settings)?;
 
   let schemas = &mut api.components.get_or_insert_with(Components::default).schemas;
   if settings.contract == Contract::Deserialize {
