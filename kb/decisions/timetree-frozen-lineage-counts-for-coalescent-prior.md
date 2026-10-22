@@ -66,7 +66,7 @@ tree without a coalescent prior, typically with a much older root and stretched 
 the prior it imposes disagrees with the times it produces. Rebuilding every round brings back the
 self-referential loop.
 
-On simulated data (10 rounds, 30 sets per cell, true topology and root, `--coalescent-opt`), the
+On simulated data (10 rounds, 30 sets per cell, true topology and root, `--coalescent opt`), the
 rebuild lowers the median root date error from 3.43 to 1.87 years at $L=10^3$, $\mu=10^{-3}$ and
 from 1.41 to 0.79 years at $L=10^4$, $\mu=3\cdot10^{-4}$, and the node date RMSE from 0.365 to
 0.261 and from 0.170 to 0.153 years. It lowers the clock rate by about 8%. At $L=10^3$,
@@ -106,7 +106,7 @@ a run that asked for no coalescent prior. When the coalescent is enabled it gets
 object the prior does -- frozen $k_0$, the round's $T_c$ -- so the rate the sampler draws against is
 consistent with the prior the times are inferred under. When the coalescent is disabled, `prior` is
 `None` while the model still exists, built from a constant $T_c$ estimated by the same one-segment
-analytic solve `--coalescent-opt` uses. That replaces v0's `dummy_coalescent_rate`, which is
+analytic solve `--coalescent opt` uses. That replaces v0's `dummy_coalescent_rate`, which is
 calibrated per polytomy to the very time window the sampled history has to fit into; see
 [timetree-stochastic-polytomy-resolution.md](timetree-stochastic-polytomy-resolution.md).
 
@@ -149,7 +149,7 @@ v0 has no mean-field prior, so no v0 value of `log_lh_time` exists to compare wi
 
 `data/ebola/20`, per-round maximum node-time change in years:
 
-| round | `--coalescent-opt`, live $k(t)$ | frozen $k_0$ | `--coalescent 2.56`, live $k(t)$ | frozen $k_0$ |
+| round | `--coalescent opt`, live $k(t)$ | frozen $k_0$ | `--coalescent 2.56y`, live $k(t)$ | frozen $k_0$ |
 | --- | --- | --- | --- | --- |
 | 1 | 0.287 | 0.294 | 0.291 | 0.306 |
 | 2 | 0.181 | 0.297 | 0.177 | 0.308 |

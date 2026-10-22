@@ -16,7 +16,8 @@ fit, the polytomy merger rates, the reported likelihood and the convergence trac
 
 ## Time scale $T_c$
 
-- [x] Constant $T_c$
+- [x] Constant $T_c$ (`--coalescent <TC>`): a bare number is in substitutions per site, the unit of v0 and augur, and is converted to years with the clock rate at the start of every refinement round and after the final clock estimate, as v0 divides by the clock rate ([packages/legacy/treetime/treetime/wrappers.py#L536-L538](../../packages/legacy/treetime/treetime/wrappers.py#L536-L538)); a number with the unit `y`, `w` or `d` is a time in years, weeks or days and stays fixed
+- [x] Optimal constant $T_c$ (`--coalescent opt`) and skyline (`--coalescent skyline`): one setting with the fixed time scale, as in v0 and augur
 - [x] **Optimal constant $T_c$ (analytic)** — see below
 - [x] **Skyline (piecewise-constant $T_c$, analytic convex solve)** — see below
 - [x] No hardcoded initial/fallback $T_c$ — the analytic solve needs no seed and

@@ -190,7 +190,6 @@ These issues give wrong results or failures under specific settings, or block ca
 These issues cover parity gaps, robustness, performance, tests, and tooling, and do not change results on default settings.
 
 - **[kb/issues/N-timetree-indel-rate-recomputed-per-iteration.md](issues/N-timetree-indel-rate-recomputed-per-iteration.md)**: estimate the indel rates once before the timetree loop, as optimize does
-- **[kb/issues/M-timetree-coalescent-modes-represent-invalid-states.md](issues/M-timetree-coalescent-modes-represent-invalid-states.md)**: parse the coalescent settings into one `CoalescentMode` at the boundary and reject conflicts
 - **[kb/issues/M-grid-invalid-numeric-domain.md](issues/M-grid-invalid-numeric-domain.md)**: reject NaN endpoints and non-increasing spacing in the grid constructors
 - **[kb/issues/N-app-examples-download-panic-leaves-running-state.md](issues/N-app-examples-download-panic-leaves-running-state.md)**: catch a panic of the download thread and publish an error state
 - **[kb/issues/N-io-auspice-tree-drop-overflows-stack-on-deep-trees.md](issues/N-io-auspice-tree-drop-overflows-stack-on-deep-trees.md)**: drop `AuspiceTreeNode` trees iteratively

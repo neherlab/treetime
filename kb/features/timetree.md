@@ -49,11 +49,11 @@
 
 ## Coalescent Models
 
-- [x] Constant Tc (fixed from CLI `--coalescent`)
-- [x] Optimized Tc (`--coalescent-opt`, analytic one-segment skyline solve)
+- [x] Constant Tc (fixed from CLI `--coalescent <TC>`: substitutions per site as in v0, converted to years with the clock rate of each round, or a time such as `10y`)
+- [x] Optimized Tc (`--coalescent opt`, analytic one-segment skyline solve)
   - [x] Re-estimates constant $T_c$ at the start of every loop round ([packages/treetime/src/timetree/refinement_loop.rs#L54-L61](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L61))
   - [x] Pre-loop constant Tc optimization
-- [/] Skyline (`--coalescent-skyline`, convex Newton solve over piecewise-constant $T_c(t)$; extrapolation and quadrature contracts remain open: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md))
+- [/] Skyline (`--coalescent skyline`, convex Newton solve over piecewise-constant $T_c(t)$; extrapolation and quadrature contracts remain open: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md))
   - [ ] Skyline fitted in the last round only: v0 uses a constant $T_c$ until the last round; v1 re-estimates the skyline at the start of every loop round ([packages/treetime/src/timetree/refinement_loop.rs#L54-L61](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L61)) and runs no skyline step after the loop ([kb/issues/M-timetree-skyline-timing-v0-divergence.md](../issues/M-timetree-skyline-timing-v0-divergence.md))
 - [x] Final marginal round after the loop for `--time-marginal=only-final`, and for `--confidence` with `never` when a clock rate uncertainty is given (v0 `confidence-only`): v0 runs no other post-loop timetree pass ([packages/legacy/treetime/treetime/treetime.py#L390-L395](../../packages/legacy/treetime/treetime/treetime.py#L390-L395), [packages/legacy/treetime/treetime/wrappers.py#L453-L470](../../packages/legacy/treetime/treetime/wrappers.py#L453-L470), [packages/legacy/treetime/treetime/wrappers.py#L492](../../packages/legacy/treetime/treetime/wrappers.py#L492)); v1 `fn compute_effective_time_marginal` ([packages/treetime/src/timetree/params.rs#L13-L27](../../packages/treetime/src/timetree/params.rs#L13-L27)) and `fn final_marginal_round` ([packages/treetime/src/timetree/round.rs#L88-L99](../../packages/treetime/src/timetree/round.rs#L88-L99)), called from `fn refine_final_times` ([packages/treetime/src/timetree/pipeline.rs#L424-L431](../../packages/treetime/src/timetree/pipeline.rs#L424-L431))
 - [x] Coalescent leaf, internal-node, and root contributions

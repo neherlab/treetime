@@ -40,7 +40,7 @@ search bound. A coalescent prior is a proper prior on the node times and removes
 ## Evidence
 
 Validation suite, `const` and `exp` schedules, replicates 0-2, $L \in \{10^3, 10^4\}$, $\mu \in \{10^{-3}, 3\cdot10^{-3}\}$,
-true topology and root, `--coalescent-opt`, `--clock-filter 0`, default number of rounds, 24 sets:
+true topology and root, `--coalescent opt`, `--clock-filter 0`, default number of rounds, 24 sets:
 
 | | rate error, mean abs. log | node date RMSE, years | root date error, years | run time |
 | --- | --- | --- | --- | --- |
@@ -63,8 +63,8 @@ sets):
 | $L=10^3$, $\mu=3\cdot10^{-4}$ | search | -0.652 | 0.414 | 5.51 | 0.51 | 107 s |
 | | half step | -0.723 | 0.406 | 5.41 | 0.41 | 41 s |
 
-On `data/ebola/20` the half step converges in 6 rounds with `--coalescent-opt` (6 with the search) and in 9 with
-`--coalescent 2.56` (3 with the search): the partial step makes the approach to a fixed point geometric.
+On `data/ebola/20` the half step converges in 6 rounds with `--coalescent opt` (6 with the search) and in 9 with
+`--coalescent 2.56y` (3 with the search): the partial step makes the approach to a fixed point geometric.
 
 ## Step fraction
 
@@ -119,7 +119,7 @@ the date RMSE of the high-signal sets. The first round therefore keeps the slope
 rounds use the interior one. A Gaussian-timetree start rate instead of the regression's fixed `rep03` but raised the
 date RMSE at $L=10^3$, $\mu=3\cdot10^{-3}$ from 0.155 to 0.191, so the regression start stays.
 
-Gate: 240 validation sets (`const`, `exp`, `piecewise`, replicates 0-9), true topology and root, `--coalescent-opt`,
+Gate: 240 validation sets (`const`, `exp`, `piecewise`, replicates 0-9), true topology and root, `--coalescent opt`,
 `--clock-filter 0`; median $\lvert\ln\rvert$ rate error / date RMSE in years / 90% coverage, two and six rounds:
 
 | set | slope every round, 2 rounds | 6 rounds | slope in round 1 only, 2 rounds | 6 rounds |
