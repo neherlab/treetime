@@ -19,8 +19,6 @@ Flags marked _hidden_ are accepted but not listed in `--help`.
 
 `optimize` and `homoplasy` also accept `--model-params`/`--gtr-params` and never read it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. The `--help` text and `docs/docs/reference.md` even give a usage example (`--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`). Yet `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
 
-`clock` and `timetree` accept `--date-format` (config key `date_format`, default `%Y-%m-%d`) and never read it. The flag lives in the shared `DateColumnArgs` struct in `packages/app-commands/src/commands/shared/metadata.rs`. The date reader in `packages/treetime-io/src/dates_csv.rs` parses every date cell with `DateParserOptions::default()`, and `struct DateParserOptions` has no format field, so a string date in a format outside the built-in list stays unreadable whatever `--date-format` says.
-
 Tracked elsewhere, with their own `expect` reasons:
 
 - `--alignment`/`--aln` in `clock`: [M-clock-alignment-ignored.md](M-clock-alignment-ignored.md)
@@ -32,7 +30,6 @@ Tracked elsewhere, with their own `expect` reasons:
 - `--prune-short` in `clock` leaves short branches in the tree
 - `--model` and `--model-params` in `clock` do not change the substitution model
 - `--model-params` in `ancestral`, `homoplasy`, `optimize`, and `timetree` does not change the parameters of the selected model, so a named model always uses its default parameters
-- `--date-format` in `clock` and `timetree` does not change how dates are parsed, although its help text says it controls the parsing of string dates
 
 ## Potential solutions
 
