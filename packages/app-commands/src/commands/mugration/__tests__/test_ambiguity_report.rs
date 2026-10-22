@@ -9,8 +9,8 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::every_output( vec![],                                     ("node,country,country_ambiguous\nA,usa,\nB,germany,\nroot,germany,germany|usa\n", Some("germany|usa")))]
-  #[case::csv_only(     vec![MugrationAmbiguityOutput::TraitsCsv],     ("node,country,country_ambiguous\nA,usa,\nB,germany,\nroot,germany,germany|usa\n", None))]
-  #[case::node_data_only(vec![MugrationAmbiguityOutput::AugurNodeData], ("node,country\nA,usa\nB,germany\nroot,germany\n",                                Some("germany|usa")))]
+  #[case::csv_only(     vec![MugrationAmbiguityOutput::Traits],     ("node,country,country_ambiguous\nA,usa,\nB,germany,\nroot,germany,germany|usa\n", None))]
+  #[case::node_data_only(vec![MugrationAmbiguityOutput::NodeData], ("node,country\nA,usa\nB,germany\nroot,germany\n",                                Some("germany|usa")))]
   #[trace]
   fn test_ambiguity_report_names_plausible_trait_states_in_the_chosen_outputs(
     #[case] outputs: Vec<MugrationAmbiguityOutput>,
@@ -58,8 +58,8 @@ mod tests {
         tree: TreeArgs { tree: Some(tree_path) },
         metadata: Some(metadata_path),
         attribute: Some(o!("country")),
-        output_traits_csv: Some(traits_csv.clone()),
-        output_augur_node_data: Some(node_data.clone()),
+        output_traits: Some(traits_csv.clone()),
+        output_node_data: Some(node_data.clone()),
         ambiguity: MugrationAmbiguityArgs {
           ambiguity_threshold: Some(AmbiguityThreshold::new(0.5)?),
           ambiguity_outputs: outputs,

@@ -45,7 +45,7 @@ mod tests {
     let augur_path = dir.path().join("node_data.json");
     write_timetree_outputs(dir.path(), false, |raw| {
       raw.branch_lengths.divergence_units = DivergenceUnits::Mutations;
-      raw.output_augur_node_data = Some(augur_path.clone());
+      raw.output_node_data = Some(augur_path.clone());
     })?;
 
     let node_data: AugurNodeDataJsonRefine = json_read_file(&augur_path)?;
@@ -76,7 +76,7 @@ mod tests {
     let result = write_timetree_outputs(dir.path(), false, |raw| {
       raw.branch_lengths.divergence_units = DivergenceUnits::Mutations;
       raw.branch_length_mode = BranchLengthModeCli::Input;
-      raw.output_augur_node_data = Some(dir.path().join("node_data.json"));
+      raw.output_node_data = Some(dir.path().join("node_data.json"));
     });
     assert_error!(
       result,

@@ -117,12 +117,12 @@ pub struct TreetimeMugrationArgsRaw {
   #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
-  /// Path to output state-probability-profile CSV.
+  /// Path to output the state probabilities of every node as a table.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, visible_alias = "confidence", value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_confidence_csv: Option<PathBuf>,
+  pub output_trait_probabilities: Option<PathBuf>,
 
   /// Pseudo-count of the substitution model fit. Higher values give flatter models.
   #[cfg_attr(
@@ -185,19 +185,19 @@ pub struct TreetimeMugrationArgsRaw {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_augur_node_data: Option<PathBuf>,
+  pub output_node_data: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub gtr_output: GtrOutputArgs,
 
-  /// Path to output traits CSV.
+  /// Path to output the inferred trait state of every node as a table.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_traits_csv: Option<PathBuf>,
+  pub output_traits: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

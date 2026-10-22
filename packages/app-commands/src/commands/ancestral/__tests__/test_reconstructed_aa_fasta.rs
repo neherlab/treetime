@@ -38,13 +38,13 @@ mod tests {
     let gtr = dir.path().join("S.json");
     let nuc_fasta = dir.path().join("nuc.fasta");
     let mut args = helpers::args(dir.path(), dir.path().join("%GENE.json"), Some(gtr.clone()))?;
-    args.reconstructed_fasta_output.output_reconstructed_nuc_fasta = Some(nuc_fasta.clone());
+    args.reconstructed_fasta_output.output_sequences = Some(nuc_fasta.clone());
 
     assert_error!(
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress),
       format!(
         "Output destination '{}' is selected more than once \
-         (--output-gtr and --output-reconstructed-aa-fasta for CDS 'S')",
+         (--output-model and --output-translations for CDS 'S')",
         gtr.display()
       )
     );
@@ -74,8 +74,8 @@ mod tests {
         },
         translations: Some(format!("{}/%GENE.fasta", dir.display())),
         cds_selection: vec_of_owned!["S"],
-        output_reconstructed_aa_fasta: Some(aa_fasta),
-        gtr_output: GtrOutputArgs { output_gtr: gtr },
+        output_translations: Some(aa_fasta),
+        gtr_output: GtrOutputArgs { output_model: gtr },
         ..TreetimeAncestralArgsRaw::default()
       })
     }

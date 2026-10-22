@@ -38,7 +38,7 @@ const ANCESTRAL: RunRecord = {
     gap_fill: "all",
     reconstruct_tip_states: true,
     output_all: "/runs/r2/out",
-    output_selection: ["nwk", "augur-node-data", "gtr", "auspice"],
+    output_selection: ["nwk", "node-data", "model", "auspice"],
   },
   status: "ok",
   pinned: false,

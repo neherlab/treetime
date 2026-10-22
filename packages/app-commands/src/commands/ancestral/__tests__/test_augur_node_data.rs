@@ -356,7 +356,7 @@ mod tests {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
-      let node_data_path = dir.path().join("augur-node-data.json");
+      let node_data_path = dir.path().join("node-data.json");
       std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
       std::fs::write(&fasta_path, ">A\nACGT\n>B\nACGT\n").unwrap();
 
@@ -375,7 +375,7 @@ mod tests {
           output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
           ..Default::default()
         },
-        output_augur_node_data: Some(node_data_path.clone()),
+        output_node_data: Some(node_data_path.clone()),
         ..TreetimeAncestralArgsRaw::default()
       })
       .unwrap();
@@ -390,7 +390,7 @@ mod tests {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
-      let node_data_path = dir.path().join("augur-node-data.json");
+      let node_data_path = dir.path().join("node-data.json");
       std::fs::write(&tree_path, "((A:0.1,B:0.1)AB:0.1,C:0.1)root;").unwrap();
       std::fs::write(&fasta_path, ">A\nACNN-T\n>B\nACNN-T\n>C\nACNN-T\n>outlier\nAAGTGT\n").unwrap();
 
@@ -416,7 +416,7 @@ mod tests {
           output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
           ..Default::default()
         },
-        output_augur_node_data: Some(node_data_path.clone()),
+        output_node_data: Some(node_data_path.clone()),
         ..TreetimeAncestralArgsRaw::default()
       })
       .unwrap();
@@ -429,7 +429,7 @@ mod tests {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
-      let node_data_path = dir.path().join("augur-node-data.json");
+      let node_data_path = dir.path().join("node-data.json");
       std::fs::write(&tree_path, "(A:0.1,B:0.1)root;").unwrap();
       std::fs::write(&fasta_path, ">A\nACGACG\n>B\nACGACG\n").unwrap();
 
@@ -460,7 +460,7 @@ mod tests {
           output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
           ..Default::default()
         },
-        output_augur_node_data: Some(node_data_path.clone()),
+        output_node_data: Some(node_data_path.clone()),
         ..TreetimeAncestralArgsRaw::default()
       })
       .unwrap();

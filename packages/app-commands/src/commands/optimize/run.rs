@@ -154,7 +154,7 @@ fn write_optimize_trees(
     traits: None,
   };
   let tree = write_run_tree_outputs(&annotated, resolved, CommandKind::Optimize, log)?;
-  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::AugurNodeData)) {
+  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::NodeData)) {
     write_augur_node_data_refine(tree, &trees.run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }

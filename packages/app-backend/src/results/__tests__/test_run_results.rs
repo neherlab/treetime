@@ -370,7 +370,7 @@ mod tests {
       entry
     };
     fs::write(
-      output_path(&runs, &id, OutputSelection::Gtr),
+      output_path(&runs, &id, OutputSelection::Model),
       json!({ "models": [entry(1, "ha/aligned.fasta", 0.75), entry(2, "na/aligned.fasta", 1.25)] }).to_string(),
     )?;
 

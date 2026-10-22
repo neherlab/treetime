@@ -142,7 +142,7 @@ describe("form config", () => {
     const homoplasy = commandSettings("homoplasy").settings;
 
     const previous = withSetting(
-      withSetting(defaultConfig(ancestral), "output_selection", ["nwk", "gtr"]),
+      withSetting(defaultConfig(ancestral), "output_selection", ["nwk", "model"]),
       "newick_annotations",
       "nhx",
     );

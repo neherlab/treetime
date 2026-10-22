@@ -126,7 +126,7 @@ Comparison categories (current against baseline):
     unexpected-pass     current is xpass                                 (fail)
 
 Outputs are compared byte for byte, after removing `meta.updated` from `*.auspice.json` and
-`generated_by.version` from `*.augur-node-data.json`. Numeric differences are summarized in the report,
+`generated_by.version` from `*.node-data.json`. Numeric differences are summarized in the report,
 never tolerated.
 
 The stderr of a case that passes in both snapshots is compared after removing color codes, log
@@ -226,10 +226,10 @@ LOCKS_DIR = Path(SMOKE_STORE) / "locks" if SMOKE_STORE else PROJECT_ROOT / "tmp"
 
 # Output fields that change for reasons unrelated to behavior, keyed by file-name suffix:
 #   auspice `meta.updated`           wall-clock date, packages/app-output/src/tree_output.rs
-#   augur-node-data version          CARGO_PKG_VERSION, packages/app-output/src/augur_node_data.rs
+#   node-data version          CARGO_PKG_VERSION, packages/app-output/src/augur_node_data.rs
 VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
   ".auspice.json": ("meta", "updated"),
-  ".augur-node-data.json": ("generated_by", "version"),
+  ".node-data.json": ("generated_by", "version"),
 }
 
 

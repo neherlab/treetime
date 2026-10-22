@@ -175,8 +175,8 @@ mod tests {
     let result = validate(
       json!({
         "steps": [
-          { "name": "a", "ancestral": { "tree": "in.nwk", "alignment": ["x.fasta", "y.fasta"], "output_reconstructed_nuc_fasta": "seq.{partition}.fasta" } },
-          { "name": "b", "ancestral": { "tree": "in.nwk", "output_reconstructed_nuc_fasta": "seq.2.fasta" } }
+          { "name": "a", "ancestral": { "tree": "in.nwk", "alignment": ["x.fasta", "y.fasta"], "output_sequences": "seq.{alignment}.fasta" } },
+          { "name": "b", "ancestral": { "tree": "in.nwk", "output_sequences": "seq.2.fasta" } }
         ]
       }),
       None,
@@ -208,7 +208,7 @@ mod tests {
     let result = validate(
       json!({
         "steps": [
-          { "name": "a", "ancestral": { "tree": "-", "output_gtr": "g.json" } }
+          { "name": "a", "ancestral": { "tree": "-", "output_model": "g.json" } }
         ]
       }),
       None,

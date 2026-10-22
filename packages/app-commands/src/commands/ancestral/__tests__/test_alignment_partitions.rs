@@ -23,19 +23,16 @@ mod tests {
   #[test]
   fn test_ancestral_two_alignments_split_the_columns_of_one_alignment() -> Result<(), Report> {
     let dir = tempdir()?;
-    let alignment = project_root().join("data/zika/20/aln.fasta.xz");
-    let blocks = write_column_blocks(&alignment, CUT, dir.path())?;
+    let input = project_root().join("data/zika/20/aln.fasta.xz");
+    let blocks = write_column_blocks(&input, CUT, dir.path())?;
     let whole = dir.path().join("whole.fasta");
 
-    helpers::run_ancestral(
-      &[alignment],
-      &[format!("--output-reconstructed-nuc-fasta={}", whole.display())],
-    )?;
+    helpers::run_ancestral(&[input], &[format!("--output-sequences={}", whole.display())])?;
     helpers::run_ancestral(
       &blocks,
       &[format!(
-        "--output-reconstructed-nuc-fasta={}",
-        dir.path().join("block.{partition}.fasta").display()
+        "--output-sequences={}",
+        dir.path().join("block.{alignment}.fasta").display()
       )],
     )?;
 
@@ -91,21 +88,21 @@ mod tests {
       .into_iter()
       .collect::<Result<Vec<_>, Report>>()?;
     let expected_files = [
-      "ancestral.1.augur-node-data.json",
+      "ancestral.1.node-data.json",
       "ancestral.1.auspice.json",
       "ancestral.1.mat.json",
       "ancestral.1.mat.pb",
       "ancestral.1.nexus",
-      "ancestral.1.reconstructed-nuc.fasta",
-      "ancestral.2.augur-node-data.json",
+      "ancestral.1.sequences.fasta",
+      "ancestral.2.node-data.json",
       "ancestral.2.auspice.json",
       "ancestral.2.mat.json",
       "ancestral.2.mat.pb",
       "ancestral.2.nexus",
-      "ancestral.2.reconstructed-nuc.fasta",
+      "ancestral.2.sequences.fasta",
       "ancestral.dot",
       "ancestral.graph.json",
-      "ancestral.gtr.json",
+      "ancestral.model.json",
     ]
     .iter()
     .chain(newick_per_alignment)
@@ -142,9 +139,9 @@ mod tests {
     }
 
     pub(super) fn sequence_output_lengths(out: &Path, partition: usize) -> Result<[usize; 3], Report> {
-      let node_data = json_value_read_file(out.join(format!("ancestral.{partition}.augur-node-data.json")))?;
+      let node_data = json_value_read_file(out.join(format!("ancestral.{partition}.node-data.json")))?;
       let auspice = json_value_read_file(out.join(format!("ancestral.{partition}.auspice.json")))?;
-      let fasta = read_sequences(&out.join(format!("ancestral.{partition}.reconstructed-nuc.fasta")))?;
+      let fasta = read_sequences(&out.join(format!("ancestral.{partition}.sequences.fasta")))?;
       let annotated_end = node_data["annotations"]["nuc"]["end"].as_u64().unwrap_or_default();
       let auspice_root = auspice["root_sequence"]["nuc"].as_str().map_or(0, str::len);
       Ok([

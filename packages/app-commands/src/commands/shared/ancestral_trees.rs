@@ -59,7 +59,7 @@ pub(crate) fn write_ancestral_trees(
     let tree = write_partition_tree_outputs(&annotated, partition.number, resolved, command, log)?;
     if let (Some(tree), Some(path), Some(node_sequences)) = (
       &tree,
-      resolved.partition_path(OutputSelection::AugurNodeData, partition.number),
+      resolved.partition_path(OutputSelection::NodeData, partition.number),
       partition.node_sequences,
     ) {
       write_augur_node_data_ancestral(tree, node_sequences, path)?;

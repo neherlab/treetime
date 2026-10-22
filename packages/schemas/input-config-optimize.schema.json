@@ -61,9 +61,8 @@
     },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
-      "default": "infer",
       "$ref": "#/$defs/GtrModelName",
-      "x-unset": true,
+      "default": "infer",
       "x-cli-flag": "--model"
     },
     "model_params": {
@@ -76,62 +75,63 @@
       "x-cli-flag": "--model-params"
     },
     "partition_rates": {
-      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
-      "default": "estimate",
+      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate.",
       "$ref": "#/$defs/PartitionRates",
-      "x-unset": true,
+      "default": "estimate",
       "x-cli-flag": "--partition-rates"
     },
     "representation": {
       "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
-      "default": "auto",
       "$ref": "#/$defs/Representation",
-      "x-unset": true,
+      "default": "auto",
       "x-cli-flag": "--representation"
     },
     "output_all": {
-      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{partition}`, which is replaced by the number. Other tree outputs with\n`{partition}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{alignment}`, which is replaced by the number. Other tree outputs with\n`{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-all"
     },
-    "newick_annotations": {
-      "description": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.\n\n`plain` writes no comments. `beast` writes a comment such as\n`[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as\n`[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date,\nand its inferred trait value, as far as the command infers them. Nexus outputs always carry\n`beast` comments, which FigTree reads.",
-      "$ref": "#/$defs/NewickAnnotationsArg",
-      "default": "plain",
-      "x-cli-flag": "--newick-annotations"
+    "output_nwk_style": {
+      "description": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NwkStyleArg"
+      },
+      "default": [],
+      "x-cli-flag": "--output-nwk-style"
     },
     "output_tree_nwk": {
-      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n`--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is\nwritten per alignment, and the file name must contain `{partition}`, which is replaced by the\nnumber of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per\nalignment, and the file name must contain `{alignment}`, which is replaced by the number\nof the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
-      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. The\nnodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must\ncontain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. With\nmultiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per\nalignment, and the file name must contain `{alignment}`, which is replaced by the number\nof the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
-      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
-      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
-      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -163,19 +163,19 @@
       "default": "mutations-per-site",
       "x-cli-flag": "--divergence-units"
     },
-    "output_augur_node_data": {
+    "output_node_data": {
       "description": "Path to output augur-compatible node data JSON.\n\nContains per-node optimized branch lengths (divergence, substitutions per\nsite) and the input alignment and tree paths. The output is compatible with\naugur export v2 --node-data.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-augur-node-data"
+      "x-cli-flag": "--output-node-data"
     },
-    "output_gtr": {
-      "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+    "output_model": {
+      "description": "Path to output the fitted substitution models as JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-gtr"
+      "x-cli-flag": "--output-model"
     },
     "output_selection": {
       "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails.",
@@ -279,13 +279,13 @@
       "x-cli-flag": "--no-collapse-zero-branches"
     },
     "no_merge_shared_mutations": {
-      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
+      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--representation dense` and the flag is then a no-op.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--no-merge-shared-mutations"
     },
     "no_hoist_reversions": {
-      "description": "Disable the reversion hoist in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
+      "description": "Disable the reversion hoist in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--representation dense` and the flag is\nthen a no-op.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--no-hoist-reversions"
@@ -365,7 +365,8 @@
         }
       ]
     },
-    "NewickAnnotationsArg": {
+    "NwkStyleArg": {
+      "description": "CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.",
       "type": "string",
       "enum": [
         "plain",
@@ -391,8 +392,8 @@
         "mat-json",
         "graph-json",
         "dot",
-        "augur-node-data",
-        "gtr"
+        "node-data",
+        "model"
       ]
     },
     "TopologyOrderArg": {

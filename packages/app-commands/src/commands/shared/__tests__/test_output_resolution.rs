@@ -91,19 +91,19 @@ mod tests {
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
       &[],
-      &[(OutputSelection::Gtr, Some(path.as_path()))],
+      &[(OutputSelection::Model, Some(path.as_path()))],
     );
 
     assert_error!(
       result,
-      "Output destination 'same-output' is selected more than once (--output-tree-nwk and --output-gtr)"
+      "Output destination 'same-output' is selected more than once (--output-tree-nwk and --output-model)"
     );
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::dash_then_dev_stdout( ("-",           "/dev/stdout"), "Output destination '/dev/stdout' is selected more than once (--output-tree-nwk and --output-gtr)")]
-  #[case::dev_stdout_then_dash( ("/dev/stdout", "-"),           "Output destination '-' is selected more than once (--output-tree-nwk and --output-gtr)")]
+  #[case::dash_then_dev_stdout( ("-",           "/dev/stdout"), "Output destination '/dev/stdout' is selected more than once (--output-tree-nwk and --output-model)")]
+  #[case::dev_stdout_then_dash( ("/dev/stdout", "-"),           "Output destination '-' is selected more than once (--output-tree-nwk and --output-model)")]
   #[trace]
   fn test_resolve_rejects_two_outputs_to_stdout_whatever_the_spelling(
     #[case] (tree_path, gtr_path): (&str, &str),
@@ -118,7 +118,7 @@ mod tests {
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
       &[],
-      &[(OutputSelection::Gtr, Some(Path::new(gtr_path)))],
+      &[(OutputSelection::Model, Some(Path::new(gtr_path)))],
     );
 
     assert_error!(result, expected);
@@ -144,7 +144,7 @@ mod tests {
   #[test]
   fn test_resolve_non_tree_explicit_path() {
     let dir = TempDir::new().unwrap();
-    let gtr_path = dir.path().join("my.gtr.json");
+    let gtr_path = dir.path().join("my.model.json");
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
@@ -154,7 +154,7 @@ mod tests {
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
         &[],
-        &[(OutputSelection::Gtr, Some(gtr_path.as_path()))],
+        &[(OutputSelection::Model, Some(gtr_path.as_path()))],
       )
       .unwrap();
 
@@ -162,7 +162,7 @@ mod tests {
       path: gtr_path,
       requested: Requested::Named,
     };
-    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr]);
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model]);
   }
 
   #[test]
@@ -177,15 +177,15 @@ mod tests {
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
         &[],
-        &[(OutputSelection::Gtr, None)],
+        &[(OutputSelection::Model, None)],
       )
       .unwrap();
 
     let expected = PlannedFile {
-      path: dir.path().join("ancestral.gtr.json"),
+      path: dir.path().join("ancestral.model.json"),
       requested: Requested::All,
     };
-    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr]);
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model]);
   }
 
   #[test]
@@ -432,11 +432,7 @@ mod tests {
 
     assert_eq!(
       Some(dir.path().join("timetree.coalescent.tsv").as_path()),
-      resolved.path(OutputSelection::CoalescentTsv)
-    );
-    assert!(
-      !resolved.non_tree_outputs.contains_key(&OutputSelection::CoalescentCsv),
-      "coalescent CSV is opt-in, not a default output"
+      resolved.path(OutputSelection::Coalescent)
     );
     assert!(
       !resolved.non_tree_outputs.contains_key(&OutputSelection::CoalescentJson),
@@ -445,7 +441,7 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_timetree_coalescent_csv_json_opt_in_via_selection() {
+  fn test_resolve_timetree_coalescent_json_opt_in_via_selection() {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
@@ -455,16 +451,12 @@ mod tests {
       .resolve(
         CommandKind::Timetree,
         NonZeroUsize::MIN,
-        &[OutputSelection::CoalescentCsv, OutputSelection::CoalescentJson],
+        &[OutputSelection::CoalescentJson],
         &[],
       )
       .unwrap();
 
     let expected = btreemap! {
-      OutputSelection::CoalescentCsv => PlannedFile {
-        path: dir.path().join("timetree.coalescent.csv"),
-        requested: Requested::All,
-      },
       OutputSelection::CoalescentJson => PlannedFile {
         path: dir.path().join("timetree.coalescent.json"),
         requested: Requested::All,
@@ -474,10 +466,9 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_timetree_offers_all_coalescent_formats() {
+  fn test_resolve_timetree_offers_both_coalescent_outputs() {
     let coalescent = btreeset! {
-      OutputSelection::CoalescentTsv,
-      OutputSelection::CoalescentCsv,
+      OutputSelection::Coalescent,
       OutputSelection::CoalescentJson,
     };
     assert!(coalescent.is_subset(&CommandKind::Timetree.all_selectable()));
@@ -493,8 +484,7 @@ mod tests {
   #[trace]
   fn test_resolve_coalescent_outputs_are_timetree_only(#[case] command: CommandKind) {
     let coalescent = btreeset! {
-      OutputSelection::CoalescentTsv,
-      OutputSelection::CoalescentCsv,
+      OutputSelection::Coalescent,
       OutputSelection::CoalescentJson,
     };
     assert!(
@@ -505,9 +495,9 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::default_set(  vec![],                       vec![("clock.svg", OutputSelection::ClockChartSvg), ("clock.png", OutputSelection::ClockChartPng), ("clock.pdf", OutputSelection::ClockChartPdf)])]
-  #[case::nwk_only(     vec![OutputSelection::Nwk],   vec![])]
-  #[case::svg_selected( vec![OutputSelection::ClockChartSvg], vec![("clock.svg", OutputSelection::ClockChartSvg)])]
+  #[case::default_set(   vec![],                          vec![("clock.rtt.svg", OutputSelection::RttChart)])]
+  #[case::nwk_only(      vec![OutputSelection::Nwk],      vec![])]
+  #[case::chart_selected(vec![OutputSelection::RttChart], vec![("clock.rtt.svg", OutputSelection::RttChart)])]
   #[trace]
   fn test_resolve_clock_charts_follow_the_selection(
     #[case] selection: Vec<OutputSelection>,
@@ -534,22 +524,18 @@ mod tests {
     let actual: BTreeMap<OutputSelection, PlannedFile> = resolved
       .non_tree_outputs
       .into_iter()
-      .filter(|(selection, _)| helpers::is_clock_chart(*selection))
+      .filter(|(selection, _)| *selection == OutputSelection::RttChart)
       .collect();
     assert_eq!(expected, actual);
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::default_set(      &["--output-all={dir}"],                                                          &[("clock.svg", OutputSelection::ClockChartSvg, Requested::All), ("clock.png", OutputSelection::ClockChartPng, Requested::All), ("clock.pdf", OutputSelection::ClockChartPdf, Requested::All)])]
-  #[case::pdf_selected(     &["--output-all={dir}", "--output-selection=clock-chart-pdf"],                    &[("clock.pdf", OutputSelection::ClockChartPdf, Requested::All)])]
-  #[case::pdf_path(         &["--output-clock-chart-pdf={dir}/chart.pdf"],                                    &[("chart.pdf", OutputSelection::ClockChartPdf, Requested::Named)])]
-  #[case::pdf_path_over_all(&["--output-all={dir}", "--output-clock-chart-pdf={dir}/chart.pdf"],              &[("clock.svg", OutputSelection::ClockChartSvg, Requested::All), ("clock.png", OutputSelection::ClockChartPng, Requested::All), ("chart.pdf", OutputSelection::ClockChartPdf, Requested::Named)])]
+  #[case::default_set(      &["--output-all={dir}"],                                             &[("clock.rtt.svg", Requested::All)])]
+  #[case::pdf_path(         &["--output-rtt-chart={dir}/chart.pdf"],                             &[("chart.pdf",     Requested::Named)])]
+  #[case::pdf_path_over_all(&["--output-all={dir}", "--output-rtt-chart={dir}/chart.pdf"],       &[("chart.pdf",     Requested::Named)])]
   #[trace]
-  fn test_resolve_clock_chart_pdf_from_command_line(
-    #[case] flags: &[&str],
-    #[case] expected: &[(&str, OutputSelection, Requested)],
-  ) {
+  fn test_resolve_rtt_chart_from_command_line(#[case] flags: &[&str], #[case] expected: &[(&str, Requested)]) {
     let dir = TempDir::new().unwrap();
     let dir_str = dir.path().to_str().unwrap();
     let args = TreetimeClockArgsRaw::try_parse_from(
@@ -564,31 +550,24 @@ mod tests {
 
     let expected: BTreeMap<OutputSelection, PlannedFile> = expected
       .iter()
-      .map(|&(name, selection, requested)| {
+      .map(|&(name, requested)| {
         let file = PlannedFile {
           path: dir.path().join(name),
           requested,
         };
-        (selection, file)
+        (OutputSelection::RttChart, file)
       })
       .collect();
     let actual: BTreeMap<OutputSelection, PlannedFile> = resolved
       .non_tree_outputs
       .into_iter()
-      .filter(|(selection, _)| helpers::is_clock_chart(*selection))
+      .filter(|(selection, _)| *selection == OutputSelection::RttChart)
       .collect();
     assert_eq!(expected, actual);
   }
 
   mod helpers {
     use super::*;
-
-    pub(super) fn is_clock_chart(selection: OutputSelection) -> bool {
-      matches!(
-        selection,
-        OutputSelection::ClockChartSvg | OutputSelection::ClockChartPng | OutputSelection::ClockChartPdf
-      )
-    }
 
     pub(super) fn tree_paths(resolved: &ResolvedOutputs) -> BTreeMap<TreeWriteKind, PathBuf> {
       let mut paths = resolved.partition_tree_outputs(1);

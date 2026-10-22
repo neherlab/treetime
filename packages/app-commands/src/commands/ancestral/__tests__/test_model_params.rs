@@ -19,7 +19,7 @@ mod tests {
     let model_file = out.path().join("model.json");
     let tree = format!("--tree={}", data.join("tree.nwk").display());
     let alignment = format!("--alignment={}", data.join("aln.fasta.xz").display());
-    let output = format!("--output-gtr={}", model_file.display());
+    let output = format!("--output-model={}", model_file.display());
     let mut argv = vec!["ancestral", &tree, &alignment, "--model=hky85", "--model-params"];
     argv.extend(HKY85_PARAMS);
     argv.push(&output);

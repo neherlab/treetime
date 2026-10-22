@@ -245,7 +245,7 @@ mod tests {
   #[case::input_list(    AppCommand::Ancestral, "alignment",          SettingRole::Input)]
   #[case::input_template(AppCommand::Ancestral, "translations",       SettingRole::InputTemplate)]
   #[case::output(        AppCommand::Timetree,  "output_clock_model", SettingRole::Output)]
-  #[case::chart(         AppCommand::Clock,     "output_clock_chart_svg", SettingRole::Output)]
+  #[case::chart(         AppCommand::Clock,     "output_rtt_chart", SettingRole::Output)]
   #[trace]
   fn test_setting_catalog_role(#[case] command: AppCommand, #[case] key: &str, #[case] role: SettingRole) {
     assert_eq!(role, spec(command, key).role);

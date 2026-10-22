@@ -9,6 +9,7 @@ pub mod augur_node_data_traits;
 pub(crate) mod auspice;
 pub mod mutation_filter;
 pub(crate) mod nwk_comments;
+pub mod output_format;
 pub mod output_plan;
 pub mod table_output;
 pub mod timetree_trace;

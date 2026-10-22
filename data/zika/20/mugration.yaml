@@ -22,7 +22,7 @@ pc: 1.0
 output_selection:
   - "nwk"
   - "nexus"
-  - "augur-node-data"
-  - "gtr"
-  - "traits-csv"
-  - "confidence-csv"
+  - "node-data"
+  - "model"
+  - "traits"
+  - "trait-probabilities"

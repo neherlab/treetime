@@ -59,7 +59,7 @@ output: OutputCoreArgs {
         output_tree_mat_pb: Some(mat_pb_path.clone()),
         ..OutputCoreArgs::default()
       },
-output_augur_node_data: Some(node_data_path.clone()),
+output_node_data: Some(node_data_path.clone()),
 ..TreetimeAncestralArgsRaw::default()
 })?;
     let log = RecordingLog::default();

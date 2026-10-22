@@ -99,7 +99,7 @@ ancestral_case() {
   local name="${1}" ext="${2}" jobs="${3}"
   run_on "${oldest}" "${name}" -j "${jobs}" ancestral --method-anc=marginal \
     --tree="${data}/tree.nwk" --alignment="${work}/in/aln.fasta${ext}" \
-    --output-reconstructed-nuc-fasta="${work}/${name}/rec.fasta${ext}" \
+    --output-sequences="${work}/${name}/rec.fasta${ext}" \
     --output-tree-nwk="${work}/${name}/tree.nwk${ext}" || return 0
   if [[ "${name}" != plain ]]; then
     compare_with_plain "${name}" "${ext}"

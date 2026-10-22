@@ -111,7 +111,7 @@ mod tests {
         "no GTR model was fitted",
         &NoopProgress
       ),
-      "--output-gtr was requested, but no GTR model was fitted"
+      "--output-model was requested, but no GTR model was fitted"
     );
   }
 
@@ -176,7 +176,7 @@ mod tests {
         partition_count: NonZeroUsize::MIN,
         tree_outputs: btreemap! {},
         non_tree_outputs: btreemap! {
-          OutputSelection::Gtr => PlannedFile {
+          OutputSelection::Model => PlannedFile {
             path: dir.path().join("model.json"),
             requested,
           },
@@ -187,7 +187,7 @@ mod tests {
     }
 
     pub(super) fn read_document(resolved: &ResolvedOutputs) -> Result<Value, Report> {
-      json_value_read_file(&resolved.non_tree_outputs[&OutputSelection::Gtr].path)
+      json_value_read_file(&resolved.non_tree_outputs[&OutputSelection::Model].path)
     }
 
     pub(super) fn jc69_gtr() -> Result<GTR, Report> {

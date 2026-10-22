@@ -16,15 +16,15 @@ mod tests {
     let config = json!({
       "tree": "t.nwk",
       "alignment": ["a.fasta", "b.fasta"],
-      "output_selection": ["reconstructed-nuc-fasta", "gtr"],
+      "output_selection": ["sequences", "model"],
     });
     let prepared = AppCommand::Ancestral.prepare_run(&config, dir.path())?;
     let names = [
       "ancestral.1.auspice.json",
-      "ancestral.1.reconstructed-nuc.fasta",
+      "ancestral.1.sequences.fasta",
       "ancestral.2.auspice.json",
-      "ancestral.2.reconstructed-nuc.fasta",
-      "ancestral.gtr.json",
+      "ancestral.2.sequences.fasta",
+      "ancestral.model.json",
     ];
     for name in names {
       fs::write(dir.path().join(name), "")?;
@@ -43,10 +43,10 @@ mod tests {
     };
     let kinds = [
       (OutputSelection::Auspice, partition(1, "a.fasta")),
-      (OutputSelection::ReconstructedNucFasta, partition(1, "a.fasta")),
+      (OutputSelection::Sequences, partition(1, "a.fasta")),
       (OutputSelection::Auspice, partition(2, "b.fasta")),
-      (OutputSelection::ReconstructedNucFasta, partition(2, "b.fasta")),
-      (OutputSelection::Gtr, None),
+      (OutputSelection::Sequences, partition(2, "b.fasta")),
+      (OutputSelection::Model, None),
     ];
     let expected = names
       .into_iter()

@@ -103,7 +103,7 @@ async function checkAncestralRun(): Promise<void> {
       record.status,
       files.map((file) => file.path),
       record.output_files.every((file) => outputs.files.includes(file.path)),
-      files.some((file) => file.path === "ancestral.reconstructed-nuc.fasta"),
+      files.some((file) => file.path === "ancestral.sequences.fasta"),
       newick.status,
       text(newick).slice(0, 1),
       archive.status,

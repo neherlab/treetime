@@ -292,7 +292,7 @@ mod tests {
         remove_key(&mut value, &["meta", "updated"]);
         return value.to_string();
       }
-      if name.ends_with(".augur-node-data.json") {
+      if name.ends_with(".node-data.json") {
         let mut value: Value = serde_json::from_slice(&bytes).unwrap();
         remove_key(&mut value, &["generated_by", "version"]);
         return value.to_string();

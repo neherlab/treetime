@@ -47,7 +47,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::default_set(  vec![],                                                    Requested::All)]
-  #[case::listed_value( vec![OutputSelection::Gtr],                                Requested::All)]
+  #[case::listed_value( vec![OutputSelection::Model],                                Requested::All)]
   #[case::all_value(    vec![OutputSelection::All],                                Requested::All)]
   #[trace]
   fn test_output_plan_output_all_entries_are_requested_by_output_all(
@@ -58,7 +58,7 @@ mod tests {
 
     let resolved = plan(&request)?;
 
-    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr].requested);
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model].requested);
     Ok(())
   }
 
@@ -66,30 +66,30 @@ mod tests {
   fn test_output_plan_per_file_flag_is_named_even_with_output_all() -> Result<(), Report> {
     let request = helpers::request(
       vec![],
-      btreemap! { OutputSelection::Gtr => PathBuf::from("my.gtr.json") },
+      btreemap! { OutputSelection::Model => PathBuf::from("my.model.json") },
     );
 
     let resolved = plan(&request)?;
 
     let expected = PlannedFile {
-      path: PathBuf::from("my.gtr.json"),
+      path: PathBuf::from("my.model.json"),
       requested: Requested::Named,
     };
-    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Gtr]);
+    assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model]);
     Ok(())
   }
 
   #[test]
   fn test_output_plan_unavailable_named_output_fails_with_flag_and_reason() {
     let file = PlannedFile {
-      path: PathBuf::from("my.gtr.json"),
+      path: PathBuf::from("my.model.json"),
       requested: Requested::Named,
     };
     let (log, messages) = helpers::recording_log();
 
     assert_error!(
-      output_unavailable(OutputSelection::Gtr, &file, "no GTR model was fitted", &log),
-      "--output-gtr was requested, but no GTR model was fitted"
+      output_unavailable(OutputSelection::Model, &file, "no GTR model was fitted", &log),
+      "--output-model was requested, but no GTR model was fitted"
     );
     drop(log);
     assert_eq!(Vec::<(LogLevel, String)>::new(), messages.iter().collect_vec());
@@ -98,17 +98,17 @@ mod tests {
   #[test]
   fn test_output_plan_unavailable_output_from_output_all_is_skipped_with_debug_message() -> Result<(), Report> {
     let file = PlannedFile {
-      path: PathBuf::from("out/ancestral.gtr.json"),
+      path: PathBuf::from("out/ancestral.model.json"),
       requested: Requested::All,
     };
     let (log, messages) = helpers::recording_log();
 
-    output_unavailable(OutputSelection::Gtr, &file, "no GTR model was fitted", &log)?;
+    output_unavailable(OutputSelection::Model, &file, "no GTR model was fitted", &log)?;
 
     drop(log);
     let expected = vec![(
       LogLevel::Debug,
-      o!("Not writing 'out/ancestral.gtr.json': no GTR model was fitted"),
+      o!("Not writing 'out/ancestral.model.json': no GTR model was fitted"),
     )];
     assert_eq!(expected, messages.iter().collect_vec());
     Ok(())
@@ -118,23 +118,23 @@ mod tests {
   #[rstest]
   #[case::two_parts(       ("out/aa.fasta",     "out/aa.fasta"), "Output destination 'out/aa.fasta' is selected more than once (part S and part M)")]
   #[case::stdout_spellings(("-",                "/dev/stdout"),  "Output destination '/dev/stdout' is selected more than once (part S and part M)")]
-  #[case::planned_output(  ("out/gtr.json",     "out/M.fasta"),  "Output destination 'out/gtr.json' is selected more than once (--output-gtr and part S)")]
+  #[case::planned_output(  ("out/gtr.json",     "out/M.fasta"),  "Output destination 'out/gtr.json' is selected more than once (--output-model and part S)")]
   #[trace]
   fn test_output_plan_expansion_rejects_shared_destination(
     #[case] (path_s, path_m): (&str, &str),
     #[case] expected: &str,
   ) -> Result<(), Report> {
     let resolved = plan(&helpers::request(
-      vec![OutputSelection::Gtr],
+      vec![OutputSelection::Model],
       btreemap! {
-        OutputSelection::Gtr => PathBuf::from("out/gtr.json"),
-        OutputSelection::ReconstructedAaFasta => PathBuf::from("out/aa.fasta"),
+        OutputSelection::Model => PathBuf::from("out/gtr.json"),
+        OutputSelection::Translations => PathBuf::from("out/aa.fasta"),
       },
     ))?;
 
     assert_error!(
       resolved.ensure_unique_with_expansion(
-        OutputSelection::ReconstructedAaFasta,
+        OutputSelection::Translations,
         [(o!("part S"), Path::new(path_s)), (o!("part M"), Path::new(path_m))],
       ),
       expected
@@ -145,12 +145,12 @@ mod tests {
   #[test]
   fn test_output_plan_expansion_replaces_the_expanded_output() -> Result<(), Report> {
     let resolved = plan(&helpers::request(
-      vec![OutputSelection::Gtr],
-      btreemap! { OutputSelection::ReconstructedAaFasta => PathBuf::from("out/aa.fasta") },
+      vec![OutputSelection::Model],
+      btreemap! { OutputSelection::Translations => PathBuf::from("out/aa.fasta") },
     ))?;
 
     resolved.ensure_unique_with_expansion(
-      OutputSelection::ReconstructedAaFasta,
+      OutputSelection::Translations,
       [(o!("part S"), Path::new("out/aa.fasta"))],
     )
   }
@@ -200,9 +200,9 @@ mod tests {
       OutputSelection::Nexus => vec![PathBuf::from("out/ancestral.nexus")],
       OutputSelection::Auspice => vec![PathBuf::from("out/ancestral.auspice.json")],
       OutputSelection::MatPb => vec![PathBuf::from("out/ancestral.mat.pb")],
-      OutputSelection::AugurNodeData => vec![PathBuf::from("out/ancestral.augur-node-data.json")],
-      OutputSelection::Gtr => vec![PathBuf::from("out/ancestral.gtr.json")],
-      OutputSelection::ReconstructedNucFasta => vec![PathBuf::from("out/ancestral.reconstructed-nuc.fasta")],
+      OutputSelection::NodeData => vec![PathBuf::from("out/ancestral.node-data.json")],
+      OutputSelection::Model => vec![PathBuf::from("out/ancestral.model.json")],
+      OutputSelection::Sequences => vec![PathBuf::from("out/ancestral.sequences.fasta")],
     };
     assert_eq!(expected, resolved.paths_by_selection());
     Ok(())
@@ -225,14 +225,14 @@ mod tests {
         PathBuf::from("out/ancestral.2.auspice.json"),
       ],
       OutputSelection::MatPb => vec![PathBuf::from("out/ancestral.1.mat.pb"), PathBuf::from("out/ancestral.2.mat.pb")],
-      OutputSelection::AugurNodeData => vec![
-        PathBuf::from("out/ancestral.1.augur-node-data.json"),
-        PathBuf::from("out/ancestral.2.augur-node-data.json"),
+      OutputSelection::NodeData => vec![
+        PathBuf::from("out/ancestral.1.node-data.json"),
+        PathBuf::from("out/ancestral.2.node-data.json"),
       ],
-      OutputSelection::Gtr => vec![PathBuf::from("out/ancestral.gtr.json")],
-      OutputSelection::ReconstructedNucFasta => vec![
-        PathBuf::from("out/ancestral.1.reconstructed-nuc.fasta"),
-        PathBuf::from("out/ancestral.2.reconstructed-nuc.fasta"),
+      OutputSelection::Model => vec![PathBuf::from("out/ancestral.model.json")],
+      OutputSelection::Sequences => vec![
+        PathBuf::from("out/ancestral.1.sequences.fasta"),
+        PathBuf::from("out/ancestral.2.sequences.fasta"),
       ],
     };
     assert_eq!(expected, resolved.paths_by_selection());
@@ -249,16 +249,16 @@ mod tests {
     ))?;
 
     let actual = (
-      [1, 2, 3].map(|partition| resolved.partition_path(OutputSelection::ReconstructedNucFasta, partition)),
+      [1, 2, 3].map(|partition| resolved.partition_path(OutputSelection::Sequences, partition)),
       [0, 2].map(|partition| resolved.tree_partition_path(TreeWriteKind::Nexus, partition)),
       resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Plain), 1),
-      resolved.partition_path(OutputSelection::Gtr, 1),
+      resolved.partition_path(OutputSelection::Model, 1),
     );
 
     let expected = (
       [
-        Some(Path::new("out/ancestral.1.reconstructed-nuc.fasta")),
-        Some(Path::new("out/ancestral.2.reconstructed-nuc.fasta")),
+        Some(Path::new("out/ancestral.1.sequences.fasta")),
+        Some(Path::new("out/ancestral.2.sequences.fasta")),
         None,
       ],
       [None, Some(Path::new("out/ancestral.2.nexus"))],
@@ -283,9 +283,9 @@ mod tests {
     ))?;
 
     let actual = (
-      resolved.path(OutputSelection::ReconstructedNucFasta),
-      resolved.path(OutputSelection::AugurNodeData),
-      resolved.path(OutputSelection::Gtr),
+      resolved.path(OutputSelection::Sequences),
+      resolved.path(OutputSelection::NodeData),
+      resolved.path(OutputSelection::Model),
       resolved.tree_outputs.keys().copied().collect_vec(),
       resolved.partition_tree_outputs(partition_count).into_keys().collect_vec(),
     );
@@ -293,7 +293,7 @@ mod tests {
     let expected = (
       None,
       None,
-      Some(Path::new("out/ancestral.gtr.json")),
+      Some(Path::new("out/ancestral.model.json")),
       vec![TreeWriteKind::Nwk(NwkStyle::Plain)],
       vec![TreeWriteKind::Nexus, TreeWriteKind::Auspice, TreeWriteKind::MatPb],
     );
@@ -337,14 +337,14 @@ mod tests {
     let mut request = helpers::partitioned_request(
       1,
       None,
-      btreemap! { OutputSelection::Auspice => PathBuf::from("tree.{partition}.json") },
+      btreemap! { OutputSelection::Auspice => PathBuf::from("tree.{alignment}.json") },
       btreemap! {},
     );
     request.command = CommandKind::Clock;
 
     assert_error!(
       plan(&request),
-      "--output-tree-auspice is written once per run, so its file name cannot contain '{partition}'"
+      "--output-tree-auspice is written once per run, so its file name cannot contain '{alignment}'"
     );
   }
 
@@ -354,15 +354,15 @@ mod tests {
       2,
       None,
       btreemap! {
-        OutputSelection::Nwk => PathBuf::from("trees/{partition}.nwk"),
-        OutputSelection::Nexus => PathBuf::from("trees/{partition}.nexus"),
-        OutputSelection::Auspice => PathBuf::from("auspice/segment-{partition}.json"),
+        OutputSelection::Nwk => PathBuf::from("trees/{alignment}.nwk"),
+        OutputSelection::Nexus => PathBuf::from("trees/{alignment}.nexus"),
+        OutputSelection::Auspice => PathBuf::from("auspice/segment-{alignment}.json"),
         OutputSelection::GraphJson => PathBuf::from("graph.json"),
-        OutputSelection::Dot => PathBuf::from("graph.{partition}.dot"),
+        OutputSelection::Dot => PathBuf::from("graph.{alignment}.dot"),
       },
       btreemap! {
-        OutputSelection::ReconstructedNucFasta => PathBuf::from("seq.{partition}.fasta"),
-        OutputSelection::Gtr => PathBuf::from("gtr.json"),
+        OutputSelection::Sequences => PathBuf::from("seq.{alignment}.fasta"),
+        OutputSelection::Model => PathBuf::from("gtr.json"),
       },
     ))?;
 
@@ -375,8 +375,8 @@ mod tests {
       ],
       OutputSelection::GraphJson => vec![PathBuf::from("graph.json")],
       OutputSelection::Dot => vec![PathBuf::from("graph.1.dot"), PathBuf::from("graph.2.dot")],
-      OutputSelection::Gtr => vec![PathBuf::from("gtr.json")],
-      OutputSelection::ReconstructedNucFasta => vec![PathBuf::from("seq.1.fasta"), PathBuf::from("seq.2.fasta")],
+      OutputSelection::Model => vec![PathBuf::from("gtr.json")],
+      OutputSelection::Sequences => vec![PathBuf::from("seq.1.fasta"), PathBuf::from("seq.2.fasta")],
     };
     assert_eq!(expected, resolved.paths_by_selection());
     Ok(())
@@ -388,22 +388,22 @@ mod tests {
       1,
       None,
       btreemap! {},
-      btreemap! { OutputSelection::ReconstructedNucFasta => PathBuf::from("seq.{partition}.fasta") },
+      btreemap! { OutputSelection::Sequences => PathBuf::from("seq.{alignment}.fasta") },
     ))?;
 
     assert_eq!(
       Some(Path::new("seq.1.fasta")),
-      resolved.partition_path(OutputSelection::ReconstructedNucFasta, 1)
+      resolved.partition_path(OutputSelection::Sequences, 1)
     );
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::fasta(   OutputSelection::ReconstructedNucFasta, "seq.fasta",    "--output-reconstructed-nuc-fasta")]
-  #[case::node_data(OutputSelection::AugurNodeData,        "node.json",    "--output-augur-node-data")]
-  #[case::stdout(  OutputSelection::ReconstructedNucFasta, "-",            "--output-reconstructed-nuc-fasta")]
-  #[case::folder(  OutputSelection::ReconstructedNucFasta, "{partition}/seq.fasta", "--output-reconstructed-nuc-fasta")]
+  #[case::fasta(   OutputSelection::Sequences, "seq.fasta",    "--output-sequences")]
+  #[case::node_data(OutputSelection::NodeData,        "node.json",    "--output-node-data")]
+  #[case::stdout(  OutputSelection::Sequences, "-",            "--output-sequences")]
+  #[case::folder(  OutputSelection::Sequences, "{alignment}/seq.fasta", "--output-sequences")]
   #[trace]
   fn test_output_plan_two_partitions_need_the_placeholder_in_explicit_paths(
     #[case] selection: OutputSelection,
@@ -413,8 +413,8 @@ mod tests {
     assert_error!(
       plan(&helpers::partitioned_request(2, None, btreemap! {}, btreemap! { selection => PathBuf::from(path) })),
       format!(
-        "{flag} needs a partition placeholder ('{{partition}}') in its file name when the run has several \
-         alignment files, otherwise each partition overwrites the same output file"
+        "{flag} needs the placeholder '{{alignment}}' in its file name when the run has several \
+         alignment files, otherwise the output of each alignment file overwrites the same file"
       )
     );
   }
@@ -436,8 +436,8 @@ mod tests {
     assert_error!(
       plan(&request),
       format!(
-        "{flag} needs a partition placeholder ('{{partition}}') in its file name when the run has several \
-         alignment files, otherwise each partition overwrites the same output file"
+        "{flag} needs the placeholder '{{alignment}}' in its file name when the run has several \
+         alignment files, otherwise the output of each alignment file overwrites the same file"
       )
     );
   }
@@ -488,9 +488,9 @@ mod tests {
         partition_count,
         Some("out"),
         btreemap! {},
-        btreemap! { OutputSelection::Gtr => PathBuf::from("gtr.{partition}.json") },
+        btreemap! { OutputSelection::Model => PathBuf::from("gtr.{alignment}.json") },
       )),
-      "--output-gtr is written once per run, so its file name cannot contain '{partition}'"
+      "--output-model is written once per run, so its file name cannot contain '{alignment}'"
     );
   }
 
@@ -502,11 +502,11 @@ mod tests {
         None,
         btreemap! {},
         btreemap! {
-          OutputSelection::ReconstructedNucFasta => PathBuf::from("out.{partition}.fasta"),
-          OutputSelection::Gtr => PathBuf::from("out.2.fasta"),
+          OutputSelection::Sequences => PathBuf::from("out.{alignment}.fasta"),
+          OutputSelection::Model => PathBuf::from("out.2.fasta"),
         },
       )),
-      "Output destination 'out.2.fasta' is selected more than once (--output-gtr and --output-reconstructed-nuc-fasta for partition 2)"
+      "Output destination 'out.2.fasta' is selected more than once (--output-model and --output-sequences for alignment 2)"
     );
   }
 
@@ -514,12 +514,12 @@ mod tests {
   fn test_output_plan_timetree_node_data_stays_one_file_with_two_partitions() -> Result<(), Report> {
     let mut request = helpers::partitioned_request(2, Some("out"), btreemap! {}, btreemap! {});
     request.command = CommandKind::Timetree;
-    request.selection = vec![OutputSelection::AugurNodeData];
+    request.selection = vec![OutputSelection::NodeData];
 
     let resolved = plan(&request)?;
 
     let expected = btreemap! {
-      OutputSelection::AugurNodeData => vec![PathBuf::from("out/timetree.augur-node-data.json")],
+      OutputSelection::NodeData => vec![PathBuf::from("out/timetree.node-data.json")],
     };
     assert_eq!(expected, resolved.paths_by_selection());
     Ok(())
@@ -564,9 +564,9 @@ mod tests {
             OutputSelection::Nexus,
             OutputSelection::Auspice,
             OutputSelection::MatPb,
-            OutputSelection::AugurNodeData,
-            OutputSelection::Gtr,
-            OutputSelection::ReconstructedNucFasta,
+            OutputSelection::NodeData,
+            OutputSelection::Model,
+            OutputSelection::Sequences,
           ]
         } else {
           vec![]

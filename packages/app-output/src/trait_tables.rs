@@ -12,13 +12,13 @@ use treetime_io::csv::CsvWriter;
 use treetime_utils::make_internal_report;
 
 pub fn write_traits_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> Result<(), Report> {
-  let mut csv = table_create(OutputSelection::TraitsCsv, path)?;
+  let mut csv = table_create(OutputSelection::Traits, path)?;
   write_traits_rows(tree, &mut csv)?;
   csv.finish()
 }
 
 pub fn write_trait_confidence_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> Result<(), Report> {
-  let mut csv = table_create(OutputSelection::ConfidenceCsv, path)?;
+  let mut csv = table_create(OutputSelection::TraitProbabilities, path)?;
   write_trait_confidence_rows(tree, &mut csv)?;
   csv.finish()
 }
@@ -26,13 +26,13 @@ pub fn write_trait_confidence_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> 
 pub(crate) fn write_traits_rows<W: Write>(tree: &AnnotatedTreeView<'_>, csv: &mut CsvWriter<W>) -> Result<(), Report> {
   let traits = tree_traits(tree)?;
   let graph = tree.graph();
-  let ambiguity_key = traits.ambiguity_key(OutputSelection::TraitsCsv);
+  let ambiguity_key = traits.ambiguity_key(OutputSelection::Traits);
   csv.write_record(["node", traits.attribute].into_iter().chain(ambiguity_key.as_deref()))?;
   graph.graph.get_nodes().try_for_each(|node| {
     let key = node.key();
     let ambiguous = ambiguity_key
       .is_some()
-      .then(|| traits.ambiguous_states(key, OutputSelection::TraitsCsv))
+      .then(|| traits.ambiguous_states(key, OutputSelection::Traits))
       .transpose()?
       .map(Option::unwrap_or_default);
     csv.write_record(

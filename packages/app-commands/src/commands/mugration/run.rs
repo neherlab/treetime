@@ -209,13 +209,13 @@ fn write_mugration_trees(
     return Ok(());
   };
   write_tree_outputs(&tree, &resolved.tree_outputs, CommandKind::Mugration, log)?;
-  if let Some(path) = resolved.path(OutputSelection::TraitsCsv) {
+  if let Some(path) = resolved.path(OutputSelection::Traits) {
     write_traits_csv(&tree, path)?;
   }
-  if let Some(path) = resolved.path(OutputSelection::ConfidenceCsv) {
+  if let Some(path) = resolved.path(OutputSelection::TraitProbabilities) {
     write_trait_confidence_csv(&tree, path)?;
   }
-  if let Some(path) = resolved.path(OutputSelection::AugurNodeData) {
+  if let Some(path) = resolved.path(OutputSelection::NodeData) {
     write_augur_node_data_traits(&tree, &output.gtr, path)?;
     progress_info!(log, "Wrote augur node data JSON to {}", path.display());
   }

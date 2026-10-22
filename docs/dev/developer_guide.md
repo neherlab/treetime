@@ -363,7 +363,7 @@ snapshots/<id>/
   report.md, report.tsv     report of a --no-compare run
 ```
 
-`report.md` groups failing cases by likely cause and lists value-level differences. Before the comparison, only the volatile fields `meta.updated` of `*.auspice.json` and `generated_by.version` of `*.augur-node-data.json` are removed; numeric differences are reported, never tolerated. A `changed` case, a `regressed` case, a `still-failing` case without a declared expectation, and an `unexpected-pass` case fail the run.
+`report.md` groups failing cases by likely cause and lists value-level differences. Before the comparison, only the volatile fields `meta.updated` of `*.auspice.json` and `generated_by.version` of `*.node-data.json` are removed; numeric differences are reported, never tolerated. A `changed` case, a `regressed` case, a `still-failing` case without a declared expectation, and an `unexpected-pass` case fail the run.
 
 Exit codes: 0 when every selected case passed, 1 when a case failed or changed, 2 when the script could not complete (build failure, git error, invalid arguments, container failure, free disk space below the limit).
 

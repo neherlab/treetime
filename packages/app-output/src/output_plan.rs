@@ -148,8 +148,8 @@ pub fn expand_path_template(
   let Some(name) = placeholder.file_name_template(template) else {
     if values.len() > 1 {
       return make_error!(
-        "{flag} needs a {noun} placeholder ({tokens}) in its file name when {reason}, \
-         otherwise each {noun} overwrites the same output file",
+        "{flag} needs the placeholder {tokens} in its file name when {reason}, \
+         otherwise the output of each {noun} overwrites the same file",
         noun = placeholder.noun(),
         tokens = placeholder.quoted_tokens(),
         reason = placeholder.several_values_reason(),
@@ -197,7 +197,7 @@ pub enum PathPlaceholder {
 impl PathPlaceholder {
   pub const fn tokens(self) -> &'static [&'static str] {
     match self {
-      Self::Partition => &["{partition}"],
+      Self::Partition => &["{alignment}"],
       Self::Cds => &["{cds}", "%GENE"],
     }
   }
@@ -230,7 +230,7 @@ impl PathPlaceholder {
 
   const fn noun(self) -> &'static str {
     match self {
-      Self::Partition => "partition",
+      Self::Partition => "alignment file",
       Self::Cds => "CDS",
     }
   }
@@ -411,7 +411,7 @@ impl<'a> PlannedPath<'a> {
       .zip(1..)
       .map(|(path, partition)| Self {
         selection,
-        label: Cow::Owned(format!("{} for partition {partition}", selection.flag_name())),
+        label: Cow::Owned(format!("{} for alignment {partition}", selection.flag_name())),
         path,
       })
       .collect()
@@ -480,17 +480,16 @@ impl CommandKind {
   pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
     let mut non_tree = self.non_tree_outputs();
     let tree_defaults = if self == Self::Timetree {
-      non_tree.remove(&OutputSelection::ClockCsv);
+      non_tree.remove(&OutputSelection::Rtt);
       btreeset![OutputSelection::Nwk, OutputSelection::Nexus, OutputSelection::Auspice]
     } else {
       btreeset![OutputSelection::Nwk, OutputSelection::Nexus]
     };
     for non_default in [
-      OutputSelection::ReconstructedAaFasta,
+      OutputSelection::Translations,
       OutputSelection::ConfidenceTsv,
-      OutputSelection::ConfidenceCsv,
+      OutputSelection::TraitProbabilities,
       OutputSelection::Tracelog,
-      OutputSelection::CoalescentCsv,
       OutputSelection::CoalescentJson,
     ] {
       non_tree.remove(&non_default);
@@ -513,38 +512,35 @@ impl CommandKind {
   fn non_tree_outputs(self) -> BTreeSet<OutputSelection> {
     match self {
       Self::Ancestral => btreeset![
-        OutputSelection::AugurNodeData,
-        OutputSelection::Gtr,
-        OutputSelection::ReconstructedNucFasta,
-        OutputSelection::ReconstructedAaFasta
+        OutputSelection::NodeData,
+        OutputSelection::Model,
+        OutputSelection::Sequences,
+        OutputSelection::Translations
       ],
       Self::Timetree => btreeset![
-        OutputSelection::AugurNodeData,
-        OutputSelection::Gtr,
-        OutputSelection::ReconstructedNucFasta,
+        OutputSelection::NodeData,
+        OutputSelection::Model,
+        OutputSelection::Sequences,
         OutputSelection::ClockModel,
-        OutputSelection::ClockCsv,
+        OutputSelection::Rtt,
         OutputSelection::ConfidenceTsv,
         OutputSelection::Tracelog,
-        OutputSelection::CoalescentTsv,
-        OutputSelection::CoalescentCsv,
+        OutputSelection::Coalescent,
         OutputSelection::CoalescentJson
       ],
-      Self::Optimize => btreeset![OutputSelection::AugurNodeData, OutputSelection::Gtr],
+      Self::Optimize => btreeset![OutputSelection::NodeData, OutputSelection::Model],
       Self::Mugration => btreeset![
-        OutputSelection::AugurNodeData,
-        OutputSelection::Gtr,
-        OutputSelection::ConfidenceCsv,
-        OutputSelection::TraitsCsv
+        OutputSelection::NodeData,
+        OutputSelection::Model,
+        OutputSelection::TraitProbabilities,
+        OutputSelection::Traits
       ],
       Self::Clock => btreeset![
         OutputSelection::ClockModel,
-        OutputSelection::ClockCsv,
-        OutputSelection::ClockChartSvg,
-        OutputSelection::ClockChartPng,
-        OutputSelection::ClockChartPdf
+        OutputSelection::Rtt,
+        OutputSelection::RttChart
       ],
-      Self::Prune => btreeset![OutputSelection::Gtr],
+      Self::Prune => btreeset![OutputSelection::Model],
       Self::Homoplasy => btreeset![OutputSelection::HomoplasyStats, OutputSelection::HomoplasyReport],
     }
   }
@@ -570,8 +566,8 @@ impl CommandKind {
 
   fn is_per_partition(self, selection: OutputSelection) -> bool {
     match selection {
-      OutputSelection::ReconstructedNucFasta => true,
-      OutputSelection::AugurNodeData => self == Self::Ancestral,
+      OutputSelection::Sequences => true,
+      OutputSelection::NodeData => self == Self::Ancestral,
       _ => false,
     }
   }
@@ -631,22 +627,19 @@ pub enum OutputSelection {
   GraphJson,
   Dot,
 
-  AugurNodeData,
-  Gtr,
+  NodeData,
+  Model,
   ClockModel,
   ConfidenceTsv,
-  ConfidenceCsv,
-  ReconstructedNucFasta,
-  ReconstructedAaFasta,
-  TraitsCsv,
-  ClockCsv,
+  TraitProbabilities,
+  Sequences,
+  Translations,
+  Traits,
+  Rtt,
   Tracelog,
-  CoalescentTsv,
-  CoalescentCsv,
+  Coalescent,
   CoalescentJson,
-  ClockChartSvg,
-  ClockChartPng,
-  ClockChartPdf,
+  RttChart,
   HomoplasyStats,
   HomoplasyReport,
 }
@@ -698,35 +691,31 @@ impl OutputSelection {
 
   #[rustfmt::skip]
   const fn facts(self) -> OutputFacts {
-    const CSV: Option<TableFormat> = Some(TableFormat::Csv);
     const TSV: Option<TableFormat> = Some(TableFormat::Tsv);
     match self {
-      Self::All                   => OutputFacts::new("",                              "--output-selection=all",          None, false, "Every output of the command"),
-      Self::Nwk                   => OutputFacts::new(".nwk",                          "--output-tree-nwk",               None, true,  "Tree in Newick format"),
-      Self::Nexus                 => OutputFacts::new(".nexus",                        "--output-tree-nexus",             None, true,  "Tree with node annotations in Nexus format"),
-      Self::Auspice               => OutputFacts::new(".auspice.json",                 "--output-tree-auspice",           None, true,  "Tree for Auspice and Nextstrain"),
-      Self::MatPb                 => OutputFacts::new(".mat.pb",                       "--output-tree-mat-pb",            None, true,  "Mutation-annotated tree (UShER protobuf)"),
-      Self::MatJson               => OutputFacts::new(".mat.json",                     "--output-tree-mat-json",          None, true,  "Mutation-annotated tree (JSON)"),
-      Self::GraphJson             => OutputFacts::new(".graph.json",                   "--output-tree-graph-json",        None, false, "Tree as a graph (JSON)"),
-      Self::Dot                   => OutputFacts::new(".dot",                          "--output-tree-dot",               None, false, "Tree as a graph (Graphviz)"),
-      Self::AugurNodeData         => OutputFacts::new(".augur-node-data.json",         "--output-augur-node-data",        None, true,  "Node data for augur: dates, intervals, mutations"),
-      Self::Gtr                   => OutputFacts::new(".gtr.json",                     "--output-gtr",                    None, false, "Substitution model"),
-      Self::ClockModel            => OutputFacts::new(".clock-model.json",             "--output-clock-model",            None, false, "Clock rate, intercept and regression statistics"),
-      Self::ConfidenceTsv         => OutputFacts::new(".confidence.tsv",               "--output-confidence-tsv",         TSV,  false, "Date intervals of every node"),
-      Self::ConfidenceCsv         => OutputFacts::new(".confidence.csv",               "--output-confidence-csv",         CSV,  true,  "State probabilities of every node"),
-      Self::ReconstructedNucFasta => OutputFacts::new(".reconstructed-nuc.fasta",      "--output-reconstructed-nuc-fasta", None, false, "Sequences of samples and ancestors"),
-      Self::ReconstructedAaFasta  => OutputFacts::new(".reconstructed-aa.{cds}.fasta", "--output-reconstructed-aa-fasta", None, false, "Protein sequences of samples and ancestors"),
-      Self::TraitsCsv             => OutputFacts::new(".traits.csv",                   "--output-traits-csv",             CSV,  true,  "Inferred state of every node"),
-      Self::ClockCsv              => OutputFacts::new(".clock.csv",                    "--output-clock-csv",              CSV,  false, "Root-to-tip distance, date and clock prediction of every node"),
-      Self::Tracelog              => OutputFacts::new(".tracelog.csv",                 "--output-tracelog",               CSV,  false, "Convergence values of every iteration"),
-      Self::CoalescentTsv         => OutputFacts::new(".coalescent.tsv",               "--output-coalescent-tsv",         TSV,  false, "Coalescent time scale and effective population size"),
-      Self::CoalescentCsv         => OutputFacts::new(".coalescent.csv",               "--output-coalescent-csv",         CSV,  false, "Coalescent time scale and effective population size"),
-      Self::CoalescentJson        => OutputFacts::new(".coalescent.json",              "--output-coalescent-json",        None, false, "Coalescent model and its likelihood"),
-      Self::ClockChartSvg         => OutputFacts::new(".svg",                          "--output-clock-chart-svg",        None, false, "Root-to-tip regression chart (SVG)"),
-      Self::ClockChartPng         => OutputFacts::new(".png",                          "--output-clock-chart-png",        None, false, "Root-to-tip regression chart (PNG)"),
-      Self::ClockChartPdf         => OutputFacts::new(".pdf",                          "--output-clock-chart-pdf",        None, false, "Root-to-tip regression chart (PDF)"),
-      Self::HomoplasyStats        => OutputFacts::new(".stats.json",                   "--output-homoplasy-stats",        None, false, "Recurrent mutations: counts, histograms and ranked lists (JSON)"),
-      Self::HomoplasyReport       => OutputFacts::new(".report.txt",                   "--output-homoplasy-report",       None, false, "Recurrent mutations: text report"),
+      Self::All                => OutputFacts::new("",                          "--output-selection=all",       None, false, "Every output of the command"),
+      Self::Nwk                => OutputFacts::new(".nwk",                      "--output-tree-nwk",            None, true,  "Tree in Newick format"),
+      Self::Nexus              => OutputFacts::new(".nexus",                    "--output-tree-nexus",          None, true,  "Tree with node annotations in Nexus format"),
+      Self::Auspice            => OutputFacts::new(".auspice.json",             "--output-tree-auspice",        None, true,  "Tree for Auspice and Nextstrain"),
+      Self::MatPb              => OutputFacts::new(".mat.pb",                   "--output-tree-mat-pb",         None, true,  "Mutation-annotated tree (UShER protobuf)"),
+      Self::MatJson            => OutputFacts::new(".mat.json",                 "--output-tree-mat-json",       None, true,  "Mutation-annotated tree (JSON)"),
+      Self::GraphJson          => OutputFacts::new(".graph.json",               "--output-tree-graph-json",     None, false, "Tree as a graph (JSON)"),
+      Self::Dot                => OutputFacts::new(".dot",                      "--output-tree-dot",            None, false, "Tree as a graph (Graphviz)"),
+      Self::NodeData           => OutputFacts::new(".node-data.json",           "--output-node-data",           None, true,  "Node data for augur: dates, intervals, mutations"),
+      Self::Model              => OutputFacts::new(".model.json",               "--output-model",               None, false, "Fitted substitution models"),
+      Self::ClockModel         => OutputFacts::new(".clock-model.json",         "--output-clock-model",         None, false, "Clock rate, intercept and regression statistics"),
+      Self::ConfidenceTsv      => OutputFacts::new(".confidence.tsv",           "--output-confidence-tsv",      TSV,  false, "Date intervals of every node"),
+      Self::TraitProbabilities => OutputFacts::new(".trait-probabilities.tsv",  "--output-trait-probabilities", TSV,  true,  "State probabilities of every node"),
+      Self::Sequences          => OutputFacts::new(".sequences.fasta",          "--output-sequences",           None, false, "Sequences of samples and ancestors"),
+      Self::Translations       => OutputFacts::new(".translations.{cds}.fasta", "--output-translations",        None, false, "Protein sequences of samples and ancestors"),
+      Self::Traits             => OutputFacts::new(".traits.tsv",               "--output-traits",              TSV,  true,  "Inferred state of every node"),
+      Self::Rtt                => OutputFacts::new(".rtt.tsv",                  "--output-rtt",                 TSV,  false, "Root-to-tip distance, date and clock prediction of every node"),
+      Self::Tracelog           => OutputFacts::new(".tracelog.tsv",             "--output-tracelog",            TSV,  false, "Convergence values of every iteration"),
+      Self::Coalescent         => OutputFacts::new(".coalescent.tsv",           "--output-coalescent",          TSV,  false, "Coalescent time scale and effective population size"),
+      Self::CoalescentJson     => OutputFacts::new(".coalescent.json",          "--output-coalescent-json",     None, false, "Coalescent model and its likelihood"),
+      Self::RttChart           => OutputFacts::new(".rtt.svg",                  "--output-rtt-chart",           None, false, "Root-to-tip regression chart (SVG, PNG or PDF, by the file extension)"),
+      Self::HomoplasyStats     => OutputFacts::new(".stats.json",               "--output-homoplasy-stats",     None, false, "Recurrent mutations: counts, histograms and ranked lists (JSON)"),
+      Self::HomoplasyReport    => OutputFacts::new(".report.txt",               "--output-homoplasy-report",    None, false, "Recurrent mutations: text report"),
     }
   }
 }

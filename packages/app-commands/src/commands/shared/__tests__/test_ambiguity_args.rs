@@ -17,8 +17,8 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::off(            &[],                                                                          &[])]
-  #[case::every_carrier(  &["--ambiguity-threshold=0.125"],                                             &[(OutputSelection::AugurNodeData, 0.125), (OutputSelection::ReconstructedNucFasta, 0.125), (OutputSelection::ReconstructedAaFasta, 0.125)])]
-  #[case::chosen_carrier( &["--ambiguity-threshold=0", "--ambiguity-outputs=reconstructed-aa-fasta"],    &[(OutputSelection::ReconstructedAaFasta, 0.0)])]
+  #[case::every_carrier(  &["--ambiguity-threshold=0.125"],                                             &[(OutputSelection::NodeData, 0.125), (OutputSelection::Sequences, 0.125), (OutputSelection::Translations, 0.125)])]
+  #[case::chosen_carrier( &["--ambiguity-threshold=0", "--ambiguity-outputs=translations"],    &[(OutputSelection::Translations, 0.0)])]
   #[trace]
   fn test_ambiguity_args_ancestral_carriers(
     #[case] flags: &[&str],
@@ -34,8 +34,8 @@ mod tests {
     let args = TreetimeMugrationArgsRaw::try_parse_from(["treetime", "--ambiguity-threshold=0.25"])?;
     let expected = vec![
       (OutputSelection::Auspice, 0.25),
-      (OutputSelection::AugurNodeData, 0.25),
-      (OutputSelection::TraitsCsv, 0.25),
+      (OutputSelection::NodeData, 0.25),
+      (OutputSelection::Traits, 0.25),
     ];
     assert_eq!(expected, carriers(&args.ambiguity.resolve()?));
     Ok(())
@@ -44,14 +44,14 @@ mod tests {
   #[test]
   fn test_ambiguity_args_timetree_carries_the_reconstructed_fasta() -> Result<(), Report> {
     let args = TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--ambiguity-threshold=0.125"])?;
-    let expected = vec![(OutputSelection::ReconstructedNucFasta, 0.125)];
+    let expected = vec![(OutputSelection::Sequences, 0.125)];
     assert_eq!(expected, carriers(&args.ambiguity.resolve()?));
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::output_of_another_command( &["--ambiguity-threshold=0.1", "--ambiguity-outputs=reconstructed-nuc-fasta"], ErrorKind::InvalidValue)]
+  #[case::output_of_another_command( &["--ambiguity-threshold=0.1", "--ambiguity-outputs=sequences"], ErrorKind::InvalidValue)]
   #[case::threshold_above_one(       &["--ambiguity-threshold=1.5"],                                                ErrorKind::ValueValidation)]
   #[case::threshold_not_a_number(    &["--ambiguity-threshold=half"],                                               ErrorKind::ValueValidation)]
   #[trace]
@@ -74,7 +74,7 @@ mod tests {
 
   #[test]
   fn test_ambiguity_args_config_outputs_without_threshold_is_an_error() -> Result<(), Report> {
-    let args: TreetimeMugrationArgsRaw = yaml_read_str("ambiguity_outputs: [traits-csv]\n")?;
+    let args: TreetimeMugrationArgsRaw = yaml_read_str("ambiguity_outputs: [traits]\n")?;
     assert_error!(
       args.ambiguity.resolve(),
       "--ambiguity-outputs requires --ambiguity-threshold"

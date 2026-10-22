@@ -22,7 +22,7 @@ mod tests {
         tree: Some(dir.path().join("tree.nwk")),
       },
       reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-        output_reconstructed_nuc_fasta: Some(dir.path().join("out.fasta")),
+        output_sequences: Some(dir.path().join("out.fasta")),
       },
       ..TreetimeAncestralArgsRaw::default()
     })?;
@@ -46,7 +46,7 @@ mod tests {
         alignment: vec![PathBuf::from("-"), PathBuf::from("-")],
       },
       reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-        output_reconstructed_nuc_fasta: Some(dir.path().join("out.fasta")),
+        output_sequences: Some(dir.path().join("out.fasta")),
       },
       ..TreetimeAncestralArgsRaw::default()
     })?;

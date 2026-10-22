@@ -20,12 +20,12 @@ use treetime_utils::io::json::{JsonPretty, json_write_file};
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct GtrOutputArgs {
-  /// Path to output GTR model JSON.
+  /// Path to output the fitted substitution models as JSON.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_gtr: Option<PathBuf>,
+  pub output_model: Option<PathBuf>,
 }
 
 pub(crate) fn write_gtr_output(
@@ -34,11 +34,11 @@ pub(crate) fn write_gtr_output(
   missing_reason: &str,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Gtr) else {
+  let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Model) else {
     return Ok(());
   };
   if models.is_empty() {
-    return output_unavailable(OutputSelection::Gtr, file, missing_reason, log);
+    return output_unavailable(OutputSelection::Model, file, missing_reason, log);
   }
   json_write_file(&file.path, &ModelOutput { models }, JsonPretty(true))
 }

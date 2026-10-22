@@ -73,7 +73,7 @@ mod tests {
           ..TipSequenceArgs::default()
         },
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-          output_reconstructed_nuc_fasta: Some(fasta_path.clone()),
+          output_sequences: Some(fasta_path.clone()),
         },
         sample_from_profile: SampleFromProfileArgs {
           sample_from_profile: SampleModeCli::All,

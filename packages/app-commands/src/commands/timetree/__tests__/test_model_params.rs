@@ -20,7 +20,7 @@ mod tests {
     let tree = format!("--tree={}", data.join("tree.nwk").display());
     let alignment = format!("--alignment={}", data.join("aln.fasta.xz").display());
     let metadata = format!("--metadata={}", data.join("metadata.tsv").display());
-    let output = format!("--output-gtr={}", model_file.display());
+    let output = format!("--output-model={}", model_file.display());
     let mut argv = vec![
       "timetree",
       &tree,

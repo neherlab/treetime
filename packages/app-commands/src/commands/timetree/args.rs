@@ -456,7 +456,7 @@ pub struct TreetimeTimetreeArgsRaw {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_augur_node_data: Option<PathBuf>,
+  pub output_node_data: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -480,28 +480,20 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_confidence_tsv: Option<PathBuf>,
 
-  /// Path to output iteration-statistics tracelog CSV (monitors convergence).
+  /// Path to output the convergence values of every iteration as a table.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_tracelog: Option<PathBuf>,
 
-  /// Path to output the coalescent time scale as a flat TSV (one row per skyline segment).
+  /// Path to output the coalescent time scale as a table (one row per skyline segment).
   ///
   /// Written when a coalescent prior is set with `--coalescent`. A fixed time scale writes one
   /// band-less segment over the tree span. Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_coalescent_tsv: Option<PathBuf>,
-
-  /// Path to output the coalescent time scale as a flat CSV (one row per skyline segment).
-  ///
-  /// Written when a coalescent model is set. Takes precedence over paths configured with
-  /// `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_coalescent_csv: Option<PathBuf>,
+  pub output_coalescent: Option<PathBuf>,
 
   /// Path to output the coalescent time scale as a rich JSON document (inputs + segments).
   ///

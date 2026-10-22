@@ -114,7 +114,7 @@ pub(crate) fn selected_cdses(
 }
 
 pub(crate) fn cds_output_paths(template: &Path, cdses: &[String]) -> Result<BTreeMap<String, PathBuf>, Report> {
-  let flag = OutputSelection::ReconstructedAaFasta.flag_name();
+  let flag = OutputSelection::Translations.flag_name();
   let paths = expand_path_template(flag, template, PathPlaceholder::Cds, cdses)?;
   Ok(cdses.iter().cloned().zip(paths).collect())
 }

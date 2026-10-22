@@ -14,8 +14,8 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::every_output(   vec![],                                                (REPORTED,    "ARYN"))]
-  #[case::fasta_only(     vec![AncestralAmbiguityOutput::ReconstructedNucFasta], (REPORTED,    "AACA"))]
-  #[case::node_data_only( vec![AncestralAmbiguityOutput::AugurNodeData],         (MOST_LIKELY, "ARYN"))]
+  #[case::fasta_only(     vec![AncestralAmbiguityOutput::Sequences], (REPORTED,    "AACA"))]
+  #[case::node_data_only( vec![AncestralAmbiguityOutput::NodeData],         (MOST_LIKELY, "ARYN"))]
   #[trace]
   fn test_ambiguity_report_reaches_only_the_chosen_sequence_outputs(
     #[case] outputs: Vec<AncestralAmbiguityOutput>,
@@ -84,9 +84,9 @@ mod tests {
           ..ModelArgs::default()
         },
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-          output_reconstructed_nuc_fasta: Some(output_fasta.clone()),
+          output_sequences: Some(output_fasta.clone()),
         },
-        output_augur_node_data: Some(output_node_data.clone()),
+        output_node_data: Some(output_node_data.clone()),
         ambiguity: AncestralAmbiguityArgs {
           ambiguity_threshold: threshold.map(AmbiguityThreshold::new).transpose()?,
           ambiguity_outputs: outputs,

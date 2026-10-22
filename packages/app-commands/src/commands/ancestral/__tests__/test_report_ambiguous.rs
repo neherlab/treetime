@@ -173,7 +173,7 @@ mod tests {
           report_ambiguous,
           ..TipSequenceArgs::default()
         },
-        output_augur_node_data: Some(augur_path.clone()),
+        output_node_data: Some(augur_path.clone()),
         output: OutputCoreArgs {
           newick_annotations: NewickAnnotationsArg::Beast,
           output_tree_nwk: Some(nwk_path.clone()),

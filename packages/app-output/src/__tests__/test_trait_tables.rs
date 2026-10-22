@@ -95,8 +95,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::carried(    &[OutputSelection::TraitsCsv],     "node,country,country_ambiguous\nA,Samoa,\nB,Samoa,American Samoa|Samoa\n")]
-  #[case::not_carried(&[OutputSelection::AugurNodeData], "node,country\nA,Samoa\nB,Samoa\n")]
+  #[case::carried(    &[OutputSelection::Traits],     "node,country,country_ambiguous\nA,Samoa,\nB,Samoa,American Samoa|Samoa\n")]
+  #[case::not_carried(&[OutputSelection::NodeData], "node,country\nA,Samoa\nB,Samoa\n")]
   #[trace]
   fn test_trait_tables_traits_csv_writes_ambiguous_states_when_it_carries_the_report(
     #[case] carriers: &[OutputSelection],
@@ -117,8 +117,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::carried(    &[OutputSelection::AugurNodeData], Some("American Samoa|Samoa"))]
-  #[case::not_carried(&[OutputSelection::TraitsCsv],     None)]
+  #[case::carried(    &[OutputSelection::NodeData], Some("American Samoa|Samoa"))]
+  #[case::not_carried(&[OutputSelection::Traits],     None)]
   #[trace]
   fn test_trait_tables_node_data_writes_ambiguous_states_when_it_carries_the_report(
     #[case] carriers: &[OutputSelection],

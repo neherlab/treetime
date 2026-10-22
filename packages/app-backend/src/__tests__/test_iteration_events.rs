@@ -47,7 +47,7 @@ mod tests {
         .collect()
       })
       .collect();
-    assert_eq!(tracelog_rows(&outdir.path().join("timetree.tracelog.csv")), from_events);
+    assert_eq!(tracelog_rows(&outdir.path().join("timetree.tracelog.tsv")), from_events);
     assert_eq!(
       (1..=events.len()).collect::<Vec<_>>(),
       events.iter().map(|event| event.iteration).collect::<Vec<_>>()

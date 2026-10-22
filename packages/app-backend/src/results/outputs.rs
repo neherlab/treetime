@@ -65,11 +65,11 @@ impl RunOutputs {
         self.auspice = Some(auspice);
       },
       OutputSelection::ClockModel => self.clock_model = Some(json_read_file(path)?),
-      OutputSelection::ClockCsv => self.clock_rows = Some(table_read_file(kind, path)?),
-      OutputSelection::AugurNodeData => self.node_data = Some(json_read_file(path)?),
-      OutputSelection::Gtr => self.gtr = Some(json_read_file(path)?),
+      OutputSelection::Rtt => self.clock_rows = Some(table_read_file(kind, path)?),
+      OutputSelection::NodeData => self.node_data = Some(json_read_file(path)?),
+      OutputSelection::Model => self.gtr = Some(json_read_file(path)?),
       OutputSelection::Tracelog => self.trace = Some(table_read_file(kind, path)?),
-      OutputSelection::CoalescentTsv => self.coalescent = Some(table_read_file(kind, path)?),
+      OutputSelection::Coalescent => self.coalescent = Some(table_read_file(kind, path)?),
       OutputSelection::HomoplasyStats => self.homoplasy = Some(json_read_file(path)?),
       _ => {},
     }
@@ -98,25 +98,25 @@ fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
     AppCommand::Timetree => &[
       OutputSelection::Auspice,
       OutputSelection::ClockModel,
-      OutputSelection::ClockCsv,
-      OutputSelection::AugurNodeData,
+      OutputSelection::Rtt,
+      OutputSelection::NodeData,
       OutputSelection::Tracelog,
-      OutputSelection::CoalescentTsv,
-      OutputSelection::Gtr,
+      OutputSelection::Coalescent,
+      OutputSelection::Model,
     ],
     AppCommand::Clock => &[
       OutputSelection::Auspice,
       OutputSelection::ClockModel,
-      OutputSelection::ClockCsv,
+      OutputSelection::Rtt,
     ],
     AppCommand::Optimize => &[
       OutputSelection::Auspice,
-      OutputSelection::AugurNodeData,
-      OutputSelection::Gtr,
+      OutputSelection::NodeData,
+      OutputSelection::Model,
     ],
     AppCommand::Homoplasy => &[OutputSelection::Auspice, OutputSelection::HomoplasyStats],
     AppCommand::Ancestral | AppCommand::Mugration | AppCommand::Prune => {
-      &[OutputSelection::Auspice, OutputSelection::Gtr]
+      &[OutputSelection::Auspice, OutputSelection::Model]
     },
   }
 }

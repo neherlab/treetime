@@ -159,7 +159,7 @@ mod tests {
           ..OutputCoreArgs::default()
         },
         output_selection: TimetreeOutputSelectionArgs {
-          output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+          output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::Rtt],
         },
         seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
@@ -167,7 +167,7 @@ mod tests {
       configure(&mut raw);
       let args = TreetimeTimetreeArgs::try_from(raw)?;
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
-      let rows = table_read_file(OutputSelection::ClockCsv, &output.join("timetree.clock.csv"))?;
+      let rows = table_read_file(OutputSelection::Rtt, &output.join("timetree.rtt.tsv"))?;
       let model = json_read_file(output.join("timetree.clock-model.json"))?;
       Ok((rows, model))
     }

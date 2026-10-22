@@ -90,7 +90,7 @@ pub fn run_timetree_estimation(
     .then(|| {
       Ok::<_, Report>(ReconstructedNucSink {
         writers: NucFastaWriters::create(reconstructed_nuc_fasta, aln_descs)?,
-        ambiguity: ambiguity.threshold_for(OutputSelection::ReconstructedNucFasta),
+        ambiguity: ambiguity.threshold_for(OutputSelection::Sequences),
       })
     })
     .transpose()?;
@@ -186,11 +186,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
     }
   }
 
-  for selection in [
-    OutputSelection::CoalescentTsv,
-    OutputSelection::CoalescentCsv,
-    OutputSelection::CoalescentJson,
-  ] {
+  for selection in [OutputSelection::Coalescent, OutputSelection::CoalescentJson] {
     let Some(file) = resolved.non_tree_outputs.get(&selection) else {
       continue;
     };
@@ -206,8 +202,8 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
   if let Some(path) = resolved.path(OutputSelection::ClockModel) {
     json_write_file(path, &output.clock_model, JsonPretty(true))?;
   }
-  if let Some(path) = resolved.path(OutputSelection::ClockCsv) {
-    table_write_file(OutputSelection::ClockCsv, path, &output.clock_regression)?;
+  if let Some(path) = resolved.path(OutputSelection::Rtt) {
+    table_write_file(OutputSelection::Rtt, path, &output.clock_regression)?;
   }
 
   write_gtr_output(
@@ -231,11 +227,11 @@ pub(crate) fn reconstructed_nuc_fasta_paths(
   log: &dyn LogSink,
 ) -> Result<BTreeMap<usize, PathBuf>, Report> {
   match branch_length_mode {
-    BranchLengthMode::Marginal => Ok(resolved.partition_paths(OutputSelection::ReconstructedNucFasta)),
+    BranchLengthMode::Marginal => Ok(resolved.partition_paths(OutputSelection::Sequences)),
     BranchLengthMode::Input => {
-      for file in resolved.partition_files(OutputSelection::ReconstructedNucFasta) {
+      for file in resolved.partition_files(OutputSelection::Sequences) {
         output_unavailable(
-          OutputSelection::ReconstructedNucFasta,
+          OutputSelection::Sequences,
           file,
           "--branch-length-mode=input reconstructs no ancestral sequences",
           log,
@@ -374,7 +370,7 @@ fn write_timetree_trees(
     traits: None,
   };
   let tree = write_run_tree_outputs(&annotated, resolved, CommandKind::Timetree, log)?;
-  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::AugurNodeData)) {
+  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::NodeData)) {
     write_augur_node_data_refine(tree, run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }

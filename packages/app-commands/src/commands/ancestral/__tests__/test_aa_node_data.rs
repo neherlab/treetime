@@ -127,8 +127,8 @@ mod tests {
   fn test_cds_output_paths_two_cdses_to_one_path_fail(#[case] template: &str) {
     assert_error!(
       cds_output_paths(Path::new(template), &vec_of_owned!["S", "ORF1a"]),
-      "--output-reconstructed-aa-fasta needs a CDS placeholder ('{cds}' or '%GENE') in its file name when \
-       reconstructing several CDSes, otherwise each CDS overwrites the same output file"
+      "--output-translations needs the placeholder '{cds}' or '%GENE' in its file name when \
+       reconstructing several CDSes, otherwise the output of each CDS overwrites the same file"
     );
   }
 
@@ -136,7 +136,7 @@ mod tests {
   fn test_cds_output_paths_cds_with_path_separator_fails() {
     assert_error!(
       cds_output_paths(Path::new("out/aa.{cds}.fasta"), &vec_of_owned!["S", "../S"]),
-      "CDS '../S' contains a path separator and cannot be part of the file name of --output-reconstructed-aa-fasta"
+      "CDS '../S' contains a path separator and cannot be part of the file name of --output-translations"
     );
   }
 

@@ -66,18 +66,18 @@ def command(suite, binary, tree, set_dir, flags, out):
     flags = [f.format(mu=f'{mu:.10g}') for f in flags]
     aln = ['-t', str(tree), '-a', str(set_dir / 'tips.fasta.xz')]
     if suite == 'ancestral':
-        outputs = ['--output-reconstructed-nuc-fasta', out / 'anc.fasta.xz']
+        outputs = ['--output-sequences', out / 'anc.fasta.xz']
         if 'parsimony' not in flags:  # parsimony fits no GTR model
-            outputs += ['--output-gtr', out / 'gtr.json']
+            outputs += ['--output-model', out / 'gtr.json']
         return [binary, 'ancestral', *aln, *flags, *COMMON, *map(str, outputs)]
     if suite == 'optimize':
-        outputs = ['--output-tree-nwk', out / 'tree.nwk', '--output-gtr', out / 'gtr.json']
+        outputs = ['--output-tree-nwk', out / 'tree.nwk', '--output-model', out / 'gtr.json']
         return [binary, 'optimize', *aln, *flags, *COMMON, *map(str, outputs)]
     dates = ['-m', str(set_dir.parent / 'tip_dates.tsv'), '--date-column', 'date', '--clock-filter', '0']
-    outputs = ['--output-augur-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
+    outputs = ['--output-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
                '--output-clock-model', out / 'clock.json']  # fmt: skip
     if any(f.startswith('--coalescent') for f in flags):  # requesting it without a model is an error
-        outputs += ['--output-coalescent-tsv', out / 'coalescent.tsv']
+        outputs += ['--output-coalescent', out / 'coalescent.tsv']
     return [binary, 'timetree', *aln, *dates, *flags, *COMMON, *map(str, outputs)]
 
 

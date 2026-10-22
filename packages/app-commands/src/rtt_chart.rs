@@ -1,4 +1,5 @@
 use crate::rtt_chart_render::draw_chart;
+use app_output::output_format::ChartFormat;
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, chain};
 use plotters::prelude::*;
@@ -6,17 +7,28 @@ use std::io::Write;
 use std::path::Path;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime_charts::convert::ChartFormat;
+use treetime_charts::convert;
 use treetime_charts::font::register_chart_fonts;
 use treetime_utils::io::file::write_file_with;
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_internal_report};
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
+
+pub fn write_rtt_chart(results: &[ClockRegressionResult], clock_model: &ClockModel, filepath: &Path) -> Result<(), Report> {
+  let format = match ChartFormat::from_path(filepath)
+    .ok_or_else(|| make_internal_report!("No chart format for '{}' after output planning", filepath.display()))?
+  {
+    ChartFormat::Svg => convert::ChartFormat::Svg,
+    ChartFormat::Png => convert::ChartFormat::Png,
+    ChartFormat::Pdf => convert::ChartFormat::Pdf,
+  };
+  write_clock_regression_charts(results, clock_model, &[(format, filepath)])
+}
 
 pub fn write_clock_regression_charts(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
-  outputs: &[(ChartFormat, &Path)],
+  outputs: &[(convert::ChartFormat, &Path)],
 ) -> Result<(), Report> {
   if outputs.is_empty() {
     return Ok(());

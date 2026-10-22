@@ -121,7 +121,7 @@ pub fn run_ancestral_reconstruction(
     branch_lengths: &branch_lengths,
     seed,
   };
-  let aa_ambiguity = ambiguity.threshold_for(OutputSelection::ReconstructedAaFasta);
+  let aa_ambiguity = ambiguity.threshold_for(OutputSelection::Translations);
   let aa_result = aa_plan
     .map(|plan| run_aa_reconstructions(args, plan, &aa_inputs, aa_ambiguity, cancel, stages, log))
     .transpose()?;
@@ -178,11 +178,11 @@ fn plan_aa_reconstructions<'a>(
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
 ) -> Result<Option<AaPlan<'a>>, Report> {
-  let aa_fasta = resolved.non_tree_outputs.get(&OutputSelection::ReconstructedAaFasta);
+  let aa_fasta = resolved.non_tree_outputs.get(&OutputSelection::Translations);
   let Some(translations) = &args.translations else {
     if let Some(file) = aa_fasta {
       output_unavailable(
-        OutputSelection::ReconstructedAaFasta,
+        OutputSelection::Translations,
         file,
         "no amino-acid translations were given (use --translations)",
         log,
@@ -209,9 +209,9 @@ fn planned_aa_fasta_paths(
   cdses: &[String],
 ) -> Result<BTreeMap<String, PathBuf>, Report> {
   let paths = cds_output_paths(template, cdses)?;
-  let flag = OutputSelection::ReconstructedAaFasta.flag_name();
+  let flag = OutputSelection::Translations.flag_name();
   resolved.ensure_unique_with_expansion(
-    OutputSelection::ReconstructedAaFasta,
+    OutputSelection::Translations,
     paths
       .iter()
       .map(|(cds, path)| (format!("{flag} for CDS '{cds}'"), path.as_path())),
@@ -232,22 +232,22 @@ impl AncestralSeqSink {
     descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
     ambiguity: &AmbiguityOutputs,
   ) -> Result<Self, Report> {
-    let fasta_paths = resolved.partition_paths(OutputSelection::ReconstructedNucFasta);
+    let fasta_paths = resolved.partition_paths(OutputSelection::Sequences);
     let fasta = (!fasta_paths.is_empty())
       .then(|| NucFastaWriters::create(fasta_paths, descs))
       .transpose()?;
     let node_sequences: BTreeMap<_, _> = resolved
-      .partition_paths(OutputSelection::AugurNodeData)
+      .partition_paths(OutputSelection::NodeData)
       .into_keys()
       .map(|partition| (partition, BTreeMap::new()))
       .collect();
     Ok(Self {
       fasta_ambiguity: fasta
         .as_ref()
-        .and_then(|_| ambiguity.threshold_for(OutputSelection::ReconstructedNucFasta)),
+        .and_then(|_| ambiguity.threshold_for(OutputSelection::Sequences)),
       fasta,
       node_data_ambiguity: (!node_sequences.is_empty())
-        .then(|| ambiguity.threshold_for(OutputSelection::AugurNodeData))
+        .then(|| ambiguity.threshold_for(OutputSelection::NodeData))
         .flatten(),
       node_sequences,
     })

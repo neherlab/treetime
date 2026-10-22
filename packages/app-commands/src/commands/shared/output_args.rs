@@ -104,42 +104,39 @@ fn partition_count(alignment_count: usize) -> NonZeroUsize {
 }
 
 command_outputs!(AncestralOutputSelection, AncestralOutputSelectionArgs for TreetimeAncestralArgsRaw, Ancestral alignment: alignment {
-  AugurNodeData: output_augur_node_data,
-  Gtr: gtr_output.output_gtr,
-  ReconstructedNucFasta: reconstructed_fasta_output.output_reconstructed_nuc_fasta,
-  ReconstructedAaFasta: output_reconstructed_aa_fasta,
+  NodeData: output_node_data,
+  Model: gtr_output.output_model,
+  Sequences: reconstructed_fasta_output.output_sequences,
+  Translations: output_translations,
 });
 command_outputs!(TimetreeOutputSelection, TimetreeOutputSelectionArgs for TreetimeTimetreeArgsRaw, Timetree alignment: alignment {
-  AugurNodeData: output_augur_node_data,
-  Gtr: gtr_output.output_gtr,
-  ReconstructedNucFasta: reconstructed_fasta_output.output_reconstructed_nuc_fasta,
+  NodeData: output_node_data,
+  Model: gtr_output.output_model,
+  Sequences: reconstructed_fasta_output.output_sequences,
   ClockModel: clock_output.output_clock_model,
-  ClockCsv: clock_output.output_clock_csv,
+  Rtt: clock_output.output_rtt,
   ConfidenceTsv: output_confidence_tsv,
   Tracelog: output_tracelog,
-  CoalescentTsv: output_coalescent_tsv,
-  CoalescentCsv: output_coalescent_csv,
+  Coalescent: output_coalescent,
   CoalescentJson: output_coalescent_json,
 });
 command_outputs!(ClockOutputSelection, ClockOutputSelectionArgs for TreetimeClockArgsRaw, Clock {
   ClockModel: clock_output.output_clock_model,
-  ClockCsv: clock_output.output_clock_csv,
-  ClockChartSvg: output_clock_chart_svg,
-  ClockChartPng: output_clock_chart_png,
-  ClockChartPdf: output_clock_chart_pdf,
+  Rtt: clock_output.output_rtt,
+  RttChart: output_rtt_chart,
 });
 command_outputs!(MugrationOutputSelection, MugrationOutputSelectionArgs for TreetimeMugrationArgsRaw, Mugration {
-  AugurNodeData: output_augur_node_data,
-  Gtr: gtr_output.output_gtr,
-  ConfidenceCsv: output_confidence_csv,
-  TraitsCsv: output_traits_csv,
+  NodeData: output_node_data,
+  Model: gtr_output.output_model,
+  TraitProbabilities: output_trait_probabilities,
+  Traits: output_traits,
 });
 command_outputs!(OptimizeOutputSelection, OptimizeOutputSelectionArgs for TreetimeOptimizeArgsRaw, Optimize alignment: alignment {
-  AugurNodeData: output_augur_node_data,
-  Gtr: gtr_output.output_gtr,
+  NodeData: output_node_data,
+  Model: gtr_output.output_model,
 });
 command_outputs!(PruneOutputSelection, PruneOutputSelectionArgs for TreetimePruneArgsRaw, Prune alignment: alignment {
-  Gtr: gtr_output.output_gtr,
+  Model: gtr_output.output_model,
 });
 command_outputs!(HomoplasyOutputSelection, HomoplasyOutputSelectionArgs for TreetimeHomoplasyArgsRaw, Homoplasy {
   HomoplasyStats: output_homoplasy_stats,
@@ -163,7 +160,7 @@ pub struct OutputCoreArgs {
   /// `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which
   /// outputs are written.
   ///
-  /// Per-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or
+  /// Per-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or
   /// supplement the files produced by `--output-all`.
   ///
   /// An output that the run has no data for is skipped without a message, for example the
@@ -174,8 +171,8 @@ pub struct OutputCoreArgs {
   /// MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the
   /// order of the `--alignment` list. Their default names carry the number after the command
   /// name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
-  /// must contain `{partition}`, which is replaced by the number. Other tree outputs with
-  /// `{partition}` in their file name are also written once per file.
+  /// must contain `{alignment}`, which is replaced by the number. Other tree outputs with
+  /// `{alignment}` in their file name are also written once per file.
   ///
   /// An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The
   /// compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,
@@ -205,7 +202,7 @@ pub struct OutputCoreArgs {
   /// `--newick-annotations` sets the node comments.
   ///
   /// With several `--alignment` files and `--newick-annotations` other than `plain`, one file is
-  /// written per alignment, and the file name must contain `{partition}`, which is replaced by the
+  /// written per alignment, and the file name must contain `{alignment}`, which is replaced by the
   /// number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
@@ -222,7 +219,7 @@ pub struct OutputCoreArgs {
   /// nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
   ///
   /// With several `--alignment` files, one file is written per alignment, and the file name must
-  /// contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  /// contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -237,7 +234,7 @@ pub struct OutputCoreArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   ///
   /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -252,7 +249,7 @@ pub struct OutputCoreArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   ///
   /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -267,7 +264,7 @@ pub struct OutputCoreArgs {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   ///
   /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -366,14 +363,14 @@ pub struct ClockOutputArgs {
   #[schemars(extend("x-path" = "output"))]
   pub output_clock_model: Option<PathBuf>,
 
-  /// Path to output clock regression CSV.
+  /// Path to output the root-to-tip regression table.
   ///
   /// One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock
   /// model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths
   /// configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_clock_csv: Option<PathBuf>,
+  pub output_rtt: Option<PathBuf>,
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]

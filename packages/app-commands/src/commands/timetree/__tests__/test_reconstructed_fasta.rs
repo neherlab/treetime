@@ -22,7 +22,7 @@ mod tests {
     });
     assert_error!(
       result,
-      "--output-reconstructed-nuc-fasta was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
+      "--output-sequences was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
     );
   }
 
@@ -141,7 +141,7 @@ mod tests {
 
     assert_error!(
       reconstructed_nuc_fasta_paths(&resolved, BranchLengthMode::Input, &NoopProgress),
-      "--output-reconstructed-nuc-fasta was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
+      "--output-sequences was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
     );
   }
 
@@ -195,7 +195,7 @@ mod tests {
         metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
         max_iter: 2,
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-          output_reconstructed_nuc_fasta: Some(fasta.clone()),
+          output_sequences: Some(fasta.clone()),
         },
         seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
@@ -214,7 +214,7 @@ mod tests {
         non_tree_outputs: btreemap! {},
         tree_outputs_by_partition: btreemap! {},
         non_tree_outputs_by_partition: btreemap! {
-          OutputSelection::ReconstructedNucFasta => vec![PlannedFile {
+          OutputSelection::Sequences => vec![PlannedFile {
             path: PathBuf::from("out.fasta"),
             requested,
           }],

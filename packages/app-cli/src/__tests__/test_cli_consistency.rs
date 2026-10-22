@@ -38,7 +38,7 @@ mod tests {
       "each command lists the outputs it writes",
     ),
     (
-      "--output-augur-node-data",
+      "--output-node-data",
       &[Property::LongHelp],
       "the node data of each command holds the per-node results of that command",
     ),

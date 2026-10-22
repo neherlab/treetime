@@ -77,11 +77,11 @@ ambiguity_args!(AncestralAmbiguityArgs, AncestralAmbiguityOutput,
    (`--method-anc marginal`, or the amino-acid reconstruction of `--translations`), because Fitch parsimony \
    computes no posterior." {
   /// Reconstructed nucleotide FASTA
-  ReconstructedNucFasta,
+  Sequences,
   /// Reconstructed amino-acid FASTA of each CDS
-  ReconstructedAaFasta,
+  Translations,
   /// Node sequences in the augur node data
-  AugurNodeData,
+  NodeData,
 });
 
 ambiguity_args!(TimetreeAmbiguityArgs, TimetreeAmbiguityOutput,
@@ -89,17 +89,17 @@ ambiguity_args!(TimetreeAmbiguityArgs, TimetreeAmbiguityOutput,
    or `N` for all four nucleotides. Internal nodes have a report at every position, leaves only at the positions \
    that `--impute-missing-data` imputes." {
   /// Reconstructed nucleotide FASTA
-  ReconstructedNucFasta,
+  Sequences,
 });
 
 ambiguity_args!(MugrationAmbiguityArgs, MugrationAmbiguityOutput,
   "A trait output names the reported states of a node with more than one reported state, joined by `|` in the \
    order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in \
-   the traits CSV and no field in the JSON outputs." {
-  /// Extra column `<attribute>_ambiguous` in the traits CSV
-  TraitsCsv,
+   the traits table and no field in the JSON outputs." {
+  /// Extra column `<attribute>_ambiguous` in the traits table
+  Traits,
   /// Extra node field `<attribute>_ambiguous` in the augur node data
-  AugurNodeData,
+  NodeData,
   /// Extra node attribute `<attribute>_ambiguous` in the Auspice JSON
   Auspice,
 });

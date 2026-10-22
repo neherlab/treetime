@@ -243,7 +243,7 @@ mod tests {
 
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
-      let node_data = json_value_read_file(output.path().join("timetree.augur-node-data.json"))?;
+      let node_data = json_value_read_file(output.path().join("timetree.node-data.json"))?;
       let nodes = node_data["nodes"]
         .as_object()
         .ok_or_else(|| make_report!("The augur node data has no nodes"))?;

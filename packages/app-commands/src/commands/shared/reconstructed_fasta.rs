@@ -19,17 +19,17 @@ use treetime_utils::make_internal_error;
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct ReconstructedFastaOutputArgs {
-  /// Path to output reconstructed nucleotide FASTA.
+  /// Path to output the nucleotide sequences of the nodes as FASTA.
   ///
   /// Holds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or
   /// `--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states. Takes precedence over paths
   /// configured with `--output-all` and `--output-selection`.
   ///
   /// With several `--alignment` files, one file is written per alignment, and the file name must contain
-  /// `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  /// `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
+  pub output_sequences: Option<PathBuf>,
 }
 
 pub(crate) struct NucFastaWriters {

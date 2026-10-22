@@ -45,7 +45,7 @@ mod tests {
         output_selection: vec![
           TimetreeOutputSelection::Nwk,
           TimetreeOutputSelection::ConfidenceTsv,
-          TimetreeOutputSelection::ReconstructedNucFasta,
+          TimetreeOutputSelection::Sequences,
         ],
       },
       confidence: true,
@@ -80,13 +80,11 @@ mod tests {
     .map(|row| row.name)
     .sorted()
     .collect_vec();
-    let fasta_names: BTreeSet<String> = fasta_read_file(
-      output.path().join("timetree.reconstructed-nuc.fasta"),
-      &Alphabet::default(),
-    )?
-    .into_iter()
-    .map(|record| record.seq_name)
-    .collect();
+    let fasta_names: BTreeSet<String> =
+      fasta_read_file(output.path().join("timetree.sequences.fasta"), &Alphabet::default())?
+        .into_iter()
+        .map(|record| record.seq_name)
+        .collect();
 
     assert_eq!(BTreeSet::new(), tree.unnamed_nodes);
     assert_eq!(node_names, confidence_names);

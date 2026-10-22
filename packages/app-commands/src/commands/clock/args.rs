@@ -119,26 +119,13 @@ pub struct TreetimeClockArgsRaw {
   #[deser(flatten)]
   pub clock_output: ClockOutputArgs,
 
-  /// Path to output root-to-tip regression chart in SVG format.
+  /// Path to output the root-to-tip regression chart.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  /// The extension chooses the image format: `.svg`, `.png` or `.pdf`. Takes precedence over paths configured with
+  /// `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_clock_chart_svg: Option<PathBuf>,
-
-  /// Path to output root-to-tip regression chart in PNG format.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_clock_chart_png: Option<PathBuf>,
-
-  /// Path to output root-to-tip regression chart in PDF format.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_clock_chart_pdf: Option<PathBuf>,
+  pub output_rtt_chart: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

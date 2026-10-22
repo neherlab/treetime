@@ -47,14 +47,14 @@ output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()
       },
-output_selection: TimetreeOutputSelectionArgs { output_selection: vec![TimetreeOutputSelection::Gtr, TimetreeOutputSelection::ClockModel] },
+output_selection: TimetreeOutputSelectionArgs { output_selection: vec![TimetreeOutputSelection::Model, TimetreeOutputSelection::ClockModel] },
 seed_args: SeedArgs { seed: Some(7) },
 ..TreetimeTimetreeArgsRaw::default()
 })?;
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
-    let models: ModelOutput = json_read_file(output.path().join("timetree.gtr.json"))?;
+    let models: ModelOutput = json_read_file(output.path().join("timetree.model.json"))?;
     let clock_model: ClockModel = json_read_file(output.path().join("timetree.clock-model.json"))?;
     let [ModelEntry::Sequence(model)] = models.models.as_slice() else {
       panic!("one alignment gives one sequence model");
@@ -151,7 +151,7 @@ seed_args: SeedArgs { seed: Some(7) },
           ..OutputCoreArgs::default()
         },
         output_selection: TimetreeOutputSelectionArgs {
-          output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+          output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::Rtt],
         },
         seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
@@ -192,8 +192,7 @@ seed_args: SeedArgs { seed: Some(7) },
 
     fn read_run(output: &Path) -> Result<SymmetricRun, Report> {
       let clock_model: ClockModel = json_read_file(output.join("timetree.clock-model.json"))?;
-      let rows: Vec<ClockRegressionResult> =
-        table_read_file(OutputSelection::ClockCsv, &output.join("timetree.clock.csv"))?;
+      let rows: Vec<ClockRegressionResult> = table_read_file(OutputSelection::Rtt, &output.join("timetree.rtt.tsv"))?;
       let divergence = rows.into_iter().map(|row| (row.name, row.div)).collect();
       Ok(SymmetricRun {
         clock_rate: clock_model.clock_rate(),

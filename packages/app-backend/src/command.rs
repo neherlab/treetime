@@ -285,24 +285,24 @@ impl_run_config!(
   [
     TimetreeOutputSelection::Auspice,
     TimetreeOutputSelection::Tracelog,
-    TimetreeOutputSelection::ClockCsv,
-    TimetreeOutputSelection::Gtr,
+    TimetreeOutputSelection::Rtt,
+    TimetreeOutputSelection::Model,
   ]
 );
 impl_run_config!(
   TreetimeOptimizeArgsRaw,
   Optimize,
-  [OptimizeOutputSelection::Auspice, OptimizeOutputSelection::Gtr]
+  [OptimizeOutputSelection::Auspice, OptimizeOutputSelection::Model]
 );
 impl_run_config!(
   TreetimePruneArgsRaw,
   Prune,
-  [PruneOutputSelection::Auspice, PruneOutputSelection::Gtr]
+  [PruneOutputSelection::Auspice, PruneOutputSelection::Model]
 );
 impl_run_config!(
   TreetimeAncestralArgsRaw,
   Ancestral,
-  [AncestralOutputSelection::Auspice, AncestralOutputSelection::Gtr]
+  [AncestralOutputSelection::Auspice, AncestralOutputSelection::Model]
 );
 impl_run_config!(
   TreetimeHomoplasyArgsRaw,
@@ -316,7 +316,7 @@ impl_run_config!(TreetimeClockArgsRaw, Clock, [ClockOutputSelection::Auspice]);
 impl_run_config!(
   TreetimeMugrationArgsRaw,
   Mugration,
-  [MugrationOutputSelection::Auspice, MugrationOutputSelection::Gtr]
+  [MugrationOutputSelection::Auspice, MugrationOutputSelection::Model]
 );
 
 trait RunConfig: RawConfig {

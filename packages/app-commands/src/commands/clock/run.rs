@@ -4,7 +4,7 @@ use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 #[cfg(not(target_family = "wasm"))]
-use crate::rtt_chart::write_clock_regression_charts;
+use crate::rtt_chart::write_rtt_chart;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};
 #[cfg(target_family = "wasm")]
 use app_output::output_plan::output_unavailable;
@@ -12,8 +12,6 @@ use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
-#[cfg(not(target_family = "wasm"))]
-use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
@@ -21,8 +19,6 @@ use treetime::clock::clock_state::ClockInputs;
 use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::progress::{LogSink, StageSink};
-#[cfg(not(target_family = "wasm"))]
-use treetime_charts::convert::ChartFormat;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -116,45 +112,37 @@ fn write_clock_run_outputs(
   if let Some(path) = resolved.path(OutputSelection::ClockModel) {
     json_write_file(path, clock_model, JsonPretty(true))?;
   }
-  if let Some(path) = resolved.path(OutputSelection::ClockCsv) {
-    table_write_file(OutputSelection::ClockCsv, path, regression_results)?;
+  if let Some(path) = resolved.path(OutputSelection::Rtt) {
+    table_write_file(OutputSelection::Rtt, path, regression_results)?;
   }
-  write_clock_charts(resolved, clock_model, regression_results, log)
+  write_clock_chart(resolved, clock_model, regression_results, log)
 }
 
 #[cfg(not(target_family = "wasm"))]
-fn write_clock_charts(
+fn write_clock_chart(
   resolved: &ResolvedOutputs,
   clock_model: &ClockModel,
   regression_results: &[ClockRegressionResult],
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  let charts = [
-    (ChartFormat::Svg, OutputSelection::ClockChartSvg),
-    (ChartFormat::Png, OutputSelection::ClockChartPng),
-    (ChartFormat::Pdf, OutputSelection::ClockChartPdf),
-  ]
-  .into_iter()
-  .filter_map(|(format, selection)| resolved.path(selection).map(|path| (format, path)))
-  .collect_vec();
-  write_clock_regression_charts(regression_results, clock_model, &charts)
+  resolved
+    .path(OutputSelection::RttChart)
+    .map_or(Ok(()), |path| write_rtt_chart(regression_results, clock_model, path))
 }
 
 #[cfg(target_family = "wasm")]
-fn write_clock_charts(
+fn write_clock_chart(
   resolved: &ResolvedOutputs,
   clock_model: &ClockModel,
   regression_results: &[ClockRegressionResult],
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  [
-    OutputSelection::ClockChartSvg,
-    OutputSelection::ClockChartPng,
-    OutputSelection::ClockChartPdf,
-  ]
-  .into_iter()
-  .filter_map(|selection| resolved.non_tree_outputs.get(&selection).map(|file| (selection, file)))
-  .try_for_each(|(selection, file)| output_unavailable(selection, file, "the web app back end draws no charts", log))
+  resolved
+    .non_tree_outputs
+    .get(&OutputSelection::RttChart)
+    .map_or(Ok(()), |file| {
+      output_unavailable(OutputSelection::RttChart, file, "the web app back end draws no charts", log)
+    })
 }
 
 fn write_clock_trees(

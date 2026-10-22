@@ -143,23 +143,21 @@ mod tests {
 
   #[test]
   fn test_ancestral_output_augur_node_data_parses() {
-    let args = TreetimeAncestralArgsRaw::try_parse_from([
-      "treetime",
-      "--tree=/dev/null",
-      "--output-augur-node-data=/tmp/node.json",
-    ])
-    .unwrap();
-    assert_eq!(
-      args.output_augur_node_data.as_deref(),
-      Some(Path::new("/tmp/node.json"))
-    );
+    let args =
+      TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-node-data=/tmp/node.json"])
+        .unwrap();
+    assert_eq!(args.output_node_data.as_deref(), Some(Path::new("/tmp/node.json")));
   }
 
   #[test]
   fn test_ancestral_output_gtr_parses() {
     let args =
-      TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
-    assert_eq!(args.gtr_output.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
+      TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/gtr.json"])
+        .unwrap();
+    assert_eq!(
+      args.gtr_output.output_model.as_deref(),
+      Some(Path::new("/tmp/gtr.json"))
+    );
   }
 
   #[test]
@@ -226,12 +224,8 @@ mod tests {
   #[test]
   fn test_clock_output_clock_csv_parses() {
     let args =
-      TreetimeClockArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-clock-csv=/tmp/clock.csv"])
-        .unwrap();
-    assert_eq!(
-      args.clock_output.output_clock_csv.as_deref(),
-      Some(Path::new("/tmp/clock.csv"))
-    );
+      TreetimeClockArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-rtt=/tmp/rtt.tsv"]).unwrap();
+    assert_eq!(args.clock_output.output_rtt.as_deref(), Some(Path::new("/tmp/rtt.tsv")));
   }
 
   #[test]
@@ -240,9 +234,9 @@ mod tests {
       "treetime",
       "--metadata=/dev/null",
       "--output-all=/tmp/out",
-      "--output-selection=augur-node-data",
+      "--output-selection=node-data",
     ]);
-    assert!(result.is_err(), "augur-node-data is not selectable on clock");
+    assert!(result.is_err(), "node-data is not selectable on clock");
   }
 
   #[test]
@@ -251,12 +245,12 @@ mod tests {
       "treetime",
       "--metadata=/dev/null",
       "--output-all=/tmp/out",
-      "--output-selection=clock-model,clock-csv",
+      "--output-selection=clock-model,rtt",
     ])
     .unwrap();
     assert_eq!(
       args.output_selection.output_selection,
-      vec![ClockOutputSelection::ClockModel, ClockOutputSelection::ClockCsv]
+      vec![ClockOutputSelection::ClockModel, ClockOutputSelection::Rtt]
     );
   }
 
@@ -265,30 +259,14 @@ mod tests {
     let args = TreetimeClockArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
-      "--output-clock-chart-svg=/tmp/chart.svg",
-      "--output-clock-chart-png=/tmp/chart.png",
-      "--output-clock-chart-pdf=/tmp/chart.pdf",
+      "--output-rtt-chart=/tmp/chart.png",
       "--output-all=/tmp/out",
-      "--output-selection=clock-chart-svg,clock-chart-png,clock-chart-pdf",
+      "--output-selection=rtt-chart",
     ])
     .unwrap();
     assert_eq!(
-      (
-        args.output_clock_chart_svg.as_deref(),
-        args.output_clock_chart_png.as_deref(),
-        args.output_clock_chart_pdf.as_deref(),
-        args.output_selection.output_selection,
-      ),
-      (
-        Some(Path::new("/tmp/chart.svg")),
-        Some(Path::new("/tmp/chart.png")),
-        Some(Path::new("/tmp/chart.pdf")),
-        vec![
-          ClockOutputSelection::ClockChartSvg,
-          ClockOutputSelection::ClockChartPng,
-          ClockOutputSelection::ClockChartPdf,
-        ],
-      )
+      (args.output_rtt_chart.as_deref(), args.output_selection.output_selection),
+      (Some(Path::new("/tmp/chart.png")), vec![ClockOutputSelection::RttChart])
     );
   }
 
@@ -298,10 +276,10 @@ mod tests {
       "treetime",
       "--metadata=/dev/null",
       "--attribute=country",
-      "--output-traits-csv=/tmp/traits.csv",
+      "--output-traits=/tmp/traits.csv",
     ])
     .unwrap();
-    assert_eq!(args.output_traits_csv.as_deref(), Some(Path::new("/tmp/traits.csv")));
+    assert_eq!(args.output_traits.as_deref(), Some(Path::new("/tmp/traits.csv")));
   }
 
   #[test]
@@ -310,11 +288,11 @@ mod tests {
       "treetime",
       "--metadata=/dev/null",
       "--attribute=country",
-      "--output-confidence-csv=/tmp/conf.csv",
+      "--output-trait-probabilities=/tmp/conf.csv",
     ])
     .unwrap();
     assert_eq!(
-      canonical.output_confidence_csv.as_deref(),
+      canonical.output_trait_probabilities.as_deref(),
       Some(Path::new("/tmp/conf.csv"))
     );
 
@@ -326,7 +304,7 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      aliased.output_confidence_csv.as_deref(),
+      aliased.output_trait_probabilities.as_deref(),
       Some(Path::new("/tmp/conf.csv"))
     );
   }
@@ -338,20 +316,23 @@ mod tests {
       "--metadata=/dev/null",
       "--attribute=country",
       "--output-all=/tmp/out",
-      "--output-selection=confidence-csv",
+      "--output-selection=trait-probabilities",
     ])
     .unwrap();
     assert_eq!(
       args.output_selection.output_selection,
-      vec![MugrationOutputSelection::ConfidenceCsv]
+      vec![MugrationOutputSelection::TraitProbabilities]
     );
   }
 
   #[test]
   fn test_prune_output_gtr_parses() {
     let args =
-      TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
-    assert_eq!(args.gtr_output.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
+      TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/gtr.json"]).unwrap();
+    assert_eq!(
+      args.gtr_output.output_model.as_deref(),
+      Some(Path::new("/tmp/gtr.json"))
+    );
   }
 
   #[test]
@@ -362,7 +343,7 @@ mod tests {
       "--output-all=/tmp/out",
       "--output-selection=nwk",
       "--output-tree-nexus=/tmp/custom.nexus",
-      "--output-augur-node-data=/tmp/custom-node.json",
+      "--output-node-data=/tmp/custom-node.json",
     ])
     .unwrap();
     assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
@@ -375,7 +356,7 @@ mod tests {
       Some(Path::new("/tmp/custom.nexus"))
     );
     assert_eq!(
-      args.output_augur_node_data.as_deref(),
+      args.output_node_data.as_deref(),
       Some(Path::new("/tmp/custom-node.json"))
     );
   }

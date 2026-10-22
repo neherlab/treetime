@@ -194,10 +194,10 @@ pub struct TreetimeAncestralArgsRaw {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   ///
   /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+  /// must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_augur_node_data: Option<PathBuf>,
+  pub output_node_data: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -264,7 +264,7 @@ pub struct TreetimeAncestralArgsRaw {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_reconstructed_aa_fasta: Option<PathBuf>,
+  pub output_translations: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

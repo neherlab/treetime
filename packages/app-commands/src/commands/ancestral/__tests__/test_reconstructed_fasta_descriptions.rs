@@ -96,7 +96,7 @@ mod tests {
           ..TipSequenceArgs::default()
         },
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-          output_reconstructed_nuc_fasta: Some(out_path.clone()),
+          output_sequences: Some(out_path.clone()),
         },
         ..TreetimeAncestralArgsRaw::default()
       })?;

@@ -193,7 +193,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_augur_node_data: Option<PathBuf>,
+  pub output_node_data: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

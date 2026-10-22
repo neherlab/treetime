@@ -393,13 +393,13 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "anc", "ancestral": { "tree": "in.nwk", "alignment": ["a.fasta", "b.fasta"] } },
-        { "name": "opt", "optimize": { "tree": "in.nwk", "alignment": ["{{ steps.anc.outputs.reconstructed-nuc-fasta }}"] } }
+        { "name": "opt", "optimize": { "tree": "in.nwk", "alignment": ["{{ steps.anc.outputs.sequences }}"] } }
       ]
     });
     let result = resolve(config);
     assert_error!(
       result,
-      "step `opt` references `reconstructed-nuc-fasta` from step `anc`, which resolves to one file per alignment file (`/pipeline/tmp/run/anc/ancestral.1.reconstructed-nuc.fasta`, `/pipeline/tmp/run/anc/ancestral.2.reconstructed-nuc.fasta`); reference one of these paths instead"
+      "step `opt` references `sequences` from step `anc`, which resolves to one file per alignment file (`/pipeline/tmp/run/anc/ancestral.1.sequences.fasta`, `/pipeline/tmp/run/anc/ancestral.2.sequences.fasta`); reference one of these paths instead"
     );
   }
 
@@ -424,14 +424,14 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "anc", "ancestral": { "tree": "in.nwk", "output_reconstructed_aa_fasta": "out/{cds}.fasta" } },
-        { "name": "anc2", "ancestral": { "tree": "{{ steps.anc.outputs.reconstructed-aa-fasta }}" } }
+        { "name": "anc", "ancestral": { "tree": "in.nwk", "output_translations": "out/{cds}.fasta" } },
+        { "name": "anc2", "ancestral": { "tree": "{{ steps.anc.outputs.translations }}" } }
       ]
     });
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc2` references `reconstructed-aa-fasta` from step `anc`, which resolves to a per-CDS template (`/pipeline/out/{cds}.fasta`); reference a specific CDS output path instead"
+      "step `anc2` references `translations` from step `anc`, which resolves to a per-CDS template (`/pipeline/out/{cds}.fasta`); reference a specific CDS output path instead"
     );
   }
 
@@ -473,13 +473,13 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.traits-csv }}" } }
+        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.traits }}" } }
       ]
     });
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `traits-csv` from step `tt`, which does not produce it; it produces: `augur-node-data`, `auspice`, `clock-model`, `coalescent-tsv`, `gtr`, `nexus`, `nwk`, `reconstructed-nuc-fasta`"
+      "step `anc` references `traits` from step `tt`, which does not produce it; it produces: `node-data`, `auspice`, `clock-model`, `coalescent`, `gtr`, `nexus`, `nwk`, `sequences`"
     );
   }
 
