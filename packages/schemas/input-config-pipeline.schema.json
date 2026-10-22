@@ -4296,10 +4296,15 @@
           "$ref": "#/$defs/TopologyOrderTargetAggregateArg",
           "default": "mean"
         },
-        "prune_short": {
+        "gap_fill": {
+          "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
+          "$ref": "#/$defs/GapFill",
+          "default": "only-terminal"
+        },
+        "collapse_short": {
           "anyOf": [
             {
-              "description": "Threshold value for pruning of branches\n\nIf set, prune branches with a length below this value",
+              "description": "Collapse branches shorter than this length\n\nRemoves each internal branch with a length below LEN and attaches the children of its node to the parent node.",
               "type": "number",
               "format": "double",
               "x-unset": true
@@ -4310,10 +4315,10 @@
             }
           ]
         },
-        "prune_empty": {
+        "collapse_empty": {
           "anyOf": [
             {
-              "description": "Prune empty branches\n\nIf set, prune any branch that does not have a mutation or other state transition mapped to it.\n\nRequires --alignment",
+              "description": "Collapse branches without mutations\n\nRemoves each internal branch that has no mutation or other state transition mapped to it.\n\nRequires --alignment",
               "type": "boolean",
               "default": false
             },
@@ -4336,56 +4341,29 @@
             }
           ]
         },
-        "prune_nodes_list": {
-          "anyOf": [
-            {
-              "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.",
-              "type": "string",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
+        "remove": {
+          "description": "Names of nodes to remove from the tree\n\nAccepts several names, separated by commas or spaces.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "pattern": "\\{\\{.*\\}\\}"
+              }
+            ]
+          },
+          "default": []
         },
-        "prune_nodes_list_delimiter": {
+        "remove_file": {
           "anyOf": [
             {
-              "description": "Name separator for `--prune-nodes-list`\n\nString used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 1,
-              "default": ","
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "prune_nodes_list_file": {
-          "anyOf": [
-            {
-              "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
+              "description": "File with names of nodes to remove from the tree, one name per line\n\nSurrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).",
               "type": "string",
               "x-path": "input",
               "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "prune_nodes_list_file_delimiter": {
-          "anyOf": [
-            {
-              "description": "Separator for node names in the list file\n\nCharacter or string used to separate node names in the list file.",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 1,
-              "default": "\n"
             },
             {
               "type": "string",

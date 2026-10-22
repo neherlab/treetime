@@ -35,14 +35,10 @@ pub fn run(
   let needs_sequences = params.prune_empty || params.merge_shared_mutations;
   if needs_sequences && input.sources.is_empty() {
     return Err(OperationError::InvalidInput(make_report!(
-      "Sequences required for --prune-empty or --merge-shared-mutations"
+      "Sequences required for --collapse-empty or --merge-shared-mutations"
     )));
   }
-  let sources = if needs_sequences {
-    split_sources(take(&mut input.sources))
-  } else {
-    vec![]
-  };
+  let sources = split_sources(take(&mut input.sources));
   let fitch_branch_lengths = branch_lengths_or_zero(&branch_lengths);
   let rate = InferredRate::for_file_count(sources.len());
   let (sources, mut partitions): (Vec<_>, Vec<_>) = sources

@@ -6955,13 +6955,14 @@
         "Input data",
         "Output",
         "Tree ordering",
+        "Ancestral reconstruction",
         "Pruning"
       ],
       "main_settings": [
-        "prune_short",
-        "prune_empty",
+        "collapse_short",
+        "collapse_empty",
         "merge_shared_mutations",
-        "prune_nodes_list"
+        "remove"
       ],
       "choices": [],
       "settings": [
@@ -7530,9 +7531,41 @@
           "more": ""
         },
         {
-          "key": "prune_short",
-          "label": "Prune short",
-          "flag": "--prune-short",
+          "key": "gap_fill",
+          "label": "Gap fill",
+          "flag": "--gap-fill",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "only-terminal",
+              "help": ""
+            },
+            {
+              "value": "all",
+              "help": ""
+            },
+            {
+              "value": "none",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "only-terminal",
+          "examples": [],
+          "value_names": [
+            "GAP_FILL"
+          ],
+          "conflicts": [],
+          "help": "How to handle gap characters in input sequences",
+          "more": "'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged."
+        },
+        {
+          "key": "collapse_short",
+          "label": "Collapse short",
+          "flag": "--collapse-short",
           "group": "Pruning",
           "role": "setting",
           "kind": "number",
@@ -7541,16 +7574,16 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "THRESHOLD"
+            "LEN"
           ],
           "conflicts": [],
-          "help": "Threshold value for pruning of branches",
-          "more": "If set, prune branches with a length below this value"
+          "help": "Collapse branches shorter than this length",
+          "more": "Removes each internal branch with a length below LEN and attaches the children of its node to the parent node."
         },
         {
-          "key": "prune_empty",
-          "label": "Prune empty",
-          "flag": "--prune-empty",
+          "key": "collapse_empty",
+          "label": "Collapse empty",
+          "flag": "--collapse-empty",
           "group": "Pruning",
           "role": "setting",
           "kind": "switch",
@@ -7560,11 +7593,11 @@
           "default_value": false,
           "examples": [],
           "value_names": [
-            "PRUNE_EMPTY"
+            "COLLAPSE_EMPTY"
           ],
           "conflicts": [],
-          "help": "Prune empty branches",
-          "more": "If set, prune any branch that does not have a mutation or other state transition mapped to it.\n\nRequires --alignment"
+          "help": "Collapse branches without mutations",
+          "more": "Removes each internal branch that has no mutation or other state transition mapped to it.\n\nRequires --alignment"
         },
         {
           "key": "merge_shared_mutations",
@@ -7586,46 +7619,28 @@
           "more": "When sibling branches in a polytomy (node with >2 children) carry identical substitutions, they are grouped under a new internal node. The shared mutations move to the new branch (parent to new node), and only unique mutations remain on children's edges. Reduces tree builder artifacts from arbitrary binary resolution of polytomies.\n\nRequires --alignment"
         },
         {
-          "key": "prune_nodes_list",
-          "label": "Prune nodes list",
-          "flag": "--prune-nodes-list",
+          "key": "remove",
+          "label": "Remove",
+          "flag": "--remove",
           "group": "Pruning",
           "role": "setting",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "NODE_NAMES"
-          ],
-          "conflicts": [],
-          "help": "List of node names to prune",
-          "more": "List of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter."
-        },
-        {
-          "key": "prune_nodes_list_delimiter",
-          "label": "Prune nodes list delimiter",
-          "flag": "--prune-nodes-list-delimiter",
-          "group": "Pruning",
-          "role": "setting",
-          "kind": "text",
+          "kind": "list",
           "nullable": false,
           "options": [],
           "item_kind": "string",
-          "default_value": ",",
+          "default_value": [],
           "examples": [],
           "value_names": [
-            "DELIMITER"
+            "NAME"
           ],
           "conflicts": [],
-          "help": "Name separator for `--prune-nodes-list`",
-          "more": "String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell."
+          "help": "Names of nodes to remove from the tree",
+          "more": "Accepts several names, separated by commas or spaces."
         },
         {
-          "key": "prune_nodes_list_file",
-          "label": "Prune nodes list file",
-          "flag": "--prune-nodes-list-file",
+          "key": "remove_file",
+          "label": "Remove file",
+          "flag": "--remove-file",
           "group": "Pruning",
           "role": "input",
           "kind": "text",
@@ -7634,30 +7649,11 @@
           "item_kind": "string",
           "examples": [],
           "value_names": [
-            "FILEPATH"
+            "FILE"
           ],
           "conflicts": [],
-          "help": "File containing list of node names to prune",
-          "more": "Path to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter."
-        },
-        {
-          "key": "prune_nodes_list_file_delimiter",
-          "label": "Prune nodes list file delimiter",
-          "flag": "--prune-nodes-list-file-delimiter",
-          "group": "Pruning",
-          "role": "setting",
-          "kind": "text",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": "\n",
-          "examples": [],
-          "value_names": [
-            "DELIMITER"
-          ],
-          "conflicts": [],
-          "help": "Separator for node names in the list file",
-          "more": "Character or string used to separate node names in the list file."
+          "help": "File with names of nodes to remove from the tree, one name per line",
+          "more": "Surrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin)."
         }
       ]
     }

@@ -66,7 +66,7 @@ mod tests {
   fn test_run_checks_rejected_config_lists_each_problem_with_its_help() {
     let config = config(AppCommand::Prune, &json!({ "tree": "t.nwk" }));
     let problems = vec![
-      problem("unknown field `prune_shrot`", Some("did you mean `prune_short`?")),
+      problem("unknown field `collapse_shrot`", Some("did you mean `collapse_short`?")),
       problem("invalid type: string \"x\", expected a number", None),
     ];
     let rejection = ConfigRejection {
@@ -79,7 +79,7 @@ mod tests {
       vec![
         (
           o!("config-0"),
-          o!("unknown field `prune_shrot` (did you mean `prune_short`?)")
+          o!("unknown field `collapse_shrot` (did you mean `collapse_short`?)")
         ),
         (o!("config-1"), o!("invalid type: string \"x\", expected a number")),
       ],
@@ -95,13 +95,13 @@ mod tests {
     let config = config(AppCommand::Prune, &json!({ "tree": "t.nwk" }));
     let causes = vec_of_owned!["the value is negative"];
     let rejection = ConfigRejection {
-      message: "invalid --prune-short",
+      message: "invalid --collapse-short",
       causes: &causes,
       problems: &[],
       settings: &[],
     };
     assert_eq!(
-      vec!["invalid --prune-short: the value is negative"],
+      vec!["invalid --collapse-short: the value is negative"],
       texts(&checks(AppCommand::Prune, Some(&config), Some(rejection), None))
     );
   }

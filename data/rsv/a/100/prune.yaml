@@ -14,6 +14,6 @@ tree: "tree.nwk"
 alignment:
   - "aln.fasta.xz"
 
-prune_short: 1.0e-6
-prune_empty: true
+collapse_short: 1.0e-6
+collapse_empty: true
 merge_shared_mutations: true

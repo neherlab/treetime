@@ -59,7 +59,7 @@ mod tests {
   #[case::timetree_clock(    AppCommand::Timetree,  "clock_rate",                  "Molecular clock")]
   #[case::timetree_dating(   AppCommand::Timetree,  "max_grid_points",             "Dating")]
   #[case::optimize_iter(     AppCommand::Optimize,  "max_iter",                    "Branch lengths")]
-  #[case::prune_threshold(   AppCommand::Prune,     "prune_short",                 "Pruning")]
+  #[case::prune_threshold(   AppCommand::Prune,     "collapse_short",              "Pruning")]
   #[case::clock_flattened(   AppCommand::Clock,     "reroot",                      "Rooting")]
   #[case::shared_alignment(  AppCommand::Ancestral, "alignment",                   "Input data")]
   #[case::shared_order(      AppCommand::Mugration, "topology_order",              "Tree ordering")]

@@ -162,18 +162,24 @@
       "default": "mean",
       "x-cli-flag": "--topology-order-target-aggregate"
     },
-    "prune_short": {
-      "description": "Threshold value for pruning of branches\n\nIf set, prune branches with a length below this value",
+    "gap_fill": {
+      "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
+      "$ref": "#/$defs/GapFill",
+      "default": "only-terminal",
+      "x-cli-flag": "--gap-fill"
+    },
+    "collapse_short": {
+      "description": "Collapse branches shorter than this length\n\nRemoves each internal branch with a length below LEN and attaches the children of its node to the parent node.",
       "type": "number",
       "format": "double",
       "x-unset": true,
-      "x-cli-flag": "--prune-short"
+      "x-cli-flag": "--collapse-short"
     },
-    "prune_empty": {
-      "description": "Prune empty branches\n\nIf set, prune any branch that does not have a mutation or other state transition mapped to it.\n\nRequires --alignment",
+    "collapse_empty": {
+      "description": "Collapse branches without mutations\n\nRemoves each internal branch that has no mutation or other state transition mapped to it.\n\nRequires --alignment",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--prune-empty"
+      "x-cli-flag": "--collapse-empty"
     },
     "merge_shared_mutations": {
       "description": "Merge branches in polytomies that share identical mutations\n\nWhen sibling branches in a polytomy (node with >2 children) carry identical substitutions,\nthey are grouped under a new internal node. The shared mutations move to the new branch\n(parent to new node), and only unique mutations remain on children's edges.\nReduces tree builder artifacts from arbitrary binary resolution of polytomies.\n\nRequires --alignment",
@@ -181,34 +187,21 @@
       "default": false,
       "x-cli-flag": "--merge-shared-mutations"
     },
-    "prune_nodes_list": {
-      "description": "List of node names to prune\n\nList of node names to remove from the tree, comma-separated (,)\n\nSurrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.",
-      "type": "string",
-      "x-unset": true,
-      "x-cli-flag": "--prune-nodes-list"
+    "remove": {
+      "description": "Names of nodes to remove from the tree\n\nAccepts several names, separated by commas or spaces.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "x-cli-flag": "--remove"
     },
-    "prune_nodes_list_delimiter": {
-      "description": "Name separator for `--prune-nodes-list`\n\nString used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 1,
-      "default": ",",
-      "x-cli-flag": "--prune-nodes-list-delimiter"
-    },
-    "prune_nodes_list_file": {
-      "description": "File containing list of node names to prune\n\nPath to a file containing node names to remove from the tree, newline-delimited (\\n). Surrounding whitespace is trimmed and empty names are ignored.\n\nUse '-' to read from standard input (stdin).\n\nUse --prune-nodes-list-file-delimiter to specify a different delimiter.",
+    "remove_file": {
+      "description": "File with names of nodes to remove from the tree, one name per line\n\nSurrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).",
       "type": "string",
       "x-path": "input",
       "x-unset": true,
-      "x-cli-flag": "--prune-nodes-list-file"
-    },
-    "prune_nodes_list_file_delimiter": {
-      "description": "Separator for node names in the list file\n\nCharacter or string used to separate node names in the list file.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 1,
-      "default": "\n",
-      "x-cli-flag": "--prune-nodes-list-file-delimiter"
+      "x-cli-flag": "--remove-file"
     },
     "$schema": {
       "description": "Path or URL of the JSON schema for this config; used by editors and ignored by the loader.",
@@ -276,6 +269,14 @@
       "enum": [
         "mean",
         "median"
+      ]
+    },
+    "GapFill": {
+      "type": "string",
+      "enum": [
+        "only-terminal",
+        "all",
+        "none"
       ]
     }
   }

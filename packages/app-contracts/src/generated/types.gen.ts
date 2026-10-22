@@ -5213,19 +5213,27 @@ export type PruneConfig = {
    */
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
   /**
-   * Threshold value for pruning of branches
+   * How to handle gap characters in input sequences
    *
-   * If set, prune branches with a length below this value
+   * 'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).
+   * 'all': replace all gap characters with the ambiguous character.
+   * 'none': leave all gap characters unchanged.
    */
-  prune_short?: number;
+  gap_fill?: GapFill;
   /**
-   * Prune empty branches
+   * Collapse branches shorter than this length
    *
-   * If set, prune any branch that does not have a mutation or other state transition mapped to it.
+   * Removes each internal branch with a length below LEN and attaches the children of its node to the parent node.
+   */
+  collapse_short?: number;
+  /**
+   * Collapse branches without mutations
+   *
+   * Removes each internal branch that has no mutation or other state transition mapped to it.
    *
    * Requires --alignment
    */
-  prune_empty?: boolean;
+  collapse_empty?: boolean;
   /**
    * Merge branches in polytomies that share identical mutations
    *
@@ -5238,35 +5246,17 @@ export type PruneConfig = {
    */
   merge_shared_mutations?: boolean;
   /**
-   * List of node names to prune
+   * Names of nodes to remove from the tree
    *
-   * List of node names to remove from the tree, comma-separated (,)
-   *
-   * Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
+   * Accepts several names, separated by commas or spaces.
    */
-  prune_nodes_list?: string;
+  remove?: Array<string>;
   /**
-   * Name separator for `--prune-nodes-list`
+   * File with names of nodes to remove from the tree, one name per line
    *
-   * String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
+   * Surrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).
    */
-  prune_nodes_list_delimiter?: string;
-  /**
-   * File containing list of node names to prune
-   *
-   * Path to a file containing node names to remove from the tree, newline-delimited (\n). Surrounding whitespace is trimmed and empty names are ignored.
-   *
-   * Use '-' to read from standard input (stdin).
-   *
-   * Use --prune-nodes-list-file-delimiter to specify a different delimiter.
-   */
-  prune_nodes_list_file?: string;
-  /**
-   * Separator for node names in the list file
-   *
-   * Character or string used to separate node names in the list file.
-   */
-  prune_nodes_list_file_delimiter?: string;
+  remove_file?: string;
 };
 
 /**

@@ -10,12 +10,10 @@ use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::Report;
-use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::PathBuf;
+use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
-use treetime::make_report;
 use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
@@ -25,7 +23,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::key_by_name;
-use treetime_io::name_list::{name_list_read_file, name_list_read_str};
+use treetime_io::name_list::name_list_read_file;
 use treetime_primitives::Seq;
 
 pub fn run_prune(
@@ -48,31 +46,25 @@ pub fn run_prune(
 
   let resolved = args.resolve_outputs()?;
 
-  let needs_sequences = args.prune_empty || args.merge_shared_mutations;
-  let sources = if needs_sequences && !args.alignment.alignment.is_empty() {
+  let sources = if args.alignment.alignment.is_empty() {
+    vec![]
+  } else {
     let settings = SourceSettings {
       alphabet: &alphabet,
-      gap_fill: None,
+      gap_fill: Some(args.gap_fill_args.gap_fill()),
       missing_leaves: args.missing_sequences.limit(),
     };
     read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
       .into_iter()
       .map(|source| source.source)
       .collect()
-  } else {
-    vec![]
   };
 
-  let node_names = parse_node_names(
-    args.prune_nodes_list.as_deref(),
-    args.prune_nodes_list_delimiter,
-    args.prune_nodes_list_file.as_ref(),
-    args.prune_nodes_list_file_delimiter,
-  )?;
+  let node_names = node_names_to_remove(&args.remove, args.remove_file.as_deref())?;
 
   let params = PruneParams {
-    prune_short: args.prune_short,
-    prune_empty: args.prune_empty,
+    prune_short: args.collapse_short,
+    prune_empty: args.collapse_empty,
     merge_shared_mutations: args.merge_shared_mutations,
     node_keys: resolve_node_names(&node_names, &graph, &names),
   };
@@ -122,7 +114,7 @@ pub fn run_prune(
   write_gtr_output(
     &resolved,
     models,
-    "no GTR model was fitted (prune fits it from the alignment only for --prune-empty or --merge-shared-mutations)",
+    "no substitution model was used (prune uses one only with --alignment)",
     log,
   )?;
 
@@ -187,10 +179,10 @@ struct PruneOutputMaps {
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   args.alignment.paths()?;
 
-  if args.prune_empty && args.alignment.alignment.is_empty() {
+  if args.collapse_empty && args.alignment.alignment.is_empty() {
     return Err(argument_error(
-      &["prune_empty", "alignment"],
-      "The --prune-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations.",
+      &["collapse_empty", "alignment"],
+      "The --collapse-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations.",
     ));
   }
 
@@ -204,29 +196,9 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   Ok(())
 }
 
-fn parse_node_names(
-  prune_nodes_list: Option<&str>,
-  prune_nodes_list_delimiter: char,
-  prune_nodes_list_file: Option<&PathBuf>,
-  prune_nodes_list_file_delimiter: char,
-) -> Result<BTreeSet<String>, Report> {
-  let mut node_names = btreeset! {};
-
-  if let Some(prune_nodes_list) = prune_nodes_list {
-    node_names.extend(name_list_read_str(
-      prune_nodes_list,
-      ascii_delimiter(prune_nodes_list_delimiter)?,
-    )?);
-  }
-
-  if let Some(prune_nodes_list_file) = prune_nodes_list_file {
-    node_names.extend(name_list_read_file(
-      prune_nodes_list_file,
-      ascii_delimiter(prune_nodes_list_file_delimiter)?,
-    )?);
-  }
-
-  Ok(node_names)
+fn node_names_to_remove(remove: &[String], remove_file: Option<&Path>) -> Result<BTreeSet<String>, Report> {
+  let from_file = remove_file.map(|path| name_list_read_file(path, b'\n')).transpose()?;
+  Ok(remove.iter().cloned().chain(from_file.into_iter().flatten()).collect())
 }
 
 pub(crate) fn resolve_node_names(
@@ -239,11 +211,4 @@ pub(crate) fn resolve_node_names(
     .iter()
     .filter_map(|name| node_of.get(name.as_str()).copied())
     .collect()
-}
-
-fn ascii_delimiter(delimiter: char) -> Result<u8, Report> {
-  u8::try_from(delimiter)
-    .ok()
-    .filter(u8::is_ascii)
-    .ok_or_else(|| make_report!("the delimiter must be an ASCII character, got '{delimiter}'"))
 }

@@ -134,12 +134,7 @@ impl AppCommandExt for AppCommand {
         "no_indels",
         "max_iter",
       ],
-      Self::Prune => &[
-        "prune_short",
-        "prune_empty",
-        "merge_shared_mutations",
-        "prune_nodes_list",
-      ],
+      Self::Prune => &["collapse_short", "collapse_empty", "merge_shared_mutations", "remove"],
     }
   }
 

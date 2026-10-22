@@ -1993,13 +1993,12 @@ export const zPruneConfig = z.strictObject({
   topology_order_target_source: zTopologyOrderTargetSourceArg.optional(),
   topology_order_target_file: z.string().optional(),
   topology_order_target_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  prune_short: z.number().optional(),
-  prune_empty: z.boolean().optional(),
+  gap_fill: zGapFill.optional(),
+  collapse_short: z.number().optional(),
+  collapse_empty: z.boolean().optional(),
   merge_shared_mutations: z.boolean().optional(),
-  prune_nodes_list: z.string().optional(),
-  prune_nodes_list_delimiter: z.string().length(1).optional(),
-  prune_nodes_list_file: z.string().optional(),
-  prune_nodes_list_file_delimiter: z.string().length(1).optional()
+  remove: z.array(z.string()).optional(),
+  remove_file: z.string().optional()
 });
 
 /**

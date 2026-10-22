@@ -30,12 +30,12 @@ mod tests {
   fn test_run_config_reports_an_unknown_setting_as_the_cli_does() {
     let response = resolve(
       AppCommand::Timetree,
-      json!({ "tree": "t.nwk", "metadata": "m.tsv", "prune_short": 1 }),
+      json!({ "tree": "t.nwk", "metadata": "m.tsv", "collapse_short": 1 }),
     );
     assert_eq!(
       (
         json!("invalid"),
-        json!("invalid configuration: unknown field `prune_short`")
+        json!("invalid configuration: unknown field `collapse_short`")
       ),
       (response["status"].clone(), response["message"].clone())
     );

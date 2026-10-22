@@ -57,8 +57,8 @@ mod tests {
 
   #[test]
   fn test_source_parse_reads_exponent_without_fraction_as_number() {
-    let value = parse("prune_short: 1e-12\n").unwrap();
-    assert_eq!(json!({ "prune_short": 1e-12 }), value);
+    let value = parse("collapse_short: 1e-12\n").unwrap();
+    assert_eq!(json!({ "collapse_short": 1e-12 }), value);
   }
 
   mod helpers {

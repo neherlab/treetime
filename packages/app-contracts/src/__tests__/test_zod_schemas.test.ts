@@ -114,7 +114,7 @@ describe("zod_schemas command configs", () => {
   });
 
   test("prune config rejects a non-numeric branch length threshold", () => {
-    expect(zPruneConfig.safeParse({ prune_short: "short" }).success).toBe(false);
+    expect(zPruneConfig.safeParse({ collapse_short: "short" }).success).toBe(false);
   });
 });
 

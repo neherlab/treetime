@@ -104,7 +104,7 @@ mod tests {
         tree: TreeArgs {
           tree: Some(root.join("data/zika/20/tree.nwk")),
         },
-        prune_empty: true,
+        collapse_empty: true,
         output: OutputCoreArgs {
           output_all: Some(outdir.to_path_buf()),
           ..OutputCoreArgs::default()
@@ -139,8 +139,8 @@ mod tests {
         tree: TreeArgs {
           tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
         },
-        prune_empty: with_alignment,
-        prune_short: (!with_alignment).then_some(1e-3),
+        collapse_empty: with_alignment,
+        collapse_short: (!with_alignment).then_some(1e-3),
         output: OutputCoreArgs {
           output_all: Some(outdir.to_path_buf()),
           ..OutputCoreArgs::default()

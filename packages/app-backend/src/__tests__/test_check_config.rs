@@ -432,7 +432,7 @@ pub(crate) mod tests {
 
   #[test]
   fn test_check_config_schema_directive_selects_the_command() {
-    let text = format!("{}\ntree: t.nwk\nprune_empty: true\n", schema_directive("prune"));
+    let text = format!("{}\ntree: t.nwk\ncollapse_empty: true\n", schema_directive("prune"));
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Timetree,
       text,
@@ -446,7 +446,7 @@ pub(crate) mod tests {
     };
     assert_eq!(
       (AppCommand::Prune, json!(true)),
-      (command, config["prune_empty"].clone())
+      (command, config["collapse_empty"].clone())
     );
   }
 

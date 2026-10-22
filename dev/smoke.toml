@@ -602,17 +602,17 @@ selection = "all"
 
 [[prune]]
 variant = "default"
-args = "--prune-short=1e-6 --prune-empty --merge-shared-mutations"
+args = "--collapse-short=1e-6 --collapse-empty --merge-shared-mutations"
 
 [[prune]]
 variant = "short"
 datasets = ["flu/h3n2/20", "ebola/20"]
-args = "--prune-short=1e-6"
+args = "--collapse-short=1e-6"
 
 [[prune]]
 variant = "empty"
 datasets = ["flu/h3n2/20", "ebola/20"]
-args = "--prune-empty"
+args = "--collapse-empty"
 
 [[prune]]
 variant = "merge-shared"
@@ -620,19 +620,14 @@ datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--merge-shared-mutations"
 
 [[prune]]
-variant = "nodes-list"
+variant = "remove"
 datasets = ["ebola/20"]
-args = "--prune-nodes-list=EM_079497,G3770"
+args = "--remove=EM_079497,G3770"
 
 [[prune]]
-variant = "nodes-list-delimiter"
+variant = "remove-file"
 datasets = ["ebola/20"]
-args = "--prune-nodes-list=EM_079497;G3770 --prune-nodes-list-delimiter=;"
-
-[[prune]]
-variant = "nodes-list-file"
-datasets = ["ebola/20"]
-args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
+args = "--remove-file={dataset}/prune-nodes.txt"
 
 
 [[timetree]]

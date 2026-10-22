@@ -1,6 +1,7 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
+use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelectionArgs};
@@ -111,19 +112,24 @@ pub struct TreetimePruneArgsRaw {
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
-  /// Threshold value for pruning of branches
-  ///
-  /// If set, prune branches with a length below this value
-  #[cfg_attr(feature = "clap", clap(long, value_name = "THRESHOLD", help_heading = "Pruning"))]
-  pub prune_short: Option<f64>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub gap_fill_args: GapFillArgs,
 
-  /// Prune empty branches
+  /// Collapse branches shorter than this length
   ///
-  /// If set, prune any branch that does not have a mutation or other state transition mapped to it.
+  /// Removes each internal branch with a length below LEN and attaches the children of its node to the parent node.
+  #[cfg_attr(feature = "clap", clap(long, value_name = "LEN", help_heading = "Pruning"))]
+  pub collapse_short: Option<f64>,
+
+  /// Collapse branches without mutations
+  ///
+  /// Removes each internal branch that has no mutation or other state transition mapped to it.
   ///
   /// Requires --alignment
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Pruning"))]
-  pub prune_empty: bool,
+  pub collapse_empty: bool,
 
   /// Merge branches in polytomies that share identical mutations
   ///
@@ -136,44 +142,21 @@ pub struct TreetimePruneArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Pruning"))]
   pub merge_shared_mutations: bool,
 
-  /// List of node names to prune
+  /// Names of nodes to remove from the tree
   ///
-  /// List of node names to remove from the tree, comma-separated (,)
-  ///
-  /// Surrounding whitespace is trimmed and empty names are ignored. Use --prune-nodes-list-delimiter to specify a different delimiter.
-  #[cfg_attr(feature = "clap", clap(long, value_name = "NODE_NAMES", help_heading = "Pruning"))]
-  pub prune_nodes_list: Option<String>,
-
-  /// Name separator for `--prune-nodes-list`
-  ///
-  /// String used to separate node names in the list given to (--prune-nodes-list). Make sure to correctly quote and escape the delimiter according to your shell.
+  /// Accepts several names, separated by commas or spaces.
   #[cfg_attr(
     feature = "clap",
-    clap(long, default_value = ",", value_name = "DELIMITER", help_heading = "Pruning")
+    clap(long, num_args = 1.., value_delimiter = ',', value_name = "NAME", help_heading = "Pruning")
   )]
-  #[default = ',']
-  pub prune_nodes_list_delimiter: char,
+  pub remove: Vec<String>,
 
-  /// File containing list of node names to prune
+  /// File with names of nodes to remove from the tree, one name per line
   ///
-  /// Path to a file containing node names to remove from the tree, newline-delimited (\n). Surrounding whitespace is trimmed and empty names are ignored.
-  ///
-  /// Use '-' to read from standard input (stdin).
-  ///
-  /// Use --prune-nodes-list-file-delimiter to specify a different delimiter.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, value_name = "FILEPATH", help_heading = "Pruning"))]
+  /// Surrounding whitespace is trimmed and empty lines are ignored. Use '-' to read from standard input (stdin).
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, value_name = "FILE", help_heading = "Pruning"))]
   #[schemars(extend("x-path" = "input"))]
-  pub prune_nodes_list_file: Option<PathBuf>,
-
-  /// Separator for node names in the list file
-  ///
-  /// Character or string used to separate node names in the list file.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value = "\n", value_name = "DELIMITER", help_heading = "Pruning")
-  )]
-  #[default = '\n']
-  pub prune_nodes_list_file_delimiter: char,
+  pub remove_file: Option<PathBuf>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(skip)]

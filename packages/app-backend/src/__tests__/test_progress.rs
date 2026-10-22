@@ -124,7 +124,7 @@ mod tests {
         AppCommand::Prune => json!({
           "tree": zika.join("tree.nwk"),
           "alignment": [zika.join("aln.fasta.xz")],
-          "prune_short": 1e-6,
+          "collapse_short": 1e-6,
           "output_all": outdir,
         }),
       }

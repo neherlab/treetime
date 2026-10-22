@@ -538,7 +538,7 @@ pub(crate) mod tests {
       &test,
       "POST",
       "/api/check-config",
-      Some(json!({ "command": "prune", "text": "tree: t.nwk\nprune_short: fast\n" })),
+      Some(json!({ "command": "prune", "text": "tree: t.nwk\ncollapse_short: fast\n" })),
     )
     .await;
     assert_eq!(

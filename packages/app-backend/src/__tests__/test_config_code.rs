@@ -91,7 +91,7 @@ mod tests {
   fn test_config_code_line_kinds() {
     let mut config = AppCommand::Prune.default_config().unwrap();
     config.extend(
-      json!({ "tree": "t.nwk", "prune_empty": true })
+      json!({ "tree": "t.nwk", "collapse_empty": true })
         .as_object()
         .unwrap()
         .clone(),
@@ -101,7 +101,7 @@ mod tests {
       vec![
         (CodeLineKind::Command, "treetime prune"),
         (CodeLineKind::Input, "--tree t.nwk"),
-        (CodeLineKind::Changed, "--prune-empty"),
+        (CodeLineKind::Changed, "--collapse-empty"),
         (CodeLineKind::Output, "--output-all out"),
       ],
       code
