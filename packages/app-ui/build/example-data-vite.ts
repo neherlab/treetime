@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { type DataIndex, zDataIndex } from "@neherlab/app-contracts";
+import type { DataIndex } from "@neherlab/app-contracts";
+import { zDataIndex } from "@neherlab/app-contracts/zod";
 import { convertPathToPattern } from "tinyglobby";
 import type { Plugin } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
