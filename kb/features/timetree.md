@@ -76,7 +76,7 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] Exact hazard integration across lineage arrivals and piecewise-constant merger-rate breakpoints
 - [x] Finite input, rate, event-plan, and parent-bound validation before graph mutation
 - [x] `--seed` for reproducible resolution; a generated seed is logged when none is given
-- [/] Remove obsolete single-child nodes after resolution (removes dated single-child nodes too: [kb/issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md](../issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md))
+- [x] Remove undated single-child nodes after resolution; a dated single-child node stays with its date constraint (v0 removes it: [kb/v0-errata/timetree-polytomy-cleanup-drops-dated-single-child-node.md](../v0-errata/timetree-polytomy-cleanup-drops-dated-single-child-node.md))
 - [x] Reconcile partition topology after tree change
 - [x] Resolution by default as in v0; `--keep-polytomies` turns it off
 - [ ] Greedy pairwise merging (v0's `--greedy-resolve`; v1 does not provide this method, and v0 deprecates it as unsuitable for large polytomies)
@@ -88,6 +88,8 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] Coupling parameter (parent-offspring rate correlation)
 - [x] Slack parameter (rate deviation penalty)
 - [x] Skip relaxed clock when total partition length is zero
+- [x] Fit each rate against the duration between the inferred node dates times the clock rate (v0 `clock_length`)
+- [x] Keep the fitted rate multiplier of every edge that polytomy resolution keeps; a new edge starts at 1.0, as in v0
 - [x] Use first two values as slack and coupling, with defaults when omitted
 - [x] `--relax` argument parsing (`num_args = 2` for slack and coupling)
 - [ ] Substitution rates output (`substitution_rates.tsv` in v0)

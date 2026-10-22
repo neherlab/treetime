@@ -140,5 +140,5 @@ sequence data, which is the point of a constrained step.
 
 - [timetree-convergence-on-node-times.md](timetree-convergence-on-node-times.md) -- the loop only
   iterates if the convergence criterion can see the movement this creates
-- [M-timetree-consumers-read-unconstrained-branch-lengths.md](../issues/M-timetree-consumers-read-unconstrained-branch-lengths.md)
-  -- `apply_relaxed_clock` and polytomy mutation counts still read the ML length
+- [M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md](../issues/M-timetree-polytomy-mutation-counts-read-unconstrained-branch-length.md)
+  -- polytomy mutation counts still read the ML length
