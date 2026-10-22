@@ -98,7 +98,3 @@ Use O1. Parser behavior such as dense/sparse mode, required outputs, and per-com
 ## Readiness
 
 Each behavioral item must first select its parse/runtime contract, and already-owned unused or unimplemented flags remain with their domain issues.
-
-## Related issues
-
-- [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags

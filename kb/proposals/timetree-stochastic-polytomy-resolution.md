@@ -239,9 +239,7 @@ be reproduced.
 **Signature.** `resolve_polytomies` loses `resolution_threshold`, `merge_compressed` and
 `clock_rate`; `zero_branch_slope` is renamed `mutation_rate`. `keep_polytomies` reaches
 `TimetreeParams`
-([packages/treetime/src/timetree/pipeline.rs#L59](../../packages/treetime/src/timetree/pipeline.rs#L59))
-and is then unused, as tracked in
-[kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md).
+([packages/treetime/src/timetree/pipeline.rs#L59](../../packages/treetime/src/timetree/pipeline.rs#L59)).
 
 ### Strategy selection
 
@@ -297,8 +295,6 @@ characterise the change in resolved topology.
 - [kb/v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md](../v0-errata/timetree-stochastic-resolve-rate-selection-mismatch.md)
 - [kb/v0-errata/timetree-stochastic-resolve-event-past-parent.md](../v0-errata/timetree-stochastic-resolve-event-past-parent.md)
 - [kb/v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md](../v0-errata/timetree-stochastic-resolve-skipped-arrival-interval.md)
-- [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md) --
-  `--keep-polytomies`
 - [kb/features/timetree.md](../features/timetree.md) -- polytomy resolution checklist
 - [kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md) --
   the `optimize` loop's polytomy handling, which also uses `Graph::reparent_edge`
