@@ -2,7 +2,7 @@
 
 The marginal time inference gives different node times in dense and in sparse mode for the same tree, alignment, clock rate, and indel policy. With JC69 and no per-site rates, the two modes compute the same branch-length likelihood and should give the same node times.
 
-`test_gm_runner_marginal_sparse_dense_consistency` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25) runs v1 dense and v1 sparse on the same inputs and compares their node times. On `flu_h3n2_20` it passes at `epsilon = 1e-3` (largest difference $7.3 \cdot 10^{-4}$ years at `NODE_0000015`); on the other datasets of the fixtures the modes differ by 0.07 to 1.1 years, so the test holds only the flu case.
+`test_gm_runner_marginal_sparse_dense_consistency` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25) runs v1 dense and v1 sparse on the same inputs and compares their node times. On `flu_h3n2_20` it passes at `epsilon = 1e-2` (largest difference $4.1 \cdot 10^{-3}$ years at `NODE_0000011`); on the other datasets of the fixtures the modes differ by 0.07 to 1.2 years, so the test holds only the flu case. The node time is the grid point with the largest posterior density, and the two modes build different posterior grids, so on `flu_h3n2_20` the test measures mostly the grid cell of about $6.4 \cdot 10^{-3}$ years (see Evidence).
 
 On `rust` at `3825359a2`, one CLI comparison confirms the difference on the default path: `timetree` on `data/ebola/20` with `--clock-rate=0.001 --keep-root --model=jc69 --seed=1` gives node dates that differ by up to 0.0495 years (at `NODE_0000013`) between `--dense=true` and `--dense=false`. That run includes the ML branch-length pre-step, so it does not separate the pre-step from the time inference.
 
@@ -12,21 +12,27 @@ Sparse is the default representation, because `fn infer_dense()` always returns 
 
 ## Measurements
 
-Largest node-time difference between the modes, in years, measured with the inputs of the `test_gm_runner` fixtures (the v0-rerooted tree and clock rate of `gm_runner_outputs.json`) on an unmerged stack of 2026-10-18 with an exact mass model and the v0 grid rule of the FFT convolution (commit `fda9ba5e6`). On the code of 2026-10-20 `flu_h3n2_20` differs by $7.3 \cdot 10^{-4}$ years and the other datasets by 0.07 to 1.1 years; the per-dataset values below are not remeasured:
+Largest node-time difference between the modes, in years, measured with the inputs of the `test_gm_runner` fixtures (the v0-rerooted tree and clock rate of `gm_runner_outputs.json`), JC69, no coalescent prior. "Node time" is the time the test compares (the grid argmax of the posterior, not earlier than the parent); "median" is the largest difference of the posterior medians, which does not depend on the grid. Code: `df43a205d` (trapezoid rule in the convolutions); in parentheses the same measurement on `rust` at `f4bd506d0` (rectangle sums), where it differs:
 
-| Dataset | Include indels | Exclude indels | Node |
-| --- | --- | --- | --- |
-| `flu_h3n2_20` | 4.9e-4 | 4.9e-4 | `NODE_0000013` |
-| `ebola_20` | 0.065 | 0.098 | `NODE_0000014` |
-| `tb_20` | 0.229 | 0.229 | `NODE_0000007` |
-| `dengue_20` | 0.438 | 0.462 | `NODE_0000001` |
-| `rsv_a_20` | 0.697 | 0.722 | `NODE_0000009` |
-| `lassa_L_20` | 1.321 | 1.325 | `NODE_0000005` |
+| Dataset | Node time, include indels | Node time, exclude indels | Node | Median, include indels | Median, exclude indels |
+| --- | --- | --- | --- | --- | --- |
+| `flu_h3n2_20` | 4.1e-3 (7.3e-4) | 4.1e-3 (7.3e-4) | `NODE_0000011` (`NODE_0000015`) | 7.4e-4 (4.2e-4) | 7.4e-4 (4.2e-4) |
+| `ebola_20` | 0.070 (0.071) | 0.099 (0.096) | `NODE_0000014` | 0.069 | 0.097 (0.098) |
+| `tb_20` | 0.237 (0.238) | 0.237 (0.238) | `NODE_0000007` | 0.235 (0.262) | 0.235 (0.262) |
+| `dengue_20` | 0.605 (0.576) | 0.626 (0.627) | `NODE_0000001` | 0.575 | 0.582 |
+| `rsv_a_20` | 0.681 (0.692) | 0.721 (0.713) | `NODE_0000009` | 0.688 | 0.698 |
+| `lassa_L_20` | 0.975 (0.931) | 1.167 (1.106) | `NODE_0000005` | 1.046 (0.971) | 0.995 (0.964) |
 
 - `mpox_clade_ii_20` exceeds the 300 s test timeout for the dense and the sparse run together
 - `zika_20` fails while reading the dates, before inference (see [M-timetree-date-header-hash.md](M-timetree-date-header-hash.md))
 
 ## Evidence
+
+The time passes read the two modes only through their branch-length distributions: on every dataset of the table, both indel policies, and both code states above, the sparse setup run with the dense branch-length distributions gives the dense node times exactly, and the dense setup run with the sparse distributions gives the sparse node times exactly (difference 0). The whole difference therefore comes from the branch-length distributions of the two partitions.
+
+The node time is the grid point with the largest posterior density (`fn likely_time()` [packages/treetime-distribution/src/distribution_core/function.rs#L297-L314](../../packages/treetime-distribution/src/distribution_core/function.rs#L297-L314)). The two modes have slightly different branch-length optima, so their posterior grids differ in start and spacing. On `flu_h3n2_20` at `df43a205d`, the posterior of `NODE_0000011` has 631 points with spacing $6.350 \cdot 10^{-3}$ in dense mode and 629 points with spacing $6.366 \cdot 10^{-3}$ in sparse mode. Its peaks, from a parabola through the three largest grid values, lie at 2006.70080 and 2006.70092, $1.2 \cdot 10^{-4}$ apart, and its medians are $4 \cdot 10^{-5}$ apart, but the grid argmaxes are 2006.70233 and 2006.69825, $4.1 \cdot 10^{-3}$ apart. On flu the difference of the test is therefore mostly the position of the peak between grid points, and it can reach one grid cell plus the continuous difference.
+
+The trapezoid rule in the convolutions changes how strongly the per-edge difference shows. On `flu_h3n2_20` the largest median difference grows from $4.2 \cdot 10^{-4}$ (`f4bd506d0`) to $7.4 \cdot 10^{-4}$ years (`df43a205d`); on the other five datasets the median differences change by at most 11%, in both directions. Replacing one sparse branch-length distribution at a time by the dense one locates the edges that move the node of the largest difference. At `df43a205d`, the edge to the tip `A/New_Hampshire/12/2012` alone moves the grid argmax of `NODE_0000011` by $4.2 \cdot 10^{-3}$ years but its parabolic peak by $7.6 \cdot 10^{-5}$ and its median by $9 \cdot 10^{-6}$. On the four edges whose replacement moves the grid argmax of `NODE_0000011` most, the two modes differ most at branch length 0, the hard end of the grid (peak-normalized negative log-likelihood differences of $2.8 \cdot 10^{-4}$ to 0.12 at length 0, below $3 \cdot 10^{-6}$ at the peak). The trapezoid rule gives that end sample half the weight of the rectangle sum, so the end weights do not amplify the difference at the hard end.
 
 Per-edge log-likelihoods of the two partitions, JC69, one `marginal_update` at the tree's branch lengths, on the 4-sequence, 40-site alignment `POLYTOMY_ALIGNMENT` of `packages/treetime/src/partition/__tests__/test_set.rs`: the whole-tree log-likelihoods agree within $10^{-12}$, but the per-edge log-likelihoods (`evaluate_with_indels_log_lh_only` at the branch lengths 0.001, 0.01 and 0.1) do not. Sparse minus dense:
 
