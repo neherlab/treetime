@@ -1568,6 +1568,11 @@
             "$ref": "#/components/schemas/SparseConfig",
             "default": {}
           },
+          "replace_inputs": {
+            "description": "Input settings whose values replace the paths that the text sets, for example the uploaded copies of the files\nthat an example configuration reads. The replaced values pass the same checks as the text, and paths in\n`replace_inputs` stay as they are. With replacements, the text is checked as the YAML document with the\nreplaced values and without its comments, and the places of problems refer to that document.",
+            "$ref": "#/components/schemas/SparseConfig",
+            "default": {}
+          },
           "input_facts": {
             "description": "Facts about the input files, from `check-inputs`, for the checks that depend on them.",
             "$ref": "#/components/schemas/InputFacts",
@@ -5569,6 +5574,200 @@
         },
         "required": [
           "commands"
+        ]
+      },
+      "IndexedFile": {
+        "description": "A tracked file of the data folder.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path relative to the data folder.",
+            "type": "string"
+          },
+          "size": {
+            "description": "Size in bytes.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "size"
+        ]
+      },
+      "IndexedDataset": {
+        "description": "A folder of the data folder that holds a `tree.nwk`.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Path of the folder relative to the data folder.",
+            "type": "string"
+          },
+          "inputs": {
+            "description": "The files of the folder that fill command inputs, at most one per kind. A compressed file fills the input of its\nuncompressed name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexedInput"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "inputs"
+        ]
+      },
+      "IndexedInput": {
+        "description": "A file of a dataset that fills a command input.",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "Input the file fills.",
+            "$ref": "#/components/schemas/InputKind"
+          },
+          "path": {
+            "description": "Path of the file relative to the data folder.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "path"
+        ]
+      },
+      "IndexedConfig": {
+        "description": "An example configuration of one command.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file relative to the data folder.",
+            "type": "string"
+          },
+          "command": {
+            "description": "Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.",
+            "$ref": "#/components/schemas/AppCommand"
+          },
+          "title": {
+            "description": "Title of the example: the first comment line after the directive.",
+            "type": "string"
+          },
+          "folder": {
+            "description": "Folder of the file relative to the data folder, which relative paths in the file resolve from.",
+            "type": "string"
+          },
+          "content": {
+            "description": "Text of the file.",
+            "type": "string"
+          },
+          "inputs": {
+            "description": "The files that each input setting of the configuration reads, relative to the data folder, by setting key.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "command",
+          "title",
+          "folder",
+          "content",
+          "inputs"
+        ]
+      },
+      "IndexedPipeline": {
+        "description": "An example pipeline configuration.",
+        "type": "object",
+        "properties": {
+          "path": {
+            "description": "Path of the file relative to the data folder.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title of the example: the first comment line after the directive.",
+            "type": "string"
+          },
+          "steps": {
+            "description": "Steps of the pipeline, in the order they run.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexedStep"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "title",
+          "steps"
+        ]
+      },
+      "IndexedStep": {
+        "description": "One step of an example pipeline.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Name of the step.",
+            "type": "string"
+          },
+          "command": {
+            "description": "Command the step runs.",
+            "$ref": "#/components/schemas/AppCommand"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "command"
+        ]
+      },
+      "DataIndex": {
+        "description": "Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example\nconfigurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`\nseparators. The apps read the example data only through this index.",
+        "type": "object",
+        "properties": {
+          "files": {
+            "description": "Every tracked file of the data folder except the index itself, sorted by path.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexedFile"
+            }
+          },
+          "datasets": {
+            "description": "Folders that hold a `tree.nwk`, with the files that fill command inputs, sorted by name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexedDataset"
+            }
+          },
+          "configs": {
+            "description": "Example configurations of the commands the application runs, sorted by path.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexedConfig"
+            }
+          },
+          "pipelines": {
+            "description": "Example pipeline configurations, sorted by path.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IndexedPipeline"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "files",
+          "datasets",
+          "configs",
+          "pipelines"
         ]
       },
       "BranchLengthMode": {
