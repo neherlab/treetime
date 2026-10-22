@@ -1454,7 +1454,6 @@ export const zTimetreeConfig = z.strictObject({
   confidence: z.boolean().optional(),
   max_grid_points: z.int().gte(1000).optional(),
   keep_polytomies: z.boolean().optional(),
-  resolve_polytomies: z.boolean().optional(),
   relax: z.array(z.number()).optional(),
   max_iter: z.int().gte(0).optional(),
   coalescent: z.union([

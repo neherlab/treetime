@@ -668,27 +668,8 @@
             "KEEP_POLYTOMIES"
           ],
           "conflicts": [],
-          "help": "Don't resolve polytomies using temporal information.",
-          "more": ""
-        },
-        {
-          "key": "resolve_polytomies",
-          "label": "Resolve polytomies",
-          "flag": "--resolve-polytomies",
-          "group": "Polytomies",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "RESOLVE_POLYTOMIES"
-          ],
-          "conflicts": [],
-          "help": "Resolve polytomies using temporal information",
-          "more": ""
+          "help": "Keep the polytomies of the input tree",
+          "more": "Without this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is stochastic: the run logs the seed it draws, and `--seed` reproduces the run."
         },
         {
           "key": "coalescent",

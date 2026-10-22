@@ -23,10 +23,10 @@ mod tests {
   use treetime_io::nwk::nwk_read_file;
 
   #[rstest]
-  #[case::rerooted(false)]
-  #[case::rerooted_and_resolved(true)]
+  #[case::rerooted(true)]
+  #[case::rerooted_and_resolved(false)]
   #[trace]
-  fn test_timetree_names_every_node_the_same_in_every_output(#[case] resolve_polytomies: bool) -> Result<(), Report> {
+  fn test_timetree_names_every_node_the_same_in_every_output(#[case] keep_polytomies: bool) -> Result<(), Report> {
     let output = tempfile::tempdir()?;
     let data = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/zika/20");
     let raw = TreetimeTimetreeArgsRaw {
@@ -49,7 +49,7 @@ mod tests {
         ],
       },
       confidence: true,
-      resolve_polytomies,
+      keep_polytomies,
       seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
     };

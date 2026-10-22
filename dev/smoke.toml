@@ -699,13 +699,13 @@ args = "--keep-polytomies"
 [[timetree]]
 variant = "resolve-polytomies"
 datasets = ["flu/h3n2/20", "ebola/20"]
-args = "--resolve-polytomies --max-iter=3"
+args = "--max-iter=3"
 
 # Polytomy resolution on a tree with a single-child node
 [[timetree]]
 variant = "resolve-polytomies-single-child"
 datasets = ["flu/h3n2/20"]
-args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk --resolve-polytomies"
+args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk"
 
 # A fixed clock rate far below the substitution rate places the root before 1 CE
 [[timetree]]
@@ -814,7 +814,7 @@ args = "--max-iter=4"
 [[timetree]]
 variant = "coal-polytomy"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent=10y --resolve-polytomies --max-iter=3"
+args = "--coalescent=10y --max-iter=3"
 
 [[timetree]]
 variant = "coal-opt-confidence"

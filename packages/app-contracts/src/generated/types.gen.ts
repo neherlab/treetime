@@ -2832,13 +2832,12 @@ export type TimetreeConfig = {
    */
   max_grid_points?: number;
   /**
-   * Don't resolve polytomies using temporal information.
+   * Keep the polytomies of the input tree
+   *
+   * Without this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is
+   * stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
    */
   keep_polytomies?: boolean;
-  /**
-   * Resolve polytomies using temporal information
-   */
-  resolve_polytomies?: boolean;
   /**
    * use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
    * deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0

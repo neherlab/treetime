@@ -25,6 +25,7 @@ mod tests {
       &format!("--alignment={}", alignment.display()),
       &format!("--metadata={}", metadata.display()),
       &format!("--output-all={}", dir.path().display()),
+      "--seed=7",
     ])?;
     let args = TreetimeTimetreeArgs::try_from(raw)?;
 

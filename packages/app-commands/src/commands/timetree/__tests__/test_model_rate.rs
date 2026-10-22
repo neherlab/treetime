@@ -6,6 +6,7 @@ mod tests {
   use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::representation::RepresentationArgs;
+  use crate::commands::shared::seed::SeedArgs;
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
@@ -47,6 +48,7 @@ output: OutputCoreArgs {
         ..OutputCoreArgs::default()
       },
 output_selection: TimetreeOutputSelectionArgs { output_selection: vec![TimetreeOutputSelection::Gtr, TimetreeOutputSelection::ClockModel] },
+seed_args: SeedArgs { seed: Some(7) },
 ..TreetimeTimetreeArgsRaw::default()
 })?;
 
@@ -141,6 +143,7 @@ output_selection: TimetreeOutputSelectionArgs { output_selection: vec![TimetreeO
         output_selection: TimetreeOutputSelectionArgs {
           output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
         },
+        seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
       })?;
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;

@@ -5959,14 +5959,9 @@
             "x-cli-flag": "--max-grid-points"
           },
           "keep_polytomies": {
-            "description": "Don't resolve polytomies using temporal information.",
+            "description": "Keep the polytomies of the input tree\n\nWithout this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is\nstochastic: the run logs the seed it draws, and `--seed` reproduces the run.",
             "type": "boolean",
             "x-cli-flag": "--keep-polytomies"
-          },
-          "resolve_polytomies": {
-            "description": "Resolve polytomies using temporal information",
-            "type": "boolean",
-            "x-cli-flag": "--resolve-polytomies"
           },
           "relax": {
             "description": "use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate\ndeviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0\n0.5. Values around 1.0 correspond to weak priors, larger values constrain rate deviations more\nstrongly. Coupling 0 (--relax 1.0 0) corresponds to an un-correlated clock.",

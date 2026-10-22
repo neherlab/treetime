@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs};
+  use crate::commands::shared::seed::SeedArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::branch_length_mode::BranchLengthModeCli;
   use crate::commands::timetree::run::run_timetree_estimation;
@@ -152,6 +153,7 @@ mod tests {
           report_ambiguous,
           ..TipSequenceArgs::default()
         },
+        seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
       };
       configure(&mut raw);

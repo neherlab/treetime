@@ -71,7 +71,7 @@ pub fn run_timetree_estimation(
   let mut trace_sink = TimetreeTraceSink::new(resolved.path(OutputSelection::Tracelog), stages)?;
   let seed = args
     .seed_args
-    .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
+    .resolve((!args.keep_polytomies).then_some("Polytomy resolution"), log);
   let reroot_spec = args.reroot.spec(&args.rooting, &input_data.graph, &input_data.names)?;
   let params = timetree_params(args, branch_length_mode, reroot_spec, sequence_outputs_requested, seed);
 
@@ -155,7 +155,7 @@ fn timetree_params(
     allow_negative_rate: args.clock_filter.allow_negative_rate,
     clock_filter: args.clock_filter.clock_filter,
     max_iter: args.max_iter,
-    resolve_polytomies: args.resolve_polytomies,
+    resolve_polytomies: !args.keep_polytomies,
     relax: args.relax.clone(),
     coalescent: args.coalescent.map_or(CoalescentMode::Disabled, CoalescentArg::mode),
     skyline_n_points: args.skyline_n_points,

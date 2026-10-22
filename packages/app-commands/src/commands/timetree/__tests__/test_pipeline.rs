@@ -4,6 +4,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
+  use crate::commands::shared::seed::SeedArgs;
   use crate::commands::shared::topology_order_args::{TopologyOrderArg, TopologyOrderArgs};
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
@@ -40,6 +41,7 @@ mod tests {
         ..Default::default()
       },
       output_tracelog: Some(tracelog_path.clone()),
+      seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
     })
     .unwrap();
@@ -119,6 +121,7 @@ mod tests {
         topology_order: Some(TopologyOrderArg::DescendantCountReverse),
         ..TopologyOrderArgs::default()
       },
+      seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
     })
     .unwrap();
@@ -153,6 +156,7 @@ mod tests {
         ..Default::default()
       },
       output_coalescent_json: Some(output.path().join("timetree.coalescent.json")),
+      seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()
     })
     .unwrap();
@@ -233,6 +237,7 @@ mod tests {
           output_all: Some(output.path().to_path_buf()),
           ..Default::default()
         },
+        seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
       })?;
 

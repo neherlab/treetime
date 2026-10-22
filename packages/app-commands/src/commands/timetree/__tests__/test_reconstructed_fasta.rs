@@ -149,6 +149,7 @@ mod tests {
     use crate::__tests__::test_support::tests::project_root;
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+    use crate::commands::shared::seed::SeedArgs;
     use crate::commands::shared::tree_input::TreeArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
@@ -196,6 +197,7 @@ mod tests {
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {
           output_reconstructed_nuc_fasta: Some(fasta.clone()),
         },
+        seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
       })
       .unwrap();

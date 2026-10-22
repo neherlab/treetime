@@ -194,13 +194,12 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Dating"))]
   pub max_grid_points: Option<MaxGridPoints>,
 
-  /// Don't resolve polytomies using temporal information.
+  /// Keep the polytomies of the input tree
+  ///
+  /// Without this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is
+  /// stochastic: the run logs the seed it draws, and `--seed` reproduces the run.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
   pub keep_polytomies: bool,
-
-  /// Resolve polytomies using temporal information
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Polytomies"))]
-  pub resolve_polytomies: bool,
 
   /// use an autocorrelated molecular clock. Strength of the gaussian priors on branch specific rate
   /// deviation and the coupling of parent and offspring rates can be specified e.g. as --relax 1.0

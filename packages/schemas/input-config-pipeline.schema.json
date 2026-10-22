@@ -372,20 +372,7 @@
         "keep_polytomies": {
           "anyOf": [
             {
-              "description": "Don't resolve polytomies using temporal information.",
-              "type": "boolean",
-              "default": false
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
-        },
-        "resolve_polytomies": {
-          "anyOf": [
-            {
-              "description": "Resolve polytomies using temporal information",
+              "description": "Keep the polytomies of the input tree\n\nWithout this flag, each polytomy is resolved into binary mergers by the node dates. The resolution is\nstochastic: the run logs the seed it draws, and `--seed` reproduces the run.",
               "type": "boolean",
               "default": false
             },
