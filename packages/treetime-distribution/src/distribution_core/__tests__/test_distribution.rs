@@ -4,7 +4,7 @@ mod tests {
   use crate::policy::{NegLog, Plain};
   use crate::{Distribution, DistributionFunction};
   use eyre::Report;
-  use ndarray::array;
+  use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::{assert_error, make_error, pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
@@ -25,6 +25,70 @@ mod tests {
       Some((0.0, 2.0)),
       Distribution::<Plain>::range((0.0, 2.0), 3.0).time_bounds()
     );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::equal_densities(               array![3.0, 3.0],                      true)]
+  #[case::densities_within_rounding(     array![1.0, 1.0 + 2.0 * f64::EPSILON], true)]
+  #[case::tiny_densities_that_differ(    array![1e-20, 2e-20],                  false)]
+  #[case::zero_and_tiny_density(         array![0.0, 1e-300],                   false)]
+  #[trace]
+  fn test_distribution_plain_function_of_two_equal_values_is_a_range(
+    #[case] y: Array1<f64>,
+    #[case] is_range: bool,
+  ) -> Result<(), Report> {
+    let x = array![0.0, 1.0];
+    let expected = if is_range {
+      Distribution::<Plain>::range((0.0, 1.0), y[1])
+    } else {
+      Distribution::Function(DistributionFunction::from_range_values((0.0, 1.0), y.clone())?)
+    };
+    let actual = Distribution::<Plain>::function(x, y)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::peak_and_rounding_above_it(     array![0.0, 1e-15],                    true)]
+  #[case::large_values_within_rounding(   array![1000.0, 1000.0 + 1e-13],        true)]
+  #[case::zero_probability_at_both_ends(  array![f64::INFINITY, f64::INFINITY],  true)]
+  #[case::distinct_probabilities(         array![0.0, 1e-12],                    false)]
+  #[case::zero_probability_at_one_end(    array![0.0, f64::INFINITY],            false)]
+  #[trace]
+  fn test_distribution_neglog_function_of_two_equal_probabilities_is_a_range(
+    #[case] y: Array1<f64>,
+    #[case] is_range: bool,
+  ) -> Result<(), Report> {
+    let x = array![0.0, 1.0];
+    let expected = if is_range {
+      Distribution::<NegLog>::range((0.0, 1.0), y[1])
+    } else {
+      Distribution::Function(DistributionFunction::from_range_values((0.0, 1.0), y.clone())?)
+    };
+    let actual = Distribution::<NegLog>::function(x, y)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::at_the_point(               2015.5,                  5.0)]
+  #[case::within_rounding_of_a_date(  2015.5 + 1e-12,          5.0)]
+  #[case::beyond_rounding_of_a_date(  2015.5 + 1e-11,          0.0)]
+  #[trace]
+  fn test_distribution_point_eval_at_a_date(#[case] t: f64, #[case] expected: f64) -> Result<(), Report> {
+    let actual = Distribution::<Plain>::point(2015.5, 5.0).eval(t)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_distribution_point_at_zero_is_zero_at_a_tiny_nonzero_time() -> Result<(), Report> {
+    let actual = Distribution::<Plain>::point(0.0, 5.0).eval(1e-17)?;
+    assert_eq!(0.0, actual);
+    Ok(())
   }
 
   #[test]

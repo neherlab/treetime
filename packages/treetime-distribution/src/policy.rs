@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
+const MAX_VALUE_ULPS: f64 = 10.0;
+
 pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync + 'static {
   fn from_plain(p: f64) -> f64;
   fn to_plain(y: f64) -> f64;
@@ -16,6 +18,8 @@ pub trait YAxisPolicy: Clone + Copy + Debug + Default + PartialEq + Send + Sync 
   fn to_neg_log(y: f64) -> f64;
 
   fn from_neg_log(nl: f64) -> f64;
+
+  fn same_value(a: f64, b: f64) -> bool;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -62,6 +66,10 @@ impl YAxisPolicy for Plain {
   fn from_neg_log(nl: f64) -> f64 {
     (-nl).exp()
   }
+
+  fn same_value(a: f64, b: f64) -> bool {
+    values_coincide(a, b, a.abs().max(b.abs()))
+  }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NegLog;
@@ -106,6 +114,10 @@ impl YAxisPolicy for NegLog {
   fn from_neg_log(nl: f64) -> f64 {
     nl
   }
+
+  fn same_value(a: f64, b: f64) -> bool {
+    values_coincide(a, b, a.abs().max(b.abs()).max(1.0))
+  }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -115,4 +127,8 @@ impl<Y: YAxisPolicy> PolicyMarker<Y> {
   pub(crate) fn new() -> Self {
     Self(PhantomData)
   }
+}
+
+fn values_coincide(a: f64, b: f64, scale: f64) -> bool {
+  a == b || (a.is_finite() && b.is_finite() && (a - b).abs() <= MAX_VALUE_ULPS * f64::EPSILON * scale)
 }

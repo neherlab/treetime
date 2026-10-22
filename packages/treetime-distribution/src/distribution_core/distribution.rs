@@ -4,14 +4,13 @@ use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::negate::distribution_negation;
 use crate::policy::{NegLog, Plain, YAxisPolicy};
-use approx::ulps_eq;
 use eyre::{Report, WrapErr};
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use std::fmt::Debug;
 use strum_macros::Display;
-use treetime_grid::{BoundaryBehavior, Side};
+use treetime_grid::{BoundaryBehavior, Side, coordinates_coincide};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
@@ -58,7 +57,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       return Ok(Self::point(x[0], y[0]));
     }
 
-    if x.len() == 2 && ulps_eq!(y[0], y[1], max_ulps = 10) {
+    if x.len() == 2 && Y::same_value(y[0], y[1]) {
       return Ok(Self::range((x[0], x[1]), y[1]));
     }
 
@@ -149,7 +148,7 @@ impl<Y: YAxisPolicy> Distribution<Y> {
       Self::Function(f) => f.interp(t),
       Self::Formula(f) => f.eval_single(t),
       Self::Point(p) => {
-        if ulps_eq!(t, p.t(), max_ulps = 10) {
+        if coordinates_coincide(t, p.t(), t.abs().max(p.t().abs())) {
           Ok(p.amplitude())
         } else {
           Ok(Y::probability_zero())

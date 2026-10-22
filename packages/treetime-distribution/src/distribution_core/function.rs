@@ -1,5 +1,4 @@
 use crate::policy::{Plain, PolicyMarker, YAxisPolicy};
-use approx::UlpsEq;
 use eyre::Report;
 use ndarray::Array1;
 use ndarray_stats::QuantileExt;
@@ -33,7 +32,7 @@ impl<T: InterpElem, Y: YAxisPolicy> PartialEq for DistributionFunction<T, Y> {
 impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   pub(crate) fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let grid_fn = GridFn::from_arrays(x, y)?;
     Ok(Self::from_grid_fn(grid_fn))
@@ -130,14 +129,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub(crate) fn interp(&self, x: T) -> Result<T, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     Ok(Y::multiply(self.ampl.into(), self.interp_stored(x)?.into()).into())
   }
 
   pub(crate) fn interp_many(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let values = xs.iter().map(|&q| self.interp(q)).collect::<Result<Vec<T>, Report>>()?;
     Ok(Array1::from_vec(values))
@@ -145,7 +144,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub(crate) fn interp_stored(&self, x: T) -> Result<T, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let val = self
       .grid_fn
@@ -159,7 +158,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub(crate) fn interp_many_stored(&self, xs: &Array1<T>) -> Result<Array1<T>, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let values = xs
       .iter()
@@ -219,7 +218,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   fn resample(&self, grid: &Grid<T>) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let grid_fn = self
       .grid_fn
@@ -234,7 +233,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub(crate) fn resample_range_n_points(&self, x_range: (T, T), n_points: usize) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let grid = Grid::from_range_n_points(x_range.0, x_range.1, n_points)?;
     self.resample(&grid)
@@ -249,7 +248,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   )]
   pub fn resample_range_dx(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
     self.resample(&grid)
@@ -257,7 +256,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let grid_fn = self.grid_fn.resample_range_dx_clamped(x_range, dx, max_points)?;
     Ok(Self::from_grid_fn_with_extrap(
@@ -270,7 +269,7 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
 
   pub(crate) fn resample_dx(&self, dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, max_points)
   }

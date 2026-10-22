@@ -2,7 +2,6 @@ use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
 use crate::distribution_ops::time_bounds::distribution_support_n_points;
 use crate::policy::NegLog;
 use crate::{Distribution, DistributionFunction};
-use approx::ulps_eq;
 use eyre::Report;
 use itertools::Either;
 use ndarray::{Array1, s};
@@ -197,7 +196,7 @@ impl TrimCuts<'_> {
         Some(law) => BoundaryBehavior::Linear(law),
         None => return make_internal_error!("Mass trim cut at grid point {index} has no representable tail"),
       },
-      BoundaryBehavior::HardApproach(law) if ulps_eq!(law.t_hard, self.t[index], max_ulps = 4) => extrap,
+      BoundaryBehavior::HardApproach(law) if self.grid_fn.coincides(law.t_hard, self.t[index]) => extrap,
       BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => BoundaryBehavior::Hard,
     })
   }

@@ -21,7 +21,6 @@ treetime-ops = { workspace = true }
 treetime-utils = { workspace = true }
 
 # [external]
-approx = { workspace = true }
 eyre = { workspace = true }
 getset = { workspace = true }
 itertools = { workspace = true }
@@ -32,6 +31,7 @@ ordered-float = { workspace = true }
 strum_macros = { workspace = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 ctor = { workspace = true }
 deser = { workspace = true }
 pretty_assertions = { workspace = true }

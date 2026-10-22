@@ -8,7 +8,6 @@ use crate::distribution_ops::multiply::{
 };
 use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_support_n_points};
 use crate::policy::YAxisPolicy;
-use approx::ulps_eq;
 use eyre::Report;
 use ndarray::{Array1, Zip};
 use std::cmp::Ordering;
@@ -198,7 +197,7 @@ fn end_approach<Y: YAxisPolicy>(
     Side::Left => (f.x_min(), 0),
     Side::Right => (f.x_max(), last_cell),
   };
-  if !ulps_eq!(edge, t, max_ulps = 4) {
+  if !f.grid_fn().coincides(edge, t) {
     return Ok(None);
   }
   let Some(HardCell { law, anchor }) = f.grid_fn().hard_cell(cell, f.left_extrap(), f.right_extrap())? else {
