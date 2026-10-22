@@ -36,17 +36,12 @@ pub fn complete_alignment_for_leaves(
     log,
   );
 
-  if limit.applies() && n_missing.to_f64_exact() > n_leaves.to_f64_exact() / 3.0 {
-    let message = format!(
+  if !limit.ignored && n_missing.to_f64_exact() > n_leaves.to_f64_exact() / 3.0 {
+    return make_error!(
       "More than one third of terminal nodes ({n_missing} of {n_leaves}) cannot be assigned a sequence. \
-       Are you sure the alignment belongs to the tree?"
+       Are you sure the alignment belongs to the tree? \
+       Pass --allow-missing-sequences to proceed, treating missing tips as fully ambiguous."
     );
-    return match limit {
-      MissingLeafLimit::Enforced => make_error!("{message}"),
-      MissingLeafLimit::Overridable { .. } => {
-        make_error!("{message} Pass --allow-missing-sequences to proceed, treating missing tips as fully ambiguous.")
-      },
-    };
   }
 
   let unknown = alphabet.unknown();
@@ -116,13 +111,6 @@ pub fn sanitize_to_alphabet(seq: &Seq, alphabet: &Alphabet) -> (Seq, usize) {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MissingLeafLimit {
-  Enforced,
-  Overridable { ignored: bool },
-}
-
-impl MissingLeafLimit {
-  fn applies(self) -> bool {
-    !matches!(self, Self::Overridable { ignored: true })
-  }
+pub struct MissingLeafLimit {
+  pub ignored: bool,
 }

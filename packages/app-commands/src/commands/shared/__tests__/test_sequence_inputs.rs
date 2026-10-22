@@ -21,7 +21,7 @@ mod tests {
     fs::write(&first, ">A one\nACGT\n>B\nACGA\n>C\nACGG\n>X\nAAAA\n")?;
     fs::write(&second, ">C\nTTN\n>A two\nTAN\n")?;
 
-    let sources = read_sources(&[first.clone(), second.clone()], MissingLeafLimit::Enforced)?;
+    let sources = read_sources(&[first.clone(), second.clone()], MissingLeafLimit { ignored: false })?;
 
     let expected = vec![
       SourceFacts {
@@ -54,10 +54,7 @@ mod tests {
     fs::write(&second, ">A\nTT\n")?;
 
     assert_error!(
-      read_sources(
-        &[first, second.clone()],
-        MissingLeafLimit::Overridable { ignored: false }
-      ),
+      read_sources(&[first, second.clone()], MissingLeafLimit { ignored: false }),
       format!(
         "In alignment '{}': More than one third of terminal nodes (2 of 3) cannot be assigned a sequence. \
          Are you sure the alignment belongs to the tree? \
@@ -77,7 +74,7 @@ mod tests {
     fs::write(&second, ">A\nTT\n>C\nTA\n")?;
     let log = RecordingLog::default();
 
-    read_sources_logged(&[first, second.clone()], MissingLeafLimit::Enforced, &log)?;
+    read_sources_logged(&[first, second.clone()], MissingLeafLimit { ignored: false }, &log)?;
 
     assert_eq!(
       vec![
@@ -98,7 +95,10 @@ mod tests {
   #[test]
   fn test_sequence_sources_reject_standard_input_given_twice() {
     assert_error!(
-      read_sources(&[PathBuf::from("-"), PathBuf::from("-")], MissingLeafLimit::Enforced),
+      read_sources(
+        &[PathBuf::from("-"), PathBuf::from("-")],
+        MissingLeafLimit { ignored: false }
+      ),
       "Standard input ('-') can be read only once, but --alignment lists it 2 times"
     );
   }

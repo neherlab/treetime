@@ -21,7 +21,14 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGT")]);
 
-    let by_name = helpers::complete(&graph, &names, sequences, &alphabet, MissingLeafLimit::Enforced).unwrap();
+    let by_name = helpers::complete(
+      &graph,
+      &names,
+      sequences,
+      &alphabet,
+      MissingLeafLimit { ignored: false },
+    )
+    .unwrap();
 
     assert_eq!(4, by_name.len());
     assert_eq!(Seq::try_from_str("ACGT").unwrap(), by_name["A"]);
@@ -40,24 +47,11 @@ mod tests {
         &names,
         sequences,
         &alphabet,
-        MissingLeafLimit::Overridable { ignored: false }
+        MissingLeafLimit { ignored: false }
       ),
       "More than one third of terminal nodes (1 of 2) cannot be assigned a sequence. \
        Are you sure the alignment belongs to the tree? \
        Pass --allow-missing-sequences to proceed, treating missing tips as fully ambiguous."
-    );
-  }
-
-  #[test]
-  fn test_attach_enforced_limit_error_names_no_override() {
-    let (graph, names) = helpers::two_leaf_tree();
-    let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    let sequences = helpers::records(&[("A", "ACGT")]);
-
-    assert_error!(
-      helpers::complete(&graph, &names, sequences, &alphabet, MissingLeafLimit::Enforced),
-      "More than one third of terminal nodes (1 of 2) cannot be assigned a sequence. \
-       Are you sure the alignment belongs to the tree?"
     );
   }
 
@@ -67,14 +61,7 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT")]);
 
-    let by_name = helpers::complete(
-      &graph,
-      &names,
-      sequences,
-      &alphabet,
-      MissingLeafLimit::Overridable { ignored: true },
-    )
-    .unwrap();
+    let by_name = helpers::complete(&graph, &names, sequences, &alphabet, MissingLeafLimit { ignored: true }).unwrap();
 
     assert_eq!(2, by_name.len());
     assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["B"]);
@@ -86,7 +73,14 @@ mod tests {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT"), ("B", "ACGT")]);
 
-    let by_name = helpers::complete(&graph, &names, sequences, &alphabet, MissingLeafLimit::Enforced).unwrap();
+    let by_name = helpers::complete(
+      &graph,
+      &names,
+      sequences,
+      &alphabet,
+      MissingLeafLimit { ignored: false },
+    )
+    .unwrap();
 
     assert_eq!(3, by_name.len());
     assert_eq!(Seq::try_from_str("NNNN").unwrap(), by_name["C"]);
@@ -104,7 +98,7 @@ mod tests {
       &mut paired.nodes,
       4,
       &alphabet,
-      MissingLeafLimit::Enforced,
+      MissingLeafLimit { ignored: false },
       "alignment 'aln.fasta'",
       &NoopProgress,
     )
@@ -128,7 +122,7 @@ mod tests {
       &mut paired.nodes,
       length,
       &alphabet,
-      MissingLeafLimit::Enforced,
+      MissingLeafLimit { ignored: false },
       "alignment 'aln.fasta'",
       &NoopProgress,
     )
@@ -151,7 +145,7 @@ mod tests {
       &mut paired.nodes,
       length,
       &alphabet,
-      MissingLeafLimit::Overridable { ignored: true },
+      MissingLeafLimit { ignored: true },
       "alignment 'aln.fasta'",
       &NoopProgress,
     )
@@ -177,7 +171,7 @@ mod tests {
       &mut nodes,
       4,
       &alphabet,
-      MissingLeafLimit::Enforced,
+      MissingLeafLimit { ignored: false },
       "alignment 'aln.fasta'",
       &NoopProgress,
     )

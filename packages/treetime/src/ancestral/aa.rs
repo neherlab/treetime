@@ -52,7 +52,7 @@ pub fn reconstruct_aa(
       &mut nodes,
       alignment_length,
       &alphabet,
-      MissingLeafLimit::Overridable {
+      MissingLeafLimit {
         ignored: params.ignore_missing_alns,
       },
       &format!("the translations of CDS '{name}'"),

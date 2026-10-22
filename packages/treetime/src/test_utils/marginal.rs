@@ -328,7 +328,7 @@ pub(crate) fn complete_leaf_sequences(
     &mut sequences.nodes,
     length,
     alphabet,
-    MissingLeafLimit::Enforced,
+    MissingLeafLimit { ignored: false },
     "the alignment",
     &NoopProgress,
   )?;

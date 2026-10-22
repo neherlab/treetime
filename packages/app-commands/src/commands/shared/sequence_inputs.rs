@@ -78,7 +78,7 @@ pub struct MissingSequenceArgs {
 }
 
 pub fn missing_leaf_limit(allow_missing_sequences: bool) -> MissingLeafLimit {
-  MissingLeafLimit::Overridable {
+  MissingLeafLimit {
     ignored: allow_missing_sequences,
   }
 }
