@@ -106,7 +106,10 @@ pub(crate) fn trapezoid_from_overlap_sums(
   let last_n = last_f + last_g;
   for (n, sum) in overlap_sums.iter_mut().enumerate().take(last_n).skip(1) {
     let (first_i, last_i) = (n.saturating_sub(last_g), n.min(last_f));
-    *sum -= 0.5 * (f_values[first_i] * g_values[n - first_i] + f_values[last_i] * g_values[n - last_i]);
+    *sum -= f64::midpoint(
+      f_values[first_i] * g_values[n - first_i],
+      f_values[last_i] * g_values[n - last_i],
+    );
   }
   overlap_sums[0] = 0.25 * f_values[0] * g_values[0];
   overlap_sums[last_n] = 0.25 * f_values[last_f] * g_values[last_g];

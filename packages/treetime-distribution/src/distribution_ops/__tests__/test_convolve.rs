@@ -284,7 +284,7 @@ mod tests {
           panic!("expected a Function result, got {actual:?}");
         };
         let density = conv.values().mapv(|v| (-v).exp());
-        let trapezoid_mass = conv.dx() * (density.sum() - 0.5 * (density[0] + density[density.len() - 1]));
+        let trapezoid_mass = conv.dx() * (density.sum() - f64::midpoint(density[0], density[density.len() - 1]));
         Ok(trapezoid_mass - operand_mass(a) * operand_mass(b))
       })
       .try_collect::<_, _, Report>()?;
