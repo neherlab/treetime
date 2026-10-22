@@ -18,7 +18,12 @@ use std::sync::LazyLock;
 pub fn parse_date(date_str: impl AsRef<str>, options: &DateParserOptions) -> Result<DateTime<Utc>, Report> {
   let date_str = date_str.as_ref();
 
-  if let Ok(date) = parse_date_with_formats(date_str, DATE_FORMATS, options) {
+  let formats = options
+    .date_format
+    .as_deref()
+    .into_iter()
+    .chain(DATE_FORMATS.iter().copied());
+  if let Ok(date) = parse_date_with_formats(date_str, formats, options) {
     return Ok(date);
   }
 

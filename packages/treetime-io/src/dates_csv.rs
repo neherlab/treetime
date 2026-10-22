@@ -104,9 +104,8 @@ pub struct MetadataTable {
 }
 
 impl MetadataTable {
-  pub fn dates(&self) -> Result<Vec<(String, Option<DateConstraint>)>, Report> {
+  pub fn dates(&self, options: &DateParserOptions) -> Result<Vec<(String, Option<DateConstraint>)>, Report> {
     let column = self.date_column.as_ref().map_err(|report| make_report!("{report}"))?;
-    let options = DateParserOptions::default();
     self
       .rows
       .iter()
@@ -116,7 +115,7 @@ impl MetadataTable {
           .date
           .as_deref()
           .ok_or_else(|| make_internal_report!("Row '{index}' has no value in date column '{column}'"))?;
-        let date = read_date(raw, &options).wrap_err_with(|| format!("When reading row {index}, column '{column}'"))?;
+        let date = read_date(raw, options).wrap_err_with(|| format!("When reading row {index}, column '{column}'"))?;
         Ok((row.name.clone(), date))
       })
       .collect()

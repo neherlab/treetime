@@ -3,7 +3,7 @@ mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::shared::alignment::{PairedAlignment, pair_alignment};
   use crate::commands::shared::dates_input::read_input_dates;
-  use crate::commands::shared::metadata::MetadataIdArgs;
+  use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
   use crate::commands::shared::topology_order_args::target_positions;
   use crate::commands::shared::tree_input::read_input_tree;
   use helpers::{leaf_keys, warning};
@@ -84,7 +84,16 @@ mod tests {
     let names = tree.names.clone();
     let log = RecordingLog::default();
 
-    let actual = read_input_dates(&path, &MetadataIdArgs::default(), None, &tree.graph, &names, &log).unwrap();
+    let actual = read_input_dates(
+      &path,
+      &MetadataIdArgs::default(),
+      None,
+      &DateColumnArgs::default().date_format,
+      &tree.graph,
+      &names,
+      &log,
+    )
+    .unwrap();
 
     let [a1, a2] = leaf_keys(&tree, "A")[..] else {
       panic!("the tree has two leaves named A")

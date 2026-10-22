@@ -8,6 +8,7 @@ use treetime_io::csv::default_name_candidates;
 use treetime_io::dates_csv::{DateConstraint, metadata_read};
 use treetime_io::fasta::{FastaRecord, fasta_read};
 use treetime_primitives::{AlignmentRecord, Seq};
+use treetime_utils::datetime::options::DateParserOptions;
 use treetime_utils::io::compression::{CompressionType, Decompressor};
 use treetime_utils::make_internal_report;
 
@@ -119,7 +120,7 @@ impl TestDataset {
       None,
       None,
     )?;
-    Ok(table.dates()?.into_iter().collect())
+    Ok(table.dates(&DateParserOptions::default())?.into_iter().collect())
   }
 }
 

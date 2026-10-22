@@ -3,6 +3,7 @@ use smart_default::SmartDefault;
 
 #[derive(Debug, Default, Clone)]
 pub struct DateParserOptions {
+  pub date_format: Option<String>,
   pub default_time_of_day: TimeOfDay,
 }
 

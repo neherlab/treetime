@@ -37,6 +37,7 @@ pub(super) mod support {
   use treetime_io::fasta::{FastaRecord, fasta_read_file};
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::datetime::options::DateParserOptions;
   use treetime_utils::io::json::json_read_str;
 
   const FIXTURES_DIR: &str = concat!(
@@ -151,7 +152,7 @@ pub(super) mod support {
       input.name_column.as_deref(),
       None,
     )
-    .and_then(|table| table.dates())
+    .and_then(|table| table.dates(&DateParserOptions::default()))
   }
 
   pub(crate) fn load_alignment_for_dataset(dataset: &str) -> Result<Vec<FastaRecord>, Report> {

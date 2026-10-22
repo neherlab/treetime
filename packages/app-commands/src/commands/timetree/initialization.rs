@@ -43,6 +43,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
         path,
         &args.metadata_id,
         args.date_column.date_column.as_deref(),
+        &args.date_column.date_format,
         &graph,
         &names,
         log,

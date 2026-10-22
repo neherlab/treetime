@@ -57,6 +57,65 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::built_in_reads_day_first(   "03/06/2016",  None,              Some("2016-06-03"))]
+  #[case::format_reads_month_first(   "03/06/2016",  Some("%m/%d/%Y"),  Some("2016-03-06"))]
+  #[case::built_in_lacks_month_name(  "13 Jun 2016", None,              None)]
+  #[case::format_reads_month_name(    "13 Jun 2016", Some("%d %b %Y"),  Some("2016-06-13"))]
+  #[case::format_keeps_iso(           "2016-06-13",  Some("%d %b %Y"),  Some("2016-06-13"))]
+  #[case::format_keeps_year_fraction( "2016.45",     Some("%d %b %Y"),  Some("2016.45"))]
+  #[case::format_keeps_uncertain(     "2016-06-XX",  Some("%d %b %Y"),  Some("2016-06-XX"))]
+  #[trace]
+  fn test_date_read_with_date_format(
+    #[case] input: &str,
+    #[case] date_format: Option<&str>,
+    #[case] expected_as: Option<&str>,
+  ) -> Result<(), Report> {
+    let options = DateParserOptions {
+      date_format: date_format.map(str::to_owned),
+      ..DateParserOptions::default()
+    };
+    let expected = expected_as
+      .map(|reference| read_date(reference, &DateParserOptions::default()))
+      .transpose()?
+      .flatten()
+      .map(|constraint| constraint.value);
+    let actual = read_date(input, &options)?.map(|constraint| constraint.value);
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_date_read_table_dates_with_date_format() -> Result<(), Report> {
+    let table = metadata_read(
+      &b"name\tdate\nA\t03/06/2016\nB\t13 Jun 2016\n"[..],
+      delimiter_from_path("metadata.tsv"),
+      &['\t'],
+      &[],
+      Some("name"),
+      Some("date"),
+    )?;
+    let options = DateParserOptions {
+      date_format: Some(o!("%m/%d/%Y")),
+      ..DateParserOptions::default()
+    };
+    let expected = vec![
+      (
+        o!("A"),
+        read_date("2016-03-06", &DateParserOptions::default())?.map(|date| date.value),
+      ),
+      (o!("B"), None),
+    ];
+    let actual = table
+      .dates(&options)?
+      .into_iter()
+      .map(|(name, date)| (name, date.map(|date| date.value)))
+      .collect::<Vec<_>>();
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
   #[test]
   fn test_date_read_range() -> Result<(), Report> {
     let constraint = read_date("2020-01-01/2020-06-30", &DateParserOptions::default())?.unwrap();
@@ -141,7 +200,7 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
       Some("name"),
       Some("date"),
     )?
-    .dates()?;
+    .dates(&DateParserOptions::default())?;
 
     let expected = vec![
       (
@@ -275,6 +334,12 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
       None,
     )
     .unwrap();
-    assert!(table.dates().unwrap_err().to_string().contains("Looking for: date"));
+    assert!(
+      table
+        .dates(&DateParserOptions::default())
+        .unwrap_err()
+        .to_string()
+        .contains("Looking for: date")
+    );
   }
 }

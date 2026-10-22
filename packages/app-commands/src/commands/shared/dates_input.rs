@@ -11,13 +11,22 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
+use treetime_utils::datetime::options::DateParserOptions;
 
 const UNMATCHED_NAMES_SHOWN: usize = 10;
+
+pub fn date_parser_options(date_format: Option<&str>) -> DateParserOptions {
+  DateParserOptions {
+    date_format: date_format.map(ToOwned::to_owned),
+    ..DateParserOptions::default()
+  }
+}
 
 pub fn read_input_dates(
   path: &Path,
   metadata_id: &MetadataIdArgs,
   date_column: Option<&str>,
+  date_format: &str,
   graph: &Graph,
   names: &NodeNames,
   log: &dyn LogSink,
@@ -29,7 +38,7 @@ pub fn read_input_dates(
     None,
     date_column,
   )
-  .and_then(|table| table.dates())
+  .and_then(|table| table.dates(&date_parser_options(Some(date_format))))
   .wrap_err("When reading dates")?;
 
   let pairing = pair_by_name(graph.get_nodes().map(|node| node.key()), names, rows);

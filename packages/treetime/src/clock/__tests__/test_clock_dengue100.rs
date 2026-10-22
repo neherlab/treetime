@@ -115,6 +115,7 @@ mod tests {
     use treetime_io::dates_csv::metadata_read_file;
     use treetime_io::nwk::{NwkParse, nwk_read_file};
     use treetime_primitives::date::DateConstraint;
+    use treetime_utils::datetime::options::DateParserOptions;
 
     const DATA_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/dengue/100");
 
@@ -189,7 +190,7 @@ mod tests {
         Some("genbank_accession"),
         Some("date"),
       )
-      .and_then(|table| table.dates())?;
+      .and_then(|table| table.dates(&DateParserOptions::default()))?;
       let dates = dates_by_node(dates, &nwk_parsed.graph, &nwk_parsed.names);
       Ok((nwk_parsed, dates))
     }

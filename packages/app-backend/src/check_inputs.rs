@@ -1,5 +1,6 @@
 use crate::command::AppCommandExt;
 use app_commands::command::AppCommand;
+use app_commands::commands::shared::dates_input::date_parser_options;
 use app_commands::commands::shared::tree_input::TreeDialectArg;
 use app_commands::json_value::SparseConfig;
 use chrono::Datelike;
@@ -129,10 +130,19 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
   } else {
     request.metadata_delimiters.clone()
   };
+  let date_options = date_parser_options(request.date_format.as_deref());
   let metadata = request
     .metadata
     .as_deref()
-    .map(|path| read_metadata(path, &delimiters, &id_candidates, request.date_column.as_deref()))
+    .map(|path| {
+      read_metadata(
+        path,
+        &delimiters,
+        &id_candidates,
+        request.date_column.as_deref(),
+        &date_options,
+      )
+    })
     .transpose()
     .unwrap_or_else(|report| {
       problem(InputKind::Metadata, None, &report);
@@ -185,6 +195,7 @@ struct InputSettings {
   metadata_id_columns: Vec<String>,
   metadata_delimiters: Vec<char>,
   date_column: Option<String>,
+  date_format: Option<String>,
 }
 
 impl InputSettings {
@@ -367,8 +378,10 @@ fn read_metadata(
   delimiters: &[char],
   id_candidates: &[String],
   date_column: Option<&str>,
+  date_options: &DateParserOptions,
 ) -> Result<MetadataRead, Report> {
-  metadata_read_file(path, delimiters, id_candidates, None, date_column).map(metadata_summary)
+  metadata_read_file(path, delimiters, id_candidates, None, date_column)
+    .map(|table| metadata_summary(table, date_options))
 }
 
 #[cfg_attr(
@@ -378,10 +391,10 @@ fn read_metadata(
     reason = "a table without a date column has no date facts, which the summary shows as `None`"
   )
 )]
-pub(crate) fn metadata_summary(table: MetadataTable) -> MetadataRead {
+pub(crate) fn metadata_summary(table: MetadataTable, date_options: &DateParserOptions) -> MetadataRead {
   let (dates, date_problem) = if table.date_column.is_ok() {
-    match table.dates() {
-      Ok(dates) => (Some(date_facts(&dates)), None),
+    match table.dates(date_options) {
+      Ok(dates) => (Some(date_facts(&dates, date_options)), None),
       Err(report) => (None, Some(report)),
     }
   } else {
@@ -430,8 +443,7 @@ pub struct MetadataFacts {
     reason = "a date that does not parse as a calendar day has no day of month to count"
   )
 )]
-fn date_facts(dates: &[(String, Option<DateConstraint>)]) -> DateFacts {
-  let options = DateParserOptions::default();
+fn date_facts(dates: &[(String, Option<DateConstraint>)], options: &DateParserOptions) -> DateFacts {
   let exact_days = dates
     .iter()
     .filter_map(|(_, date)| {
@@ -439,7 +451,7 @@ fn date_facts(dates: &[(String, Option<DateConstraint>)]) -> DateFacts {
       if !matches!(date.value, DateValue::Exact(_)) || date.raw.parse::<f64>().is_ok() {
         return None;
       }
-      parse_date(&date.raw, &options).ok().map(|parsed| parsed.day())
+      parse_date(&date.raw, options).ok().map(|parsed| parsed.day())
     })
     .collect_vec();
   DateFacts {

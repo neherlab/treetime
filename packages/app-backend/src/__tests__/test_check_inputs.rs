@@ -17,6 +17,7 @@ mod tests {
   use tempfile::tempdir;
   use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
   use treetime_io::dates_csv::metadata_read;
+  use treetime_utils::datetime::options::DateParserOptions;
 
   #[test]
   fn test_check_inputs_zika_86_tree_facts() {
@@ -232,7 +233,11 @@ mod tests {
         } else {
           &[]
         };
-        let date_keys: &[&str] = if command.uses_dates() { &["date_column"] } else { &[] };
+        let date_keys: &[&str] = if command.uses_dates() {
+          &["date_column", "date_format"]
+        } else {
+          &[]
+        };
         let reads_tree = command.inputs().iter().any(|input| input.kind == InputKind::Tree);
         let tree_keys: &[&str] = if reads_tree { &["tree_dialect"] } else { &[] };
         command
@@ -317,8 +322,8 @@ mod tests {
       .unwrap()
     };
 
-    let command_dates = table().dates().unwrap();
-    let read = metadata_summary(table());
+    let command_dates = table().dates(&DateParserOptions::default()).unwrap();
+    let read = metadata_summary(table(), &DateParserOptions::default());
 
     let date_facts = read.facts.dates.clone().unwrap();
     assert_eq!(
@@ -341,6 +346,28 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_format(json!(null),         DateFacts { readable: 0, unreadable: vec!["A".to_owned()], exact_days: 0, on_day_1_or_15: 0 })]
+  #[case::with_format(   json!("%d %b %Y"),   DateFacts { readable: 1, unreadable: vec![],               exact_days: 1, on_day_1_or_15: 1 })]
+  #[trace]
+  fn test_check_inputs_reads_dates_in_the_configured_date_format(
+    #[case] date_format: serde_json::Value,
+    #[case] expected: DateFacts,
+  ) {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("metadata.tsv");
+    fs::write(&path, "strain\tdate\nA\t15 Jun 2016\n").unwrap();
+
+    let facts = check_inputs(&request(
+      AppCommand::Clock,
+      json!({ "metadata": path, "date_format": date_format }),
+    ))
+    .unwrap();
+
+    assert_eq!(Some(expected), facts.metadata.and_then(|metadata| metadata.dates));
+  }
+
   #[test]
   fn test_check_inputs_metadata_without_date_column_has_no_date_facts() {
     let table = metadata_read(
@@ -352,7 +379,7 @@ mod tests {
       None,
     )
     .unwrap();
-    let read = metadata_summary(table);
+    let read = metadata_summary(table, &DateParserOptions::default());
     assert_eq!(
       (1, "name".to_owned(), None, None, true),
       (

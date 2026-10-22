@@ -48,6 +48,7 @@ pub fn run_clock(
     clock_args.metadata(),
     &clock_args.metadata_id,
     clock_args.date_column.date_column.as_deref(),
+    &clock_args.date_column.date_format,
     &graph,
     &names,
     log,

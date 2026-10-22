@@ -22,6 +22,7 @@ mod tests {
   use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
   use treetime_io::dates_csv::metadata_read_file;
   use treetime_io::nwk::nwk_read_file;
+  use treetime_utils::datetime::options::DateParserOptions;
   use treetime_utils::io::json::json_read_file;
   use treetime_utils::{pretty_assert_relative_eq, pretty_assert_ulps_eq};
 
@@ -78,7 +79,7 @@ mod tests {
       None,
       Some("date"),
     )
-    .and_then(|table| table.dates())?
+    .and_then(|table| table.dates(&DateParserOptions::default()))?
     .into_iter()
     .collect::<BTreeMap<_, _>>();
 
