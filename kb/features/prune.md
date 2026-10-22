@@ -8,15 +8,15 @@
 
 ## Pruning Criteria
 
-- [x] Short branch pruning (`--prune-short` threshold)
-- [x] Empty branch pruning (`--prune-empty`, requires alignment; with several files a branch is empty only when no file has a substitution on it)
-- [x] Name-based pruning (`--prune-nodes-list`, `--prune-nodes-list-file`)
-- [x] Custom delimiters for node lists
+- [x] Short branch pruning (`--collapse-short` threshold)
+- [x] Empty branch pruning (`--collapse-empty`, requires alignment; with several files a branch is empty only when no file has a substitution on it)
+- [x] Name-based pruning (`--remove`, `--remove-file`)
 
 ## Validation
 
-- [x] `--prune-empty` without `--alignment` returns explicit error
-- [x] `--prune-empty` loads sparse partitions and compresses sequences
+- [x] `--collapse-empty` without `--alignment` returns explicit error
+- [x] A given alignment loads sparse partitions and compresses sequences; the tree outputs carry its mutations
+- [x] `--gap-fill` replaces terminal gaps with the ambiguous character by default, as in the other sequence commands
 - [x] Mutation counts come from sparse edge substitutions
 
 ## Pruning Workflow

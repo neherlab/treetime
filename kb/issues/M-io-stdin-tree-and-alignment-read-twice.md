@@ -28,8 +28,8 @@ Every input read through `fn read_file_with()` of `treetime-utils` reads `-` fro
 - `--alignment` of `ancestral`, `optimize`, `timetree`, `prune`, `homoplasy`
 - `--metadata` of `clock`, `timetree`, `mugration`, and `--weights` of `mugration`
 - `--drms` of `homoplasy`
-- `--prune-nodes-list-file` of `prune`
-- `--topology-order-target-file` of `optimize`, `timetree`, `prune`, `mugration`, `homoplasy`
+- `--remove-file` of `prune`
+- `--topology-order-tree` and `--topology-order-list` of `optimize`, `timetree`, `prune`, `mugration`, `homoplasy`
 - `--config` of every command
 
 Each pair of these inputs in one run can collide in the same way. `--annotation` and `--aa-root-sequence` of `ancestral` do not take part, because their existence check rejects `-` before the read [packages/app-commands/src/commands/ancestral/aa_node_data.rs#L47-L48](../../packages/app-commands/src/commands/ancestral/aa_node_data.rs#L47-L48).

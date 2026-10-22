@@ -19,16 +19,16 @@ v1 adds a dedicated `treetime prune` subcommand ([packages/app-commands/src/comm
 
 ### CLI arguments
 
-| Argument                  | Default    | Purpose                                                     |
-| ------------------------- | ---------- | ----------------------------------------------------------- |
-| `--tree`                  | (required) | Input tree in Newick/Nexus/Phylip                           |
-| `--alignment`             | (none)     | FASTA alignment (required if `--prune-empty`)               |
-| `--alphabet`              | auto       | Nucleotide or amino acid alphabet                           |
-| `--output-all` (`-O`)     | (optional) | Output directory for default outputs                        |
-| `--prune-short`           | (none)     | Threshold for short branch pruning (substitutions per site) |
-| `--prune-empty`           | false      | Prune branches with zero mapped mutations                   |
-| `--prune-nodes-list`      | (none)     | Comma-separated node names to remove                        |
-| `--prune-nodes-list-file` | (none)     | File with node names to remove (one per line)               |
+| Argument              | Default    | Purpose                                                     |
+| --------------------- | ---------- | ----------------------------------------------------------- |
+| `--tree`              | (required) | Input tree in Newick/Nexus/Phylip                           |
+| `--alignment`         | (none)     | FASTA alignment (required if `--collapse-empty`)            |
+| `--alphabet`          | auto       | Nucleotide or amino acid alphabet                           |
+| `--output-all` (`-O`) | (optional) | Output directory for default outputs                        |
+| `--collapse-short`    | (none)     | Threshold for short branch pruning (substitutions per site) |
+| `--collapse-empty`    | false      | Prune branches with zero mapped mutations                   |
+| `--remove`            | (none)     | Comma-separated node names to remove                        |
+| `--remove-file`       | (none)     | File with node names to remove (one per line)               |
 
 ### Algorithm
 
@@ -76,10 +76,10 @@ Removing specific taxa (leaves) from a phylogenetic tree is a standard preproces
 | Aspect                  | v0 (`prune_short_branches`)                           | v1 (`prune` command)                                             |
 | ----------------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
 | Exposure                | Internal method, called automatically                 | Standalone CLI subcommand                                        |
-| Short branch threshold  | Hardcoded: `0.1 / sequence_length`                    | User-specified via `--prune-short`                               |
+| Short branch threshold  | Hardcoded: `0.1 / sequence_length`                    | User-specified via `--collapse-short`                            |
 | Probabilistic criterion | Requires P(identical sequences) > 0.1 via GTR         | No probability check                                             |
-| Empty branch criterion  | Not available                                         | `--prune-empty` with Fitch mutation counts                       |
-| Named node removal      | Not available                                         | `--prune-nodes-list`, `--prune-nodes-list-file`                  |
+| Empty branch criterion  | Not available                                         | `--collapse-empty` with Fitch mutation counts                    |
+| Named node removal      | Not available                                         | `--remove`, `--remove-file`                                      |
 | Leaf pruning            | Not available                                         | By explicit name                                                 |
 | Branch length handling  | Children reparented without branch length summation   | Branch lengths summed when both edges have values                |
 | Mutation handling       | No mutation tracking                                  | Substitution lists merged via sorted union                       |
@@ -87,6 +87,6 @@ Removing specific taxa (leaves) from a phylogenetic tree is a standard preproces
 
 ## Practical impact
 
-Users can run `treetime prune --tree=tree.nwk --alignment=aln.fasta --prune-short=1e-6 --prune-empty --output-all=out/` to simplify a tree before downstream analysis. The command is composable with other v1 commands: prune first, then run ancestral reconstruction or timetree inference on the simplified tree.
+Users can run `treetime prune --tree=tree.nwk --alignment=aln.fasta --collapse-short=1e-6 --collapse-empty --output-all=out/` to simplify a tree before downstream analysis. The command is composable with other v1 commands: prune first, then run ancestral reconstruction or timetree inference on the simplified tree.
 
-The three pruning criteria are independent and can be combined freely. Using `--prune-empty` without `--alignment` produces an error. Using `--prune-short` or `--prune-nodes-list` without `--alignment` works on topology and branch lengths alone.
+The three pruning criteria are independent and can be combined freely. Using `--collapse-empty` without `--alignment` produces an error. Using `--collapse-short` or `--remove` without `--alignment` works on topology and branch lengths alone.

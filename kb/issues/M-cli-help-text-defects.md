@@ -13,10 +13,6 @@ The help of `--alphabet` says that the alphabet is detected from the sequence co
 
 ## Inconsistencies
 
-### I1: `--metadata` short flag and alias differ across commands
-
-`timetree`/`clock`: `-d --metadata` with alias `--dates`. `mugration`: `-s --metadata` with alias `--states`. Same long flag name, different short flags.
-
 ### I6: Capitalization inconsistent across all commands
 
 Some descriptions of `timetree` start lowercase ("use an autocorrelated"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
@@ -60,10 +56,6 @@ Usage lines show all output flags as optional (`[OPTIONS]`), but the output plan
 The `command_outputs!` macro adds the full tree-format set (`nwk`, `nexus`, `auspice`, `mat-pb`, `mat-json`, `graph-json`, `dot`) to the selection enum of every command [packages/app-commands/src/commands/shared/output_args.rs#L22-L38](../../packages/app-commands/src/commands/shared/output_args.rs#L22-L38), while a separate availability matrix rejects unsupported values later. Per-file flags have the same drift when their writer is absent from the command matrix.
 
 Generate each command-specific parseable enum and visible per-file flags from its actual format set, then add parse-level rejection tests.
-
-### W5: Root help links to Python v0 documentation
-
-Root `--help` links to `https://treetime.readthedocs.io/en/stable/` and the Python TreeTime publication. Readers can incorrectly infer v1 behavior from documentation for the v0 binary.
 
 ### W6: No usage examples in any scientific command
 

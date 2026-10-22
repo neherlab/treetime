@@ -328,7 +328,7 @@ Selecting which output to see while a run is in progress.
 Code now, the filter accepted by `env_logger`:
 
 ```
-RUST_LOG=treetime::clock=debug treetime clock --tree=... --dates=...
+RUST_LOG=treetime::clock=debug treetime clock --tree=... --metadata=...
 ```
 
 Output now: every debug line from the `clock` module, from every run in the process.
@@ -336,7 +336,7 @@ Output now: every debug line from the `clock` module, from every run in the proc
 Code proposed, the filter accepted by `EnvFilter`:
 
 ```
-RUST_LOG=[find_best_root{method=Rtt}]=debug treetime clock --tree=... --dates=...
+RUST_LOG=[find_best_root{method=Rtt}]=debug treetime clock --tree=... --metadata=...
 ```
 
 Output proposed: debug lines only from root searches that used the `Rtt` method, with lines from other methods and other runs suppressed.

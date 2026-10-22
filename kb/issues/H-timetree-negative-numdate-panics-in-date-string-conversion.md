@@ -9,14 +9,14 @@ Negative numdates arise legitimately when the molecular clock regression extrapo
 A fixed clock rate far below the substitution rate of the data places the root thousands of years before the samples:
 
 ```bash
-treetime timetree --tree=data/zika/20/tree.nwk --dates=data/zika/20/metadata.tsv \
+treetime timetree --tree=data/zika/20/tree.nwk --metadata=data/zika/20/metadata.tsv \
   --alignment=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
 ```
 
 The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. Without a fixed rate, the `timetree/lassa/L/200/basic` case panics the same way:
 
 ```bash
-treetime timetree --tree=data/lassa/L/200/tree.nwk --dates=data/lassa/L/200/metadata.tsv \
+treetime timetree --tree=data/lassa/L/200/tree.nwk --metadata=data/lassa/L/200/metadata.tsv \
   --alignment=data/lassa/L/200/aln.fasta.xz --metadata-id-columns=accession --output-all=<dir>
 ```
 

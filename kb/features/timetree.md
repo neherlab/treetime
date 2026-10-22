@@ -3,7 +3,7 @@
 ## Initialization
 
 - [x] Load tree from `--tree`
-- [x] Optional date table from `--dates`
+- [x] Optional date table from `--metadata`
 - [x] Optional alignment: `--branch-length-mode` `auto` (default) keeps the input branch lengths without an alignment
 - [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, only with two or more files and re-estimated branch lengths, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips

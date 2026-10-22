@@ -155,7 +155,7 @@ Collapses internal edges whose optimal length is zero or near-zero, reparenting 
 
 v0: `prune_short_branches()` at [`packages/legacy/treetime/treetime/treeanc.py#L1475-L1496`](../../packages/legacy/treetime/treetime/treeanc.py#L1475-L1496).
 
-v1 collapses internal edges driven to exactly zero during optimization. It does not implement v0's post-convergence near-zero threshold plus probability criterion. The prune command separately provides `--prune-short` and `--prune-empty`.
+v1 collapses internal edges driven to exactly zero during optimization. It does not implement v0's post-convergence near-zero threshold plus probability criterion. The prune command separately provides `--collapse-short` and `--collapse-empty`.
 
 ---
 
