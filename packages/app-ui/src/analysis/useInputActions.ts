@@ -1,23 +1,13 @@
-import { errorMessage, type AppCommand, type JsonValue, type UiDraftSource } from "@neherlab/app-contracts";
-import { runsCreate, runsReleaseInput, runsUploadInput } from "@neherlab/app-contracts/client";
+import type { AppCommand, JsonValue, UiDraftSource } from "@neherlab/app-contracts";
 import { useCallback, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { useApiContext } from "../api/context";
 import { useHost } from "../host-context";
 import { baseName, type InputAssignment, pathList } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
-import { useToastManager } from "../ui/toast";
-import {
-  filesForSetting,
-  releasedPaths,
-  type StoredFile,
-  storedSource,
-  storedValue,
-  storeInOrder,
-} from "./fileSelection";
+import { filesForSetting, releasedPaths, type StoredFile, storedSource, storedValue } from "./fileSelection";
 import { toFormValue, type FormConfig } from "./formValues";
-import { pendingUploadRun } from "./pendingUpload";
+import { useRunUploads } from "./useRunUploads";
 
 interface InputActions {
   canPick: boolean;
@@ -37,40 +27,10 @@ function isCurrentSelection(key: string, selection: symbol, runId: string): bool
 }
 
 export function useInputActions(command: AppCommand): InputActions {
-  const { client } = useApiContext();
   const host = useHost();
   const { getValues, setValue } = useFormContext<FormConfig>();
   const setSource = useDraftStore((state) => state.setSource);
-  const toasts = useToastManager();
-
-  const releaseOne = useCallback(
-    async (runId: string, path: string) => {
-      try {
-        await runsReleaseInput({ client, path: { id: runId }, query: { path }, throwOnError: true });
-      } catch (error) {
-        toasts.add({ title: "An earlier upload cannot be removed", description: errorMessage(error) });
-      }
-    },
-    [client, toasts],
-  );
-
-  const release = useCallback(
-    (runId: string, paths: readonly string[]) => {
-      for (const path of paths) {
-        void releaseOne(runId, path);
-      }
-    },
-    [releaseOne],
-  );
-
-  const releaseFromPendingRun = useCallback(
-    (runId: string, paths: readonly string[]) => {
-      if (useDraftStore.getState().draft.upload_run_id === runId) {
-        release(runId, paths);
-      }
-    },
-    [release],
-  );
+  const { uploadRun, uploadFiles, release, releaseFromPendingRun } = useRunUploads();
 
   const pendingUploadPaths = useCallback(
     (key: string, runId: string): string[] => {
@@ -123,42 +83,6 @@ export function useInputActions(command: AppCommand): InputActions {
     [releaseReplaced, setSource, setValue],
   );
 
-  const uploadRun = useCallback(async (): Promise<string> => {
-    const pending = useDraftStore.getState().uploadRunCreation;
-
-    if (pending !== undefined) {
-      return pending;
-    }
-
-    const existing = await pendingUploadRun(client, useDraftStore.getState().draft.upload_run_id);
-
-    if (existing !== undefined) {
-      return existing.id;
-    }
-
-    const started = useDraftStore.getState().uploadRunCreation;
-
-    if (started !== undefined) {
-      return started;
-    }
-
-    const creation: Promise<string> = runsCreate({
-      client,
-      body: { command, config: {}, defer_start: true },
-      throwOnError: true,
-    })
-      .then(({ data: record }) => {
-        useDraftStore.getState().settleUploadRun(creation, record.id);
-
-        return record.id;
-      })
-      .finally(() => useDraftStore.getState().settleUploadRun(creation, undefined));
-
-    useDraftStore.getState().beginUploadRun(creation);
-
-    return creation;
-  }, [client, command]);
-
   const assignStored = useCallback(
     (key: string, stored: readonly StoredFile[], list: boolean, origin: InputOrigin) => {
       const value = storedValue(stored, list);
@@ -187,7 +111,7 @@ export function useInputActions(command: AppCommand): InputActions {
 
       const selection = Symbol(key);
       useDraftStore.getState().claimSelection(key, selection);
-      const runId = await uploadRun();
+      const runId = await uploadRun(command);
 
       if (!isCurrentSelection(key, selection, runId)) {
         return;
@@ -195,25 +119,7 @@ export function useInputActions(command: AppCommand): InputActions {
 
       const replaces = pendingUploadPaths(key, runId);
 
-      const stored = await storeInOrder(
-        selected,
-        async (file) => {
-          const { data: uploaded } = await runsUploadInput({
-            client,
-            path: { id: runId, name: file.name },
-            query: { replaces },
-            body: file,
-            throwOnError: true,
-          });
-
-          return { name: file.name, path: uploaded.path, size: uploaded.size };
-        },
-        (partial) =>
-          releaseFromPendingRun(
-            runId,
-            partial.map((file) => file.path),
-          ),
-      );
+      const stored = await uploadFiles(runId, selected, replaces);
 
       if (!isCurrentSelection(key, selection, runId)) {
         releaseFromPendingRun(
@@ -226,7 +132,7 @@ export function useInputActions(command: AppCommand): InputActions {
 
       assignStored(key, stored, list, { origin: "upload", run_id: runId });
     },
-    [assignStored, client, host, pendingUploadPaths, releaseFromPendingRun, uploadRun],
+    [assignStored, command, host, pendingUploadPaths, releaseFromPendingRun, uploadFiles, uploadRun],
   );
 
   const pick = useCallback(
