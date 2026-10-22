@@ -6,7 +6,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
   use crate::commands::shared::output_args::OutputCoreArgs;
-  use crate::commands::shared::representation::RepresentationArgs;
+  use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
   use crate::commands::shared::tree_input::TreeArgs;
   use eyre::{Report, WrapErr};
   use maplit::btreemap;
@@ -26,10 +26,10 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::dense( Some(true))]
-  #[case::sparse(Some(false))]
+  #[case::dense( RepresentationCli::Dense)]
+  #[case::sparse(RepresentationCli::Sparse)]
   #[trace]
-  fn test_mat_gaps_written_as_missing_data_with_one_warning(#[case] dense: Option<bool>) -> Result<(), Report> {
+  fn test_mat_gaps_written_as_missing_data_with_one_warning(#[case] representation: RepresentationCli) -> Result<(), Report> {
     let dir = tempdir().wrap_err("When creating a temporary directory")?;
     let tree_path = dir.path().join("tree.nwk");
     let fasta_path = dir.path().join("aln.fasta");
@@ -46,7 +46,7 @@ model_args: ModelArgs {
         model: GtrModelNameCli::JC69,
         ..ModelArgs::default()
       },
-representation: RepresentationArgs { dense },
+representation: RepresentationArgs { representation },
 output: OutputCoreArgs {
         output_tree_mat_json: Some(mat_json_path.clone()),
         output_tree_mat_pb: Some(mat_pb_path.clone()),

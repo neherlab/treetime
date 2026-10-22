@@ -38,7 +38,7 @@ ANCESTRAL = {
 KEEP_TOPOLOGY = ['--no-collapse-short-branches', '--no-merge-siblings', '--no-flip-parent-child']
 OPTIMIZE = {
     'fixed-topo': ('perturbed', KEEP_TOPOLOGY),
-    'fixed-topo-dense': ('perturbed', [*KEEP_TOPOLOGY, '--dense', 'true']),
+    'fixed-topo-dense': ('perturbed', [*KEEP_TOPOLOGY, '--representation', 'dense']),
     'default': ('perturbed', []),
 }
 ROOTING = {'keep': ('realized', ['--keep-root']), 'reroot': ('realized', ['--reroot', 'least-squares'])}

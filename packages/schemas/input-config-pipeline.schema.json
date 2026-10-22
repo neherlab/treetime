@@ -605,18 +605,10 @@
           "$ref": "#/$defs/AlphabetName",
           "x-unset": true
         },
-        "dense": {
-          "anyOf": [
-            {
-              "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-              "type": "boolean",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
+        "representation": {
+          "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "$ref": "#/$defs/Representation",
+          "default": "auto"
         },
         "gap_fill": {
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -1197,6 +1189,49 @@
         {
           "type": "string",
           "pattern": "\\{\\{.*\\}\\}"
+        }
+      ]
+    },
+    "Representation": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "description": "Let TreeTime choose the representation; it chooses sparse",
+              "type": "string",
+              "const": "auto"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "description": "Probabilities of every state at every alignment position",
+              "type": "string",
+              "const": "dense"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "description": "Only the variable positions",
+              "type": "string",
+              "const": "sparse"
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
         }
       ]
     },
@@ -1888,18 +1923,10 @@
           "$ref": "#/$defs/MethodAncestral",
           "default": "marginal"
         },
-        "dense": {
-          "anyOf": [
-            {
-              "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-              "type": "boolean",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
+        "representation": {
+          "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "$ref": "#/$defs/Representation",
+          "default": "auto"
         },
         "sample_from_profile": {
           "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -2529,18 +2556,10 @@
           "$ref": "#/$defs/MethodAncestral",
           "default": "marginal"
         },
-        "dense": {
-          "anyOf": [
-            {
-              "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-              "type": "boolean",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
+        "representation": {
+          "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "$ref": "#/$defs/Representation",
+          "default": "auto"
         },
         "gap_fill": {
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -3525,18 +3544,10 @@
           "$ref": "#/$defs/PartitionRates",
           "default": "estimate"
         },
-        "dense": {
-          "anyOf": [
-            {
-              "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-              "type": "boolean",
-              "x-unset": true
-            },
-            {
-              "type": "string",
-              "pattern": "\\{\\{.*\\}\\}"
-            }
-          ]
+        "representation": {
+          "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "$ref": "#/$defs/Representation",
+          "default": "auto"
         },
         "output_all": {
           "anyOf": [
@@ -3844,7 +3855,7 @@
         "no_merge_siblings": {
           "anyOf": [
             {
-              "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--dense` and the flag is then a no-op.",
+              "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--representation dense` and the flag is then a no-op.",
               "type": "boolean",
               "default": false
             },
@@ -3857,7 +3868,7 @@
         "no_flip_parent_child": {
           "anyOf": [
             {
-              "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--dense` and the flag is\nthen a no-op.",
+              "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--representation dense` and the flag is\nthen a no-op.",
               "type": "boolean",
               "default": false
             },

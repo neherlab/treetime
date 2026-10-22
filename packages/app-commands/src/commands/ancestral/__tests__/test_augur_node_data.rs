@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::shared::representation::RepresentationCli;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -124,7 +125,11 @@ mod tests {
   fn test_augur_node_data_ancestral_parsimony_end_to_end() {
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
-    let actual = helpers::reconstruct_json(MethodAncestralCli::Parsimony, None, GtrModelNameCli::Infer);
+    let actual = helpers::reconstruct_json(
+      MethodAncestralCli::Parsimony,
+      RepresentationCli::Auto,
+      GtrModelNameCli::Infer,
+    );
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
@@ -132,7 +137,11 @@ mod tests {
   fn test_augur_node_data_ancestral_marginal_sparse_end_to_end() {
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
-    let actual = helpers::reconstruct_json(MethodAncestralCli::Marginal, Some(false), GtrModelNameCli::JC69);
+    let actual = helpers::reconstruct_json(
+      MethodAncestralCli::Marginal,
+      RepresentationCli::Sparse,
+      GtrModelNameCli::JC69,
+    );
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
@@ -140,17 +149,21 @@ mod tests {
   fn test_augur_node_data_ancestral_marginal_dense_end_to_end() {
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
-    let actual = helpers::reconstruct_json(MethodAncestralCli::Marginal, Some(true), GtrModelNameCli::JC69);
+    let actual = helpers::reconstruct_json(
+      MethodAncestralCli::Marginal,
+      RepresentationCli::Dense,
+      GtrModelNameCli::JC69,
+    );
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::sparse(false)]
-  #[case::dense( true)]
+  #[case::sparse(RepresentationCli::Sparse)]
+  #[case::dense( RepresentationCli::Dense)]
   #[trace]
-  fn test_augur_node_data_ancestral_mask_ignores_records_not_in_tree(#[case] dense: bool) {
-    let data = helpers::reconstruct_json_with_outlier_record(dense);
+  fn test_augur_node_data_ancestral_mask_ignores_records_not_in_tree(#[case] representation: RepresentationCli) {
+    let data = helpers::reconstruct_json_with_outlier_record(representation);
 
     let sequences = data
       .nodes
@@ -204,7 +217,7 @@ mod tests {
     use crate::commands::shared::model::GtrModelNameCli;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output_args::OutputCoreArgs;
-    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
     use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
     use crate::commands::shared::tree_input::TreeArgs;
     use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeAminoAcids, TreeSequences};
@@ -340,7 +353,11 @@ mod tests {
       json_write_str(&data, JsonPretty(true)).unwrap()
     }
 
-    pub(super) fn reconstruct_json(method: MethodAncestralCli, dense: Option<bool>, model: GtrModelNameCli) -> String {
+    pub(super) fn reconstruct_json(
+      method: MethodAncestralCli,
+      representation: RepresentationCli,
+      model: GtrModelNameCli,
+    ) -> String {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
@@ -354,7 +371,7 @@ mod tests {
         },
         tree: TreeArgs { tree: Some(tree_path) },
         method_anc: MethodAncArgs { method_anc: method },
-        representation: RepresentationArgs { dense },
+        representation: RepresentationArgs { representation },
         model_args: ModelArgs {
           model,
           ..ModelArgs::default()
@@ -372,7 +389,9 @@ mod tests {
       std::fs::read_to_string(node_data_path).unwrap()
     }
 
-    pub(super) fn reconstruct_json_with_outlier_record(dense: bool) -> AugurNodeDataJsonAncestral {
+    pub(super) fn reconstruct_json_with_outlier_record(
+      representation: RepresentationCli,
+    ) -> AugurNodeDataJsonAncestral {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
       let fasta_path = dir.path().join("aln.fasta");
@@ -388,7 +407,7 @@ mod tests {
         method_anc: MethodAncArgs {
           method_anc: MethodAncestralCli::Marginal,
         },
-        representation: RepresentationArgs { dense: Some(dense) },
+        representation: RepresentationArgs { representation },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
@@ -431,7 +450,9 @@ mod tests {
         method_anc: MethodAncArgs {
           method_anc: MethodAncestralCli::Marginal,
         },
-        representation: RepresentationArgs { dense: Some(false) },
+        representation: RepresentationArgs {
+          representation: RepresentationCli::Sparse,
+        },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()

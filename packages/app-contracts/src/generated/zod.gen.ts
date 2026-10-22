@@ -1249,7 +1249,6 @@ export const zSettingRole = z.union([
  */
 export const zSettingKind = z.union([
   z.literal('switch'),
-  z.literal('tristate'),
   z.literal('enum'),
   z.literal('enum-or-text'),
   z.literal('integer'),
@@ -1352,6 +1351,12 @@ export const zAlphabetName = z.enum([
   'nuc',
   'aa',
   'aa-no-stop'
+]);
+
+export const zRepresentation = z.union([
+  z.literal('auto'),
+  z.literal('dense'),
+  z.literal('sparse')
 ]);
 
 export const zGapFill = z.enum([
@@ -1474,7 +1479,7 @@ export const zTimetreeConfig = z.strictObject({
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
   alphabet: zAlphabetName.optional(),
-  dense: z.boolean().optional(),
+  representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
   zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
@@ -1648,7 +1653,7 @@ export const zAncestralConfig = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   method_anc: zMethodAncestral.optional(),
-  dense: z.boolean().optional(),
+  representation: zRepresentation.optional(),
   sample_from_profile: zSampleMode.optional(),
   gap_fill: zGapFill.optional(),
   zero_based: z.boolean().optional(),
@@ -1725,7 +1730,7 @@ export const zHomoplasyConfig = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   method_anc: zMethodAncestral.optional(),
-  dense: z.boolean().optional(),
+  representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
   zero_based: z.boolean().optional(),
   impute_missing_data: z.boolean().optional(),
@@ -1901,7 +1906,7 @@ export const zOptimizeConfig = z.strictObject({
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
-  dense: z.boolean().optional(),
+  representation: zRepresentation.optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),
   output_tree_nwk: z.string().optional(),

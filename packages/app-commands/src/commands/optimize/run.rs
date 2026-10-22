@@ -55,7 +55,7 @@ pub fn run_optimize(
 
   let params = OptimizeParams {
     model: args.model.clone(),
-    dense: args.representation.dense,
+    dense: args.representation.dense(),
     initial_guess: args.branch_length_initial_guess,
     reroot_spec: args.reroot_spec(&graph, &names)?,
     loop_settings: OptimizeLoopSettings {

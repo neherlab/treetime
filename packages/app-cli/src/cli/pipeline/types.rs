@@ -149,7 +149,7 @@ mod tests {
   fn test_types_step_parses_ancestral_with_snake_case_fields() {
     let value = json!({
       "name": "anc",
-      "ancestral": { "tree": "t.nwk", "method_anc": "marginal", "dense": true }
+      "ancestral": { "tree": "t.nwk", "method_anc": "marginal", "representation": "dense" }
     });
     let step = parse_step(value).unwrap();
     assert_eq!(

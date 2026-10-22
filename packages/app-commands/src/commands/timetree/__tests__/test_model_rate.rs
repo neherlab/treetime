@@ -41,7 +41,7 @@ alignment: AlignmentArgs {
       },
 tree: TreeArgs { tree: Some(dir.join("tree.nwk")) },
 metadata: Some(dir.join("metadata.tsv")),
-representation: RepresentationArgs { dense: Some(dense) },
+representation: RepresentationArgs { representation: helpers::representation(dense) },
 max_iter: 1,
 output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
@@ -91,7 +91,7 @@ seed_args: SeedArgs { seed: Some(7) },
   mod helpers {
     use super::*;
     use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
-    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli};
     use crate::commands::shared::reroot::RootingArgs;
     use crate::commands::shared::tree_input::TreeArgs;
     use std::iter::repeat_n;
@@ -108,6 +108,14 @@ seed_args: SeedArgs { seed: Some(7) },
     ];
     const INVARIANT_COLUMNS_PER_STATE: usize = 100;
     const NUCLEOTIDES: [u8; 4] = *b"ACGT";
+
+    pub(super) fn representation(dense: bool) -> RepresentationCli {
+      if dense {
+        RepresentationCli::Dense
+      } else {
+        RepresentationCli::Sparse
+      }
+    }
 
     pub(super) fn run_symmetric(model: GtrModelNameCli, dense: bool) -> Result<SymmetricRun, Report> {
       let dir = tempfile::tempdir()?;
@@ -131,7 +139,9 @@ seed_args: SeedArgs { seed: Some(7) },
           model,
           ..ModelArgs::default()
         },
-        representation: RepresentationArgs { dense: Some(dense) },
+        representation: RepresentationArgs {
+          representation: representation(dense),
+        },
         rooting: RootingArgs {
           keep_root: true,
           ..RootingArgs::default()

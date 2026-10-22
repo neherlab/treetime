@@ -163,12 +163,10 @@ fn setting_spec(
       (SettingKind::EnumList, item_options, ListItemKind::String)
     }
   } else if types.contains(&"boolean") {
-    let kind = if nullable {
-      SettingKind::Tristate
-    } else {
-      SettingKind::Switch
-    };
-    (kind, vec![], ListItemKind::String)
+    if nullable {
+      return make_error!("setting `{key}` is an optional on/off value, which the settings form does not render");
+    }
+    (SettingKind::Switch, vec![], ListItemKind::String)
   } else if types.contains(&"integer") {
     (SettingKind::Integer, vec![], ListItemKind::String)
   } else if types.contains(&"number") {
@@ -281,8 +279,6 @@ impl From<Option<PathRole>> for SettingRole {
 pub enum SettingKind {
   /// On or off.
   Switch,
-  /// On, off, or unset.
-  Tristate,
   /// One of a set of values.
   Enum,
   /// One of a set of values, or a value entered as text, for example `opt`, `skyline` or the time scale `10y`.

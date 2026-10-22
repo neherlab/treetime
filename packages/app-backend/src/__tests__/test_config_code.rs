@@ -157,7 +157,7 @@ mod tests {
   fn test_config_code_yaml_passes_the_config_check() {
     let mut config = AppCommand::Ancestral.default_config().unwrap();
     config.extend(
-      json!({ "tree": "t.nwk", "alignment": ["a.fasta", "b c.fasta"], "gap_fill": "all", "dense": true })
+      json!({ "tree": "t.nwk", "alignment": ["a.fasta", "b c.fasta"], "gap_fill": "all", "representation": "dense" })
         .as_object()
         .unwrap()
         .clone(),
@@ -200,7 +200,6 @@ mod tests {
         (SettingRole::Input | SettingRole::InputTemplate, SettingKind::List) => json!(["a b.fasta", "c.fasta"]),
         (SettingRole::Input | SettingRole::InputTemplate, _) => json!("my data/file one.txt"),
         (_, SettingKind::Switch) => json!(true),
-        (_, SettingKind::Tristate) => json!(!default_of(spec).and_then(Value::as_bool).unwrap_or(false)),
         (_, SettingKind::Enum) => spec
           .options
           .iter()

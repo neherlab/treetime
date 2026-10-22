@@ -128,7 +128,7 @@ distribution of the same mean to detect sites that are mutated suspiciously ofte
 #### Inputs:
 
 - tree (`--tree`) and alignment (`--alignment`)
-- the reconstruction flags of `ancestral` (`--method-anc`, `--model`, `--dense`, `--gap-fill`)
+- the reconstruction flags of `ancestral` (`--method-anc`, `--model`, `--representation`, `--gap-fill`)
 - `--const`: constant sites that the alignment leaves out
 - `--rescale`: factor for the branch lengths of the tree
 - `--drms`: table of drug resistance mutations that annotates the report

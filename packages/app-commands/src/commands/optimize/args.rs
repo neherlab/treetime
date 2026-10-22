@@ -252,7 +252,7 @@ pub struct TreetimeOptimizeArgsRaw {
   ///
   /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
   /// under a new internal node. Requires the sparse sequence representation, so this step has no
-  /// effect under `--dense` and the flag is then a no-op.
+  /// effect under `--representation dense` and the flag is then a no-op.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_merge_siblings: bool,
 
@@ -261,7 +261,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// By default, when a child branch carries the exact reversion of a substitution on the node's
   /// parent branch, a new node is inserted that groups the node with that child, removing one
   /// mutation per reverted position. When set, those reversions are left in place. Requires the
-  /// sparse sequence representation, so this step has no effect under `--dense` and the flag is
+  /// sparse sequence representation, so this step has no effect under `--representation dense` and the flag is
   /// then a no-op.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_flip_parent_child: bool,

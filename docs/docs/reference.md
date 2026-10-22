@@ -249,11 +249,19 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
-* `--dense <DENSE>` — Use the dense representation of the sequences on the tree
+* `--representation <REPRESENTATION>` — Representation of the sequences on the tree
 
-   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used.
+   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Possible values: `true`, `false`
+  Default value: `auto`
+
+  Possible values:
+  - `auto`:
+    Let TreeTime choose the representation; it chooses sparse
+  - `dense`:
+    Probabilities of every state at every alignment position
+  - `sparse`:
+    Only the variable positions
 
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
 
@@ -508,11 +516,19 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
   - `equal`:
     Fix the relative rate of every partition at 1
 
-* `--dense <DENSE>` — Use the dense representation of the sequences on the tree
+* `--representation <REPRESENTATION>` — Representation of the sequences on the tree
 
-   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used.
+   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Possible values: `true`, `false`
+  Default value: `auto`
+
+  Possible values:
+  - `auto`:
+    Let TreeTime choose the representation; it chooses sparse
+  - `dense`:
+    Probabilities of every state at every alignment position
+  - `sparse`:
+    Only the variable positions
 
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 
@@ -680,10 +696,10 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero.
 * `--no-merge-siblings` — Disable merging of polytomy siblings that share substitutions.
 
-   By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op.
+   By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--representation dense` and the flag is then a no-op.
 * `--no-flip-parent-child` — Disable the flip-parent-child step (reversion hoist) in polytomies.
 
-   By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op.
+   By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--representation dense` and the flag is then a no-op.
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
 
    'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged.
@@ -923,11 +939,19 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Possible values: `marginal`, `parsimony`
 
-* `--dense <DENSE>` — Use the dense representation of the sequences on the tree
+* `--representation <REPRESENTATION>` — Representation of the sequences on the tree
 
-   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used.
+   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Possible values: `true`, `false`
+  Default value: `auto`
+
+  Possible values:
+  - `auto`:
+    Let TreeTime choose the representation; it chooses sparse
+  - `dense`:
+    Probabilities of every state at every alignment position
+  - `sparse`:
+    Only the variable positions
 
 * `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
 
@@ -1350,11 +1374,19 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `marginal`, `parsimony`
 
-* `--dense <DENSE>` — Use the dense representation of the sequences on the tree
+* `--representation <REPRESENTATION>` — Representation of the sequences on the tree
 
-   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used.
+   The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Possible values: `true`, `false`
+  Default value: `auto`
+
+  Possible values:
+  - `auto`:
+    Let TreeTime choose the representation; it chooses sparse
+  - `dense`:
+    Probabilities of every state at every alignment position
+  - `sparse`:
+    Only the variable positions
 
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
 

@@ -138,81 +138,81 @@ args = "--method-anc=parsimony"
 
 [[ancestral]]
 variant = "marginal-sparse"
-args = "--method-anc=marginal --dense=false"
+args = "--method-anc=marginal --representation=sparse"
 
 [[ancestral]]
 variant = "marginal-dense"
-args = "--method-anc=marginal --dense=true --model=jc69"
+args = "--method-anc=marginal --representation=dense --model=jc69"
 
 [[ancestral]]
 variant = "model-jc69"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=false --model=jc69"
+args = "--method-anc=marginal --representation=sparse --model=jc69"
 
 [[ancestral]]
 variant = "model-k80"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=false --model=k80"
+args = "--method-anc=marginal --representation=sparse --model=k80"
 
 [[ancestral]]
 variant = "model-f81"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=false --model=f81"
+args = "--method-anc=marginal --representation=sparse --model=f81"
 
 [[ancestral]]
 variant = "model-hky85"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=false --model=hky85"
+args = "--method-anc=marginal --representation=sparse --model=hky85"
 
 [[ancestral]]
 variant = "model-t92"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=false --model=t92"
+args = "--method-anc=marginal --representation=sparse --model=t92"
 
 [[ancestral]]
 variant = "model-tn93"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=false --model=tn93"
+args = "--method-anc=marginal --representation=sparse --model=tn93"
 
 [[ancestral]]
 variant = "model-k80-dense"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --model=k80"
+args = "--method-anc=marginal --representation=dense --model=k80"
 
 [[ancestral]]
 variant = "model-f81-dense"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --model=f81"
+args = "--method-anc=marginal --representation=dense --model=f81"
 
 [[ancestral]]
 variant = "model-hky85-dense"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --model=hky85"
+args = "--method-anc=marginal --representation=dense --model=hky85"
 
 [[ancestral]]
 variant = "model-t92-dense"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --model=t92"
+args = "--method-anc=marginal --representation=dense --model=t92"
 
 [[ancestral]]
 variant = "model-tn93-dense"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --model=tn93"
+args = "--method-anc=marginal --representation=dense --model=tn93"
 
 [[ancestral]]
 variant = "model-infer-dense"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true"
+args = "--method-anc=marginal --representation=dense"
 
 [[ancestral]]
 variant = "gap-fill-all"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --gap-fill=all"
+args = "--method-anc=marginal --representation=dense --gap-fill=all"
 
 [[ancestral]]
 variant = "gap-fill-none"
 datasets = ["flu/h3n2/20"]
-args = "--method-anc=marginal --dense=true --gap-fill=none"
+args = "--method-anc=marginal --representation=dense --gap-fill=none"
 
 [[ancestral]]
 variant = "reconstruct-tip-states"
@@ -461,28 +461,28 @@ args = "--zero-based"
 
 [[optimize]]
 variant = "sparse"
-args = "--dense=false"
+args = "--representation=sparse"
 
 [[optimize]]
 variant = "dense"
-args = "--dense=true"
+args = "--representation=dense"
 
 [[optimize]]
 variant = "newton"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --opt-method=newton"
+args = "--representation=sparse --opt-method=newton"
 
 [[optimize]]
 variant = "reroot-min-dev"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --reroot=min-dev"
+args = "--representation=sparse --reroot=min-dev"
 
 # Per-file output flags in place of --output-all
 [[optimize]]
 variant = "individual-outputs"
 datasets = "small"
 standalone = true
-args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={dataset}/tree.nwk --aln={dataset}/aln.fasta.xz --representation=sparse --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 # An already rerooted input tree
@@ -490,113 +490,113 @@ outputs = ["bl.json", "opti.auspice.json"]
 variant = "rerooted-input"
 datasets = ["mpox/clade-ii/1000"]
 standalone = true
-args = "--tree={dataset}/tree_opt.nwk --aln={dataset}/aln.fasta.xz --dense=false --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={dataset}/tree_opt.nwk --aln={dataset}/aln.fasta.xz --representation=sparse --output-augur-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 [[optimize]]
 variant = "model-jc69"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --model=jc69"
+args = "--representation=sparse --model=jc69"
 
 [[optimize]]
 variant = "model-hky85"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --model=hky85"
+args = "--representation=sparse --model=hky85"
 
 [[optimize]]
 variant = "model-hky85-dense"
 datasets = ["flu/h3n2/20"]
-args = "--dense=true --model=hky85"
+args = "--representation=dense --model=hky85"
 
 [[optimize]]
 variant = "dp-0.01"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --dp=0.01"
+args = "--representation=sparse --dp=0.01"
 
 [[optimize]]
 variant = "damping-0.5"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --damping=0.5"
+args = "--representation=sparse --damping=0.5"
 
 [[optimize]]
 variant = "iter1"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --max-iter=1"
+args = "--representation=sparse --max-iter=1"
 
 [[optimize]]
 variant = "iter30"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --max-iter=30"
+args = "--representation=sparse --max-iter=30"
 
 [[optimize]]
 variant = "guess-always"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --branch-length-initial-guess=always"
+args = "--representation=sparse --branch-length-initial-guess=always"
 
 [[optimize]]
 variant = "guess-always-dense"
 datasets = ["flu/h3n2/20"]
-args = "--dense=true --branch-length-initial-guess=always"
+args = "--representation=dense --branch-length-initial-guess=always"
 
 [[optimize]]
 variant = "guess-never"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --branch-length-initial-guess=never"
+args = "--representation=sparse --branch-length-initial-guess=never"
 
 [[optimize]]
 variant = "no-indels"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --no-indels"
+args = "--representation=sparse --no-indels"
 
 [[optimize]]
 variant = "units-mutations"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --divergence-units=mutations"
+args = "--representation=sparse --divergence-units=mutations"
 
 [[optimize]]
 variant = "reroot-tips"
 datasets = ["ebola/20"]
-args = "--dense=false --reroot-tips=EM_079497"
+args = "--representation=sparse --reroot-tips=EM_079497"
 
 [[optimize]]
 variant = "keep-root"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --keep-root"
+args = "--representation=sparse --keep-root"
 
 [[optimize]]
 variant = "no-collapse-short-branches"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --no-collapse-short-branches"
+args = "--representation=sparse --no-collapse-short-branches"
 
 [[optimize]]
 variant = "no-merge-siblings"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --no-merge-siblings"
+args = "--representation=sparse --no-merge-siblings"
 
 [[optimize]]
 variant = "no-flip-parent-child"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --no-flip-parent-child"
+args = "--representation=sparse --no-flip-parent-child"
 
 [[optimize]]
 variant = "no-topology-ops"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
+args = "--representation=sparse --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
 
 [[optimize]]
 variant = "no-topology-ops-dense"
 datasets = ["flu/h3n2/20"]
-args = "--dense=true --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
+args = "--representation=dense --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
 
 [[optimize]]
 variant = "gap-fill-all"
 datasets = ["flu/h3n2/20"]
-args = "--dense=true --gap-fill=all"
+args = "--representation=dense --gap-fill=all"
 
 [[optimize]]
 variant = "all-outputs"
 datasets = ["flu/h3n2/20"]
-args = "--dense=false"
+args = "--representation=sparse"
 selection = "all"
 
 
@@ -799,7 +799,7 @@ args = "--gtr=jc69"
 [[timetree]]
 variant = "dense"
 datasets = ["flu/h3n2/20"]
-args = "--dense=true --gtr=jc69"
+args = "--representation=dense --gtr=jc69"
 
 [[timetree]]
 variant = "iter0"

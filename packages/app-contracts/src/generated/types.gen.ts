@@ -2676,7 +2676,7 @@ export type SettingRole = 'setting' | 'input' | 'input-template' | 'output';
 /**
  * Form of a setting's value.
  */
-export type SettingKind = 'switch' | 'tristate' | 'enum' | 'enum-or-text' | 'integer' | 'number' | 'text' | 'list' | 'enum-list';
+export type SettingKind = 'switch' | 'enum' | 'enum-or-text' | 'integer' | 'number' | 'text' | 'list' | 'enum-list';
 
 /**
  * One allowed value of a setting.
@@ -2716,6 +2716,8 @@ export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | '
 export type PartitionRates = 'estimate' | 'equal';
 
 export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
+
+export type Representation = 'auto' | 'dense' | 'sparse';
 
 export type GapFill = 'only-terminal' | 'all' | 'none';
 
@@ -2954,13 +2956,13 @@ export type TimetreeConfig = {
    */
   alphabet?: AlphabetName;
   /**
-   * Use the dense representation of the sequences on the tree
+   * Representation of the sequences on the tree
    *
    * The dense representation stores the probabilities of every state at every alignment position of each node; the
    * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
-   * sites change, but uses more memory. When unset, the sparse representation is used.
+   * sites change, but uses more memory.
    */
-  dense?: boolean;
+  representation?: Representation;
   /**
    * How to handle gap characters in input sequences
    *
@@ -3630,13 +3632,13 @@ export type AncestralConfig = {
    */
   method_anc?: MethodAncestral;
   /**
-   * Use the dense representation of the sequences on the tree
+   * Representation of the sequences on the tree
    *
    * The dense representation stores the probabilities of every state at every alignment position of each node; the
    * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
-   * sites change, but uses more memory. When unset, the sparse representation is used.
+   * sites change, but uses more memory.
    */
-  dense?: boolean;
+  representation?: Representation;
   /**
    * How to pick ancestral states from the marginal posterior profile.
    *
@@ -4011,13 +4013,13 @@ export type HomoplasyConfig = {
    */
   method_anc?: MethodAncestral;
   /**
-   * Use the dense representation of the sequences on the tree
+   * Representation of the sequences on the tree
    *
    * The dense representation stores the probabilities of every state at every alignment position of each node; the
    * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
-   * sites change, but uses more memory. When unset, the sparse representation is used.
+   * sites change, but uses more memory.
    */
-  dense?: boolean;
+  representation?: Representation;
   /**
    * How to handle gap characters in input sequences
    *
@@ -4672,13 +4674,13 @@ export type OptimizeConfig = {
    */
   partition_rates?: PartitionRates;
   /**
-   * Use the dense representation of the sequences on the tree
+   * Representation of the sequences on the tree
    *
    * The dense representation stores the probabilities of every state at every alignment position of each node; the
    * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
-   * sites change, but uses more memory. When unset, the sparse representation is used.
+   * sites change, but uses more memory.
    */
-  dense?: boolean;
+  representation?: Representation;
   /**
    * Write all default output files into this directory.
    *
@@ -4931,7 +4933,7 @@ export type OptimizeConfig = {
    *
    * By default, sibling branches in a polytomy that carry identical substitutions are grouped
    * under a new internal node. Requires the sparse sequence representation, so this step has no
-   * effect under `--dense` and the flag is then a no-op.
+   * effect under `--representation dense` and the flag is then a no-op.
    */
   no_merge_siblings?: boolean;
   /**
@@ -4940,7 +4942,7 @@ export type OptimizeConfig = {
    * By default, when a child branch carries the exact reversion of a substitution on the node's
    * parent branch, a new node is inserted that groups the node with that child, removing one
    * mutation per reverted position. When set, those reversions are left in place. Requires the
-   * sparse sequence representation, so this step has no effect under `--dense` and the flag is
+   * sparse sequence representation, so this step has no effect under `--representation dense` and the flag is
    * then a no-op.
    */
   no_flip_parent_child?: boolean;

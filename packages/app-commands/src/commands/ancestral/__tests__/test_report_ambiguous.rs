@@ -5,6 +5,7 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
   use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
+  use crate::commands::shared::representation::RepresentationCli;
   use eyre::{Report, WrapErr};
   use helpers::written_mutations;
   use maplit::btreemap;
@@ -37,23 +38,23 @@ mod tests {
     #[case] expected: Vec<&str>,
     #[case] expected_nwk: &str,
   ) -> Result<(), Report> {
-    let written = written_mutations(STAR_TREE, STAR_ALIGNMENT, report_ambiguous, false, None)?;
+    let written = written_mutations(STAR_TREE, STAR_ALIGNMENT, report_ambiguous, false, RepresentationCli::Auto)?;
     assert_eq!(expected, written.augur_muts.get("C").cloned().unwrap_or_default());
     assert_eq!(expected_nwk, written.nwk.trim());
     Ok(())
   }
 
   #[rstest]
-  #[case::dense_default_hides_unknown(Some(true), false, false, btreemap! {})]
-  #[case::sparse_default_hides_unknown(Some(false), false, false, btreemap! {})]
-  #[case::dense_default_hides_imputed_from_unknown(Some(true), false, true, btreemap! {})]
-  #[case::dense_reports_unknown_above_clade(Some(true), true, false, btreemap! {
+  #[case::dense_default_hides_unknown(RepresentationCli::Dense, false, false, btreemap! {})]
+  #[case::sparse_default_hides_unknown(RepresentationCli::Sparse, false, false, btreemap! {})]
+  #[case::dense_default_hides_imputed_from_unknown(RepresentationCli::Dense, false, true, btreemap! {})]
+  #[case::dense_reports_unknown_above_clade(RepresentationCli::Dense, true, false, btreemap! {
     o!("P2") => vec_of_owned!["A2N"],
   })]
-  #[case::sparse_reports_unknown_above_clade(Some(false), true, false, btreemap! {
+  #[case::sparse_reports_unknown_above_clade(RepresentationCli::Sparse, true, false, btreemap! {
     o!("P2") => vec_of_owned!["A2N"],
   })]
-  #[case::dense_reports_imputed_tips_below_unknown(Some(true), true, true, btreemap! {
+  #[case::dense_reports_imputed_tips_below_unknown(RepresentationCli::Dense, true, true, btreemap! {
     o!("C1") => vec_of_owned!["N2A"],
     o!("C2") => vec_of_owned!["N2A"],
     o!("C3") => vec_of_owned!["N2A"],
@@ -61,7 +62,7 @@ mod tests {
   })]
   #[trace]
   fn test_report_ambiguous_shows_transitions_of_internal_unknown_state(
-    #[case] dense: Option<bool>,
+    #[case] representation: RepresentationCli,
     #[case] report_ambiguous: bool,
     #[case] impute: bool,
     #[case] expected: BTreeMap<String, Vec<String>>,
@@ -71,7 +72,7 @@ mod tests {
       UNKNOWN_CLADE_ALIGNMENT,
       report_ambiguous,
       impute,
-      dense,
+      representation,
     )?;
     let actual: BTreeMap<String, Vec<String>> = written
       .augur_muts
@@ -91,7 +92,7 @@ mod tests {
       UNKNOWN_CLADE_ALIGNMENT,
       report_ambiguous,
       impute_missing_data,
-      Some(false),
+      RepresentationCli::Sparse,
     )?;
     let actual: BTreeMap<String, Vec<String>> = written
       .augur_muts
@@ -121,7 +122,7 @@ mod tests {
     #[case] impute: bool,
     #[case] expected: BTreeMap<String, Vec<(i32, i32)>>,
   ) -> Result<(), Report> {
-    let written = written_mutations(tree, alignment, true, impute, Some(true))?;
+    let written = written_mutations(tree, alignment, true, impute, RepresentationCli::Dense)?;
     assert_eq!(expected, written.mat_mutations);
     Ok(())
   }
@@ -144,7 +145,7 @@ mod tests {
       alignment: &str,
       report_ambiguous: bool,
       impute_missing_data: bool,
-      dense: Option<bool>,
+      representation: RepresentationCli,
     ) -> Result<WrittenMutations, Report> {
       let dir = tempdir().wrap_err("When creating a temporary directory")?;
       let tree_path = dir.path().join("tree.nwk");
@@ -164,7 +165,7 @@ mod tests {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
-        representation: RepresentationArgs { dense },
+        representation: RepresentationArgs { representation },
         impute_missing_data: ImputeMissingDataArgs { impute_missing_data },
         tip_sequences: TipSequenceArgs {
           report_ambiguous,

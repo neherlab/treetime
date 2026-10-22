@@ -314,7 +314,7 @@ fn run_aa_reconstructions(
   stages.report("AA ancestral reconstruction", 0.75, "");
 
   let params = AaParams {
-    dense: ancestral_args.representation.dense,
+    dense: ancestral_args.representation.dense(),
     include_leaves: ancestral_args.include_leaves,
     impute_missing_data: ancestral_args.impute_missing_data,
     sample_from_profile: ancestral_args.sample_from_profile,

@@ -415,7 +415,7 @@ pub(crate) mod tests {
     let inputs = json!({ "tree": "draft.nwk", "alignment": ["draft.fasta"], "metadata": "draft.tsv" });
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
-      text: "alignment: [\"text.fasta\"]\ndense: true".to_owned(),
+      text: "alignment: [\"text.fasta\"]\nrepresentation: dense".to_owned(),
       inputs: SparseConfig(inputs.as_object().unwrap().clone()),
       input_facts: None,
       folder: None,
@@ -425,11 +425,11 @@ pub(crate) mod tests {
       panic!("expected a valid config, got {response:?}");
     };
     assert_eq!(
-      (json!("draft.nwk"), json!(["text.fasta"]), json!(true)),
+      (json!("draft.nwk"), json!(["text.fasta"]), json!("dense")),
       (
         config["tree"].clone(),
         config["alignment"].clone(),
-        config["dense"].clone()
+        config["representation"].clone()
       )
     );
   }

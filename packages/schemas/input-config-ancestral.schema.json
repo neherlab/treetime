@@ -68,11 +68,11 @@
       "default": "marginal",
       "x-cli-flag": "--method-anc"
     },
-    "dense": {
-      "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-      "type": "boolean",
-      "x-unset": true,
-      "x-cli-flag": "--dense"
+    "representation": {
+      "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+      "$ref": "#/$defs/Representation",
+      "default": "auto",
+      "x-cli-flag": "--representation"
     },
     "sample_from_profile": {
       "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -351,6 +351,25 @@
       "enum": [
         "marginal",
         "parsimony"
+      ]
+    },
+    "Representation": {
+      "oneOf": [
+        {
+          "description": "Let TreeTime choose the representation; it chooses sparse",
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "description": "Probabilities of every state at every alignment position",
+          "type": "string",
+          "const": "dense"
+        },
+        {
+          "description": "Only the variable positions",
+          "type": "string",
+          "const": "sparse"
+        }
       ]
     },
     "SampleMode": {

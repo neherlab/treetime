@@ -134,7 +134,7 @@ mod tests {
         &format!("--tree={}", root.join(&inputs.tree).display()),
         &format!("--alignment={}", root.join(&inputs.aln).display()),
         "--model=jc69",
-        "--dense=true",
+        "--representation=dense",
         "--zero-based",
         "--detailed",
         &format!("-n={}", inputs.n),

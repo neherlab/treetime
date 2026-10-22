@@ -41,7 +41,11 @@ mod tests {
         &format!("--alignment={}", data.join("aln.fasta.xz").display()),
         "--model=jc69",
         "--method-anc=marginal",
-        &format!("--dense={dense}"),
+        if dense {
+          "--representation=dense"
+        } else {
+          "--representation=sparse"
+        },
         &format!("--output-homoplasy-stats={}", out.path().join("stats.json").display()),
       ])?;
       let args = TreetimeHomoplasyArgs::try_from(raw)?;

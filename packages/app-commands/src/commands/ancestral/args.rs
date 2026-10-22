@@ -37,7 +37,7 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralPar
   AncestralParams {
     method: args.method_anc,
     model: args.model.clone(),
-    dense: args.representation.dense,
+    dense: args.representation.dense(),
     include_leaves: args.include_leaves,
     report_ambiguous: args.tip_sequences.report_ambiguous,
     impute_missing_data: args.impute_missing_data,

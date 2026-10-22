@@ -68,11 +68,11 @@
       "default": "marginal",
       "x-cli-flag": "--method-anc"
     },
-    "dense": {
-      "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-      "type": "boolean",
-      "x-unset": true,
-      "x-cli-flag": "--dense"
+    "representation": {
+      "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+      "$ref": "#/$defs/Representation",
+      "default": "auto",
+      "x-cli-flag": "--representation"
     },
     "gap_fill": {
       "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -302,6 +302,25 @@
       "enum": [
         "marginal",
         "parsimony"
+      ]
+    },
+    "Representation": {
+      "oneOf": [
+        {
+          "description": "Let TreeTime choose the representation; it chooses sparse",
+          "type": "string",
+          "const": "auto"
+        },
+        {
+          "description": "Probabilities of every state at every alignment position",
+          "type": "string",
+          "const": "dense"
+        },
+        {
+          "description": "Only the variable positions",
+          "type": "string",
+          "const": "sparse"
+        }
       ]
     },
     "GapFill": {

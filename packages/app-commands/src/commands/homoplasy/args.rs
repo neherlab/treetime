@@ -32,7 +32,7 @@ pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> An
   AncestralParams {
     method: args.method_anc,
     model: args.model.clone(),
-    dense: args.representation.dense,
+    dense: args.representation.dense(),
     include_leaves: false,
     report_ambiguous: true,
     impute_missing_data: args.impute_missing_data.impute_missing_data,

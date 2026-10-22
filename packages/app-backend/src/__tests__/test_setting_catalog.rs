@@ -189,7 +189,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::switch(         AppCommand::Timetree,  "confidence",          SettingKind::Switch,   false, Some(json!(false)))]
-  #[case::tristate(       AppCommand::Ancestral, "dense",               SettingKind::Tristate, true,  None)]
+  #[case::enum_default(   AppCommand::Ancestral, "representation",      SettingKind::Enum,     false, Some(json!("auto")))]
   #[case::integer(        AppCommand::Timetree,  "max_iter",            SettingKind::Integer,  false, Some(json!(2)))]
   #[case::optional_int(   AppCommand::Timetree,  "seed",                SettingKind::Integer,  true,  None)]
   #[case::text(           AppCommand::Mugration, "missing_data",        SettingKind::Text,     false, Some(json!("?")))]

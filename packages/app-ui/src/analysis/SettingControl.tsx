@@ -30,7 +30,6 @@ interface ControlProps {
 
 const CONTROLS: Record<SettingKind, (props: ControlProps) => React.ReactNode> = {
   switch: SwitchControl,
-  tristate: TristateControl,
   enum: EnumControl,
   "enum-or-text": EnumOrTextControl,
   integer: NumberControl,
@@ -109,31 +108,6 @@ function SwitchControl({ spec, label, className }: ControlProps) {
       onCheckedChange={set}
       className={className}
     />
-  );
-}
-
-function TristateControl({ spec, label, className }: ControlProps) {
-  const { value, set, unset } = useSetting(spec);
-
-  const onChange = useCallback(
-    (event: React.ChangeEvent<HTMLSelectElement>) =>
-      event.target.value === "" ? unset() : set(event.target.value === "true"),
-    [set, unset],
-  );
-
-  return (
-    <NativeSelect
-      id={settingFieldId(spec.key)}
-      size="sm"
-      aria-label={label}
-      value={value === undefined ? "" : scalarText(value)}
-      onChange={onChange}
-      className={className}
-    >
-      <NativeSelectOption value="">Automatic</NativeSelectOption>
-      <NativeSelectOption value="true">On</NativeSelectOption>
-      <NativeSelectOption value="false">Off</NativeSelectOption>
-    </NativeSelect>
   );
 }
 

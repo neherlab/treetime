@@ -5596,11 +5596,6 @@
             "const": "switch"
           },
           {
-            "description": "On, off, or unset.",
-            "type": "string",
-            "const": "tristate"
-          },
-          {
             "description": "One of a set of values.",
             "type": "string",
             "const": "enum"
@@ -5748,6 +5743,25 @@
           "nuc",
           "aa",
           "aa-no-stop"
+        ]
+      },
+      "Representation": {
+        "oneOf": [
+          {
+            "description": "Let TreeTime choose the representation; it chooses sparse",
+            "type": "string",
+            "const": "auto"
+          },
+          {
+            "description": "Probabilities of every state at every alignment position",
+            "type": "string",
+            "const": "dense"
+          },
+          {
+            "description": "Only the variable positions",
+            "type": "string",
+            "const": "sparse"
+          }
         ]
       },
       "GapFill": {
@@ -6085,11 +6099,10 @@
             "x-unset": true,
             "x-cli-flag": "--alphabet"
           },
-          "dense": {
-            "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-            "type": "boolean",
-            "x-unset": true,
-            "x-cli-flag": "--dense"
+          "representation": {
+            "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+            "$ref": "#/components/schemas/Representation",
+            "x-cli-flag": "--representation"
           },
           "gap_fill": {
             "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -6707,11 +6720,10 @@
             "$ref": "#/components/schemas/MethodAncestral",
             "x-cli-flag": "--method-anc"
           },
-          "dense": {
-            "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-            "type": "boolean",
-            "x-unset": true,
-            "x-cli-flag": "--dense"
+          "representation": {
+            "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+            "$ref": "#/components/schemas/Representation",
+            "x-cli-flag": "--representation"
           },
           "sample_from_profile": {
             "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -7016,11 +7028,10 @@
             "$ref": "#/components/schemas/MethodAncestral",
             "x-cli-flag": "--method-anc"
           },
-          "dense": {
-            "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-            "type": "boolean",
-            "x-unset": true,
-            "x-cli-flag": "--dense"
+          "representation": {
+            "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+            "$ref": "#/components/schemas/Representation",
+            "x-cli-flag": "--representation"
           },
           "gap_fill": {
             "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -7613,11 +7624,10 @@
             "$ref": "#/components/schemas/PartitionRates",
             "x-cli-flag": "--partition-rates"
           },
-          "dense": {
-            "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
-            "type": "boolean",
-            "x-unset": true,
-            "x-cli-flag": "--dense"
+          "representation": {
+            "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+            "$ref": "#/components/schemas/Representation",
+            "x-cli-flag": "--representation"
           },
           "output_all": {
             "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{partition}`, which is replaced by the number. Other tree outputs with\n`{partition}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
@@ -7793,12 +7803,12 @@
             "x-cli-flag": "--no-collapse-short-branches"
           },
           "no_merge_siblings": {
-            "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--dense` and the flag is then a no-op.",
+            "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--representation dense` and the flag is then a no-op.",
             "type": "boolean",
             "x-cli-flag": "--no-merge-siblings"
           },
           "no_flip_parent_child": {
-            "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--dense` and the flag is\nthen a no-op.",
+            "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--representation dense` and the flag is\nthen a no-op.",
             "type": "boolean",
             "x-cli-flag": "--no-flip-parent-child"
           },
