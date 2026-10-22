@@ -11,13 +11,11 @@ The command's raw argument struct (`Treetime<Command>ArgsRaw` in `packages/app-c
 
 | Command    | Flags                                                                                     |
 | ---------- | ----------------------------------------------------------------------------------------- |
-| `timetree` | `--model-params`/`--gtr-params`, `--keep-polytomies`                                      |
-
-`ancestral`, `optimize`, and `homoplasy` also accept `--model-params`/`--gtr-params` and never read it. The flag lives in the shared `ModelArgs` struct in `packages/app-commands/src/commands/shared/model.rs`, and no command reads its `model_params` field. The `--help` text and `docs/docs/reference.md` even give a usage example (`--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`). Yet `ancestral --model k80 --model-params kappa=5` and `--model-params kappa=0.2` write byte-identical GTR files with the default K80 rates.
+| `timetree` | `--keep-polytomies` |
 
 ## Impact
 
-- `--model-params` in `ancestral`, `homoplasy`, `optimize`, and `timetree` does not change the parameters of the selected model, so a named model always uses its default parameters
+- `--keep-polytomies` in `timetree` does not change the run
 
 ## Potential solutions
 

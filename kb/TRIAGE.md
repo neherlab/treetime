@@ -10,7 +10,7 @@ Each line names the issue and the options that a maintainer must choose from.
 
 - **[kb/issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md](issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md)**: honor each of the two flags that the amino-acid path ignores, reject the combination, or document the flag as nucleotide-only
 - **[kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](issues/M-app-runs-folder-grows-without-retention-or-quota.md)**: choose a quota, an age-based retention, or both, their defaults for the deploy, and whether the UI warns before it removes a run
-- **[kb/issues/M-cli-flags-parsed-but-ignored.md](issues/M-cli-flags-parsed-but-ignored.md)**: make `--model-params` and `--keep-polytomies` change the run
+- **[kb/issues/M-cli-flags-parsed-but-ignored.md](issues/M-cli-flags-parsed-but-ignored.md)**: make `--keep-polytomies` change the run
 - **[kb/issues/M-cli-help-text-defects.md](issues/M-cli-help-text-defects.md)**: give each behavior item its own issue with a parse and runtime contract, or fix all items in one CLI cleanup
 - **[kb/issues/M-clock-command-reports-no-rate-uncertainty.md](issues/M-clock-command-reports-no-rate-uncertainty.md)**: report the Gaussian rate uncertainty in `clock` from a sequence length, or keep `clock` without uncertainty and record the divergence from v0
 - **[kb/issues/M-clock-filter-outlier-clade-dated-after-the-samples.md](issues/M-clock-filter-outlier-clade-dated-after-the-samples.md)**: keep the v0 behavior with its warning, keep the date ranges of flagged tips in the time inference, or use a local clock filter

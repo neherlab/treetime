@@ -8,7 +8,7 @@
 ## Mutation Mapping
 
 - [x] Ancestral reconstruction with `--method-anc` (marginal default, parsimony); v0 uses joint reconstruction
-- [x] Substitution model flags of `ancestral` (`--model`, `--dense`, `--gap-fill`)
+- [x] Substitution model flags of `ancestral` (`--model`, `--model-params`, `--dense`, `--gap-fill`)
 - [x] Unknown-state bridging of substitutions
 
 ## v0 Features

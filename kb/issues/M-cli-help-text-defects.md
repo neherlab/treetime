@@ -71,7 +71,7 @@ Root `--help` links to `https://treetime.readthedocs.io/en/stable/` and the Pyth
 
 ### W6: No usage examples in any scientific command
 
-Core commands (`timetree`, `ancestral`, `clock`, `mugration`, `optimize`, `prune`) have no canonical command-line examples showing required input combinations. The help texts with examples are `completions` and the `--model-params` flag (which shows `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`).
+Core commands (`timetree`, `ancestral`, `clock`, `mugration`, `optimize`, `prune`) have no canonical command-line examples showing required input combinations. The help texts with examples are `completions` and the `--model-params` flag (which shows `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`).
 
 ### W7: `mugration` metadata format examples are unreadable inline prose
 

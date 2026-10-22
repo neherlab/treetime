@@ -77,7 +77,7 @@
 - [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` for reproducibility; a generated seed is logged when sampling runs without one (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
-- [ ] `--gtr-params` custom GTR parameters (parsed but not wired)
+- [x] `--model-params` (`key=value` parameters of a named model, as v0 `--gtr-params`; an unknown key or a malformed item is an error)
 - [x] `--translations` per-CDS AA FASTA input (both `{cds}` and `%GENE` placeholders)
 - [x] `--cdses` / `--genes` CDS names (derived from `--annotation` when omitted)
 - [x] `--annotation` GFF3 annotation (CDS coordinates for node data; GenBank: [kb/issues/M-ancestral-genbank-annotation-unsupported.md](../issues/M-ancestral-genbank-annotation-unsupported.md))

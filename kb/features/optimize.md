@@ -71,7 +71,7 @@ The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polyt
 
 ## GTR Integration
 
-- [x] `--model` flag wired through `get_gtr_sparse()`/`get_gtr_dense()` for all named models and inference
+- [x] `--model` and `--model-params` wired through `GtrModel` for all named models and inference
 - [ ] GTR inference integrated into optimization loop (v0: `infer_gtr` parameter re-estimates model per iteration)
 - [ ] GTR rate optimization (v0: `optimize_gtr_rate()` optimizes overall substitution rate mu)
 
