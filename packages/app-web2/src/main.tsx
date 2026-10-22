@@ -23,7 +23,10 @@ reloadOnChunkError(globalThis.window);
 
 const connection = new WorkerConnection(browserWorkerHost);
 
-const client = createApiClient({ baseUrl: globalThis.location.origin, fetch: createPortFetch(connection) });
+const client = createApiClient({
+  baseUrl: globalThis.location.origin,
+  fetch: createPortFetch(connection, { transferBodies: true }),
+});
 
 const preferences = browserPreferencesStorage(globalThis.localStorage, globalThis.sessionStorage);
 

@@ -5,6 +5,7 @@ import { type PortHeader, type PortMessage, type PortReply, type PortRequest, po
 
 export interface FetchPort {
   postMessage(message: PortMessage): void;
+  postMessage(message: PortMessage, transfer: ArrayBuffer[]): void;
   addEventListener(type: "message", listener: (event: { data: unknown }) => void): void;
   start(): void;
 }
@@ -12,6 +13,10 @@ export interface FetchPort {
 export interface FetchConnection {
   onPort(listener: (port: FetchPort) => void): void;
   onStopped(listener: (stop: BackendStopped) => void): void;
+}
+
+export interface PortFetchOptions {
+  transferBodies?: boolean;
 }
 
 export type PortFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
@@ -24,8 +29,8 @@ const MALFORMED_REPLY = "the back end sent a malformed message";
 
 const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
-export function createPortFetch(connection: FetchConnection): PortFetch {
-  const client = new PortClient(connection);
+export function createPortFetch(connection: FetchConnection, options: PortFetchOptions = {}): PortFetch {
+  const client = new PortClient(connection, options.transferBodies ?? false);
 
   return async (input, init) => {
     const request = new Request(input, init);
@@ -57,8 +62,10 @@ class PortClient {
   private readonly exchanges = new Map<number, Exchange>();
   private nextSeq = 0;
   private failure: Error | undefined;
+  private readonly transferBodies: boolean;
 
-  constructor(connection: FetchConnection) {
+  constructor(connection: FetchConnection, transferBodies: boolean) {
+    this.transferBodies = transferBodies;
     connection.onPort((port) => {
       this.connect(port);
     });
@@ -150,8 +157,7 @@ class PortClient {
     if (this.port === undefined) {
       this.waiting.set(request.seq, request);
     } else {
-      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a MessagePort takes no target origin
-      this.port.postMessage({ kind: "request", request });
+      this.post(this.port, request);
     }
   }
 
@@ -161,6 +167,16 @@ class PortClient {
     }
 
     this.port?.postMessage({ kind: "abort", seq });
+  }
+
+  private post(port: FetchPort, request: PortRequest): void {
+    const buffer = this.transferBodies ? request.body?.buffer : undefined;
+
+    if (buffer instanceof ArrayBuffer) {
+      port.postMessage({ kind: "request", request }, [buffer]);
+    } else {
+      port.postMessage({ kind: "request", request });
+    }
   }
 
   private connect(port: FetchPort): void {
@@ -178,7 +194,7 @@ class PortClient {
     port.start();
 
     for (const request of this.waiting.values()) {
-      port.postMessage({ kind: "request", request });
+      this.post(port, request);
     }
 
     this.waiting.clear();

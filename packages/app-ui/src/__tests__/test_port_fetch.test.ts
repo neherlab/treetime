@@ -58,6 +58,43 @@ describe("port_fetch requests", () => {
     expect(backend.posted.map((message) => message.kind === "request" && message.request.body)).toStrictEqual([bytes]);
   });
 
+  test("with body transfer, a request transfers its body buffer to the back end instead of copying it", async () => {
+    const backend = fakeBackend({ connected: true });
+
+    void createPortFetch(backend.connection, { transferBodies: true })(`${ORIGIN}/api/runs/r1/inputs/aln.fasta`, {
+      method: "PUT",
+      body: ">A\nACGT\n",
+    });
+    await sent(backend, 1);
+
+    const [message] = backend.posted;
+    const body = message?.kind === "request" ? message.request.body?.buffer : undefined;
+
+    expect(backend.transferred).toStrictEqual([[body]]);
+    expect(body).toBeInstanceOf(ArrayBuffer);
+  });
+
+  test("with body transfer, a request without a body posts no transfer list", async () => {
+    const backend = fakeBackend({ connected: true });
+
+    void createPortFetch(backend.connection, { transferBodies: true })(`${ORIGIN}/api/version`);
+    await sent(backend, 1);
+
+    expect(backend.transferred).toStrictEqual([undefined]);
+  });
+
+  test("without body transfer, a request with a body posts no transfer list", async () => {
+    const backend = fakeBackend({ connected: true });
+
+    void createPortFetch(backend.connection)(`${ORIGIN}/api/runs/r1/inputs/aln.fasta`, {
+      method: "PUT",
+      body: ">A\nACGT\n",
+    });
+    await sent(backend, 1);
+
+    expect(backend.transferred).toStrictEqual([undefined]);
+  });
+
   test("a request without a body sends no body", async () => {
     const backend = fakeBackend({ connected: true });
 
@@ -328,6 +365,7 @@ describe("port_fetch back end stops", () => {
 interface FakeBackend {
   connection: FetchConnection;
   posted: PortMessage[];
+  transferred: Array<ArrayBuffer[] | undefined>;
   connect(): void;
   reply(reply: PortReply): void;
   deliver(data: unknown): void;
@@ -341,6 +379,7 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
 
   const backend: FakeBackend = {
     posted: [],
+    transferred: [],
     connection: {
       onPort(listener) {
         portListeners.push(listener);
@@ -355,8 +394,9 @@ function fakeBackend({ connected = false } = {}): FakeBackend {
     },
     connect() {
       const port: FetchPort = {
-        postMessage(message) {
+        postMessage(message: PortMessage, transfer?: ArrayBuffer[]) {
           backend.posted.push(message);
+          backend.transferred.push(transfer);
         },
         addEventListener(_type, listener) {
           deliver = (data) => {
