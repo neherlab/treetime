@@ -95,10 +95,10 @@ mod tests {
       }
     };
     let last = survival.t.len() - 1;
-    pretty_assert_abs_diff_eq!(-1.0 + (2.0 * TRIM).ln(), survival.t[0], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(-1.0 + (2.0 * TRIM).ln(), survival.t[0], epsilon = 1e-14);
     pretty_assert_abs_diff_eq!(-2.0 * TRIM, survival.t[last], epsilon = 1e-15);
     helpers::assert_knots_at_levels(&survival, exact);
-    helpers::assert_interpolates_within_level_spacing(&survival, exact);
+    helpers::assert_interpolates_within(&survival, exact, 1e-2);
     Ok(())
   }
 
@@ -124,9 +124,9 @@ mod tests {
     let tail_end = 1.0 + (1.0 / (rate * total * TRIM)).ln() / rate;
     let last = survival.t.len() - 1;
     pretty_assert_abs_diff_eq!(TRIM * total, survival.t[0], epsilon = 1e-15);
-    pretty_assert_abs_diff_eq!(tail_end, survival.t[last], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(tail_end, survival.t[last], epsilon = 1e-15);
     helpers::assert_knots_at_levels(&survival, exact);
-    helpers::assert_interpolates_within_level_spacing(&survival, exact);
+    helpers::assert_interpolates_within(&survival, exact, 1e-2);
     Ok(())
   }
 
@@ -149,10 +149,10 @@ mod tests {
       }
     };
     let last = survival.t.len() - 1;
-    pretty_assert_abs_diff_eq!(2.0 - (2.0 * total * TRIM).sqrt(), survival.t[last], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(2.0 - (2.0 * total * TRIM).sqrt(), survival.t[last], epsilon = 1e-15);
     assert!(survival.t[last] < 2.0);
     helpers::assert_knots_at_levels(&survival, exact);
-    helpers::assert_interpolates_within_level_spacing(&survival, exact);
+    helpers::assert_interpolates_within(&survival, exact, 1e-3);
     Ok(())
   }
 
@@ -183,10 +183,10 @@ mod tests {
     pretty_assert_abs_diff_eq!(
       3.0 - (power * total * TRIM).powf(power.recip()),
       survival.t[last],
-      epsilon = 1e-12
+      epsilon = 1e-14
     );
     helpers::assert_knots_at_levels(&survival, exact);
-    helpers::assert_interpolates_within_level_spacing(&survival, exact);
+    helpers::assert_interpolates_within(&survival, exact, 1e-3);
     Ok(())
   }
 
@@ -205,7 +205,7 @@ mod tests {
 
     let exact = |t: f64| ((2.0 - t).max(0.0) + (5.0 - t.max(3.0))) / 4.0;
     helpers::assert_knots_at_levels(&survival, exact);
-    helpers::assert_interpolates_within_level_spacing(&survival, exact);
+    helpers::assert_interpolates_within(&survival, exact, 1e-1);
     Ok(())
   }
 
@@ -228,9 +228,9 @@ mod tests {
       }
     };
     let last = survival.t.len() - 1;
-    pretty_assert_abs_diff_eq!(0.01 + (1.0 / (total * TRIM)).ln(), survival.t[last], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(0.01 + (1.0 / (total * TRIM)).ln(), survival.t[last], epsilon = 1e-13);
     helpers::assert_knots_at_levels(&survival, exact);
-    helpers::assert_interpolates_within_level_spacing(&survival, exact);
+    helpers::assert_interpolates_within(&survival, exact, 1e-2);
     Ok(())
   }
 
@@ -257,18 +257,19 @@ mod tests {
     let end = CALENDAR_TIME + 2.0 * STEP;
     for k in 0..=64 {
       let t = CALENDAR_TIME + 2.0 * STEP * (k.to_f64_exact() / 64.0);
-      pretty_assert_abs_diff_eq!((end - t) / (2.0 * STEP), survival.at(t), epsilon = 1e-6);
+      pretty_assert_abs_diff_eq!((end - t) / (2.0 * STEP), survival.at(t), epsilon = 1e-15);
     }
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::flat_cell(       array![0.0, 0.0]               )]
-  #[case::trapezoid_cells( array![0.0, 0.5, 0.2, 1.0, 0.3])]
+  #[case::flat_cell(       array![0.0, 0.0],                1e-15)]
+  #[case::trapezoid_cells( array![0.0, 0.5, 0.2, 1.0, 0.3], 1e-3 )]
   #[trace]
   fn test_node_survival_follows_the_mass_model_on_cells_a_few_hundred_coordinate_ulps_wide(
     #[case] y: Array1<f64>,
+    #[case] max_interpolation_error: f64,
   ) -> Result<(), Report> {
     let function = DistributionFunction::<f64, NegLog>::from_start_dx_values(CALENDAR_TIME, 1e-10, y)?
       .with_left_extrap(BoundaryBehavior::Hard)?
@@ -279,7 +280,7 @@ mod tests {
     let survival = posterior_survival(&Distribution::Function(function), &survival_levels())?.unwrap();
 
     helpers::assert_knots_at_levels(&survival, |t| fractions.survival(t));
-    helpers::assert_interpolates_within_level_spacing(&survival, |t| fractions.survival(t));
+    helpers::assert_interpolates_within(&survival, |t| fractions.survival(t), max_interpolation_error);
     Ok(())
   }
 
@@ -343,20 +344,16 @@ mod tests {
       assert_eq!((1.0, 0.0), (survival.survival[0], survival.survival[last]));
       assert!(survival.survival.iter().tuple_windows().all(|(a, b)| a > b));
       for (&t, &value) in survival.t[1..last].iter().zip(&survival.survival[1..last]) {
-        pretty_assert_abs_diff_eq!(exact(t), value, epsilon = 1e-12);
+        pretty_assert_abs_diff_eq!(exact(t), value, epsilon = 1e-15);
       }
     }
 
-    pub(super) fn assert_interpolates_within_level_spacing(survival: &PosteriorSurvival, exact: impl Fn(f64) -> f64) {
+    pub(super) fn assert_interpolates_within(survival: &PosteriorSurvival, exact: impl Fn(f64) -> f64, epsilon: f64) {
       let interpolant = NodeSurvival::from(survival.clone());
-      for (i, (t0, t1)) in survival.t.iter().tuple_windows().enumerate() {
-        let spacing = (survival.survival[i] - survival.survival[i + 1]).abs() + 1e-12;
+      for (t0, t1) in survival.t.iter().tuple_windows() {
         for k in 0..=16 {
           let x = t0 + (t1 - t0) * (k.to_f64_exact() / 16.0);
-          assert!(
-            (exact(x) - interpolant.at(x)).abs() <= spacing,
-            "interpolation at {x} off by more than {spacing}"
-          );
+          pretty_assert_abs_diff_eq!(exact(x), interpolant.at(x), epsilon = epsilon);
         }
       }
     }

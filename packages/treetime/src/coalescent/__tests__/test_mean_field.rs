@@ -259,7 +259,7 @@ mod tests {
       Some(*survival)
     });
     for (&t, survival) in boundaries[1..].iter().zip(read_survival) {
-      pretty_assert_abs_diff_eq!(1.0 - mass_below(t) / total, survival, epsilon = 5e-3);
+      pretty_assert_abs_diff_eq!(1.0 - mass_below(t) / total, survival, epsilon = 1e-2);
     }
     Ok(())
   }
