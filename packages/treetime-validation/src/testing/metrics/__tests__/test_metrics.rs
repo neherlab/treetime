@@ -23,7 +23,12 @@ mod tests {
       max_ulps = 4
     );
 
-    pretty_assert_ulps_eq!(metrics.distribution.statistics.abs_error_stats.mean, 0.1, max_ulps = 4);
+    let rounded_offset = (1.0 + 0.1) - 1.0;
+    pretty_assert_ulps_eq!(
+      metrics.distribution.statistics.abs_error_stats.mean,
+      rounded_offset,
+      max_ulps = 4
+    );
   }
 
   #[test]
