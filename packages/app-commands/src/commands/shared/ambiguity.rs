@@ -4,9 +4,28 @@ use app_output::output_plan::OutputSelection;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
+use std::collections::BTreeSet;
 use strum::IntoEnumIterator;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub fn resolve_ambiguity_outputs<O>(
+  ambiguity_threshold: Option<AmbiguityThreshold>,
+  ambiguity_outputs: &[O],
+) -> Result<AmbiguityOutputs, Report>
+where
+  O: Copy + Into<OutputSelection> + IntoEnumIterator,
+{
+  let selected: BTreeSet<OutputSelection> = ambiguity_outputs.iter().copied().map(Into::into).collect();
+  match ambiguity_threshold {
+    Some(threshold) => Ok(AmbiguityOutputs::new(threshold, &selected, O::iter().map(Into::into))),
+    None if selected.is_empty() => Ok(AmbiguityOutputs::default()),
+    None => Err(argument_error(
+      &["ambiguity_threshold", "ambiguity_outputs"],
+      "--ambiguity-outputs requires --ambiguity-threshold",
+    )),
+  }
+}
 
 macro_rules! ambiguity_args {
   ($args:ident, $output:ident, $details:literal { $($(#[$doc:meta])* $variant:ident),* $(,)? }) => {
@@ -51,20 +70,6 @@ macro_rules! ambiguity_args {
       /// `--ambiguity-threshold`.
       #[cfg_attr(feature = "clap", clap(long, num_args = 1.., value_delimiter = ',', help_heading = "Output"))]
       pub ambiguity_outputs: Vec<$output>,
-    }
-
-    impl $args {
-      pub fn resolve(&self) -> Result<AmbiguityOutputs, Report> {
-        let selected = self.ambiguity_outputs.iter().copied().map(OutputSelection::from).collect();
-        match self.ambiguity_threshold {
-          Some(threshold) => Ok(AmbiguityOutputs::new(threshold, &selected, $output::iter().map(OutputSelection::from))),
-          None if selected.is_empty() => Ok(AmbiguityOutputs::default()),
-          None => Err(argument_error(
-            &["ambiguity_threshold", "ambiguity_outputs"],
-            "--ambiguity-outputs requires --ambiguity-threshold",
-          )),
-        }
-      }
     }
   };
 }

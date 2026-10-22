@@ -1,8 +1,6 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
+use crate::commands::shared::alignment::check_required_alignment_paths;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
-use crate::commands::shared::output_args::DivergenceUnits;
-use crate::commands::shared::output_args::ResolveOutputs;
-use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
@@ -12,9 +10,7 @@ use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
-use treetime::optimize::params::OptimizeLoopSettings;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
 use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
@@ -32,40 +28,32 @@ pub fn run_optimize(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  args.alignment.required_paths()?;
-  let resolved = args.resolve_outputs()?;
+  check_required_alignment_paths(&args.sequences.alignments)?;
+  let resolved = args.outputs.resolve()?;
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-  let nwk_parsed = read_input_tree(args.tree(), args.newick_dialect.dialect(), log)?;
+  let nwk_parsed = read_input_tree(&args.tree, args.newick_dialect, log)?;
   let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
-  let settings = SourceSettings {
-    alphabet: &alphabet,
-    gap_fill: Some(args.gap_fill_args.gap_fill()),
-    missing_leaves: args.missing_sequences.limit(),
-  };
-  let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
+  let sources = args
+    .sequences
+    .read(&graph, &names, log)?
     .into_iter()
     .map(|source| source.source)
     .collect();
 
   let params = OptimizeParams {
     model: args.model.clone(),
-    dense: args.representation.dense(),
+    dense: args.dense,
     initial_guess: args.initial_branch_lengths,
-    reroot_spec: args.reroot_spec(&graph, &names)?,
-    loop_settings: OptimizeLoopSettings {
-      max_iter: args.max_iter,
-      dp: args.tolerance,
-      damping: args.damping,
-      opt_method: args.optimizer,
-      indel_policy: args.indel_policy,
-      topology_ops: args.topology_ops,
-      partition_rates: args.partition_rates_args.partition_rates(),
-    },
+    reroot_spec: args
+      .reroot
+      .as_ref()
+      .map(|reroot| reroot.spec(&graph, &names))
+      .transpose()?,
+    loop_settings: args.loop_settings,
   };
 
   let input = OptimizeInput {
@@ -94,16 +82,14 @@ pub fn run_optimize(
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
 
-  let topology_order =
-    args
-      .topology_order
-      .resolve_topology_order(&graph, &names, None, args.newick_dialect.dialect())?;
+  let topology_order = args.topology_order.resolve(&graph, &names, None, args.newick_dialect)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
   write_gtr_output(&resolved, models, "no GTR model was fitted", log)?;
 
-  let mutation_counts = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations)
+  let mutation_counts = args
+    .mutation_units
     .then(|| total_mutation_counts(maps.values().map(|maps| &maps.edge_mutation_counts)));
   let sequences = results
     .iter()
@@ -114,7 +100,7 @@ pub fn run_optimize(
         root_sequence: &maps.root_sequence,
         edge_mutations: &maps.edge_mutations,
         amino_acids: None,
-        comment_positions: args.zero_based.positions(),
+        comment_positions: args.positions,
       };
       (result.number, sequences)
     })
@@ -125,9 +111,9 @@ pub fn run_optimize(
     branch_lengths: &branch_lengths,
     sequences: &sequences,
     run: RefineRun {
-      alignments: &args.alignment.alignment,
+      alignments: &args.sequences.alignments,
       mutation_counts: mutation_counts.as_ref(),
-      input_tree: Some(args.tree()),
+      input_tree: Some(args.tree.as_path()),
       clock_model: None,
     },
   };

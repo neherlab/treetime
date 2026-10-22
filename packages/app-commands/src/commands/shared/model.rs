@@ -101,15 +101,19 @@ pub struct ModelArgs {
   pub model_params: Vec<String>,
 }
 
-impl ModelArgs {
-  pub fn model(&self) -> Result<GtrModel, ArgumentError> {
-    parse_model_params(self.model.unwrap_or(MODEL_DEFAULT), &self.model_params)
-  }
+pub fn resolve_model(model: Option<GtrModelNameCli>, model_params: &[String]) -> Result<GtrModel, ArgumentError> {
+  parse_model_params(model.unwrap_or(MODEL_DEFAULT), model_params)
+}
 
-  pub fn check_applies(&self, other: &str, applies: bool, rule: impl Fn() -> String) -> Result<(), Report> {
-    check_applies("model", self.model.is_some(), other, applies, &rule)?;
-    check_applies("model_params", !self.model_params.is_empty(), other, applies, &rule)
-  }
+pub fn check_model_applies(
+  model: Option<GtrModelNameCli>,
+  model_params: &[String],
+  other: &str,
+  applies: bool,
+  rule: impl Fn() -> String,
+) -> Result<(), Report> {
+  check_applies("model", model.is_some(), other, applies, &rule)?;
+  check_applies("model_params", !model_params.is_empty(), other, applies, &rule)
 }
 
 #[derive(
@@ -182,29 +186,23 @@ pub struct PartitionRatesArgs {
   pub partition_rates: Option<PartitionRatesCli>,
 }
 
-impl PartitionRatesArgs {
-  pub fn partition_rates(&self) -> PartitionRates {
-    self.partition_rates.unwrap_or(PARTITION_RATES_DEFAULT).into()
-  }
+pub fn resolve_partition_rates(partition_rates: Option<PartitionRatesCli>) -> PartitionRates {
+  partition_rates.unwrap_or(PARTITION_RATES_DEFAULT).into()
+}
 
-  pub fn is_given(&self) -> bool {
-    self.partition_rates.is_some()
-  }
-
-  pub fn check_partitions(&self, alignment_files: usize) -> Result<(), Report> {
-    check_applies(
-      "partition_rates",
-      self.is_given(),
-      "alignment",
-      alignment_files >= 2,
-      || {
-        format!(
-          "applies only with two or more partitions, but the run has {}: each --alignment file is one partition",
-          counted(alignment_files, "partition")
-        )
-      },
-    )
-  }
+pub fn check_partition_rates(partition_rates: Option<PartitionRatesCli>, alignment_files: usize) -> Result<(), Report> {
+  check_applies(
+    "partition_rates",
+    partition_rates.is_some(),
+    "alignment",
+    alignment_files >= 2,
+    || {
+      format!(
+        "applies only with two or more partitions, but the run has {}: each --alignment file is one partition",
+        counted(alignment_files, "partition")
+      )
+    },
+  )
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]

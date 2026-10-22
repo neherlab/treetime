@@ -11,7 +11,6 @@ use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgs
 use crate::commands::optimize::run::run_optimize;
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::prune::run::run_prune;
-use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
 use crate::config::load::read_settings;
@@ -24,6 +23,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Map, Value};
+use std::path::PathBuf;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
@@ -144,13 +144,24 @@ impl CommandArgs {
 
   pub fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
     match self {
-      Self::Timetree(args) => args.resolve_outputs(),
-      Self::Optimize(args) => args.resolve_outputs(),
-      Self::Prune(args) => args.resolve_outputs(),
-      Self::Ancestral(args) => args.resolve_outputs(),
-      Self::Homoplasy(args) => args.resolve_outputs(),
-      Self::Clock(args) => args.resolve_outputs(),
-      Self::Mugration(args) => args.resolve_outputs(),
+      Self::Timetree(args) => args.outputs.resolve(),
+      Self::Optimize(args) => args.outputs.resolve(),
+      Self::Prune(args) => args.outputs.resolve(),
+      Self::Ancestral(args) => args.outputs.resolve(),
+      Self::Homoplasy(args) => args.outputs.resolve(),
+      Self::Clock(args) => args.outputs.resolve(),
+      Self::Mugration(args) => args.outputs.resolve(),
+    }
+  }
+
+  pub fn alignments(&self) -> &[PathBuf] {
+    match self {
+      Self::Timetree(args) => args.alignments(),
+      Self::Optimize(args) => args.alignments(),
+      Self::Prune(args) => args.alignments(),
+      Self::Ancestral(args) => args.alignments(),
+      Self::Homoplasy(args) => args.alignments(),
+      Self::Clock(_) | Self::Mugration(_) => &[],
     }
   }
 }

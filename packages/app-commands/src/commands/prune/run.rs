@@ -1,8 +1,7 @@
 use crate::commands::prune::args::TreetimePruneArgs;
+use crate::commands::shared::alignment::check_alignment_paths;
 use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::leaf_order::leaf_order;
-use crate::commands::shared::output_args::ResolveOutputs;
-use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::command_outputs::CommandKind;
@@ -12,7 +11,6 @@ use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_par
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
-use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
@@ -33,27 +31,22 @@ pub fn run_prune(
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   validate_args(args)?;
-  let resolved = args.resolve_outputs()?;
+  let resolved = args.outputs.resolve()?;
 
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let parse = read_input_tree(args.tree(), args.newick_dialect.dialect(), log)?;
+  let parse = read_input_tree(&args.tree, args.newick_dialect, log)?;
   let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths_input = parse.branch_lengths;
   let input_order = leaf_order(&graph);
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-
-  let sources = if args.alignment.alignment.is_empty() {
+  let sources = if args.sequences.alignments.is_empty() {
     vec![]
   } else {
-    let settings = SourceSettings {
-      alphabet: &alphabet,
-      gap_fill: Some(args.gap_fill_args.gap_fill()),
-      missing_leaves: args.missing_sequences.limit(),
-    };
-    read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
+    args
+      .sequences
+      .read(&graph, &names, log)?
       .into_iter()
       .map(|source| source.source)
       .collect()
@@ -97,10 +90,9 @@ pub fn run_prune(
     BTreeMap::new()
   };
 
-  let topology_order =
-    args
-      .topology_order
-      .resolve_topology_order(&graph, &names, Some(input_order), args.newick_dialect.dialect())?;
+  let topology_order = args
+    .topology_order
+    .resolve(&graph, &names, Some(input_order), args.newick_dialect)?;
   topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   stages.report("Writing output", 0.8, "");
 
@@ -118,7 +110,7 @@ pub fn run_prune(
         root_sequence: &maps.root_sequence,
         edge_mutations: &maps.edge_mutations,
         amino_acids: None,
-        comment_positions: args.zero_based.positions(),
+        comment_positions: args.positions,
       };
       Some((result.number, sequences))
     })
@@ -168,16 +160,17 @@ struct PruneOutputMaps {
 }
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
-  args.alignment.paths()?;
+  let alignments = &args.sequences.alignments;
+  check_alignment_paths(alignments)?;
 
-  if args.collapse_empty && args.alignment.alignment.is_empty() {
+  if args.collapse_empty && alignments.is_empty() {
     return Err(argument_error(
       &["collapse_empty", "alignment"],
       "The --collapse-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations.",
     ));
   }
 
-  if args.merge_shared_mutations && args.alignment.alignment.is_empty() {
+  if args.merge_shared_mutations && alignments.is_empty() {
     return Err(argument_error(
       &["merge_shared_mutations", "alignment"],
       "The --merge-shared-mutations requires --alignment. Without sequence data, it's not possible to determine which branches share mutations.",

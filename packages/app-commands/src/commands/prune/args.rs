@@ -3,46 +3,136 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelectionArgs};
+use crate::commands::shared::output_args::{
+  OutputCoreArgs, OutputRequest, PruneOutputSelectionArgs, TreeOutputPaths, selected_outputs,
+};
 use crate::commands::shared::required::missing_required_args;
-use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
-use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
+use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
+use app_output::command_outputs::CommandKind;
+use app_output::output_conditions::OutputSettings;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
-use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use treetime::seq::mutation::PositionBase;
+use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone)]
 pub struct TreetimePruneArgs {
-  #[deref]
-  #[deref_mut]
-  pub(crate) raw: TreetimePruneArgsRaw,
   pub(crate) tree: PathBuf,
+  pub(crate) newick_dialect: NewickDialect,
+  pub(crate) sequences: SequenceInputs,
+  pub(crate) positions: PositionBase,
+  pub(crate) collapse_short: Option<f64>,
+  pub(crate) collapse_empty: bool,
+  pub(crate) merge_shared_mutations: bool,
+  pub(crate) remove: Vec<String>,
+  pub(crate) remove_file: Option<PathBuf>,
+  pub(crate) topology_order: TopologyOrder,
+  pub(crate) outputs: OutputRequest,
 }
 
 impl TreetimePruneArgs {
-  pub fn tree(&self) -> &Path {
-    &self.tree
+  pub fn alignments(&self) -> &[PathBuf] {
+    &self.sequences.alignments
   }
 }
 
 impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
   type Error = Report;
 
+  #[deny(unused_variables)]
+  #[expect(
+    clippy::unneeded_field_pattern,
+    reason = "the CLI reads its own settings before the conversion, and `..` would hide every setting that no run reads"
+  )]
   fn try_from(raw: TreetimePruneArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .tree
-      .clone()
-      .ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
-    Ok(Self { raw, tree })
+    let TreetimePruneArgsRaw {
+      config_args: _,
+      alignment: AlignmentArgs { alignment },
+      tree: TreeArgs { tree },
+      newick_dialect: TreeDialectArgs { newick_dialect },
+      missing_sequences: MissingSequenceArgs {
+        allow_missing_sequences,
+      },
+      alphabet_args: AlphabetArgs { alphabet },
+      zero_based: ZeroBasedArgs { zero_based },
+      output:
+        OutputCoreArgs {
+          output_all,
+          newick_annotations,
+          output_tree_nwk,
+          output_tree_nexus,
+          output_tree_auspice,
+          output_tree_mat_pb,
+          output_tree_mat_json,
+          output_tree_graph_json,
+          output_tree_dot,
+        },
+      output_selection: PruneOutputSelectionArgs { output_selection },
+      topology_order:
+        TopologyOrderArgs {
+          topology_order,
+          topology_order_tree,
+          topology_order_list,
+          topology_order_aggregate,
+        },
+      gap_fill_args: GapFillArgs { gap_fill },
+      collapse_short,
+      collapse_empty,
+      merge_shared_mutations,
+      remove,
+      remove_file,
+      jobs_args: _,
+    } = raw;
+    let tree = tree.ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
+    Ok(Self {
+      tree,
+      newick_dialect: newick_dialect.dialect(),
+      outputs: OutputRequest {
+        command: CommandKind::Prune,
+        alignment_count: alignment.len(),
+        settings: OutputSettings::default(),
+        output_all,
+        newick_annotations,
+        selection: selected_outputs(&output_selection),
+        tree_paths: TreeOutputPaths {
+          nwk: output_tree_nwk,
+          nexus: output_tree_nexus,
+          auspice: output_tree_auspice,
+          mat_pb: output_tree_mat_pb,
+          mat_json: output_tree_mat_json,
+          graph_json: output_tree_graph_json,
+          dot: output_tree_dot,
+        },
+        file_paths: vec![],
+      },
+      sequences: SequenceInputs {
+        alignments: alignment,
+        alphabet: alphabet.map(Into::into),
+        gap_fill: gap_fill.into(),
+        missing_leaves: missing_leaf_limit(allow_missing_sequences),
+      },
+      positions: PositionBase::from_zero_based(zero_based),
+      collapse_short,
+      collapse_empty,
+      merge_shared_mutations,
+      remove,
+      remove_file,
+      topology_order: TopologyOrder::new(
+        topology_order,
+        topology_order_tree,
+        topology_order_list,
+        topology_order_aggregate,
+      )?,
+    })
   }
 }
 

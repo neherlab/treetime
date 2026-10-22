@@ -1,6 +1,6 @@
 use crate::commands::shared::dependent_settings::check_applies;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
-use crate::commands::shared::model::ModelArgs;
+use crate::commands::shared::model::{GtrModelNameCli, check_model_applies};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -21,16 +21,14 @@ pub struct MethodAncArgs {
   pub method_anc: MethodAncestralCli,
 }
 
-impl MethodAncArgs {
-  pub fn is_marginal(&self) -> bool {
-    self.method_anc == MethodAncestralCli::Marginal
-  }
-
-  pub fn check_model(&self, model: &ModelArgs) -> Result<(), Report> {
-    model.check_applies("method_anc", self.is_marginal(), || {
-      o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model")
-    })
-  }
+pub fn check_model_with_method_anc(
+  method_anc: MethodAncestralCli,
+  model: Option<GtrModelNameCli>,
+  model_params: &[String],
+) -> Result<(), Report> {
+  check_model_applies(model, model_params, "method_anc", method_anc.is_marginal(), || {
+    o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model")
+  })
 }
 
 pub struct MarginalReconstruction {
@@ -75,6 +73,12 @@ pub enum MethodAncestralCli {
   #[default]
   Marginal,
   Parsimony,
+}
+
+impl MethodAncestralCli {
+  pub fn is_marginal(self) -> bool {
+    self == Self::Marginal
+  }
 }
 
 impl_from_mirror!(MethodAncestralCli => MethodAncestral { Marginal, Parsimony });

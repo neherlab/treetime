@@ -2,7 +2,9 @@
 mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
-  use crate::commands::shared::topology_order_args::{TopologyOrderArg, TopologyOrderArgs};
+  use crate::commands::shared::topology_order_args::{
+    TopologyOrder, TopologyOrderArg, TopologyOrderTargetAggregateArg,
+  };
   use crate::commands::shared::tree_input::{TreeDialectArg, TreeDialectArgs, read_input_tree};
   use clap::Parser;
   use clap::error::ErrorKind;
@@ -45,7 +47,7 @@ mod tests {
   #[case::absent(   json!({}),                                  TREE_DIALECT_DEFAULT)]
   #[trace]
   fn test_tree_input_dialect_config(#[case] config: serde_json::Value, #[case] expected: NewickDialect) {
-    let actual = from_json_value::<TreeDialectArgs>(&config).unwrap().dialect();
+    let actual = from_json_value::<TreeDialectArgs>(&config).unwrap().newick_dialect.dialect();
 
     assert_eq!(expected, actual);
   }
@@ -106,13 +108,15 @@ mod tests {
     let reference = write_tree(dir.path(), "(B#1:1,A#2:1);");
     let tree = nwk_read(b"(A:1,B:1)root;".as_slice()).unwrap();
     let names = tree.names.clone();
-    let args = TopologyOrderArgs {
-      topology_order: Some(TopologyOrderArg::TargetOrder),
-      topology_order_tree: Some(reference),
-      ..TopologyOrderArgs::default()
-    };
+    let order = TopologyOrder::new(
+      Some(TopologyOrderArg::TargetOrder),
+      Some(reference),
+      None,
+      TopologyOrderTargetAggregateArg::default(),
+    )
+    .unwrap();
 
-    let spec = args.resolve_topology_order(&tree.graph, &names, None, dialect).unwrap();
+    let spec = order.resolve(&tree.graph, &names, None, dialect).unwrap();
 
     let actual: BTreeMap<&str, usize> = spec
       .target_order
@@ -129,15 +133,15 @@ mod tests {
     std::fs::write(&list, "B\nA\n").unwrap();
     let tree = nwk_read(b"(A:1,B:1)root;".as_slice()).unwrap();
     let names = tree.names.clone();
-    let args = TopologyOrderArgs {
-      topology_order: Some(TopologyOrderArg::TargetOrder),
-      topology_order_list: Some(list),
-      ..TopologyOrderArgs::default()
-    };
+    let order = TopologyOrder::new(
+      Some(TopologyOrderArg::TargetOrder),
+      None,
+      Some(list),
+      TopologyOrderTargetAggregateArg::default(),
+    )
+    .unwrap();
 
-    let spec = args
-      .resolve_topology_order(&tree.graph, &names, None, NewickDialect::BEAST)
-      .unwrap();
+    let spec = order.resolve(&tree.graph, &names, None, NewickDialect::BEAST).unwrap();
 
     let actual: BTreeMap<&str, usize> = spec
       .target_order
@@ -145,6 +149,23 @@ mod tests {
       .map(|(key, &position)| (&names[*key], position))
       .collect();
     assert_eq!(btreemap! { "A" => 1, "B" => 0 }, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::tree_without_preset(  &["--topology-order-tree=order.nwk"])]
+  #[case::list_with_height(     &["--topology-order=height", "--topology-order-list=order.txt"])]
+  #[case::aggregate_without_preset(&["--topology-order-aggregate=median"])]
+  #[trace]
+  fn test_tree_input_topology_order_target_settings_need_a_target_order_before_the_run(#[case] flags: &[&str]) {
+    let argv = ["clock", "--tree=tree.nwk", "--metadata=metadata.tsv"].iter().chain(flags);
+    let raw = TreetimeClockArgsRaw::try_parse_from(argv).unwrap();
+
+    assert_error!(
+      TreetimeClockArgs::try_from(raw),
+      "--topology-order-tree, --topology-order-list and --topology-order-aggregate require \
+       --topology-order=target-order or target-order-reverse"
+    );
   }
 
   #[test]
@@ -176,7 +197,7 @@ mod tests {
         .chain(flags);
       let raw = TreetimeClockArgsRaw::try_parse_from(args)?;
       let args = TreetimeClockArgs::try_from(raw)?;
-      Ok(args.newick_dialect.dialect())
+      Ok(args.newick_dialect)
     }
 
     pub(super) fn write_tree(dir: &Path, text: &str) -> PathBuf {

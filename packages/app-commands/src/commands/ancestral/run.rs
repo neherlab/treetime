@@ -7,10 +7,10 @@ use crate::commands::shared::ancestral_trees::{
   AncestralOutputMaps, AncestralPartitionTrees, AncestralTrees, write_ancestral_trees,
 };
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
-use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
+use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
-  AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources,
+  AlignmentSource, TreeAndSources, ancestral_input, read_tree_and_sources,
 };
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::augur_node_data_ancestral::AncestralNodeSequences;
@@ -54,21 +54,14 @@ pub fn run_ancestral_reconstruction(
     &args.cds_selection,
     args.annotation.as_deref(),
     args.aa_root_sequence.as_deref(),
-    args.alignment.alignment.len(),
+    args.sequences.alignments.len(),
   )?;
-  let resolved = args.resolve_outputs()?;
+  let resolved = args.outputs.resolve()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
 
-  let sequence_args = SequenceInputArgs {
-    alignment: &args.alignment,
-    tree: args.tree(),
-    newick_dialect: args.newick_dialect.dialect(),
-    alphabet_args: &args.alphabet_args,
-    gap_fill_args: &args.gap_fill_args,
-    missing_leaves: args.missing_sequences.limit(),
-  };
-  let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
+  let TreeAndSources { tree, sources } =
+    read_tree_and_sources(&args.tree, args.newick_dialect, &args.sequences, cancel, stages, log)?;
   let NwkParse {
     graph,
     names,
@@ -83,16 +76,15 @@ pub fn run_ancestral_reconstruction(
   let input = ancestral_input(graph, branch_lengths, sources);
   let branch_lengths = input.branch_lengths();
 
-  let topology_order =
-    args
-      .topology_order
-      .resolve_topology_order(&input.graph, &names, None, args.newick_dialect.dialect())?;
+  let topology_order = args
+    .topology_order
+    .resolve(&input.graph, &names, None, args.newick_dialect)?;
 
   let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
   let mut seq_sink = AncestralSeqSink::new(&resolved, descs, ambiguity)?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
-  let seed = args.seed_args.resolve(random_step, log);
+  let seed = SeedArgs::resolve(args.seed, random_step, log);
   let params = ancestral_params(args, seed);
 
   let output = pipeline::run(
@@ -135,7 +127,7 @@ pub fn run_ancestral_reconstruction(
       };
       Ok(AncestralOutputMaps {
         root_sequence: sequences.root_sequence,
-        edge_mutations: UnknownMutationFilter::new(result.alphabet.unknown(), args.tip_sequences.report_ambiguous)
+        edge_mutations: UnknownMutationFilter::new(result.alphabet.unknown(), args.report_ambiguous)
           .reported_edge_mutations(&graph, sequences.edge_mutations)?,
       })
     })
@@ -151,7 +143,7 @@ pub fn run_ancestral_reconstruction(
     names: &names,
     branch_lengths: &branch_lengths,
     amino_acids: aa_result.as_ref(),
-    comment_positions: args.zero_based.positions(),
+    comment_positions: args.positions,
   };
   let partitions = izip!(&results, maps)
     .map(|(result, maps)| AncestralPartitionTrees {
@@ -299,7 +291,7 @@ fn run_aa_reconstructions(
   let read_alphabet = Alphabet::new(AlphabetName::Aa)?;
   let aa_model = ancestral_args.aa_model.resolve();
   let recon_alphabet = Alphabet::new(aa_model.alphabet)?;
-  let gap_fill_mode = ancestral_args.gap_fill_args.gap_fill();
+  let gap_fill_mode = ancestral_args.sequences.gap_fill;
 
   let aa_root_sequences = read_aa_root_sequences(ancestral_args.aa_root_sequence.as_deref(), &cdses, &recon_alphabet)?;
 
@@ -307,12 +299,12 @@ fn run_aa_reconstructions(
   stages.report("AA ancestral reconstruction", 0.75, "");
 
   let params = AaParams {
-    dense: ancestral_args.representation.dense(),
+    dense: ancestral_args.dense,
     include_leaves: ancestral_args.include_leaves,
     impute_missing_data: ancestral_args.impute_missing_data,
     sample_from_profile: ancestral_args.sample_from_profile,
     seed: inputs.seed,
-    ignore_missing_alns: ancestral_args.missing_sequences.allow_missing_sequences,
+    ignore_missing_alns: ancestral_args.allow_missing_sequences,
   };
 
   let cds_inputs = cdses
@@ -356,7 +348,7 @@ fn run_aa_reconstructions(
   if let Some(sink) = seq_sink {
     sink.finish()?;
   }
-  let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.tip_sequences.report_ambiguous)
+  let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
     .reported_aa_node_data(inputs.graph, node_data)?;
   Ok((node_data, cds_annotations))
 }

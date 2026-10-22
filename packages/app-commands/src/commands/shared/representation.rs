@@ -28,14 +28,8 @@ pub struct RepresentationArgs {
   pub representation: Option<RepresentationCli>,
 }
 
-impl RepresentationArgs {
-  pub fn dense(&self) -> Option<bool> {
-    self.representation.unwrap_or(REPRESENTATION_DEFAULT).dense()
-  }
-
-  pub fn is_given(&self) -> bool {
-    self.representation.is_some()
-  }
+pub fn representation_dense(representation: Option<RepresentationCli>) -> Option<bool> {
+  representation.unwrap_or(REPRESENTATION_DEFAULT).dense()
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]

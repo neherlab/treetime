@@ -27,17 +27,7 @@ pub struct RerootArgs {
     feature = "clap",
     clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
   )]
-  reroot: Option<RerootMethodCli>,
-}
-
-impl RerootArgs {
-  pub fn spec(&self, rooting: &RootingArgs, graph: &Graph, names: &NodeNames) -> Result<RerootSpec, Report> {
-    if rooting.outgroup.is_empty() {
-      Ok(RerootSpec::Method(self.reroot.map(Into::into).unwrap_or_default()))
-    } else {
-      Ok(RerootSpec::Tips(resolve_outgroup(&rooting.outgroup, graph, names)?))
-    }
-  }
+  pub(crate) reroot: Option<RerootMethodCli>,
 }
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
@@ -59,6 +49,29 @@ pub struct RootingArgs {
   /// Keep the root of the input tree instead of rerooting it.
   #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "outgroup"], help_heading = "Rooting"))]
   pub keep_root: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RerootTarget {
+  Method(RerootMethod),
+  Outgroup(Vec<String>),
+}
+
+impl RerootTarget {
+  pub fn new(reroot: Option<RerootMethod>, outgroup: Vec<String>) -> Self {
+    if outgroup.is_empty() {
+      Self::Method(reroot.unwrap_or_default())
+    } else {
+      Self::Outgroup(outgroup)
+    }
+  }
+
+  pub fn spec(&self, graph: &Graph, names: &NodeNames) -> Result<RerootSpec, Report> {
+    match self {
+      Self::Method(method) => Ok(RerootSpec::Method(*method)),
+      Self::Outgroup(tips) => Ok(RerootSpec::Tips(resolve_outgroup(tips, graph, names)?)),
+    }
+  }
 }
 
 pub fn resolve_outgroup(tips: &[String], graph: &Graph, names: &NodeNames) -> Result<Vec<GraphNodeKey>, Report> {
@@ -90,7 +103,7 @@ impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest
 
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::reroot::{RerootArgs, RerootMethodCli, RootingArgs, resolve_outgroup};
+  use crate::commands::shared::reroot::{RerootTarget, resolve_outgroup};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
@@ -102,36 +115,32 @@ mod tests {
   const TREE: &str = "((A:0.1,B:0.1)AB:0.1,(A:0.1,C:0.1)AC:0.1)root;";
 
   #[test]
-  fn test_reroot_args_default_spec_is_least_squares() {
+  fn test_reroot_target_default_spec_is_least_squares() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = RerootArgs::default();
 
-    let actual = args.spec(&RootingArgs::default(), &tree.graph, &tree.names).unwrap();
+    let actual = RerootTarget::new(None, vec![]).spec(&tree.graph, &tree.names).unwrap();
 
     assert_eq!(RerootSpec::Method(RerootMethod::LeastSquares), actual);
   }
 
   #[test]
-  fn test_reroot_args_method_spec() {
+  fn test_reroot_target_method_spec() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = RerootArgs {
-      reroot: Some(RerootMethodCli::MinDev),
-    };
 
-    let actual = args.spec(&RootingArgs::default(), &tree.graph, &tree.names).unwrap();
+    let actual = RerootTarget::new(Some(RerootMethod::MinDev), vec![])
+      .spec(&tree.graph, &tree.names)
+      .unwrap();
 
     assert_eq!(RerootSpec::Method(RerootMethod::MinDev), actual);
   }
 
   #[test]
-  fn test_reroot_args_outgroup_spec_resolves_leaf_keys() {
+  fn test_reroot_target_outgroup_spec_resolves_leaf_keys() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let rooting = RootingArgs {
-      outgroup: vec![o!("B"), o!("C")],
-      ..RootingArgs::default()
-    };
 
-    let actual = RerootArgs::default().spec(&rooting, &tree.graph, &tree.names).unwrap();
+    let actual = RerootTarget::new(None, vec![o!("B"), o!("C")])
+      .spec(&tree.graph, &tree.names)
+      .unwrap();
 
     let expected = vec![helpers::leaf_keys(&tree, "B")[0], helpers::leaf_keys(&tree, "C")[0]];
     assert_eq!(RerootSpec::Tips(expected), actual);

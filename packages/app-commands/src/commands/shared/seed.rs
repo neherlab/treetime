@@ -21,8 +21,8 @@ pub struct SeedArgs {
 }
 
 impl SeedArgs {
-  pub fn resolve(&self, random_step: Option<&str>, log: &dyn LogSink) -> u64 {
-    let seed = self.seed.unwrap_or_else(rand::random);
+  pub fn resolve(seed: Option<u64>, random_step: Option<&str>, log: &dyn LogSink) -> u64 {
+    let seed = seed.unwrap_or_else(rand::random);
     if let Some(step) = random_step {
       progress_info!(
         log,

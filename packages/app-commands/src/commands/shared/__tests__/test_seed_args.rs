@@ -41,7 +41,7 @@ mod tests {
 
     pub(super) fn resolve(seed: Option<u64>, random_step: Option<&str>) -> (u64, Vec<String>) {
       let log = RecordingLog::default();
-      let seed = SeedArgs { seed }.resolve(random_step, &log);
+      let seed = SeedArgs::resolve(seed, random_step, &log);
       let messages = log.messages(LogLevel::Info);
       assert_eq!(messages.len(), log.events().len());
       (seed, messages)

@@ -385,7 +385,7 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
         { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}", "method_anc": "marginal" } }
       ]
     });
@@ -397,7 +397,7 @@ mod tests {
   fn test_resolve_chain_uses_explicit_step_output_all() {
     let config = json!({
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "output_all": "out/tt" } },
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000, "output_all": "out/tt" } },
         { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}", "output_all": "out/anc" } }
       ]
     });
@@ -494,7 +494,7 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } },
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } }
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } }
       ]
     });
     let result = resolve(config);
@@ -509,7 +509,7 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
         { "name": "anc", "ancestral": { "tree": "{{ steps.tta.outputs.nwk }}" } }
       ]
     });
@@ -525,7 +525,7 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
         { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.traits }}" } }
       ]
     });

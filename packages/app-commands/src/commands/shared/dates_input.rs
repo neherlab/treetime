@@ -1,9 +1,8 @@
 use crate::commands::shared::input_warnings::warn_duplicate_names;
-use crate::commands::shared::metadata::MetadataIdArgs;
+use crate::commands::shared::metadata::MetadataInput;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
-use std::path::Path;
 use treetime::progress::{LogSink, RunWarningKind};
 use treetime::progress_warn;
 use treetime_graph::graph::Graph;
@@ -22,23 +21,26 @@ pub fn date_parser_options(date_format: Option<&str>) -> DateParserOptions {
   }
 }
 
-pub fn read_input_dates(
-  path: &Path,
-  metadata_id: &MetadataIdArgs,
-  date_column: Option<&str>,
-  date_format: &str,
+pub(crate) fn read_input_dates(
+  dates: &DatesInput,
   graph: &Graph,
   names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<BTreeMap<GraphNodeKey, DateConstraint>, Report> {
+  let DatesInput {
+    metadata,
+    date_column,
+    date_format,
+  } = dates;
+  let path = &metadata.path;
   let rows = metadata_read_file(
     path,
-    &metadata_id.metadata_delimiters,
-    &metadata_id.metadata_id_columns,
+    &metadata.delimiters,
+    &metadata.id_columns,
     None,
-    date_column,
+    date_column.as_deref(),
   )
-  .and_then(|table| table.dates(&date_parser_options(Some(date_format))))
+  .and_then(|table| table.dates(&date_parser_options(Some(date_format.as_str()))))
   .wrap_err("When reading dates")?;
 
   let pairing = pair_by_name(graph.get_nodes().map(|node| node.key()), names, rows);
@@ -75,4 +77,11 @@ pub fn read_input_dates(
       .filter_map(|(key, date)| Some((key, date?)))
       .collect(),
   )
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DatesInput {
+  pub(crate) metadata: MetadataInput,
+  pub(crate) date_column: Option<String>,
+  pub(crate) date_format: String,
 }

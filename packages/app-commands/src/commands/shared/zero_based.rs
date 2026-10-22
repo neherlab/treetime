@@ -1,6 +1,5 @@
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use treetime::seq::mutation::PositionBase;
 use treetime_schema::schema_defaults;
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
@@ -16,10 +15,4 @@ pub struct ZeroBasedArgs {
   /// table with positions, such as `--drms`, is always counted from 1.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub zero_based: bool,
-}
-
-impl ZeroBasedArgs {
-  pub fn positions(&self) -> PositionBase {
-    PositionBase::from_zero_based(self.zero_based)
-  }
 }

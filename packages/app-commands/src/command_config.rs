@@ -5,7 +5,6 @@ use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
 use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
 use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
-use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_output::output_plan::ResolvedOutputs;
 use deser::{Deserialize, Serialize};
@@ -52,7 +51,7 @@ impl CommandConfig {
   }
 
   pub fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-    each_config!(self, |config| config.resolve_outputs())
+    self.args()?.resolve_outputs()
   }
 
   pub fn output_all(&self) -> Option<&Path> {

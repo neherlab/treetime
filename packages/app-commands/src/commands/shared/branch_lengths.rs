@@ -29,12 +29,10 @@ pub struct BranchLengthArgs {
   pub divergence_units: DivergenceUnits,
 }
 
-impl BranchLengthArgs {
-  pub fn indel_policy(&self) -> IndelPolicy {
-    if self.no_indels {
-      IndelPolicy::Exclude
-    } else {
-      IndelPolicy::Include
-    }
+pub fn indel_policy(no_indels: bool) -> IndelPolicy {
+  if no_indels {
+    IndelPolicy::Exclude
+  } else {
+    IndelPolicy::Include
   }
 }

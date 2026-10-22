@@ -1,13 +1,13 @@
-use crate::commands::shared::alignment::{AlignmentArgs, PairedAlignment, pair_alignment};
-use crate::commands::shared::alphabet::AlphabetArgs;
-use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::alignment::{
+  PairedAlignment, check_alignment_paths, check_required_alignment_paths, pair_alignment,
+};
 use crate::commands::shared::tree_input::read_input_tree;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use schemars::JsonSchema;
 use std::collections::BTreeMap;
-use std::path::Path;
-use treetime::alphabet::alphabet::Alphabet;
+use std::path::{Path, PathBuf};
+use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use treetime::cancel::Cancel;
 use treetime::progress::{LogSink, StageSink};
@@ -22,35 +22,30 @@ use treetime_io::nwk::{NewickDialect, NwkParse};
 use treetime_schema::schema_defaults;
 
 pub(crate) fn read_tree_and_sources(
-  args: &SequenceInputArgs<'_>,
+  tree: &Path,
+  newick_dialect: NewickDialect,
+  sequences: &SequenceInputs,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<TreeAndSources, Report> {
-  args.alignment.required_paths()?;
-  let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-
+  check_required_alignment_paths(&sequences.alignments)?;
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-  let tree = read_input_tree(args.tree, args.newick_dialect, log)?;
-  let settings = SourceSettings {
-    alphabet: &alphabet,
-    gap_fill: Some(args.gap_fill_args.gap_fill()),
-    missing_leaves: args.missing_leaves,
-  };
-  let sources = read_sequence_sources(args.alignment, &settings, &tree.graph, &tree.names, log)?;
+  let tree = read_input_tree(tree, newick_dialect, log)?;
+  let sources = sequences.read(&tree.graph, &tree.names, log)?;
   Ok(TreeAndSources { tree, sources })
 }
 
 pub(crate) fn read_sequence_sources(
-  alignment: &AlignmentArgs,
+  alignments: &[PathBuf],
   settings: &SourceSettings<'_>,
   graph: &Graph,
   names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<Vec<AlignmentSource>, Report> {
-  alignment
-    .paths()?
+  check_alignment_paths(alignments)?;
+  alignments
     .iter()
     .map(|path| read_sequence_source(path, settings, graph, names, log))
     .collect()
@@ -82,21 +77,35 @@ pub struct MissingSequenceArgs {
   pub allow_missing_sequences: bool,
 }
 
-impl MissingSequenceArgs {
-  pub fn limit(&self) -> MissingLeafLimit {
-    MissingLeafLimit::Overridable {
-      ignored: self.allow_missing_sequences,
-    }
+pub fn missing_leaf_limit(allow_missing_sequences: bool) -> MissingLeafLimit {
+  MissingLeafLimit::Overridable {
+    ignored: allow_missing_sequences,
   }
 }
 
-pub(crate) struct SequenceInputArgs<'a> {
-  pub(crate) alignment: &'a AlignmentArgs,
-  pub(crate) tree: &'a Path,
-  pub(crate) newick_dialect: NewickDialect,
-  pub(crate) alphabet_args: &'a AlphabetArgs,
-  pub(crate) gap_fill_args: &'a GapFillArgs,
+#[derive(Debug, Clone)]
+pub(crate) struct SequenceInputs {
+  pub(crate) alignments: Vec<PathBuf>,
+  pub(crate) alphabet: Option<AlphabetName>,
+  pub(crate) gap_fill: GapFill,
   pub(crate) missing_leaves: MissingLeafLimit,
+}
+
+impl SequenceInputs {
+  pub(crate) fn read(
+    &self,
+    graph: &Graph,
+    names: &NodeNames,
+    log: &dyn LogSink,
+  ) -> Result<Vec<AlignmentSource>, Report> {
+    let alphabet = Alphabet::new(self.alphabet.unwrap_or_default())?;
+    let settings = SourceSettings {
+      alphabet: &alphabet,
+      gap_fill: Some(self.gap_fill),
+      missing_leaves: self.missing_leaves,
+    };
+    read_sequence_sources(&self.alignments, &settings, graph, names, log)
+  }
 }
 
 pub(crate) struct TreeAndSources {

@@ -1,7 +1,6 @@
 use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::gtr_output::{trait_model, write_gtr_output};
 use crate::commands::shared::input_warnings::warn_duplicate_names;
-use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
@@ -36,20 +35,21 @@ pub fn run_mugration(
 ) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
-  let resolved = mugration_args.resolve_outputs()?;
+  let resolved = mugration_args.outputs.resolve()?;
   let ambiguity = &mugration_args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
-  let parse = read_input_tree(&mugration_args.tree, mugration_args.newick_dialect.dialect(), log)?;
+  let parse = read_input_tree(&mugration_args.tree, mugration_args.newick_dialect, log)?;
   let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;
 
-  let attribute_column = Some(mugration_args.attribute());
+  let metadata = &mugration_args.metadata;
+  let attribute_column = Some(mugration_args.attribute.as_str());
 
   let (rows, _attr_name) = discrete_attrs_read_file::<String>(
-    mugration_args.metadata(),
-    &mugration_args.metadata_id.metadata_delimiters,
-    &mugration_args.metadata_id.metadata_id_columns,
+    &metadata.path,
+    &metadata.delimiters,
+    &metadata.id_columns,
     None,
     attribute_column,
     |s| Ok(s.to_owned()),
@@ -58,12 +58,12 @@ pub fn run_mugration(
     traits,
     observed_values,
     ..
-  } = pair_traits(rows, &graph, &names, mugration_args.metadata(), log);
+  } = pair_traits(rows, &graph, &names, &metadata.path, log);
 
   let weights = if let Some(weights_filepath) = &mugration_args.weights {
     let (map, _) = discrete_attrs_read_file::<f64>(
       weights_filepath,
-      &mugration_args.metadata_id.metadata_delimiters,
+      &metadata.delimiters,
       &[],
       attribute_column,
       Some("weight"),
@@ -90,19 +90,17 @@ pub fn run_mugration(
   let input = MugrationInput {
     graph,
     traits,
-    traits_source: format!("metadata '{}'", mugration_args.metadata().display()),
+    traits_source: format!("metadata '{}'", metadata.path.display()),
     observed_values,
     weights,
     branch_lengths: branch_lengths.clone(),
   };
   let mut output = pipeline::run(&params, input, &names, cancel, log).map_err(|err| err.into_report())?;
 
-  let topology_order = mugration_args.topology_order.resolve_topology_order(
-    &output.graph,
-    &names,
-    None,
-    mugration_args.newick_dialect.dialect(),
-  )?;
+  let topology_order =
+    mugration_args
+      .topology_order
+      .resolve(&output.graph, &names, None, mugration_args.newick_dialect)?;
   topology_order.apply(&mut output.graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 
@@ -110,7 +108,7 @@ pub fn run_mugration(
     &resolved,
     vec![trait_model(
       &output.gtr,
-      mugration_args.attribute(),
+      &mugration_args.attribute,
       output.states.iter().map(ToOwned::to_owned).collect(),
     )],
     "no trait model was fitted",
@@ -121,7 +119,7 @@ pub fn run_mugration(
     &output,
     &names,
     &branch_lengths,
-    mugration_args.attribute(),
+    &mugration_args.attribute,
     &resolved,
     ambiguity,
     log,

@@ -10,7 +10,7 @@ use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use app_commands::commands::prune::args::TreetimePruneArgsRaw;
 use app_commands::commands::shared::output_args::{
   AncestralOutputSelection, ClockOutputSelection, HomoplasyOutputSelection, MugrationOutputSelection,
-  OptimizeOutputSelection, PruneOutputSelection, ResolveOutputs, TimetreeOutputSelection,
+  OptimizeOutputSelection, PruneOutputSelection, RawOutputSettings, TimetreeOutputSelection,
 };
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_commands::config::cli_rules::cli_rule_diagnostics;
@@ -199,7 +199,7 @@ pub fn run_command(
   args.execute(cancel, stages, log)?;
   Ok(CommandOutcome {
     command: args.command(),
-    output_files: written_files(&args.resolve_outputs()?, alignment_paths(args))?,
+    output_files: written_files(&args.resolve_outputs()?, args.alignments())?,
   })
 }
 
@@ -400,17 +400,6 @@ fn partitions_by_path(outputs: &ResolvedOutputs, alignments: &[PathBuf]) -> BTre
       trees.chain(files).map(move |path| (path, partition.clone()))
     })
     .collect()
-}
-
-fn alignment_paths(args: &CommandArgs) -> &[PathBuf] {
-  match args {
-    CommandArgs::Timetree(args) => &args.alignment.alignment,
-    CommandArgs::Optimize(args) => &args.alignment.alignment,
-    CommandArgs::Prune(args) => &args.alignment.alignment,
-    CommandArgs::Ancestral(args) => &args.alignment.alignment,
-    CommandArgs::Homoplasy(args) => &args.alignment.alignment,
-    CommandArgs::Clock(_) | CommandArgs::Mugration(_) => &[],
-  }
 }
 
 fn existing_files(planned: &Path) -> Result<Vec<PathBuf>, Report> {

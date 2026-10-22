@@ -24,15 +24,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
 
     assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nwk(NwkStyle::Plain)));
     assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nexus));
@@ -53,15 +53,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[OutputSelection::Nwk],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[OutputSelection::Nwk],
+      &[],
+    )
+    .unwrap();
 
     assert_eq!(helpers::tree_paths(&resolved).len(), 1);
     assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nwk(NwkStyle::Plain)));
@@ -73,15 +73,15 @@ mod tests {
       output_tree_nwk: Some(PathBuf::from("/tmp/test.nwk")),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
 
     assert_eq!(
       helpers::tree_paths(&resolved),
@@ -92,7 +92,8 @@ mod tests {
   #[test]
   fn test_resolve_no_outputs_errors() {
     let args = OutputCoreArgs::default();
-    let result = args.resolve(
+    let result = helpers::resolve(
+      &args,
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
       OutputSettings::default(),
@@ -113,7 +114,8 @@ mod tests {
       ..OutputCoreArgs::default()
     };
 
-    let result = args.resolve(
+    let result = helpers::resolve(
+      &args,
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
       OutputSettings::default(),
@@ -141,7 +143,7 @@ mod tests {
       ..OutputCoreArgs::default()
     };
 
-    let result = args.resolve(
+    let result = helpers::resolve(&args,
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
       OutputSettings::default(),
@@ -161,7 +163,8 @@ mod tests {
       ..OutputCoreArgs::default()
     };
 
-    let result = args.resolve(
+    let result = helpers::resolve(
+      &args,
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
       OutputSettings::default(),
@@ -183,15 +186,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[(OutputSelection::Model, Some(gtr_path.as_path()))],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[(OutputSelection::Model, Some(gtr_path.as_path()))],
+    )
+    .unwrap();
 
     let expected = PlannedFile {
       path: gtr_path,
@@ -208,15 +211,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[(OutputSelection::Model, None)],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[(OutputSelection::Model, None)],
+    )
+    .unwrap();
 
     let expected = PlannedFile {
       path: dir.path().join("ancestral.model.json"),
@@ -233,15 +236,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Clock,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[OutputSelection::Nwk],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Clock,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[OutputSelection::Nwk],
+      &[],
+    )
+    .unwrap();
     assert_eq!(
       &helpers::tree_paths(&resolved)[&TreeWriteKind::Nwk(NwkStyle::Plain)],
       &dir.path().join("clock.nwk")
@@ -255,15 +258,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Timetree,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Timetree,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
     assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Auspice));
   }
 
@@ -282,7 +285,7 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args.resolve(command, NonZeroUsize::MIN, OutputSettings::default(), &[OutputSelection::All], &[]).unwrap();
+    let resolved = helpers::resolve(&args, command, NonZeroUsize::MIN, OutputSettings::default(), &[OutputSelection::All], &[]).unwrap();
     let actual = helpers::tree_paths(&resolved).keys().copied().collect();
     let expected = btreeset! {
       TreeWriteKind::Nwk(NwkStyle::Plain),
@@ -302,15 +305,15 @@ mod tests {
       output_tree_mat_pb: Some(PathBuf::from("/tmp/out.pb")),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Clock,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Clock,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
     assert_eq!(
       &PathBuf::from("/tmp/out.pb"),
       &helpers::tree_paths(&resolved)[&TreeWriteKind::MatPb]
@@ -323,15 +326,15 @@ mod tests {
       output_tree_auspice: Some(PathBuf::from("/tmp/out.auspice.json")),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Clock,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Clock,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
     assert_eq!(
       &PathBuf::from("/tmp/out.auspice.json"),
       &helpers::tree_paths(&resolved)[&TreeWriteKind::Auspice]
@@ -345,15 +348,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[OutputSelection::Nwk, OutputSelection::Nexus],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[OutputSelection::Nwk, OutputSelection::Nexus],
+      &[],
+    )
+    .unwrap();
     let expected = btreemap! {
       TreeWriteKind::Nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
       TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
@@ -376,8 +379,7 @@ mod tests {
       newick_annotations,
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
+    let resolved = helpers::resolve(&args,
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
         OutputSettings::default(),
@@ -398,15 +400,15 @@ mod tests {
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
     assert_eq!(
       helpers::tree_paths(&resolved),
       btreemap! { TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("my.nwk") }
@@ -420,15 +422,15 @@ mod tests {
       newick_annotations: NewickAnnotationsArg::Beast,
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
     assert_eq!(
       helpers::tree_paths(&resolved),
       btreemap! { TreeWriteKind::Nwk(NwkStyle::Beast) => PathBuf::from("my.nwk") }
@@ -443,15 +445,15 @@ mod tests {
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[OutputSelection::Nwk, OutputSelection::Nexus],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[OutputSelection::Nwk, OutputSelection::Nexus],
+      &[],
+    )
+    .unwrap();
     let expected = btreemap! {
       TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
       TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
@@ -467,15 +469,15 @@ mod tests {
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[OutputSelection::Nexus],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[OutputSelection::Nexus],
+      &[],
+    )
+    .unwrap();
     let expected = btreemap! {
       TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
       TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
@@ -491,15 +493,15 @@ mod tests {
       newick_annotations: NewickAnnotationsArg::Nhx,
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Ancestral,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    )
+    .unwrap();
     let expected: BTreeMap<TreeWriteKind, PathBuf> = btreemap! {
       TreeWriteKind::Nwk(NwkStyle::Nhx) => PathBuf::from("my.nwk"),
       TreeWriteKind::Nexus => PathBuf::from("my.nexus"),
@@ -514,18 +516,18 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Timetree,
-        NonZeroUsize::MIN,
-        OutputSettings {
-          coalescent: true,
-          ..OutputSettings::default()
-        },
-        &[],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Timetree,
+      NonZeroUsize::MIN,
+      OutputSettings {
+        coalescent: true,
+        ..OutputSettings::default()
+      },
+      &[],
+      &[],
+    )
+    .unwrap();
 
     assert_eq!(
       Some(dir.path().join("timetree.coalescent.tsv").as_path()),
@@ -544,15 +546,15 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args
-      .resolve(
-        CommandKind::Timetree,
-        NonZeroUsize::MIN,
-        OutputSettings::default(),
-        &[OutputSelection::CoalescentJson],
-        &[],
-      )
-      .unwrap();
+    let resolved = helpers::resolve(
+      &args,
+      CommandKind::Timetree,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[OutputSelection::CoalescentJson],
+      &[],
+    )
+    .unwrap();
 
     let expected = btreemap! {
       OutputSelection::CoalescentJson => PlannedFile {
@@ -608,7 +610,7 @@ mod tests {
       ..Default::default()
     };
 
-    let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, OutputSettings::default(), &selection, &[]).unwrap();
+    let resolved = helpers::resolve(&args, CommandKind::Clock, NonZeroUsize::MIN, OutputSettings::default(), &selection, &[]).unwrap();
 
     let expected: BTreeMap<OutputSelection, PlannedFile> = expected
       .into_iter()
@@ -668,6 +670,41 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::output_args::{OutputRequest, TreeOutputPaths};
+    use eyre::Report;
+
+    pub(super) fn resolve(
+      args: &OutputCoreArgs,
+      command: CommandKind,
+      partition_count: NonZeroUsize,
+      settings: OutputSettings,
+      selection: &[OutputSelection],
+      file_paths: &[(OutputSelection, Option<&Path>)],
+    ) -> Result<ResolvedOutputs, Report> {
+      let args = args.clone();
+      OutputRequest {
+        command,
+        alignment_count: partition_count.get(),
+        settings,
+        output_all: args.output_all,
+        newick_annotations: args.newick_annotations,
+        selection: selection.to_vec(),
+        tree_paths: TreeOutputPaths {
+          nwk: args.output_tree_nwk,
+          nexus: args.output_tree_nexus,
+          auspice: args.output_tree_auspice,
+          mat_pb: args.output_tree_mat_pb,
+          mat_json: args.output_tree_mat_json,
+          graph_json: args.output_tree_graph_json,
+          dot: args.output_tree_dot,
+        },
+        file_paths: file_paths
+          .iter()
+          .map(|(selection, path)| (*selection, path.map(Path::to_path_buf)))
+          .collect(),
+      }
+      .resolve()
+    }
 
     pub(super) fn tree_paths(resolved: &ResolvedOutputs) -> BTreeMap<TreeWriteKind, PathBuf> {
       let mut paths = resolved.partition_tree_outputs(1);

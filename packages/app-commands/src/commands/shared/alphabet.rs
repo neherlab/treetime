@@ -24,7 +24,7 @@ pub struct AlphabetArgs {
   /// When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
   /// detection is ambiguous.
   #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Input data"))]
-  alphabet: Option<AlphabetNameCli>,
+  pub(crate) alphabet: Option<AlphabetNameCli>,
 }
 
 impl AlphabetArgs {

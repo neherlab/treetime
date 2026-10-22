@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
-  use crate::commands::shared::output_args::ResolveOutputs;
   use app_output::output_conditions::OutputCondition;
   use app_output::output_plan::OutputSelection;
   use clap::Parser;
@@ -21,7 +20,7 @@ mod tests {
     let args = helpers::timetree(&["--alignment=aln.fasta"], outputs);
     assert_eq!(
       btreemap! { OutputSelection::Sequences => OutputCondition::BranchLengthsReestimated },
-      args.resolve_outputs()?.conditional_selections()
+      helpers::outputs(args)?.conditional_selections()
     );
     Ok(())
   }
@@ -32,7 +31,7 @@ mod tests {
       &["--alignment=aln.fasta", "--branch-length-mode=marginal"],
       &["--output-all=out"],
     );
-    let resolved = args.resolve_outputs()?;
+    let resolved = helpers::outputs(args)?;
     assert_eq!(
       (Some(Path::new("out/timetree.sequences.fasta")), btreemap! {}),
       (
@@ -61,7 +60,7 @@ mod tests {
      &["output_sequences", "alignment"][..]),
   )]
   #[case::table_extension(
-    &[], &["--output-rtt=rtt.ssv"],
+    &["--sequence-length=1000"], &["--output-rtt=rtt.ssv"],
     ("The file name 'rtt.ssv' of --output-rtt must end in .tsv (tab-separated) or .csv (comma-separated), optionally \
       followed by a compression suffix such as .gz, or be '-' for standard output",
      &["output_rtt"][..]),
@@ -73,7 +72,7 @@ mod tests {
     #[case] expected: (&str, &[&str]),
   ) {
     let args = helpers::timetree(inputs, outputs);
-    assert_eq!(helpers::owned(expected), helpers::argument_error(args.resolve_outputs()));
+    assert_eq!(helpers::owned(expected), helpers::argument_error(helpers::outputs(args)));
   }
 
   #[test]
@@ -83,8 +82,7 @@ mod tests {
       &["--output-all=out", "--output-selection=all"],
     );
     assert!(
-      !args
-        .resolve_outputs()?
+      !helpers::outputs(args)?
         .paths_by_selection()
         .contains_key(&OutputSelection::Sequences)
     );
@@ -103,7 +101,7 @@ mod tests {
     ])?;
     assert_eq!(
       Some(Path::new("out/mugration.trait-probabilities.tsv")),
-      args.resolve_outputs()?.path(OutputSelection::TraitProbabilities)
+      helpers::outputs(args)?.path(OutputSelection::TraitProbabilities)
     );
     Ok(())
   }
@@ -126,17 +124,22 @@ mod tests {
          --output-trait-probabilities <FILE>",
         &["confidence", "output_trait_probabilities"],
       )),
-      helpers::argument_error(args.resolve_outputs())
+      helpers::argument_error(helpers::outputs(args))
     );
   }
 
   mod helpers {
+    use crate::command::RawConfig;
     use crate::commands::shared::argument_error::ArgumentError;
     use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use app_output::output_plan::ResolvedOutputs;
     use clap::Parser;
     use eyre::Report;
     use itertools::{Itertools, chain};
+
+    pub(super) fn outputs<R: RawConfig>(raw: R) -> Result<ResolvedOutputs, Report> {
+      R::wrap(R::Args::try_from(raw)?).resolve_outputs()
+    }
 
     pub(super) fn timetree(inputs: &[&str], outputs: &[&str]) -> TreetimeTimetreeArgsRaw {
       let args = chain!(

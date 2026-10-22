@@ -59,42 +59,25 @@ pub struct TopologyOrderArgs {
   pub topology_order_aggregate: TopologyOrderTargetAggregateArg,
 }
 
-impl TopologyOrderArgs {
-  pub fn resolve_topology_order(
-    &self,
-    graph: &Graph,
-    names: &NodeNames,
-    input_order: Option<Vec<GraphNodeKey>>,
-    tree_dialect: NewickDialect,
-  ) -> Result<TopologyOrderSpec, Report> {
-    self.validate()?;
+#[derive(Debug, Clone)]
+pub(crate) struct TopologyOrder {
+  preset: TopologyOrderPreset,
+  target: TargetOrderSource,
+  aggregate: TopologyOrderTargetAggregate,
+}
 
-    let preset = self
-      .topology_order
-      .map_or(TopologyOrderPreset::DescendantCount, Into::into);
-
-    let target_order = if preset.is_target_order() {
-      self.target_order(graph, names, input_order, tree_dialect)?
-    } else {
-      BTreeMap::new()
-    };
-
-    Ok(TopologyOrderSpec {
-      preset,
-      target_order,
-      target_aggregate: self.topology_order_aggregate.into(),
-    })
-  }
-
-  fn validate(&self) -> Result<(), Report> {
-    let target_fields_present = self.topology_order_tree.is_some()
-      || self.topology_order_list.is_some()
-      || self.topology_order_aggregate != TopologyOrderTargetAggregateArg::Mean;
-    let target_mode = self
-      .topology_order
-      .is_some_and(|order| TopologyOrderPreset::from(order).is_target_order());
-
-    if target_fields_present && !target_mode {
+impl TopologyOrder {
+  pub(crate) fn new(
+    topology_order: Option<TopologyOrderArg>,
+    topology_order_tree: Option<PathBuf>,
+    topology_order_list: Option<PathBuf>,
+    topology_order_aggregate: TopologyOrderTargetAggregateArg,
+  ) -> Result<Self, Report> {
+    let preset = topology_order.map_or(TopologyOrderPreset::DescendantCount, Into::into);
+    let target_fields_present = topology_order_tree.is_some()
+      || topology_order_list.is_some()
+      || topology_order_aggregate != TopologyOrderTargetAggregateArg::Mean;
+    if target_fields_present && !preset.is_target_order() {
       return Err(argument_error(
         &[
           "topology_order",
@@ -105,8 +88,35 @@ impl TopologyOrderArgs {
         "--topology-order-tree, --topology-order-list and --topology-order-aggregate require --topology-order=target-order or target-order-reverse",
       ));
     }
+    let target = match (topology_order_tree, topology_order_list) {
+      (Some(path), _) => TargetOrderSource::Tree(path),
+      (None, Some(path)) => TargetOrderSource::List(path),
+      (None, None) => TargetOrderSource::InputTree,
+    };
+    Ok(Self {
+      preset,
+      target,
+      aggregate: topology_order_aggregate.into(),
+    })
+  }
 
-    Ok(())
+  pub(crate) fn resolve(
+    &self,
+    graph: &Graph,
+    names: &NodeNames,
+    input_order: Option<Vec<GraphNodeKey>>,
+    tree_dialect: NewickDialect,
+  ) -> Result<TopologyOrderSpec, Report> {
+    let target_order = if self.preset.is_target_order() {
+      self.target_order(graph, names, input_order, tree_dialect)?
+    } else {
+      BTreeMap::new()
+    };
+    Ok(TopologyOrderSpec {
+      preset: self.preset,
+      target_order,
+      target_aggregate: self.aggregate,
+    })
   }
 
   fn target_order(
@@ -116,16 +126,18 @@ impl TopologyOrderArgs {
     input_order: Option<Vec<GraphNodeKey>>,
     tree_dialect: NewickDialect,
   ) -> Result<BTreeMap<GraphNodeKey, usize>, Report> {
-    let target_names = match (&self.topology_order_tree, &self.topology_order_list) {
-      (Some(path), _) => {
+    let target_names = match &self.target {
+      TargetOrderSource::Tree(path) => {
         let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading the topology order tree")?;
         leaf_order(&nwk_parsed.graph)
           .into_iter()
           .map(|key| nwk_parsed.names.pairing_name(key).to_owned())
           .collect_vec()
       },
-      (None, Some(path)) => name_list_read_file(path, b'\n').wrap_err("When reading the topology order list")?,
-      (None, None) => {
+      TargetOrderSource::List(path) => {
+        name_list_read_file(path, b'\n').wrap_err("When reading the topology order list")?
+      },
+      TargetOrderSource::InputTree => {
         let order = input_order.unwrap_or_else(|| leaf_order(graph));
         return Ok(
           order
@@ -138,6 +150,13 @@ impl TopologyOrderArgs {
     };
     Ok(target_positions(target_names, graph, names))
   }
+}
+
+#[derive(Debug, Clone)]
+enum TargetOrderSource {
+  InputTree,
+  Tree(PathBuf),
+  List(PathBuf),
 }
 
 pub(crate) fn target_positions(

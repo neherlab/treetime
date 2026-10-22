@@ -4,20 +4,26 @@ use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::method_anc::{MarginalReconstruction, MethodAncArgs, SampleFromProfileArgs};
-use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output_args::{HomoplasyOutputSelectionArgs, OutputCoreArgs};
-use crate::commands::shared::representation::RepresentationArgs;
+use crate::commands::shared::method_anc::{
+  MarginalReconstruction, MethodAncArgs, SampleFromProfileArgs, check_model_with_method_anc,
+};
+use crate::commands::shared::model::{ModelArgs, resolve_model};
+use crate::commands::shared::output_args::{
+  HomoplasyOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
+};
+use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
-use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
+use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
-use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
+use app_output::command_outputs::CommandKind;
+use app_output::output_conditions::OutputSettings;
+use app_output::output_plan::OutputSelection;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
-use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -26,71 +32,208 @@ use std::path::PathBuf;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::seq::mutation::PositionBase;
+use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
     model: args.model.clone(),
-    dense: args.representation.dense(),
+    dense: args.dense,
     include_leaves: false,
     report_ambiguous: true,
-    impute_missing_data: args.impute_missing_data.impute_missing_data,
+    impute_missing_data: args.impute_missing_data,
     seed,
     sample_from_profile: args.sample_from_profile,
   }
 }
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone)]
 pub struct TreetimeHomoplasyArgs {
-  #[deref]
-  #[deref_mut]
-  pub(crate) raw: TreetimeHomoplasyArgsRaw,
   pub(crate) tree: PathBuf,
+  pub(crate) newick_dialect: NewickDialect,
+  pub(crate) sequences: SequenceInputs,
+  pub(crate) positions: PositionBase,
   pub(crate) method_anc: MethodAncestral,
-  pub(crate) sample_from_profile: SampleMode,
   pub(crate) model: GtrModel,
+  pub(crate) dense: Option<bool>,
+  pub(crate) impute_missing_data: bool,
+  pub(crate) sample_from_profile: SampleMode,
+  pub(crate) seed: Option<u64>,
+  pub(crate) constant_sites: usize,
+  pub(crate) rescale: f64,
+  pub(crate) detailed: bool,
+  pub(crate) drms: Option<PathBuf>,
+  pub(crate) num_mut: usize,
+  pub(crate) topology_order: TopologyOrder,
+  pub(crate) outputs: OutputRequest,
+}
+
+impl TreetimeHomoplasyArgs {
+  pub fn alignments(&self) -> &[PathBuf] {
+    &self.sequences.alignments
+  }
 }
 
 impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
   type Error = Report;
 
+  #[deny(unused_variables)]
+  #[expect(
+    clippy::unneeded_field_pattern,
+    reason = "the CLI reads its own settings before the conversion, and `..` would hide every setting that no run reads"
+  )]
   fn try_from(raw: TreetimeHomoplasyArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .tree
-      .clone()
-      .ok_or_else(|| missing_required_args::<TreetimeHomoplasyArgsRaw>(&["tree"]))?;
-    if !raw.rescale.is_finite() || raw.rescale <= 0.0 {
-      return Err(argument_error(
-        &["rescale"],
-        format!("--rescale must be a positive finite number, but got {}", raw.rescale),
-      ));
-    }
-    let n_alignments = raw.alignment.alignment.len();
-    if n_alignments > 1 {
-      return Err(argument_error(
-        &["alignment"],
-        format!(
-          "homoplasy reads exactly one --alignment file, but {n_alignments} were given: \
-           the reported positions refer to the coordinates of one alignment"
-        ),
-      ));
-    }
-    raw.method_anc.check_model(&raw.model_args)?;
+    let TreetimeHomoplasyArgsRaw {
+      config_args: _,
+      alignment: AlignmentArgs { alignment },
+      tree: TreeArgs { tree },
+      newick_dialect: TreeDialectArgs { newick_dialect },
+      alphabet_args: AlphabetArgs { alphabet },
+      model_args: ModelArgs { model, model_params },
+      method_anc: MethodAncArgs { method_anc },
+      representation: RepresentationArgs { representation },
+      gap_fill_args: GapFillArgs { gap_fill },
+      zero_based: ZeroBasedArgs { zero_based },
+      impute_missing_data: ImputeMissingDataArgs { impute_missing_data },
+      missing_sequences: MissingSequenceArgs {
+        allow_missing_sequences,
+      },
+      sample_from_profile: SampleFromProfileArgs { sample_from_profile },
+      seed_args: SeedArgs { seed },
+      jobs_args: _,
+      constant_sites,
+      rescale,
+      detailed,
+      drms,
+      num_mut,
+      output,
+      output_homoplasy_stats,
+      output_homoplasy_report,
+      output_selection,
+      topology_order,
+    } = raw;
+    let tree = tree.ok_or_else(|| missing_required_args::<TreetimeHomoplasyArgsRaw>(&["tree"]))?;
+    check_rescale(rescale)?;
+    check_one_alignment(&alignment)?;
+    check_model_with_method_anc(method_anc, model, &model_params)?;
     MarginalReconstruction {
-      runs: raw.method_anc.is_marginal(),
+      runs: method_anc.is_marginal(),
       condition: "--method-anc marginal",
     }
-    .check("representation", raw.representation.is_given())?;
+    .check("representation", representation.is_some())?;
     Ok(Self {
       tree,
-      method_anc: raw.method_anc.method_anc.into(),
-      sample_from_profile: raw.sample_from_profile.sample_from_profile.into(),
-      model: raw.model_args.model()?,
-      raw,
+      newick_dialect: newick_dialect.dialect(),
+      sequences: SequenceInputs {
+        alignments: alignment,
+        alphabet: alphabet.map(Into::into),
+        gap_fill: gap_fill.into(),
+        missing_leaves: missing_leaf_limit(allow_missing_sequences),
+      },
+      positions: PositionBase::from_zero_based(zero_based),
+      method_anc: method_anc.into(),
+      model: resolve_model(model, &model_params)?,
+      dense: representation_dense(representation),
+      impute_missing_data,
+      sample_from_profile: sample_from_profile.into(),
+      seed,
+      constant_sites,
+      rescale,
+      detailed,
+      drms,
+      num_mut,
+      topology_order: homoplasy_topology_order(topology_order)?,
+      outputs: homoplasy_outputs(
+        output,
+        output_selection,
+        output_homoplasy_stats,
+        output_homoplasy_report,
+      ),
     })
   }
+}
+
+#[deny(unused_variables)]
+fn homoplasy_outputs(
+  OutputCoreArgs {
+    output_all,
+    newick_annotations,
+    output_tree_nwk,
+    output_tree_nexus,
+    output_tree_auspice,
+    output_tree_mat_pb,
+    output_tree_mat_json,
+    output_tree_graph_json,
+    output_tree_dot,
+  }: OutputCoreArgs,
+  HomoplasyOutputSelectionArgs { output_selection }: HomoplasyOutputSelectionArgs,
+  output_homoplasy_stats: Option<PathBuf>,
+  output_homoplasy_report: Option<PathBuf>,
+) -> OutputRequest {
+  OutputRequest {
+    command: CommandKind::Homoplasy,
+    alignment_count: 0,
+    settings: OutputSettings::default(),
+    output_all,
+    newick_annotations,
+    selection: selected_outputs(&output_selection),
+    tree_paths: TreeOutputPaths {
+      nwk: output_tree_nwk,
+      nexus: output_tree_nexus,
+      auspice: output_tree_auspice,
+      mat_pb: output_tree_mat_pb,
+      mat_json: output_tree_mat_json,
+      graph_json: output_tree_graph_json,
+      dot: output_tree_dot,
+    },
+    file_paths: vec![
+      (OutputSelection::HomoplasyStats, output_homoplasy_stats),
+      (OutputSelection::HomoplasyReport, output_homoplasy_report),
+    ],
+  }
+}
+
+#[deny(unused_variables)]
+fn homoplasy_topology_order(
+  TopologyOrderArgs {
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  }: TopologyOrderArgs,
+) -> Result<TopologyOrder, Report> {
+  TopologyOrder::new(
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  )
+}
+
+fn check_rescale(rescale: f64) -> Result<(), Report> {
+  if !rescale.is_finite() || rescale <= 0.0 {
+    return Err(argument_error(
+      &["rescale"],
+      format!("--rescale must be a positive finite number, but got {rescale}"),
+    ));
+  }
+  Ok(())
+}
+
+fn check_one_alignment(alignment: &[PathBuf]) -> Result<(), Report> {
+  let n_alignments = alignment.len();
+  if n_alignments > 1 {
+    return Err(argument_error(
+      &["alignment"],
+      format!(
+        "homoplasy reads exactly one --alignment file, but {n_alignments} were given: \
+         the reported positions refer to the coordinates of one alignment"
+      ),
+    ));
+  }
+  Ok(())
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

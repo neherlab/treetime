@@ -1,26 +1,32 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
-use crate::commands::shared::ambiguity::TimetreeAmbiguityArgs;
+use crate::commands::shared::ambiguity::{TimetreeAmbiguityArgs, resolve_ambiguity_outputs};
 use crate::commands::shared::argument_error::argument_error;
-use crate::commands::shared::branch_lengths::BranchLengthArgs;
+use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
 use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
+use crate::commands::shared::dates_input::DatesInput;
 use crate::commands::shared::dependent_settings::{check_applies, setting_flag};
 use crate::commands::shared::documented_default::documented_default;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
-use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
-use crate::commands::shared::output_args::{ClockOutputArgs, OutputCoreArgs, TimetreeOutputSelectionArgs};
+use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs, MetadataInput};
+use crate::commands::shared::model::{
+  ModelArgs, PartitionRatesArgs, check_partition_rates, resolve_model, resolve_partition_rates,
+};
+use crate::commands::shared::output_args::{
+  ClockOutputArgs, DivergenceUnits, OutputCoreArgs, OutputRequest, TimetreeOutputSelectionArgs, TreeOutputPaths,
+  selected_outputs,
+};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
-use crate::commands::shared::representation::RepresentationArgs;
+use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
-use crate::commands::shared::reroot::{RerootArgs, RootingArgs};
+use crate::commands::shared::reroot::{RerootArgs, RerootTarget, RootingArgs};
 use crate::commands::shared::seed::SeedArgs;
-use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
+use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
-use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
 use crate::commands::timetree::branch_length_mode::{BranchLengthModeCli, ResolvedBranchLengthMode};
@@ -28,10 +34,11 @@ use crate::commands::timetree::coalescent::CoalescentArg;
 #[cfg(feature = "clap")]
 use crate::commands::timetree::coalescent::parse_coalescent;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
+use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::{NotReconstructed, OutputSettings, SequenceOutputs};
+use app_output::output_plan::OutputSelection;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
-use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
@@ -40,7 +47,11 @@ use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
+use treetime::optimize::partition_rates::PartitionRates;
+use treetime::seq::mutation::PositionBase;
+use treetime::timetree::coalescent_timescale::CoalescentMode;
 use treetime_grid::MaxGridPoints;
+use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::o;
 
@@ -54,103 +65,477 @@ pub const COALESCENT_CONFIDENCE_DEFAULT: f64 = 2.0;
 
 pub const GEN_PER_YEAR_DEFAULT: f64 = 50.0;
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone)]
 pub struct TreetimeTimetreeArgs {
-  #[deref]
-  #[deref_mut]
-  pub(crate) raw: TreetimeTimetreeArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) metadata: PathBuf,
-  pub(crate) indel_policy: IndelPolicy,
-  pub(crate) max_grid_points: MaxGridPoints,
-  pub(crate) include_leaves: bool,
-  pub(crate) impute_missing_data: bool,
+  pub(crate) newick_dialect: NewickDialect,
+  pub(crate) dates: DatesInput,
+  pub(crate) sequences: SequenceInputs,
+  pub(crate) branch_lengths: TimetreeBranchLengths,
+  pub(crate) sequence_model: TimetreeSequenceModel,
+  pub(crate) marginal_only_settings: Vec<&'static str>,
+  pub(crate) positions: PositionBase,
+  pub(crate) clock: TimetreeClock,
+  pub(crate) reroot: RerootTarget,
+  pub(crate) keep_root: bool,
+  pub(crate) dating: TimetreeDating,
+  pub(crate) tip_sequences: TimetreeTipSequences,
+  pub(crate) seed: Option<u64>,
   pub(crate) ambiguity_outputs: AmbiguityOutputs,
-  pub(crate) model: GtrModel,
+  pub(crate) topology_order: TopologyOrder,
+  pub(crate) outputs: OutputRequest,
+}
+
+impl TreetimeTimetreeArgs {
+  pub fn alignments(&self) -> &[PathBuf] {
+    &self.sequences.alignments
+  }
 }
 
 impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   type Error = Report;
 
+  #[deny(unused_variables)]
+  #[expect(
+    clippy::unneeded_field_pattern,
+    reason = "the CLI reads its own settings before the conversion, and `..` would hide every setting that no run reads"
+  )]
   fn try_from(raw: TreetimeTimetreeArgsRaw) -> Result<Self, Report> {
-    let (tree, metadata) = match (raw.tree.tree.clone(), raw.metadata.clone()) {
-      (Some(tree), Some(metadata)) => (tree, metadata),
-      (tree, metadata) => {
-        let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
-          .into_iter()
-          .filter_map(|(key, missing)| missing.then_some(key))
-          .collect_vec();
-        return Err(missing_required_args::<TreetimeTimetreeArgsRaw>(&missing));
+    let TreetimeTimetreeArgsRaw {
+      config_args: _,
+      alignment: AlignmentArgs { alignment },
+      tree: TreeArgs { tree },
+      newick_dialect: TreeDialectArgs { newick_dialect },
+      missing_sequences,
+      metadata,
+      metadata_id,
+      date_column,
+      sequence_length,
+      clock_rate,
+      clock_std_dev,
+      branch_length_mode,
+      confidence,
+      max_grid_points,
+      keep_polytomies,
+      relax,
+      max_iter,
+      coalescent,
+      n_skyline,
+      skyline_stiffness,
+      coalescent_confidence,
+      clock_filter,
+      reroot: RerootArgs { reroot },
+      rooting: RootingArgs { outgroup, keep_root },
+      model_args,
+      partition_rates_args,
+      alphabet_args,
+      representation,
+      gap_fill_args,
+      zero_based: ZeroBasedArgs { zero_based },
+      tip_sequences,
+      impute_missing_data,
+      branch_lengths,
+      output_node_data,
+      gtr_output: GtrOutputArgs { output_model },
+      reconstructed_fasta_output: ReconstructedFastaOutputArgs { output_sequences },
+      clock_output: ClockOutputArgs {
+        output_clock_model,
+        output_rtt,
       },
-    };
-    check_sequence_source(&raw)?;
-    check_dependent_settings(&raw)?;
+      output_dates,
+      output_tracelog,
+      output_coalescent,
+      output_coalescent_json,
+      output,
+      output_selection,
+      ambiguity,
+      topology_order,
+      seed_args: SeedArgs { seed },
+      jobs_args: _,
+      gen_per_year,
+    } = raw;
+    let (tree, dates) = timetree_inputs(tree, metadata, metadata_id, date_column)?;
+    let alignment_count = alignment.len();
+    let marginal_only_settings = timetree_marginal_only_settings(&representation, &partition_rates_args, &ambiguity);
+    check_marginal_only_settings(&marginal_only_settings, branch_length_mode, alignment_count > 0)?;
+    let output_settings = timetree_output_settings(branch_length_mode, alignment_count > 0, coalescent.is_some());
+    let coalescent = coalescent_settings(
+      coalescent,
+      n_skyline,
+      skyline_stiffness,
+      coalescent_confidence,
+      gen_per_year,
+    )?;
+    let file_paths = vec![
+      (OutputSelection::NodeData, output_node_data),
+      (OutputSelection::Model, output_model),
+      (OutputSelection::Sequences, output_sequences),
+      (OutputSelection::ClockModel, output_clock_model),
+      (OutputSelection::Rtt, output_rtt),
+      (OutputSelection::Dates, output_dates),
+      (OutputSelection::Tracelog, output_tracelog),
+      (OutputSelection::Coalescent, output_coalescent),
+      (OutputSelection::CoalescentJson, output_coalescent_json),
+    ];
     Ok(Self {
       tree,
-      metadata,
-      indel_policy: raw.branch_lengths.indel_policy(),
-      max_grid_points: raw.max_grid_points.unwrap_or_default(),
-      include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
-      impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
-      ambiguity_outputs: raw.ambiguity.resolve()?,
-      model: raw.model_args.model()?,
-      raw,
+      newick_dialect: newick_dialect.dialect(),
+      dates,
+      branch_lengths: timetree_branch_lengths(branch_length_mode, alignment_count, sequence_length, branch_lengths)?,
+      sequence_model: timetree_sequence_model(model_args, representation, partition_rates_args, alignment_count)?,
+      marginal_only_settings,
+      clock: timetree_clock(clock_rate, clock_std_dev, confidence, clock_filter, relax)?,
+      reroot: RerootTarget::new(reroot.map(Into::into), outgroup),
+      keep_root,
+      dating: timetree_dating(max_iter, keep_polytomies, confidence, max_grid_points, coalescent),
+      outputs: timetree_outputs(output, output_selection, alignment_count, output_settings, file_paths),
+      sequences: timetree_sequence_inputs(alignment, alphabet_args, gap_fill_args, missing_sequences),
+      positions: PositionBase::from_zero_based(zero_based),
+      tip_sequences: timetree_tip_sequences(tip_sequences, impute_missing_data),
+      seed,
+      ambiguity_outputs: timetree_ambiguity_outputs(ambiguity)?,
+      topology_order: timetree_topology_order(topology_order)?,
     })
   }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimetreeBranchLengths {
+  pub(crate) mode: BranchLengthModeCli,
+  pub(crate) sequence_length: Option<usize>,
+  pub(crate) indel_policy: IndelPolicy,
+  pub(crate) mutation_units: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TimetreeSequenceModel {
+  pub(crate) model: GtrModel,
+  pub(crate) dense: Option<bool>,
+  pub(crate) partition_rates: PartitionRates,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TimetreeClock {
+  pub(crate) clock_rate: Option<f64>,
+  pub(crate) clock_std_dev: Option<f64>,
+  pub(crate) clock_filter: f64,
+  pub(crate) allow_negative_rate: bool,
+  pub(crate) relax: Vec<f64>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimetreeDating {
+  pub(crate) max_iter: usize,
+  pub(crate) keep_polytomies: bool,
+  pub(crate) confidence: bool,
+  pub(crate) max_grid_points: MaxGridPoints,
+  pub(crate) coalescent: CoalescentSettings,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimetreeTipSequences {
+  pub(crate) include_leaves: bool,
+  pub(crate) report_ambiguous: bool,
+  pub(crate) impute_missing_data: bool,
+}
+
+#[deny(unused_variables)]
+fn timetree_inputs(
+  tree: Option<PathBuf>,
+  metadata: Option<PathBuf>,
+  MetadataIdArgs {
+    metadata_id_columns,
+    metadata_delimiters,
+  }: MetadataIdArgs,
+  DateColumnArgs {
+    date_column,
+    date_format,
+  }: DateColumnArgs,
+) -> Result<(PathBuf, DatesInput), Report> {
+  let (tree, metadata) = match (tree, metadata) {
+    (Some(tree), Some(metadata)) => (tree, metadata),
+    (tree, metadata) => {
+      let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
+        .into_iter()
+        .filter_map(|(key, missing)| missing.then_some(key))
+        .collect_vec();
+      return Err(missing_required_args::<TreetimeTimetreeArgsRaw>(&missing));
+    },
+  };
+  let dates = DatesInput {
+    metadata: MetadataInput {
+      path: metadata,
+      id_columns: metadata_id_columns,
+      delimiters: metadata_delimiters,
+    },
+    date_column,
+    date_format,
+  };
+  Ok((tree, dates))
+}
+
+fn timetree_marginal_only_settings(
+  representation: &RepresentationArgs,
+  partition_rates: &PartitionRatesArgs,
+  ambiguity: &TimetreeAmbiguityArgs,
+) -> Vec<&'static str> {
+  [
+    ("representation", representation.representation.is_some()),
+    ("partition_rates", partition_rates.partition_rates.is_some()),
+    ("ambiguity_threshold", ambiguity.ambiguity_threshold.is_some()),
+  ]
+  .into_iter()
+  .filter_map(|(setting, given)| given.then_some(setting))
+  .collect_vec()
+}
+
+fn check_marginal_only_settings(
+  marginal_only_settings: &[&str],
+  branch_length_mode: BranchLengthModeCli,
+  has_alignment: bool,
+) -> Result<(), Report> {
+  if branch_length_mode == BranchLengthModeCli::Auto {
+    return Ok(());
+  }
+  check_branch_length_settings(
+    marginal_only_settings,
+    &ResolvedBranchLengthMode::new(branch_length_mode, has_alignment, None),
+  )
+}
+
+#[deny(unused_variables)]
+fn timetree_branch_lengths(
+  branch_length_mode: BranchLengthModeCli,
+  alignment_count: usize,
+  sequence_length: Option<usize>,
+  BranchLengthArgs {
+    no_indels,
+    divergence_units,
+  }: BranchLengthArgs,
+) -> Result<TimetreeBranchLengths, Report> {
+  check_sequence_source(alignment_count > 0, sequence_length, branch_length_mode)?;
+  Ok(TimetreeBranchLengths {
+    mode: branch_length_mode,
+    sequence_length,
+    indel_policy: indel_policy(no_indels),
+    mutation_units: divergence_units == DivergenceUnits::Mutations,
+  })
+}
+
+#[deny(unused_variables)]
+fn timetree_sequence_model(
+  ModelArgs { model, model_params }: ModelArgs,
+  RepresentationArgs { representation }: RepresentationArgs,
+  PartitionRatesArgs { partition_rates }: PartitionRatesArgs,
+  alignment_count: usize,
+) -> Result<TimetreeSequenceModel, Report> {
+  check_partition_rates(partition_rates, alignment_count)?;
+  Ok(TimetreeSequenceModel {
+    model: resolve_model(model, &model_params)?,
+    dense: representation_dense(representation),
+    partition_rates: resolve_partition_rates(partition_rates),
+  })
+}
+
+#[deny(unused_variables)]
+fn timetree_clock(
+  clock_rate: Option<f64>,
+  clock_std_dev: Option<f64>,
+  confidence: bool,
+  ClockFilterArgs {
+    clock_filter,
+    allow_negative_rate,
+  }: ClockFilterArgs,
+  relax: Vec<f64>,
+) -> Result<TimetreeClock, Report> {
+  check_applies(
+    "clock_std_dev",
+    clock_std_dev.is_some(),
+    "confidence",
+    confidence,
+    || o!("applies only with --confidence: only the date intervals use the clock rate uncertainty"),
+  )?;
+  Ok(TimetreeClock {
+    clock_rate,
+    clock_std_dev,
+    clock_filter,
+    allow_negative_rate,
+    relax,
+  })
+}
+
+#[deny(unused_variables)]
+fn timetree_dating(
+  max_iter: usize,
+  keep_polytomies: bool,
+  confidence: bool,
+  max_grid_points: Option<MaxGridPoints>,
+  coalescent: CoalescentSettings,
+) -> TimetreeDating {
+  TimetreeDating {
+    max_iter,
+    keep_polytomies,
+    confidence,
+    max_grid_points: max_grid_points.unwrap_or_default(),
+    coalescent,
+  }
+}
+
+#[deny(unused_variables)]
+fn timetree_outputs(
+  OutputCoreArgs {
+    output_all,
+    newick_annotations,
+    output_tree_nwk,
+    output_tree_nexus,
+    output_tree_auspice,
+    output_tree_mat_pb,
+    output_tree_mat_json,
+    output_tree_graph_json,
+    output_tree_dot,
+  }: OutputCoreArgs,
+  TimetreeOutputSelectionArgs { output_selection }: TimetreeOutputSelectionArgs,
+  alignment_count: usize,
+  settings: OutputSettings,
+  file_paths: Vec<(OutputSelection, Option<PathBuf>)>,
+) -> OutputRequest {
+  OutputRequest {
+    command: CommandKind::Timetree,
+    alignment_count,
+    settings,
+    output_all,
+    newick_annotations,
+    selection: selected_outputs(&output_selection),
+    tree_paths: TreeOutputPaths {
+      nwk: output_tree_nwk,
+      nexus: output_tree_nexus,
+      auspice: output_tree_auspice,
+      mat_pb: output_tree_mat_pb,
+      mat_json: output_tree_mat_json,
+      graph_json: output_tree_graph_json,
+      dot: output_tree_dot,
+    },
+    file_paths,
+  }
+}
+
+#[deny(unused_variables)]
+fn timetree_sequence_inputs(
+  alignment: Vec<PathBuf>,
+  AlphabetArgs { alphabet }: AlphabetArgs,
+  GapFillArgs { gap_fill }: GapFillArgs,
+  MissingSequenceArgs {
+    allow_missing_sequences,
+  }: MissingSequenceArgs,
+) -> SequenceInputs {
+  SequenceInputs {
+    alignments: alignment,
+    alphabet: alphabet.map(Into::into),
+    gap_fill: gap_fill.into(),
+    missing_leaves: missing_leaf_limit(allow_missing_sequences),
+  }
+}
+
+#[deny(unused_variables)]
+fn timetree_tip_sequences(
+  TipSequenceArgs {
+    include_leaves,
+    reconstruct_tip_states,
+    report_ambiguous,
+  }: TipSequenceArgs,
+  ImputeMissingDataArgs { impute_missing_data }: ImputeMissingDataArgs,
+) -> TimetreeTipSequences {
+  TimetreeTipSequences {
+    include_leaves: include_leaves || reconstruct_tip_states,
+    report_ambiguous,
+    impute_missing_data: impute_missing_data || reconstruct_tip_states,
+  }
+}
+
+#[deny(unused_variables)]
+fn timetree_ambiguity_outputs(
+  TimetreeAmbiguityArgs {
+    ambiguity_threshold,
+    ambiguity_outputs,
+  }: TimetreeAmbiguityArgs,
+) -> Result<AmbiguityOutputs, Report> {
+  resolve_ambiguity_outputs(ambiguity_threshold, &ambiguity_outputs)
+}
+
+#[deny(unused_variables)]
+fn timetree_topology_order(
+  TopologyOrderArgs {
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  }: TopologyOrderArgs,
+) -> Result<TopologyOrder, Report> {
+  TopologyOrder::new(
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  )
+}
+
 pub(crate) fn check_branch_length_settings(
-  raw: &TreetimeTimetreeArgsRaw,
+  marginal_only_settings: &[&str],
   resolved: &ResolvedBranchLengthMode,
 ) -> Result<(), Report> {
-  for (setting, given) in [
-    ("representation", raw.representation.is_given()),
-    ("partition_rates", raw.partition_rates_args.is_given()),
-    ("ambiguity_threshold", raw.ambiguity.ambiguity_threshold.is_some()),
-  ] {
-    if given {
-      resolved.require_marginal(&[setting], &setting_flag(setting))?;
-    }
+  for setting in marginal_only_settings {
+    resolved.require_marginal(&[setting], &setting_flag(setting))?;
   }
   Ok(())
 }
 
-pub(crate) fn timetree_output_settings(raw: &TreetimeTimetreeArgsRaw) -> OutputSettings {
-  let sequences = match (raw.branch_length_mode, raw.alignment.alignment.is_empty()) {
+pub(crate) fn timetree_output_settings(
+  branch_length_mode: BranchLengthModeCli,
+  has_alignment: bool,
+  coalescent: bool,
+) -> OutputSettings {
+  let sequences = match (branch_length_mode, has_alignment) {
     (BranchLengthModeCli::Input, _) => SequenceOutputs::NotReconstructed(NotReconstructed::InputBranchLengths),
-    (_, true) => SequenceOutputs::NotReconstructed(NotReconstructed::NoAlignment),
-    (BranchLengthModeCli::Marginal, false) => SequenceOutputs::Reconstructed,
-    (BranchLengthModeCli::Auto, false) => SequenceOutputs::WhenBranchLengthsReestimated,
+    (_, false) => SequenceOutputs::NotReconstructed(NotReconstructed::NoAlignment),
+    (BranchLengthModeCli::Marginal, true) => SequenceOutputs::Reconstructed,
+    (BranchLengthModeCli::Auto, true) => SequenceOutputs::WhenBranchLengthsReestimated,
   };
   OutputSettings {
-    coalescent: raw.coalescent.is_some(),
+    coalescent,
     trait_probabilities: false,
     sequences,
   }
 }
 
-fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
-  if !raw.alignment.alignment.is_empty() {
-    return check_applies(
-      "sequence_length",
-      raw.sequence_length.is_some(),
-      "alignment",
-      false,
-      || {
-        o!(
-          "applies only without --alignment: the run takes the sequence length from the alignment, and an \
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CoalescentSettings {
+  pub(crate) mode: CoalescentMode,
+  pub(crate) n_skyline: usize,
+  pub(crate) skyline_stiffness: f64,
+  pub(crate) confidence: f64,
+  pub(crate) gen_per_year: f64,
+}
+
+fn check_sequence_source(
+  has_alignment: bool,
+  sequence_length: Option<usize>,
+  branch_length_mode: BranchLengthModeCli,
+) -> Result<(), Report> {
+  if has_alignment {
+    return check_applies("sequence_length", sequence_length.is_some(), "alignment", false, || {
+      o!(
+        "applies only without --alignment: the run takes the sequence length from the alignment, and an \
             alignment of variable sites with a separate genome length is not supported"
-        )
-      },
-    );
+      )
+    });
   }
-  if raw.branch_length_mode == BranchLengthModeCli::Marginal {
+  if branch_length_mode == BranchLengthModeCli::Marginal {
     return Err(argument_error(
       &["alignment", "branch_length_mode"],
       "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input",
     ));
   }
-  if raw.sequence_length.is_none_or(|length| length == 0) {
+  if sequence_length.is_none_or(|length| length == 0) {
     return Err(argument_error(
       &["alignment", "sequence_length"],
       "--sequence-length is required without an alignment: the time inference needs the sequence length",
@@ -159,41 +544,24 @@ fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
   Ok(())
 }
 
-fn check_dependent_settings(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
-  check_coalescent_settings(raw)?;
-  check_applies(
-    "clock_std_dev",
-    raw.clock_std_dev.is_some(),
-    "confidence",
-    raw.confidence,
-    || o!("applies only with --confidence: only the date intervals use the clock rate uncertainty"),
-  )?;
-  raw
-    .partition_rates_args
-    .check_partitions(raw.alignment.alignment.len())?;
-  if raw.branch_length_mode != BranchLengthModeCli::Auto {
-    let has_alignment = !raw.alignment.alignment.is_empty();
-    check_branch_length_settings(
-      raw,
-      &ResolvedBranchLengthMode::new(raw.branch_length_mode, has_alignment, None),
-    )?;
-  }
-  Ok(())
-}
-
-fn check_coalescent_settings(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
-  let coalescent = raw.coalescent;
+fn coalescent_settings(
+  coalescent: Option<CoalescentArg>,
+  n_skyline: Option<usize>,
+  skyline_stiffness: Option<f64>,
+  coalescent_confidence: Option<f64>,
+  gen_per_year: Option<f64>,
+) -> Result<CoalescentSettings, Report> {
   let actual = || coalescent.map_or_else(|| o!("not set"), |coalescent| coalescent.to_string());
   let skyline = matches!(coalescent, Some(CoalescentArg::Skyline));
   for (setting, given) in [
-    ("n_skyline", raw.n_skyline.is_some()),
-    ("skyline_stiffness", raw.skyline_stiffness.is_some()),
+    ("n_skyline", n_skyline.is_some()),
+    ("skyline_stiffness", skyline_stiffness.is_some()),
   ] {
     check_applies(setting, given, "coalescent", skyline, || {
       format!("applies only to --coalescent skyline, but --coalescent is {}", actual())
     })?;
   }
-  if let Some(n_skyline) = raw.n_skyline.filter(|&n_skyline| n_skyline < N_SKYLINE_MIN) {
+  if let Some(n_skyline) = n_skyline.filter(|&n_skyline| n_skyline < N_SKYLINE_MIN) {
     return Err(argument_error(
       &["n_skyline"],
       format!("--n-skyline is {n_skyline}, but the skyline needs at least {N_SKYLINE_MIN} grid points"),
@@ -202,7 +570,7 @@ fn check_coalescent_settings(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report
   let fitted = matches!(coalescent, Some(CoalescentArg::Opt | CoalescentArg::Skyline));
   check_applies(
     "coalescent_confidence",
-    raw.coalescent_confidence.is_some(),
+    coalescent_confidence.is_some(),
     "coalescent",
     fitted,
     || {
@@ -214,11 +582,18 @@ fn check_coalescent_settings(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report
   )?;
   check_applies(
     "gen_per_year",
-    raw.gen_per_year.is_some(),
+    gen_per_year.is_some(),
     "coalescent",
     coalescent.is_some(),
     || o!("applies only with --coalescent, which is not set"),
-  )
+  )?;
+  Ok(CoalescentSettings {
+    mode: coalescent.map_or(CoalescentMode::Disabled, CoalescentArg::mode),
+    n_skyline: n_skyline.unwrap_or(N_SKYLINE_DEFAULT),
+    skyline_stiffness: skyline_stiffness.unwrap_or(SKYLINE_STIFFNESS_DEFAULT),
+    confidence: coalescent_confidence.unwrap_or(COALESCENT_CONFIDENCE_DEFAULT),
+    gen_per_year: gen_per_year.unwrap_or(GEN_PER_YEAR_DEFAULT),
+  })
 }
 
 impl TreetimeTimetreeArgsRaw {

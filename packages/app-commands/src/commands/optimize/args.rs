@@ -1,117 +1,233 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
-use crate::commands::shared::branch_lengths::BranchLengthArgs;
+use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::dependent_settings::check_applies;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
-use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
-use crate::commands::shared::output_args::{OptimizeOutputSelectionArgs, OutputCoreArgs};
-use crate::commands::shared::representation::RepresentationArgs;
+use crate::commands::shared::model::{
+  ModelArgs, PartitionRatesArgs, check_partition_rates, resolve_model, resolve_partition_rates,
+};
+use crate::commands::shared::output_args::{
+  DivergenceUnits, OptimizeOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
+};
+use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
-use crate::commands::shared::reroot::{RootingArgs, resolve_outgroup};
-use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
-use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
+use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
+use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
+use app_output::command_outputs::CommandKind;
+use app_output::output_conditions::OutputSettings;
+use app_output::output_plan::OutputSelection;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
-use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::path::{Path, PathBuf};
-use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use std::path::PathBuf;
+use treetime::clock::find_best_root::params::RerootMethod;
 use treetime::gtr::get_gtr::GtrModel;
-use treetime::optimize::indel::IndelPolicy;
-use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
-use treetime_graph::graph::Graph;
-use treetime_graph::node_names::NodeNames;
+use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
+use treetime::seq::mutation::PositionBase;
+use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::o;
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone)]
 pub struct TreetimeOptimizeArgs {
-  #[deref]
-  #[deref_mut]
-  pub(crate) raw: TreetimeOptimizeArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) initial_branch_lengths: InitialGuessMode,
-  pub(crate) optimizer: BranchOptMethod,
-  pub(crate) indel_policy: IndelPolicy,
-  pub(crate) topology_ops: TopologyOps,
+  pub(crate) newick_dialect: NewickDialect,
+  pub(crate) sequences: SequenceInputs,
+  pub(crate) positions: PositionBase,
   pub(crate) model: GtrModel,
+  pub(crate) dense: Option<bool>,
+  pub(crate) initial_branch_lengths: InitialGuessMode,
+  pub(crate) reroot: Option<RerootTarget>,
+  pub(crate) loop_settings: OptimizeLoopSettings,
+  pub(crate) mutation_units: bool,
+  pub(crate) topology_order: TopologyOrder,
+  pub(crate) outputs: OutputRequest,
 }
 
 impl TreetimeOptimizeArgs {
-  pub fn tree(&self) -> &Path {
-    &self.tree
-  }
-
-  pub fn reroot_spec(&self, graph: &Graph, names: &NodeNames) -> Result<Option<RerootSpec>, Report> {
-    if self.rooting.keep_root {
-      return Ok(None);
-    }
-
-    if let Some(method) = self.reroot {
-      return Ok(Some(RerootSpec::Method(RerootMethod::from(method))));
-    }
-
-    if !self.rooting.outgroup.is_empty() {
-      return Ok(Some(RerootSpec::Tips(resolve_outgroup(
-        &self.rooting.outgroup,
-        graph,
-        names,
-      )?)));
-    }
-
-    Ok(None)
+  pub fn alignments(&self) -> &[PathBuf] {
+    &self.sequences.alignments
   }
 }
 
 impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
   type Error = Report;
 
+  #[deny(unused_variables)]
+  #[expect(
+    clippy::unneeded_field_pattern,
+    reason = "the CLI reads its own settings before the conversion, and `..` would hide every setting that no run reads"
+  )]
   fn try_from(raw: TreetimeOptimizeArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .tree
-      .clone()
-      .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
-    check_dependent_settings(&raw)?;
+    let TreetimeOptimizeArgsRaw {
+      config_args: _,
+      alignment: AlignmentArgs { alignment },
+      tree: TreeArgs { tree },
+      newick_dialect: TreeDialectArgs { newick_dialect },
+      missing_sequences: MissingSequenceArgs {
+        allow_missing_sequences,
+      },
+      alphabet_args: AlphabetArgs { alphabet },
+      zero_based: ZeroBasedArgs { zero_based },
+      model_args: ModelArgs { model, model_params },
+      partition_rates_args: PartitionRatesArgs { partition_rates },
+      representation: RepresentationArgs { representation },
+      output,
+      branch_lengths: BranchLengthArgs {
+        no_indels,
+        divergence_units,
+      },
+      output_node_data,
+      gtr_output,
+      output_selection,
+      topology_order,
+      max_iter,
+      tolerance,
+      damping,
+      initial_branch_lengths,
+      optimizer,
+      reroot,
+      rooting: RootingArgs { outgroup, keep_root },
+      no_collapse_zero_branches,
+      no_merge_shared_mutations,
+      no_hoist_reversions,
+      gap_fill_args: GapFillArgs { gap_fill },
+      jobs_args: _,
+    } = raw;
+    let tree = tree.ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
+    check_partition_rates(partition_rates, alignment.len())?;
+    let dense = representation_dense(representation);
+    check_sparse_only_settings(dense, no_merge_shared_mutations, no_hoist_reversions)?;
     Ok(Self {
       tree,
-      initial_branch_lengths: raw.initial_branch_lengths.into(),
-      optimizer: raw.optimizer.into(),
-      indel_policy: raw.branch_lengths.indel_policy(),
-      topology_ops: TopologyOps {
-        collapse_short_branches: !raw.no_collapse_zero_branches,
-        merge_siblings: !raw.no_merge_shared_mutations,
-        flip_parent_child: !raw.no_hoist_reversions,
+      newick_dialect: newick_dialect.dialect(),
+      outputs: optimize_outputs(output, output_selection, alignment.len(), output_node_data, gtr_output),
+      sequences: SequenceInputs {
+        alignments: alignment,
+        alphabet: alphabet.map(Into::into),
+        gap_fill: gap_fill.into(),
+        missing_leaves: missing_leaf_limit(allow_missing_sequences),
       },
-      model: raw.model_args.model()?,
-      raw,
+      positions: PositionBase::from_zero_based(zero_based),
+      model: resolve_model(model, &model_params)?,
+      dense,
+      initial_branch_lengths: initial_branch_lengths.into(),
+      reroot: optimize_reroot(keep_root, reroot, outgroup),
+      loop_settings: OptimizeLoopSettings {
+        max_iter,
+        dp: tolerance,
+        damping,
+        opt_method: optimizer.into(),
+        indel_policy: indel_policy(no_indels),
+        topology_ops: TopologyOps {
+          collapse_short_branches: !no_collapse_zero_branches,
+          merge_siblings: !no_merge_shared_mutations,
+          flip_parent_child: !no_hoist_reversions,
+        },
+        partition_rates: resolve_partition_rates(partition_rates),
+      },
+      mutation_units: divergence_units == DivergenceUnits::Mutations,
+      topology_order: optimize_topology_order(topology_order)?,
     })
   }
 }
 
-fn check_dependent_settings(raw: &TreetimeOptimizeArgsRaw) -> Result<(), Report> {
-  raw
-    .partition_rates_args
-    .check_partitions(raw.alignment.alignment.len())?;
-  let dense = raw.representation.dense() == Some(true);
+#[deny(unused_variables)]
+fn optimize_outputs(
+  OutputCoreArgs {
+    output_all,
+    newick_annotations,
+    output_tree_nwk,
+    output_tree_nexus,
+    output_tree_auspice,
+    output_tree_mat_pb,
+    output_tree_mat_json,
+    output_tree_graph_json,
+    output_tree_dot,
+  }: OutputCoreArgs,
+  OptimizeOutputSelectionArgs { output_selection }: OptimizeOutputSelectionArgs,
+  alignment_count: usize,
+  output_node_data: Option<PathBuf>,
+  GtrOutputArgs { output_model }: GtrOutputArgs,
+) -> OutputRequest {
+  OutputRequest {
+    command: CommandKind::Optimize,
+    alignment_count,
+    settings: OutputSettings::default(),
+    output_all,
+    newick_annotations,
+    selection: selected_outputs(&output_selection),
+    tree_paths: TreeOutputPaths {
+      nwk: output_tree_nwk,
+      nexus: output_tree_nexus,
+      auspice: output_tree_auspice,
+      mat_pb: output_tree_mat_pb,
+      mat_json: output_tree_mat_json,
+      graph_json: output_tree_graph_json,
+      dot: output_tree_dot,
+    },
+    file_paths: vec![
+      (OutputSelection::NodeData, output_node_data),
+      (OutputSelection::Model, output_model),
+    ],
+  }
+}
+
+#[deny(unused_variables)]
+fn optimize_topology_order(
+  TopologyOrderArgs {
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  }: TopologyOrderArgs,
+) -> Result<TopologyOrder, Report> {
+  TopologyOrder::new(
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  )
+}
+
+fn check_sparse_only_settings(
+  dense: Option<bool>,
+  no_merge_shared_mutations: bool,
+  no_hoist_reversions: bool,
+) -> Result<(), Report> {
+  let sparse = dense != Some(true);
   for (setting, given) in [
-    ("no_merge_shared_mutations", raw.no_merge_shared_mutations),
-    ("no_hoist_reversions", raw.no_hoist_reversions),
+    ("no_merge_shared_mutations", no_merge_shared_mutations),
+    ("no_hoist_reversions", no_hoist_reversions),
   ] {
-    check_applies(setting, given, "representation", !dense, || {
+    check_applies(setting, given, "representation", sparse, || {
       o!("applies only to the sparse representation, but --representation is dense")
     })?;
   }
   Ok(())
+}
+
+fn optimize_reroot(
+  keep_root: bool,
+  reroot: Option<OptimizeRerootMethod>,
+  outgroup: Vec<String>,
+) -> Option<RerootTarget> {
+  match (keep_root, reroot) {
+    (true, _) => None,
+    (false, Some(method)) => Some(RerootTarget::Method(method.into())),
+    (false, None) if outgroup.is_empty() => None,
+    (false, None) => Some(RerootTarget::Outgroup(outgroup)),
+  }
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

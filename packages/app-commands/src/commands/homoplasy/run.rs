@@ -6,9 +6,9 @@ use crate::commands::homoplasy::summary::{ResultContext, homoplasy_result};
 use crate::commands::shared::ancestral_trees::{
   AncestralOutputMaps, AncestralPartitionTrees, AncestralTrees, write_ancestral_trees,
 };
-use crate::commands::shared::output_args::ResolveOutputs;
+use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
-  AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources,
+  AlignmentSource, TreeAndSources, ancestral_input, read_tree_and_sources,
 };
 use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
@@ -24,6 +24,7 @@ use treetime::homoplasy::pipeline::{HomoplasyInput, HomoplasyParams};
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
+use treetime::seq::mutation::PositionBase;
 use treetime_io::nwk::NwkParse;
 use treetime_utils::io::file::write_file_with;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -35,18 +36,11 @@ pub fn run_homoplasy(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<HomoplasyResult, Report> {
-  let resolved = args.resolve_outputs()?;
+  let resolved = args.outputs.resolve()?;
   let drms = args.drms.as_deref().map(DrmTable::read_file).transpose()?;
 
-  let sequence_args = SequenceInputArgs {
-    alignment: &args.alignment,
-    tree: &args.tree,
-    newick_dialect: args.newick_dialect.dialect(),
-    alphabet_args: &args.alphabet_args,
-    gap_fill_args: &args.gap_fill_args,
-    missing_leaves: args.missing_sequences.limit(),
-  };
-  let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
+  let TreeAndSources { tree, sources } =
+    read_tree_and_sources(&args.tree, args.newick_dialect, &args.sequences, cancel, stages, log)?;
   let [AlignmentSource { source, n_records, .. }] = <[AlignmentSource; 1]>::try_from(sources)
     .map_err(|sources| make_internal_report!("Expected one alignment source, found {}", sources.len()))?;
   progress_info!(
@@ -67,13 +61,12 @@ pub fn run_homoplasy(
     edge.branch_length = edge.branch_length.map(|branch_length| branch_length * args.rescale);
   }
   let branch_lengths = input.branch_lengths();
-  let topology_order =
-    args
-      .topology_order
-      .resolve_topology_order(&input.graph, &names, None, args.newick_dialect.dialect())?;
+  let topology_order = args
+    .topology_order
+    .resolve(&input.graph, &names, None, args.newick_dialect)?;
 
   let random_step = (args.sample_from_profile != SampleMode::Argmax).then_some("Sampling from the profile");
-  let seed = args.seed_args.resolve(random_step, log);
+  let seed = SeedArgs::resolve(args.seed, random_step, log);
   let params = homoplasy_ancestral_params(args, seed);
   let output = ancestral::pipeline::run(&params, input, None, cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
@@ -110,7 +103,7 @@ pub fn run_homoplasy(
     &ResultContext {
       names: &names,
       drms: drms.as_ref(),
-      zero_based: args.zero_based.zero_based,
+      zero_based: args.positions == PositionBase::Zero,
     },
   );
   let report = render_homoplasy_report(&result, args.num_mut, args.detailed);
@@ -127,7 +120,7 @@ pub fn run_homoplasy(
     names: &names,
     branch_lengths: &branch_lengths,
     amino_acids: None,
-    comment_positions: args.zero_based.positions(),
+    comment_positions: args.positions,
   };
   let partition = AncestralPartitionTrees {
     number: partition_number,

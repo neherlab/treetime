@@ -5,6 +5,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime::seq::mutation::PositionBase;
   use treetime_utils::assert_error;
 
   #[test]
@@ -30,7 +31,7 @@ mod tests {
         args.detailed,
         args.drms.as_deref().and_then(|path| path.to_str()),
         args.num_mut,
-        args.zero_based.zero_based
+        args.positions == PositionBase::Zero
       )
     );
     Ok(())
@@ -49,7 +50,7 @@ mod tests {
         args.detailed,
         args.drms.clone(),
         args.num_mut,
-        args.zero_based.zero_based
+        args.positions == PositionBase::Zero
       )
     );
     Ok(())

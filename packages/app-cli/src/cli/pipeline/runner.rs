@@ -153,7 +153,7 @@ mod tests {
     json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
         { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
       ]
     })
@@ -198,7 +198,7 @@ mod tests {
       indoc! {r"
         steps:
           - name: tt
-            timetree: { tree: tree.nwk, metadata: metadata.tsv }
+            timetree: { tree: tree.nwk, metadata: metadata.tsv, sequence_length: 1000 }
           - name: anc
             ancestral: { tree: '{{ steps.tt.outputs.nwk }}', alignment: [aln.fasta.xz] }
       "},

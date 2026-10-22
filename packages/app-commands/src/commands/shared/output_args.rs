@@ -15,27 +15,17 @@ use app_output::output_plan::{
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
-use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::num::NonZeroUsize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use treetime_io::nwk::NwkStyle;
 #[cfg(feature = "clap")]
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
-macro_rules! output_settings {
-  ($raw:expr) => {
-    OutputSettings::default()
-  };
-  ($raw:expr, $settings:path) => {
-    $settings($raw)
-  };
-}
-
 macro_rules! command_outputs {
-  ($name:ident, $args:ident for $raw:ty, $kind:ident $(alignment: $alignment:ident)? $(settings: $settings:path)? { $($extra:ident: $($field:ident).+),* $(,)? }) => {
+  ($name:ident, $args:ident { $($extra:ident),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, schemars::JsonSchema, strum_macros::EnumIter, Serialize, Deserialize)]
     #[schemars(rename_all = "kebab-case")]
     #[deser(rename_all = "kebab-case")]
@@ -88,80 +78,98 @@ macro_rules! command_outputs {
       )]
       pub output_selection: Vec<$name>,
     }
-
-    impl ResolveOutputs for $raw {
-      fn output_settings(&self) -> OutputSettings {
-        output_settings!(self $(, $settings)?)
-      }
-
-      fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-        let selection = self
-          .output_selection
-          .output_selection
-          .iter()
-          .copied()
-          .map(OutputSelection::from)
-          .collect_vec();
-        let alignment_count = 0 $(+ self.$alignment.alignment.len())?;
-        self.output.resolve(
-          CommandKind::$kind,
-          partition_count(alignment_count),
-          self.output_settings(),
-          &selection,
-          &[$((OutputSelection::$extra, self.$($field).+.as_deref())),*],
-        )
-      }
-    }
   };
 }
 
-pub trait ResolveOutputs {
+pub trait RawOutputSettings {
   fn output_settings(&self) -> OutputSettings;
-
-  fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
 }
 
-fn partition_count(alignment_count: usize) -> NonZeroUsize {
-  NonZeroUsize::new(alignment_count).unwrap_or(NonZeroUsize::MIN)
+impl RawOutputSettings for TreetimeTimetreeArgsRaw {
+  fn output_settings(&self) -> OutputSettings {
+    timetree_output_settings(
+      self.branch_length_mode,
+      !self.alignment.alignment.is_empty(),
+      self.coalescent.is_some(),
+    )
+  }
 }
 
-command_outputs!(AncestralOutputSelection, AncestralOutputSelectionArgs for TreetimeAncestralArgsRaw, Ancestral alignment: alignment {
-  NodeData: output_node_data,
-  Model: gtr_output.output_model,
-  Sequences: reconstructed_fasta_output.output_sequences,
-  Translations: output_translations,
-});
-command_outputs!(TimetreeOutputSelection, TimetreeOutputSelectionArgs for TreetimeTimetreeArgsRaw, Timetree alignment: alignment settings: timetree_output_settings {
-  NodeData: output_node_data,
-  Model: gtr_output.output_model,
-  Sequences: reconstructed_fasta_output.output_sequences,
-  ClockModel: clock_output.output_clock_model,
-  Rtt: clock_output.output_rtt,
-  Dates: output_dates,
-  Tracelog: output_tracelog,
-  Coalescent: output_coalescent,
-  CoalescentJson: output_coalescent_json,
-});
-command_outputs!(ClockOutputSelection, ClockOutputSelectionArgs for TreetimeClockArgsRaw, Clock {
-  ClockModel: clock_output.output_clock_model,
-  Rtt: clock_output.output_rtt,
-  RttChart: output_rtt_chart,
-});
-command_outputs!(MugrationOutputSelection, MugrationOutputSelectionArgs for TreetimeMugrationArgsRaw, Mugration settings: mugration_output_settings {
-  NodeData: output_node_data,
-  Model: gtr_output.output_model,
-  TraitProbabilities: output_trait_probabilities,
-  Traits: output_traits,
-});
-command_outputs!(OptimizeOutputSelection, OptimizeOutputSelectionArgs for TreetimeOptimizeArgsRaw, Optimize alignment: alignment {
-  NodeData: output_node_data,
-  Model: gtr_output.output_model,
-});
-command_outputs!(PruneOutputSelection, PruneOutputSelectionArgs for TreetimePruneArgsRaw, Prune alignment: alignment {});
-command_outputs!(HomoplasyOutputSelection, HomoplasyOutputSelectionArgs for TreetimeHomoplasyArgsRaw, Homoplasy {
-  HomoplasyStats: output_homoplasy_stats,
-  HomoplasyReport: output_homoplasy_report,
-});
+impl RawOutputSettings for TreetimeMugrationArgsRaw {
+  fn output_settings(&self) -> OutputSettings {
+    mugration_output_settings(self.confidence)
+  }
+}
+
+macro_rules! default_output_settings {
+  ($($raw:ty),*) => {
+    $(
+      impl RawOutputSettings for $raw {
+        fn output_settings(&self) -> OutputSettings {
+          OutputSettings::default()
+        }
+      }
+    )*
+  };
+}
+
+default_output_settings!(
+  TreetimeAncestralArgsRaw,
+  TreetimeClockArgsRaw,
+  TreetimeHomoplasyArgsRaw,
+  TreetimeOptimizeArgsRaw,
+  TreetimePruneArgsRaw
+);
+
+command_outputs!(
+  AncestralOutputSelection,
+  AncestralOutputSelectionArgs {
+    NodeData,
+    Model,
+    Sequences,
+    Translations,
+  }
+);
+command_outputs!(
+  TimetreeOutputSelection,
+  TimetreeOutputSelectionArgs {
+    NodeData,
+    Model,
+    Sequences,
+    ClockModel,
+    Rtt,
+    Dates,
+    Tracelog,
+    Coalescent,
+    CoalescentJson,
+  }
+);
+command_outputs!(
+  ClockOutputSelection,
+  ClockOutputSelectionArgs {
+    ClockModel,
+    Rtt,
+    RttChart,
+  }
+);
+command_outputs!(
+  MugrationOutputSelection,
+  MugrationOutputSelectionArgs {
+    NodeData,
+    Model,
+    TraitProbabilities,
+    Traits,
+  }
+);
+command_outputs!(OptimizeOutputSelection, OptimizeOutputSelectionArgs { NodeData, Model });
+command_outputs!(PruneOutputSelection, PruneOutputSelectionArgs {});
+command_outputs!(
+  HomoplasyOutputSelection,
+  HomoplasyOutputSelectionArgs {
+    HomoplasyStats,
+    HomoplasyReport,
+  }
+);
 
 /// Output selection shared by every tree-writing command. `--output-all`
 /// chooses the directory, `--output-selection` restricts generated files, and
@@ -323,45 +331,68 @@ pub struct OutputCoreArgs {
   pub output_tree_dot: Option<PathBuf>,
 }
 
-impl OutputCoreArgs {
-  pub fn resolve(
-    &self,
-    command: CommandKind,
-    partition_count: NonZeroUsize,
-    settings: OutputSettings,
-    selection: &[OutputSelection],
-    non_tree_fields: &[(OutputSelection, Option<&Path>)],
-  ) -> Result<ResolvedOutputs, Report> {
+#[derive(Debug, Clone)]
+pub(crate) struct OutputRequest {
+  pub(crate) command: CommandKind,
+  pub(crate) alignment_count: usize,
+  pub(crate) settings: OutputSettings,
+  pub(crate) output_all: Option<PathBuf>,
+  pub(crate) newick_annotations: NewickAnnotationsArg,
+  pub(crate) selection: Vec<OutputSelection>,
+  pub(crate) tree_paths: TreeOutputPaths,
+  pub(crate) file_paths: Vec<(OutputSelection, Option<PathBuf>)>,
+}
+
+impl OutputRequest {
+  pub(crate) fn resolve(&self) -> Result<ResolvedOutputs, Report> {
     let request = OutputPlanRequest {
-      command,
-      partition_count,
+      command: self.command,
+      partition_count: NonZeroUsize::new(self.alignment_count).unwrap_or(NonZeroUsize::MIN),
       output_all: self.output_all.clone(),
       newick_annotations: self.newick_annotations.into(),
-      selection: selection.to_vec(),
-      tree_overrides: self.tree_overrides(),
-      non_tree_overrides: non_tree_fields
-        .iter()
-        .filter_map(|&(sel, path)| path.map(|path| (sel, path.to_path_buf())))
-        .collect(),
-      settings,
+      selection: self.selection.clone(),
+      tree_overrides: self.tree_paths.overrides(),
+      non_tree_overrides: given_paths(&self.file_paths),
+      settings: self.settings,
     };
     output_plan::plan(&request).map_err(missing_outputs_argument_error)
   }
+}
 
-  fn tree_overrides(&self) -> BTreeMap<OutputSelection, PathBuf> {
-    [
-      (OutputSelection::Nwk, self.output_tree_nwk.as_deref()),
-      (OutputSelection::Nexus, self.output_tree_nexus.as_deref()),
-      (OutputSelection::Auspice, self.output_tree_auspice.as_deref()),
-      (OutputSelection::MatPb, self.output_tree_mat_pb.as_deref()),
-      (OutputSelection::MatJson, self.output_tree_mat_json.as_deref()),
-      (OutputSelection::GraphJson, self.output_tree_graph_json.as_deref()),
-      (OutputSelection::Dot, self.output_tree_dot.as_deref()),
-    ]
-    .into_iter()
-    .filter_map(|(variant, path)| path.map(|path| (variant, path.to_path_buf())))
-    .collect()
+#[derive(Debug, Clone)]
+pub(crate) struct TreeOutputPaths {
+  pub(crate) nwk: Option<PathBuf>,
+  pub(crate) nexus: Option<PathBuf>,
+  pub(crate) auspice: Option<PathBuf>,
+  pub(crate) mat_pb: Option<PathBuf>,
+  pub(crate) mat_json: Option<PathBuf>,
+  pub(crate) graph_json: Option<PathBuf>,
+  pub(crate) dot: Option<PathBuf>,
+}
+
+impl TreeOutputPaths {
+  fn overrides(&self) -> BTreeMap<OutputSelection, PathBuf> {
+    given_paths(&[
+      (OutputSelection::Nwk, self.nwk.clone()),
+      (OutputSelection::Nexus, self.nexus.clone()),
+      (OutputSelection::Auspice, self.auspice.clone()),
+      (OutputSelection::MatPb, self.mat_pb.clone()),
+      (OutputSelection::MatJson, self.mat_json.clone()),
+      (OutputSelection::GraphJson, self.graph_json.clone()),
+      (OutputSelection::Dot, self.dot.clone()),
+    ])
   }
+}
+
+pub(crate) fn selected_outputs<S: Copy + Into<OutputSelection>>(selection: &[S]) -> Vec<OutputSelection> {
+  selection.iter().copied().map(Into::into).collect()
+}
+
+fn given_paths(paths: &[(OutputSelection, Option<PathBuf>)]) -> BTreeMap<OutputSelection, PathBuf> {
+  paths
+    .iter()
+    .filter_map(|(selection, path)| path.clone().map(|path| (*selection, path)))
+    .collect()
 }
 
 fn missing_outputs_argument_error(report: Report) -> Report {

@@ -21,13 +21,7 @@ pub struct GapFillArgs {
     feature = "clap",
     clap(long, value_enum, default_value_t = GapFillCli::default(), help_heading = "Ancestral reconstruction")
   )]
-  gap_fill: GapFillCli,
-}
-
-impl GapFillArgs {
-  pub fn gap_fill(&self) -> GapFill {
-    self.gap_fill.into()
-  }
+  pub(crate) gap_fill: GapFillCli,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]

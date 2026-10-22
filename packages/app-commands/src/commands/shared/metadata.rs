@@ -1,6 +1,7 @@
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
+use std::path::PathBuf;
 use treetime_io::csv::{default_metadata_delimiters, default_name_candidates};
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
@@ -70,4 +71,11 @@ pub struct DateColumnArgs {
   #[default(DEFAULT_DATE_FORMAT.to_owned())]
   #[cfg_attr(feature = "clap", clap(long = "date-format", value_name = "FORMAT", default_value = DEFAULT_DATE_FORMAT, help_heading = "Input data"))]
   pub date_format: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct MetadataInput {
+  pub(crate) path: PathBuf,
+  pub(crate) id_columns: Vec<String>,
+  pub(crate) delimiters: Vec<char>,
 }

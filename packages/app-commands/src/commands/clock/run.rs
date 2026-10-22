@@ -1,7 +1,6 @@
 use crate::commands::clock::args::TreetimeClockArgs;
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
-use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::tree_input::read_input_tree;
 #[cfg(not(target_family = "wasm"))]
 use crate::rtt_chart::write_rtt_chart;
@@ -35,28 +34,20 @@ pub fn run_clock(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
-  let resolved = clock_args.resolve_outputs()?;
-  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect.dialect(), log)?;
+  let resolved = clock_args.outputs.resolve()?;
+  let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect, log)?;
   let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
   let input_order = leaf_order(&graph);
 
-  let dates = read_input_dates(
-    clock_args.metadata(),
-    &clock_args.metadata_id,
-    clock_args.date_column.date_column.as_deref(),
-    &clock_args.date_column.date_format,
-    &graph,
-    &names,
-    log,
-  )?;
+  let dates = read_input_dates(&clock_args.dates, &graph, &names, log)?;
 
   let params = ClockParams {
-    clock_filter: clock_args.clock_filter.clock_filter,
-    keep_root: clock_args.rooting.keep_root,
-    allow_negative_rate: clock_args.clock_filter.allow_negative_rate,
-    reroot_spec: clock_args.reroot.spec(&clock_args.rooting, &graph, &names)?,
+    clock_filter: clock_args.clock_filter,
+    keep_root: clock_args.keep_root,
+    allow_negative_rate: clock_args.allow_negative_rate,
+    reroot_spec: clock_args.reroot.spec(&graph, &names)?,
   };
 
   let input = ClockInput {
@@ -77,12 +68,10 @@ pub fn run_clock(
     names,
     branch_lengths,
   } = output;
-  let topology_order = clock_args.topology_order.resolve_topology_order(
-    &graph,
-    &names,
-    Some(input_order),
-    clock_args.newick_dialect.dialect(),
-  )?;
+  let topology_order =
+    clock_args
+      .topology_order
+      .resolve(&graph, &names, Some(input_order), clock_args.newick_dialect)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.8, "");
 

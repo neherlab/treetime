@@ -48,28 +48,25 @@ pub struct AlignmentArgs {
   pub alignment: Vec<PathBuf>,
 }
 
-impl AlignmentArgs {
-  pub fn paths(&self) -> Result<&[PathBuf], Report> {
-    let n_stdin = self.alignment.iter().filter(|path| is_path_stdin(path)).count();
-    if n_stdin > 1 {
-      return Err(argument_error(
-        &["alignment"],
-        format!("Standard input ('-') can be read only once, but --alignment lists it {n_stdin} times"),
-      ));
-    }
-    Ok(&self.alignment)
+pub fn check_alignment_paths(paths: &[PathBuf]) -> Result<(), Report> {
+  let n_stdin = paths.iter().filter(|path| is_path_stdin(path)).count();
+  if n_stdin > 1 {
+    return Err(argument_error(
+      &["alignment"],
+      format!("Standard input ('-') can be read only once, but --alignment lists it {n_stdin} times"),
+    ));
   }
+  Ok(())
+}
 
-  pub fn required_paths(&self) -> Result<&[PathBuf], Report> {
-    let paths = self.paths()?;
-    if paths.is_empty() {
-      return Err(argument_error(
-        &["alignment"],
-        "--alignment is required: pass one or more FASTA files, or '-' to read standard input",
-      ));
-    }
-    Ok(paths)
+pub fn check_required_alignment_paths(paths: &[PathBuf]) -> Result<(), Report> {
+  if paths.is_empty() {
+    return Err(argument_error(
+      &["alignment"],
+      "--alignment is required: pass one or more FASTA files, or '-' to read standard input",
+    ));
   }
+  check_alignment_paths(paths)
 }
 
 pub(crate) fn pair_alignment(

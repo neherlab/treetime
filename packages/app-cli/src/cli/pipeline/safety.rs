@@ -225,7 +225,7 @@ mod tests {
       json!({
         "output_all": "tmp/pipeline-safety-absent",
         "steps": [
-          { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
+          { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
           { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
         ]
       }),
@@ -243,7 +243,7 @@ mod tests {
       json!({
         "output_all": "tmp/pipeline-safety-absent",
         "steps": [
-          { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv" } },
+          { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
           { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
         ]
       }),

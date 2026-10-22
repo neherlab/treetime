@@ -1,27 +1,33 @@
 use crate::commands::ancestral::aa_model::AaModelName;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
-use crate::commands::shared::ambiguity::AncestralAmbiguityArgs;
+use crate::commands::shared::ambiguity::{AncestralAmbiguityArgs, resolve_ambiguity_outputs};
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::method_anc::{MarginalReconstruction, MethodAncArgs, SampleFromProfileArgs};
-use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output_args::{AncestralOutputSelectionArgs, OutputCoreArgs};
+use crate::commands::shared::method_anc::{
+  MarginalReconstruction, MethodAncArgs, MethodAncestralCli, SampleFromProfileArgs, check_model_with_method_anc,
+};
+use crate::commands::shared::model::{GtrModelNameCli, ModelArgs, resolve_model};
+use crate::commands::shared::output_args::{
+  AncestralOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
+};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
-use crate::commands::shared::representation::RepresentationArgs;
+use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
-use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
+use crate::commands::shared::sequence_inputs::{MissingSequenceArgs, SequenceInputs, missing_leaf_limit};
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
-use crate::commands::shared::topology_order_args::TopologyOrderArgs;
+use crate::commands::shared::topology_order_args::{TopologyOrder, TopologyOrderArgs};
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
+use app_output::command_outputs::CommandKind;
+use app_output::output_conditions::OutputSettings;
+use app_output::output_plan::OutputSelection;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
-use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
@@ -30,79 +36,247 @@ use std::path::{Path, PathBuf};
 use treetime::ancestral::params::AncestralParams;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::gtr::get_gtr::GtrModel;
+use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::seq::mutation::PositionBase;
+use treetime_io::nwk::NewickDialect;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
     model: args.model.clone(),
-    dense: args.representation.dense(),
+    dense: args.dense,
     include_leaves: args.include_leaves,
-    report_ambiguous: args.tip_sequences.report_ambiguous,
+    report_ambiguous: args.report_ambiguous,
     impute_missing_data: args.impute_missing_data,
     seed,
     sample_from_profile: args.sample_from_profile,
   }
 }
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone)]
 pub struct TreetimeAncestralArgs {
-  #[deref]
-  #[deref_mut]
-  pub(crate) raw: TreetimeAncestralArgsRaw,
   pub(crate) tree: PathBuf,
+  pub(crate) newick_dialect: NewickDialect,
+  pub(crate) sequences: SequenceInputs,
+  pub(crate) allow_missing_sequences: bool,
+  pub(crate) positions: PositionBase,
   pub(crate) method_anc: MethodAncestral,
+  pub(crate) model: GtrModel,
+  pub(crate) dense: Option<bool>,
   pub(crate) include_leaves: bool,
+  pub(crate) report_ambiguous: bool,
   pub(crate) impute_missing_data: bool,
   pub(crate) sample_from_profile: SampleMode,
+  pub(crate) seed: Option<u64>,
+  pub(crate) translations: Option<String>,
+  pub(crate) cds_selection: Vec<String>,
+  pub(crate) annotation: Option<PathBuf>,
+  pub(crate) aa_root_sequence: Option<PathBuf>,
+  pub(crate) aa_model: AaModelName,
   pub(crate) ambiguity_outputs: AmbiguityOutputs,
-  pub(crate) model: GtrModel,
+  pub(crate) topology_order: TopologyOrder,
+  pub(crate) outputs: OutputRequest,
 }
 
 impl TreetimeAncestralArgs {
   pub fn tree(&self) -> &Path {
     &self.tree
   }
+
+  pub fn alignments(&self) -> &[PathBuf] {
+    &self.sequences.alignments
+  }
 }
 
 impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
   type Error = Report;
 
+  #[deny(unused_variables)]
+  #[expect(
+    clippy::unneeded_field_pattern,
+    reason = "the CLI reads its own settings before the conversion, and `..` would hide every setting that no run reads"
+  )]
   fn try_from(raw: TreetimeAncestralArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .tree
-      .clone()
-      .ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
-    check_dependent_settings(&raw)?;
+    let TreetimeAncestralArgsRaw {
+      config_args: _,
+      alignment: AlignmentArgs { alignment },
+      tree: TreeArgs { tree },
+      newick_dialect: TreeDialectArgs { newick_dialect },
+      alphabet_args,
+      model_args: ModelArgs { model, model_params },
+      method_anc: MethodAncArgs { method_anc },
+      representation: RepresentationArgs { representation },
+      sample_from_profile: SampleFromProfileArgs { sample_from_profile },
+      gap_fill_args,
+      zero_based: ZeroBasedArgs { zero_based },
+      tip_sequences:
+        TipSequenceArgs {
+          include_leaves,
+          reconstruct_tip_states,
+          report_ambiguous,
+        },
+      impute_missing_data: ImputeMissingDataArgs { impute_missing_data },
+      missing_sequences: MissingSequenceArgs {
+        allow_missing_sequences,
+      },
+      output_node_data,
+      gtr_output,
+      reconstructed_fasta_output,
+      translations,
+      cds_selection,
+      annotation,
+      aa_root_sequence,
+      aa_model,
+      output_translations,
+      output,
+      output_selection,
+      ambiguity: AncestralAmbiguityArgs {
+        ambiguity_threshold,
+        ambiguity_outputs,
+      },
+      topology_order,
+      seed_args: SeedArgs { seed },
+      jobs_args: _,
+    } = raw;
+    let tree = tree.ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
+    check_dependent_settings(&DependentSettings {
+      method_anc,
+      model,
+      model_params: &model_params,
+      translations: translations.is_some(),
+      representation,
+      ambiguity_threshold,
+    })?;
     Ok(Self {
       tree,
-      method_anc: raw.method_anc.method_anc.into(),
-      include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
-      impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
-      sample_from_profile: raw.sample_from_profile.sample_from_profile.into(),
-      ambiguity_outputs: raw.ambiguity.resolve()?,
-      model: raw.model_args.model()?,
-      raw,
+      newick_dialect: newick_dialect.dialect(),
+      outputs: ancestral_outputs(
+        output,
+        output_selection,
+        alignment.len(),
+        output_node_data,
+        gtr_output,
+        reconstructed_fasta_output,
+        output_translations,
+      ),
+      sequences: ancestral_sequence_inputs(alignment, alphabet_args, gap_fill_args, allow_missing_sequences),
+      allow_missing_sequences,
+      positions: PositionBase::from_zero_based(zero_based),
+      method_anc: method_anc.into(),
+      model: resolve_model(model, &model_params)?,
+      dense: representation_dense(representation),
+      include_leaves: include_leaves || reconstruct_tip_states,
+      report_ambiguous,
+      impute_missing_data: impute_missing_data || reconstruct_tip_states,
+      sample_from_profile: sample_from_profile.into(),
+      seed,
+      translations,
+      cds_selection,
+      annotation,
+      aa_root_sequence,
+      aa_model,
+      ambiguity_outputs: resolve_ambiguity_outputs(ambiguity_threshold, &ambiguity_outputs)?,
+      topology_order: ancestral_topology_order(topology_order)?,
     })
   }
 }
 
-fn check_dependent_settings(raw: &TreetimeAncestralArgsRaw) -> Result<(), Report> {
-  raw.method_anc.check_model(&raw.model_args)?;
-  let marginal = raw.marginal_reconstruction();
-  marginal.check("representation", raw.representation.is_given())?;
-  marginal.check("ambiguity_threshold", raw.ambiguity.ambiguity_threshold.is_some())
+#[deny(unused_variables)]
+fn ancestral_outputs(
+  OutputCoreArgs {
+    output_all,
+    newick_annotations,
+    output_tree_nwk,
+    output_tree_nexus,
+    output_tree_auspice,
+    output_tree_mat_pb,
+    output_tree_mat_json,
+    output_tree_graph_json,
+    output_tree_dot,
+  }: OutputCoreArgs,
+  AncestralOutputSelectionArgs { output_selection }: AncestralOutputSelectionArgs,
+  alignment_count: usize,
+  output_node_data: Option<PathBuf>,
+  GtrOutputArgs { output_model }: GtrOutputArgs,
+  ReconstructedFastaOutputArgs { output_sequences }: ReconstructedFastaOutputArgs,
+  output_translations: Option<PathBuf>,
+) -> OutputRequest {
+  OutputRequest {
+    command: CommandKind::Ancestral,
+    alignment_count,
+    settings: OutputSettings::default(),
+    output_all,
+    newick_annotations,
+    selection: selected_outputs(&output_selection),
+    tree_paths: TreeOutputPaths {
+      nwk: output_tree_nwk,
+      nexus: output_tree_nexus,
+      auspice: output_tree_auspice,
+      mat_pb: output_tree_mat_pb,
+      mat_json: output_tree_mat_json,
+      graph_json: output_tree_graph_json,
+      dot: output_tree_dot,
+    },
+    file_paths: vec![
+      (OutputSelection::NodeData, output_node_data),
+      (OutputSelection::Model, output_model),
+      (OutputSelection::Sequences, output_sequences),
+      (OutputSelection::Translations, output_translations),
+    ],
+  }
 }
 
-impl TreetimeAncestralArgsRaw {
-  pub fn marginal_reconstruction(&self) -> MarginalReconstruction {
-    MarginalReconstruction {
-      runs: self.method_anc.is_marginal() || self.translations.is_some(),
-      condition: "--method-anc marginal, or the amino-acid reconstruction of --translations",
-    }
+#[deny(unused_variables)]
+fn ancestral_sequence_inputs(
+  alignment: Vec<PathBuf>,
+  AlphabetArgs { alphabet }: AlphabetArgs,
+  GapFillArgs { gap_fill }: GapFillArgs,
+  allow_missing_sequences: bool,
+) -> SequenceInputs {
+  SequenceInputs {
+    alignments: alignment,
+    alphabet: alphabet.map(Into::into),
+    gap_fill: gap_fill.into(),
+    missing_leaves: missing_leaf_limit(allow_missing_sequences),
   }
+}
+
+#[deny(unused_variables)]
+fn ancestral_topology_order(
+  TopologyOrderArgs {
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  }: TopologyOrderArgs,
+) -> Result<TopologyOrder, Report> {
+  TopologyOrder::new(
+    topology_order,
+    topology_order_tree,
+    topology_order_list,
+    topology_order_aggregate,
+  )
+}
+
+struct DependentSettings<'a> {
+  method_anc: MethodAncestralCli,
+  model: Option<GtrModelNameCli>,
+  model_params: &'a [String],
+  translations: bool,
+  representation: Option<RepresentationCli>,
+  ambiguity_threshold: Option<AmbiguityThreshold>,
+}
+
+fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Report> {
+  check_model_with_method_anc(settings.method_anc, settings.model, settings.model_params)?;
+  let marginal = MarginalReconstruction {
+    runs: settings.method_anc.is_marginal() || settings.translations,
+    condition: "--method-anc marginal, or the amino-acid reconstruction of --translations",
+  };
+  marginal.check("representation", settings.representation.is_some())?;
+  marginal.check("ambiguity_threshold", settings.ambiguity_threshold.is_some())
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

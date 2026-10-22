@@ -1,10 +1,8 @@
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
-use crate::commands::shared::output_args::DivergenceUnits;
-use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
+use crate::commands::shared::seed::SeedArgs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
 use crate::commands::timetree::branch_length_mode::settle_branch_length_outputs;
-use crate::commands::timetree::coalescent::CoalescentArg;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
@@ -31,7 +29,6 @@ use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
-use treetime::timetree::coalescent_timescale::CoalescentMode;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::{BranchLengthMode, TimetreeParams};
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
@@ -53,7 +50,7 @@ pub fn run_timetree_estimation(
   cancel.check()?;
   stages.report("Loading input", 0.0, "");
 
-  let mut resolved = args.resolve_outputs()?;
+  let mut resolved = args.outputs.resolve()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
 
@@ -62,7 +59,7 @@ pub fn run_timetree_estimation(
   let branch_length_mode = input_data.branch_length_mode.mode;
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;
   let reconstructed_nuc_fasta = resolved.partition_paths(OutputSelection::Sequences);
-  let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
+  let mutation_units = args.branch_lengths.mutation_units;
   if mutation_units {
     input_data
       .branch_length_mode
@@ -71,10 +68,12 @@ pub fn run_timetree_estimation(
   let sequence_outputs_requested =
     sequence_outputs_requested(&resolved, mutation_units, !reconstructed_nuc_fasta.is_empty());
   let mut trace_sink = TimetreeTraceSink::new(resolved.path(OutputSelection::Tracelog), stages)?;
-  let seed = args
-    .seed_args
-    .resolve((!args.keep_polytomies).then_some("Polytomy resolution"), log);
-  let reroot_spec = args.reroot.spec(&args.rooting, &input_data.graph, &input_data.names)?;
+  let seed = SeedArgs::resolve(
+    args.seed,
+    (!args.dating.keep_polytomies).then_some("Polytomy resolution"),
+    log,
+  );
+  let reroot_spec = args.reroot.spec(&input_data.graph, &input_data.names)?;
   let params = timetree_params(args, branch_length_mode, reroot_spec, sequence_outputs_requested, seed);
 
   let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
@@ -143,34 +142,34 @@ fn timetree_params(
   seed: u64,
 ) -> TimetreeParams {
   TimetreeParams {
-    model: args.model.clone(),
-    alphabet: args.alphabet_args.alphabet_name(),
-    dense: args.representation.dense(),
+    model: args.sequence_model.model.clone(),
+    alphabet: args.sequences.alphabet,
+    dense: args.sequence_model.dense,
     branch_length_mode,
-    indel_policy: args.indel_policy,
-    partition_rates: args.partition_rates_args.partition_rates(),
-    sequence_length: args.sequence_length,
-    clock_rate: args.clock_rate,
-    clock_std_dev: args.clock_std_dev,
-    keep_root: args.rooting.keep_root,
+    indel_policy: args.branch_lengths.indel_policy,
+    partition_rates: args.sequence_model.partition_rates,
+    sequence_length: args.branch_lengths.sequence_length,
+    clock_rate: args.clock.clock_rate,
+    clock_std_dev: args.clock.clock_std_dev,
+    keep_root: args.keep_root,
     reroot_spec,
-    allow_negative_rate: args.clock_filter.allow_negative_rate,
-    clock_filter: args.clock_filter.clock_filter,
-    max_iter: args.max_iter,
-    resolve_polytomies: !args.keep_polytomies,
-    relax: args.relax.clone(),
-    coalescent: args.coalescent.map_or(CoalescentMode::Disabled, CoalescentArg::mode),
-    n_skyline: args.n_skyline(),
-    skyline_stiffness: args.skyline_stiffness(),
-    coalescent_confidence: args.coalescent_confidence(),
-    gen_per_year: args.gen_per_year(),
-    confidence: args.confidence,
-    include_leaves: args.include_leaves,
+    allow_negative_rate: args.clock.allow_negative_rate,
+    clock_filter: args.clock.clock_filter,
+    max_iter: args.dating.max_iter,
+    resolve_polytomies: !args.dating.keep_polytomies,
+    relax: args.clock.relax.clone(),
+    coalescent: args.dating.coalescent.mode,
+    n_skyline: args.dating.coalescent.n_skyline,
+    skyline_stiffness: args.dating.coalescent.skyline_stiffness,
+    coalescent_confidence: args.dating.coalescent.confidence,
+    gen_per_year: args.dating.coalescent.gen_per_year,
+    confidence: args.dating.confidence,
+    include_leaves: args.tip_sequences.include_leaves,
     report_ambiguous: args.tip_sequences.report_ambiguous,
-    impute_missing_data: args.impute_missing_data,
+    impute_missing_data: args.tip_sequences.impute_missing_data,
     sequence_outputs_requested,
     seed,
-    max_grid_points: args.max_grid_points,
+    max_grid_points: args.dating.max_grid_points,
   }
 }
 
@@ -249,12 +248,10 @@ fn write_result_outputs(
     .mutation_units
     .then(|| total_mutation_counts(maps.values().map(|maps| &maps.edge_mutation_counts)));
 
-  let topology_order = args.topology_order.resolve_topology_order(
-    &graph,
-    &names,
-    Some(inputs.input_leaf_order),
-    args.newick_dialect.dialect(),
-  )?;
+  let topology_order =
+    args
+      .topology_order
+      .resolve(&graph, &names, Some(inputs.input_leaf_order), args.newick_dialect)?;
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
 
   let sequences = results
@@ -266,7 +263,7 @@ fn write_result_outputs(
         root_sequence: &maps.root_sequence,
         edge_mutations: &maps.edge_mutations,
         amino_acids: None,
-        comment_positions: args.zero_based.positions(),
+        comment_positions: args.positions,
       };
       Some((result.number, sequences))
     })
@@ -286,7 +283,7 @@ fn write_result_outputs(
     input_dates: dates.as_ref(),
   };
   let run = RefineRun {
-    alignments: &args.alignment.alignment,
+    alignments: &args.sequences.alignments,
     mutation_counts: mutation_counts.as_ref(),
     input_tree: Some(args.tree.as_path()),
     clock_model: Some(&clock_model),

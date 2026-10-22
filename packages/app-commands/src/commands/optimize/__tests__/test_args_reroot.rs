@@ -16,21 +16,21 @@ mod tests {
   fn test_optimize_args_reroot_spec_default_keeps_root() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = args_with(None, vec![], false);
-    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names).unwrap());
+    assert_eq!(None, helpers::reroot_spec(&args, &tree));
   }
 
   #[test]
   fn test_optimize_args_reroot_spec_keep_root_flag_keeps_root() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = args_with(None, vec![], true);
-    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names).unwrap());
+    assert_eq!(None, helpers::reroot_spec(&args, &tree));
   }
 
   #[test]
   fn test_optimize_args_reroot_spec_keep_root_overrides_method() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = args_with(Some(OptimizeRerootMethod::MinDev), vec![], true);
-    assert_eq!(None, args.reroot_spec(&tree.graph, &tree.names).unwrap());
+    assert_eq!(None, helpers::reroot_spec(&args, &tree));
   }
 
   #[test]
@@ -39,7 +39,7 @@ mod tests {
     let args = args_with(Some(OptimizeRerootMethod::MinDev), vec![], false);
     assert_eq!(
       Some(RerootSpec::Method(RerootMethod::MinDev)),
-      args.reroot_spec(&tree.graph, &tree.names).unwrap()
+      helpers::reroot_spec(&args, &tree)
     );
   }
 
@@ -51,7 +51,7 @@ mod tests {
       Some(RerootSpec::Tips(
         tree.graph.get_leaves().map(|leaf| leaf.key()).take(2).collect()
       )),
-      args.reroot_spec(&tree.graph, &tree.names).unwrap()
+      helpers::reroot_spec(&args, &tree)
     );
   }
 
@@ -79,6 +79,16 @@ mod tests {
     use super::*;
     use crate::commands::shared::reroot::RootingArgs;
     use crate::commands::shared::tree_input::TreeArgs;
+    use treetime_io::nwk::NwkParse;
+
+    pub(super) fn reroot_spec(args: &TreetimeOptimizeArgs, tree: &NwkParse) -> Option<RerootSpec> {
+      args
+        .reroot
+        .as_ref()
+        .map(|reroot| reroot.spec(&tree.graph, &tree.names))
+        .transpose()
+        .unwrap()
+    }
 
     pub(super) fn args_with(
       reroot: Option<OptimizeRerootMethod>,

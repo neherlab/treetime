@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
-  use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
   use eyre::Report;
   use helpers::{SourceFacts, facts, read_sources, read_sources_logged};
@@ -139,10 +138,7 @@ mod tests {
         gap_fill: None,
         missing_leaves: limit,
       };
-      let alignment = AlignmentArgs {
-        alignment: paths.to_vec(),
-      };
-      read_sequence_sources(&alignment, &settings, &tree.graph, &names, log)
+      read_sequence_sources(paths, &settings, &tree.graph, &names, log)
     }
 
     pub(super) fn facts(sources: &[AlignmentSource]) -> Vec<SourceFacts> {

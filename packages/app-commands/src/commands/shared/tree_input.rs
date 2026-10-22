@@ -80,12 +80,6 @@ pub struct TreeDialectArgs {
   pub newick_dialect: TreeDialectArg,
 }
 
-impl TreeDialectArgs {
-  pub fn dialect(&self) -> NewickDialect {
-    self.newick_dialect.dialect()
-  }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display, FromStr)]
 pub struct TreeDialectArg(NewickDialect);
 

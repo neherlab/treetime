@@ -37,8 +37,9 @@ mod tests {
     let dir = tempdir().wrap_err("When creating a temporary directory")?;
     let gtr = dir.path().join("S.json");
     let nuc_fasta = dir.path().join("nuc.fasta");
-    let mut args = helpers::args(dir.path(), dir.path().join("%GENE.json"), Some(gtr.clone()))?;
-    args.reconstructed_fasta_output.output_sequences = Some(nuc_fasta.clone());
+    let mut raw = helpers::raw(dir.path(), dir.path().join("%GENE.json"), Some(gtr.clone()))?;
+    raw.reconstructed_fasta_output.output_sequences = Some(nuc_fasta.clone());
+    let args = TreetimeAncestralArgs::try_from(raw)?;
 
     assert_error!(
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress),
@@ -58,12 +59,16 @@ mod tests {
     use crate::commands::shared::tree_input::TreeArgs;
 
     pub(super) fn args(dir: &Path, aa_fasta: PathBuf, gtr: Option<PathBuf>) -> Result<TreetimeAncestralArgs, Report> {
+      TreetimeAncestralArgs::try_from(raw(dir, aa_fasta, gtr)?)
+    }
+
+    pub(super) fn raw(dir: &Path, aa_fasta: PathBuf, gtr: Option<PathBuf>) -> Result<TreetimeAncestralArgsRaw, Report> {
       let tree_path = dir.join("tree.nwk");
       let fasta_path = dir.join("aln.fasta");
       fs::write(&tree_path, TREE).wrap_err("When writing the tree fixture")?;
       fs::write(&fasta_path, ALIGNMENT).wrap_err("When writing the alignment fixture")?;
       fs::write(dir.join("S.fasta"), TRANSLATION).wrap_err("When writing the translation fixture")?;
-      TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
+      Ok(TreetimeAncestralArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },

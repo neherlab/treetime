@@ -2,6 +2,7 @@
 mod tests {
   use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
   use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+  use crate::commands::shared::ambiguity::resolve_ambiguity_outputs;
   use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use crate::yaml::yaml_read_str;
   use app_output::output_plan::OutputSelection;
@@ -25,7 +26,7 @@ mod tests {
     #[case] expected: &[(OutputSelection, f64)],
   ) -> Result<(), Report> {
     let args = TreetimeAncestralArgsRaw::try_parse_from(once("treetime").chain(flags.iter().copied()))?;
-    assert_eq!(expected.to_vec(), carriers(&args.ambiguity.resolve()?));
+    assert_eq!(expected.to_vec(), carriers(&resolve_ambiguity_outputs(args.ambiguity.ambiguity_threshold, &args.ambiguity.ambiguity_outputs)?));
     Ok(())
   }
 
@@ -37,7 +38,13 @@ mod tests {
       (OutputSelection::NodeData, 0.25),
       (OutputSelection::Traits, 0.25),
     ];
-    assert_eq!(expected, carriers(&args.ambiguity.resolve()?));
+    assert_eq!(
+      expected,
+      carriers(&resolve_ambiguity_outputs(
+        args.ambiguity.ambiguity_threshold,
+        &args.ambiguity.ambiguity_outputs
+      )?)
+    );
     Ok(())
   }
 
@@ -45,7 +52,13 @@ mod tests {
   fn test_ambiguity_args_timetree_carries_the_reconstructed_fasta() -> Result<(), Report> {
     let args = TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--ambiguity-threshold=0.125"])?;
     let expected = vec![(OutputSelection::Sequences, 0.125)];
-    assert_eq!(expected, carriers(&args.ambiguity.resolve()?));
+    assert_eq!(
+      expected,
+      carriers(&resolve_ambiguity_outputs(
+        args.ambiguity.ambiguity_threshold,
+        &args.ambiguity.ambiguity_outputs
+      )?)
+    );
     Ok(())
   }
 
@@ -66,7 +79,7 @@ mod tests {
   fn test_ambiguity_args_command_line_outputs_without_threshold_is_an_error() -> Result<(), Report> {
     let args = TreetimeMugrationArgsRaw::try_parse_from(["treetime", "--ambiguity-outputs=auspice"])?;
     assert_error!(
-      args.ambiguity.resolve(),
+      resolve_ambiguity_outputs(args.ambiguity.ambiguity_threshold, &args.ambiguity.ambiguity_outputs),
       "--ambiguity-outputs requires --ambiguity-threshold"
     );
     Ok(())
@@ -76,7 +89,7 @@ mod tests {
   fn test_ambiguity_args_config_outputs_without_threshold_is_an_error() -> Result<(), Report> {
     let args: TreetimeMugrationArgsRaw = yaml_read_str("ambiguity_outputs: [traits]\n")?;
     assert_error!(
-      args.ambiguity.resolve(),
+      resolve_ambiguity_outputs(args.ambiguity.ambiguity_threshold, &args.ambiguity.ambiguity_outputs),
       "--ambiguity-outputs requires --ambiguity-threshold"
     );
     Ok(())

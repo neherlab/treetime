@@ -33,7 +33,7 @@ mod tests {
     pub(super) fn effective(extra: &[&str]) -> GapFill {
       let mut argv = vec!["treetime"];
       argv.extend_from_slice(extra);
-      GapFillCli::try_parse_from(argv).unwrap().gap_fill_args.gap_fill()
+      GapFill::from(GapFillCli::try_parse_from(argv).unwrap().gap_fill_args.gap_fill)
     }
   }
 }

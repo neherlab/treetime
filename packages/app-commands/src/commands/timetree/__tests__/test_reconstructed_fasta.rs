@@ -54,7 +54,9 @@ mod tests {
 
   #[test]
   fn test_timetree_reconstructed_fasta_include_leaves_echoes_observed() -> Result<(), Report> {
-    let records = helpers::run_reconstructed_fasta("test-tt-recon-leaves", |args| args.include_leaves = true)?;
+    let records = helpers::run_reconstructed_fasta("test-tt-recon-leaves", |args| {
+      args.tip_sequences.include_leaves = true;
+    })?;
     let leaves = helpers::input_leaves()?;
 
     let emitted_leaf_names: BTreeSet<String> = records
@@ -83,8 +85,8 @@ mod tests {
   #[test]
   fn test_timetree_reconstructed_fasta_imputes_ambiguous_tips() -> Result<(), Report> {
     let records = helpers::run_reconstructed_fasta("test-tt-recon-impute", |args| {
-      args.include_leaves = true;
-      args.impute_missing_data = true;
+      args.tip_sequences.include_leaves = true;
+      args.impute_missing_data.impute_missing_data = true;
     })?;
     let leaves = helpers::input_leaves()?;
     let alphabet = Alphabet::default();
@@ -197,14 +199,14 @@ mod tests {
 
     pub(super) fn run_reconstructed_fasta(
       subdir: &str,
-      configure: impl FnOnce(&mut TreetimeTimetreeArgs),
+      configure: impl FnOnce(&mut TreetimeTimetreeArgsRaw),
     ) -> Result<Vec<FastaRecord>, Report> {
       let root = project_root();
       let outdir = root.join("tmp").join(subdir);
       std::fs::create_dir_all(&outdir).wrap_err("When creating the output directory")?;
       let fasta = outdir.join("ancestral_sequences.fasta");
 
-      let mut args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
+      let mut raw = TreetimeTimetreeArgsRaw {
         alignment: AlignmentArgs {
           alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
         },
@@ -218,9 +220,9 @@ mod tests {
         },
         seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
-      })
-      .unwrap();
-      configure(&mut args);
+      };
+      configure(&mut raw);
+      let args = TreetimeTimetreeArgs::try_from(raw)?;
 
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
       fasta_read_file(fasta, &Alphabet::default())
