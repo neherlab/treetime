@@ -5,7 +5,7 @@ use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::partition::AncestralPartition;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::GtrModel;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
@@ -39,7 +39,7 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
     MethodAncestral::Parsimony => Ok(ReconstructionPlan::Fitch),
     MethodAncestral::Marginal => Ok(ReconstructionPlan::Marginal {
       representation: Representation::resolve(params.dense),
-      model: params.model,
+      model: params.model.clone(),
     }),
   }
 }
@@ -143,7 +143,7 @@ pub(crate) fn reconstruct_partition(
       checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
       let reconstruction = build_marginal_partition(
         *representation,
-        *model,
+        model,
         rate,
         graph,
         alphabet,
@@ -162,7 +162,7 @@ pub(crate) enum ReconstructionPlan {
   Fitch,
   Marginal {
     representation: Representation,
-    model: GtrModelName,
+    model: GtrModel,
   },
 }
 

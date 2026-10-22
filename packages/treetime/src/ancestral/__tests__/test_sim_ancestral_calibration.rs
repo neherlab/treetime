@@ -52,7 +52,7 @@ pub(crate) mod tests {
     use crate::ancestral::params::{AncestralParams, MethodAncestral};
     use crate::ancestral::pipeline;
     use crate::cancel::NoopCancel;
-    use crate::gtr::get_gtr::GtrModelName;
+    use crate::gtr::get_gtr::GtrModel;
     use crate::gtr::gtr::GTR;
     use crate::partition::marginal::posterior_states::most_likely_state;
     use crate::partition::marginal::sample::SampleMode;
@@ -211,7 +211,7 @@ pub(crate) mod tests {
       pub(super) fn parsimony_wrong_states(&self) -> Result<Array1<f64>, Report> {
         let params = AncestralParams {
           method: MethodAncestral::Parsimony,
-          model: GtrModelName::Infer,
+          model: GtrModel::Infer,
           dense: None,
           include_leaves: false,
           report_ambiguous: false,

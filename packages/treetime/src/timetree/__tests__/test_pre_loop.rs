@@ -5,7 +5,7 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::clock_model::ClockModel;
   use crate::clock::clock_regression::ClockFit;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::partition::inferred_rate::InferredRate;
   use crate::partition::set::PartitionSet;
@@ -56,7 +56,7 @@ mod tests {
     .collect();
     let reconstruction = PartitionSet::from(build_marginal_partition(
       Representation::Sparse,
-      GtrModelName::JC69,
+      &GtrModel::JC69(JC69Params::default()),
       InferredRate::Unit,
       &graph,
       alphabet,

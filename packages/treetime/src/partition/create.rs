@@ -1,5 +1,5 @@
-use crate::alphabet::alphabet::Alphabet;
-use crate::gtr::get_gtr::{GtrModelName, get_gtr_by_name, log_gtr};
+use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+use crate::gtr::get_gtr::{GtrModel, log_gtr};
 use crate::gtr::gtr::GTR;
 use crate::partition::algo::infer_dense::infer_dense;
 use crate::partition::fitch::gtr_inference::infer_gtr_fitch;
@@ -22,7 +22,7 @@ use treetime_graph::node::GraphNodeKey;
 )]
 pub(crate) fn build_marginal_partition(
   representation: Representation,
-  model: GtrModelName,
+  model: &GtrModel,
   rate: InferredRate,
   graph: &Graph,
   alphabet: Alphabet,
@@ -40,15 +40,16 @@ pub(crate) fn build_marginal_partition(
       branch_lengths,
       log,
     )?),
-    Representation::Dense if model == GtrModelName::Infer => {
+    Representation::Dense if model.is_infer() => {
       let fitch = create_fitch_partition(graph, alphabet, node_inputs.clone())?;
       let gtr = fitch_gtr(model, rate, &fitch, graph, branch_lengths, log)?;
       let partition = fitch.into_marginal_dense(graph, &node_inputs)?;
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
     Representation::Dense => {
+      let alphabet_name = alphabet.name();
       let partition = PartitionMarginalDense::new(alphabet, graph, &node_inputs)?;
-      let gtr = named_gtr(model, log)?;
+      let gtr = named_gtr(model, alphabet_name, log)?;
       MarginalReconstruction::Dense(DenseReconstruction::seeded(partition, gtr))
     },
   })
@@ -71,7 +72,7 @@ impl Representation {
 }
 
 pub(crate) fn build_sparse_reconstruction(
-  model: GtrModelName,
+  model: &GtrModel,
   rate: InferredRate,
   graph: &Graph,
   alphabet: Alphabet,
@@ -86,24 +87,24 @@ pub(crate) fn build_sparse_reconstruction(
 }
 
 fn fitch_gtr(
-  model: GtrModelName,
+  model: &GtrModel,
   rate: InferredRate,
   fitch: &PartitionFitch,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
 ) -> Result<GTR, Report> {
-  if model != GtrModelName::Infer {
-    return named_gtr(model, log);
+  if !model.is_infer() {
+    return named_gtr(model, fitch.alphabet.name(), log);
   }
   let mut gtr = infer_gtr_fitch(fitch, graph, branch_lengths, log)?;
   rate.apply(&mut gtr)?;
-  log_gtr(&gtr, model, log)?;
+  log_gtr(&gtr, model.name(), log)?;
   Ok(gtr)
 }
 
-fn named_gtr(model: GtrModelName, log: &dyn LogSink) -> Result<GTR, Report> {
-  let gtr = get_gtr_by_name(model)?;
-  log_gtr(&gtr, model, log)?;
+fn named_gtr(model: &GtrModel, alphabet: AlphabetName, log: &dyn LogSink) -> Result<GTR, Report> {
+  let gtr = model.build(alphabet)?;
+  log_gtr(&gtr, model.name(), log)?;
   Ok(gtr)
 }

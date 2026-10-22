@@ -81,7 +81,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
-    use crate::gtr::get_gtr::GtrModelName;
+    use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::gather::EdgeContributions;
     use crate::optimize::indel::IndelTerm;
     use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
@@ -143,7 +143,7 @@ mod tests {
       let branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
       let (_, set) = build_partition_set(
         representation,
-        GtrModelName::JC69,
+        &GtrModel::JC69(JC69Params::default()),
         &graph,
         vec![source],
         &branch_lengths,
@@ -245,7 +245,7 @@ mod tests {
       let branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
       let (_, set) = build_partition_set(
         representation,
-        GtrModelName::JC69,
+        &GtrModel::JC69(JC69Params::default()),
         &parse.graph,
         sources,
         &branch_lengths,

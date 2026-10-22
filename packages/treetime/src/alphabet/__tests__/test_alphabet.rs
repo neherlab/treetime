@@ -325,7 +325,7 @@ mod tests {
       unknown: b'N',
       gap: b'-',
     };
-    let result = Alphabet::with_config(&config);
+    let result = Alphabet::with_config(AlphabetName::Nuc, &config);
     assert!(result.is_err());
     let err = result.unwrap_err();
     let err_chain = format!("{err:?}");
@@ -424,7 +424,7 @@ mod tests {
       unknown: b'?',
       gap: b'-',
     };
-    let alphabet = Alphabet::with_config(&config).unwrap();
+    let alphabet = Alphabet::with_config(AlphabetName::Nuc, &config).unwrap();
 
     let expected_n_canonical = 3;
     assert_eq!(expected_n_canonical, alphabet.n_canonical());

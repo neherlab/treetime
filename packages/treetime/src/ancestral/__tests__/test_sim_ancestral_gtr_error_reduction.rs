@@ -32,7 +32,7 @@ mod tests {
     use crate::ancestral::params::{AncestralParams, MethodAncestral};
     use crate::ancestral::pipeline;
     use crate::cancel::NoopCancel;
-    use crate::gtr::get_gtr::GtrModelName;
+    use crate::gtr::get_gtr::GtrModel;
     use crate::gtr::gtr::avg_transition;
     use crate::partition::marginal::sample::SampleMode;
     use crate::progress::NoopProgress;
@@ -79,7 +79,7 @@ mod tests {
     ) -> Result<GtrErrors, Report> {
       let params = AncestralParams {
         method: MethodAncestral::Marginal,
-        model: GtrModelName::Infer,
+        model: GtrModel::Infer,
         dense: Some(true),
         include_leaves: false,
         report_ambiguous: false,

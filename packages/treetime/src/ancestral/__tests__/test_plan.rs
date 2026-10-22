@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::params::MethodAncestral;
   use crate::ancestral::plan::{ReconstructionPlan, resolve_plan};
   use crate::error::OperationError;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::{GtrModel, HKY85Params};
   use crate::partition::create::Representation;
   use crate::partition::marginal::sample::SampleMode;
   use pretty_assertions::assert_eq;
@@ -35,14 +35,18 @@ mod tests {
 
   #[test]
   fn test_plan_marginal_keeps_model() {
+    let expected = GtrModel::HKY85(HKY85Params {
+      kappa: 4.0,
+      ..HKY85Params::default()
+    });
     let params = AncestralParams {
-      model: GtrModelName::HKY85,
+      model: expected.clone(),
       ..helpers::params(MethodAncestral::Marginal)
     };
     let Ok(ReconstructionPlan::Marginal { model, .. }) = resolve_plan(&params) else {
       panic!("marginal method must resolve to a marginal plan");
     };
-    assert!(matches!(model, GtrModelName::HKY85));
+    assert_eq!(expected, model);
   }
 
   #[test]
@@ -66,7 +70,7 @@ mod tests {
     pub(super) fn params(method: MethodAncestral) -> AncestralParams {
       AncestralParams {
         method,
-        model: GtrModelName::Infer,
+        model: GtrModel::Infer,
         dense: None,
         include_leaves: false,
         report_ambiguous: true,

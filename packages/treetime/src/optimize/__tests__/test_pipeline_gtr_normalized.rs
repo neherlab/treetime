@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::cancel::NoopCancel;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::GtrModel;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::OptimizeLoopSettings;
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -25,7 +25,7 @@ mod tests {
     let sequences = leaf_seq_inputs(&graph, &names, TestDataset::Flu20.alignment()?);
 
     let params = OptimizeParams {
-      model: GtrModelName::Infer,
+      model: GtrModel::Infer,
       dense: Some(false),
       initial_guess: InitialGuessMode::default(),
       reroot_spec: None,

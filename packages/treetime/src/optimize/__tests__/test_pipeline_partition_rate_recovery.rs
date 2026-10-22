@@ -39,7 +39,7 @@ mod tests {
 
   mod helpers {
     use crate::cancel::NoopCancel;
-    use crate::gtr::get_gtr::GtrModelName;
+    use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
     use crate::optimize::partition_rates::PartitionRates;
@@ -91,7 +91,7 @@ mod tests {
         })
         .collect::<Result<Vec<_>, Report>>()?;
       let params = OptimizeParams {
-        model: GtrModelName::JC69,
+        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(false),
         initial_guess: InitialGuessMode::Auto,
         reroot_spec: None,

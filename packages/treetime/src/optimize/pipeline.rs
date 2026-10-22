@@ -3,7 +3,7 @@ use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::clock::reroot::reroot_undated;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::IndelPolicy;
@@ -62,7 +62,7 @@ pub fn run(
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
   let (sources, partitions) = build_partition_set(
     Representation::resolve(params.dense),
-    params.model,
+    &params.model,
     &input.graph,
     std::mem::take(&mut input.sources),
     &branch_lengths_or_zero(&branch_lengths),
@@ -89,7 +89,7 @@ pub fn run(
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
 
-  if params.model == GtrModelName::Infer {
+  if params.model.is_infer() {
     normalize_partition_rates(&mut partitions, &mut branch_lengths, None).map_err(OperationError::classify)?;
   }
   let mut partitions = fix_equal_rates(
@@ -165,7 +165,9 @@ pub fn run(
     .map_err(OperationError::classify)?;
 
   let results = izip!(sources, partitions.iter(), loop_result.indel_rates)
-    .map(|(source, partition, indel_rate)| optimize_result(&input.graph, source, partition, params.model, indel_rate))
+    .map(|(source, partition, indel_rate)| {
+      optimize_result(&input.graph, source, partition, params.model.name(), indel_rate)
+    })
     .collect::<Result<Vec<_>, Report>>()
     .map_err(OperationError::InferenceFailed)?;
 
@@ -178,7 +180,7 @@ pub fn run(
 }
 
 pub struct OptimizeParams {
-  pub model: GtrModelName,
+  pub model: GtrModel,
   pub dense: Option<bool>,
   pub initial_guess: InitialGuessMode,
   pub reroot_spec: Option<RerootSpec>,

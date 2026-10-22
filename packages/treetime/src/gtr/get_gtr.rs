@@ -1,8 +1,8 @@
 use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::gtr::gtr::{GTR, Mu};
-use crate::make_error;
 use crate::progress::LogSink;
 use crate::progress_info;
+use crate::{make_error, make_internal_error};
 use bon::bon;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
@@ -133,16 +133,65 @@ pub enum GtrModelType {
   Custom,
 }
 
-pub(crate) fn get_gtr_by_name(name: GtrModelName) -> Result<GTR, Report> {
-  match name {
-    GtrModelName::Infer => make_error!("Cannot get GTR by name for 'Infer'"),
-    GtrModelName::JC69 => jc69(JC69Params::default()),
-    GtrModelName::F81 => f81(F81Params::default()),
-    GtrModelName::HKY85 => hky85(HKY85Params::default()),
-    GtrModelName::K80 => k80(K80Params::default()),
-    GtrModelName::T92 => t92(T92Params::default()),
-    GtrModelName::TN93 => tn93(TN93Params::default()),
-    GtrModelName::Jtt92 => jtt92(Jtt92Params::default()),
+#[derive(Clone, Debug, PartialEq, SmartDefault)]
+pub enum GtrModel {
+  #[default]
+  Infer,
+  JC69(JC69Params),
+  K80(K80Params),
+  F81(F81Params),
+  HKY85(HKY85Params),
+  T92(T92Params),
+  TN93(TN93Params),
+  Jtt92(Jtt92Params),
+}
+
+impl GtrModel {
+  pub fn name(&self) -> GtrModelName {
+    match self {
+      Self::Infer => GtrModelName::Infer,
+      Self::JC69(_) => GtrModelName::JC69,
+      Self::K80(_) => GtrModelName::K80,
+      Self::F81(_) => GtrModelName::F81,
+      Self::HKY85(_) => GtrModelName::HKY85,
+      Self::T92(_) => GtrModelName::T92,
+      Self::TN93(_) => GtrModelName::TN93,
+      Self::Jtt92(_) => GtrModelName::Jtt92,
+    }
+  }
+
+  pub const fn is_infer(&self) -> bool {
+    matches!(self, Self::Infer)
+  }
+
+  pub fn build(&self, alphabet: AlphabetName) -> Result<GTR, Report> {
+    match self.clone() {
+      Self::Infer => {
+        make_internal_error!("The model 'infer' is fitted from the data and has no parameters to build from")
+      },
+      Self::JC69(params) => jc69(JC69Params { alphabet, ..params }),
+      Self::K80(params) => k80(K80Params { alphabet, ..params }),
+      Self::F81(params) => f81(F81Params { alphabet, ..params }),
+      Self::HKY85(params) => hky85(HKY85Params { alphabet, ..params }),
+      Self::T92(params) => t92(T92Params { alphabet, ..params }),
+      Self::TN93(params) => tn93(TN93Params { alphabet, ..params }),
+      Self::Jtt92(params) => jtt92(Jtt92Params { alphabet, ..params }),
+    }
+  }
+}
+
+impl From<GtrModelName> for GtrModel {
+  fn from(name: GtrModelName) -> Self {
+    match name {
+      GtrModelName::Infer => Self::Infer,
+      GtrModelName::JC69 => Self::JC69(JC69Params::default()),
+      GtrModelName::K80 => Self::K80(K80Params::default()),
+      GtrModelName::F81 => Self::F81(F81Params::default()),
+      GtrModelName::HKY85 => Self::HKY85(HKY85Params::default()),
+      GtrModelName::T92 => Self::T92(T92Params::default()),
+      GtrModelName::TN93 => Self::TN93(TN93Params::default()),
+      GtrModelName::Jtt92 => Self::Jtt92(Jtt92Params::default()),
+    }
   }
 }
 
@@ -183,16 +232,16 @@ pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {
     .build()
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
+#[derive(Copy, Clone, Debug, PartialEq, SmartDefault)]
 pub struct JC69Params {
   #[default = 1.0]
-  pub(crate) mu: f64,
+  pub mu: f64,
 
   #[default(AlphabetName::Nuc)]
-  pub(crate) alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }
 
-pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
+pub fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(create_transversion_transition_W(&alphabet, kappa)?);
@@ -205,19 +254,19 @@ pub(crate) fn k80(K80Params { mu, kappa, alphabet }: K80Params) -> Result<GTR, R
     .build()
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
+#[derive(Copy, Clone, Debug, PartialEq, SmartDefault)]
 pub struct K80Params {
   #[default = 1.0]
-  pub(crate) mu: f64,
+  pub mu: f64,
 
   #[default = 0.1]
-  pub(crate) kappa: f64,
+  pub kappa: f64,
 
   #[default(AlphabetName::Nuc)]
-  pub(crate) alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }
 
-pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
+pub fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
   let n_states = alphabet.n_canonical();
   let W = Some(Array2::<f64>::ones((n_states, n_states)));
@@ -230,19 +279,19 @@ pub(crate) fn f81(F81Params { mu, pi, alphabet }: F81Params) -> Result<GTR, Repo
     .build()
 }
 
-#[derive(Clone, Debug, SmartDefault)]
+#[derive(Clone, Debug, PartialEq, SmartDefault)]
 pub struct F81Params {
   #[default = 1.0]
-  pub(crate) mu: f64,
+  pub mu: f64,
 
   #[default(None)]
-  pub(crate) pi: Option<Array1<f64>>,
+  pub pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
-  pub(crate) alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }
 
-pub(crate) fn hky85(
+pub fn hky85(
   HKY85Params {
     mu,
     kappa,
@@ -262,22 +311,22 @@ pub(crate) fn hky85(
     .build()
 }
 
-#[derive(Clone, Debug, SmartDefault)]
+#[derive(Clone, Debug, PartialEq, SmartDefault)]
 pub struct HKY85Params {
   #[default = 1.0]
-  pub(crate) mu: f64,
+  pub mu: f64,
 
   #[default = 0.1]
-  pub(crate) kappa: f64,
+  pub kappa: f64,
 
   #[default(None)]
-  pub(crate) pi: Option<Array1<f64>>,
+  pub pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
-  pub(crate) alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }
 
-pub(crate) fn t92(
+pub fn t92(
   T92Params {
     mu,
     kappa,
@@ -285,8 +334,8 @@ pub(crate) fn t92(
     alphabet,
   }: T92Params,
 ) -> Result<GTR, Report> {
-  if !(0.0..=1.0).contains(&pi_GC) {
-    return make_error!("The relative GC should be between 0 and 1, but found pi_GC={pi_GC}");
+  if !(pi_GC > 0.0 && pi_GC < 1.0) {
+    return make_error!("The GC content pi_GC of the T92 model must lie strictly between 0 and 1, but found {pi_GC}");
   }
 
   let alphabet = Alphabet::new(alphabet)?;
@@ -301,22 +350,22 @@ pub(crate) fn t92(
     .build()
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
+#[derive(Copy, Clone, Debug, PartialEq, SmartDefault)]
 pub struct T92Params {
   #[default = 1.0]
-  pub(crate) mu: f64,
+  pub mu: f64,
 
   #[default = 0.1]
-  pub(crate) kappa: f64,
+  pub kappa: f64,
 
   #[default = 0.5]
-  pub(crate) pi_GC: f64,
+  pub pi_GC: f64,
 
   #[default(AlphabetName::Nuc)]
-  pub(crate) alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }
 
-pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
+pub fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Report> {
   let alphabet = Alphabet::new(alphabet)?;
 
   #[rustfmt::skip]
@@ -371,13 +420,13 @@ pub(crate) fn jtt92(Jtt92Params { mu, alphabet }: Jtt92Params) -> Result<GTR, Re
     .build()
 }
 
-#[derive(Copy, Clone, Debug, SmartDefault)]
+#[derive(Copy, Clone, Debug, PartialEq, SmartDefault)]
 pub struct Jtt92Params {
   #[default = 1.0]
-  mu: f64,
+  pub mu: f64,
 
   #[default(AlphabetName::AaNoStop)]
-  alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }
 
 fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<Array2<f64>, Report> {
@@ -390,7 +439,7 @@ fn create_transversion_transition_W(alphabet: &Alphabet, kappa: f64) -> Result<A
   Ok(W)
 }
 
-pub(crate) fn tn93(
+pub fn tn93(
   TN93Params {
     mu,
     kappa1,
@@ -421,20 +470,20 @@ pub(crate) fn tn93(
     .build()
 }
 
-#[derive(Clone, Debug, SmartDefault)]
+#[derive(Clone, Debug, PartialEq, SmartDefault)]
 pub struct TN93Params {
   #[default = 1.0]
-  pub(crate) mu: f64,
+  pub mu: f64,
 
   #[default = 1.0]
-  pub(crate) kappa1: f64,
+  pub kappa1: f64,
 
   #[default = 1.0]
-  pub(crate) kappa2: f64,
+  pub kappa2: f64,
 
   #[default(None)]
-  pub(crate) pi: Option<Array1<f64>>,
+  pub pi: Option<Array1<f64>>,
 
   #[default(AlphabetName::Nuc)]
-  pub(crate) alphabet: AlphabetName,
+  pub alphabet: AlphabetName,
 }

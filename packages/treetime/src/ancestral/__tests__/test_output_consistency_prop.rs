@@ -5,7 +5,7 @@ mod tests {
   use crate::ancestral::params::{AncestralParams, MethodAncestral};
   use crate::ancestral::pipeline::{AncestralOutput, run};
   use crate::cancel::NoopCancel;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::marginal::sample::SampleMode;
   use crate::partition::result::PartitionSequences;
   use crate::progress::NoopProgress;
@@ -44,7 +44,7 @@ mod tests {
       let (method, dense, sample_from_profile) = RECONSTRUCTIONS[reconstruction];
       let params = AncestralParams {
         method,
-        model: GtrModelName::JC69,
+        model: GtrModel::JC69(JC69Params::default()),
         dense,
         include_leaves,
         report_ambiguous: true,

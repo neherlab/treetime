@@ -2,7 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::GtrModel;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::create::Representation;
   use crate::partition::fitch::passes::create_fitch_partition;
@@ -208,7 +208,7 @@ mod tests {
       .collect();
       let reconstruction = build_marginal_partition(
         representation,
-        GtrModelName::JC69,
+        &GtrModel::JC69(JC69Params::default()),
         InferredRate::Unit,
         &graph,
         Alphabet::new(AlphabetName::Nuc)?,

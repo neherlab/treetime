@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::alphabet::alphabet::Alphabet;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::alphabet::alphabet::{Alphabet, AlphabetName};
+  use crate::gtr::get_gtr::{GtrModel, GtrModelName, JC69Params, K80Params, k80};
   use crate::partition::create::{Representation, build_marginal_partition};
   use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -34,7 +34,7 @@ mod tests {
 
     let reconstruction = build_marginal_partition(
       representation,
-      model,
+      &GtrModel::from(model),
       rate,
       &input.graph,
       Alphabet::default(),
@@ -54,13 +54,66 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[case::dense(Representation::Dense)]
+  #[case::sparse(Representation::Sparse)]
+  #[trace]
+  fn test_build_marginal_partition_named_model_keeps_its_parameters(
+    #[case] representation: Representation,
+  ) -> Result<(), Report> {
+    let input = helpers::Input::star(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGA")])?;
+    let params = K80Params {
+      mu: 0.5,
+      kappa: 4.0,
+      ..K80Params::default()
+    };
+
+    let reconstruction = build_marginal_partition(
+      representation,
+      &GtrModel::K80(params),
+      InferredRate::Fitted,
+      &input.graph,
+      Alphabet::default(),
+      input.node_inputs.clone(),
+      &input.branch_lengths,
+      &NoopProgress,
+    )?;
+
+    assert_eq!(format!("{:#?}", k80(params)?), format!("{:#?}", reconstruction.gtr()));
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::dense(Representation::Dense)]
+  #[case::sparse(Representation::Sparse)]
+  #[trace]
+  fn test_build_marginal_partition_named_model_takes_the_partition_alphabet(
+    #[case] representation: Representation,
+  ) -> Result<(), Report> {
+    let input = helpers::Input::star(&[("A", "ACGT"), ("B", "ACGT"), ("C", "ACGA")])?;
+
+    let reconstruction = build_marginal_partition(
+      representation,
+      &GtrModel::JC69(JC69Params::default()),
+      InferredRate::Unit,
+      &input.graph,
+      Alphabet::new(AlphabetName::AaNoStop)?,
+      input.node_inputs.clone(),
+      &input.branch_lengths,
+      &NoopProgress,
+    )?;
+
+    assert_eq!(20, reconstruction.gtr().pi().len());
+    Ok(())
+  }
+
   #[test]
   fn test_build_marginal_partition_dense_named_model_reports_missing_leaf_sequence() -> Result<(), Report> {
     let input = helpers::Input::star(&[("A", "ACGT"), ("B", "ACGT")])?;
 
     let result = build_marginal_partition(
       Representation::Dense,
-      GtrModelName::JC69,
+      &GtrModel::JC69(JC69Params::default()),
       InferredRate::Unit,
       &input.graph,
       Alphabet::default(),

@@ -404,7 +404,7 @@ pub(super) mod tests {
   pub(crate) mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::branch_lengths::branch_lengths_or_zero;
-    use crate::gtr::get_gtr::{GtrModelName, K80Params, get_gtr_by_name, k80};
+    use crate::gtr::get_gtr::{GtrModel, GtrModelName, K80Params, k80};
     use crate::gtr::gtr::{GTR, Mu};
     use crate::optimize::dispatch::guess_initial_branch_lengths;
     use crate::optimize::gather::InitialGuessEvidence;
@@ -458,7 +458,7 @@ pub(super) mod tests {
       let (sparse_partition, sparse_node_states) = fitch.into_marginal_sparse(graph)?;
       let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(
         sparse_partition,
-        get_gtr_by_name(model)?,
+        GtrModel::from(model).build(AlphabetName::Nuc)?,
         sparse_node_states,
       )]);
       let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;

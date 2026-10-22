@@ -16,6 +16,7 @@ pub(crate) const FILL_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b' ');
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Alphabet {
+  name: AlphabetName,
   all: StateSet,
   canonical: StateSet,
   ambiguous_keys: StateSet,
@@ -42,51 +43,60 @@ impl Default for Alphabet {
 impl Alphabet {
   pub fn new(name: AlphabetName) -> Result<Self, Report> {
     match name {
-      AlphabetName::Nuc => Self::with_config(&AlphabetConfig {
-        canonical: vec_u8!['A', 'C', 'G', 'T'],
-        ambiguous: indexmap! {
-          b'R' => vec_u8!['A', 'G'],
-          b'Y' => vec_u8!['C', 'T'],
-          b'S' => vec_u8!['C', 'G'],
-          b'W' => vec_u8!['A', 'T'],
-          b'K' => vec_u8!['G', 'T'],
-          b'M' => vec_u8!['A', 'C'],
-          b'D' => vec_u8!['A', 'G', 'T'],
-          b'H' => vec_u8!['A', 'C', 'T'],
-          b'B' => vec_u8!['C', 'G', 'T'],
-          b'V' => vec_u8!['A', 'C', 'G'],
+      AlphabetName::Nuc => Self::with_config(
+        name,
+        &AlphabetConfig {
+          canonical: vec_u8!['A', 'C', 'G', 'T'],
+          ambiguous: indexmap! {
+            b'R' => vec_u8!['A', 'G'],
+            b'Y' => vec_u8!['C', 'T'],
+            b'S' => vec_u8!['C', 'G'],
+            b'W' => vec_u8!['A', 'T'],
+            b'K' => vec_u8!['G', 'T'],
+            b'M' => vec_u8!['A', 'C'],
+            b'D' => vec_u8!['A', 'G', 'T'],
+            b'H' => vec_u8!['A', 'C', 'T'],
+            b'B' => vec_u8!['C', 'G', 'T'],
+            b'V' => vec_u8!['A', 'C', 'G'],
+          },
+          unknown: b'N',
+          gap: b'-',
         },
-        unknown: b'N',
-        gap: b'-',
-      }),
-      AlphabetName::Aa => Self::with_config(&AlphabetConfig {
-        canonical: vec_u8![
-          'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*',
-        ],
-        ambiguous: indexmap! {
-          b'B' => vec_u8!['N', 'D'],
-          b'Z' => vec_u8!['Q', 'E'],
-          b'J' => vec_u8!['L', 'I'],
+      ),
+      AlphabetName::Aa => Self::with_config(
+        name,
+        &AlphabetConfig {
+          canonical: vec_u8![
+            'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y', '*',
+          ],
+          ambiguous: indexmap! {
+            b'B' => vec_u8!['N', 'D'],
+            b'Z' => vec_u8!['Q', 'E'],
+            b'J' => vec_u8!['L', 'I'],
+          },
+          unknown: b'X',
+          gap: b'-',
         },
-        unknown: b'X',
-        gap: b'-',
-      }),
-      AlphabetName::AaNoStop => Self::with_config(&AlphabetConfig {
-        canonical: vec_u8![
-          'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y',
-        ],
-        ambiguous: indexmap! {
-          b'B' => vec_u8!['N', 'D'],
-          b'Z' => vec_u8!['Q', 'E'],
-          b'J' => vec_u8!['L', 'I'],
+      ),
+      AlphabetName::AaNoStop => Self::with_config(
+        name,
+        &AlphabetConfig {
+          canonical: vec_u8![
+            'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y',
+          ],
+          ambiguous: indexmap! {
+            b'B' => vec_u8!['N', 'D'],
+            b'Z' => vec_u8!['Q', 'E'],
+            b'J' => vec_u8!['L', 'I'],
+          },
+          unknown: b'X',
+          gap: b'-',
         },
-        unknown: b'X',
-        gap: b'-',
-      }),
+      ),
     }
   }
 
-  pub(crate) fn with_config(config: &AlphabetConfig) -> Result<Self, Report> {
+  pub(crate) fn with_config(name: AlphabetName, config: &AlphabetConfig) -> Result<Self, Report> {
     let AlphabetConfig {
       canonical,
       ambiguous,
@@ -137,6 +147,7 @@ impl Alphabet {
     }
 
     Ok(Self {
+      name,
       all,
       canonical,
       ambiguous_keys,
@@ -251,6 +262,10 @@ impl Alphabet {
 
   pub(crate) fn is_determined(&self, c: AsciiChar) -> bool {
     self.determined.contains(c)
+  }
+
+  pub fn name(&self) -> AlphabetName {
+    self.name
   }
 
   pub fn unknown(&self) -> AsciiChar {

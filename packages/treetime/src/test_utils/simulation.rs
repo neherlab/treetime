@@ -1,5 +1,5 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::GtrModel;
 use crate::gtr::gtr::{GTR, Mu};
 use crate::optimize::pipeline::OptimizeInput;
 use crate::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
@@ -65,7 +65,7 @@ pub(crate) fn timetree_cell(seed: u64) -> Result<CaseSpec, Report> {
 
 pub(crate) fn timetree_cell_params() -> TimetreeParams {
   TimetreeParams {
-    model: GtrModelName::Infer,
+    model: GtrModel::Infer,
     keep_root: true,
     clock_filter: 0.0,
     max_iter: 2,

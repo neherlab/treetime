@@ -160,7 +160,7 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::clock::find_best_root::params::RerootSpec;
-    use crate::gtr::get_gtr::GtrModelName;
+    use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::OptimizeLoopSettings;
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -195,7 +195,7 @@ mod tests {
 
     pub(super) fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
       OptimizeParams {
-        model: GtrModelName::JC69,
+        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(false),
         initial_guess: InitialGuessMode::default(),
         reroot_spec,

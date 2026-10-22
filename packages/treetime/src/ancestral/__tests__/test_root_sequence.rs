@@ -4,7 +4,7 @@ mod tests {
   use crate::ancestral::params::{AncestralParams, MethodAncestral};
   use crate::ancestral::pipeline::{AncestralOutput, run};
   use crate::cancel::NoopCancel;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::marginal::sample::SampleMode;
   use crate::partition::result::PartitionSequences;
   use crate::progress::NoopProgress;
@@ -110,7 +110,7 @@ mod tests {
       let input = ancestral_input_for_tree(parse, vec![source]);
       let params = AncestralParams {
         method,
-        model: GtrModelName::JC69,
+        model: GtrModel::JC69(JC69Params::default()),
         dense,
         include_leaves: true,
         report_ambiguous: true,

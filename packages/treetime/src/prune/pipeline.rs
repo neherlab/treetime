@@ -1,7 +1,7 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::{GtrModel, GtrModelName, JC69Params};
 use crate::gtr::gtr::GTR;
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
 use crate::partition::create::build_sparse_reconstruction;
@@ -54,7 +54,7 @@ pub fn run(
          nodes,
        }| {
         let reconstruction = build_sparse_reconstruction(
-          GtrModelName::JC69,
+          &GtrModel::JC69(JC69Params::default()),
           rate,
           &input.graph,
           alphabet,

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::GtrModel;
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates, update_partition_rates};
@@ -205,7 +205,7 @@ mod tests {
       mut branch_lengths,
       mut partitions,
       ..
-    } = build_set_with_model(&rate_blocks()?, dense, GtrModelName::Infer)?;
+    } = build_set_with_model(&rate_blocks()?, dense, &GtrModel::Infer)?;
     normalize_partition_rates(&mut partitions, &mut branch_lengths, None)?;
     assert_ne!(vec![1.0, 1.0], partitions.rates());
 
@@ -227,7 +227,7 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::branch_lengths::branch_lengths_or_zero;
     use crate::cancel::NoopCancel;
-    use crate::gtr::get_gtr::GtrModelName;
+    use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::indel::{EdgeIndels, IndelPolicy};
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
     use crate::optimize::partition_rates::PartitionRates;
@@ -338,7 +338,7 @@ mod tests {
       let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
       let params = OptimizeParams {
-        model: GtrModelName::JC69,
+        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(dense),
         initial_guess: InitialGuessMode::Auto,
         reroot_spec: None,
@@ -384,10 +384,10 @@ mod tests {
     }
 
     pub(super) fn build_set(blocks: &[Block], dense: bool) -> Result<SmallSet, Report> {
-      build_set_with_model(blocks, dense, GtrModelName::JC69)
+      build_set_with_model(blocks, dense, &GtrModel::JC69(JC69Params::default()))
     }
 
-    pub(super) fn build_set_with_model(blocks: &[Block], dense: bool, model: GtrModelName) -> Result<SmallSet, Report> {
+    pub(super) fn build_set_with_model(blocks: &[Block], dense: bool, model: &GtrModel) -> Result<SmallSet, Report> {
       let parse = nwk_read(b"((A:0.1,B:0.1)AB:0.1,C:0.1,D:0.1)root;".as_slice())?;
       let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
@@ -456,7 +456,7 @@ mod tests {
       let input_branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
       let (_, mut partitions) = build_partition_set(
         Representation::resolve(Some(dense)),
-        GtrModelName::JC69,
+        &GtrModel::JC69(JC69Params::default()),
         &parse.graph,
         sources,
         &input_branch_lengths,

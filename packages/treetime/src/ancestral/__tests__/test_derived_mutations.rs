@@ -6,7 +6,7 @@ mod tests {
   use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstruct_partition};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::cancel::NoopCancel;
-  use crate::gtr::get_gtr::GtrModelName;
+  use crate::gtr::get_gtr::{GtrModel, GtrModelName};
   use crate::partition::create::Representation;
   use crate::partition::inferred_rate::InferredRate;
   use crate::partition::marginal::sample::SampleMode;
@@ -140,8 +140,11 @@ mod tests {
       ReconstructionPlan::Fitch
     }
 
-    pub(super) const fn marginal(representation: Representation, model: GtrModelName) -> ReconstructionPlan {
-      ReconstructionPlan::Marginal { representation, model }
+    pub(super) fn marginal(representation: Representation, model: GtrModelName) -> ReconstructionPlan {
+      ReconstructionPlan::Marginal {
+        representation,
+        model: GtrModel::from(model),
+      }
     }
 
     pub(super) fn engine_and_derived_subs(

@@ -13,7 +13,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
 use treetime::ancestral::pipeline::run;
 use treetime::cancel::NoopCancel;
-use treetime::gtr::get_gtr::GtrModelName;
+use treetime::gtr::get_gtr::{GtrModel, JC69Params};
 use treetime::partition::marginal::sample::SampleMode;
 use treetime::progress::NoopProgress;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource, pair_leaf_sequences};
@@ -38,7 +38,7 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 
   let params = AncestralParams {
     method: MethodAncestral::Marginal,
-    model: GtrModelName::JC69,
+    model: GtrModel::JC69(JC69Params::default()),
     dense: Some(false),
     include_leaves: false,
     report_ambiguous: true,

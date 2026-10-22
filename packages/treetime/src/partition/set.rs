@@ -1,4 +1,4 @@
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::GtrModel;
 use crate::gtr::gtr::GTR;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::inferred_rate::InferredRate;
@@ -19,7 +19,7 @@ use treetime_utils::{make_internal_error, make_internal_report};
 
 pub(crate) fn build_partition_set(
   representation: Representation,
-  model: GtrModelName,
+  model: &GtrModel,
   graph: &Graph,
   sources: Vec<SequenceSource>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,

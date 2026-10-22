@@ -4,7 +4,7 @@ use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstr
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::partition::create::Representation;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::sample::SampleMode;
@@ -63,7 +63,7 @@ pub fn reconstruct_aa(
     let node_inputs = nodes;
     let plan = ReconstructionPlan::Marginal {
       representation,
-      model: gtr_model,
+      model: GtrModel::from(gtr_model),
     };
     let partition = reconstruct_partition(
       graph,

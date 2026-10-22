@@ -58,7 +58,7 @@ pub fn run(
         path: source.path,
         length: source.length,
         mask: source.mask,
-        model_name: params.model,
+        model_name: params.model.name(),
         gtr: partition.gtr().cloned(),
         indel_rate: None,
         log_lh: partition.log_lh(&graph).map_err(OperationError::classify)?,

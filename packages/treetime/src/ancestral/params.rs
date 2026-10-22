@@ -1,9 +1,9 @@
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::GtrModel;
 use crate::partition::marginal::sample::SampleMode;
 
 pub struct AncestralParams {
   pub method: MethodAncestral,
-  pub model: GtrModelName,
+  pub model: GtrModel,
   pub dense: Option<bool>,
   pub include_leaves: bool,
   pub report_ambiguous: bool,

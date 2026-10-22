@@ -1,7 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
-use crate::gtr::get_gtr::GtrModelName;
+use crate::gtr::get_gtr::{GtrModel, JC69Params};
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
@@ -57,7 +57,7 @@ pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
 
 pub(crate) fn marginal_timetree_params() -> TimetreeParams {
   TimetreeParams {
-    model: GtrModelName::JC69,
+    model: GtrModel::JC69(JC69Params::default()),
     dense: None,
     branch_length_mode: BranchLengthMode::Marginal,
     indel_policy: IndelPolicy::Include,

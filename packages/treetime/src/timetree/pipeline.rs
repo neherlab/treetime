@@ -316,7 +316,7 @@ fn initialize_branch_model(
       }
       let (sources, partitions) = build_partition_set(
         Representation::resolve(params.dense),
-        params.model,
+        &params.model,
         graph,
         sources,
         &branch_lengths_or_zero(branch_lengths),
@@ -555,7 +555,7 @@ fn final_partition_results(
         alphabet: partition.alphabet().clone(),
         length: source.length,
         mask: source.mask,
-        model_name: params.model,
+        model_name: params.model.name(),
         gtr: Some(partition.gtr().clone()),
         indel_rate,
         log_lh: Some(partition.graph_log_lh(graph).map_err(OperationError::classify)?),
