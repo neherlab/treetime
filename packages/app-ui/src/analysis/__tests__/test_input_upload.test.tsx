@@ -9,6 +9,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
 import { ApiContext, type ApiContextValue } from "../../api/context";
+import { type BrowserBackend, BrowserBackendContext, TAB_BACKEND } from "../../browser-backend";
 import { useDraftStore } from "../../store/draft";
 import { Toaster } from "../../ui/toast";
 import type { FormConfig } from "../formValues";
@@ -52,6 +53,23 @@ afterEach(() => {
   }
 
   document.body.replaceChildren();
+});
+
+describe("inputs note", () => {
+  test("the web app says that files are uploaded to the server", async () => {
+    await render(fakeServer().fetch);
+
+    expect(page().queryByText("Files are uploaded into the run folder on the server")).not.toBeNull();
+  });
+
+  test("a browser back end says that files and runs stay in this tab", async () => {
+    await render(fakeServer().fetch, TAB_BACKEND);
+
+    expect([
+      page().queryByText("Files and runs stay in this browser tab until it reloads or closes"),
+      page().queryByText("Files are uploaded into the run folder on the server"),
+    ]).toStrictEqual([expect.any(HTMLElement), null]);
+  });
 });
 
 describe("alignment inputs of the web app", () => {
@@ -363,7 +381,7 @@ function fakeServer({ failing, held, holdCreates }: { failing?: string; held?: s
   };
 }
 
-async function render(fetch: typeof globalThis.fetch) {
+async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBackend | null = null) {
   const api = apiContext(fetch);
   const container = document.createElement("div");
   document.body.append(container);
@@ -372,9 +390,11 @@ async function render(fetch: typeof globalThis.fetch) {
   inAct(() =>
     root.render(
       <ApiContext.Provider value={api}>
-        <Toaster>
-          <Form />
-        </Toaster>
+        <BrowserBackendContext.Provider value={browserBackend}>
+          <Toaster>
+            <Form />
+          </Toaster>
+        </BrowserBackendContext.Provider>
       </ApiContext.Provider>,
     ),
   );
