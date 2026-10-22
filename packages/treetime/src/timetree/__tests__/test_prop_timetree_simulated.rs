@@ -3,7 +3,8 @@ mod tests {
   use crate::test_utils::{arb_simulated_case, timetree_cell_params};
   use crate::timetree::params::TimetreeParams;
   use helpers::{
-    as_test_failure, clade_key_set, internal_nodes_without_valid_interval, run, undated_nodes, younger_parents,
+    as_test_failure, clade_key_set, internal_nodes_without_valid_interval, nodes_without_finite_date, run,
+    younger_parents,
   };
   use proptest::prelude::{ProptestConfig, prop_assert_eq, proptest};
   use treetime_graph::clades::TipIds;
@@ -22,7 +23,7 @@ mod tests {
 
       let output = run(&params, spec.seed, case.timetree_cell_input(spec.length).map_err(|error| as_test_failure(&error))?)?;
 
-      prop_assert_eq!(Vec::<String>::new(), undated_nodes(&output));
+      prop_assert_eq!(Vec::<String>::new(), nodes_without_finite_date(&output));
       prop_assert_eq!(Vec::<String>::new(), younger_parents(&output));
       let mut ids = TipIds::default();
       let true_keys = clade_key_set(&case.tree.graph, &case.tree.names, &mut ids).map_err(|error| as_test_failure(&error))?;
@@ -60,12 +61,18 @@ mod tests {
       TestCaseError::fail(format!("{error:?}"))
     }
 
-    pub(super) fn undated_nodes(output: &TimetreeOutput) -> Vec<String> {
+    pub(super) fn nodes_without_finite_date(output: &TimetreeOutput) -> Vec<String> {
       output
         .graph
         .get_nodes()
-        .filter(|node| !output.node_dates.get(&node.key()).is_some_and(Option::is_some))
-        .map(|node| output.names[node.key()].to_owned())
+        .filter_map(|node| {
+          let name = &output.names[node.key()];
+          match output.node_dates.get(&node.key()).copied().flatten() {
+            None => Some(format!("{name} has no date")),
+            Some(date) if !date.is_finite() => Some(format!("{name} has the date {date}")),
+            Some(_) => None,
+          }
+        })
         .collect_vec()
     }
 
