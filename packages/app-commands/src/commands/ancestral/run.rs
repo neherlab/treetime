@@ -63,7 +63,7 @@ pub fn run_ancestral_reconstruction(
     tree_dialect: args.tree_dialect.dialect(),
     alphabet_args: &args.alphabet_args,
     gap_fill_args: &args.gap_fill_args,
-    ignore_missing_alns: args.ignore_missing_alns,
+    ignore_missing_alns: args.missing_sequences.ignore_missing_alns,
   };
   let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
   let NwkParse {
@@ -142,7 +142,7 @@ pub fn run_ancestral_reconstruction(
       };
       Ok(AncestralOutputMaps {
         root_sequence: sequences.root_sequence,
-        edge_mutations: UnknownMutationFilter::new(result.alphabet.unknown(), args.report_ambiguous)
+        edge_mutations: UnknownMutationFilter::new(result.alphabet.unknown(), args.tip_sequences.report_ambiguous)
           .reported_edge_mutations(&graph, sequences.edge_mutations)?,
       })
     })
@@ -313,12 +313,12 @@ fn run_aa_reconstructions(
   stages.report("AA ancestral reconstruction", 0.75, "");
 
   let params = AaParams {
-    dense: ancestral_args.dense,
+    dense: ancestral_args.representation.dense,
     include_leaves: ancestral_args.include_leaves,
     impute_missing_data: ancestral_args.impute_missing_data,
     sample_from_profile: ancestral_args.sample_from_profile,
     seed: inputs.seed,
-    ignore_missing_alns: ancestral_args.ignore_missing_alns,
+    ignore_missing_alns: ancestral_args.missing_sequences.ignore_missing_alns,
   };
 
   let cds_inputs = cdses
@@ -362,7 +362,7 @@ fn run_aa_reconstructions(
   if let Some(sink) = seq_sink {
     sink.finish()?;
   }
-  let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.report_ambiguous)
+  let node_data = UnknownMutationFilter::new(recon_alphabet.unknown(), ancestral_args.tip_sequences.report_ambiguous)
     .reported_aa_node_data(inputs.graph, node_data)?;
   Ok((node_data, cds_annotations))
 }

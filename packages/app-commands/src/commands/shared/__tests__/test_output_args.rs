@@ -30,7 +30,7 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection,
+      args.output_selection.output_selection,
       vec![
         AncestralOutputSelection::Nwk,
         AncestralOutputSelection::Nexus,
@@ -94,7 +94,10 @@ mod tests {
       "--output-selection=all",
     ])
     .unwrap();
-    assert_eq!(args.output_selection, vec![AncestralOutputSelection::All]);
+    assert_eq!(
+      args.output_selection.output_selection,
+      vec![AncestralOutputSelection::All]
+    );
   }
 
   #[test]
@@ -140,7 +143,7 @@ mod tests {
   fn test_ancestral_output_gtr_parses() {
     let args =
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
-    assert_eq!(args.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
+    assert_eq!(args.gtr_output.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
   }
 
   #[test]
@@ -151,7 +154,10 @@ mod tests {
       "--output-clock-model=/tmp/clock.json",
     ])
     .unwrap();
-    assert_eq!(args.output_clock_model.as_deref(), Some(Path::new("/tmp/clock.json")));
+    assert_eq!(
+      args.clock_output.output_clock_model.as_deref(),
+      Some(Path::new("/tmp/clock.json"))
+    );
   }
 
   #[test]
@@ -188,7 +194,7 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection,
+      args.output_selection.output_selection,
       vec![
         TimetreeOutputSelection::ConfidenceTsv,
         TimetreeOutputSelection::Tracelog
@@ -201,7 +207,10 @@ mod tests {
     let args =
       TreetimeClockArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-clock-csv=/tmp/clock.csv"])
         .unwrap();
-    assert_eq!(args.output_clock_csv.as_deref(), Some(Path::new("/tmp/clock.csv")));
+    assert_eq!(
+      args.clock_output.output_clock_csv.as_deref(),
+      Some(Path::new("/tmp/clock.csv"))
+    );
   }
 
   #[test]
@@ -225,7 +234,7 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(
-      args.output_selection,
+      args.output_selection.output_selection,
       vec![ClockOutputSelection::ClockModel, ClockOutputSelection::ClockCsv]
     );
   }
@@ -247,7 +256,7 @@ mod tests {
         args.output_clock_chart_svg.as_deref(),
         args.output_clock_chart_png.as_deref(),
         args.output_clock_chart_pdf.as_deref(),
-        args.output_selection,
+        args.output_selection.output_selection,
       ),
       (
         Some(Path::new("/tmp/chart.svg")),
@@ -311,14 +320,17 @@ mod tests {
       "--output-selection=confidence-csv",
     ])
     .unwrap();
-    assert_eq!(args.output_selection, vec![MugrationOutputSelection::ConfidenceCsv]);
+    assert_eq!(
+      args.output_selection.output_selection,
+      vec![MugrationOutputSelection::ConfidenceCsv]
+    );
   }
 
   #[test]
   fn test_prune_output_gtr_parses() {
     let args =
       TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-gtr=/tmp/gtr.json"]).unwrap();
-    assert_eq!(args.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
+    assert_eq!(args.gtr_output.output_gtr.as_deref(), Some(Path::new("/tmp/gtr.json")));
   }
 
   #[test]
@@ -333,7 +345,10 @@ mod tests {
     ])
     .unwrap();
     assert_eq!(args.output.output_all.as_deref(), Some(Path::new("/tmp/out")));
-    assert_eq!(args.output_selection, vec![AncestralOutputSelection::Nwk]);
+    assert_eq!(
+      args.output_selection.output_selection,
+      vec![AncestralOutputSelection::Nwk]
+    );
     assert_eq!(
       args.output.output_tree_nexus.as_deref(),
       Some(Path::new("/tmp/custom.nexus"))

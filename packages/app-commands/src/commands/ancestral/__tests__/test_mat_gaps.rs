@@ -6,6 +6,8 @@ mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
   use crate::commands::shared::output_args::OutputCoreArgs;
+  use crate::commands::shared::representation::RepresentationArgs;
+  use crate::commands::shared::tree_input::TreeArgs;
   use eyre::{Report, WrapErr};
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -36,22 +38,22 @@ mod tests {
     fs::write(&tree_path, TREE).wrap_err("When writing the tree fixture")?;
     fs::write(&fasta_path, ALIGNMENT).wrap_err("When writing the alignment fixture")?;
     let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
-      alignment: AlignmentArgs {
+alignment: AlignmentArgs {
         alignment: vec![fasta_path],
       },
-      tree: Some(tree_path),
-      model_args: ModelArgs {
+tree: TreeArgs { tree: Some(tree_path) },
+model_args: ModelArgs {
         model: GtrModelNameCli::JC69,
         ..ModelArgs::default()
       },
-      dense,
-      output: OutputCoreArgs {
+representation: RepresentationArgs { dense },
+output: OutputCoreArgs {
         output_tree_mat_json: Some(mat_json_path.clone()),
         output_tree_mat_pb: Some(mat_pb_path.clone()),
         ..OutputCoreArgs::default()
       },
-      ..TreetimeAncestralArgsRaw::default()
-    })?;
+..TreetimeAncestralArgsRaw::default()
+})?;
     let log = RecordingLog::default();
 
     run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &log)?;

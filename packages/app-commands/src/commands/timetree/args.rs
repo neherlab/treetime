@@ -2,18 +2,25 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::TimetreeAmbiguityArgs;
 use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
+use crate::commands::shared::branch_lengths::BranchLengthArgs;
+use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
-use crate::commands::shared::method_anc::MethodAncestralCli;
+use crate::commands::shared::method_anc::MethodAncArgs;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
-use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs, TimetreeOutputSelection};
+use crate::commands::shared::output_args::{ClockOutputArgs, OutputCoreArgs, TimetreeOutputSelectionArgs};
+use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::{missing_required_args, missing_settings};
-use crate::commands::shared::reroot::RerootArgs;
+use crate::commands::shared::reroot::{RerootArgs, RootingArgs};
 use crate::commands::shared::seed::SeedArgs;
+use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
-use crate::commands::shared::tree_input::TreeDialectArgs;
+use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -66,21 +73,18 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     }
     let tree = raw
       .tree
+      .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
     check_sequence_source(&raw)?;
     Ok(Self {
       tree,
       branch_length_mode: raw.branch_length_mode.into(),
-      indel_policy: if raw.no_indels {
-        IndelPolicy::Exclude
-      } else {
-        IndelPolicy::Include
-      },
+      indel_policy: raw.branch_lengths.indel_policy(),
       time_marginal: raw.time_marginal.into(),
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
-      include_leaves: raw.include_leaves || raw.reconstruct_tip_states,
-      impute_missing_data: raw.impute_missing_data || raw.reconstruct_tip_states,
+      include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
+      impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
       ambiguity_outputs: raw.ambiguity.resolve()?,
       raw,
     })
@@ -126,11 +130,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Tree in Newick format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -143,7 +146,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
-  /// CSV/TSV file with metadata including sampling dates
+  /// Metadata table (CSV or TSV) with one row per sample
+  ///
+  /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
+  /// sample, such as its sampling date or its traits.
   #[cfg_attr(
     feature = "clap",
     clap(long = "metadata", visible_alias = "dates", short = 'd', help_heading = "Input data")
@@ -224,10 +230,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, num_args = 2, value_names = ["SLACK", "COUPLING"], help_heading = "Molecular clock"))]
   pub relax: Vec<f64>,
 
-  /// maximal number of iterations the inference cycle is run. For polytomy resolution and
-  /// coalescence models max_iter should be at least 2
+  /// Maximum number of iterations of the inference loop
+  ///
+  /// Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
   #[default = 2]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().max_iter, help_heading = "Dating"))]
+  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().max_iter, help_heading = "Branch lengths"))]
   pub max_iter: usize,
 
   /// Coalescent time scale in years.
@@ -322,14 +329,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Plots"))]
   pub no_tip_labels: bool,
 
-  /// ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
-  /// regression'. Default=3.0, set to 0 to switch off.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value = "3.0", help_heading = "Molecular clock")
-  )]
-  #[default = 3.0]
-  pub clock_filter: f64,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub clock_filter: ClockFilterArgs,
 
   /// Number of IQD (interquartile distance) for clock filter outlier detection
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
@@ -340,14 +343,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[deser(flatten)]
   pub reroot: RerootArgs,
 
-  /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
-  /// root-to-tip distance and sampling time
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
-  pub keep_root: bool,
-
-  /// By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
-  pub allow_negative_rate: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub rooting: RootingArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -359,67 +358,45 @@ pub struct TreetimeTimetreeArgsRaw {
   #[deser(flatten)]
   pub partition_rates_args: PartitionRatesArgs,
 
-  /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
-  pub method_anc: MethodAncestralCli,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub method_anc: MethodAncArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub alphabet_args: AlphabetArgs,
 
-  /// Use dense representation for sequences (store full probability distributions)
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub dense: Option<bool>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub representation: RepresentationArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
-  /// Zero-based mutation indexing
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub zero_based: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub zero_based: ZeroBasedArgs,
 
-  /// Emit reconstructed leaf (tip) sequences in addition to internal nodes.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub include_leaves: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tip_sequences: TipSequenceArgs,
 
-  /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-  /// inferred state. Gaps are left as deletions.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub impute_missing_data: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub impute_missing_data: ImputeMissingDataArgs,
 
-  /// v0-compatible alias for `--include-leaves --impute-missing-data`.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub reconstruct_tip_states: bool,
-
-  /// Include branch mutations from or to the fully ambiguous nucleotide state `N`.
-  ///
-  /// By default these mutations are omitted from the branch mutations of the Newick and Nexus
-  /// annotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always
-  /// reported. The MAT outputs store `N` as missing data and never contain these mutations.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub report_ambiguous: bool,
-
-  /// Disable indel (insertion/deletion) contributions to branch-length
-  /// optimization and branch-length distributions.
-  ///
-  /// When set, branch-length optimization uses substitution-only likelihood
-  /// and timetree branch distributions exclude the Poisson indel term.
-  /// Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
-  /// and enables v0 parity testing. Default: indels enabled.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_indels: bool,
-
-  /// Units for divergence values in augur node data JSON and auspice output.
-  ///
-  /// `mutations-per-site` (default): branch divergence as substitutions per site.
-  /// `mutations`: count of reconstructed substitutions per branch that change the state:
-  /// gaps, `N`, and ambiguity codes compatible with the parent state do not count.
-  /// Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default(), help_heading = "Output"))]
-  pub divergence_units: DivergenceUnits,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub branch_lengths: BranchLengthArgs,
 
   /// Path to output augur-compatible node data JSON.
   ///
@@ -432,43 +409,20 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Path to output GTR model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_gtr: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub gtr_output: GtrOutputArgs,
 
-  /// Path to output reconstructed ancestral-sequence nucleotide FASTA.
-  ///
-  /// The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences
-  /// reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`
-  /// (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub reconstructed_fasta_output: ReconstructedFastaOutputArgs,
 
-  /// Path to output clock model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_clock_model: Option<PathBuf>,
-
-  /// Path to output clock regression CSV.
-  ///
-  /// One row per sample as the final clock model saw it: the date the regression used, marked
-  /// `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts
-  /// from that distance, and whether the clock filter excluded the sample. Not written by default.
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_clock_csv: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub clock_output: ClockOutputArgs,
 
   /// Path to output date-confidence-interval TSV.
   ///
@@ -514,19 +468,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
-  ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-  /// available for this command. Requires `--output-all`. Per-file flags are always honored
-  /// regardless of this selection.
-  ///
-  /// A selected output that the run has no data for is skipped without a message, for example
-  /// the substitution model of a run that fits none. A per-file flag for such an output fails.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
-  )]
-  pub output_selection: Vec<TimetreeOutputSelection>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: TimetreeOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

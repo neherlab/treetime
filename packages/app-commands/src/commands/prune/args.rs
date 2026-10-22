@@ -1,10 +1,11 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
-use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelection};
+use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelectionArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
-use crate::commands::shared::tree_input::TreeDialectArgs;
+use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -35,6 +36,7 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
   fn try_from(raw: TreetimePruneArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
     Ok(Self { raw, tree })
@@ -61,11 +63,10 @@ pub struct TreetimePruneArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Tree in Newick format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -82,26 +83,15 @@ pub struct TreetimePruneArgsRaw {
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
-  /// Path to output GTR model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_gtr: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub gtr_output: GtrOutputArgs,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
-  ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-  /// available for this command. Requires `--output-all`. Per-file flags are always honored
-  /// regardless of this selection.
-  ///
-  /// A selected output that the run has no data for is skipped without a message, for example
-  /// the substitution model of a run that fits none. A per-file flag for such an output fails.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
-  )]
-  pub output_selection: Vec<PruneOutputSelection>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: PruneOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

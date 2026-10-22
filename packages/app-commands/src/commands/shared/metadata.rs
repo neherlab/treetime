@@ -6,8 +6,7 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 const DEFAULT_DATE_FORMAT: &str = "%Y-%m-%d";
 
-/// Metadata identity and delimiter options shared by every command that reads a metadata table
-/// (`timetree`, `clock`, `mugration`).
+/// Metadata identity and delimiter options shared by every command that reads a metadata table.
 ///
 /// `--metadata-id-columns` (alias `--name-column`) lists the candidate columns holding the taxon
 /// identifier that links a metadata row to a tree tip; the first column present in the header wins.
@@ -29,6 +28,7 @@ pub struct MetadataIdArgs {
       long = "metadata-id-columns",
       visible_alias = "name-column",
       num_args = 1..,
+      value_delimiter = ',',
       value_name = "COLUMN",
       default_values_t = default_name_candidates(),
       help_heading = "Input data",
@@ -47,7 +47,7 @@ pub struct MetadataIdArgs {
   pub metadata_delimiters: Vec<char>,
 }
 
-/// Sampling-date column and parsing options shared by the time-aware commands (`timetree`, `clock`).
+/// Sampling-date column and parsing options shared by the time-aware commands.
 ///
 /// `--date-column` overrides auto-detection of the column holding sampling dates; when omitted, the
 /// leftmost column whose name contains `date` (case-insensitive) is used. `--date-format` controls

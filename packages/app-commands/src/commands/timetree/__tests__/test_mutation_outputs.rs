@@ -43,7 +43,7 @@ mod tests {
     let dir = tempfile::tempdir().wrap_err("When creating a temporary directory")?;
     let augur_path = dir.path().join("node_data.json");
     write_timetree_outputs(dir.path(), false, |raw| {
-      raw.divergence_units = DivergenceUnits::Mutations;
+      raw.branch_lengths.divergence_units = DivergenceUnits::Mutations;
       raw.output_augur_node_data = Some(augur_path.clone());
     })?;
 
@@ -73,7 +73,7 @@ mod tests {
   fn test_timetree_mutation_units_reject_input_branch_lengths_before_inference() {
     let dir = tempfile::tempdir().unwrap();
     let result = write_timetree_outputs(dir.path(), false, |raw| {
-      raw.divergence_units = DivergenceUnits::Mutations;
+      raw.branch_lengths.divergence_units = DivergenceUnits::Mutations;
       raw.branch_length_mode = BranchLengthModeCli::Input;
       raw.output_augur_node_data = Some(dir.path().join("node_data.json"));
     });
@@ -119,6 +119,9 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::reroot::RootingArgs;
+    use crate::commands::shared::tip_sequences::TipSequenceArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use std::path::Path;
 
     pub(super) fn write_timetree_outputs(
@@ -137,12 +140,18 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
+        tree: TreeArgs { tree: Some(tree_path) },
         metadata: Some(metadata_path),
-        keep_root: true,
+        rooting: RootingArgs {
+          keep_root: true,
+          ..RootingArgs::default()
+        },
         clock_rate: Some(0.01),
         max_iter: 2,
-        report_ambiguous,
+        tip_sequences: TipSequenceArgs {
+          report_ambiguous,
+          ..TipSequenceArgs::default()
+        },
         ..TreetimeTimetreeArgsRaw::default()
       };
       configure(&mut raw);

@@ -92,6 +92,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::output_args::PruneOutputSelectionArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
 
     pub(super) const ZIKA_CUT: usize = 5000;
 
@@ -99,13 +101,17 @@ mod tests {
       let root = project_root();
       let args = TreetimePruneArgs::try_from(TreetimePruneArgsRaw {
         alignment: AlignmentArgs { alignment },
-        tree: Some(root.join("data/zika/20/tree.nwk")),
+        tree: TreeArgs {
+          tree: Some(root.join("data/zika/20/tree.nwk")),
+        },
         prune_empty: true,
         output: OutputCoreArgs {
           output_all: Some(outdir.to_path_buf()),
           ..OutputCoreArgs::default()
         },
-        output_selection: vec![PruneOutputSelection::Auspice, PruneOutputSelection::MatJson],
+        output_selection: PruneOutputSelectionArgs {
+          output_selection: vec![PruneOutputSelection::Auspice, PruneOutputSelection::MatJson],
+        },
         ..TreetimePruneArgsRaw::default()
       })?;
       run_prune(&args, &NoopCancel, &NoopProgress, &NoopProgress)
@@ -130,18 +136,22 @@ mod tests {
       };
       let args = TreetimePruneArgs::try_from(TreetimePruneArgsRaw {
         alignment: AlignmentArgs { alignment },
-        tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+        tree: TreeArgs {
+          tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+        },
         prune_empty: with_alignment,
         prune_short: (!with_alignment).then_some(1e-3),
         output: OutputCoreArgs {
           output_all: Some(outdir.to_path_buf()),
           ..OutputCoreArgs::default()
         },
-        output_selection: vec![
-          PruneOutputSelection::Auspice,
-          PruneOutputSelection::MatJson,
-          PruneOutputSelection::MatPb,
-        ],
+        output_selection: PruneOutputSelectionArgs {
+          output_selection: vec![
+            PruneOutputSelection::Auspice,
+            PruneOutputSelection::MatJson,
+            PruneOutputSelection::MatPb,
+          ],
+        },
         ..TreetimePruneArgsRaw::default()
       })?;
       run_prune(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;

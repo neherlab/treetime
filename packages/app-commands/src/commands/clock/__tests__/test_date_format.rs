@@ -3,7 +3,9 @@ mod tests {
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
   use crate::commands::clock::run::run_clock;
   use crate::commands::shared::metadata::DateColumnArgs;
-  use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs};
+  use crate::commands::shared::output_args::{ClockOutputSelection, ClockOutputSelectionArgs, OutputCoreArgs};
+  use crate::commands::shared::reroot::RootingArgs;
+  use crate::commands::shared::tree_input::TreeArgs;
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -39,15 +41,20 @@ mod tests {
       ..DateColumnArgs::default()
     });
     let raw = TreetimeClockArgsRaw {
-      tree: Some(tree),
+      tree: TreeArgs { tree: Some(tree) },
       metadata: Some(metadata),
       date_column,
-      keep_root: true,
+      rooting: RootingArgs {
+        keep_root: true,
+        ..RootingArgs::default()
+      },
       output: OutputCoreArgs {
         output_all: Some(dir.path().join("output")),
         ..OutputCoreArgs::default()
       },
-      output_selection: vec![ClockOutputSelection::Nwk],
+      output_selection: ClockOutputSelectionArgs {
+        output_selection: vec![ClockOutputSelection::Nwk],
+      },
       ..TreetimeClockArgsRaw::default()
     };
 

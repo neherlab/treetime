@@ -1,5 +1,7 @@
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 #[cfg(feature = "clap")]
+use clap::ValueHint;
+#[cfg(feature = "clap")]
 use clap::builder::PossibleValue;
 use derive_more::{Display, FromStr};
 use deser::adapters::DisplayFromStr;
@@ -8,7 +10,7 @@ use eyre::Report;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use smart_default::SmartDefault;
 use std::borrow::Cow;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use treetime::progress::{LogSink, RunWarningKind};
 use treetime_io::nwk::NewickDialect;
@@ -35,6 +37,23 @@ pub fn read_input_tree(path: &Path, dialect: NewickDialect, log: &dyn LogSink) -
     &parse.duplicate_names,
   );
   Ok(parse)
+}
+
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct TreeArgs {
+  /// Tree in Newick format.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, short = 't', value_hint = ValueHint::FilePath, help_heading = "Input data")
+  )]
+  #[schemars(extend("x-path" = "input"))]
+  pub tree: Option<PathBuf>,
 }
 
 /// Newick dialect of the tree inputs, shared by every command that reads a tree.

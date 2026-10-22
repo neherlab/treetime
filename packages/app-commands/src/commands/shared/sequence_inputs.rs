@@ -2,7 +2,9 @@ use crate::commands::shared::alignment::{AlignmentArgs, PairedAlignment, pair_al
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::tree_input::read_input_tree;
+use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
+use schemars::JsonSchema;
 use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
@@ -17,6 +19,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::{NewickDialect, NwkParse};
+use treetime_schema::schema_defaults;
 
 pub(crate) fn read_tree_and_sources(
   args: &SequenceInputArgs<'_>,
@@ -65,6 +68,20 @@ pub(crate) fn ancestral_input(
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
   AncestralInput { graph, edges, sources }
+}
+
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct MissingSequenceArgs {
+  /// Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+  ///
+  /// Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
+  /// Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
+  pub ignore_missing_alns: bool,
 }
 
 pub(crate) struct SequenceInputArgs<'a> {

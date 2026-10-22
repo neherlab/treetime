@@ -4,14 +4,19 @@ use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::AncestralAmbiguityArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
-use crate::commands::shared::method_anc::MethodAncestralCli;
-use crate::commands::shared::mirror_enum::impl_from_mirror;
+use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::method_anc::{MethodAncArgs, SampleFromProfileArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output_args::{AncestralOutputSelection, OutputCoreArgs};
+use crate::commands::shared::output_args::{AncestralOutputSelectionArgs, OutputCoreArgs};
+use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
+use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
+use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
-use crate::commands::shared::tree_input::TreeDialectArgs;
+use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -30,9 +35,9 @@ pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralPar
   AncestralParams {
     method: args.method_anc,
     model: args.model_args.model_name(),
-    dense: args.dense,
+    dense: args.representation.dense,
     include_leaves: args.include_leaves,
-    report_ambiguous: args.report_ambiguous,
+    report_ambiguous: args.tip_sequences.report_ambiguous,
     impute_missing_data: args.impute_missing_data,
     site_specific_gtr: args.site_specific_gtr,
     seed,
@@ -65,14 +70,15 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
   fn try_from(raw: TreetimeAncestralArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
     Ok(Self {
       tree,
-      method_anc: raw.method_anc.into(),
-      include_leaves: raw.include_leaves || raw.reconstruct_tip_states,
-      impute_missing_data: raw.impute_missing_data || raw.reconstruct_tip_states,
-      sample_from_profile: raw.sample_from_profile.into(),
+      method_anc: raw.method_anc.method_anc.into(),
+      include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
+      impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
+      sample_from_profile: raw.sample_from_profile.sample_from_profile.into(),
       ambiguity_outputs: raw.ambiguity.resolve()?,
       raw,
     })
@@ -105,11 +111,10 @@ pub struct TreetimeAncestralArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
-  /// Tree in Newick format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -126,61 +131,45 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
-  /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
-  pub method_anc: MethodAncestralCli,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub method_anc: MethodAncArgs,
 
-  /// Use dense representation (stores full probability vectors at each position)
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub dense: Option<bool>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub representation: RepresentationArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub sample_from_profile: SampleFromProfileArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
-  /// Zero-based mutation indexing
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub zero_based: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub zero_based: ZeroBasedArgs,
 
-  /// Emit reconstructed leaf (tip) sequences in addition to internal nodes.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub include_leaves: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tip_sequences: TipSequenceArgs,
 
-  /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-  /// inferred state.
-  ///
-  /// Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal
-  /// reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub impute_missing_data: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub impute_missing_data: ImputeMissingDataArgs,
 
-  /// v0-compatible alias for `--include-leaves --impute-missing-data`.
-  ///
-  /// Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub reconstruct_tip_states: bool,
-
-  /// Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
-  /// amino acids).
-  ///
-  /// By default these mutations are omitted from the branch mutations of the Newick and Nexus
-  /// annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other
-  /// ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
-  /// outputs, which store `N` as missing data and never contain these mutations, or the root
-  /// `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence`
-  /// reference and the inferred root and always omit `X` and gaps.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub report_ambiguous: bool,
-
-  /// Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
-  /// instead of aborting.
-  ///
-  /// Without this flag the run aborts when more than one third of the tips lack a sequence, matching
-  /// TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a
-  /// given CDS.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub ignore_missing_alns: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
 
   /// Path to output augur-compatible node data JSON.
   ///
@@ -196,22 +185,15 @@ pub struct TreetimeAncestralArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Path to output GTR model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_gtr: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub gtr_output: GtrOutputArgs,
 
-  /// Path to output reconstructed nucleotide FASTA.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  ///
-  /// With several `--alignment` files, one file is written per alignment, and the file name
-  /// must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_reconstructed_nuc_fasta: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub reconstructed_fasta_output: ReconstructedFastaOutputArgs,
 
   /// Path template for per-CDS amino-acid FASTA alignments.
   ///
@@ -223,7 +205,7 @@ pub struct TreetimeAncestralArgsRaw {
   #[schemars(extend("x-path" = "input-template"))]
   pub translations: Option<String>,
 
-  /// Comma-separated CDS names to reconstruct from `--translations`.
+  /// CDS names to reconstruct from `--translations`.
   ///
   /// When omitted, the CDS set is derived from `--annotation`.
   #[cfg_attr(
@@ -232,6 +214,7 @@ pub struct TreetimeAncestralArgsRaw {
       long = "cdses",
       visible_alias = "genes",
       value_name = "CDS",
+      num_args = 1..,
       value_delimiter = ',',
       help_heading = "Input data"
     )
@@ -247,6 +230,9 @@ pub struct TreetimeAncestralArgsRaw {
   pub annotation: Option<PathBuf>,
 
   /// FASTA file with one amino-acid root/reference sequence per CDS.
+  ///
+  /// The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and
+  /// always omit `X` and gaps.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
@@ -272,19 +258,10 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
-  ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-  /// available for this command. Requires `--output-all`. Per-file flags are always honored
-  /// regardless of this selection.
-  ///
-  /// A selected output that the run has no data for is skipped without a message, for example
-  /// the substitution model of a run that fits none. A per-file flag for such an output fails.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
-  )]
-  pub output_selection: Vec<AncestralOutputSelection>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: AncestralOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -322,29 +299,4 @@ pub struct TreetimeAncestralArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub custom_gtr: Option<PathBuf>,
-
-  /// How to pick ancestral states from the marginal posterior profile.
-  ///
-  /// 'argmax': most likely state at every node (deterministic, default).
-  /// 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's
-  /// `sample_from_profile='root'`). Use `--seed` for reproducible draws.
-  /// 'all': sample from the posterior at every node.
-  ///
-  /// Only affects marginal reconstruction (`--method-anc=marginal`).
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleModeCli::default(), help_heading = "Ancestral reconstruction"))]
-  pub sample_from_profile: SampleModeCli,
 }
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-#[schemars(rename = "SampleMode")]
-pub enum SampleModeCli {
-  #[default]
-  Argmax,
-  Root,
-  All,
-}
-
-impl_from_mirror!(SampleModeCli => SampleMode { Argmax, Root, All });

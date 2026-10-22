@@ -55,6 +55,11 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::method_anc::MethodAncArgs;
+    use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::tip_sequences::TipSequenceArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
 
     pub(super) fn reconstructed_descriptions(
       method: MethodAncestralCli,
@@ -73,15 +78,20 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
-        method_anc: method,
-        dense,
+        tree: TreeArgs { tree: Some(tree_path) },
+        method_anc: MethodAncArgs { method_anc: method },
+        representation: RepresentationArgs { dense },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
-        include_leaves,
-        output_reconstructed_nuc_fasta: Some(out_path.clone()),
+        tip_sequences: TipSequenceArgs {
+          include_leaves,
+          ..TipSequenceArgs::default()
+        },
+        reconstructed_fasta_output: ReconstructedFastaOutputArgs {
+          output_reconstructed_nuc_fasta: Some(out_path.clone()),
+        },
         ..TreetimeAncestralArgsRaw::default()
       })?;
 

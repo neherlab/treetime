@@ -224,7 +224,7 @@ mod tests {
 
     pub(super) fn method_anc(command: &CommandConfig) -> Option<String> {
       match command {
-        CommandConfig::Ancestral { config: args } => Some(format!("{:?}", args.method_anc)),
+        CommandConfig::Ancestral { config: args } => Some(format!("{:?}", args.method_anc.method_anc)),
         _ => None,
       }
     }

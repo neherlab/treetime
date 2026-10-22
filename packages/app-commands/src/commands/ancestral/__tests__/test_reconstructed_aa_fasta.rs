@@ -38,7 +38,7 @@ mod tests {
     let gtr = dir.path().join("S.json");
     let nuc_fasta = dir.path().join("nuc.fasta");
     let mut args = helpers::args(dir.path(), dir.path().join("%GENE.json"), Some(gtr.clone()))?;
-    args.output_reconstructed_nuc_fasta = Some(nuc_fasta.clone());
+    args.reconstructed_fasta_output.output_reconstructed_nuc_fasta = Some(nuc_fasta.clone());
 
     assert_error!(
       run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress),
@@ -54,6 +54,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::gtr_output::GtrOutputArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
 
     pub(super) fn args(dir: &Path, aa_fasta: PathBuf, gtr: Option<PathBuf>) -> Result<TreetimeAncestralArgs, Report> {
       let tree_path = dir.join("tree.nwk");
@@ -65,7 +67,7 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
+        tree: TreeArgs { tree: Some(tree_path) },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
@@ -73,7 +75,7 @@ mod tests {
         translations: Some(format!("{}/%GENE.fasta", dir.display())),
         cdses: vec_of_owned!["S"],
         output_reconstructed_aa_fasta: Some(aa_fasta),
-        output_gtr: gtr,
+        gtr_output: GtrOutputArgs { output_gtr: gtr },
         ..TreetimeAncestralArgsRaw::default()
       })
     }

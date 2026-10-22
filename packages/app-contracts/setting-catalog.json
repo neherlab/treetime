@@ -288,8 +288,8 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
-          "more": ""
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -410,8 +410,8 @@
             "METADATA"
           ],
           "conflicts": [],
-          "help": "CSV/TSV file with metadata including sampling dates",
-          "more": ""
+          "help": "Metadata table (CSV or TSV) with one row per sample",
+          "more": "`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits."
         },
         {
           "key": "metadata_id_columns",
@@ -562,8 +562,8 @@
             "ZERO_BASED"
           ],
           "conflicts": [],
-          "help": "Zero-based mutation indexing",
-          "more": ""
+          "help": "Report sequence positions counted from 0 instead of 1.",
+          "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "aa",
@@ -663,26 +663,8 @@
             "CLOCK_FILTER"
           ],
           "conflicts": [],
-          "help": "ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from regression'. Default=3.0, set to 0 to switch off.",
-          "more": ""
-        },
-        {
-          "key": "n_iqd",
-          "label": "Number of IQD",
-          "flag": "--n-iqd",
-          "group": "Molecular clock",
-          "role": "setting",
-          "kind": "number",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "N_IQD"
-          ],
-          "conflicts": [],
-          "help": "Number of IQD (interquartile distance) for clock filter outlier detection",
-          "more": ""
+          "help": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression beyond which a tip is an outlier.",
+          "more": "0 switches the filter off."
         },
         {
           "key": "allow_negative_rate",
@@ -700,7 +682,25 @@
             "ALLOW_NEGATIVE_RATE"
           ],
           "conflicts": [],
-          "help": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
+          "help": "Allow negative clock rates.",
+          "more": "By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting."
+        },
+        {
+          "key": "n_iqd",
+          "label": "Number of IQD",
+          "flag": "--n-iqd",
+          "group": "Molecular clock",
+          "role": "setting",
+          "kind": "number",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "N_IQD"
+          ],
+          "conflicts": [],
+          "help": "Number of IQD (interquartile distance) for clock filter outlier detection",
           "more": ""
         },
         {
@@ -750,6 +750,26 @@
           "more": ""
         },
         {
+          "key": "max_iter",
+          "label": "Iterations",
+          "flag": "--max-iter",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 2,
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "MAX_ITER"
+          ],
+          "conflicts": [],
+          "help": "Maximum number of iterations of the inference loop",
+          "more": "Polytomy resolution and coalescent models of the time inference need at least 2 iterations."
+        },
+        {
           "key": "no_indels",
           "label": "No indels",
           "flag": "--no-indels",
@@ -765,8 +785,8 @@
             "NO_INDELS"
           ],
           "conflicts": [],
-          "help": "Disable indel (insertion/deletion) contributions to branch-length optimization and branch-length distributions.",
-          "more": "When set, branch-length optimization uses substitution-only likelihood and timetree branch distributions exclude the Poisson indel term. Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and enables v0 parity testing. Default: indels enabled."
+          "help": "Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length distributions.",
+          "more": "When set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the time inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and TreeTime 0.x. By default, indels count."
         },
         {
           "key": "time_marginal",
@@ -839,26 +859,6 @@
           "conflicts": [],
           "help": "Largest number of points of one probability grid during time inference.",
           "more": "A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000."
-        },
-        {
-          "key": "max_iter",
-          "label": "Iterations",
-          "flag": "--max-iter",
-          "group": "Dating",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 2,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "MAX_ITER"
-          ],
-          "conflicts": [],
-          "help": "maximal number of iterations the inference cycle is run. For polytomy resolution and coalescence models max_iter should be at least 2",
-          "more": ""
         },
         {
           "key": "n_branches_posterior",
@@ -1192,7 +1192,7 @@
             "keep_root",
             "reroot"
           ],
-          "help": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
+          "help": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
           "more": ""
         },
         {
@@ -1214,7 +1214,7 @@
             "reroot",
             "reroot_tips"
           ],
-          "help": "don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of root-to-tip distance and sampling time",
+          "help": "Keep the root of the input tree instead of rerooting it.",
           "more": ""
         },
         {
@@ -1267,7 +1267,7 @@
           ],
           "conflicts": [],
           "help": "Substitution model to use",
-          "more": "`--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
         },
         {
           "key": "model_params",
@@ -1285,8 +1285,8 @@
             "MODEL_PARAMS"
           ],
           "conflicts": [],
-          "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-          "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "partition_rates",
@@ -1299,11 +1299,11 @@
           "options": [
             {
               "value": "estimate",
-              "help": "Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1."
+              "help": "Estimate one relative rate per partition, normalized to a site-weighted mean of 1."
             },
             {
               "value": "equal",
-              "help": "Fix the relative rate of every alignment file at 1."
+              "help": "Fix the relative rate of every partition at 1."
             }
           ],
           "item_kind": "string",
@@ -1313,8 +1313,8 @@
             "PARTITION_RATES"
           ],
           "conflicts": [],
-          "help": "Relative substitution rates of the alignment files",
-          "more": "With two or more `--alignment` files, all files share the branch lengths, and each file has one relative rate that scales them for the sites of that file. `estimate` fits the rate of each file with the rest of its substitution model fixed (a file with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each file, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.\n\nWith one alignment file, this setting has no effect: the run estimates no relative rate."
+          "help": "Relative substitution rates of the partitions",
+          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate."
         },
         {
           "key": "custom_gtr",
@@ -1359,7 +1359,7 @@
             "METHOD_ANC"
           ],
           "conflicts": [],
-          "help": "Method used for reconstructing ancestral sequences",
+          "help": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
           "more": ""
         },
         {
@@ -1377,8 +1377,8 @@
             "DENSE"
           ],
           "conflicts": [],
-          "help": "Use dense representation for sequences (store full probability distributions)",
-          "more": ""
+          "help": "Use the dense representation of the sequences on the tree",
+          "more": "The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used."
         },
         {
           "key": "gap_fill",
@@ -1455,25 +1455,6 @@
           "more": ""
         },
         {
-          "key": "impute_missing_data",
-          "label": "Impute missing data",
-          "flag": "--impute-missing-data",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "IMPUTE_MISSING_DATA"
-          ],
-          "conflicts": [],
-          "help": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state. Gaps are left as deletions.",
-          "more": ""
-        },
-        {
           "key": "reconstruct_tip_states",
           "label": "Reconstruct tip states",
           "flag": "--reconstruct-tip-states",
@@ -1489,7 +1470,7 @@
             "RECONSTRUCT_TIP_STATES"
           ],
           "conflicts": [],
-          "help": "v0-compatible alias for `--include-leaves --impute-missing-data`.",
+          "help": "Same as `--include-leaves --impute-missing-data`: emit tip sequences with ambiguous and unknown states resolved to the most likely inferred state.",
           "more": ""
         },
         {
@@ -1508,8 +1489,27 @@
             "REPORT_AMBIGUOUS"
           ],
           "conflicts": [],
-          "help": "Include branch mutations from or to the fully ambiguous nucleotide state `N`.",
-          "more": "By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always reported. The MAT outputs store `N` as missing data and never contain these mutations."
+          "help": "Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).",
+          "more": "By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT outputs, which store `N` as missing data and never contain these mutations."
+        },
+        {
+          "key": "impute_missing_data",
+          "label": "Impute missing data",
+          "flag": "--impute-missing-data",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "IMPUTE_MISSING_DATA"
+          ],
+          "conflicts": [],
+          "help": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.",
+          "more": "Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous characters on terminal branches then disappear from the branch mutations. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`."
         },
         {
           "key": "divergence_units",
@@ -1536,8 +1536,8 @@
             "DIVERGENCE_UNITS"
           ],
           "conflicts": [],
-          "help": "Units for divergence values in augur node data JSON and auspice output.",
-          "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count. Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`)."
+          "help": "Units of the divergence values in the augur node data and Auspice outputs.",
+          "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths (`--branch-length-mode=input`)."
         },
         {
           "key": "output_augur_node_data",
@@ -1590,8 +1590,8 @@
             "OUTPUT_RECONSTRUCTED_NUC_FASTA"
           ],
           "conflicts": [],
-          "help": "Path to output reconstructed ancestral-sequence nucleotide FASTA.",
-          "more": "The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves` (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
+          "help": "Path to output reconstructed nucleotide FASTA.",
+          "more": "Holds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or `--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states. Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
         },
         {
           "key": "output_clock_model",
@@ -1627,7 +1627,7 @@
           ],
           "conflicts": [],
           "help": "Path to output clock regression CSV.",
-          "more": "One row per sample as the final clock model saw it: the date the regression used, marked `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts from that distance, and whether the clock filter excluded the sample. Not written by default. Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          "more": "One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths configured with `--output-all` and `--output-selection`."
         },
         {
           "key": "output_confidence_tsv",
@@ -1766,7 +1766,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -1984,7 +1984,7 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "help": "List of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
@@ -2027,7 +2027,7 @@
             "AMBIGUITY_OUTPUTS"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of the outputs that carry the ambiguity report.",
+          "help": "List of the outputs that carry the ambiguity report.",
           "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
         },
         {
@@ -2367,8 +2367,8 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
-          "more": ""
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -2489,8 +2489,8 @@
             "METADATA"
           ],
           "conflicts": [],
-          "help": "CSV/TSV file with metadata including sampling dates",
-          "more": ""
+          "help": "Metadata table (CSV or TSV) with one row per sample",
+          "more": "`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits."
         },
         {
           "key": "metadata_id_columns",
@@ -2625,7 +2625,7 @@
           ],
           "conflicts": [],
           "help": "Substitution model to use",
-          "more": "`--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
         },
         {
           "key": "model_params",
@@ -2643,8 +2643,8 @@
             "MODEL_PARAMS"
           ],
           "conflicts": [],
-          "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-          "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "branch_length_mode",
@@ -2671,7 +2671,7 @@
             "BRANCH_LENGTH_MODE"
           ],
           "conflicts": [],
-          "help": "If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.",
+          "help": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
           "more": ""
         },
         {
@@ -2718,7 +2718,7 @@
             "METHOD_ANC"
           ],
           "conflicts": [],
-          "help": "Method used for reconstructing ancestral sequences",
+          "help": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
           "more": ""
         },
         {
@@ -2737,8 +2737,8 @@
             "CLOCK_FILTER"
           ],
           "conflicts": [],
-          "help": "ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.",
-          "more": ""
+          "help": "Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression beyond which a tip is an outlier.",
+          "more": "0 switches the filter off."
         },
         {
           "key": "allow_negative_rate",
@@ -2756,8 +2756,8 @@
             "ALLOW_NEGATIVE_RATE"
           ],
           "conflicts": [],
-          "help": "By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.",
-          "more": ""
+          "help": "Allow negative clock rates.",
+          "more": "By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting."
         },
         {
           "key": "clock_filter_method",
@@ -2853,7 +2853,7 @@
             "keep_root",
             "reroot"
           ],
-          "help": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
+          "help": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
           "more": ""
         },
         {
@@ -2875,7 +2875,7 @@
             "reroot",
             "reroot_tips"
           ],
-          "help": "don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of root-to-tip distance and sampling time",
+          "help": "Keep the root of the input tree instead of rerooting it.",
           "more": ""
         },
         {
@@ -2925,7 +2925,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -3088,7 +3088,7 @@
           ],
           "conflicts": [],
           "help": "Path to output clock regression CSV.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
+          "more": "One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths configured with `--output-all` and `--output-selection`."
         },
         {
           "key": "output_clock_chart_svg",
@@ -3213,7 +3213,7 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "help": "List of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
@@ -3496,8 +3496,8 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
-          "more": ""
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "vcf_reference",
@@ -3650,8 +3650,8 @@
             "ZERO_BASED"
           ],
           "conflicts": [],
-          "help": "Zero-based mutation indexing",
-          "more": ""
+          "help": "Report sequence positions counted from 0 instead of 1.",
+          "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "ignore_missing_alns",
@@ -3706,7 +3706,7 @@
             "CDS"
           ],
           "conflicts": [],
-          "help": "Comma-separated CDS names to reconstruct from `--translations`.",
+          "help": "CDS names to reconstruct from `--translations`.",
           "more": "When omitted, the CDS set is derived from `--annotation`."
         },
         {
@@ -3796,7 +3796,7 @@
           ],
           "conflicts": [],
           "help": "Substitution model to use",
-          "more": "`--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
         },
         {
           "key": "model_params",
@@ -3814,8 +3814,8 @@
             "MODEL_PARAMS"
           ],
           "conflicts": [],
-          "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-          "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "aa_model",
@@ -3907,7 +3907,7 @@
             "METHOD_ANC"
           ],
           "conflicts": [],
-          "help": "Method used for reconstructing ancestral sequences",
+          "help": "Method used for reconstructing ancestral sequences, which places the mutations on the branches",
           "more": ""
         },
         {
@@ -3925,8 +3925,40 @@
             "DENSE"
           ],
           "conflicts": [],
-          "help": "Use dense representation (stores full probability vectors at each position)",
-          "more": ""
+          "help": "Use the dense representation of the sequences on the tree",
+          "more": "The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used."
+        },
+        {
+          "key": "sample_from_profile",
+          "label": "Sample from profile",
+          "flag": "--sample-from-profile",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "argmax",
+              "help": ""
+            },
+            {
+              "value": "root",
+              "help": ""
+            },
+            {
+              "value": "all",
+              "help": ""
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "argmax",
+          "examples": [],
+          "value_names": [
+            "SAMPLE_FROM_PROFILE"
+          ],
+          "conflicts": [],
+          "help": "How to pick ancestral states from the marginal posterior profile.",
+          "more": "'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`). 'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws."
         },
         {
           "key": "gap_fill",
@@ -4003,25 +4035,6 @@
           "more": ""
         },
         {
-          "key": "impute_missing_data",
-          "label": "Impute missing data",
-          "flag": "--impute-missing-data",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "IMPUTE_MISSING_DATA"
-          ],
-          "conflicts": [],
-          "help": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.",
-          "more": "Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`."
-        },
-        {
           "key": "reconstruct_tip_states",
           "label": "Reconstruct tip states",
           "flag": "--reconstruct-tip-states",
@@ -4037,8 +4050,8 @@
             "RECONSTRUCT_TIP_STATES"
           ],
           "conflicts": [],
-          "help": "v0-compatible alias for `--include-leaves --impute-missing-data`.",
-          "more": "Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state."
+          "help": "Same as `--include-leaves --impute-missing-data`: emit tip sequences with ambiguous and unknown states resolved to the most likely inferred state.",
+          "more": ""
         },
         {
           "key": "report_ambiguous",
@@ -4057,7 +4070,26 @@
           ],
           "conflicts": [],
           "help": "Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).",
-          "more": "By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT outputs, which store `N` as missing data and never contain these mutations, or the root `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence` reference and the inferred root and always omit `X` and gaps."
+          "more": "By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT outputs, which store `N` as missing data and never contain these mutations."
+        },
+        {
+          "key": "impute_missing_data",
+          "label": "Impute missing data",
+          "flag": "--impute-missing-data",
+          "group": "Ancestral reconstruction",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "IMPUTE_MISSING_DATA"
+          ],
+          "conflicts": [],
+          "help": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.",
+          "more": "Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous characters on terminal branches then disappear from the branch mutations. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`."
         },
         {
           "key": "aa_root_sequence",
@@ -4075,7 +4107,7 @@
           ],
           "conflicts": [],
           "help": "FASTA file with one amino-acid root/reference sequence per CDS.",
-          "more": ""
+          "more": "The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and always omit `X` and gaps."
         },
         {
           "key": "marginal",
@@ -4095,38 +4127,6 @@
           "conflicts": [],
           "help": "Shortcut for `--method-anc=marginal` (v0 compat)",
           "more": ""
-        },
-        {
-          "key": "sample_from_profile",
-          "label": "Sample from profile",
-          "flag": "--sample-from-profile",
-          "group": "Ancestral reconstruction",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "argmax",
-              "help": ""
-            },
-            {
-              "value": "root",
-              "help": ""
-            },
-            {
-              "value": "all",
-              "help": ""
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "argmax",
-          "examples": [],
-          "value_names": [
-            "SAMPLE_FROM_PROFILE"
-          ],
-          "conflicts": [],
-          "help": "How to pick ancestral states from the marginal posterior profile.",
-          "more": "'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's `sample_from_profile='root'`). Use `--seed` for reproducible draws. 'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`)."
         },
         {
           "key": "output_augur_node_data",
@@ -4180,7 +4180,7 @@
           ],
           "conflicts": [],
           "help": "Path to output reconstructed nucleotide FASTA.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
+          "more": "Holds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or `--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states. Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...)."
         },
         {
           "key": "output_reconstructed_aa_fasta",
@@ -4247,7 +4247,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -4441,7 +4441,7 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "help": "List of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
@@ -4492,7 +4492,7 @@
             "AMBIGUITY_OUTPUTS"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of the outputs that carry the ambiguity report.",
+          "help": "List of the outputs that carry the ambiguity report.",
           "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
         },
         {
@@ -4778,8 +4778,8 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
-          "more": ""
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -4915,7 +4915,7 @@
           ],
           "conflicts": [],
           "help": "Report sequence positions counted from 0 instead of 1.",
-          "more": "Applies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of `--drms`, which is always counted from 1."
+          "more": "Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
           "key": "ignore_missing_alns",
@@ -4934,7 +4934,7 @@
           ],
           "conflicts": [],
           "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
-          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0."
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS."
         },
         {
           "key": "model",
@@ -4986,7 +4986,7 @@
           ],
           "conflicts": [],
           "help": "Substitution model to use",
-          "more": "`--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
         },
         {
           "key": "model_params",
@@ -5004,8 +5004,8 @@
             "MODEL_PARAMS"
           ],
           "conflicts": [],
-          "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-          "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "site_specific_gtr",
@@ -5069,8 +5069,8 @@
             "DENSE"
           ],
           "conflicts": [],
-          "help": "Use dense representation (stores full probability vectors at each position)",
-          "more": ""
+          "help": "Use the dense representation of the sequences on the tree",
+          "more": "The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used."
         },
         {
           "key": "gap_fill",
@@ -5144,7 +5144,7 @@
           ],
           "conflicts": [],
           "help": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.",
-          "more": "Changes involving ambiguous characters on terminal branches then disappear from the report. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`."
+          "more": "Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous characters on terminal branches then disappear from the branch mutations. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`."
         },
         {
           "key": "sample_from_profile",
@@ -5176,7 +5176,7 @@
           ],
           "conflicts": [],
           "help": "How to pick ancestral states from the marginal posterior profile.",
-          "more": "'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere. 'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws."
+          "more": "'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`). 'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws."
         },
         {
           "key": "seed",
@@ -5340,7 +5340,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -5562,8 +5562,8 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection."
+          "help": "List of outputs to produce with `--output-all`.",
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
           "key": "ladderize",
@@ -5927,8 +5927,8 @@
             "METADATA"
           ],
           "conflicts": [],
-          "help": "CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...",
-          "more": ""
+          "help": "Metadata table (CSV or TSV) with one row per sample",
+          "more": "`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits."
         },
         {
           "key": "weights",
@@ -6132,7 +6132,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -6326,7 +6326,7 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "help": "List of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {
@@ -6377,7 +6377,7 @@
             "AMBIGUITY_OUTPUTS"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of the outputs that carry the ambiguity report.",
+          "help": "List of the outputs that carry the ambiguity report.",
           "more": "Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`."
         },
         {
@@ -6728,8 +6728,8 @@
         "Substitution model",
         "Ancestral reconstruction",
         "Output",
-        "Tree ordering",
         "Branch lengths",
+        "Tree ordering",
         "Rooting"
       ],
       "main_settings": [
@@ -6794,8 +6794,8 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
-          "more": ""
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -6964,7 +6964,7 @@
           ],
           "conflicts": [],
           "help": "Substitution model to use",
-          "more": "`--model infer` infers a model from the data. Alternatively, specify the model type. If the specified model requires additional options, use `--model-params` to specify those."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
         },
         {
           "key": "model_params",
@@ -6982,8 +6982,8 @@
             "MODEL_PARAMS"
           ],
           "conflicts": [],
-          "help": "Parameters for the model selected by `--model`, given as a `key=value` list",
-          "more": "Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "partition_rates",
@@ -6996,11 +6996,11 @@
           "options": [
             {
               "value": "estimate",
-              "help": "Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1."
+              "help": "Estimate one relative rate per partition, normalized to a site-weighted mean of 1."
             },
             {
               "value": "equal",
-              "help": "Fix the relative rate of every alignment file at 1."
+              "help": "Fix the relative rate of every partition at 1."
             }
           ],
           "item_kind": "string",
@@ -7010,8 +7010,8 @@
             "PARTITION_RATES"
           ],
           "conflicts": [],
-          "help": "Relative substitution rates of the alignment files",
-          "more": "With two or more `--alignment` files, all files share the branch lengths, and each file has one relative rate that scales them for the sites of that file. `estimate` fits the rate of each file with the rest of its substitution model fixed (a file with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each file, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.\n\nWith one alignment file, this setting has no effect: the run estimates no relative rate."
+          "help": "Relative substitution rates of the partitions",
+          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate."
         },
         {
           "key": "dense",
@@ -7028,8 +7028,8 @@
             "DENSE"
           ],
           "conflicts": [],
-          "help": "Use dense representation of sequences on the tree",
-          "more": "Dense mode stores full probability vectors at every alignment position for each node. Sparse mode stores only variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory."
+          "help": "Use the dense representation of the sequences on the tree",
+          "more": "The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory. When unset, the sparse representation is used."
         },
         {
           "key": "gap_fill",
@@ -7133,7 +7133,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -7287,8 +7287,8 @@
             "DIVERGENCE_UNITS"
           ],
           "conflicts": [],
-          "help": "Units for divergence values in augur node data JSON output.",
-          "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count."
+          "help": "Units of the divergence values in the augur node data and Auspice outputs.",
+          "more": "`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state do not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths (`--branch-length-mode=input`)."
         },
         {
           "key": "output_augur_node_data",
@@ -7383,8 +7383,202 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "help": "List of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+        },
+        {
+          "key": "no_indels",
+          "label": "No indels",
+          "flag": "--no-indels",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "NO_INDELS"
+          ],
+          "conflicts": [],
+          "help": "Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length distributions.",
+          "more": "When set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the time inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and TreeTime 0.x. By default, indels count."
+        },
+        {
+          "key": "max_iter",
+          "label": "Iterations",
+          "flag": "--max-iter",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "integer",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 10,
+          "minimum": 0.0,
+          "examples": [],
+          "value_names": [
+            "MAX_ITER"
+          ],
+          "conflicts": [],
+          "help": "Maximum number of iterations of the inference loop",
+          "more": "Polytomy resolution and coalescent models of the time inference need at least 2 iterations."
+        },
+        {
+          "key": "dp",
+          "label": "DP",
+          "flag": "--dp",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "number",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 0.1,
+          "examples": [],
+          "value_names": [
+            "DP"
+          ],
+          "conflicts": [],
+          "help": "Likelihood convergence threshold. The loop stops when successive likelihoods differ by less than this value, or when a 2-cycle with amplitude below this value is detected.",
+          "more": ""
+        },
+        {
+          "key": "damping",
+          "label": "Damping",
+          "flag": "--damping",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "number",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": 0.0,
+          "examples": [],
+          "value_names": [
+            "DAMPING"
+          ],
+          "conflicts": [],
+          "help": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$, where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation; zero disables damping. Must be in $[0,1)$.",
+          "more": ""
+        },
+        {
+          "key": "branch_length_initial_guess",
+          "label": "Branch length initial guess",
+          "flag": "--branch-length-initial-guess",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "auto",
+              "help": "Estimate only edges with missing or invalid branch lengths, preserve valid input values. No-op when all edges have finite branch lengths."
+            },
+            {
+              "value": "always",
+              "help": "Estimate all edges, overwriting input branch lengths."
+            },
+            {
+              "value": "never",
+              "help": "Use input branch lengths as-is. Fails if any edge has a missing or invalid branch length."
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "auto",
+          "examples": [],
+          "value_names": [
+            "BRANCH_LENGTH_INITIAL_GUESS"
+          ],
+          "conflicts": [],
+          "help": "Initial branch length estimate before the per-edge optimization.",
+          "more": "- auto: estimate only edges with missing or invalid branch lengths, preserve valid input values (default) - always: estimate all edges, overwriting input branch lengths - never: use input branch lengths as-is; fails if any are missing"
+        },
+        {
+          "key": "opt_method",
+          "label": "Optimization method",
+          "flag": "--opt-method",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "enum",
+          "nullable": false,
+          "options": [
+            {
+              "value": "brent",
+              "help": "Brent's method in $\\sqrt{t}$ space."
+            },
+            {
+              "value": "newton",
+              "help": "Newton-Raphson in $\\sqrt{t}$ space."
+            }
+          ],
+          "item_kind": "string",
+          "default_value": "brent",
+          "examples": [],
+          "value_names": [
+            "OPT_METHOD"
+          ],
+          "conflicts": [],
+          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent` (default) and `newton`.",
+          "more": ""
+        },
+        {
+          "key": "no_collapse_short_branches",
+          "label": "No collapse short branches",
+          "flag": "--no-collapse-short-branches",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "NO_COLLAPSE_SHORT_BRANCHES"
+          ],
+          "conflicts": [],
+          "help": "Disable collapsing of internal branches whose optimized length is zero.",
+          "more": "By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero."
+        },
+        {
+          "key": "no_merge_siblings",
+          "label": "No merge siblings",
+          "flag": "--no-merge-siblings",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "NO_MERGE_SIBLINGS"
+          ],
+          "conflicts": [],
+          "help": "Disable merging of polytomy siblings that share substitutions.",
+          "more": "By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op."
+        },
+        {
+          "key": "no_flip_parent_child",
+          "label": "No flip parent child",
+          "flag": "--no-flip-parent-child",
+          "group": "Branch lengths",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "NO_FLIP_PARENT_CHILD"
+          ],
+          "conflicts": [],
+          "help": "Disable the flip-parent-child step (reversion hoist) in polytomies.",
+          "more": "By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op."
         },
         {
           "key": "ladderize",
@@ -7571,200 +7765,6 @@
           "more": ""
         },
         {
-          "key": "max_iter",
-          "label": "Iterations",
-          "flag": "--max-iter",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "integer",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 10,
-          "minimum": 0.0,
-          "examples": [],
-          "value_names": [
-            "MAX_ITER"
-          ],
-          "conflicts": [],
-          "help": "Maximum number of iterations",
-          "more": ""
-        },
-        {
-          "key": "dp",
-          "label": "DP",
-          "flag": "--dp",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 0.1,
-          "examples": [],
-          "value_names": [
-            "DP"
-          ],
-          "conflicts": [],
-          "help": "Likelihood convergence threshold. The loop stops when successive likelihoods differ by less than this value, or when a 2-cycle with amplitude below this value is detected.",
-          "more": ""
-        },
-        {
-          "key": "damping",
-          "label": "Damping",
-          "flag": "--damping",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "number",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": 0.0,
-          "examples": [],
-          "value_names": [
-            "DAMPING"
-          ],
-          "conflicts": [],
-          "help": "Damping factor $d$ for outer-loop updates: $b=b_{new}(1-d)+b_{old}d$, where $d=max(damping^{i+1},0.01)$. Higher values reduce oscillation; zero disables damping. Must be in $[0,1)$.",
-          "more": ""
-        },
-        {
-          "key": "branch_length_initial_guess",
-          "label": "Branch length initial guess",
-          "flag": "--branch-length-initial-guess",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "auto",
-              "help": "Estimate only edges with missing or invalid branch lengths, preserve valid input values. No-op when all edges have finite branch lengths."
-            },
-            {
-              "value": "always",
-              "help": "Estimate all edges, overwriting input branch lengths."
-            },
-            {
-              "value": "never",
-              "help": "Use input branch lengths as-is. Fails if any edge has a missing or invalid branch length."
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "auto",
-          "examples": [],
-          "value_names": [
-            "BRANCH_LENGTH_INITIAL_GUESS"
-          ],
-          "conflicts": [],
-          "help": "Initial branch length estimate before the per-edge optimization.",
-          "more": "- auto: estimate only edges with missing or invalid branch lengths, preserve valid input values (default) - always: estimate all edges, overwriting input branch lengths - never: use input branch lengths as-is; fails if any are missing"
-        },
-        {
-          "key": "opt_method",
-          "label": "Optimization method",
-          "flag": "--opt-method",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "enum",
-          "nullable": false,
-          "options": [
-            {
-              "value": "brent",
-              "help": "Brent's method in $\\sqrt{t}$ space."
-            },
-            {
-              "value": "newton",
-              "help": "Newton-Raphson in $\\sqrt{t}$ space."
-            }
-          ],
-          "item_kind": "string",
-          "default_value": "brent",
-          "examples": [],
-          "value_names": [
-            "OPT_METHOD"
-          ],
-          "conflicts": [],
-          "help": "Per-edge optimizer. Both methods optimize in $\\sqrt{t}$ space. Values are `brent` (default) and `newton`.",
-          "more": ""
-        },
-        {
-          "key": "no_indels",
-          "label": "No indels",
-          "flag": "--no-indels",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "NO_INDELS"
-          ],
-          "conflicts": [],
-          "help": "Disable indel (insertion/deletion) contributions to branch-length optimization.",
-          "more": "When set, the optimizer uses substitution-only likelihood, matching standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and enabling v0 parity testing. Default: indels enabled."
-        },
-        {
-          "key": "no_collapse_short_branches",
-          "label": "No collapse short branches",
-          "flag": "--no-collapse-short-branches",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "NO_COLLAPSE_SHORT_BRANCHES"
-          ],
-          "conflicts": [],
-          "help": "Disable collapsing of internal branches whose optimized length is zero.",
-          "more": "By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero."
-        },
-        {
-          "key": "no_merge_siblings",
-          "label": "No merge siblings",
-          "flag": "--no-merge-siblings",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "NO_MERGE_SIBLINGS"
-          ],
-          "conflicts": [],
-          "help": "Disable merging of polytomy siblings that share substitutions.",
-          "more": "By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op."
-        },
-        {
-          "key": "no_flip_parent_child",
-          "label": "No flip parent child",
-          "flag": "--no-flip-parent-child",
-          "group": "Branch lengths",
-          "role": "setting",
-          "kind": "switch",
-          "nullable": false,
-          "options": [],
-          "item_kind": "string",
-          "default_value": false,
-          "examples": [],
-          "value_names": [
-            "NO_FLIP_PARENT_CHILD"
-          ],
-          "conflicts": [],
-          "help": "Disable the flip-parent-child step (reversion hoist) in polytomies.",
-          "more": "By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--dense` and the flag is then a no-op."
-        },
-        {
           "key": "reroot",
           "label": "Reroot method",
           "flag": "--reroot",
@@ -7809,7 +7809,7 @@
             "keep_root",
             "reroot"
           ],
-          "help": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
+          "help": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
           "more": ""
         },
         {
@@ -7831,8 +7831,8 @@
             "reroot",
             "reroot_tips"
           ],
-          "help": "Keep the input tree root instead of rerooting.",
-          "more": "Optimize keeps the input root by default; this flag is the explicit form and is mutually exclusive with the reroot options."
+          "help": "Keep the root of the input tree instead of rerooting it.",
+          "more": ""
         }
       ]
     },
@@ -7909,8 +7909,8 @@
             "FILEPATH"
           ],
           "conflicts": [],
-          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.",
-          "more": ""
+          "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -8076,7 +8076,7 @@
             "OUTPUT_NWK_STYLE"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.",
+          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
           "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
         },
         {
@@ -8276,7 +8276,7 @@
             "OUTPUT_SELECTION"
           ],
           "conflicts": [],
-          "help": "Comma-separated list of outputs to produce with `--output-all`.",
+          "help": "List of outputs to produce with `--output-all`.",
           "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
         },
         {

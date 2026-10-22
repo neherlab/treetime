@@ -43,7 +43,7 @@ pub fn run_homoplasy(
     tree_dialect: args.tree_dialect.dialect(),
     alphabet_args: &args.alphabet_args,
     gap_fill_args: &args.gap_fill_args,
-    ignore_missing_alns: args.ignore_missing_alns,
+    ignore_missing_alns: args.missing_sequences.ignore_missing_alns,
   };
   let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
   let [AlignmentSource { source, n_records, .. }] = <[AlignmentSource; 1]>::try_from(sources)
@@ -109,7 +109,7 @@ pub fn run_homoplasy(
     &ResultContext {
       names: &names,
       drms: drms.as_ref(),
-      zero_based: args.zero_based,
+      zero_based: args.zero_based.zero_based,
     },
   );
   let report = render_homoplasy_report(&result, args.num_mut, args.detailed);

@@ -1,15 +1,18 @@
-use crate::commands::ancestral::args::SampleModeCli;
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
-use crate::commands::shared::method_anc::MethodAncestralCli;
+use crate::commands::shared::method_anc::{MethodAncArgs, SampleFromProfileArgs};
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output_args::{HomoplasyOutputSelection, OutputCoreArgs};
+use crate::commands::shared::output_args::{HomoplasyOutputSelectionArgs, OutputCoreArgs};
+use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::seed::SeedArgs;
+use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
+use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
-use crate::commands::shared::tree_input::TreeDialectArgs;
+use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
+use crate::commands::shared::zero_based::ZeroBasedArgs;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -27,10 +30,10 @@ pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> An
   AncestralParams {
     method: args.method_anc,
     model: args.model_args.model_name(),
-    dense: args.dense,
+    dense: args.representation.dense,
     include_leaves: false,
     report_ambiguous: true,
-    impute_missing_data: args.impute_missing_data,
+    impute_missing_data: args.impute_missing_data.impute_missing_data,
     site_specific_gtr: args.site_specific_gtr,
     seed,
     sample_from_profile: args.sample_from_profile,
@@ -53,6 +56,7 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
   fn try_from(raw: TreetimeHomoplasyArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeHomoplasyArgsRaw>(&["tree"]))?;
     if !raw.rescale.is_finite() || raw.rescale <= 0.0 {
@@ -67,8 +71,8 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
     }
     Ok(Self {
       tree,
-      method_anc: raw.method_anc.into(),
-      sample_from_profile: raw.sample_from_profile.into(),
+      method_anc: raw.method_anc.method_anc.into(),
+      sample_from_profile: raw.sample_from_profile.sample_from_profile.into(),
       raw,
     })
   }
@@ -94,11 +98,10 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Tree in Newick format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -115,41 +118,35 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
-  /// Method used for reconstructing ancestral sequences, which places the mutations on the branches
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
-  pub method_anc: MethodAncestralCli,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub method_anc: MethodAncArgs,
 
-  /// Use dense representation (stores full probability vectors at each position)
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub dense: Option<bool>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub representation: RepresentationArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
 
-  /// Report sequence positions counted from 0 instead of 1.
-  ///
-  /// Applies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of
-  /// `--drms`, which is always counted from 1.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub zero_based: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub zero_based: ZeroBasedArgs,
 
-  /// Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-  /// inferred state.
-  ///
-  /// Changes involving ambiguous characters on terminal branches then disappear from the report.
-  /// Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub impute_missing_data: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub impute_missing_data: ImputeMissingDataArgs,
 
-  /// Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
-  /// instead of aborting.
-  ///
-  /// Without this flag the run aborts when more than one third of the tips lack a sequence, matching
-  /// TreeTime v0.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub ignore_missing_alns: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
 
   /// Use site-specific GTR model with per-site equilibrium frequencies.
   ///
@@ -159,16 +156,10 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, hide = true, help_heading = "Substitution model"))]
   pub site_specific_gtr: bool,
 
-  /// How to pick ancestral states from the marginal posterior profile.
-  ///
-  /// 'argmax': most likely state at every node (deterministic, default).
-  /// 'root': sample from the posterior at the root only, argmax elsewhere.
-  /// 'all': sample from the posterior at every node.
-  ///
-  /// Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible
-  /// draws.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = SampleModeCli::default(), help_heading = "Ancestral reconstruction"))]
-  pub sample_from_profile: SampleModeCli,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub sample_from_profile: SampleFromProfileArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -245,16 +236,10 @@ pub struct TreetimeHomoplasyArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_homoplasy_report: Option<PathBuf>,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
-  ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-  /// available for this command. Requires `--output-all`. Per-file flags are always honored
-  /// regardless of this selection.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
-  )]
-  pub output_selection: Vec<HomoplasyOutputSelection>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: HomoplasyOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

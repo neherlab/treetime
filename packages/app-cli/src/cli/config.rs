@@ -258,7 +258,7 @@ mod tests {
           Some(dir.path().join("out"))
         ),
         (
-          args.tree,
+          args.tree.tree,
           args.alignment.alignment,
           args.metadata,
           args.output.output_all
@@ -511,6 +511,7 @@ mod tests {
     use app_commands::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
     use app_commands::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
     use app_commands::commands::shared::alignment::AlignmentArgs;
+    use app_commands::commands::shared::tree_input::TreeArgs;
     use app_commands::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use pretty_assertions::assert_eq;
     use treetime_utils::assert_error;
@@ -526,7 +527,9 @@ mod tests {
     #[test]
     fn test_config_required_ancestral_with_tree_ok() {
       let raw = TreetimeAncestralArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         ..Default::default()
       };
       let args = TreetimeAncestralArgs::try_from(raw).unwrap();
@@ -560,7 +563,9 @@ mod tests {
     #[test]
     fn test_config_required_clock_missing_metadata_errors() {
       let raw = TreetimeClockArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         ..Default::default()
       };
       assert_error!(
@@ -580,7 +585,9 @@ mod tests {
     #[test]
     fn test_config_required_mugration_only_attribute_missing_lists_attribute() {
       let raw = TreetimeMugrationArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         metadata: Some("metadata.tsv".into()),
         ..Default::default()
       };
@@ -593,7 +600,9 @@ mod tests {
     #[test]
     fn test_config_required_mugration_only_metadata_missing_lists_metadata() {
       let raw = TreetimeMugrationArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         attribute: Some("country".to_owned()),
         ..Default::default()
       };
@@ -622,7 +631,9 @@ mod tests {
     #[test]
     fn test_config_required_timetree_rejects_plots_before_running() {
       let raw = TreetimeTimetreeArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         plot_rtt: Some("rtt.png".into()),
         ..Default::default()
       };
@@ -632,7 +643,9 @@ mod tests {
     #[test]
     fn test_config_required_timetree_with_tree_and_alignment_ok() {
       let raw = TreetimeTimetreeArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         alignment: AlignmentArgs {
           alignment: vec!["aln.fasta".into()],
         },

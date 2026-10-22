@@ -57,10 +57,10 @@ pub fn run_clock(
   let resolved = clock_args.resolve_outputs()?;
 
   let params = ClockParams {
-    clock_filter: clock_args.clock_filter,
-    keep_root: clock_args.keep_root,
-    allow_negative_rate: clock_args.allow_negative_rate,
-    reroot_spec: clock_args.reroot.spec(&graph, &names)?,
+    clock_filter: clock_args.clock_filter.clock_filter,
+    keep_root: clock_args.rooting.keep_root,
+    allow_negative_rate: clock_args.clock_filter.allow_negative_rate,
+    reroot_spec: clock_args.reroot.spec(&clock_args.rooting, &graph, &names)?,
   };
 
   let input = ClockInput {

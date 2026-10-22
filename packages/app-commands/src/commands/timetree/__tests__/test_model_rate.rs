@@ -3,7 +3,10 @@ mod tests {
   use crate::__tests__::test_support::tests::project_root;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
+  use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
+  use crate::commands::shared::representation::RepresentationArgs;
+  use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use app_output::output_plan::OutputSelection;
@@ -32,20 +35,20 @@ mod tests {
     let output = tempfile::tempdir()?;
     let dir = project_root().join("data/flu/h3n2/20");
     let args = TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw {
-      alignment: AlignmentArgs {
+alignment: AlignmentArgs {
         alignment: vec![dir.join("aln.fasta.xz")],
       },
-      tree: Some(dir.join("tree.nwk")),
-      metadata: Some(dir.join("metadata.tsv")),
-      dense: Some(dense),
-      max_iter: 1,
-      output: OutputCoreArgs {
+tree: TreeArgs { tree: Some(dir.join("tree.nwk")) },
+metadata: Some(dir.join("metadata.tsv")),
+representation: RepresentationArgs { dense: Some(dense) },
+max_iter: 1,
+output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()
       },
-      output_selection: vec![TimetreeOutputSelection::Gtr, TimetreeOutputSelection::ClockModel],
-      ..TreetimeTimetreeArgsRaw::default()
-    })?;
+output_selection: TimetreeOutputSelectionArgs { output_selection: vec![TimetreeOutputSelection::Gtr, TimetreeOutputSelection::ClockModel] },
+..TreetimeTimetreeArgsRaw::default()
+})?;
 
     run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
@@ -85,6 +88,10 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
+    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::reroot::RootingArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use std::iter::repeat_n;
     use treetime::clock::rtt::ClockRegressionResult;
 
@@ -116,19 +123,24 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![alignment],
         },
-        tree: Some(tree),
+        tree: TreeArgs { tree: Some(tree) },
         metadata: Some(metadata),
         model_args: ModelArgs {
           model,
           ..ModelArgs::default()
         },
-        dense: Some(dense),
-        keep_root: true,
+        representation: RepresentationArgs { dense: Some(dense) },
+        rooting: RootingArgs {
+          keep_root: true,
+          ..RootingArgs::default()
+        },
         output: OutputCoreArgs {
           output_all: Some(output.clone()),
           ..OutputCoreArgs::default()
         },
-        output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+        output_selection: TimetreeOutputSelectionArgs {
+          output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+        },
         ..TreetimeTimetreeArgsRaw::default()
       })?;
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;

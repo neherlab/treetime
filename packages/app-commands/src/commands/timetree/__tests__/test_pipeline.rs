@@ -2,8 +2,10 @@
 mod tests {
   use crate::__tests__::test_support::tests::project_root;
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::topology_order_args::{LadderizeArg, TopologyOrderArgs};
+  use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::{Report, WrapErr};
@@ -25,7 +27,9 @@ mod tests {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
-      tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      tree: TreeArgs {
+        tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      },
       metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 3,
       output: OutputCoreArgs {
@@ -96,14 +100,18 @@ mod tests {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
-      tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      tree: TreeArgs {
+        tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      },
       metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 0,
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()
       },
-      output_selection: vec![TimetreeOutputSelection::Auspice],
+      output_selection: TimetreeOutputSelectionArgs {
+        output_selection: vec![TimetreeOutputSelection::Auspice],
+      },
       topology_order: TopologyOrderArgs {
         ladderize: Some(LadderizeArg::Descending),
         ..TopologyOrderArgs::default()
@@ -131,7 +139,9 @@ mod tests {
       alignment: AlignmentArgs {
         alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
       },
-      tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      tree: TreeArgs {
+        tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+      },
       metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
       max_iter: 3,
       coalescent_skyline: true,

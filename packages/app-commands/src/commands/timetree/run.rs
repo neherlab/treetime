@@ -55,7 +55,7 @@ pub fn run_timetree_estimation(
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
   let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, args.branch_length_mode, log)?;
-  let mutation_units = matches!(args.divergence_units, DivergenceUnits::Mutations);
+  let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
   if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
     return make_error!(
       "--divergence-units=mutations requires ancestral reconstruction; \
@@ -68,7 +68,7 @@ pub fn run_timetree_estimation(
   let seed = args
     .seed_args
     .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
-  let reroot_spec = args.reroot.spec(&input_data.graph, &input_data.names)?;
+  let reroot_spec = args.reroot.spec(&args.rooting, &input_data.graph, &input_data.names)?;
   let params = timetree_params(args, reroot_spec, sequence_outputs_requested, seed);
 
   let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
@@ -120,7 +120,7 @@ pub fn run_timetree_estimation(
   write_model_outputs(&resolved, &output, log)?;
   let tree_inputs = TreeOutputInputs {
     input_leaf_order,
-    report_ambiguous: args.report_ambiguous,
+    report_ambiguous: args.tip_sequences.report_ambiguous,
     mutation_units,
   };
   write_result_outputs(args, &resolved, output, tree_inputs, log)?;
@@ -137,17 +137,17 @@ fn timetree_params(
 ) -> TimetreeParams {
   TimetreeParams {
     model: args.model_args.model_name(),
-    dense: args.dense,
+    dense: args.representation.dense,
     branch_length_mode: args.branch_length_mode,
     indel_policy: args.indel_policy,
     partition_rates: args.partition_rates_args.partition_rates(),
     sequence_length: args.sequence_length,
     clock_rate: args.clock_rate,
     clock_std_dev: args.clock_std_dev,
-    keep_root: args.keep_root,
+    keep_root: args.rooting.keep_root,
     reroot_spec,
-    allow_negative_rate: args.allow_negative_rate,
-    clock_filter: args.clock_filter,
+    allow_negative_rate: args.clock_filter.allow_negative_rate,
+    clock_filter: args.clock_filter.clock_filter,
     max_iter: args.max_iter,
     resolve_polytomies: args.resolve_polytomies,
     relax: args.relax.clone(),
@@ -162,7 +162,7 @@ fn timetree_params(
     time_marginal: args.time_marginal,
     confidence: args.confidence,
     include_leaves: args.include_leaves,
-    report_ambiguous: args.report_ambiguous,
+    report_ambiguous: args.tip_sequences.report_ambiguous,
     impute_missing_data: args.impute_missing_data,
     sequence_outputs_requested,
     seed,

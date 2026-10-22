@@ -3,6 +3,8 @@ pub mod alphabet;
 pub mod ambiguity;
 pub mod ancestral_trees;
 pub mod branch_length_mode;
+pub mod branch_lengths;
+pub mod clock_filter;
 pub mod config;
 pub mod dates_input;
 pub mod gap_fill;
@@ -15,12 +17,15 @@ pub mod mirror_enum;
 pub mod model;
 pub mod output_args;
 pub mod reconstructed_fasta;
+pub mod representation;
 pub mod required;
 pub mod reroot;
 pub mod seed;
 pub mod sequence_inputs;
+pub mod tip_sequences;
 pub mod topology_order_args;
 pub mod tree_input;
+pub mod zero_based;
 
 #[cfg(test)]
 mod __tests__;

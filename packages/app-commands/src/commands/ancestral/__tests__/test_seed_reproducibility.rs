@@ -39,11 +39,16 @@ mod tests {
 
   mod helpers {
     use crate::__tests__::test_support::tests::RecordingLog;
-    use crate::commands::ancestral::args::{SampleModeCli, TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
+    use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::method_anc::SampleFromProfileArgs;
+    use crate::commands::shared::method_anc::SampleModeCli;
     use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
+    use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
     use crate::commands::shared::seed::SeedArgs;
+    use crate::commands::shared::tip_sequences::TipSequenceArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use eyre::{Report, WrapErr};
     use std::fs;
     use std::path::Path;
@@ -56,14 +61,23 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![dir.join("aln.fasta")],
         },
-        tree: Some(dir.join("tree.nwk")),
+        tree: TreeArgs {
+          tree: Some(dir.join("tree.nwk")),
+        },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
-        include_leaves: true,
-        output_reconstructed_nuc_fasta: Some(fasta_path.clone()),
-        sample_from_profile: SampleModeCli::All,
+        tip_sequences: TipSequenceArgs {
+          include_leaves: true,
+          ..TipSequenceArgs::default()
+        },
+        reconstructed_fasta_output: ReconstructedFastaOutputArgs {
+          output_reconstructed_nuc_fasta: Some(fasta_path.clone()),
+        },
+        sample_from_profile: SampleFromProfileArgs {
+          sample_from_profile: SampleModeCli::All,
+        },
         seed_args: SeedArgs { seed },
         ..TreetimeAncestralArgsRaw::default()
       })?;

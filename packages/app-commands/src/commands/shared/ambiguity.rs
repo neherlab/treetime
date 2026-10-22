@@ -45,11 +45,11 @@ macro_rules! ambiguity_args {
       #[cfg_attr(feature = "clap", clap(long, help_heading = "Output"))]
       pub ambiguity_threshold: Option<AmbiguityThreshold>,
 
-      /// Comma-separated list of the outputs that carry the ambiguity report.
+      /// List of the outputs that carry the ambiguity report.
       ///
       /// Without this list, every output of the run that can carry the report carries it. Requires
       /// `--ambiguity-threshold`.
-      #[cfg_attr(feature = "clap", clap(long, value_delimiter = ',', help_heading = "Output"))]
+      #[cfg_attr(feature = "clap", clap(long, num_args = 1.., value_delimiter = ',', help_heading = "Output"))]
       pub ambiguity_outputs: Vec<$output>,
     }
 

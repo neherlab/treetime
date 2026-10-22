@@ -57,7 +57,7 @@ mod tests {
   #[rstest]
   #[case::timetree_input(    AppCommand::Timetree,  "tree",                        "Input data")]
   #[case::timetree_clock(    AppCommand::Timetree,  "clock_rate",                  "Molecular clock")]
-  #[case::timetree_dating(   AppCommand::Timetree,  "max_iter",                    "Dating")]
+  #[case::timetree_dating(   AppCommand::Timetree,  "max_grid_points",             "Dating")]
   #[case::optimize_iter(     AppCommand::Optimize,  "max_iter",                    "Branch lengths")]
   #[case::prune_threshold(   AppCommand::Prune,     "prune_short",                 "Pruning")]
   #[case::clock_flattened(   AppCommand::Clock,     "reroot",                      "Rooting")]

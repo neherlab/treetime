@@ -32,28 +32,38 @@ pub struct RerootArgs {
     )
   )]
   reroot: Option<RerootMethodCli>,
-
-  /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
-  #[cfg_attr(
-    feature = "clap",
-    clap(
-      long = "reroot-tips",
-      value_delimiter = ',',
-      conflicts_with = "reroot",
-      help_heading = "Rooting"
-    )
-  )]
-  reroot_tips: Vec<String>,
 }
 
 impl RerootArgs {
-  pub fn spec(&self, graph: &Graph, names: &NodeNames) -> Result<RerootSpec, Report> {
-    if self.reroot_tips.is_empty() {
+  pub fn spec(&self, rooting: &RootingArgs, graph: &Graph, names: &NodeNames) -> Result<RerootSpec, Report> {
+    if rooting.reroot_tips.is_empty() {
       Ok(RerootSpec::Method(self.reroot.map(Into::into).unwrap_or_default()))
     } else {
-      Ok(RerootSpec::Tips(resolve_reroot_tips(&self.reroot_tips, graph, names)?))
+      Ok(RerootSpec::Tips(resolve_reroot_tips(
+        &rooting.reroot_tips,
+        graph,
+        names,
+      )?))
     }
   }
+}
+
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct RootingArgs {
+  /// Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, num_args = 1.., value_delimiter = ',', conflicts_with = "reroot", help_heading = "Rooting")
+  )]
+  pub reroot_tips: Vec<String>,
+
+  /// Keep the root of the input tree instead of rerooting it.
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
+  pub keep_root: bool,
 }
 
 pub fn resolve_reroot_tips(tips: &[String], graph: &Graph, names: &NodeNames) -> Result<Vec<GraphNodeKey>, Report> {
@@ -87,7 +97,7 @@ impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest
 
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::reroot::{RerootArgs, RerootMethodCli, resolve_reroot_tips};
+  use crate::commands::shared::reroot::{RerootArgs, RerootMethodCli, RootingArgs, resolve_reroot_tips};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
@@ -103,7 +113,7 @@ mod tests {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = RerootArgs::default();
 
-    let actual = args.spec(&tree.graph, &tree.names).unwrap();
+    let actual = args.spec(&RootingArgs::default(), &tree.graph, &tree.names).unwrap();
 
     assert_eq!(RerootSpec::Method(RerootMethod::LeastSquares), actual);
   }
@@ -113,10 +123,9 @@ mod tests {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let args = RerootArgs {
       reroot: Some(RerootMethodCli::MinDev),
-      ..RerootArgs::default()
     };
 
-    let actual = args.spec(&tree.graph, &tree.names).unwrap();
+    let actual = args.spec(&RootingArgs::default(), &tree.graph, &tree.names).unwrap();
 
     assert_eq!(RerootSpec::Method(RerootMethod::MinDev), actual);
   }
@@ -124,12 +133,12 @@ mod tests {
   #[test]
   fn test_reroot_args_tips_spec_resolves_leaf_keys() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
-    let args = RerootArgs {
+    let rooting = RootingArgs {
       reroot_tips: vec![o!("B"), o!("C")],
-      ..RerootArgs::default()
+      ..RootingArgs::default()
     };
 
-    let actual = args.spec(&tree.graph, &tree.names).unwrap();
+    let actual = RerootArgs::default().spec(&rooting, &tree.graph, &tree.names).unwrap();
 
     let expected = vec![helpers::leaf_keys(&tree, "B")[0], helpers::leaf_keys(&tree, "C")[0]];
     assert_eq!(RerootSpec::Tips(expected), actual);

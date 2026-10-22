@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::seed::SeedArgs;
+  use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TimeMarginalModeCli, TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use app_output::output_plan::OutputSelection;
@@ -31,17 +33,21 @@ mod tests {
       alignment: AlignmentArgs {
         alignment: vec![data.join("aln.fasta.xz")],
       },
-      tree: Some(data.join("tree.nwk")),
+      tree: TreeArgs {
+        tree: Some(data.join("tree.nwk")),
+      },
       metadata: Some(data.join("metadata.tsv")),
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()
       },
-      output_selection: vec![
-        TimetreeOutputSelection::Nwk,
-        TimetreeOutputSelection::ConfidenceTsv,
-        TimetreeOutputSelection::ReconstructedNucFasta,
-      ],
+      output_selection: TimetreeOutputSelectionArgs {
+        output_selection: vec![
+          TimetreeOutputSelection::Nwk,
+          TimetreeOutputSelection::ConfidenceTsv,
+          TimetreeOutputSelection::ReconstructedNucFasta,
+        ],
+      },
       time_marginal: TimeMarginalModeCli::OnlyFinal,
       resolve_polytomies,
       seed_args: SeedArgs { seed: Some(7) },

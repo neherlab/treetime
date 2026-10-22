@@ -60,6 +60,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::reroot::RootingArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
 
     pub(super) fn args_with(
       reroot: Option<OptimizeRerootMethod>,
@@ -67,10 +69,11 @@ mod tests {
       keep_root: bool,
     ) -> TreetimeOptimizeArgs {
       TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
-        tree: Some("tree.nwk".into()),
+        tree: TreeArgs {
+          tree: Some("tree.nwk".into()),
+        },
         reroot,
-        reroot_tips,
-        keep_root,
+        rooting: RootingArgs { reroot_tips, keep_root },
         ..Default::default()
       })
       .unwrap()

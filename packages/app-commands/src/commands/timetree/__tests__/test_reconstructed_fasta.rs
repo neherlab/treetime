@@ -147,6 +147,8 @@ mod tests {
   mod helpers {
     use crate::__tests__::test_support::tests::project_root;
     use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
     use app_output::output_plan::{OutputSelection, PlannedFile, Requested, ResolvedOutputs};
@@ -185,10 +187,14 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![root.join("data/flu/h3n2/20/aln.fasta.xz")],
         },
-        tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+        tree: TreeArgs {
+          tree: Some(root.join("data/flu/h3n2/20/tree.nwk")),
+        },
         metadata: Some(root.join("data/flu/h3n2/20/metadata.tsv")),
         max_iter: 2,
-        output_reconstructed_nuc_fasta: Some(fasta.clone()),
+        reconstructed_fasta_output: ReconstructedFastaOutputArgs {
+          output_reconstructed_nuc_fasta: Some(fasta.clone()),
+        },
         ..TreetimeTimetreeArgsRaw::default()
       })
       .unwrap();

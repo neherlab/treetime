@@ -55,7 +55,7 @@ pub fn run_optimize(
 
   let params = OptimizeParams {
     model: args.model_args.model_name(),
-    dense: args.dense,
+    dense: args.representation.dense,
     initial_guess: args.branch_length_initial_guess,
     reroot_spec: args.reroot_spec(&graph, &names)?,
     loop_settings: OptimizeLoopSettings {
@@ -103,7 +103,7 @@ pub fn run_optimize(
 
   write_gtr_output(&resolved, models, "no GTR model was fitted", log)?;
 
-  let mutation_counts = matches!(args.divergence_units, DivergenceUnits::Mutations)
+  let mutation_counts = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations)
     .then(|| total_mutation_counts(maps.values().map(|maps| &maps.edge_mutation_counts)));
   let sequences = results
     .iter()

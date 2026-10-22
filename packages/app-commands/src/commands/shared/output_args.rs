@@ -20,7 +20,7 @@ use treetime_io::nwk::NwkStyle;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 macro_rules! command_outputs {
-  ($name:ident for $raw:ty, $kind:ident $(alignment: $alignment:ident)? { $($extra:ident: $field:ident),* $(,)? }) => {
+  ($name:ident, $args:ident for $raw:ty, $kind:ident $(alignment: $alignment:ident)? { $($extra:ident: $($field:ident).+),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, schemars::JsonSchema, strum_macros::EnumIter, Serialize, Deserialize)]
     #[schemars(rename_all = "kebab-case")]
     #[deser(rename_all = "kebab-case")]
@@ -53,15 +53,41 @@ macro_rules! command_outputs {
       }
     }
 
+    #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+    #[schemars(default, deny_unknown_fields)]
+    #[schemars(transform = schema_defaults::<Self>)]
+    #[deser(default, deny_unknown_fields)]
+    #[cfg_attr(feature = "clap", derive(clap::Args))]
+    pub struct $args {
+      /// List of outputs to produce with `--output-all`.
+      ///
+      /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+      /// command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+      ///
+      /// A selected output that the run has no data for is skipped without a message, for example the substitution
+      /// model of a run that fits none. A per-file flag for such an output fails.
+      #[cfg_attr(
+        feature = "clap",
+        clap(long, num_args = 1.., value_delimiter = ',', requires = "output_all", help_heading = "Output")
+      )]
+      pub output_selection: Vec<$name>,
+    }
+
     impl ResolveOutputs for $raw {
       fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
-        let selection = self.output_selection.iter().copied().map(OutputSelection::from).collect_vec();
+        let selection = self
+          .output_selection
+          .output_selection
+          .iter()
+          .copied()
+          .map(OutputSelection::from)
+          .collect_vec();
         let alignment_count = 0 $(+ self.$alignment.alignment.len())?;
         self.output.resolve(
           CommandKind::$kind,
           partition_count(alignment_count),
           &selection,
-          &[$((OutputSelection::$extra, self.$field.as_deref())),*],
+          &[$((OutputSelection::$extra, self.$($field).+.as_deref())),*],
         )
       }
     }
@@ -76,43 +102,45 @@ fn partition_count(alignment_count: usize) -> NonZeroUsize {
   NonZeroUsize::new(alignment_count).unwrap_or(NonZeroUsize::MIN)
 }
 
-command_outputs!(AncestralOutputSelection for TreetimeAncestralArgsRaw, Ancestral alignment: alignment {
+command_outputs!(AncestralOutputSelection, AncestralOutputSelectionArgs for TreetimeAncestralArgsRaw, Ancestral alignment: alignment {
   AugurNodeData: output_augur_node_data,
-  Gtr: output_gtr,
-  ReconstructedNucFasta: output_reconstructed_nuc_fasta,
+  Gtr: gtr_output.output_gtr,
+  ReconstructedNucFasta: reconstructed_fasta_output.output_reconstructed_nuc_fasta,
   ReconstructedAaFasta: output_reconstructed_aa_fasta,
 });
-command_outputs!(TimetreeOutputSelection for TreetimeTimetreeArgsRaw, Timetree alignment: alignment {
+command_outputs!(TimetreeOutputSelection, TimetreeOutputSelectionArgs for TreetimeTimetreeArgsRaw, Timetree alignment: alignment {
   AugurNodeData: output_augur_node_data,
-  Gtr: output_gtr,
-  ReconstructedNucFasta: output_reconstructed_nuc_fasta,
-  ClockModel: output_clock_model,
-  ClockCsv: output_clock_csv,
+  Gtr: gtr_output.output_gtr,
+  ReconstructedNucFasta: reconstructed_fasta_output.output_reconstructed_nuc_fasta,
+  ClockModel: clock_output.output_clock_model,
+  ClockCsv: clock_output.output_clock_csv,
   ConfidenceTsv: output_confidence_tsv,
   Tracelog: output_tracelog,
   CoalescentTsv: output_coalescent_tsv,
   CoalescentCsv: output_coalescent_csv,
   CoalescentJson: output_coalescent_json,
 });
-command_outputs!(ClockOutputSelection for TreetimeClockArgsRaw, Clock {
-  ClockModel: output_clock_model,
-  ClockCsv: output_clock_csv,
+command_outputs!(ClockOutputSelection, ClockOutputSelectionArgs for TreetimeClockArgsRaw, Clock {
+  ClockModel: clock_output.output_clock_model,
+  ClockCsv: clock_output.output_clock_csv,
   ClockChartSvg: output_clock_chart_svg,
   ClockChartPng: output_clock_chart_png,
   ClockChartPdf: output_clock_chart_pdf,
 });
-command_outputs!(MugrationOutputSelection for TreetimeMugrationArgsRaw, Mugration {
+command_outputs!(MugrationOutputSelection, MugrationOutputSelectionArgs for TreetimeMugrationArgsRaw, Mugration {
   AugurNodeData: output_augur_node_data,
-  Gtr: output_gtr,
+  Gtr: gtr_output.output_gtr,
   ConfidenceCsv: output_confidence_csv,
   TraitsCsv: output_traits_csv,
 });
-command_outputs!(OptimizeOutputSelection for TreetimeOptimizeArgsRaw, Optimize alignment: alignment {
+command_outputs!(OptimizeOutputSelection, OptimizeOutputSelectionArgs for TreetimeOptimizeArgsRaw, Optimize alignment: alignment {
   AugurNodeData: output_augur_node_data,
-  Gtr: output_gtr,
+  Gtr: gtr_output.output_gtr,
 });
-command_outputs!(PruneOutputSelection for TreetimePruneArgsRaw, Prune alignment: alignment { Gtr: output_gtr });
-command_outputs!(HomoplasyOutputSelection for TreetimeHomoplasyArgsRaw, Homoplasy {
+command_outputs!(PruneOutputSelection, PruneOutputSelectionArgs for TreetimePruneArgsRaw, Prune alignment: alignment {
+  Gtr: gtr_output.output_gtr,
+});
+command_outputs!(HomoplasyOutputSelection, HomoplasyOutputSelectionArgs for TreetimeHomoplasyArgsRaw, Homoplasy {
   HomoplasyStats: output_homoplasy_stats,
   HomoplasyReport: output_homoplasy_report,
 });
@@ -157,11 +185,11 @@ pub struct OutputCoreArgs {
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,
 
-  /// NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+  /// NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
   ///
   /// Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
   /// secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-  #[cfg_attr(feature = "clap", clap(long, value_delimiter = ',', help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, num_args = 1.., value_delimiter = ',', help_heading = "Output"))]
   pub output_nwk_style: Vec<NwkStyleArg>,
 
   /// Path to output Newick tree file.
@@ -305,6 +333,31 @@ impl OutputCoreArgs {
     .filter_map(|(variant, path)| path.map(|path| (variant, path.to_path_buf())))
     .collect()
   }
+}
+
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct ClockOutputArgs {
+  /// Path to output clock model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_clock_model: Option<PathBuf>,
+
+  /// Path to output clock regression CSV.
+  ///
+  /// One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock
+  /// model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths
+  /// configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_clock_csv: Option<PathBuf>,
 }
 
 /// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.

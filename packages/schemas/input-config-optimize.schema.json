@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OptimizeConfig",
-  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,\n`optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its\nposition in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the\nalignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.",
+  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected\nby extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one\npartition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly\none file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard\ninput; `-` may appear at most once.",
+      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
       "type": "array",
       "items": {
         "type": "string"
@@ -48,13 +48,13 @@
       "x-cli-flag": "--alphabet"
     },
     "model": {
-      "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
+      "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
       "$ref": "#/$defs/GtrModelName",
       "default": "infer",
       "x-cli-flag": "--model"
     },
     "model_params": {
-      "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
+      "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model\nk80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
       "type": "array",
       "items": {
         "type": "string"
@@ -63,13 +63,13 @@
       "x-cli-flag": "--model-params"
     },
     "partition_rates": {
-      "description": "Relative substitution rates of the alignment files\n\nWith two or more `--alignment` files, all files share the branch lengths, and each file has\none relative rate that scales them for the sites of that file. `estimate` fits the rate of\neach file with the rest of its substitution model fixed (a file with `--model infer` starts\nfrom its fitted rate), then divides all rates by their mean weighted by the number of sites\nof each file, so that this mean is 1. The branch lengths are then expected substitutions per\nsite, averaged over all sites of all files. `equal` fixes the rate of every file at 1.\n\nWith one alignment file, this setting has no effect: the run estimates no relative rate.",
+      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate.",
       "$ref": "#/$defs/PartitionRates",
       "default": "estimate",
       "x-cli-flag": "--partition-rates"
     },
     "dense": {
-      "description": "Use dense representation of sequences on the tree\n\nDense mode stores full probability vectors at every alignment position for each\nnode. Sparse mode stores only variable positions. Dense is more accurate when\nbranches are long and many sites change, but uses more memory.",
+      "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
       "type": "boolean",
       "x-unset": true,
       "x-cli-flag": "--dense"
@@ -82,7 +82,7 @@
       "x-cli-flag": "--output-all"
     },
     "output_nwk_style": {
-      "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "description": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/NwkStyleArg"
@@ -139,8 +139,14 @@
       "x-unset": true,
       "x-cli-flag": "--output-tree-dot"
     },
+    "no_indels": {
+      "description": "Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length\ndistributions.\n\nWhen set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the\ntime inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML,\nBEAST) and TreeTime 0.x. By default, indels count.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--no-indels"
+    },
     "divergence_units": {
-      "description": "Units for divergence values in augur node data JSON output.\n\n`mutations-per-site` (default): branch divergence as substitutions per site.\n`mutations`: count of reconstructed substitutions per branch that change the state:\ngaps, `N`, and ambiguity codes compatible with the parent state do not count.",
+      "description": "Units of the divergence values in the augur node data and Auspice outputs.\n\n`mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed\nsubstitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state\ndo not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths\n(`--branch-length-mode=input`).",
       "$ref": "#/$defs/DivergenceUnits",
       "default": "mutations-per-site",
       "x-cli-flag": "--divergence-units"
@@ -160,7 +166,7 @@
       "x-cli-flag": "--output-gtr"
     },
     "output_selection": {
-      "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example\nthe substitution model of a run that fits none. A per-file flag for such an output fails.",
+      "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/OptimizeOutputSelection"
@@ -200,7 +206,7 @@
       "x-cli-flag": "--topology-order-target-aggregate"
     },
     "max_iter": {
-      "description": "Maximum number of iterations",
+      "description": "Maximum number of iterations of the inference loop\n\nPolytomy resolution and coalescent models of the time inference need at least 2 iterations.",
       "type": "integer",
       "format": "uint",
       "minimum": 0,
@@ -233,12 +239,6 @@
       "default": "brent",
       "x-cli-flag": "--opt-method"
     },
-    "no_indels": {
-      "description": "Disable indel (insertion/deletion) contributions to branch-length\noptimization.\n\nWhen set, the optimizer uses substitution-only likelihood, matching\nstandard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and\nenabling v0 parity testing. Default: indels enabled.",
-      "type": "boolean",
-      "default": false,
-      "x-cli-flag": "--no-indels"
-    },
     "reroot": {
       "description": "Reroot the tree by minimizing root-to-tip divergence variance.\n\nBy default, optimize keeps the input root. Pass --reroot or --reroot=min-dev\nto enable divergence-based rerooting. Date-dependent methods (least-squares,\noldest, clock-filter) are available in the timetree and clock commands.",
       "$ref": "#/$defs/OptimizeRerootMethod",
@@ -246,7 +246,7 @@
       "x-cli-flag": "--reroot"
     },
     "reroot_tips": {
-      "description": "Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.",
+      "description": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
       "type": "array",
       "items": {
         "type": "string"
@@ -255,7 +255,7 @@
       "x-cli-flag": "--reroot-tips"
     },
     "keep_root": {
-      "description": "Keep the input tree root instead of rerooting.\n\nOptimize keeps the input root by default; this flag is the explicit form and\nis mutually exclusive with the reroot options.",
+      "description": "Keep the root of the input tree instead of rerooting it.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--keep-root"
@@ -329,12 +329,12 @@
     "PartitionRates": {
       "oneOf": [
         {
-          "description": "Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1.",
+          "description": "Estimate one relative rate per partition, normalized to a site-weighted mean of 1.",
           "type": "string",
           "const": "estimate"
         },
         {
-          "description": "Fix the relative rate of every alignment file at 1.",
+          "description": "Fix the relative rate of every partition at 1.",
           "type": "string",
           "const": "equal"
         }

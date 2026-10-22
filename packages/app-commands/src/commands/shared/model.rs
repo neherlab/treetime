@@ -19,8 +19,8 @@ use treetime_schema::schema_defaults;
 pub struct ModelArgs {
   /// Substitution model to use
   ///
-  /// `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-  /// specified model requires additional options, use `--model-params` to specify those.
+  /// `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
+  /// name the model type. If the named model takes parameters, use `--model-params` to set them.
   #[default(GtrModelNameCli::Infer)]
   #[cfg_attr(
     feature = "clap",
@@ -28,14 +28,16 @@ pub struct ModelArgs {
   )]
   pub model: GtrModelNameCli,
 
-  /// Parameters for the model selected by `--model`, given as a `key=value` list
+  /// Parameters for the model selected by `--model`, given as space-separated `key=value` items
   ///
-  /// Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+  /// The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
+  /// k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
   #[cfg_attr(
     feature = "clap",
     clap(
       long = "model-params",
       visible_alias = "gtr-params",
+      num_args = 1..,
       help_heading = "Substitution model"
     )
   )]
@@ -75,23 +77,23 @@ pub enum GtrModelNameCli {
 
 impl_from_mirror!(GtrModelNameCli => GtrModelName { Infer, JC69, K80, F81, HKY85, T92, TN93, Jtt92 });
 
-/// Relative rates of the alignment files, shared by the commands that optimize branch lengths.
+/// Relative rates of the partitions, shared by the commands that optimize branch lengths.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct PartitionRatesArgs {
-  /// Relative substitution rates of the alignment files
+  /// Relative substitution rates of the partitions
   ///
-  /// With two or more `--alignment` files, all files share the branch lengths, and each file has
-  /// one relative rate that scales them for the sites of that file. `estimate` fits the rate of
-  /// each file with the rest of its substitution model fixed (a file with `--model infer` starts
-  /// from its fitted rate), then divides all rates by their mean weighted by the number of sites
-  /// of each file, so that this mean is 1. The branch lengths are then expected substitutions per
-  /// site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+  /// Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,
+  /// and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the
+  /// rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from
+  /// its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that
+  /// this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
+  /// partitions. `equal` fixes the rate of every partition at 1.
   ///
-  /// With one alignment file, this setting has no effect: the run estimates no relative rate.
+  /// With one partition, this setting has no effect: the run estimates no relative rate.
   #[default(PartitionRatesCli::Estimate)]
   #[cfg_attr(
     feature = "clap",
@@ -112,10 +114,10 @@ impl PartitionRatesArgs {
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "PartitionRates")]
 pub enum PartitionRatesCli {
-  /// Estimate one relative rate per alignment file, normalized to a site-weighted mean of 1.
+  /// Estimate one relative rate per partition, normalized to a site-weighted mean of 1.
   #[default]
   Estimate,
-  /// Fix the relative rate of every alignment file at 1.
+  /// Fix the relative rate of every partition at 1.
   Equal,
 }
 

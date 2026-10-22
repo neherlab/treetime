@@ -1,10 +1,32 @@
 use app_output::output_plan::{OutputSelection, ResolvedOutputs, output_unavailable};
+#[cfg(feature = "clap")]
+use clap::ValueHint;
+use deser::{Deserialize, Serialize};
 use eyre::Report;
+use schemars::JsonSchema;
+use std::path::PathBuf;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel};
 use treetime::gtr::gtr::GTR;
 use treetime::partition::result::PartitionResult;
 use treetime::progress::LogSink;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
+#[schemars(default, deny_unknown_fields)]
+#[schemars(transform = schema_defaults::<Self>)]
+#[deser(default, deny_unknown_fields)]
+#[cfg_attr(feature = "clap", derive(clap::Args))]
+pub struct GtrOutputArgs {
+  /// Path to output GTR model JSON.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_gtr: Option<PathBuf>,
+}
 
 pub(crate) fn write_gtr_output(
   resolved: &ResolvedOutputs,

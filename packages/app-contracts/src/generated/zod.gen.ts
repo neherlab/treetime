@@ -1428,10 +1428,8 @@ export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1479,11 +1477,11 @@ export const zTimetreeConfig = z.strictObject({
   tip_labels: z.boolean().optional(),
   no_tip_labels: z.boolean().optional(),
   clock_filter: z.number().optional(),
+  allow_negative_rate: z.boolean().optional(),
   n_iqd: z.number().optional(),
   reroot: zRerootMethod.optional(),
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
-  allow_negative_rate: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
@@ -1494,9 +1492,9 @@ export const zTimetreeConfig = z.strictObject({
   keep_overhangs: z.boolean().optional(),
   zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
-  impute_missing_data: z.boolean().optional(),
   reconstruct_tip_states: z.boolean().optional(),
   report_ambiguous: z.boolean().optional(),
+  impute_missing_data: z.boolean().optional(),
   no_indels: z.boolean().optional(),
   divergence_units: zDivergenceUnits.optional(),
   output_augur_node_data: z.string().optional(),
@@ -1552,10 +1550,8 @@ export const zClockOutputSelection = z.enum([
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export const zClockConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1585,11 +1581,11 @@ export const zClockConfig = z.strictObject({
   branch_length_mode: zBranchLengthMode.optional(),
   method_anc: zMethodAncestral.optional(),
   clock_filter: z.number().optional(),
+  allow_negative_rate: z.boolean().optional(),
   reroot: zRerootMethod.optional(),
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   prune_short: z.boolean().optional(),
-  allow_negative_rate: z.boolean().optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),
   output_tree_nwk: z.string().optional(),
@@ -1614,6 +1610,12 @@ export const zClockConfig = z.strictObject({
   plot_rtt: z.string().optional(),
   prune_outliers: z.boolean().optional()
 });
+
+export const zSampleMode = z.enum([
+  'argmax',
+  'root',
+  'all'
+]);
 
 /**
  * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
@@ -1649,19 +1651,11 @@ export const zAncestralAmbiguityOutput = z.union([
   z.literal('augur-node-data')
 ]);
 
-export const zSampleMode = z.enum([
-  'argmax',
-  'root',
-  'all'
-]);
-
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1686,13 +1680,14 @@ export const zAncestralConfig = z.strictObject({
   model_params: z.array(z.string()).optional(),
   method_anc: zMethodAncestral.optional(),
   dense: z.boolean().optional(),
+  sample_from_profile: zSampleMode.optional(),
   gap_fill: zGapFill.optional(),
   keep_overhangs: z.boolean().optional(),
   zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
-  impute_missing_data: z.boolean().optional(),
   reconstruct_tip_states: z.boolean().optional(),
   report_ambiguous: z.boolean().optional(),
+  impute_missing_data: z.boolean().optional(),
   ignore_missing_alns: z.boolean().optional(),
   output_augur_node_data: z.string().optional(),
   output_gtr: z.string().optional(),
@@ -1724,8 +1719,7 @@ export const zAncestralConfig = z.strictObject({
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   aa: z.boolean().optional(),
   marginal: z.boolean().optional(),
-  custom_gtr: z.string().optional(),
-  sample_from_profile: zSampleMode.optional()
+  custom_gtr: z.string().optional()
 });
 
 export const zHomoplasyOutputSelection = z.enum([
@@ -1744,10 +1738,8 @@ export const zHomoplasyOutputSelection = z.enum([
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export const zHomoplasyConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1925,10 +1917,8 @@ export const zOptimizeRerootMethod = z.enum(['min-dev']);
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1961,6 +1951,7 @@ export const zOptimizeConfig = z.strictObject({
   output_tree_mat_json: z.string().optional(),
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
+  no_indels: z.boolean().optional(),
   divergence_units: zDivergenceUnits.optional(),
   output_augur_node_data: z.string().optional(),
   output_gtr: z.string().optional(),
@@ -1975,7 +1966,6 @@ export const zOptimizeConfig = z.strictObject({
   damping: z.number().optional(),
   branch_length_initial_guess: zInitialGuessMode.optional(),
   opt_method: zBranchOptMethod.optional(),
-  no_indels: z.boolean().optional(),
   reroot: zOptimizeRerootMethod.optional(),
   reroot_tips: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
@@ -2001,10 +1991,8 @@ export const zPruneOutputSelection = z.enum([
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),

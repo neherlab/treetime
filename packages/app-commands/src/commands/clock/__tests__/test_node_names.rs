@@ -2,7 +2,9 @@
 mod tests {
   use crate::commands::clock::args::{TreetimeClockArgs, TreetimeClockArgsRaw};
   use crate::commands::clock::run::run_clock;
+  use crate::commands::shared::output_args::ClockOutputSelectionArgs;
   use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs};
+  use crate::commands::shared::tree_input::TreeArgs;
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
@@ -17,13 +19,17 @@ mod tests {
     let output = tempfile::tempdir()?;
     let data = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/flu/h3n2/20");
     let raw = TreetimeClockArgsRaw {
-      tree: Some(data.join("tree.nwk")),
+      tree: TreeArgs {
+        tree: Some(data.join("tree.nwk")),
+      },
       metadata: Some(data.join("metadata.tsv")),
       output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
         ..OutputCoreArgs::default()
       },
-      output_selection: vec![ClockOutputSelection::Nwk],
+      output_selection: ClockOutputSelectionArgs {
+        output_selection: vec![ClockOutputSelection::Nwk],
+      },
       ..TreetimeClockArgsRaw::default()
     };
 

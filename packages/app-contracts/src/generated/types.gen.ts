@@ -2743,18 +2743,15 @@ export type TopologyOrderTargetAggregateArg = 'mean' | 'median';
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export type TimetreeConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
-   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
-   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
-   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
-   * input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+   *
+   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -2776,7 +2773,10 @@ export type TimetreeConfig = {
    */
   vcf_reference?: string;
   /**
-   * CSV/TSV file with metadata including sampling dates
+   * Metadata table (CSV or TSV) with one row per sample
+   *
+   * `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
+   * sample, such as its sampling date or its traits.
    */
   metadata?: string;
   /**
@@ -2859,8 +2859,9 @@ export type TimetreeConfig = {
    */
   relax?: Array<number>;
   /**
-   * maximal number of iterations the inference cycle is run. For polytomy resolution and
-   * coalescence models max_iter should be at least 2
+   * Maximum number of iterations of the inference loop
+   *
+   * Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
    */
   max_iter?: number;
   /**
@@ -2935,10 +2936,19 @@ export type TimetreeConfig = {
    */
   no_tip_labels?: boolean;
   /**
-   * ignore tips that don't follow a loose clock, 'clock-filter=number of inter-quartile ranges from
-   * regression'. Default=3.0, set to 0 to switch off.
+   * Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression
+   * beyond which a tip is an outlier.
+   *
+   * 0 switches the filter off.
    */
   clock_filter?: number;
+  /**
+   * Allow negative clock rates.
+   *
+   * By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction
+   * gives essentially mid-point rooting.
+   */
+  allow_negative_rate?: boolean;
   /**
    * Number of IQD (interquartile distance) for clock filter outlier detection
    */
@@ -2950,46 +2960,42 @@ export type TimetreeConfig = {
    */
   reroot?: RerootMethod;
   /**
-   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+   * Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
    */
   reroot_tips?: Array<string>;
   /**
-   * don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
-   * root-to-tip distance and sampling time
+   * Keep the root of the input tree instead of rerooting it.
    */
   keep_root?: boolean;
   /**
-   * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-   */
-  allow_negative_rate?: boolean;
-  /**
    * Substitution model to use
    *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
+   * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
+   * name the model type. If the named model takes parameters, use `--model-params` to set them.
    */
   model?: GtrModelName;
   /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
+   * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
+   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
-   * Relative substitution rates of the alignment files
+   * Relative substitution rates of the partitions
    *
-   * With two or more `--alignment` files, all files share the branch lengths, and each file has
-   * one relative rate that scales them for the sites of that file. `estimate` fits the rate of
-   * each file with the rest of its substitution model fixed (a file with `--model infer` starts
-   * from its fitted rate), then divides all rates by their mean weighted by the number of sites
-   * of each file, so that this mean is 1. The branch lengths are then expected substitutions per
-   * site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+   * Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,
+   * and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the
+   * rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from
+   * its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that
+   * this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
+   * partitions. `equal` fixes the rate of every partition at 1.
    *
-   * With one alignment file, this setting has no effect: the run estimates no relative rate.
+   * With one partition, this setting has no effect: the run estimates no relative rate.
    */
   partition_rates?: PartitionRates;
   /**
-   * Method used for reconstructing ancestral sequences
+   * Method used for reconstructing ancestral sequences, which places the mutations on the branches
    */
   method_anc?: MethodAncestral;
   /**
@@ -3000,7 +3006,11 @@ export type TimetreeConfig = {
    */
   alphabet?: AlphabetName;
   /**
-   * Use dense representation for sequences (store full probability distributions)
+   * Use the dense representation of the sequences on the tree
+   *
+   * The dense representation stores the probabilities of every state at every alignment position of each node; the
+   * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
+   * sites change, but uses more memory. When unset, the sparse representation is used.
    */
   dense?: boolean;
   /**
@@ -3016,7 +3026,10 @@ export type TimetreeConfig = {
    */
   keep_overhangs?: boolean;
   /**
-   * Zero-based mutation indexing
+   * Report sequence positions counted from 0 instead of 1.
+   *
+   * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
+   * counted from 1.
    */
   zero_based?: boolean;
   /**
@@ -3024,39 +3037,43 @@ export type TimetreeConfig = {
    */
   include_leaves?: boolean;
   /**
-   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-   * inferred state. Gaps are left as deletions.
-   */
-  impute_missing_data?: boolean;
-  /**
-   * v0-compatible alias for `--include-leaves --impute-missing-data`.
+   * Same as `--include-leaves --impute-missing-data`: emit tip sequences with ambiguous and unknown states resolved to
+   * the most likely inferred state.
    */
   reconstruct_tip_states?: boolean;
   /**
-   * Include branch mutations from or to the fully ambiguous nucleotide state `N`.
+   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
    *
-   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
-   * annotations and the Auspice JSON. Other ambiguity codes, such as `K` or `R`, are always
-   * reported. The MAT outputs store `N` as missing data and never contain these mutations.
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice
+   * JSON, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always
+   * reported. The flag does not affect the MAT outputs, which store `N` as missing data and never contain these
+   * mutations.
    */
   report_ambiguous?: boolean;
   /**
-   * Disable indel (insertion/deletion) contributions to branch-length
-   * optimization and branch-length distributions.
+   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
    *
-   * When set, branch-length optimization uses substitution-only likelihood
-   * and timetree branch distributions exclude the Poisson indel term.
-   * Matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST)
-   * and enables v0 parity testing. Default: indels enabled.
+   * Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous
+   * characters on terminal branches then disappear from the branch mutations. Only defined for marginal
+   * reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+   */
+  impute_missing_data?: boolean;
+  /**
+   * Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length
+   * distributions.
+   *
+   * When set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the
+   * time inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML,
+   * BEAST) and TreeTime 0.x. By default, indels count.
    */
   no_indels?: boolean;
   /**
-   * Units for divergence values in augur node data JSON and auspice output.
+   * Units of the divergence values in the augur node data and Auspice outputs.
    *
-   * `mutations-per-site` (default): branch divergence as substitutions per site.
-   * `mutations`: count of reconstructed substitutions per branch that change the state:
-   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
-   * Requires ancestral reconstruction (incompatible with `--branch-length-mode=input`).
+   * `mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed
+   * substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state
+   * do not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths
+   * (`--branch-length-mode=input`).
    */
   divergence_units?: DivergenceUnits;
   /**
@@ -3076,16 +3093,14 @@ export type TimetreeConfig = {
    */
   output_gtr?: string;
   /**
-   * Path to output reconstructed ancestral-sequence nucleotide FASTA.
+   * Path to output reconstructed nucleotide FASTA.
    *
-   * The v1 equivalent of TreeTime v0's `ancestral_sequences.fasta`: internal-node sequences
-   * reconstructed by the marginal pass, plus reconstructed tip sequences when `--include-leaves`
-   * (or `--reconstruct-tip-states`) is set. `--impute-missing-data` resolves ambiguous tip states.
+   * Holds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or
+   * `--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states. Takes precedence over paths
+   * configured with `--output-all` and `--output-selection`.
    *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
-   *
-   * With several `--alignment` files, one file is written per alignment, and the file name
-   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   * With several `--alignment` files, one file is written per alignment, and the file name must contain
+   * `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    */
   output_reconstructed_nuc_fasta?: string;
   /**
@@ -3097,10 +3112,9 @@ export type TimetreeConfig = {
   /**
    * Path to output clock regression CSV.
    *
-   * One row per sample as the final clock model saw it: the date the regression used, marked
-   * `input` or `inferred`, the root-to-tip distance it regressed on, the date the model predicts
-   * from that distance, and whether the clock filter excluded the sample. Not written by default.
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   * One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock
+   * model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths
+   * configured with `--output-all` and `--output-selection`.
    */
   output_clock_csv?: string;
   /**
@@ -3166,7 +3180,7 @@ export type TimetreeConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -3269,14 +3283,13 @@ export type TimetreeConfig = {
    */
   output_tree_dot?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
    *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<TimetreeOutputSelection>;
   /**
@@ -3291,7 +3304,7 @@ export type TimetreeConfig = {
    */
   ambiguity_threshold?: number;
   /**
-   * Comma-separated list of the outputs that carry the ambiguity report.
+   * List of the outputs that carry the ambiguity report.
    *
    * Without this list, every output of the run that can carry the report carries it. Requires
    * `--ambiguity-threshold`.
@@ -3351,18 +3364,15 @@ export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export type ClockConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
-   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
-   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
-   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
-   * input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+   *
+   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3384,7 +3394,10 @@ export type ClockConfig = {
    */
   vcf_reference?: string;
   /**
-   * CSV/TSV file with metadata including sampling dates
+   * Metadata table (CSV or TSV) with one row per sample
+   *
+   * `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
+   * sample, such as its sampling date or its traits.
    */
   metadata?: string;
   /**
@@ -3410,28 +3423,39 @@ export type ClockConfig = {
   /**
    * Substitution model to use
    *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
+   * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
+   * name the model type. If the named model takes parameters, use `--model-params` to set them.
    */
   model?: GtrModelName;
   /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
+   * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
+   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
-   * If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
+   * If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
    */
   branch_length_mode?: BranchLengthMode;
   /**
-   * Method used for reconstructing ancestral sequences
+   * Method used for reconstructing ancestral sequences, which places the mutations on the branches
    */
   method_anc?: MethodAncestral;
   /**
-   * ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
+   * Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression
+   * beyond which a tip is an outlier.
+   *
+   * 0 switches the filter off.
    */
   clock_filter?: number;
+  /**
+   * Allow negative clock rates.
+   *
+   * By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction
+   * gives essentially mid-point rooting.
+   */
+  allow_negative_rate?: boolean;
   /**
    * Reroot the tree by temporal-signal optimization.
    *
@@ -3439,19 +3463,14 @@ export type ClockConfig = {
    */
   reroot?: RerootMethod;
   /**
-   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+   * Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
    */
   reroot_tips?: Array<string>;
   /**
-   * don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
-   * root-to-tip distance and sampling time
+   * Keep the root of the input tree instead of rerooting it.
    */
   keep_root?: boolean;
   prune_short?: boolean;
-  /**
-   * By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-   */
-  allow_negative_rate?: boolean;
   /**
    * Write all default output files into this directory.
    *
@@ -3481,7 +3500,7 @@ export type ClockConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -3592,7 +3611,9 @@ export type ClockConfig = {
   /**
    * Path to output clock regression CSV.
    *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   * One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock
+   * model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths
+   * configured with `--output-all` and `--output-selection`.
    */
   output_clock_csv?: string;
   /**
@@ -3614,14 +3635,13 @@ export type ClockConfig = {
    */
   output_clock_chart_pdf?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
    *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<ClockOutputSelection>;
   /**
@@ -3658,6 +3678,8 @@ export type ClockConfig = {
   prune_outliers?: boolean;
 };
 
+export type SampleMode = 'argmax' | 'root' | 'all';
+
 /**
  * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
  * that are sound over an amino-acid alphabet.
@@ -3672,23 +3694,18 @@ export type AncestralOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'ma
 
 export type AncestralAmbiguityOutput = 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'augur-node-data';
 
-export type SampleMode = 'argmax' | 'root' | 'all';
-
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export type AncestralConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
-   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
-   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
-   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
-   * input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+   *
+   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -3719,24 +3736,39 @@ export type AncestralConfig = {
   /**
    * Substitution model to use
    *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
+   * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
+   * name the model type. If the named model takes parameters, use `--model-params` to set them.
    */
   model?: GtrModelName;
   /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
+   * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
+   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
-   * Method used for reconstructing ancestral sequences
+   * Method used for reconstructing ancestral sequences, which places the mutations on the branches
    */
   method_anc?: MethodAncestral;
   /**
-   * Use dense representation (stores full probability vectors at each position)
+   * Use the dense representation of the sequences on the tree
+   *
+   * The dense representation stores the probabilities of every state at every alignment position of each node; the
+   * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
+   * sites change, but uses more memory. When unset, the sparse representation is used.
    */
   dense?: boolean;
+  /**
+   * How to pick ancestral states from the marginal posterior profile.
+   *
+   * 'argmax': most likely state at every node (deterministic, default).
+   * 'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).
+   * 'all': sample from the posterior at every node.
+   *
+   * Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.
+   */
+  sample_from_profile?: SampleMode;
   /**
    * How to handle gap characters in input sequences
    *
@@ -3750,7 +3782,10 @@ export type AncestralConfig = {
    */
   keep_overhangs?: boolean;
   /**
-   * Zero-based mutation indexing
+   * Report sequence positions counted from 0 instead of 1.
+   *
+   * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
+   * counted from 1.
    */
   zero_based?: boolean;
   /**
@@ -3758,38 +3793,32 @@ export type AncestralConfig = {
    */
   include_leaves?: boolean;
   /**
-   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-   * inferred state.
+   * Same as `--include-leaves --impute-missing-data`: emit tip sequences with ambiguous and unknown states resolved to
+   * the most likely inferred state.
+   */
+  reconstruct_tip_states?: boolean;
+  /**
+   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for amino acids).
    *
-   * Gaps are left as deletions (inferred structure, not missing data). Only defined for marginal
+   * By default these mutations are omitted from the branch mutations of the Newick and Nexus annotations, the Auspice
+   * JSON, and the `muts` and `aa_muts` lists of augur node data. Other ambiguity codes, such as `K` or `R`, are always
+   * reported. The flag does not affect the MAT outputs, which store `N` as missing data and never contain these
+   * mutations.
+   */
+  report_ambiguous?: boolean;
+  /**
+   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
+   *
+   * Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous
+   * characters on terminal branches then disappear from the branch mutations. Only defined for marginal
    * reconstruction; a no-op with a warning under `--method-anc=parsimony`.
    */
   impute_missing_data?: boolean;
   /**
-   * v0-compatible alias for `--include-leaves --impute-missing-data`.
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *
-   * Emits tip sequences and resolves ambiguous/unknown tip states to the most likely inferred state.
-   */
-  reconstruct_tip_states?: boolean;
-  /**
-   * Include branch mutations from or to the fully ambiguous state (`N` for nucleotides, `X` for
-   * amino acids).
-   *
-   * By default these mutations are omitted from the branch mutations of the Newick and Nexus
-   * annotations, the Auspice JSON, and the `muts` and `aa_muts` lists of augur node data. Other
-   * ambiguity codes, such as `K` or `R`, are always reported. The flag does not affect the MAT
-   * outputs, which store `N` as missing data and never contain these mutations, or the root
-   * `aa_muts` of augur node data, which list the differences between the `--aa-root-sequence`
-   * reference and the inferred root and always omit `X` and gaps.
-   */
-  report_ambiguous?: boolean;
-  /**
-   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
-   * instead of aborting.
-   *
-   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching
-   * TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a
-   * given CDS.
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
+   * Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
    */
   ignore_missing_alns?: boolean;
   /**
@@ -3814,10 +3843,12 @@ export type AncestralConfig = {
   /**
    * Path to output reconstructed nucleotide FASTA.
    *
-   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   * Holds the reconstructed sequences of the internal nodes, and of the tips with `--include-leaves` or
+   * `--reconstruct-tip-states`; `--impute-missing-data` resolves ambiguous tip states. Takes precedence over paths
+   * configured with `--output-all` and `--output-selection`.
    *
-   * With several `--alignment` files, one file is written per alignment, and the file name
-   * must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   * With several `--alignment` files, one file is written per alignment, and the file name must contain
+   * `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
    */
   output_reconstructed_nuc_fasta?: string;
   /**
@@ -3829,7 +3860,7 @@ export type AncestralConfig = {
    */
   translations?: string;
   /**
-   * Comma-separated CDS names to reconstruct from `--translations`.
+   * CDS names to reconstruct from `--translations`.
    *
    * When omitted, the CDS set is derived from `--annotation`.
    */
@@ -3842,6 +3873,9 @@ export type AncestralConfig = {
   annotation?: string;
   /**
    * FASTA file with one amino-acid root/reference sequence per CDS.
+   *
+   * The root `aa_muts` of augur node data list the differences between this reference and the inferred root, and
+   * always omit `X` and gaps.
    */
   aa_root_sequence?: string;
   /**
@@ -3887,7 +3921,7 @@ export type AncestralConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -3990,14 +4024,13 @@ export type AncestralConfig = {
    */
   output_tree_dot?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
    *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<AncestralOutputSelection>;
   /**
@@ -4012,7 +4045,7 @@ export type AncestralConfig = {
    */
   ambiguity_threshold?: number;
   /**
-   * Comma-separated list of the outputs that carry the ambiguity report.
+   * List of the outputs that carry the ambiguity report.
    *
    * Without this list, every output of the run that can carry the report carries it. Requires
    * `--ambiguity-threshold`.
@@ -4064,17 +4097,6 @@ export type AncestralConfig = {
    * Load a custom GTR model from file (not yet implemented)
    */
   custom_gtr?: string;
-  /**
-   * How to pick ancestral states from the marginal posterior profile.
-   *
-   * 'argmax': most likely state at every node (deterministic, default).
-   * 'root': sample from the posterior at the root only, argmax elsewhere (matches augur's
-   * `sample_from_profile='root'`). Use `--seed` for reproducible draws.
-   * 'all': sample from the posterior at every node.
-   *
-   * Only affects marginal reconstruction (`--method-anc=marginal`).
-   */
-  sample_from_profile?: SampleMode;
 };
 
 export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'homoplasy-stats' | 'homoplasy-report';
@@ -4082,18 +4104,15 @@ export type HomoplasyOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'ma
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export type HomoplasyConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
-   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
-   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
-   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
-   * input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+   *
+   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -4120,14 +4139,15 @@ export type HomoplasyConfig = {
   /**
    * Substitution model to use
    *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
+   * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
+   * name the model type. If the named model takes parameters, use `--model-params` to set them.
    */
   model?: GtrModelName;
   /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
+   * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
+   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
@@ -4135,7 +4155,11 @@ export type HomoplasyConfig = {
    */
   method_anc?: MethodAncestral;
   /**
-   * Use dense representation (stores full probability vectors at each position)
+   * Use the dense representation of the sequences on the tree
+   *
+   * The dense representation stores the probabilities of every state at every alignment position of each node; the
+   * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
+   * sites change, but uses more memory. When unset, the sparse representation is used.
    */
   dense?: boolean;
   /**
@@ -4153,24 +4177,23 @@ export type HomoplasyConfig = {
   /**
    * Report sequence positions counted from 0 instead of 1.
    *
-   * Applies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of
-   * `--drms`, which is always counted from 1.
+   * Applies to the reported mutations and positions. An input table with positions, such as `--drms`, is always
+   * counted from 1.
    */
   zero_based?: boolean;
   /**
-   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely
-   * inferred state.
+   * Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
    *
-   * Changes involving ambiguous characters on terminal branches then disappear from the report.
-   * Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
+   * Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous
+   * characters on terminal branches then disappear from the branch mutations. Only defined for marginal
+   * reconstruction; a no-op with a warning under `--method-anc=parsimony`.
    */
   impute_missing_data?: boolean;
   /**
-   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)
-   * instead of aborting.
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *
-   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching
-   * TreeTime v0.
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
+   * Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
    */
   ignore_missing_alns?: boolean;
   /**
@@ -4185,11 +4208,10 @@ export type HomoplasyConfig = {
    * How to pick ancestral states from the marginal posterior profile.
    *
    * 'argmax': most likely state at every node (deterministic, default).
-   * 'root': sample from the posterior at the root only, argmax elsewhere.
+   * 'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).
    * 'all': sample from the posterior at every node.
    *
-   * Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible
-   * draws.
+   * Only affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.
    */
   sample_from_profile?: SampleMode;
   /**
@@ -4263,7 +4285,7 @@ export type HomoplasyConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -4383,11 +4405,13 @@ export type HomoplasyConfig = {
    */
   output_homoplasy_report?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
+   *
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<HomoplasyOutputSelection>;
   /**
@@ -4439,7 +4463,10 @@ export type MugrationConfig = {
    */
   attribute?: string;
   /**
-   * CSV or TSV file with discrete characters. #name,country,continent taxon1,micronesia,oceania ...
+   * Metadata table (CSV or TSV) with one row per sample
+   *
+   * `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
+   * sample, such as its sampling date or its traits.
    */
   metadata?: string;
   /**
@@ -4554,7 +4581,7 @@ export type MugrationConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -4657,14 +4684,13 @@ export type MugrationConfig = {
    */
   output_tree_dot?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
    *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<MugrationOutputSelection>;
   /**
@@ -4679,7 +4705,7 @@ export type MugrationConfig = {
    */
   ambiguity_threshold?: number;
   /**
-   * Comma-separated list of the outputs that carry the ambiguity report.
+   * List of the outputs that carry the ambiguity report.
    *
    * Without this list, every output of the run that can carry the report carries it. Requires
    * `--ambiguity-threshold`.
@@ -4736,18 +4762,15 @@ export type OptimizeRerootMethod = 'min-dev';
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export type OptimizeConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
-   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
-   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
-   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
-   * input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+   *
+   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -4774,35 +4797,36 @@ export type OptimizeConfig = {
   /**
    * Substitution model to use
    *
-   * `--model infer` infers a model from the data. Alternatively, specify the model type. If the
-   * specified model requires additional options, use `--model-params` to specify those.
+   * `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
+   * name the model type. If the named model takes parameters, use `--model-params` to set them.
    */
   model?: GtrModelName;
   /**
-   * Parameters for the model selected by `--model`, given as a `key=value` list
+   * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
+   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
-   * Relative substitution rates of the alignment files
+   * Relative substitution rates of the partitions
    *
-   * With two or more `--alignment` files, all files share the branch lengths, and each file has
-   * one relative rate that scales them for the sites of that file. `estimate` fits the rate of
-   * each file with the rest of its substitution model fixed (a file with `--model infer` starts
-   * from its fitted rate), then divides all rates by their mean weighted by the number of sites
-   * of each file, so that this mean is 1. The branch lengths are then expected substitutions per
-   * site, averaged over all sites of all files. `equal` fixes the rate of every file at 1.
+   * Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,
+   * and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the
+   * rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from
+   * its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that
+   * this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
+   * partitions. `equal` fixes the rate of every partition at 1.
    *
-   * With one alignment file, this setting has no effect: the run estimates no relative rate.
+   * With one partition, this setting has no effect: the run estimates no relative rate.
    */
   partition_rates?: PartitionRates;
   /**
-   * Use dense representation of sequences on the tree
+   * Use the dense representation of the sequences on the tree
    *
-   * Dense mode stores full probability vectors at every alignment position for each
-   * node. Sparse mode stores only variable positions. Dense is more accurate when
-   * branches are long and many sites change, but uses more memory.
+   * The dense representation stores the probabilities of every state at every alignment position of each node; the
+   * sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
+   * sites change, but uses more memory. When unset, the sparse representation is used.
    */
   dense?: boolean;
   /**
@@ -4834,7 +4858,7 @@ export type OptimizeConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -4937,11 +4961,21 @@ export type OptimizeConfig = {
    */
   output_tree_dot?: string;
   /**
-   * Units for divergence values in augur node data JSON output.
+   * Disable indel (insertion and deletion) contributions to branch-length optimization and branch-length
+   * distributions.
    *
-   * `mutations-per-site` (default): branch divergence as substitutions per site.
-   * `mutations`: count of reconstructed substitutions per branch that change the state:
-   * gaps, `N`, and ambiguity codes compatible with the parent state do not count.
+   * When set, branch-length optimization uses the substitution-only likelihood, and the branch distributions of the
+   * time inference exclude the Poisson indel term. This matches standard phylogenetic tools (RAxML, IQ-TREE, PhyML,
+   * BEAST) and TreeTime 0.x. By default, indels count.
+   */
+  no_indels?: boolean;
+  /**
+   * Units of the divergence values in the augur node data and Auspice outputs.
+   *
+   * `mutations-per-site` (default): branch divergence as substitutions per site. `mutations`: count of reconstructed
+   * substitutions per branch that change the state: gaps, `N`, and ambiguity codes compatible with the parent state
+   * do not count. `mutations` requires reconstructed sequences, so it does not work with input branch lengths
+   * (`--branch-length-mode=input`).
    */
   divergence_units?: DivergenceUnits;
   /**
@@ -4961,14 +4995,13 @@ export type OptimizeConfig = {
    */
   output_gtr?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
    *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<OptimizeOutputSelection>;
   /**
@@ -4992,7 +5025,9 @@ export type OptimizeConfig = {
    */
   topology_order_target_aggregate?: TopologyOrderTargetAggregateArg;
   /**
-   * Maximum number of iterations
+   * Maximum number of iterations of the inference loop
+   *
+   * Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
    */
   max_iter?: number;
   /**
@@ -5022,15 +5057,6 @@ export type OptimizeConfig = {
    */
   opt_method?: BranchOptMethod;
   /**
-   * Disable indel (insertion/deletion) contributions to branch-length
-   * optimization.
-   *
-   * When set, the optimizer uses substitution-only likelihood, matching
-   * standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
-   * enabling v0 parity testing. Default: indels enabled.
-   */
-  no_indels?: boolean;
-  /**
    * Reroot the tree by minimizing root-to-tip divergence variance.
    *
    * By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
@@ -5039,14 +5065,11 @@ export type OptimizeConfig = {
    */
   reroot?: OptimizeRerootMethod;
   /**
-   * Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
+   * Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
    */
   reroot_tips?: Array<string>;
   /**
-   * Keep the input tree root instead of rerooting.
-   *
-   * Optimize keeps the input root by default; this flag is the explicit form and
-   * is mutually exclusive with the reroot options.
+   * Keep the root of the input tree instead of rerooting it.
    */
   keep_root?: boolean;
   /**
@@ -5094,18 +5117,15 @@ export type PruneOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
  *
- * One flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,
- * `optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its
- * position in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the
- * alignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.
+ * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
+ * uncompressed FASTA from standard input and may appear at most once.
  */
 export type PruneConfig = {
   /**
-   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected
-   * by extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one
-   * partition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly
-   * one file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard
-   * input; `-` may appear at most once.
+   * Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
+   *
+   * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read
+   * uncompressed FASTA from standard input; `-` may appear at most once.
    */
   alignment?: Array<string>;
   /**
@@ -5158,7 +5178,7 @@ export type PruneConfig = {
    */
   output_all?: string;
   /**
-   * NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.
+   * NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
    *
    * Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
    * secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
@@ -5267,14 +5287,13 @@ export type PruneConfig = {
    */
   output_gtr?: string;
   /**
-   * Comma-separated list of outputs to produce with `--output-all`.
+   * List of outputs to produce with `--output-all`.
    *
-   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-   * available for this command. Requires `--output-all`. Per-file flags are always honored
-   * regardless of this selection.
+   * Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
+   * command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
    *
-   * A selected output that the run has no data for is skipped without a message, for example
-   * the substitution model of a run that fits none. A per-file flag for such an output fails.
+   * A selected output that the run has no data for is skipped without a message, for example the substitution
+   * model of a run that fits none. A per-file flag for such an output fails.
    */
   output_selection?: Array<PruneOutputSelection>;
   /**

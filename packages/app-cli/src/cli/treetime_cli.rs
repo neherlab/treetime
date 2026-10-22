@@ -171,10 +171,10 @@ pub(crate) struct TreetimePipelineArgs {
   #[clap(long, value_hint = ValueHint::DirPath)]
   pub output_all: Option<PathBuf>,
 
-  /// Run only these named steps (comma-separated), in the pipeline's list order.
+  /// Run only these named steps, in the pipeline's list order.
   ///
   /// A referenced upstream step that is not selected must already have its outputs on disk.
-  #[clap(long, value_delimiter = ',')]
+  #[clap(long, num_args = 1.., value_delimiter = ',')]
   pub steps: Vec<String>,
 
   /// Resolve and print the plan (steps, inputs, outputs) without running any step.

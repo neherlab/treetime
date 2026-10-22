@@ -1,14 +1,15 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
+use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
-use crate::commands::shared::method_anc::MethodAncestralCli;
+use crate::commands::shared::method_anc::MethodAncArgs;
 use crate::commands::shared::model::ModelArgs;
-use crate::commands::shared::output_args::{ClockOutputSelection, OutputCoreArgs};
+use crate::commands::shared::output_args::{ClockOutputArgs, ClockOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
-use crate::commands::shared::reroot::RerootArgs;
+use crate::commands::shared::reroot::{RerootArgs, RootingArgs};
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
-use crate::commands::shared::tree_input::TreeDialectArgs;
+use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -39,7 +40,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeClockArgsRaw) -> Result<Self, Report> {
-    let (tree, metadata) = match (raw.tree.clone(), raw.metadata.clone()) {
+    let (tree, metadata) = match (raw.tree.tree.clone(), raw.metadata.clone()) {
       (Some(tree), Some(metadata)) => (tree, metadata),
       (tree, metadata) => {
         let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
@@ -73,11 +74,10 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Tree in Newick format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -90,7 +90,10 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub vcf_reference: Option<PathBuf>,
 
-  /// CSV/TSV file with metadata including sampling dates
+  /// Metadata table (CSV or TSV) with one row per sample
+  ///
+  /// `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
+  /// sample, such as its sampling date or its traits.
   #[cfg_attr(
     feature = "clap",
     clap(long = "metadata", visible_alias = "dates", short = 'd', help_heading = "Input data")
@@ -114,57 +117,42 @@ pub struct TreetimeClockArgsRaw {
   #[deser(flatten)]
   pub model_args: ModelArgs,
 
-  /// If set to 'input', the provided branch length will be used without modification. Note that branch lengths optimized by treetime are only accurate at short evolutionary distances.
+  /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default(), help_heading = "Branch lengths"))]
   pub branch_length_mode: BranchLengthModeCli,
 
-  /// Method used for reconstructing ancestral sequences
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
-  pub method_anc: MethodAncestralCli,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub method_anc: MethodAncArgs,
 
-  /// ignore tips that don't follow a loose clock, 'clock-filter=number of interquartile ranges from regression'. Default=3.0, set to 0 to switch off.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value = "3.0", help_heading = "Molecular clock")
-  )]
-  #[default = 3.0]
-  pub clock_filter: f64,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub clock_filter: ClockFilterArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub reroot: RerootArgs,
 
-  /// don't reroot the tree. Otherwise, reroot to minimize the residual of the regression of
-  /// root-to-tip distance and sampling time
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
-  pub keep_root: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub rooting: RootingArgs,
 
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub prune_short: bool,
-
-  /// By default, rates are forced to be positive. For trees with little temporal signal it is advisable to remove this restriction to achieve essentially mid-point rooting.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
-  pub allow_negative_rate: bool,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
-  /// Path to output clock model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_clock_model: Option<PathBuf>,
-
-  /// Path to output clock regression CSV.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_clock_csv: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub clock_output: ClockOutputArgs,
 
   /// Path to output root-to-tip regression chart in SVG format.
   ///
@@ -187,19 +175,10 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_clock_chart_pdf: Option<PathBuf>,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
-  ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-  /// available for this command. Requires `--output-all`. Per-file flags are always honored
-  /// regardless of this selection.
-  ///
-  /// A selected output that the run has no data for is skipped without a message, for example
-  /// the substitution model of a run that fits none. A per-file flag for such an output fails.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
-  )]
-  pub output_selection: Vec<ClockOutputSelection>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: ClockOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

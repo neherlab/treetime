@@ -1,14 +1,17 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::branch_lengths::BranchLengthArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
+use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
-use crate::commands::shared::output_args::{DivergenceUnits, OptimizeOutputSelection, OutputCoreArgs};
+use crate::commands::shared::output_args::{OptimizeOutputSelectionArgs, OutputCoreArgs};
+use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
-use crate::commands::shared::reroot::resolve_reroot_tips;
+use crate::commands::shared::reroot::{RootingArgs, resolve_reroot_tips};
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
-use crate::commands::shared::tree_input::TreeDialectArgs;
+use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -42,7 +45,7 @@ impl TreetimeOptimizeArgs {
   }
 
   pub fn reroot_spec(&self, graph: &Graph, names: &NodeNames) -> Result<Option<RerootSpec>, Report> {
-    if self.keep_root {
+    if self.rooting.keep_root {
       return Ok(None);
     }
 
@@ -50,9 +53,9 @@ impl TreetimeOptimizeArgs {
       return Ok(Some(RerootSpec::Method(RerootMethod::from(method))));
     }
 
-    if !self.reroot_tips.is_empty() {
+    if !self.rooting.reroot_tips.is_empty() {
       return Ok(Some(RerootSpec::Tips(resolve_reroot_tips(
-        &self.reroot_tips,
+        &self.rooting.reroot_tips,
         graph,
         names,
       )?)));
@@ -68,17 +71,14 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
   fn try_from(raw: TreetimeOptimizeArgsRaw) -> Result<Self, Report> {
     let tree = raw
       .tree
+      .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
     Ok(Self {
       tree,
       branch_length_initial_guess: raw.branch_length_initial_guess.into(),
       opt_method: raw.opt_method.into(),
-      indel_policy: if raw.no_indels {
-        IndelPolicy::Exclude
-      } else {
-        IndelPolicy::Include
-      },
+      indel_policy: raw.branch_lengths.indel_policy(),
       topology_ops: TopologyOps {
         collapse_short_branches: !raw.no_collapse_short_branches,
         merge_siblings: !raw.no_merge_siblings,
@@ -109,11 +109,10 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
 
-  /// Tree in Newick format.
-  #[cfg_attr(feature = "clap", clap(long, short = 't', help_heading = "Input data"))]
-  #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
-  #[schemars(extend("x-path" = "input"))]
-  pub tree: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub tree: TreeArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -135,26 +134,20 @@ pub struct TreetimeOptimizeArgsRaw {
   #[deser(flatten)]
   pub partition_rates_args: PartitionRatesArgs,
 
-  /// Use dense representation of sequences on the tree
-  ///
-  /// Dense mode stores full probability vectors at every alignment position for each
-  /// node. Sparse mode stores only variable positions. Dense is more accurate when
-  /// branches are long and many sites change, but uses more memory.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Ancestral reconstruction"))]
-  pub dense: Option<bool>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub representation: RepresentationArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
 
-  /// Units for divergence values in augur node data JSON output.
-  ///
-  /// `mutations-per-site` (default): branch divergence as substitutions per site.
-  /// `mutations`: count of reconstructed substitutions per branch that change the state:
-  /// gaps, `N`, and ambiguity codes compatible with the parent state do not count.
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = DivergenceUnits::default(), help_heading = "Output"))]
-  pub divergence_units: DivergenceUnits,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub branch_lengths: BranchLengthArgs,
 
   /// Path to output augur-compatible node data JSON.
   ///
@@ -167,33 +160,24 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_augur_node_data: Option<PathBuf>,
 
-  /// Path to output GTR model JSON.
-  ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
-  #[schemars(extend("x-path" = "output"))]
-  pub output_gtr: Option<PathBuf>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub gtr_output: GtrOutputArgs,
 
-  /// Comma-separated list of outputs to produce with `--output-all`.
-  ///
-  /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output
-  /// available for this command. Requires `--output-all`. Per-file flags are always honored
-  /// regardless of this selection.
-  ///
-  /// A selected output that the run has no data for is skipped without a message, for example
-  /// the substitution model of a run that fits none. A per-file flag for such an output fails.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', requires = "output_all", help_heading = "Output")
-  )]
-  pub output_selection: Vec<OptimizeOutputSelection>,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub output_selection: OptimizeOutputSelectionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
 
-  /// Maximum number of iterations
+  /// Maximum number of iterations of the inference loop
+  ///
+  /// Polytomy resolution and coalescent models of the time inference need at least 2 iterations.
   #[cfg_attr(feature = "clap", clap(long, default_value_t = 10, help_heading = "Branch lengths"))]
   #[default = 10]
   pub max_iter: usize,
@@ -226,15 +210,6 @@ pub struct TreetimeOptimizeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long = "opt-method", value_enum, default_value_t = BranchOptMethodCli::default(), help_heading = "Branch lengths"))]
   pub opt_method: BranchOptMethodCli,
 
-  /// Disable indel (insertion/deletion) contributions to branch-length
-  /// optimization.
-  ///
-  /// When set, the optimizer uses substitution-only likelihood, matching
-  /// standard phylogenetic tools (RAxML, IQ-TREE, PhyML, BEAST) and
-  /// enabling v0 parity testing. Default: indels enabled.
-  #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
-  pub no_indels: bool,
-
   /// Reroot the tree by minimizing root-to-tip divergence variance.
   ///
   /// By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
@@ -250,19 +225,10 @@ pub struct TreetimeOptimizeArgsRaw {
   ))]
   pub reroot: Option<OptimizeRerootMethod>,
 
-  /// Reroot on the branch leading to a tip or the MRCA of a comma-separated tip list.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_delimiter = ',', conflicts_with = "reroot", help_heading = "Rooting")
-  )]
-  pub reroot_tips: Vec<String>,
-
-  /// Keep the input tree root instead of rerooting.
-  ///
-  /// Optimize keeps the input root by default; this flag is the explicit form and
-  /// is mutually exclusive with the reroot options.
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
-  pub keep_root: bool,
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub rooting: RootingArgs,
 
   /// Disable collapsing of internal branches whose optimized length is zero.
   ///

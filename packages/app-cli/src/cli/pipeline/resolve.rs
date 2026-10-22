@@ -330,6 +330,7 @@ mod tests {
     match &step.command {
       CommandConfig::Ancestral { config: args } => args
         .tree
+        .tree
         .as_deref()
         .expect("ancestral step has a tree")
         .to_string_lossy()

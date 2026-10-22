@@ -3,6 +3,8 @@ mod tests {
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
+  use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+  use crate::commands::shared::tree_input::TreeArgs;
   use eyre::Report;
   use std::fs;
   use std::path::PathBuf;
@@ -16,8 +18,12 @@ mod tests {
     let dir = tempdir()?;
     fs::write(dir.path().join("tree.nwk"), "(A:0.1,B:0.2)root;\n")?;
     let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
-      tree: Some(dir.path().join("tree.nwk")),
-      output_reconstructed_nuc_fasta: Some(dir.path().join("out.fasta")),
+      tree: TreeArgs {
+        tree: Some(dir.path().join("tree.nwk")),
+      },
+      reconstructed_fasta_output: ReconstructedFastaOutputArgs {
+        output_reconstructed_nuc_fasta: Some(dir.path().join("out.fasta")),
+      },
       ..TreetimeAncestralArgsRaw::default()
     })?;
 
@@ -33,11 +39,15 @@ mod tests {
     let dir = tempdir()?;
     fs::write(dir.path().join("tree.nwk"), "(A:0.1,B:0.2)root;\n")?;
     let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
-      tree: Some(dir.path().join("tree.nwk")),
+      tree: TreeArgs {
+        tree: Some(dir.path().join("tree.nwk")),
+      },
       alignment: AlignmentArgs {
         alignment: vec![PathBuf::from("-"), PathBuf::from("-")],
       },
-      output_reconstructed_nuc_fasta: Some(dir.path().join("out.fasta")),
+      reconstructed_fasta_output: ReconstructedFastaOutputArgs {
+        output_reconstructed_nuc_fasta: Some(dir.path().join("out.fasta")),
+      },
       ..TreetimeAncestralArgsRaw::default()
     })?;
 

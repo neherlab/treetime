@@ -30,7 +30,7 @@ mod tests {
         args.detailed,
         args.drms.as_deref().and_then(|path| path.to_str()),
         args.num_mut,
-        args.zero_based
+        args.zero_based.zero_based
       )
     );
     Ok(())
@@ -49,7 +49,7 @@ mod tests {
         args.detailed,
         args.drms.clone(),
         args.num_mut,
-        args.zero_based
+        args.zero_based.zero_based
       )
     );
     Ok(())

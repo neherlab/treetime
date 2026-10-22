@@ -41,7 +41,7 @@ mod tests {
     let output = tempfile::tempdir()?;
     let (rows, model) = run_zika(output.path(), &zika_dir().join("metadata.tsv"), |raw| {
       raw.max_iter = max_iter;
-      raw.keep_root = keep_root;
+      raw.rooting.keep_root = keep_root;
       raw.clock_rate = clock_rate;
     })?;
 
@@ -137,6 +137,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::output_args::TimetreeOutputSelectionArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn run_zika(
@@ -148,13 +150,17 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![zika_dir().join("aln.fasta.xz")],
         },
-        tree: Some(zika_dir().join("tree.nwk")),
+        tree: TreeArgs {
+          tree: Some(zika_dir().join("tree.nwk")),
+        },
         metadata: Some(metadata.to_path_buf()),
         output: OutputCoreArgs {
           output_all: Some(output.to_path_buf()),
           ..OutputCoreArgs::default()
         },
-        output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+        output_selection: TimetreeOutputSelectionArgs {
+          output_selection: vec![TimetreeOutputSelection::ClockModel, TimetreeOutputSelection::ClockCsv],
+        },
         seed_args: SeedArgs { seed: Some(7) },
         ..TreetimeTimetreeArgsRaw::default()
       };

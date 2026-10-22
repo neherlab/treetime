@@ -199,10 +199,14 @@ mod tests {
     use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use crate::commands::ancestral::run::run_ancestral_reconstruction;
     use crate::commands::shared::alignment::AlignmentArgs;
+    use crate::commands::shared::method_anc::MethodAncArgs;
     use crate::commands::shared::method_anc::MethodAncestralCli;
     use crate::commands::shared::model::GtrModelNameCli;
     use crate::commands::shared::model::ModelArgs;
     use crate::commands::shared::output_args::OutputCoreArgs;
+    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeAminoAcids, TreeSequences};
     use app_output::augur_node_data_ancestral::{AncestralNodeSequences, build_augur_node_data_ancestral};
     use maplit::btreemap;
@@ -347,9 +351,9 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
-        method_anc: method,
-        dense,
+        tree: TreeArgs { tree: Some(tree_path) },
+        method_anc: MethodAncArgs { method_anc: method },
+        representation: RepresentationArgs { dense },
         model_args: ModelArgs {
           model,
           ..ModelArgs::default()
@@ -379,14 +383,18 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
-        method_anc: MethodAncestralCli::Marginal,
-        dense: Some(dense),
+        tree: TreeArgs { tree: Some(tree_path) },
+        method_anc: MethodAncArgs {
+          method_anc: MethodAncestralCli::Marginal,
+        },
+        representation: RepresentationArgs { dense: Some(dense) },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
-        impute_missing_data: true,
+        impute_missing_data: ImputeMissingDataArgs {
+          impute_missing_data: true,
+        },
         output: OutputCoreArgs {
           output_tree_nwk: Some(dir.path().join("tree_out.nwk")),
           ..Default::default()
@@ -418,9 +426,11 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
-        method_anc: MethodAncestralCli::Marginal,
-        dense: Some(false),
+        tree: TreeArgs { tree: Some(tree_path) },
+        method_anc: MethodAncArgs {
+          method_anc: MethodAncestralCli::Marginal,
+        },
+        representation: RepresentationArgs { dense: Some(false) },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()

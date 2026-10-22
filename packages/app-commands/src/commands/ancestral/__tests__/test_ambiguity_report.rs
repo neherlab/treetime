@@ -44,6 +44,8 @@ mod tests {
     use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::ambiguity::{AncestralAmbiguityArgs, AncestralAmbiguityOutput};
     use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
+    use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
     use eyre::{Report, WrapErr};
     use std::collections::BTreeMap;
     use std::fs;
@@ -76,12 +78,14 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
+        tree: TreeArgs { tree: Some(tree_path) },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
-        output_reconstructed_nuc_fasta: Some(output_fasta.clone()),
+        reconstructed_fasta_output: ReconstructedFastaOutputArgs {
+          output_reconstructed_nuc_fasta: Some(output_fasta.clone()),
+        },
         output_augur_node_data: Some(output_node_data.clone()),
         ambiguity: AncestralAmbiguityArgs {
           ambiguity_threshold: threshold.map(AmbiguityThreshold::new).transpose()?,

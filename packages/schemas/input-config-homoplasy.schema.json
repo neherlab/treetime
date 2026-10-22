@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HomoplasyConfig",
-  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nOne flag name (`--alignment`, short `-a`, alias `--aln`) serves every command. `ancestral`,\n`optimize`, `timetree`, and `prune` accept several files, one partition per file, numbered by its\nposition in the list (1, 2, ...); `homoplasy` reads exactly one file; `clock` does not read the\nalignment. The path `-` reads uncompressed FASTA from standard input and may appear at most once.",
+  "description": "Sequence alignment input shared by all commands that accept an alignment.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads\nuncompressed FASTA from standard input and may appear at most once.",
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected\nby extension. `ancestral`, `optimize`, `timetree`, and `prune` accept several files, one\npartition per file, numbered by its position in the list (1, 2, ...). `homoplasy` reads exactly\none file. `clock` does not read the alignment. Use `-` to read uncompressed FASTA from standard\ninput; `-` may appear at most once.",
+      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
       "type": "array",
       "items": {
         "type": "string"
@@ -48,13 +48,13 @@
       "x-cli-flag": "--alphabet"
     },
     "model": {
-      "description": "Substitution model to use\n\n`--model infer` infers a model from the data. Alternatively, specify the model type. If the\nspecified model requires additional options, use `--model-params` to specify those.",
+      "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
       "$ref": "#/$defs/GtrModelName",
       "default": "infer",
       "x-cli-flag": "--model"
     },
     "model_params": {
-      "description": "Parameters for the model selected by `--model`, given as a `key=value` list\n\nExample: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
+      "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model\nk80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.",
       "type": "array",
       "items": {
         "type": "string"
@@ -69,7 +69,7 @@
       "x-cli-flag": "--method-anc"
     },
     "dense": {
-      "description": "Use dense representation (stores full probability vectors at each position)",
+      "description": "Use the dense representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory. When unset, the sparse representation is used.",
       "type": "boolean",
       "x-unset": true,
       "x-cli-flag": "--dense"
@@ -87,19 +87,19 @@
       "x-cli-flag": "--keep-overhangs"
     },
     "zero_based": {
-      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the positions of the report, the statistics JSON, and the `GENOMIC_POSITION` column of\n`--drms`, which is always counted from 1.",
+      "description": "Report sequence positions counted from 0 instead of 1.\n\nApplies to the reported mutations and positions. An input table with positions, such as `--drms`, is always\ncounted from 1.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--zero-based"
     },
     "impute_missing_data": {
-      "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely\ninferred state.\n\nChanges involving ambiguous characters on terminal branches then disappear from the report.\nOnly defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.",
+      "description": "Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.\n\nGaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous\ncharacters on terminal branches then disappear from the branch mutations. Only defined for marginal\nreconstruction; a no-op with a warning under `--method-anc=parsimony`.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--impute-missing-data"
     },
     "ignore_missing_alns": {
-      "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data)\ninstead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching\nTreeTime v0.",
+      "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.\nUseful when consuming per-CDS translations where some samples have no peptide for a given CDS.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--ignore-missing-alns"
@@ -111,7 +111,7 @@
       "x-cli-flag": "--site-specific-gtr"
     },
     "sample_from_profile": {
-      "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere.\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible\ndraws.",
+      "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
       "$ref": "#/$defs/SampleMode",
       "default": "argmax",
       "x-cli-flag": "--sample-from-profile"
@@ -168,7 +168,7 @@
       "x-cli-flag": "--output-all"
     },
     "output_nwk_style": {
-      "description": "NWK/Nexus annotation styles to write (comma-separated): `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
+      "description": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.\n\nApplies to every NWK and Nexus output. With more than one style, files are distinguished by a\nsecondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/NwkStyleArg"
@@ -240,7 +240,7 @@
       "x-cli-flag": "--output-homoplasy-report"
     },
     "output_selection": {
-      "description": "Comma-separated list of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output\navailable for this command. Requires `--output-all`. Per-file flags are always honored\nregardless of this selection.",
+      "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/HomoplasyOutputSelection"

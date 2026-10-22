@@ -273,7 +273,8 @@ macro_rules! impl_run_config {
     impl RunConfig for $raw {
       fn set_run_outputs(&mut self, out_dir: &Path) {
         self.output.output_all = Some(out_dir.to_path_buf());
-        self.output_selection = run_output_selection(CommandKind::$kind, &self.output_selection, &[$($required),*]);
+        self.output_selection.output_selection =
+          run_output_selection(CommandKind::$kind, &self.output_selection.output_selection, &[$($required),*]);
       }
     }
   };

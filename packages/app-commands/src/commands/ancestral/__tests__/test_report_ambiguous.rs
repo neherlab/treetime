@@ -128,6 +128,10 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::representation::RepresentationArgs;
+    use crate::commands::shared::tip_sequences::ImputeMissingDataArgs;
+    use crate::commands::shared::tip_sequences::TipSequenceArgs;
+    use crate::commands::shared::tree_input::TreeArgs;
 
     pub(super) struct WrittenMutations {
       pub(super) augur_muts: BTreeMap<String, Vec<String>>,
@@ -155,14 +159,17 @@ mod tests {
         alignment: AlignmentArgs {
           alignment: vec![fasta_path],
         },
-        tree: Some(tree_path),
+        tree: TreeArgs { tree: Some(tree_path) },
         model_args: ModelArgs {
           model: GtrModelNameCli::JC69,
           ..ModelArgs::default()
         },
-        dense,
-        impute_missing_data,
-        report_ambiguous,
+        representation: RepresentationArgs { dense },
+        impute_missing_data: ImputeMissingDataArgs { impute_missing_data },
+        tip_sequences: TipSequenceArgs {
+          report_ambiguous,
+          ..TipSequenceArgs::default()
+        },
         output_augur_node_data: Some(augur_path.clone()),
         output: OutputCoreArgs {
           output_nwk_style: vec![NwkStyleArg::Beast],
