@@ -51,7 +51,8 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_simulation::branch_lengths::exact;
-    use treetime_utils::make_report;
+    use treetime_utils::collections::container::get_exactly_one;
+    use treetime_utils::{make_error, make_report};
 
     pub(super) const MIN_POSTERIOR_GAP: f64 = 1e-3;
 
@@ -63,6 +64,9 @@ mod tests {
         .map(|(edge, length)| (edge, Some(length)))
         .collect();
       let records = case.sequences.leaf_records(graph, names);
+      let sequence_lengths = records.iter().map(|record| record.seq.len()).unique().collect_vec();
+      let length = *get_exactly_one(&sequence_lengths)?;
+      let states = case.model.pi().len();
       let gtr = gtr_from_model(&case.model, 1.0)?;
       let (log_lh_dense, dense) = run_dense_marginal(graph, &lengths, names, &records, gtr.clone())?;
       let (log_lh_sparse, sparse) = run_sparse_marginal(graph, &lengths, names, &records, gtr)?;
@@ -75,8 +79,17 @@ mod tests {
         differing_states: vec![],
       };
       for node in graph.get_internal_nodes().map(|node| node.key()) {
+        let name = &names[node];
         let sparse_state = &sparse.node_states[&node];
-        for (pos, dense_posterior) in dense.node_states[&node].profile.dis.rows().into_iter().enumerate() {
+        let dense_profile = &dense.node_states[&node].profile.dis;
+        if dense_profile.nrows() != length || sparse_state.sequence.len() != length {
+          return make_error!(
+            "Node {name} has a dense profile of {} sites and a sparse sequence of {} sites, but the alignment has {length}",
+            dense_profile.nrows(),
+            sparse_state.sequence.len()
+          );
+        }
+        for (pos, dense_posterior) in dense_profile.rows().into_iter().enumerate() {
           let sparse_posterior = if let Some(var) = sparse_state.profile.variable.get(pos) {
             aview1(var.dis)
           } else {
@@ -87,25 +100,23 @@ mod tests {
                 .fixed
                 .get(fixed_state)
                 .ok_or_else(|| {
-                  make_report!(
-                    "Node {} has no fixed profile of state {fixed_state} at position {pos}",
-                    &names[node]
-                  )
+                  make_report!("Node {name} has no fixed profile of state {fixed_state} at position {pos}")
                 })?
                 .dis
                 .as_slice(),
             )
           };
-          let dense_state = most_likely(&dense_posterior, &names[node], pos)?;
-          let sparse_state = most_likely(&sparse_posterior, &names[node], pos)?;
+          check_posterior("dense", &dense_posterior, states, name, pos)?;
+          check_posterior("sparse", &sparse_posterior, states, name, pos)?;
+          let dense_state = most_likely(&dense_posterior, name, pos)?;
+          let sparse_state = most_likely(&sparse_posterior, name, pos)?;
           let gap = top_two_gap(&dense_posterior);
           match (gap > MIN_POSTERIOR_GAP, dense_state == sparse_state) {
             (true, true) => comparison.compared_sites += 1,
             (true, false) => {
               comparison.compared_sites += 1;
               comparison.differing_states.push(format!(
-                "node {} position {pos}: dense posterior {dense_posterior}, sparse posterior {sparse_posterior}",
-                &names[node]
+                "node {name} position {pos}: dense posterior {dense_posterior}, sparse posterior {sparse_posterior}"
               ));
             },
             (false, true) => {},
@@ -123,6 +134,21 @@ mod tests {
       pub compared_sites: usize,
       pub differing_near_ties: usize,
       pub differing_states: Vec<String>,
+    }
+
+    fn check_posterior(
+      kind: &str,
+      posterior: &ArrayView1<'_, f64>,
+      states: usize,
+      node: &str,
+      pos: usize,
+    ) -> Result<(), Report> {
+      if posterior.len() != states || !posterior.iter().all(|p| p.is_finite()) {
+        return make_error!(
+          "The {kind} posterior of node {node} at position {pos} is {posterior}, but it needs {states} finite values"
+        );
+      }
+      Ok(())
     }
 
     fn most_likely(posterior: &ArrayView1<'_, f64>, node: &str, pos: usize) -> Result<usize, Report> {
