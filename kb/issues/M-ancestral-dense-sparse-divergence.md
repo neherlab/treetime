@@ -1,9 +1,9 @@
 # Dense-sparse log-likelihood divergence
 
-Dense and sparse marginal reconstruction produce different log-likelihoods beyond rounding. How often depends on the input:
+Dense and sparse marginal reconstruction produce different log-likelihoods beyond rounding. How often depends on the input. Two measures describe it: the share of cases that differ beyond rounding, and the share above the relative tolerance `1e-5` of the property tests:
 
-- Small random inputs (4 taxa, 10 gap-free sites, random GTR parameters): about 2.5% of the cases differ beyond rounding, about 97.5% agree to a few ULPs (measurement below)
-- Simulated data (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites, true GTR and exact branch lengths): 9 of 1000 cases (0.9%) differ by more than the relative tolerance `1e-5`, with a median relative difference of 2.5e-7 and a largest one of 1.0e-4 (see Measurement on simulated data)
+- Small random inputs (4 taxa, 10 gap-free sites, random GTR parameters): about 2.5% of the cases differ beyond rounding, about 97.5% agree to a few ULPs, and no case is above `1e-5` (measurement below)
+- Simulated data (coalescent trees of 6 to 20 tips, a random GTR, 300 to 1500 sites, true GTR and exact branch lengths): 993 of 1000 cases (99.3%) differ beyond rounding (relative difference above 1e-12), and 9 of 1000 cases (0.9%) are above `1e-5`, with a median relative difference of 2.5e-7 and a largest one of 1.0e-4 (see Measurement on simulated data)
 
 The property test `test_prop_marginal_dense_sparse_gap_free_consistency` [packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21](../../packages/treetime/src/ancestral/__tests__/test_marginal_dense_sparse_prop.rs#L14-L21) detects two distinct populations on the small random inputs. The test is `#[ignore]`d, so CI does not run this comparison. The cause is unknown.
 
@@ -29,9 +29,9 @@ The property test `test_prop_marginal_dense_sparse_simulated_agree_on_likelihood
 
 Measurement: 1000 cases of `arb_simulated_case()` from a deterministic proptest runner, with the relative difference `|dense - sparse| / max(|dense|, |sparse|)` of the log-likelihoods:
 
-- 9 of 1000 cases (0.9%) are above `1e-5`. With 64 cases per run, about 44% of the runs contain one such case
+- 9 of 1000 cases (0.9%) are above `1e-5`. With 64 new random cases per run, about 44% of the runs contain one such case. The committed regression case below is also above `1e-5`, and proptest runs it before the new cases, so every run of the ignored test fails
 - Median 2.5e-7, 90th percentile 6.5e-7, 99th percentile 8.4e-6, largest 1.0e-4
-- 7 cases agree to rounding (below 1e-12, smallest 8.1e-16), and 3 more are below 1e-9. The two populations of the small random inputs therefore also occur on simulated data, but most simulated cases fall into population 2
+- 7 cases agree to rounding (below 1e-12, smallest 8.1e-16), and 3 more are below 1e-9. Agreement to rounding, as in population 1 of the small random inputs, therefore also occurs on simulated data, but it is rare. The other 993 cases differ beyond rounding, with relative differences from above 1e-12 up to 1.0e-4, and 5.0e-4 in the regression case below. This range reaches beyond the 7.6e-6 of population 2 on the small random inputs
 - Largest case: dense -596.3121422628079, sparse -596.3741350729575, for `CaseSpec { seed: 1315641483007467270, sampling: [SampleBatch { tau: 0.0, count: 2 }, SampleBatch { tau: 0.5, count: 3 }, SampleBatch { tau: 1.0, count: 2 }, SampleBatch { tau: 1.5, count: 3 }, SampleBatch { tau: 2.0, count: 4 }], schedule: Exponential(ExponentialTc { tc0: 5.0, scale: 2.5 }), model: RandomGtr, mu: 0.003, length: 356 }`
 
 A failing case of the routine test run, kept in the regression file [packages/treetime/proptest-regressions/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.txt](../../packages/treetime/proptest-regressions/ancestral/__tests__/test_prop_marginal_dense_sparse_simulated.txt), gives dense -1139.3036028844738 and sparse -1139.8773205007508 (relative difference 5.0e-4), with no differing most likely state:
