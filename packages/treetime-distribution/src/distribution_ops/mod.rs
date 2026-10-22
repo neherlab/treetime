@@ -7,6 +7,7 @@ pub(crate) mod multiply;
 pub(crate) mod multiply_by_fn;
 pub(crate) mod negate;
 pub(crate) mod product;
+pub(crate) mod scaled_mass;
 pub(crate) mod time_bounds;
 
 #[cfg(test)]

@@ -1,11 +1,10 @@
 use crate::DistributionFunction;
+use crate::distribution_ops::scaled_mass::{CellSums, ScaledMass, scale_below};
 use crate::policy::NegLog;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::cmp::Ordering;
-use std::iter::repeat_n;
-use std::ops::Add;
 use std::sync::OnceLock;
 use treetime_grid::{BoundaryBehavior, Side};
 use treetime_utils::array::ndarray::partition_point;
@@ -718,121 +717,6 @@ enum TailKind {
   PowerLaw { t_hard: f64, delta_edge: f64, power: f64 },
 }
 
-#[derive(Clone, Copy, Debug)]
-struct ScaledMass {
-  r: f64,
-  factor: f64,
-}
-
-impl ScaledMass {
-  const ZERO: Self = Self {
-    r: f64::INFINITY,
-    factor: 0.0,
-  };
-
-  const INFINITE: Self = Self {
-    r: f64::NEG_INFINITY,
-    factor: 1.0,
-  };
-
-  fn new(r: f64, factor: f64) -> Self {
-    if factor > 0.0 && r < f64::INFINITY {
-      Self { r, factor }
-    } else {
-      Self::ZERO
-    }
-  }
-
-  fn linear(self) -> f64 {
-    if self.factor == 0.0 {
-      return 0.0;
-    }
-    let scale = (-self.r).exp();
-    if scale.is_normal() {
-      self.factor * scale
-    } else {
-      (self.factor.ln() - self.r).exp()
-    }
-  }
-
-  fn neg_log(self) -> f64 {
-    self.r - self.factor.ln()
-  }
-
-  fn ln_mass(self) -> f64 {
-    -self.neg_log()
-  }
-
-  fn is_infinite(self) -> bool {
-    self.factor > 0.0 && (self.r == f64::NEG_INFINITY || (self.factor == f64::INFINITY && self.r != f64::INFINITY))
-  }
-}
-
-impl Add for ScaledMass {
-  type Output = Self;
-
-  fn add(self, other: Self) -> Self {
-    if self.factor == 0.0 || other.is_infinite() {
-      return other;
-    }
-    if other.factor == 0.0 || self.is_infinite() {
-      return self;
-    }
-    let r = self.r.min(other.r);
-    let (scale, other_scale) = (scale_below(r, self.r), scale_below(r, other.r));
-    if scale.is_normal() && other_scale.is_normal() {
-      return Self {
-        r,
-        factor: self.factor * scale + other.factor * other_scale,
-      };
-    }
-    let (large, small) = if self.ln_mass() >= other.ln_mass() {
-      (self, other)
-    } else {
-      (other, self)
-    };
-    Self {
-      r: large.r,
-      factor: large.factor * (1.0 + (small.ln_mass() - large.ln_mass()).exp()),
-    }
-  }
-}
-
-#[derive(Clone, Debug)]
-struct CellSums {
-  nodes: Vec<ScaledMass>,
-}
-
-impl CellSums {
-  fn new(cells: impl ExactSizeIterator<Item = ScaledMass>) -> Self {
-    let n = cells.len();
-    let mut nodes = repeat_n(ScaledMass::ZERO, n).chain(cells).collect_vec();
-    for i in (1..n).rev() {
-      nodes[i] = nodes[2 * i] + nodes[2 * i + 1];
-    }
-    Self { nodes }
-  }
-
-  fn sum(&self, from: usize, to: usize) -> ScaledMass {
-    let n = self.nodes.len() >> 1;
-    let (mut lo, mut hi) = (from + n, to + n);
-    let mut sum = ScaledMass::ZERO;
-    while lo < hi {
-      if lo & 1 == 1 {
-        sum = sum + self.nodes[lo];
-        lo += 1;
-      }
-      if hi & 1 == 1 {
-        hi -= 1;
-        sum = sum + self.nodes[hi];
-      }
-      lo >>= 1;
-      hi >>= 1;
-    }
-    sum
-  }
-}
-
 fn cell_at(r: &Array1<f64>, hard_cells: &[HardCellPower], j: usize) -> Cell {
   let (ra, rb) = (r[j], r[j + 1]);
   let power = || {
@@ -956,18 +840,6 @@ fn power_law_distance_from_hard_point(fraction: f64, delta_edge: f64, power: f64
 
 fn power_law_distance_from_anchor(fraction: f64, delta_edge: f64, power: f64) -> f64 {
   (delta_edge * -((-fraction).ln_1p() / power).exp_m1()).clamp(0.0, delta_edge)
-}
-
-#[expect(
-  clippy::float_cmp,
-  reason = "r_min is the minimum of r and another ordinate, so exact equality selects the operand whose scale is exactly 1"
-)]
-fn scale_below(r_min: f64, r: f64) -> f64 {
-  if r == r_min && r.is_finite() {
-    1.0
-  } else {
-    (r_min - r).exp()
-  }
 }
 
 fn scaled_by_density(m: f64, r: f64) -> f64 {
