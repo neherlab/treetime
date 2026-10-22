@@ -11,10 +11,19 @@ pub(crate) struct BarProgress {
 }
 
 impl BarProgress {
-  pub(crate) fn new(min_level: LogLevel) -> Result<Self, Report> {
+  #[expect(
+    clippy::literal_string_with_formatting_args,
+    reason = "the progress bar template of indicatif has the placeholder syntax of a format string"
+  )]
+  pub(crate) fn new(min_level: LogLevel, colors: bool) -> Result<Self, Report> {
+    let template = if colors {
+      "{spinner:.green} [{bar:30.cyan/dim}] {percent}% {msg}"
+    } else {
+      "{spinner} [{bar:30}] {percent}% {msg}"
+    };
     let bar = ProgressBar::new(1000);
     bar.set_style(
-      ProgressStyle::with_template("{spinner:.green} [{bar:30.cyan/dim}] {percent}% {msg}")
+      ProgressStyle::with_template(template)
         .wrap_err("When parsing the progress bar template")?
         .progress_chars("=> "),
     );

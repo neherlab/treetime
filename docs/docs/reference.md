@@ -44,6 +44,8 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 
 **Usage:** `treetime [OPTIONS] <COMMAND>`
 
+Exit status: 0 on success, 1 on failure, 2 on a usage error (invalid flags or config file)
+
 ###### **Subcommands:**
 
 * `completions` — Generate shell completions
@@ -60,7 +62,6 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 
 ###### **Options:**
 
-* `-j`, `--jobs <JOBS>` — Number of processing jobs. If not specified, all available CPU threads will be used
 * `--verbosity <VERBOSITY>` — Set verbosity level of console output
 
   Default value: `warn`
@@ -71,6 +72,12 @@ Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 * `-v`, `--verbose` — Make console output more verbose. Add multiple occurrences to increase verbosity further
 * `-q`, `--quiet` — Make console output more quiet. Add multiple occurrences to make output even more quiet
 * `--no-progress` — Disable progress bar display
+* `--color <WHEN>` — When to color error messages, help, and the log: `auto` colors them when the output is a terminal and the `NO_COLOR` environment variable is not set
+
+  Default value: `auto`
+
+  Possible values: `auto`, `always`, `never`
+
 
 
 
@@ -106,6 +113,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
@@ -433,6 +441,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 * `--gen-per-year <GEN_PER_YEAR>` — Generations per year for converting the coalescent time scale Tc into an effective population size.
 
    The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
@@ -450,6 +459,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
@@ -689,6 +699,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
   Possible values: `only-terminal`, `all`, `none`
 
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 
 
 
@@ -701,6 +712,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
@@ -860,6 +872,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
   Default value: `
 `
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 
 
 
@@ -872,6 +885,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
@@ -1115,6 +1129,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 
 
 
@@ -1127,6 +1142,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1283,6 +1299,7 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
   Possible values: `mean`, `median`
 
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 
 
 
@@ -1295,6 +1312,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-a`, `--alignment <FILEPATH>` [alias: `aln`] — Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
 
    Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once.
@@ -1375,6 +1393,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--seed <SEED>` [alias: `rng-seed`] — Random seed
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 * `--const <CONSTANT_SITES>` — Number of constant sites that the alignment leaves out.
 
    Added to the alignment length to give the number of sites of the genome, which sets the number of sites without mutations and the rate of the Poisson comparison.
@@ -1517,6 +1536,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 ###### **Options:**
 
 * `--config <CONFIG>` — Config file (YAML or JSON) with the settings of the command; `-` reads it from standard input. Command-line flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from the working directory for standard input; a relative path in a flag resolves from the working directory
+* `--dry-run` — Print the effective settings as a config file and list the planned output files, then stop without reading inputs or writing files
 * `-t`, `--tree <TREE>` — Tree in Newick format
 * `--tree-dialect <TREE_DIALECT>` — Newick dialect of the tree inputs (the tree and the reference topology)
 
@@ -1690,6 +1710,7 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
   Possible values: `mean`, `median`
 
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 
 
 
@@ -1711,6 +1732,7 @@ The config file (JSON or YAML) lists named steps, each an analysis command with 
 
    A referenced upstream step that is not selected must already have its outputs on disk.
 * `--check` — Resolve and print the plan (steps, inputs, outputs) without running any step
+* `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
 
 
 

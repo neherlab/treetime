@@ -9,16 +9,16 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use app_cli::run::run_cli;
 use ctor::ctor;
-use eyre::Report;
+use std::process::ExitCode;
 use treetime_utils::init::cpu::require_cpu_features;
-use treetime_utils::init::global::global_init;
+use treetime_utils::init::global::{install_panic_hook, stderr_has_colors};
 
 #[ctor(unsafe)]
 fn init() {
   require_cpu_features();
-  global_init();
+  install_panic_hook(stderr_has_colors());
 }
 
-fn main() -> Result<(), Report> {
+fn main() -> ExitCode {
   run_cli()
 }

@@ -35,13 +35,19 @@ If you have TreeTime CLI installed, you can type `treetime --help` to read the l
 }
 
 fn markdown_command() -> Command {
-  TreetimeArgs::command().mut_args(|arg| {
-    if arg.get_id() == "jobs" {
-      arg.default_value(None::<&str>)
-    } else {
-      arg
-    }
-  })
+  hide_jobs_default_recursive(TreetimeArgs::command())
+}
+
+fn hide_jobs_default_recursive(command: Command) -> Command {
+  command
+    .mut_args(|arg| {
+      if arg.get_id() == "jobs" {
+        arg.default_value(None::<&str>)
+      } else {
+        arg
+      }
+    })
+    .mut_subcommands(hide_jobs_default_recursive)
 }
 
 fn replace<'t>(text: &'t str, what: &str, with_what: &str) -> Result<Cow<'t, str>, Report> {
@@ -57,29 +63,62 @@ mod tests {
   use crate::cli::treetime_cli::TreetimeArgs;
   use clap::CommandFactory;
   use eyre::Report;
+  use itertools::Itertools;
+  use pretty_assertions::assert_eq;
+  use regex::Regex;
 
   #[test]
   fn test_print_help_markdown_jobs_default_is_hidden() -> Result<(), Report> {
-    let mut command = TreetimeArgs::command();
-    let help = command.render_long_help().to_string();
-    let jobs_help = help
-      .split("--jobs")
-      .nth(1)
-      .expect("jobs argument should appear in terminal help")
-      .split("--verbosity")
-      .next()
-      .expect("verbosity argument should follow jobs in terminal help");
-    assert!(!jobs_help.contains("default:"));
+    let next_argument = Regex::new(r"\n +-")?;
+    let mut root = TreetimeArgs::command();
+    root.build();
+    let terminal_defaults = root
+      .get_subcommands_mut()
+      .filter(|command| command.get_arguments().any(|arg| arg.get_id() == "jobs"))
+      .map(|command| {
+        let help = command.render_long_help().to_string();
+        let jobs_help = help.split("--jobs <JOBS>").nth(1).unwrap_or_default();
+        let jobs_help = next_argument.split(jobs_help).next().unwrap_or_default();
+        (command.get_name().to_owned(), jobs_help.contains("default:"))
+      })
+      .collect_vec();
 
     let help = help_markdown()?;
-    let jobs_help = help
+    let markdown_defaults = help
       .split("`--jobs <JOBS>`")
-      .nth(1)
-      .expect("jobs argument should appear in Markdown help")
-      .split("`--verbosity")
-      .next()
-      .expect("verbosity argument should follow jobs in Markdown help");
-    assert!(!jobs_help.contains("Default value:"));
+      .skip(1)
+      .map(|jobs_help| {
+        let jobs_help = jobs_help.split("\n* `").next().unwrap_or_default();
+        jobs_help
+          .split("\n## ")
+          .next()
+          .unwrap_or_default()
+          .contains("Default value:")
+      })
+      .collect_vec();
+
+    assert_eq!(
+      (
+        vec![
+          ("timetree", false),
+          ("optimize", false),
+          ("prune", false),
+          ("ancestral", false),
+          ("clock", false),
+          ("homoplasy", false),
+          ("mugration", false),
+          ("pipeline", false),
+        ],
+        vec![false; 8]
+      ),
+      (
+        terminal_defaults
+          .iter()
+          .map(|(name, shown)| (name.as_str(), *shown))
+          .collect_vec(),
+        markdown_defaults
+      )
+    );
     Ok(())
   }
 }

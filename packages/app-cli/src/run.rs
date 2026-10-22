@@ -1,3 +1,4 @@
+use crate::cli::color::color_choice_of_args;
 use crate::cli::pipeline::runner::run_pipeline_command;
 use crate::cli::print_debug_info::print_debug_info;
 use crate::cli::print_help_markdown::print_help_markdown;
@@ -5,34 +6,89 @@ use crate::cli::progress::{BarProgress, TextProgress};
 use crate::cli::rtt_chart::print_clock_regression_chart;
 use crate::cli::schema::generate_schema;
 use crate::cli::treetime_cli::{
-  TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, treetime_parse_cli_args,
+  TreetimeArgs, TreetimeCommands, TreetimeSchemaArgs, generate_shell_completions, resolve_args,
+  treetime_parse_cli_args,
 };
 use crate::cli::verbosity::Verbosity;
 use app_commands::command::CommandArgs;
 use app_commands::commands::clock::args::TreetimeClockArgs;
 use app_commands::commands::clock::run::run_clock;
+use app_commands::commands::shared::argument_error::ArgumentError;
+use app_commands::config::source::InvalidConfig;
+use clap::ArgMatches;
 use eyre::Report;
+use itertools::Itertools;
 use log::info;
 use std::env;
+use std::process::ExitCode;
 use std::sync::Arc;
 use treetime::cancel::NoopCancel;
 use treetime::progress::{LogSink, NoopProgress, StageSink};
-use treetime_utils::init::global::setup_logger;
+use treetime_utils::error::report_to_string;
+use treetime_utils::init::clap_styles::styles;
+use treetime_utils::init::global::{install_error_hook, install_panic_hook, setup_logger};
 use treetime_utils::init::thread_pool::init_thread_pool;
 use treetime_utils::io::console::is_tty;
 use treetime_utils::io::json::{JsonPretty, json_write_str};
+use treetime_utils::o;
 
-pub fn run_cli() -> Result<(), Report> {
-  let args = treetime_parse_cli_args(env::args_os())?;
-  setup_logger(args.verbosity.get_filter_level());
+const USAGE_ERROR_EXIT_CODE: u8 = 2;
+
+pub fn run_cli() -> ExitCode {
+  let argv = env::args_os().collect_vec();
+  let (args, matches) = treetime_parse_cli_args(&argv, color_choice_of_args(&argv)).unwrap_or_else(|err| err.exit());
+  let colors = args.color.stderr_has_colors();
+  install_panic_hook(colors);
+  match install_error_hook(colors).and_then(|()| run_parsed(args, &matches, colors)) {
+    Ok(()) => ExitCode::SUCCESS,
+    Err(report) => report_failure(&report, colors),
+  }
+}
+
+fn run_parsed(args: TreetimeArgs, matches: &ArgMatches, colors: bool) -> Result<(), Report> {
+  setup_logger(args.verbosity.get_filter_level(), colors);
+  let args = resolve_args(args, matches)?;
 
   info!("# Command line arguments");
   info!("{}", json_write_str(&args, JsonPretty(true))?);
 
-  init_thread_pool(args.jobs.jobs)?;
+  if let Some(jobs) = args.command.jobs() {
+    init_thread_pool(jobs)?;
+  }
 
-  let (stages, log) = make_progress(&args.verbosity)?;
+  let (stages, log) = make_progress(&args.verbosity, colors)?;
   run_command(args.command, &*stages, &*log)
+}
+
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(debug_remnants, reason = "the CLI reports a failed run on standard error")
+)]
+fn report_failure(report: &Report, colors: bool) -> ExitCode {
+  if let Some(message) = usage_error(report) {
+    let style = *styles().get_error();
+    let label = if colors {
+      format!("{}error:{}", style.render(), style.render_reset())
+    } else {
+      o!("error:")
+    };
+    eprintln!("{label} {message}");
+    ExitCode::from(USAGE_ERROR_EXIT_CODE)
+  } else {
+    eprintln!("Error: {report:?}");
+    ExitCode::FAILURE
+  }
+}
+
+fn usage_error(report: &Report) -> Option<String> {
+  let message = report_to_string(report);
+  if let Some(invalid) = report.chain().find_map(|error| error.downcast_ref::<InvalidConfig>()) {
+    return Some(format!("{message}\n\n{}", invalid.rendered));
+  }
+  report
+    .chain()
+    .any(|error| error.is::<ArgumentError>())
+    .then_some(message)
 }
 
 pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log: &dyn LogSink) -> Result<(), Report> {
@@ -70,12 +126,12 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
   Ok(())
 }
 
-fn make_progress(verbosity: &Verbosity) -> Result<(Arc<dyn StageSink>, Arc<dyn LogSink>), Report> {
+fn make_progress(verbosity: &Verbosity, colors: bool) -> Result<(Arc<dyn StageSink>, Arc<dyn LogSink>), Report> {
   Ok(match verbosity.get_log_level() {
     None => shared_sink(NoopProgress),
     Some(min_level) => {
       if !verbosity.no_progress && is_tty() {
-        shared_sink(BarProgress::new(min_level)?)
+        shared_sink(BarProgress::new(min_level, colors)?)
       } else {
         shared_sink(TextProgress::new(min_level))
       }

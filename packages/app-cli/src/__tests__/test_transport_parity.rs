@@ -37,7 +37,7 @@ mod tests {
   }
 
   mod helpers {
-    use crate::cli::treetime_cli::treetime_parse_cli_args;
+    use crate::cli::treetime_cli::{resolve_args, treetime_parse_cli_args};
     use crate::run::run_command;
     use app_backend::app_paths::AppFolderEnv;
     use app_commands::command::AppCommand;
@@ -49,6 +49,7 @@ mod tests {
     use axum::body::Body;
     use axum::http::Request;
     use axum::http::request::Builder;
+    use clap::ColorChoice;
     use napi::bindgen_prelude::Uint8Array;
     use serde_json::{Map, Value, json};
     use std::collections::BTreeMap;
@@ -129,7 +130,8 @@ mod tests {
         "--output-all".to_owned(),
         output_dir.to_string_lossy().into_owned(),
       ];
-      let args = treetime_parse_cli_args(argv).unwrap();
+      let (args, matches) = treetime_parse_cli_args(argv, ColorChoice::Never).unwrap();
+      let args = resolve_args(args, &matches).unwrap();
       run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
     }
 

@@ -2,6 +2,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelectionArgs};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
@@ -173,4 +174,9 @@ pub struct TreetimePruneArgsRaw {
   )]
   #[default = '\n']
   pub prune_nodes_list_file_delimiter: char,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 }

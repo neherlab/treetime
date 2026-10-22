@@ -1,5 +1,6 @@
 use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
+use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::output_args::{ClockOutputArgs, ClockOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -151,4 +152,9 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 }

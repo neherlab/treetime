@@ -8,6 +8,7 @@ use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
@@ -437,6 +438,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub seed_args: SeedArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 
   /// Generations per year for converting the coalescent time scale Tc into an effective
   /// population size.

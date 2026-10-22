@@ -2,9 +2,10 @@ use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve
 use crate::cli::pipeline::types::{RawStep, step_config};
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
+use app_commands::commands::shared::argument_error::ArgumentError;
 use app_commands::config::resolve_paths::resolve_config_paths;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
-use app_output::output_plan::{MissingOutputs, OutputSelection, PathPlaceholder};
+use app_output::output_plan::{OutputSelection, PathPlaceholder};
 use eyre::Report;
 use itertools::Itertools;
 use regex::{Regex, regex};
@@ -298,7 +299,10 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
 }
 
 fn missing_outputs_error(err: Report) -> Report {
-  if err.downcast_ref::<MissingOutputs>().is_some() {
+  let names_output_folder = err
+    .downcast_ref::<ArgumentError>()
+    .is_some_and(|error| error.settings.iter().any(|setting| setting == "output_all"));
+  if names_output_folder {
     make_report!(
       "the step writes no outputs; set the top-level `output_all` key of the pipeline, pass `treetime pipeline \
        --output-all <dir>`, or name output files in the step"

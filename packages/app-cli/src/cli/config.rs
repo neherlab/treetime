@@ -37,7 +37,7 @@ pub(crate) fn overlay_config<T: RawConfig>(args: &mut T, matches: &ArgMatches) -
   check_command_config(&source, &merged, &command_schema::<T>())?;
   check_cli_rules::<T>(&source, &merged, &explicit)?;
 
-  *args = from_json_value(&merged)?;
+  *args = from_json_value::<T>(&merged)?.with_cli_only_settings_of(args);
   Ok(())
 }
 
@@ -130,7 +130,7 @@ mod tests {
 
   mod end_to_end {
     use crate::cli::config::overlay_config;
-    use crate::cli::treetime_cli::{TreetimeArgs, treetime_parse_cli_args};
+    use crate::cli::treetime_cli::{TreetimeArgs, resolve_args, treetime_parse_cli_args};
     use crate::run::run_command;
     use app_commands::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use app_commands::commands::clock::args::TreetimeClockArgsRaw;
@@ -140,7 +140,7 @@ mod tests {
     use app_commands::commands::prune::args::TreetimePruneArgsRaw;
     use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
     use app_commands::config::source::InvalidConfig;
-    use clap::{CommandFactory, FromArgMatches};
+    use clap::{ColorChoice, CommandFactory, FromArgMatches};
     use eyre::Report;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
@@ -197,6 +197,25 @@ mod tests {
       ]);
       assert_eq!(8, args.skyline_n_points);
       pretty_assert_ulps_eq!(3.5, args.coalescent_confidence);
+    }
+
+    #[test]
+    fn test_config_keeps_the_command_line_only_settings_across_the_file() {
+      let dir = tempdir().unwrap();
+      let path = write_config(dir.path());
+      let args = parse_timetree(&[
+        "treetime",
+        "timetree",
+        "--config",
+        path.to_str().unwrap(),
+        "--dry-run",
+        "-j",
+        "3",
+      ]);
+      assert_eq!(
+        (true, 3, 4),
+        (args.config_args.dry_run, args.jobs_args.jobs, args.skyline_n_points)
+      );
     }
 
     #[test]
@@ -275,15 +294,19 @@ mod tests {
       let config = dir.path().join("ancestral.yaml");
       fs::write(&config, "tree: tree.nwk\nalignment: [aln.fasta.xz]\n").unwrap();
       let out = dir.path().join("out");
-      let args = treetime_parse_cli_args([
-        "treetime",
-        "ancestral",
-        "--config",
-        config.to_str().unwrap(),
-        "--output-all",
-        out.to_str().unwrap(),
-      ])
+      let (args, matches) = treetime_parse_cli_args(
+        [
+          "treetime",
+          "ancestral",
+          "--config",
+          config.to_str().unwrap(),
+          "--output-all",
+          out.to_str().unwrap(),
+        ],
+        ColorChoice::Never,
+      )
       .unwrap();
+      let args = resolve_args(args, &matches).unwrap();
       run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
       assert_eq!(true, out.join("ancestral.nwk").is_file());
     }

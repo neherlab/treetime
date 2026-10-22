@@ -4,8 +4,9 @@ use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
 use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
 use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
-use app_output::output_plan::{self, CommandKind, OutputPlanRequest, OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{self, CommandKind, MissingOutputs, OutputPlanRequest, OutputSelection, ResolvedOutputs};
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
@@ -316,7 +317,7 @@ impl OutputCoreArgs {
         .filter_map(|&(sel, path)| path.map(|path| (sel, path.to_path_buf())))
         .collect(),
     };
-    output_plan::plan(&request)
+    output_plan::plan(&request).map_err(missing_outputs_argument_error)
   }
 
   fn tree_overrides(&self) -> BTreeMap<OutputSelection, PathBuf> {
@@ -332,6 +333,16 @@ impl OutputCoreArgs {
     .into_iter()
     .filter_map(|(variant, path)| path.map(|path| (variant, path.to_path_buf())))
     .collect()
+  }
+}
+
+fn missing_outputs_argument_error(report: Report) -> Report {
+  match report.downcast_ref::<MissingOutputs>() {
+    Some(missing @ MissingOutputs::SelectionWithoutFolder) => {
+      argument_error(&["output_selection", "output_all"], missing.to_string())
+    },
+    Some(missing @ MissingOutputs::NoOutputs) => argument_error(&["output_all"], missing.to_string()),
+    None => report,
   }
 }
 

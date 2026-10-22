@@ -1,5 +1,5 @@
+use crate::cli::color::ColorArgs;
 use crate::cli::config::overlay_config;
-use crate::cli::jobs::Jobs;
 use crate::cli::schema::SchemaTarget;
 use crate::cli::verbosity::Verbosity;
 use app_commands::command::RawConfig;
@@ -9,9 +9,10 @@ use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
 use app_commands::commands::mugration::args::TreetimeMugrationArgsRaw;
 use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use app_commands::commands::prune::args::TreetimePruneArgsRaw;
+use app_commands::commands::shared::jobs::JobsArgs;
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_commands::version::LONG_VERSION;
-use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
+use clap::{ArgMatches, ColorChoice, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use deser::Serialize;
@@ -45,17 +46,20 @@ pub(crate) fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   Ok(())
 }
 
-pub(crate) fn treetime_parse_cli_args<I, T>(argv: I) -> Result<TreetimeArgs, Report>
+pub(crate) fn treetime_parse_cli_args<I, T>(
+  argv: I,
+  color: ColorChoice,
+) -> Result<(TreetimeArgs, ArgMatches), clap::Error>
 where
   I: IntoIterator<Item = T>,
   T: Into<OsString> + Clone,
 {
-  let matches = TreetimeArgs::command().get_matches_from(argv);
+  let matches = TreetimeArgs::command().color(color).try_get_matches_from(argv)?;
   let args = TreetimeArgs::from_arg_matches(&matches)?;
-  resolve_args(args, &matches)
+  Ok((args, matches))
 }
 
-fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<TreetimeArgs, Report> {
+pub(crate) fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<TreetimeArgs, Report> {
   if let Some((_, sub_matches)) = matches.subcommand() {
     resolve_command_config(&mut args.command, sub_matches)?;
   }
@@ -67,16 +71,17 @@ fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<Treetime
 #[clap(author, version = LONG_VERSION)]
 #[clap(verbatim_doc_comment)]
 #[clap(styles = styles())]
+#[clap(after_help = "Exit status: 0 on success, 1 on failure, 2 on a usage error (invalid flags or config file)")]
 /// Maximum-likelihood phylodynamic inference
 ///
 /// Documentation: https://treetime.readthedocs.io/en/stable/
 /// Publication:   https://academic.oup.com/ve/article/4/1/vex042/4794731
 pub(crate) struct TreetimeArgs {
-  #[clap(flatten, next_help_heading = "Parallelism")]
-  pub jobs: Jobs,
-
   #[clap(flatten, next_help_heading = "Verbosity")]
   pub verbosity: Verbosity,
+
+  #[clap(flatten, next_help_heading = "Verbosity")]
+  pub color: ColorArgs,
 
   #[clap(subcommand)]
   pub command: TreetimeCommands,
@@ -177,6 +182,25 @@ pub(crate) struct TreetimePipelineArgs {
   /// Resolve and print the plan (steps, inputs, outputs) without running any step.
   #[clap(long)]
   pub check: bool,
+
+  #[clap(flatten)]
+  pub jobs_args: JobsArgs,
+}
+
+impl TreetimeCommands {
+  pub(crate) fn jobs(&self) -> Option<usize> {
+    match self {
+      Self::Timetree(args) => Some(args.jobs_args.jobs),
+      Self::Optimize(args) => Some(args.jobs_args.jobs),
+      Self::Prune(args) => Some(args.jobs_args.jobs),
+      Self::Ancestral(args) => Some(args.jobs_args.jobs),
+      Self::Clock(args) => Some(args.jobs_args.jobs),
+      Self::Homoplasy(args) => Some(args.jobs_args.jobs),
+      Self::Mugration(args) => Some(args.jobs_args.jobs),
+      Self::Pipeline(args) => Some(args.jobs_args.jobs),
+      Self::Completions { .. } | Self::Schema(_) | Self::HelpMarkdown | Self::Debug => None,
+    }
+  }
 }
 
 #[derive(Parser, Debug, Serialize)]

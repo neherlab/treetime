@@ -122,11 +122,7 @@ pub(crate) mod tests {
     FlagException { flag: "--remove-file",                      change: Change::Missing, commands: &[PR],                 pending: Pending::FlagRenames },
     FlagException { flag: "--check",                            change: Change::Extra,   commands: &[PI],                 pending: Pending::RootCommand },
     FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[PI],                 pending: Pending::RootCommand },
-    FlagException { flag: "--color",                            change: Change::Missing, commands: EVERY,                 pending: Pending::ColorFlag },
-    FlagException { flag: "--jobs",                             change: Change::Extra,   commands: &[EXAMPLES_GET, SCHEMA_WRITE, COMPLETIONS, HELP_MARKDOWN],
-                                                                                                                          pending: Pending::RunFlagsOnRunCommands },
-    FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[TT, AN, CL, MU, HO, OP, PR, EXAMPLES_GET, SCHEMA_WRITE],
-                                                                                                                          pending: Pending::DryRun },
+    FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[EXAMPLES_GET, SCHEMA_WRITE], pending: Pending::DryRun },
   ];
 
   #[test]

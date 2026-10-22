@@ -1,6 +1,7 @@
 use crate::commands::shared::ambiguity::MugrationAmbiguityArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::metadata::MetadataIdArgs;
 use crate::commands::shared::output_args::{MugrationOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -225,4 +226,9 @@ pub struct TreetimeMugrationArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub topology_order: TopologyOrderArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 }

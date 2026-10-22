@@ -19,7 +19,7 @@ use tokio_util::sync::CancellationToken;
 use treetime_grid::MaxGridPoints;
 use treetime_utils::env::env_var_optional;
 use treetime_utils::init::cpu::require_cpu_features;
-use treetime_utils::init::global::{global_init, setup_logger};
+use treetime_utils::init::global::{global_init, setup_logger, stderr_has_colors};
 use treetime_utils::init::thread_pool::{available_jobs, init_thread_pool};
 
 const HOST_ENV: &str = "HOST";
@@ -37,7 +37,7 @@ fn init() {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-  setup_logger(LevelFilter::Warn);
+  setup_logger(LevelFilter::Warn, stderr_has_colors());
   let args = ServerArgs::parse();
 
   init_thread_pool(args.jobs)?;

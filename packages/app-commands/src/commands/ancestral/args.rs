@@ -5,6 +5,7 @@ use crate::commands::shared::ambiguity::AncestralAmbiguityArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::method_anc::{MethodAncArgs, SampleFromProfileArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{AncestralOutputSelectionArgs, OutputCoreArgs};
@@ -270,4 +271,9 @@ pub struct TreetimeAncestralArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub seed_args: SeedArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 }

@@ -19,11 +19,12 @@ mod tests {
   }
 
   mod helpers {
-    use crate::cli::treetime_cli::treetime_parse_cli_args;
+    use crate::cli::treetime_cli::{resolve_args, treetime_parse_cli_args};
     use crate::run::run_command;
     use app_backend::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
     use app_commands::command::AppCommand;
     use app_commands::json_value::SparseConfig;
+    use clap::ColorChoice;
     use std::fs;
     use tempfile::tempdir;
     use treetime::progress::NoopProgress;
@@ -39,8 +40,9 @@ mod tests {
         "--config".to_owned(),
         path.to_string_lossy().into_owned(),
       ];
+      let (args, matches) = treetime_parse_cli_args(argv, ColorChoice::Never).unwrap();
       let result =
-        treetime_parse_cli_args(argv).and_then(|args| run_command(args.command, &NoopProgress, &NoopProgress));
+        resolve_args(args, &matches).and_then(|args| run_command(args.command, &NoopProgress, &NoopProgress));
       match result {
         Ok(()) => panic!("the CLI accepted the config"),
         Err(report) => report_to_string(&report),

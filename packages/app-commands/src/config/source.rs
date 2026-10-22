@@ -39,7 +39,7 @@ pub fn render_and_bail(source: &ConfigSource, top_message: &str, diags: Vec<RawD
   };
 
   let mut rendered = String::new();
-  miette::GraphicalReportHandler::new()
+  miette::GraphicalReportHandler::new_themed(miette::GraphicalTheme::unicode_nocolor())
     .render_report(&mut rendered, &report)
     .map_err(|err| make_report!("could not render config diagnostics: {err}"))?;
   let rendered = rendered.trim_end().to_owned();

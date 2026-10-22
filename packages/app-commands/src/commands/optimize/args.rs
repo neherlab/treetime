@@ -4,6 +4,7 @@ use crate::commands::shared::branch_lengths::BranchLengthArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
+use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{OptimizeOutputSelectionArgs, OutputCoreArgs};
@@ -266,6 +267,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub gap_fill_args: GapFillArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(skip)]
+  #[deser(skip)]
+  pub jobs_args: JobsArgs,
 }
 
 /// Reroot methods available in the optimize command.

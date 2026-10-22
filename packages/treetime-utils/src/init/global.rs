@@ -1,12 +1,20 @@
 use crate::datetime::datetime::{date_format_precise, date_now};
+use color_eyre::config::{HookBuilder, Theme};
 use color_eyre::owo_colors::{OwoColorize, Style};
-use env_logger::Env;
+use env_logger::{Env, WriteStyle};
+use eyre::Report;
 use log::{Level, LevelFilter, Record};
-use std::io::Write;
+use std::env;
+use std::io::{IsTerminal, Write, stderr};
 
-pub fn setup_logger(filter_level: LevelFilter) {
+pub fn stderr_has_colors() -> bool {
+  stderr().is_terminal() && env::var_os("NO_COLOR").is_none_or(|value| value.is_empty())
+}
+
+pub fn setup_logger(filter_level: LevelFilter, colors: bool) {
   env_logger::Builder::from_env(Env::default().default_filter_or("warn"))
     .filter_level(filter_level)
+    .write_style(if colors { WriteStyle::Always } else { WriteStyle::Never })
     .format(|buf, record| {
       let level = color_log_level(record);
       let date = date_format_precise(&date_now()).dimmed().to_string();
@@ -39,19 +47,26 @@ fn log_level_str(record: &Record) -> String {
   reason = "the error report hook is installed once per process, before any code that could install another"
 )]
 pub fn global_init() {
-  color_eyre::config::HookBuilder::default()
-    .theme(
-      color_eyre::config::Theme::dark()
-        .dependency_code(Style::new().dimmed())
-        .file(Style::new().green())
-        .line_number(Style::new().yellow())
-        .panic_file(Style::new().green())
-        .panic_line_number(Style::new().yellow())
-        .panic_message(Style::new().bright_red().bold())
-        .active_line(Style::new().cyan())
-        .hidden_frames(Style::new().dimmed())
-        .code_hash(Style::new().hidden()),
-    )
+  hook_builder(true).install().expect("color_eyre initialization failed");
+}
+
+pub fn install_panic_hook(colors: bool) {
+  let (panic_hook, _) = hook_builder(colors).into_hooks();
+  panic_hook.install();
+}
+
+pub fn install_error_hook(colors: bool) -> Result<(), Report> {
+  let (_, eyre_hook) = hook_builder(colors)
+    .display_location_section(false)
+    .display_env_section(false)
+    .into_hooks();
+  eyre_hook.install()?;
+  Ok(())
+}
+
+fn hook_builder(colors: bool) -> HookBuilder {
+  HookBuilder::default()
+    .theme(if colors { color_theme() } else { Theme::new() })
     .panic_section(format!(
       "If you think it's a bug, consider reporting at: '{}/issues'",
       env!("CARGO_PKG_REPOSITORY"),
@@ -73,8 +88,19 @@ pub fn global_init() {
         should_show_file && should_show_name
       });
     }))
-    .install()
-    .expect("color_eyre initialization failed");
+}
+
+fn color_theme() -> Theme {
+  Theme::dark()
+    .dependency_code(Style::new().dimmed())
+    .file(Style::new().green())
+    .line_number(Style::new().yellow())
+    .panic_file(Style::new().green())
+    .panic_line_number(Style::new().yellow())
+    .panic_message(Style::new().bright_red().bold())
+    .active_line(Style::new().cyan())
+    .hidden_frames(Style::new().dimmed())
+    .code_hash(Style::new().hidden())
 }
 
 const HIDDEN_CRATE_NAME_PREFIXES: &[&str] = &[

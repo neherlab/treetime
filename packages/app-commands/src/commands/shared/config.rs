@@ -10,5 +10,10 @@ pub struct ConfigArgs {
   /// flags take precedence over the file. A relative path in the file resolves from the folder of the file, and from
   /// the working directory for standard input; a relative path in a flag resolves from the working directory
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Config"))]
-  config: Option<PathBuf>,
+  pub config: Option<PathBuf>,
+
+  /// Print the effective settings as a config file and list the planned output files, then stop without reading
+  /// inputs or writing files
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Config"))]
+  pub dry_run: bool,
 }

@@ -163,6 +163,9 @@ pub trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone
   fn wrap(args: Self::Args) -> CommandArgs;
 
   fn into_config(self) -> CommandConfig;
+
+  #[must_use]
+  fn with_cli_only_settings_of(self, cli: &Self) -> Self;
 }
 
 #[cfg(feature = "clap")]
@@ -262,6 +265,14 @@ macro_rules! impl_raw_config {
 
       fn into_config(self) -> CommandConfig {
         CommandConfig::$variant { config: Box::new(self) }
+      }
+
+      fn with_cli_only_settings_of(self, cli: &Self) -> Self {
+        Self {
+          config_args: cli.config_args.clone(),
+          jobs_args: cli.jobs_args.clone(),
+          ..self
+        }
       }
     }
 

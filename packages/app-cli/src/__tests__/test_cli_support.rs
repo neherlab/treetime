@@ -48,8 +48,6 @@ pub(crate) mod tests {
       FlagRenames,
       ShortHelp,
       RootCommand,
-      ColorFlag,
-      RunFlagsOnRunCommands,
       DryRun,
     }
 
