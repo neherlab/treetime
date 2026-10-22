@@ -233,8 +233,14 @@ impl WindowedConvolution {
       conv
     };
     let conv = match soft {
-      Side::Left => conv.with_right_extrap(BoundaryBehavior::Hard)?,
-      Side::Right => conv.with_left_extrap(BoundaryBehavior::Hard)?,
+      Side::Left => {
+        let end = hard_end(&conv, Side::Right);
+        conv.with_right_extrap(end)?
+      },
+      Side::Right => {
+        let end = hard_end(&conv, Side::Left);
+        conv.with_left_extrap(end)?
+      },
     };
     let Distribution::Function(conv) = conv else {
       return Ok(Self::Exact(conv));
@@ -298,6 +304,20 @@ fn coarser_operand_spacing(a: &Distribution<NegLog>, b: &Distribution<NegLog>) -
     return None;
   };
   Some(a.dx().max(b.dx()))
+}
+
+fn hard_end(conv: &Distribution<NegLog>, side: Side) -> BoundaryBehavior {
+  let Distribution::Function(f) = conv else {
+    return BoundaryBehavior::Hard;
+  };
+  let law = match side {
+    Side::Left => f.left_extrap(),
+    Side::Right => f.right_extrap(),
+  };
+  match law {
+    BoundaryBehavior::HardEdgeCell(_) => law,
+    _ => BoundaryBehavior::Hard,
+  }
 }
 
 fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {

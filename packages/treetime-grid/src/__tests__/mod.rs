@@ -1,3 +1,4 @@
+mod edge_cell;
 mod grid;
 mod grid_fn;
 mod hard_approach_law;

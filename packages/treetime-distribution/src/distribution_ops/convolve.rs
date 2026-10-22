@@ -200,7 +200,10 @@ impl SupportEnd {
   fn new(behavior: BoundaryBehavior, grid_edge: f64) -> Self {
     let t = match behavior {
       BoundaryBehavior::HardApproach(law) => law.t_hard,
-      BoundaryBehavior::Error | BoundaryBehavior::Hard | BoundaryBehavior::Linear(_) => grid_edge,
+      BoundaryBehavior::Error
+      | BoundaryBehavior::Hard
+      | BoundaryBehavior::HardEdgeCell(_)
+      | BoundaryBehavior::Linear(_) => grid_edge,
     };
     Self {
       behavior,
@@ -219,7 +222,7 @@ impl SupportEnd {
 
   fn result_tail(self) -> BoundaryBehavior {
     match self.behavior {
-      BoundaryBehavior::HardApproach(_) => BoundaryBehavior::Hard,
+      BoundaryBehavior::HardApproach(_) | BoundaryBehavior::HardEdgeCell(_) => BoundaryBehavior::Hard,
       other => other,
     }
   }
@@ -241,6 +244,7 @@ fn shift_tail_law(behavior: BoundaryBehavior, shift: f64) -> BoundaryBehavior {
       t_hard: law.t_hard + shift,
       ..law
     }),
+    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.shift_arg(shift)),
     other => other,
   }
 }

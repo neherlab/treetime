@@ -251,7 +251,7 @@ impl Distribution<NegLog> {
 
 fn hard_limit(behavior: BoundaryBehavior, edge: f64, unbounded: f64) -> f64 {
   match behavior {
-    BoundaryBehavior::Error | BoundaryBehavior::Hard => edge,
+    BoundaryBehavior::Error | BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => edge,
     BoundaryBehavior::HardApproach(law) => law.t_hard,
     BoundaryBehavior::Linear(_) => unbounded,
   }

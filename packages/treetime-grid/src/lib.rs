@@ -1,4 +1,6 @@
 pub mod boundary_behavior;
+pub mod edge_cell;
+pub mod edge_cell_law;
 pub mod grid;
 pub mod grid_edge;
 pub mod grid_fn;
@@ -18,6 +20,8 @@ pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy + From<f6
 impl InterpElem for f64 {}
 
 pub use boundary_behavior::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS};
+pub use edge_cell::{CellEnd, EdgeCell};
+pub use edge_cell_law::EdgeCellLaw;
 pub use grid::{Grid, coordinates_coincide};
 pub use grid_edge::GridEdge;
 pub use grid_fn::GridFn;

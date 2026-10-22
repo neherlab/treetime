@@ -194,12 +194,10 @@ pub(crate) fn multiply_functions<Y: YAxisPolicy>(
         amplitude = Y::multiply(amplitude, f.amplitude());
       }
 
-      let left_tail = compose_product_tail(ordered.iter().map(|f| f.left_extrap()))?;
-      let right_tail = compose_product_tail(ordered.iter().map(|f| f.right_extrap()))?;
-      let function = DistributionFunction::from_range_values(bounds, values)?
-        .with_left_extrap(left_tail)?
-        .with_right_extrap(right_tail)?
-        .with_amplitude(amplitude);
+      let left_tail = compose_product_tail(Side::Left, ordered.iter().map(|f| f.left_extrap()))?;
+      let right_tail = compose_product_tail(Side::Right, ordered.iter().map(|f| f.right_extrap()))?;
+      let function = DistributionFunction::from_range_values(bounds, values)?.with_amplitude(amplitude);
+      let function = with_settled_tails(function, left_tail, right_tail)?;
       Ok(Distribution::Function(function))
     },
   }
@@ -213,11 +211,14 @@ fn canonical_operand_order<'a, Y: YAxisPolicy>(
   ordered
 }
 
-fn compose_product_tail(mut tails: impl Iterator<Item = BoundaryBehavior>) -> Result<BoundaryBehavior, Report> {
+fn compose_product_tail(
+  side: Side,
+  mut tails: impl Iterator<Item = BoundaryBehavior>,
+) -> Result<BoundaryBehavior, Report> {
   let Some(first) = tails.next() else {
     return make_internal_error!("Composition of product tails requires at least one operand");
   };
-  tails.try_fold(first, compose_multiplication_tail)
+  tails.try_fold(first, |a, b| compose_multiplication_tail(side, a, b))
 }
 
 fn multiply_formula_formula<Y: YAxisPolicy>(
@@ -393,14 +394,62 @@ fn with_composed_tails<Y: YAxisPolicy>(
   a_tails: (BoundaryBehavior, BoundaryBehavior),
   b_tails: (BoundaryBehavior, BoundaryBehavior),
 ) -> Result<DistributionFunction<f64, Y>, Report> {
-  function
-    .with_left_extrap(compose_multiplication_tail(a_tails.0, b_tails.0)?)?
-    .with_right_extrap(compose_multiplication_tail(a_tails.1, b_tails.1)?)
+  let left = compose_multiplication_tail(Side::Left, a_tails.0, b_tails.0)?;
+  let right = compose_multiplication_tail(Side::Right, a_tails.1, b_tails.1)?;
+  with_settled_tails(function, left, right)
 }
 
-fn compose_multiplication_tail(a: BoundaryBehavior, b: BoundaryBehavior) -> Result<BoundaryBehavior, Report> {
+pub(super) fn with_settled_tails<Y: YAxisPolicy>(
+  function: DistributionFunction<f64, Y>,
+  left: BoundaryBehavior,
+  right: BoundaryBehavior,
+) -> Result<DistributionFunction<f64, Y>, Report> {
+  let settled = |tail: BoundaryBehavior, edge: f64| match tail {
+    BoundaryBehavior::HardEdgeCell(law) if !function.grid_fn().coincides(law.t_edge, edge) => BoundaryBehavior::Hard,
+    other => other,
+  };
+  let (left, right) = (settled(left, function.x_min()), settled(right, function.x_max()));
+  function.with_left_extrap(left)?.with_right_extrap(right)
+}
+
+fn compose_multiplication_tail(
+  side: Side,
+  a: BoundaryBehavior,
+  b: BoundaryBehavior,
+) -> Result<BoundaryBehavior, Report> {
+  let inner = |a_at: f64, b_at: f64| match side {
+    Side::Left => a_at >= b_at,
+    Side::Right => a_at <= b_at,
+  };
   match (a, b) {
     (BoundaryBehavior::Error, _) | (_, BoundaryBehavior::Error) => Ok(BoundaryBehavior::Error),
+    (BoundaryBehavior::HardEdgeCell(a_law), BoundaryBehavior::HardEdgeCell(b_law)) => {
+      let inner_law = if inner(a_law.t_edge, b_law.t_edge) {
+        a_law
+      } else {
+        b_law
+      };
+      Ok(BoundaryBehavior::HardEdgeCell(
+        a_law.compose_multiply(&b_law).unwrap_or(inner_law),
+      ))
+    },
+    (BoundaryBehavior::HardEdgeCell(cell), BoundaryBehavior::HardApproach(approach))
+    | (BoundaryBehavior::HardApproach(approach), BoundaryBehavior::HardEdgeCell(cell)) => {
+      if cell.at_edge(approach.t_hard) {
+        return make_internal_error!(
+          "Cannot multiply an edge cell law at {} by a hard-approach tail at the same point: the product follows \
+           neither law, and no inference path multiplies them",
+          cell.t_edge
+        );
+      }
+      Ok(if inner(cell.t_edge, approach.t_hard) {
+        BoundaryBehavior::HardEdgeCell(cell)
+      } else {
+        BoundaryBehavior::HardApproach(approach)
+      })
+    },
+    (law @ BoundaryBehavior::HardEdgeCell(_), BoundaryBehavior::Hard | BoundaryBehavior::Linear(_))
+    | (BoundaryBehavior::Hard | BoundaryBehavior::Linear(_), law @ BoundaryBehavior::HardEdgeCell(_)) => Ok(law),
     (BoundaryBehavior::Hard, BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_))
     | (BoundaryBehavior::HardApproach(_), BoundaryBehavior::Hard) => Ok(BoundaryBehavior::Hard),
     (BoundaryBehavior::HardApproach(_), BoundaryBehavior::HardApproach(_)) => make_internal_error!(

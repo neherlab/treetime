@@ -5,7 +5,7 @@ use ndarray_stats::QuantileExt;
 use ndarray_stats::errors::MinMaxError;
 use num::Float;
 use treetime_grid::grid::Grid;
-use treetime_grid::{BoundaryBehavior, GridFn, HardCell, InterpElem, MaxGridPoints, Side, SoftTailLaw};
+use treetime_grid::{BoundaryBehavior, EdgeCell, GridFn, HardCell, InterpElem, MaxGridPoints, Side, SoftTailLaw};
 use treetime_utils::make_error;
 
 #[derive(Clone, Debug)]
@@ -176,14 +176,14 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     let x_max: f64 = self.x_max().into();
     if x_f64 < x_min {
       return match self.left_extrap() {
-        BoundaryBehavior::Hard => true,
+        BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => true,
         BoundaryBehavior::HardApproach(law) => x_f64 < law.t_hard,
         _ => false,
       };
     }
     if x_f64 > x_max {
       return match self.right_extrap() {
-        BoundaryBehavior::Hard => true,
+        BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => true,
         BoundaryBehavior::HardApproach(law) => x_f64 > law.t_hard,
         _ => false,
       };
@@ -204,6 +204,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     self.grid_fn.hard_cell(cell, self.left_extrap, self.right_extrap)
+  }
+
+  pub fn edge_cell(&self, cell: usize) -> Result<Option<EdgeCell>, Report>
+  where
+    T: Float,
+  {
+    self.grid_fn.edge_cell(cell, self.left_extrap, self.right_extrap)
   }
 
   pub fn with_left_extrap(mut self, behavior: BoundaryBehavior) -> Result<Self, Report> {
@@ -383,6 +390,7 @@ fn scale_tail_law(behavior: BoundaryBehavior, factor: f64) -> BoundaryBehavior {
   match behavior {
     BoundaryBehavior::HardApproach(law) => BoundaryBehavior::HardApproach(law.scale_arg(factor)),
     BoundaryBehavior::Linear(law) => BoundaryBehavior::Linear(law.scale_arg(factor)),
+    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.scale_arg(factor)),
     other => other,
   }
 }

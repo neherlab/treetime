@@ -1,3 +1,4 @@
+use crate::edge_cell_law::EdgeCellLaw;
 use crate::hard_approach_law::HardApproachLaw;
 use crate::soft_tail_law::SoftTailLaw;
 
@@ -9,6 +10,7 @@ pub enum BoundaryBehavior {
   Error,
   Hard,
   HardApproach(HardApproachLaw),
+  HardEdgeCell(EdgeCellLaw),
   Linear(SoftTailLaw),
 }
 

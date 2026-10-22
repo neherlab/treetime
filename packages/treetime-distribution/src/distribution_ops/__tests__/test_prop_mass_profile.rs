@@ -124,7 +124,7 @@ mod tests {
       match behavior {
         BoundaryBehavior::Linear(law) => (-edge.y).exp() / law.slope.abs(),
         BoundaryBehavior::HardApproach(law) => (-edge.y).exp() * (edge.t - law.t_hard).abs() / (law.b + 1.0),
-        BoundaryBehavior::Hard | BoundaryBehavior::Error => 0.0,
+        BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) | BoundaryBehavior::Error => 0.0,
       }
     }
 

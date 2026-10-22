@@ -4,7 +4,7 @@ use crate::distribution_core::point::DistributionPoint;
 use crate::distribution_core::range::DistributionRange;
 use crate::distribution_ops::multiply::{
   HardDomain, distribution_hard_domain, function_hard_domain, guarded_empty_result,
-  multiplication_support_intersection, point_hard_domain, range_hard_domain,
+  multiplication_support_intersection, point_hard_domain, range_hard_domain, with_settled_tails,
 };
 use crate::distribution_ops::time_bounds::{SupportIntersection, distribution_support_n_points};
 use crate::policy::YAxisPolicy;
@@ -12,7 +12,7 @@ use eyre::Report;
 use ndarray::{Array1, Zip};
 use std::cmp::Ordering;
 use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, HardCell, MaxGridPoints, Side};
-use treetime_utils::make_error;
+use treetime_utils::{make_error, make_internal_error};
 
 pub fn distribution_division<Y: YAxisPolicy>(
   dividend: &Distribution<Y>,
@@ -245,19 +245,21 @@ fn apply_division_tail<Y: YAxisPolicy>(
   dividend: HardDomain,
   divisor: HardDomain,
 ) -> Result<DistributionFunction<f64, Y>, Report> {
-  match division_side_tail(side, dividend, divisor) {
-    DivisionSideTail::Refit => function.fit_soft_tail(side, DEFAULT_TAIL_FIT_POINTS),
-    DivisionSideTail::Fixed(tail) => match side {
-      Side::Left => function.with_left_extrap(tail),
-      Side::Right => function.with_right_extrap(tail),
-    },
-  }
+  let tail = match division_side_tail(side, dividend, divisor)? {
+    DivisionSideTail::Refit => return function.fit_soft_tail(side, DEFAULT_TAIL_FIT_POINTS),
+    DivisionSideTail::Fixed(tail) => tail,
+  };
+  let (left, right) = match side {
+    Side::Left => (tail, function.right_extrap()),
+    Side::Right => (function.left_extrap(), tail),
+  };
+  with_settled_tails(function, left, right)
 }
 
-fn division_side_tail(side: Side, dividend: HardDomain, divisor: HardDomain) -> DivisionSideTail {
+fn division_side_tail(side: Side, dividend: HardDomain, divisor: HardDomain) -> Result<DivisionSideTail, Report> {
   let dividend_tail = side_tail(side, dividend);
   let divisor_tail = side_tail(side, divisor);
-  match (dividend_tail.is_soft(), divisor_tail.is_soft()) {
+  Ok(match (dividend_tail.is_soft(), divisor_tail.is_soft()) {
     (true, true) => DivisionSideTail::Refit,
     (true, false) => DivisionSideTail::Fixed(BoundaryBehavior::Error),
     (false, true) => DivisionSideTail::Fixed(dividend_tail),
@@ -267,11 +269,33 @@ fn division_side_tail(side: Side, dividend: HardDomain, divisor: HardDomain) -> 
         Side::Right => side_bound(side, dividend) <= side_bound(side, divisor),
       };
       if dividend_inner {
-        DivisionSideTail::Fixed(dividend_tail)
+        DivisionSideTail::Fixed(division_hard_tail(
+          dividend_tail,
+          side_bound(side, dividend),
+          divisor_tail,
+        )?)
       } else {
         DivisionSideTail::Fixed(BoundaryBehavior::Error)
       }
     },
+  })
+}
+
+fn division_hard_tail(
+  dividend: BoundaryBehavior,
+  dividend_bound: f64,
+  divisor: BoundaryBehavior,
+) -> Result<BoundaryBehavior, Report> {
+  match (dividend, divisor) {
+    (BoundaryBehavior::HardEdgeCell(dividend_law), BoundaryBehavior::HardEdgeCell(divisor_law)) => Ok(
+      BoundaryBehavior::HardEdgeCell(dividend_law.compose_divide(&divisor_law)?.unwrap_or(dividend_law)),
+    ),
+    (_, BoundaryBehavior::HardEdgeCell(divisor_law)) if divisor_law.at_edge(dividend_bound) => make_internal_error!(
+      "Cannot divide by an edge cell law at {} when the dividend has no edge cell law there: the quotient follows \
+       no law with a non-negative exponent",
+      divisor_law.t_edge
+    ),
+    (other, _) => Ok(other),
   }
 }
 

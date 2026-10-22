@@ -8,7 +8,7 @@ use std::iter::once;
 use treetime_distribution::{
   BoundaryBehavior, Distribution, DistributionFunction, MassFractions, MassProfile, NegLog, TailMass,
 };
-use treetime_grid::{GridEdge, HardApproachLaw, HardCell, Side};
+use treetime_grid::{EdgeCell, GridEdge, HardApproachLaw, HardCell, Side};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_internal_error, make_report};
@@ -189,7 +189,10 @@ fn function_survival(
         function.x_max(),
         law.slope
       ),
-      BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => {
+      BoundaryBehavior::Hard
+      | BoundaryBehavior::HardApproach(_)
+      | BoundaryBehavior::HardEdgeCell(_)
+      | BoundaryBehavior::Error => {
         make_internal_error!("Posterior quantile {mass:e} on the {side:?} side without a soft tail is not finite")
       },
     };
@@ -239,6 +242,7 @@ fn translated(
       t_hard: law.t_hard + shift,
       ..law
     }),
+    BoundaryBehavior::HardEdgeCell(law) => BoundaryBehavior::HardEdgeCell(law.shift_arg(shift)),
     other => other,
   };
   DistributionFunction::from_start_dx_values(function.x_min() + shift, function.dx(), function.y().clone())?
@@ -252,20 +256,22 @@ fn local_max_posterior_region(
   peak: usize,
   fraction: f64,
 ) -> Result<PosteriorRegion, Report> {
-  let y = function.y();
-  let n_points = y.len();
-  let x_at = |idx: usize| function.x_min() + function.dx() * idx.to_f64_exact();
-  let (x_min, x_max) = (x_at(0), x_at(n_points - 1));
-  let left_carries_mass = fractions.cdf(x_min) > 0.0;
-  let right_carries_mass = fractions.survival(x_max) > 0.0;
-  if peak == n_points - 1 && !right_carries_mass {
+  let n_points = function.y().len();
+  let (x_min, x_max) = (function.x_min(), function.x_max());
+  let carries_mass = BoundaryMass {
+    left: fractions.cdf(x_min) > 0.0,
+    right: fractions.survival(x_max) > 0.0,
+  };
+  let cells = EdgeCells::of(function)?;
+  let peak_cell = cells.peak_cell(function.y()[peak]);
+  if peak_cell.is_none() && peak == n_points - 1 && !carries_mass.right {
     return Ok(PosteriorRegion {
       lower: fractions.survival_inverse(fraction),
       upper: x_max,
       peak: PeakLocation::Latest,
     });
   }
-  if peak == 0 && !left_carries_mass {
+  if peak_cell.is_none() && peak == 0 && !carries_mass.left {
     return Ok(PosteriorRegion {
       lower: x_min,
       upper: fractions.quantile(fraction),
@@ -273,21 +279,10 @@ fn local_max_posterior_region(
     });
   }
 
-  let t = Array1::from_shape_fn(n_points, x_at);
-  let earlier = LevelSide::new(
-    t.slice(s![..=peak;-1]),
-    y.slice(s![..=peak;-1]),
-    Side::Left,
-    left_carries_mass.then_some(function.left_extrap()),
-    first_hard_cell(function, (0..peak).rev(), |cell| cell)?,
-  );
-  let later = LevelSide::new(
-    t.slice(s![peak..]),
-    y.slice(s![peak..]),
-    Side::Right,
-    right_carries_mass.then_some(function.right_extrap()),
-    first_hard_cell(function, peak..n_points - 1, |cell| cell + 1)?,
-  );
+  let (earlier, later) = match peak_cell {
+    None => grid_peak_sides(function, peak, carries_mass, cells)?,
+    Some((side, cell, mode)) => cell_peak_sides(function, side, cell, mode, carries_mass, cells)?,
+  };
   let region = LevelSolve {
     fractions,
     earlier,
@@ -299,6 +294,138 @@ fn local_max_posterior_region(
     lower: region.lower,
     upper: region.upper,
     peak: PeakLocation::Interior,
+  })
+}
+
+#[derive(Clone, Copy)]
+struct BoundaryMass {
+  left: bool,
+  right: bool,
+}
+
+#[derive(Clone, Copy)]
+struct EdgeCells {
+  left: Option<EdgeCell>,
+  right: Option<EdgeCell>,
+}
+
+impl EdgeCells {
+  fn of(function: &DistributionFunction<f64, NegLog>) -> Result<Self, Report> {
+    let last_cell = function.y().len() - 2;
+    let left = function.edge_cell(0)?.filter(|cell| cell.edge.t <= cell.anchor.t);
+    let right = function
+      .edge_cell(last_cell)?
+      .filter(|cell| cell.edge.t > cell.anchor.t);
+    Ok(Self { left, right })
+  }
+
+  fn peak_cell(self, grid_peak: f64) -> Option<(Side, EdgeCell, GridEdge)> {
+    [(Side::Left, self.left), (Side::Right, self.right)]
+      .into_iter()
+      .filter_map(|(side, cell)| cell.and_then(|cell| cell.mode().map(|mode| (side, cell, mode))))
+      .filter(|(_, _, mode)| mode.y < grid_peak)
+      .min_by_key(|(_, _, mode)| OrderedFloat(mode.y))
+  }
+}
+
+fn grid_peak_sides(
+  function: &DistributionFunction<f64, NegLog>,
+  peak: usize,
+  carries_mass: BoundaryMass,
+  cells: EdgeCells,
+) -> Result<(LevelSide, LevelSide), Report> {
+  let (t, y) = (grid_t(function), function.y());
+  let n_points = y.len();
+  let earlier_segments = chain(
+    cells.left.filter(|_| peak > 0).map(|cell| (peak, cell)),
+    cells.right.filter(|_| peak == n_points - 1).map(|cell| (1, cell)),
+  );
+  let later_segments = chain(
+    cells
+      .right
+      .filter(|_| peak + 1 < n_points)
+      .map(|cell| (n_points - 1 - peak, cell)),
+    cells.left.filter(|_| peak == 0).map(|cell| (1, cell)),
+  );
+  let earlier = LevelSide::new(
+    t.slice(s![..=peak;-1]),
+    y.slice(s![..=peak;-1]),
+    Side::Left,
+    carries_mass.left.then_some(function.left_extrap()),
+    first_hard_cell(function, (0..peak).rev(), |cell| cell)?,
+    earlier_segments.collect(),
+  );
+  let later = LevelSide::new(
+    t.slice(s![peak..]),
+    y.slice(s![peak..]),
+    Side::Right,
+    carries_mass.right.then_some(function.right_extrap()),
+    first_hard_cell(function, peak..n_points - 1, |cell| cell + 1)?,
+    later_segments.collect(),
+  );
+  Ok((earlier, later))
+}
+
+fn cell_peak_sides(
+  function: &DistributionFunction<f64, NegLog>,
+  side: Side,
+  cell: EdgeCell,
+  mode: GridEdge,
+  carries_mass: BoundaryMass,
+  cells: EdgeCells,
+) -> Result<(LevelSide, LevelSide), Report> {
+  let (t, y) = (grid_t(function), function.y());
+  let n_points = y.len();
+  let with_mode = |values: ArrayView1<f64>, at: f64| chain(once(at), values.iter().copied()).collect::<Array1<f64>>();
+  let (edge_index, inward, inward_hard) = match side {
+    Side::Left => (0, s![1..], first_hard_cell(function, 1..n_points - 1, |cell| cell + 1)?),
+    Side::Right => (
+      n_points - 1,
+      s![..n_points - 1;-1],
+      first_hard_cell(function, (0..n_points - 2).rev(), |cell| cell)?,
+    ),
+  };
+  let other = match side {
+    Side::Left => cells.right,
+    Side::Right => cells.left,
+  };
+  let outward = LevelSide::new(
+    with_mode(t.slice(s![edge_index..=edge_index]), mode.t).view(),
+    with_mode(y.slice(s![edge_index..=edge_index]), mode.y).view(),
+    side,
+    None,
+    None,
+    vec![(1, cell)],
+  );
+  let inward_side = match side {
+    Side::Left => Side::Right,
+    Side::Right => Side::Left,
+  };
+  let inward_tail = match side {
+    Side::Left => carries_mass.right.then_some(function.right_extrap()),
+    Side::Right => carries_mass.left.then_some(function.left_extrap()),
+  };
+  let inward = LevelSide::new(
+    with_mode(t.slice(inward), mode.t).view(),
+    with_mode(y.slice(inward), mode.y).view(),
+    inward_side,
+    inward_tail,
+    inward_hard,
+    chain(
+      once((1, cell)),
+      other.filter(|_| n_points > 2).map(|other| (n_points - 1, other)),
+    )
+    .collect(),
+  );
+  Ok(match side {
+    Side::Left => (outward, inward),
+    Side::Right => (inward, outward),
+  })
+}
+
+fn grid_t(function: &DistributionFunction<f64, NegLog>) -> Array1<f64> {
+  Array1::from_shape_fn(function.y().len(), |idx| {
+    function.x_min() + function.dx() * idx.to_f64_exact()
   })
 }
 
@@ -515,6 +642,7 @@ struct LevelSide {
   side: Side,
   tail: Option<BoundaryBehavior>,
   hard_cell: Option<HardCell>,
+  edge_segments: Vec<(usize, EdgeCell)>,
 }
 
 impl LevelSide {
@@ -528,6 +656,7 @@ impl LevelSide {
     side: Side,
     tail: Option<BoundaryBehavior>,
     hard_cell: Option<HardCell>,
+    edge_segments: Vec<(usize, EdgeCell)>,
   ) -> Self {
     let envelope = y
       .iter()
@@ -543,6 +672,7 @@ impl LevelSide {
       side,
       tail,
       hard_cell,
+      edge_segments,
     }
   }
 
@@ -557,6 +687,9 @@ impl LevelSide {
     let n_points = self.t.len();
     if inside == n_points {
       return self.tail_position(level);
+    }
+    if let Some((_, cell)) = self.edge_segments.iter().find(|(segment, _)| *segment == inside) {
+      return cell.position_between(level, self.t[inside - 1], self.t[inside]);
     }
     let (y0, y1) = (self.y[inside - 1], self.y[inside]);
     let (x0, x1) = (self.t[inside - 1], self.t[inside]);
@@ -578,7 +711,7 @@ impl LevelSide {
     match self.tail {
       Some(BoundaryBehavior::Linear(law)) => law.position_at(edge, level, self.side),
       Some(BoundaryBehavior::HardApproach(law)) => law.position_at(edge, level),
-      Some(BoundaryBehavior::Error | BoundaryBehavior::Hard) | None => edge.t,
+      Some(BoundaryBehavior::Error | BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_)) | None => edge.t,
     }
   }
 }

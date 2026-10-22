@@ -197,7 +197,11 @@ impl TrimCuts<'_> {
         None => return make_internal_error!("Mass trim cut at grid point {index} has no representable tail"),
       },
       BoundaryBehavior::HardApproach(law) if self.grid_fn.coincides(law.t_hard, self.t[index]) => extrap,
-      BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::Error => BoundaryBehavior::Hard,
+      BoundaryBehavior::HardEdgeCell(law) if self.grid_fn.coincides(law.t_edge, self.t[index]) => extrap,
+      BoundaryBehavior::Hard
+      | BoundaryBehavior::HardApproach(_)
+      | BoundaryBehavior::HardEdgeCell(_)
+      | BoundaryBehavior::Error => BoundaryBehavior::Hard,
     })
   }
 
@@ -313,12 +317,12 @@ pub(crate) fn mass_bounded_domain(profile: &MassProfile, eps: f64) -> Result<(f6
     );
   };
   let lo = match profile.extrap(Side::Left) {
-    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => profile.x_min(),
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::HardEdgeCell(_) => profile.x_min(),
     BoundaryBehavior::Linear(_) => fractions.quantile(eps),
     BoundaryBehavior::Error => return make_error!("Mass-bounded domain: left side has a non-mass-sizable tail"),
   };
   let hi = match profile.extrap(Side::Right) {
-    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) => profile.x_max(),
+    BoundaryBehavior::Hard | BoundaryBehavior::HardApproach(_) | BoundaryBehavior::HardEdgeCell(_) => profile.x_max(),
     BoundaryBehavior::Linear(_) => fractions.survival_inverse(eps),
     BoundaryBehavior::Error => return make_error!("Mass-bounded domain: right side has a non-mass-sizable tail"),
   };

@@ -1,6 +1,7 @@
 use crate::InterpElem;
 use crate::boundary_behavior::BoundaryBehavior;
 use crate::boundary_behavior::DEFAULT_TAIL_FIT_POINTS;
+use crate::edge_cell::EdgeCell;
 use crate::grid::Grid;
 use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::{HardApproachLaw, Side};
@@ -188,6 +189,35 @@ impl<T: InterpElem> GridFn<T> {
     Ok(Some(HardCell { law, anchor }))
   }
 
+  pub fn edge_cell(
+    &self,
+    cell: usize,
+    left: BoundaryBehavior,
+    right: BoundaryBehavior,
+  ) -> Result<Option<EdgeCell>, Report>
+  where
+    T: Float,
+  {
+    let n = self.grid.n_points();
+    if cell + 1 >= n {
+      return make_error!("Cell {cell} is outside the grid of {n} points");
+    }
+    let (law, edge, anchor) = match (left, right) {
+      (BoundaryBehavior::HardEdgeCell(law), _) if cell == 0 => (law, 0, 1),
+      (_, BoundaryBehavior::HardEdgeCell(law)) if cell + 2 == n => (law, n - 1, n - 2),
+      _ => return Ok(None),
+    };
+    let point = |idx: usize| GridEdge {
+      t: self.grid.x_at(idx).into(),
+      y: self.y[idx].into(),
+    };
+    let (edge, anchor) = (point(edge), point(anchor));
+    if !(self.grid.coincides(law.t_edge, edge.t) && edge.y.is_finite() && anchor.y.is_finite()) {
+      return Ok(None);
+    }
+    EdgeCell::new(law, edge, anchor).map(Some)
+  }
+
   pub fn hard_cell_fit_range(&self, cell: usize) -> Result<Option<RangeInclusive<usize>>, Report>
   where
     T: Float,
@@ -278,7 +308,7 @@ impl<T: InterpElem> GridFn<T> {
         let value = law.eval(self.edge(side), xi_f64);
         Ok(value.into())
       },
-      BoundaryBehavior::Hard => Ok(T::zero()),
+      BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => Ok(T::zero()),
       BoundaryBehavior::Error => {
         let (side_word, bound) = match side {
           Side::Left => ("below", self.grid.x_min()),
@@ -305,6 +335,15 @@ impl<T: InterpElem> GridFn<T> {
     let y1 = self.y[idx + 1];
     let t = (q - x0) / self.grid.dx();
     let t_f64: f64 = t.into();
+    if t_f64 <= 0.0 {
+      return Ok(y0);
+    }
+    if t_f64 >= 1.0 {
+      return Ok(y1);
+    }
+    if let Some(cell) = self.edge_cell(idx, left, right)? {
+      return Ok(<T as From<f64>>::from(cell.eval(q.into())));
+    }
     if t_f64 <= NODE_ROUNDING {
       return Ok(y0);
     }

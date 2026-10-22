@@ -6,7 +6,7 @@ use itertools::Itertools;
 use ndarray::{Array1, Axis, s};
 use std::cmp::Ordering;
 use std::sync::OnceLock;
-use treetime_grid::{BoundaryBehavior, Side};
+use treetime_grid::{BoundaryBehavior, CellEnd, EdgeCell, Side};
 use treetime_utils::array::ndarray::partition_point;
 use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 use treetime_utils::make_error;
@@ -23,7 +23,7 @@ pub struct MassProfile {
   x_min: f64,
   dx: f64,
   r: Array1<f64>,
-  hard_cells: Vec<HardCellPower>,
+  laws: CellLaws,
   prefix: Array1<f64>,
   suffix: Array1<f64>,
   cells: OnceLock<CellSums>,
@@ -58,9 +58,19 @@ impl MassProfile {
           .transpose()
       })
       .try_collect()?;
+    let edge_cells = [0, n - 2]
+      .into_iter()
+      .unique()
+      .filter_map(|cell| {
+        f.edge_cell(cell)
+          .map(|edge| edge.map(|edge| EdgeCellShape::new(cell, edge, y_peak)))
+          .transpose()
+      })
+      .try_collect()?;
+    let laws = CellLaws { hard_cells, edge_cells };
     let x_at = |idx: usize| f.x_min() + dx * idx.to_f64_exact();
     let masses = (0..n - 1)
-      .map(|j| full_cell_mass(&r, &hard_cells, x_at(j + 1) - x_at(j), j).linear())
+      .map(|j| full_cell_mass(&r, &laws, x_at(j + 1) - x_at(j), j).linear())
       .collect_vec();
     let prefix = running_sums(masses.iter().copied());
     let mut suffix = running_sums(masses.iter().rev().copied());
@@ -72,7 +82,7 @@ impl MassProfile {
       x_min: f.x_min(),
       dx,
       r,
-      hard_cells,
+      laws,
       prefix,
       suffix,
       cells: OnceLock::new(),
@@ -142,7 +152,7 @@ impl MassProfile {
   }
 
   fn cell(&self, j: usize) -> Cell {
-    cell_at(&self.r, &self.hard_cells, j)
+    cell_at(&self.r, &self.laws, j)
   }
 
   fn interval_mass(&self, left: Option<TailLaw>, right: Option<TailLaw>, a: f64, b: f64) -> Result<ScaledMass, Report> {
@@ -240,7 +250,7 @@ impl MassProfile {
 
   fn cell_sums(&self) -> &CellSums {
     self.cells.get_or_init(|| {
-      CellSums::new((0..self.r.len() - 1).map(|j| full_cell_mass(&self.r, &self.hard_cells, self.width(j), j)))
+      CellSums::new((0..self.r.len() - 1).map(|j| full_cell_mass(&self.r, &self.laws, self.width(j), j)))
     })
   }
 
@@ -382,6 +392,70 @@ impl MassFractions<'_> {
   }
 }
 
+#[derive(Clone, Debug)]
+struct CellLaws {
+  hard_cells: Vec<HardCellPower>,
+  edge_cells: Vec<EdgeCellShape>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct EdgeCellShape {
+  cell: usize,
+  law: EdgeCell,
+  r_anchor: f64,
+  edge_side: Side,
+}
+
+impl EdgeCellShape {
+  fn new(cell: usize, law: EdgeCell, y_peak: f64) -> Self {
+    let edge_side = if law.edge.t < law.anchor.t {
+      Side::Left
+    } else {
+      Side::Right
+    };
+    Self {
+      cell,
+      law,
+      r_anchor: law.anchor.y - y_peak,
+      edge_side,
+    }
+  }
+
+  fn distance(self, at: Offset) -> f64 {
+    let from_edge = match self.edge_side {
+      Side::Left => at.from_left,
+      Side::Right => at.from_right,
+    };
+    (self.law.edge_distance() + from_edge).min(self.law.anchor_distance())
+  }
+
+  fn mass_between(self, lo: Offset, hi: Offset) -> ScaledMass {
+    let (a, b) = (self.distance(lo), self.distance(hi));
+    let ln_mass = self.law.ln_relative_mass(a.min(b), a.max(b));
+    ScaledMass::new(self.r_anchor - ln_mass, 1.0)
+  }
+
+  fn density_at(self, at: Offset) -> f64 {
+    (self.law.ln_relative_density(self.distance(at)) - self.r_anchor).exp()
+  }
+
+  fn offset_from(self, h: f64, end: Side, m: f64) -> f64 {
+    let ln_mass = m.ln() + self.r_anchor;
+    let distance = if end == self.edge_side {
+      self.law.distance_at_mass(CellEnd::Edge, ln_mass)
+    } else {
+      self.law.distance_at_mass(CellEnd::Anchor, ln_mass)
+    };
+    let from_edge = distance - self.law.edge_distance();
+    let from_end = if end == self.edge_side {
+      from_edge
+    } else {
+      h - from_edge
+    };
+    from_end.clamp(0.0, h)
+  }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct HardCellPower {
   cell: usize,
@@ -398,6 +472,7 @@ impl HardCellPower {
 enum Cell {
   Trapezoid { ra: f64, rb: f64 },
   PowerLaw { r_anchor: f64, power: f64, hard_end: Side },
+  Edge(EdgeCellShape),
   Empty,
 }
 
@@ -436,6 +511,7 @@ impl Cell {
         };
         power_law_mass(r_anchor, h, power, distance(lo).max(distance(hi)), width)
       },
+      Cell::Edge(shape) => shape.mass_between(lo, hi),
     }
   }
 
@@ -472,6 +548,7 @@ impl Cell {
         }
         (-r_anchor).exp() * (distance / h).powf(power - 1.0)
       },
+      Cell::Edge(shape) => shape.density_at(at),
     }
   }
 
@@ -508,6 +585,7 @@ impl Cell {
           power_law_distance_from_anchor(fraction, h, power)
         }
       },
+      Cell::Edge(shape) => shape.offset_from(h, end, m),
     }
   }
 }
@@ -552,7 +630,7 @@ impl TailLaw {
   fn new(behavior: BoundaryBehavior, side: Side, x_edge: f64, r_edge: f64) -> Option<Self> {
     let kind = match behavior {
       BoundaryBehavior::Error => return None,
-      BoundaryBehavior::Hard => TailKind::Zero,
+      BoundaryBehavior::Hard | BoundaryBehavior::HardEdgeCell(_) => TailKind::Zero,
       BoundaryBehavior::Linear(law) => TailKind::Exponential {
         rate: match side {
           Side::Left => -law.slope,
@@ -717,12 +795,16 @@ enum TailKind {
   PowerLaw { t_hard: f64, delta_edge: f64, power: f64 },
 }
 
-fn cell_at(r: &Array1<f64>, hard_cells: &[HardCellPower], j: usize) -> Cell {
+fn cell_at(r: &Array1<f64>, laws: &CellLaws, j: usize) -> Cell {
+  if let Some(&shape) = laws.edge_cells.iter().find(|shape| shape.cell == j) {
+    return Cell::Edge(shape);
+  }
   let (ra, rb) = (r[j], r[j + 1]);
   let power = || {
-    hard_cells
+    laws
+      .hard_cells
       .binary_search_by_key(&j, |hard| hard.cell)
-      .map_or(1.0, |i| hard_cells[i].power)
+      .map_or(1.0, |i| laws.hard_cells[i].power)
   };
   match (ra.is_infinite(), rb.is_infinite()) {
     (false, false) => Cell::Trapezoid { ra, rb },
@@ -740,8 +822,8 @@ fn cell_at(r: &Array1<f64>, hard_cells: &[HardCellPower], j: usize) -> Cell {
   }
 }
 
-fn full_cell_mass(r: &Array1<f64>, hard_cells: &[HardCellPower], h: f64, j: usize) -> ScaledMass {
-  match cell_at(r, hard_cells, j) {
+fn full_cell_mass(r: &Array1<f64>, laws: &CellLaws, h: f64, j: usize) -> ScaledMass {
+  match cell_at(r, laws, j) {
     Cell::Trapezoid { ra, rb } if h > 0.0 => {
       let r_min = ra.min(rb);
       ScaledMass::new(r_min, h * f64::midpoint(scale_below(r_min, ra), scale_below(r_min, rb)))
