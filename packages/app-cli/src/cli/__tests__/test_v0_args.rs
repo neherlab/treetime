@@ -63,7 +63,7 @@ mod tests {
   #[case::stochastic_resolve(       "timetree --stochastic-resolve",               "timetree")]
   #[case::reroot_best(              "timetree --reroot best",                      "timetree --reroot least-squares")]
   #[case::reroot_residual(          "clock --reroot residual",                     "clock --reroot least-squares")]
-  #[case::reroot_res(               "optimize --reroot res",                       "optimize --reroot least-squares")]
+  #[case::reroot_res(               "timetree --reroot res",                       "timetree --reroot least-squares")]
   #[case::reroot_min_dev(           "timetree --reroot min_dev",                   "timetree --reroot min-dev")]
   #[case::reroot_oldest(            "timetree --reroot oldest",                    "timetree --reroot oldest")]
   #[case::reroot_least_squares(     "timetree --reroot=least-squares",             "timetree --reroot=least-squares")]

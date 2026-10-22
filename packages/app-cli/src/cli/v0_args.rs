@@ -42,7 +42,6 @@ const SEQUENCE_COMMANDS: &[&str] = &[TIMETREE, ANCESTRAL, HOMOPLASY, OPTIMIZE, P
 const MODEL_COMMANDS: &[&str] = &[TIMETREE, ANCESTRAL, HOMOPLASY, OPTIMIZE];
 const METADATA_COMMANDS: &[&str] = &[TIMETREE, CLOCK, MUGRATION];
 const SEEDED_COMMANDS: &[&str] = &[TIMETREE, ANCESTRAL, HOMOPLASY];
-const ROOTING_COMMANDS: &[&str] = &[TIMETREE, CLOCK, OPTIMIZE];
 const OUTPUT_COMMANDS: &[&str] = &[
   TIMETREE, ANCESTRAL, CLOCK, MUGRATION, HOMOPLASY, OPTIMIZE, PRUNE, PIPELINE,
 ];
@@ -87,7 +86,7 @@ pub(crate) const V0_SPELLINGS: &[Entry] = &[
   ] },
   Entry { flag: "--stochastic-resolve",   arity: Arity::None,      commands: &[TIMETREE],       rules: &[always(Then::Drop("TreeTime 1 resolves polytomies stochastically"))] },
   Entry { flag: "--greedy-resolve",       arity: Arity::None,      commands: &[TIMETREE],       rules: &[always(Then::Stop("TreeTime 1 resolves polytomies stochastically only"))] },
-  Entry { flag: "--reroot",               arity: Arity::OneOrMore, commands: ROOTING_COMMANDS,  rules: &[
+  Entry { flag: "--reroot",               arity: Arity::OneOrMore, commands: &[TIMETREE, CLOCK], rules: &[
     on(Values::OneOf(&["best", "residual", "res"]),             Then::Replace(&["--reroot", "least-squares"])),
     on(Values::OneOf(&["min_dev"]),                             Then::Replace(&["--reroot", "min-dev"])),
     on(Values::OneOf(&["ML"]),                                  Then::StopWith(COVARIATION_REROOT, "use --reroot least-squares")),
@@ -107,7 +106,7 @@ pub(crate) const V0_SPELLINGS: &[Entry] = &[
   ] },
   Entry { flag: "--time-marginal",        arity: Arity::One,       commands: &[TIMETREE],       rules: &[
     on(Values::OneOf(&["false", "never"]), Then::Drop("TreeTime 1 writes no date intervals by default")),
-    always(Then::Stop("use --confidence")),
+    on(Values::Single,                     Then::Stop("use --confidence")),
   ] },
   Entry { flag: "--branch-length-mode",   arity: Arity::One,       commands: &[TIMETREE],       rules: &[
     on(Values::OneOf(&["joint"]), Then::StopWith("TreeTime 1 estimates branch lengths by marginal likelihood", "use marginal or auto")),
@@ -216,6 +215,7 @@ pub(crate) enum When {
 
 pub(crate) enum Values {
   Any,
+  Single,
   OneOf(&'static [&'static str]),
   Zero,
   Integers(RangeInclusive<u32>),
@@ -232,7 +232,7 @@ impl Values {
 
   fn matches_one(&self, value: &str) -> bool {
     match self {
-      Self::Any => true,
+      Self::Any | Self::Single => true,
       Self::OneOf(names) => names.contains(&value),
       Self::Zero => value
         .parse::<f64>()
