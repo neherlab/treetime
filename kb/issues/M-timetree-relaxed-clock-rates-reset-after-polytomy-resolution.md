@@ -4,8 +4,8 @@ In each refinement round, v1 fits the relaxed-clock rate multipliers (gamma) and
 
 ## v1 behavior
 
-- `fn refinement_round()` calls `fn relax_clock()` (which calls `apply_relaxed_clock`) before `fn refine_topology()` ([packages/treetime/src/timetree/round.rs#L49-L53](../../packages/treetime/src/timetree/round.rs#L49-L53))
-- `fn refine_topology()` replaces the gamma map with `unit_gammas()` for the resolved tree ([packages/treetime/src/timetree/round.rs#L173](../../packages/treetime/src/timetree/round.rs#L173)). `fn unit_gammas()` sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121))
+- `fn refinement_round()` calls `fn relax_clock()` (which calls `apply_relaxed_clock`) before `fn refine_topology()` ([packages/treetime/src/timetree/round.rs#L50-L54](../../packages/treetime/src/timetree/round.rs#L50-L54))
+- `fn refine_topology()` replaces the gamma map with `unit_gammas()` for the resolved tree ([packages/treetime/src/timetree/round.rs#L179](../../packages/treetime/src/timetree/round.rs#L179)). `fn unit_gammas()` sets `gamma = 1.0` on every edge ([packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121](../../packages/treetime/src/timetree/optimization/relaxed_clock.rs#L119-L121))
 - The next round recomputes the multipliers at its start, so the reset lasts for the rest of the round that resolved polytomies, and for the final outputs when that round is the last one
 
 ## v0 behavior
@@ -15,8 +15,9 @@ In each refinement round, v1 fits the relaxed-clock rate multipliers (gamma) and
 
 ## Impact
 
-- With `--relax` and `--resolve-polytomies`, the relaxed clock has no effect in rounds that resolve polytomies
+- Polytomy resolution is the default of `timetree`, so the defect affects every default run with `--relax` on a tree that has a polytomy: the relaxed clock has no effect in the rounds that resolve polytomies
 - When the last round resolves polytomies, the reported gamma of every edge is 1.0
+- `--keep-polytomies` avoids the defect: the topology does not change, and the fitted multipliers stay in effect
 
 ## Open question
 

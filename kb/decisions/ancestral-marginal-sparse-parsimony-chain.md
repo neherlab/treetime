@@ -34,7 +34,7 @@ The same routine re-applied deletions _last_, to stop a posterior from resurrect
 
 On `data/sc2/4500` position 28369 (4332 of 5100 tips deleted), the old reconstruction emitted `A` at 5014 internal nodes. Dense reports 4555 gaps and 544 `A`. At position 23009 it emitted `A` at 864 nodes that dense reports as gaps. Both are now fixed.
 
-Parsimony reconstruction and `--dense=true` were never affected by either defect: neither chains a node's sequence off its parent this way.
+Parsimony reconstruction and `--representation dense` were never affected by either defect: neither chains a node's sequence off its parent this way.
 
 ## Decision
 

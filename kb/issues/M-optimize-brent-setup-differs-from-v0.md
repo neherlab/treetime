@@ -126,7 +126,7 @@ The Poisson approximation ignores multiple hits and ambiguous sites, which lower
 
 Measurements were taken with throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84`. For every edge and optimize iteration, the probe recorded the exit, the start, the solver output, the final output after `fn reconcile_zero_boundary()`, and a reference maximum: $\ell$ on 800 log-spaced points over $[10^{-4} \cdot \text{one\_mutation}, 10]$ plus $t = 0$, with golden-section refinement around each grid local maximum. A finite reference grid does not prove a global maximum.
 
-Measured: `treetime optimize` with default settings on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, for `--dense true|false` and `--model infer|jc69` (24 Brent runs, 9,542 per-edge optimizations):
+Measured: `treetime optimize` with default settings on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, for `--representation dense|sparse` and `--model infer|jc69` (24 Brent runs, 9,542 per-edge optimizations):
 
 - **Termination**: every solver run ended with `SolverConverged`; the largest iteration count was 29 (mean 12.3), so the limit of 50 was never reached. The probe ran before the upper-end check existed, so it does not separate converged points from stops at the upper end
 - **Final $\ell$ below the start**: 875 edges (9%), by at most $9.6\cdot10^{-7}$. On no edge does the start exceed the reference maximum by more than $10^{-9}$, so the reference bounds the start and the two figures below are consistent

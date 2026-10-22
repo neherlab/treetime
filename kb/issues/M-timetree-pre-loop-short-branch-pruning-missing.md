@@ -22,7 +22,7 @@ The v1 pre-loop (`fn run_pre_loop()` [`packages/treetime/src/timetree/pre_loop.r
 
 ## Impact
 
-Arbitrary bifurcations from the input tree stay in the topology. Temporal polytomy resolution (`--resolve-polytomies`) acts only on existing polytomies, so it cannot reorder these splits by the sampling dates. On trees with many near-identical sequences, v1 timetrees can therefore keep clades that conflict with the temporal order and differ in topology from v0 output.
+Arbitrary bifurcations from the input tree stay in the topology. Temporal polytomy resolution (the default unless `--keep-polytomies`) acts only on existing polytomies, so it cannot reorder these splits by the sampling dates. On trees with many near-identical sequences, v1 timetrees can therefore keep clades that conflict with the temporal order and differ in topology from v0 output.
 
 ## Expected behavior
 

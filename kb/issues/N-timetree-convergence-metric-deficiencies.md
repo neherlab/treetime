@@ -31,7 +31,7 @@ Remaining defects in the timetree convergence tracking: likelihood plays no part
 
 ## Validation
 
-Run `data/ebola/20` and `data/mpox/clade-ii/1000`, each with and without `--coalescent-opt` and `--resolve-polytomies`, and compare the tracelog CSV before and after the change. Round counts must not regress.
+Run `data/ebola/20` and `data/mpox/clade-ii/1000`, each with and without `--coalescent-opt` and `--keep-polytomies`, and compare the tracelog CSV before and after the change. Round counts must not regress.
 
 ## Related
 

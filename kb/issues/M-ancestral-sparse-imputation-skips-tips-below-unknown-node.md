@@ -12,7 +12,7 @@ Tree `(((C1,C2)P,C3)P2,((D,E)Q,F)Q2)R` with `C1`, `C2`, `C3` = `ANGT` and `D`, `
 | `C1`-`C3`   | `AAGT` | `ANGT` |
 | other nodes | `AAGT` | `AAGT` |
 
-The table is the output of the current code with `--dense=true` and `--dense=false`.
+The table is the output of the current code with `--representation dense` and `--representation sparse`.
 
 ## Mechanism
 

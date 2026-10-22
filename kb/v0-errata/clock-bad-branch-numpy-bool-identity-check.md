@@ -33,4 +33,4 @@ Two more identity tests in `ClockTree` fail the same way for internal nodes: `in
 
 ## v1 status
 
-v1 stores the outlier state as a Rust `bool` ([packages/treetime/src/clock/clock_state.rs#L227](../../packages/treetime/src/clock/clock_state.rs#L227)), so the same flag cannot have two representations. `treetime clock --reroot-tips=255211` on the tree from the issue exits with 0; the extra leaf appears in the output (see the linked issue) but does not crash the command.
+v1 stores the outlier state as a Rust `bool` ([packages/treetime/src/clock/clock_state.rs#L227](../../packages/treetime/src/clock/clock_state.rs#L227)), so the same flag cannot have two representations. `treetime clock --outgroup=255211` on the tree from the issue exits with 0; the extra leaf appears in the output (see the linked issue) but does not crash the command.

@@ -38,5 +38,5 @@ v0 is not a reference for this case: it models the gap as a fifth state of the `
 
 ## Impact
 
-- Output changes only for dense runs (`--dense true`) in which a leaf has an unknown character under a gapped ancestor. Internal nodes then show `N` instead of `-` at these positions
-- On the smoke datasets this changed the internal sequences of `ebola/20`, `ebola/100`, `lassa/L/20`, `lassa/L/50`, `mpox/clade-ii/20` and `mpox/clade-ii/100` with `--dense true`, and every changed position now equals the sparse result
+- Output changes only for dense runs (`--representation dense`) in which a leaf has an unknown character under a gapped ancestor. Internal nodes then show `N` instead of `-` at these positions
+- On the smoke datasets this changed the internal sequences of `ebola/20`, `ebola/100`, `lassa/L/20`, `lassa/L/50`, `mpox/clade-ii/20` and `mpox/clade-ii/100` with `--representation dense`, and every changed position now equals the sparse result

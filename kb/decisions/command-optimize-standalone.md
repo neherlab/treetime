@@ -22,7 +22,7 @@ v1 adds a dedicated `treetime optimize` subcommand (`fn run_optimize()` in [pack
 | `--aln`                    | (required)                                  | FASTA alignment (supports compression)                     |
 | `--model`                  | `infer`                                     | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
 | `--alphabet`               | auto                                        | Nucleotide or amino acid alphabet                          |
-| `--dense`                  | auto                                        | Force dense sequence representation                        |
+| `--representation`         | `auto`                                      | Dense or sparse sequence representation                    |
 | `--max-iter`               | 10                                          | Maximum outer iterations                                   |
 | `--dp`                     | 0.1                                         | Convergence tolerance (log-likelihood delta)               |
 | `--output-all` (`-O`)      | (optional)                                  | Output directory for default outputs                       |
@@ -32,7 +32,7 @@ v1 adds a dedicated `treetime optimize` subcommand (`fn run_optimize()` in [pack
 
 The command runs an iterative cycle of marginal ancestral reconstruction and per-branch optimization:
 
-1. Read alignment and tree. Create one partition from the full alignment, sparse by default or dense with `--dense`.
+1. Read alignment and tree. Create one partition from the full alignment, sparse by default or dense with `--representation dense`.
 2. Run Fitch reconstruction. Initialize marginal reconstruction (backward and forward passes).
 3. Keep valid input branch lengths and fill the others with the observed substitution count divided by the effective sequence length (`--branch-length-initial-guess`).
 4. Iterate until convergence or `max-iter`:
@@ -106,7 +106,7 @@ Standard practice in phylogenetic ML software (RAxML, IQ-TREE, PhyML) is coordin
 | Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`                                                                |
 | Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0: no damping)                                                |
 | Per-branch method   | Brent's method in sqrt(t) space          | `--opt-method`: Brent or Newton-Raphson in sqrt(t) space; default Brent |
-| Partition support   | Dense only                               | Dense or sparse (`--dense`)                                                                           |
+| Partition support   | Dense only                               | Dense or sparse (`--representation`)                                                                           |
 | Model selection     | GTR inferred internally                  | User-specified via `--model`                                                                          |
 
 The per-branch optimization method difference (Newton-Raphson vs Brent) is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).

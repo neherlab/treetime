@@ -4,7 +4,7 @@ The marginal time inference gives different node times in dense and in sparse mo
 
 `test_gm_runner_marginal_sparse_dense_consistency` [packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25](../../packages/treetime/src/timetree/inference/__tests__/test_gm_runner/test_gm_runner_marginal_sparse.rs#L9-L25) runs v1 dense and v1 sparse on the same inputs and compares their node times. On `flu_h3n2_20` it passes at `epsilon = 1e-2` (largest difference $4.1 \cdot 10^{-3}$ years at `NODE_0000011`); on the other datasets of the fixtures the modes differ by 0.07 to 1.2 years, so the test holds only the flu case. The node time is the grid point with the largest posterior density, and the two modes build different posterior grids, so on `flu_h3n2_20` the test measures mostly the grid cell of about $6.4 \cdot 10^{-3}$ years (see Evidence).
 
-On `rust` at `3825359a2`, one CLI comparison confirms the difference on the default path: `timetree` on `data/ebola/20` with `--clock-rate=0.001 --keep-root --model=jc69 --seed=1` gives node dates that differ by up to 0.0495 years (at `NODE_0000013`) between `--dense=true` and `--dense=false`. That run includes the ML branch-length pre-step, so it does not separate the pre-step from the time inference.
+On `rust` at `3825359a2`, one CLI comparison confirms the difference on the default path: `timetree` on `data/ebola/20` with `--clock-rate=0.001 --keep-root --model=jc69 --seed=1` gives node dates that differ by up to 0.0495 years (at `NODE_0000013`) between `--representation dense` and `--representation sparse`. That run includes the ML branch-length pre-step, so it does not separate the pre-step from the time inference.
 
 ## Severity
 

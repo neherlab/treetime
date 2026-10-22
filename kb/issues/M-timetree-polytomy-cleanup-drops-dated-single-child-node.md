@@ -1,6 +1,11 @@
 # Timetree polytomy cleanup removes single-child nodes that carry a date
 
-After polytomy resolution, `fn remove_single_child_nodes()` removes every node with one parent and one child, selected by degree alone ([packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L228-L252](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L228-L252)). A single-child node with a date constraint carries data: the date constrains the time of that point on the lineage. Removing the node drops the constraint without a message.
+After polytomy resolution, `fn remove_single_child_nodes()` removes every node with one parent and one child, selected by degree alone ([packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L232-L256](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L232-L256)). A single-child node with a date constraint carries data: the date constrains the time of that point on the lineage. Removing the node drops the constraint without a message.
+
+## Impact
+
+- Polytomy resolution is the default of `timetree`, so the defect affects every default run on a tree that has a polytomy and a dated single-child node. The cleanup runs only when the tree has a polytomy ([packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L35-L44](../../packages/treetime/src/timetree/optimization/polytomy/resolve.rs#L35-L44))
+- `--keep-polytomies` avoids the defect: the run skips polytomy resolution and the cleanup, and the dated node keeps its constraint
 
 ## Scientific context
 
@@ -14,11 +19,11 @@ v0 has the same defect: `TreeTime.resolve_polytomies()` removes every non-root s
 
 ## v1 status
 
-v1 has the same defect. `data/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk` is `data/flu/h3n2/20/tree.nwk` with a single-child node `U` and a polytomy. With `U` dated 2008.5 in the metadata, `--resolve-polytomies` removes `U` from the tree and from the node data; `--keep-polytomies` keeps `U` at 2008.5:
+v1 has the same defect. `data/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk` is `data/flu/h3n2/20/tree.nwk` with a single-child node `U` and a polytomy. With `U` dated 2008.5 in the metadata, polytomy resolution (the default) removes `U` from the tree and from the node data; `--keep-polytomies` keeps `U` at 2008.5:
 
 ```bash
 cp data/flu/h3n2/20/metadata.tsv tmp/metadata.tsv && printf 'U\t2008.5\n' >> tmp/metadata.tsv
-treetime timetree --resolve-polytomies --tree=data/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk \
+treetime timetree --tree=data/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk \
   --dates=tmp/metadata.tsv --aln=data/flu/h3n2/20/aln.fasta.xz --output-all=<dir>
 ```
 

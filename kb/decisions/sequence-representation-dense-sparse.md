@@ -4,7 +4,7 @@ v1 introduces a sparse sequence representation (`SparseNodePartition` in `packag
 
 v0 uses only dense representation: `seq2array()` (`packages/legacy/treetime/treetime/seq_utils.py:152-204`) converts sequences to NumPy character arrays, and `seq2prof()` (`packages/legacy/treetime/treetime/seq_utils.py:207-229`) converts those to 2D probability matrices of shape `(L, K)` where L is the alignment length and K is the alphabet size (5 for nucleotides including gap, 22 for amino acids). The `SequenceData.make_compressed_alignment()` method (`packages/legacy/treetime/treetime/sequence_data.py:325-464`) groups identical alignment columns and tracks multiplicity, but this column deduplication still stores a full K-width probability vector for each unique column pattern.
 
-The sparse representation affects commands `ancestral`, `timetree`, and `clock`. Users can select dense mode with `--dense=true`; sparse is the default.
+The sparse representation affects commands `ancestral`, `timetree`, and `clock`. Users can select dense mode with `--representation dense`; sparse is the default.
 
 ## Background: why most alignment positions are invariant
 
@@ -77,7 +77,7 @@ The `infer_dense()` function (`packages/treetime/src/partition/algo/infer_dense.
 ## Practical considerations
 
 - Default behavior uses sparse representation
-- Dense mode is available via `--dense=true` for validation or when sparse assumptions break down
+- Dense mode is available via `--representation dense` for validation or when sparse assumptions break down
 - v0's column deduplication is not replicated in v1; the sparse representation provides an alternative memory optimization based on different assumptions
 - Sparse representation requires Fitch parsimony as a preprocessing step, adding a tree traversal before marginal reconstruction
 

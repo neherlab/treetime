@@ -23,10 +23,6 @@ Some descriptions of `timetree` start lowercase ("use an autocorrelated"), other
 
 ## UX / ergonomics
 
-### U1: `--dense` takes `true`/`false` string instead of boolean flag
-
-Commands: `timetree`, `optimize`, `ancestral`, `homoplasy`. `[possible values: true, false]` requires `--dense=true` or `--dense true`. Idiomatic CLI would be `--dense`/`--no-dense` flag pair or a tri-state with auto-detection.
-
 ### U2: `--opt-method` renders LaTeX in terminal
 
 Command: `optimize`. The description and possible value descriptions contain `$\sqrt{t}$`, `$s = \sqrt{t}$`, `$O(1/t^2)$` which display as raw LaTeX in terminal output. Should be `sqrt(t)`, `s = sqrt(t)`, `O(1/t^2)`.
@@ -114,4 +110,3 @@ Each behavioral item must first select its parse/runtime contract, and already-o
 ## Related issues
 
 - [M-cli-flags-parsed-but-ignored.md](M-cli-flags-parsed-but-ignored.md): unused flags
-- [M-timetree-polytomy-resolution-off-by-default.md](M-timetree-polytomy-resolution-off-by-default.md): `--keep-polytomies` and `--resolve-polytomies` have no conflict guard

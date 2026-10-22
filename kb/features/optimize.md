@@ -5,7 +5,7 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 ## Standalone Command (v1-only)
 
 - [x] `optimize` command with `--tree`, `--aln`, `--output-all`
-- [x] Dense or sparse partition setup, one partition per `--alignment` file, selected by `--dense` for the whole run
+- [x] Dense or sparse partition setup, one partition per `--alignment` file, selected by `--representation` for the whole run
 - [x] Several alignment files share the branch lengths, with one relative rate per file (`--partition-rates`, default `estimate`: a rate step and a site-weighted normalization after each iteration; `equal` fixes every rate at 1) and one indel rate per file in one combined Poisson term ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [x] Short-branch floors use the total length of all files
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
@@ -20,7 +20,7 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 The optimize command has no sampling dates, so only date-free rooting policies are available. Rerooting is opt-in; the input root is kept by default.
 
 - [x] `--reroot=min-dev`: minimize the variance of root-to-tip distances with the clock root search at a fixed rate of zero, every tip at the same date ([kb/algo/reroot.md](../algo/reroot.md)). This implements v0's documented fixed-zero-slope meaning; actual v0 candidate scoring retains an estimated-rate term ([kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md)).
-- [x] `--reroot-tips=A,B,...`: root on the branch leading to the MRCA of the named tips (midpoint), no scoring.
+- [x] `--outgroup=A,B,...`: root on the branch leading to the MRCA of the named tips (midpoint), no scoring.
 - [x] `--keep-root`: explicit form of the default (keep the input root); mutually exclusive with the reroot options.
 - [x] Date-dependent methods (`least-squares`, `oldest`, `clock-filter`) rejected at argument validation
 - [x] Two-phase pipeline: damped pre-reroot branch-length pass, reroot, partition reconciliation, then re-optimization in the main loop (mirrors the timetree pipeline)
@@ -65,7 +65,7 @@ Once per iteration, `prune_and_merge_in_loop` simplifies the tree. Sparse partit
 - [x] Shared-mutation merge: siblings in a polytomy that carry identical substitutions are grouped under a new internal node (`merge_shared_mutation_branches`).
 - [x] Reversion hoist: when a child edge reverts a substitution on the node's parent edge, a new node is inserted grouping that child with its sibling subtree, lifting the non-reverted substitutions above it. Removes one mutation per reverted position and adds none; branch lengths split proportionally to preserve root-to-node distances ([kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md)).
 - [x] Helper-node retirement: mutation-free edges to nodes created during the routine are collapsed, dissolving the transient helpers the merge and hoist leave behind.
-- [x] Per-step toggles: `--no-collapse-short-branches`, `--no-merge-siblings`, `--no-flip-parent-child` disable individual steps (all default on, so output is unchanged without them). Carried in-memory as `TopologyOps` on `OptimizeParams`. Merge and flip-parent-child are sparse-only, so both warn when disabled under `--dense` where they cannot run. When collapse is disabled the optimizer may leave zero-length internal edges in the output; they are kept as-is.
+- [x] Per-step toggles: `--no-collapse-short-branches`, `--no-merge-siblings`, `--no-flip-parent-child` disable individual steps (all default on, so output is unchanged without them). Carried in-memory as `TopologyOps` on `OptimizeParams`. Merge and flip-parent-child are sparse-only, so both warn when disabled under `--representation dense` where they cannot run. When collapse is disabled the optimizer may leave zero-length internal edges in the output; they are kept as-is.
 
 The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polytomies`) run every iteration and driven to a fixpoint by a monotone (mutation count, node count) potential. A polytomy whose children all revert the same position collapses to a single reverting child that the two-children guard leaves in place ([kb/issues/M-optimize-reversion-hoist-single-child-residual.md](../issues/M-optimize-reversion-hoist-single-child-residual.md)).
 
@@ -87,7 +87,6 @@ The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polyt
 - [x] Marginal mode (profile-based optimization with full probability vectors)
 - [ ] Joint mode (removed in v1, see [intentional change](../decisions/ancestral-joint-reconstruction-removed.md))
 - [ ] Input mode (no optimization, Poisson/Gaussian approximation for short/long branches)
-- [ ] Auto-detection of branch length mode (v0: defaults to `input` if max branch > 0.1, else `joint`)
 
 ## Short Branch Handling
 
@@ -97,5 +96,5 @@ The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polyt
 
 ## Current Limitations
 
-- [ ] Automatic choice of the representation without `--dense`: `infer_dense()` always returns false, so the default is sparse
+- [ ] Automatic choice of the representation with `--representation auto` (the default): `infer_dense()` always returns false, so the default is sparse
 - [ ] Standalone `run_optimize_sparse()` zero-branch inconsistency

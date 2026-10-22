@@ -4,7 +4,7 @@
 
 - [x] Load tree from `--tree`
 - [x] Optional date table from `--dates`
-- [x] Optional alignment when `--branch-length-mode=marginal`
+- [x] Optional alignment: `--branch-length-mode` `auto` (default) keeps the input branch lengths without an alignment
 - [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [ ] Gap handling matches v0: v0 timetree with the default `--gtr infer` uses the 5-state `nuc` alphabet, where the gap is a state ([packages/legacy/treetime/treetime/wrappers.py#L56](../../packages/legacy/treetime/treetime/wrappers.py#L56)); the v1 nucleotide alphabet puts the gap in the undetermined set together with the unknown character, so a gap carries no state information ([packages/treetime/src/alphabet/alphabet.rs#L131](../../packages/treetime/src/alphabet/alphabet.rs#L131)). Named models `JC69`, `F81` and `TN93` also use the 5-state alphabet, `K80`, `HKY85` and `T92` the 4-state one ([kb/issues/M-timetree-gap-state-v0-divergence.md](../issues/M-timetree-gap-state-v0-divergence.md))
@@ -29,6 +29,7 @@
 
 ## Branch-Length Modes
 
+- [x] `auto` (default, v0 `fn _set_branch_length_mode()`): `input` without an alignment or when the longest input branch is above 0.1 substitutions per site, otherwise `marginal` (v0 chooses `joint`, which v1 does not implement); `marginal` when no input branch has a length. Resolved after the tree is read ([packages/app-commands/src/commands/timetree/branch_length_mode.rs](../../packages/app-commands/src/commands/timetree/branch_length_mode.rs))
 - [x] `input` (use tree branch lengths, no sequence partitions)
 - [x] `marginal` (optimize via marginal reconstruction)
   - [x] Dense marginal partition branch
@@ -38,14 +39,15 @@
 
 ## Time Marginal Modes
 
-- [/] `never`: runs the same marginal time inference in every round as the other modes and skips confidence-interval extraction; v0 uses joint most-likely times, which v1 does not implement ([kb/decisions/timetree-marginal-only-time-inference.md](../decisions/timetree-marginal-only-time-inference.md)). The meaning of the modes is open: [kb/issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md](../issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md)
-- [x] `always` (marginal every round): every round already uses marginal time inference, so the mode runs no extra pass and enables confidence-interval extraction in `fn gather_results` ([packages/treetime/src/timetree/pipeline.rs#L475-L486](../../packages/treetime/src/timetree/pipeline.rs#L475-L486))
-- [x] `only-final` (marginal last round for confidence)
+v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decisions/timetree-marginal-only-time-inference.md](../decisions/timetree-marginal-only-time-inference.md)), and `--confidence` is the only switch for date intervals.
+
+- [/] v0 `never` (default, no intervals): the v1 default; v0 uses joint most-likely times, which v1 does not implement
+- [x] v0 `only-final` and `confidence-only`: `--confidence`
   - [x] Final timetree pass after loop
   - [x] Final marginal update when partitions exist
   - [x] Confidence interval extraction from node time distributions
   - [x] Confidence TSV output
-- [x] `confidence-only` (v0 variant, implemented as `--confidence` promoting `Never` to `OnlyFinal`)
+- [ ] v0 `always` (marginal times in every round, intervals without a final round): no flag, because every v1 round is marginal and `--confidence` writes the intervals
 
 ## Coalescent Models
 
@@ -55,7 +57,7 @@
   - [x] Pre-loop constant Tc optimization
 - [/] Skyline (`--coalescent skyline`, convex Newton solve over piecewise-constant $T_c(t)$; extrapolation and quadrature contracts remain open: [kb/issues/N-coalescent-skyline-extrapolation-policy-undecided.md](../issues/N-coalescent-skyline-extrapolation-policy-undecided.md), [kb/issues/N-coalescent-skyline-quadrature-contract-undecided.md](../issues/N-coalescent-skyline-quadrature-contract-undecided.md))
   - [ ] Skyline fitted in the last round only: v0 uses a constant $T_c$ until the last round; v1 re-estimates the skyline at the start of every loop round ([packages/treetime/src/timetree/refinement_loop.rs#L54-L61](../../packages/treetime/src/timetree/refinement_loop.rs#L54-L61)) and runs no skyline step after the loop ([kb/issues/M-timetree-skyline-timing-v0-divergence.md](../issues/M-timetree-skyline-timing-v0-divergence.md))
-- [x] Final marginal round after the loop for `--time-marginal=only-final`, and for `--confidence` with `never` when a clock rate uncertainty is given (v0 `confidence-only`): v0 runs no other post-loop timetree pass ([packages/legacy/treetime/treetime/treetime.py#L390-L395](../../packages/legacy/treetime/treetime/treetime.py#L390-L395), [packages/legacy/treetime/treetime/wrappers.py#L453-L470](../../packages/legacy/treetime/treetime/wrappers.py#L453-L470), [packages/legacy/treetime/treetime/wrappers.py#L492](../../packages/legacy/treetime/treetime/wrappers.py#L492)); v1 `fn compute_effective_time_marginal` ([packages/treetime/src/timetree/params.rs#L13-L27](../../packages/treetime/src/timetree/params.rs#L13-L27)) and `fn final_marginal_round` ([packages/treetime/src/timetree/round.rs#L88-L99](../../packages/treetime/src/timetree/round.rs#L88-L99)), called from `fn refine_final_times` ([packages/treetime/src/timetree/pipeline.rs#L424-L431](../../packages/treetime/src/timetree/pipeline.rs#L424-L431))
+- [x] Final marginal round after the loop for `--confidence` (v0 `only-final` and `confidence-only`): v0 runs no other post-loop timetree pass ([packages/legacy/treetime/treetime/treetime.py#L390-L395](../../packages/legacy/treetime/treetime/treetime.py#L390-L395), [packages/legacy/treetime/treetime/wrappers.py#L453-L470](../../packages/legacy/treetime/treetime/wrappers.py#L453-L470), [packages/legacy/treetime/treetime/wrappers.py#L492](../../packages/legacy/treetime/treetime/wrappers.py#L492)); v1 `fn final_marginal_round` ([packages/treetime/src/timetree/round.rs#L88-L99](../../packages/treetime/src/timetree/round.rs#L88-L99)), called from `fn refine_final_times` ([packages/treetime/src/timetree/pipeline.rs#L424-L431](../../packages/treetime/src/timetree/pipeline.rs#L424-L431))
 - [x] Coalescent leaf, internal-node, and root contributions
 - [x] Child-first contribution ordering matching v0
 - [x] Merger rate lambda(t) = k(k-1)/(2\*Tc)
@@ -76,7 +78,7 @@
 - [x] `--seed` for reproducible resolution; a generated seed is logged when none is given
 - [/] Remove obsolete single-child nodes after resolution (removes dated single-child nodes too: [kb/issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md](../issues/M-timetree-polytomy-cleanup-drops-dated-single-child-node.md))
 - [x] Reconcile partition topology after tree change
-- [/] `--keep-polytomies` (parsed but never read - [kb/issues/M-cli-flags-parsed-but-ignored.md](../issues/M-cli-flags-parsed-but-ignored.md))
+- [x] Resolution by default as in v0; `--keep-polytomies` turns it off
 - [ ] Greedy pairwise merging (v0's `--greedy-resolve`; v1 does not provide this method, and v0 deprecates it as unsuitable for large polytomies)
 
 ## Relaxed Clock
@@ -124,7 +126,6 @@
 - [x] Rate susceptibility analysis (`compute_rate_susceptibility()`)
 - [x] `date_uncertainty_due_to_rate()` via probit function (erfinv)
 - [x] Rate susceptibility activated via `--confidence`, with `--clock-std-dev` or the Gaussian rate standard deviation of an estimated rate (v0: `--clock-std-dev` or `--covariation`; see [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
-- [x] `--confidence` promotion of `time_marginal` from `never` to `only-final`
 - [x] Clock rate stepped toward the maximum of the marginal likelihood of the node times in each refinement round when a coalescent prior is active - new in v1, see [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [x] Reroot method and tip/MRCA selection passed into clock rerooting
 
@@ -154,9 +155,9 @@
 ## CLI Options (Parsed but Not Wired)
 
 - [x] `--clock-std-dev` (rate susceptibility)
-- [x] `--confidence` (time_marginal promotion, rate susceptibility)
+- [x] `--confidence` (final marginal round, rate susceptibility)
 - [ ] `--covariation`, `--tip-slack`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
-- [x] `--reroot` / `--reroot-tips`
+- [x] `--reroot` / `--outgroup` / `--keep-root`
 - [x] `--gtr` (model selection: named models and inference)
 - [x] `--model-params` (`key=value` parameters of a named model, as v0 `--gtr-params`; an unknown key or a malformed item is an error)
 - [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)

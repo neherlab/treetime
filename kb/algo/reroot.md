@@ -45,7 +45,7 @@ $$\text{score} = \frac{S_{dd}\, n - S_d^2}{2n^2}$$
 
 where $n$ is the number of contributing tips, $S_d$ the sum of root-to-tip distances and $S_{dd}$ their sum of squares; the score is half the variance of the root-to-tip distances. Sampling dates do not occur in it, so changing them cannot change the selected root while the contributing tips stay the same.
 
-`optimize` has no dates: `fn reroot_undated()` gives every tip the same date, so that every tip contributes, and runs the same driver at rate zero for `min-dev` and `--reroot-tips` ([packages/treetime/src/clock/reroot.rs#L53](../../packages/treetime/src/clock/reroot.rs#L53)).
+`optimize` has no dates: `fn reroot_undated()` gives every tip the same date, so that every tip contributes, and runs the same driver at rate zero for `min-dev` and `--outgroup` ([packages/treetime/src/clock/reroot.rs#L53](../../packages/treetime/src/clock/reroot.rs#L53)).
 
 TreeTime v0 passes a zero slope for `min_dev`, but its `base_regression()` function still subtracts the estimated-rate regression term when scoring candidates, so its executed behavior does not implement its documented minimum-variance objective.
 
@@ -57,4 +57,4 @@ v0 reference and erratum:
 
 ## Tip / MRCA Rooting
 
-`--reroot-tips` roots on the branch leading to the MRCA of the named tips, at its midpoint, without scoring. The MRCA is found by path intersection (`common_ancestor`).
+`--outgroup` roots on the branch leading to the MRCA of the named tips, at its midpoint, without scoring. The MRCA is found by path intersection (`common_ancestor`).

@@ -14,7 +14,7 @@
 
 ## Evidence
 
-Throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84` (method in [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence)). Measured: `treetime optimize` on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, `--dense true|false`, `--model infer|jc69`, both methods (48 runs, 19,086 per-edge optimizations). The Newton column comes from an earlier Newton method that ran its own grid search when the start was not concave; the current safeguarded Newton method was not measured.
+Throwaway instrumentation of `fn optimize_edge()` on `rust` at `77dd3a84` (method in [M-optimize-brent-setup-differs-from-v0.md](M-optimize-brent-setup-differs-from-v0.md#evidence)). Measured: `treetime optimize` on `flu/h3n2/{20,200}`, `ebola/{20,100}`, `zika/86`, `rsv/a/100`, `--representation dense|sparse`, `--model infer|jc69`, both methods (48 runs, 19,086 per-edge optimizations). The Newton column comes from an earlier Newton method that ran its own grid search when the start was not concave; the current safeguarded Newton method was not measured.
 
 Which path decided the result:
 

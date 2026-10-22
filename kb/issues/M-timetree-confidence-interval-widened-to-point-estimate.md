@@ -9,7 +9,7 @@
 
 ## Summary
 
-Confidence intervals of `timetree` combine the maximum posterior region of the marginal time posterior with the rate-susceptibility term of `--confidence`, in quadrature, clipped to the hard sides of the node's subtree distribution. They are written when `--time-marginal` is `always` or `only-final`, or when `--confidence` is set.
+Confidence intervals of `timetree` combine the maximum posterior region of the marginal time posterior with the rate-susceptibility term of `--confidence`, in quadrature, clipped to the hard sides of the node's subtree distribution. They are written when `--confidence` is set.
 
 ## Details
 

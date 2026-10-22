@@ -8,7 +8,7 @@ v0 adds `--rng-seed` to every subcommand parser in `packages/legacy/treetime/tre
 
 ## What v1 does
 
-- The random steps of v1 are profile sampling in `ancestral` (`--sample-from-profile=root|all`) and polytomy resolution in `timetree` (`--resolve-polytomies`). The Fitch root tie-break is deterministic ([ancestral-fitch-deterministic-root-state.md](ancestral-fitch-deterministic-root-state.md)), so `clock` and `mugration` have no random step and do not accept `--seed`
+- The random steps of v1 are profile sampling in `ancestral` (`--sample-from-profile=root|all`) and polytomy resolution in `timetree` (on by default, off with `--keep-polytomies`). The Fitch root tie-break is deterministic ([ancestral-fitch-deterministic-root-state.md](ancestral-fitch-deterministic-root-state.md)), so `clock` and `mugration` have no random step and do not accept `--seed`
 - `struct SeedArgs` in `packages/app-commands/src/commands/shared/seed.rs` owns the flag. `SeedArgs::resolve()` returns the given seed or draws one, and logs `<step> is stochastic; seed <seed> (pass --seed to reproduce this run)` when the run has a random step
 - The core takes a plain `u64` seed (`AncestralParams`, `AaParams`, `TimetreeParams`), and `get_random_number_generator()` in `packages/treetime-utils/src/sync/random.rs` takes a `u64`, so no core path reads entropy
 - The generator is Xoshiro256++ (`rand::rngs::Xoshiro256PlusPlus`), seeded from the `u64` through SplitMix64

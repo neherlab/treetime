@@ -4,7 +4,7 @@ A backward message of the time inference holds the exact convolution only near i
 
 ## Evidence
 
-`data/flu/h3n2/200` at `--clock-rate=3.058e-3 --keep-root --time-marginal always --seed=1` (the rate that a default run estimates):
+`data/flu/h3n2/200` at `--clock-rate=3.058e-3 --keep-root --confidence --seed=1` (the rate that a default run estimates):
 
 - **Posteriors far below their messages**: along `NODE_0000160 -> 161 -> 162 -> 163 -> 165 -> 167`, the posteriors of the 1972 cluster lie at the hard edge 1972.997 of their subtree distributions, 44 nats below the subtree's peak (1962.71) and 91 nats below the peak of the backward message from `NODE_0000162` (1948.53). The branch distribution of that edge peaks at 13.97 years and lies 392 nats above its peak at length 0
 - **Tail too heavy**: against the direct integral of the branch density times the subtree density, the stored message is 335 nats too heavy at the parent time 1972.995 relative to 1970
@@ -29,7 +29,7 @@ Reproduction:
 ```bash
 ./dev/docker/run just r treetime timetree --tree=data/flu/h3n2/200/tree.nwk \
   --metadata=data/flu/h3n2/200/metadata.tsv --alignment=data/flu/h3n2/200/aln.fasta.xz \
-  --clock-rate=3.058e-3 --keep-root --time-marginal=always --seed=1 \
+  --clock-rate=3.058e-3 --keep-root --confidence --seed=1 \
   --output-all=tmp/flu-deep-tail --output-confidence-tsv=tmp/flu-deep-tail/confidence.tsv
 ```
 

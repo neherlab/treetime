@@ -23,7 +23,7 @@
 - [x] Least-squares (minimize RTT regression residuals)
 - [x] Min-dev (fixed-zero-rate least squares; minimize RTT variance independently of sampling-date values; see [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md))
 - [x] Oldest (root at oldest node)
-- [x] Tip/MRCA mode (`--reroot-tips`)
+- [x] Tip/MRCA mode (`--outgroup`)
 
 ## Edge Split Optimization
 
@@ -63,7 +63,7 @@
 - [x] `--clock-rate` (fixed rate bypasses estimation)
 - [x] `--allow-negative-rate` (for midpoint rooting)
 - [ ] `--tip-slack`, `--covariation`, `--sequence-length`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
-- [x] `--reroot` / `--reroot-tips`
+- [x] `--reroot` / `--outgroup` / `--keep-root`
 - [ ] `--aln`, `--gtr`, `--gtr-params`, `--vcf-reference`, `--branch-length-mode`, `--method-anc`, `--prune-short`: removed in v1, because the regression uses the branch lengths of the input tree and v0 reads the alignment only for `--covariation` ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [ ] `--seed` (not accepted: clock has no random step; see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

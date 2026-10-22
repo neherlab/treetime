@@ -18,8 +18,8 @@ The ambiguity report ([kb/decisions/ambiguity-report-of-plausible-states.md](../
 ## Reproduction
 
 ```bash
-./dev/docker/run just r treetime ancestral --method-anc=marginal --dense=false --tree=data/rsv/a/20/tree.nwk --alignment=data/rsv/a/20/aln.fasta.xz --output-all=tmp/residues/sparse
-./dev/docker/run just r treetime ancestral --method-anc=marginal --dense=true --tree=data/rsv/a/20/tree.nwk --alignment=data/rsv/a/20/aln.fasta.xz --output-all=tmp/residues/dense
+./dev/docker/run just r treetime ancestral --method-anc=marginal --representation=sparse --tree=data/rsv/a/20/tree.nwk --alignment=data/rsv/a/20/aln.fasta.xz --output-all=tmp/residues/sparse
+./dev/docker/run just r treetime ancestral --method-anc=marginal --representation=dense --tree=data/rsv/a/20/tree.nwk --alignment=data/rsv/a/20/aln.fasta.xz --output-all=tmp/residues/dense
 ```
 
 Compare `ancestral.reconstructed-nuc.fasta` of the two runs position by position.
@@ -44,7 +44,7 @@ CaseSpec { seed: 15242536588371401067, sampling: [SampleBatch { tau: 0.0, count:
 
 ## Impact and scope
 
-The sparse backend is the default. Dense and sparse are independent representations of the same model, so a differing residue means that at least one of them deviates from the marginal maximum a posteriori state. Downstream consumers see different internal sequences and mutations depending on `--dense`.
+The sparse backend is the default. Dense and sparse are independent representations of the same model, so a differing residue means that at least one of them deviates from the marginal maximum a posteriori state. Downstream consumers see different internal sequences and mutations depending on `--representation`.
 
 ## Root cause
 

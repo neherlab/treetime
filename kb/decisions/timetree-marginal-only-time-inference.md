@@ -12,8 +12,8 @@ v1 infers node times only by marginal inference: sum-product message passing ove
 
 ## v1 behavior
 
-- `run_timetree` runs the backward and forward sum-product passes in every round ([packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs), [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs)), whatever `--time-marginal` says
-- `--time-marginal` controls only the extra final round of `only-final` and whether confidence intervals are extracted. What each value should mean with marginal-only inference is open: [kb/issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md](../issues/M-timetree-time-marginal-modes-undefined-for-marginal-only-inference.md)
+- `run_timetree` runs the backward and forward sum-product passes in every round ([packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs), [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs)), with or without `--confidence`
+- v1 has no `--time-marginal`. `--confidence` adds the final marginal round after the loop and writes the confidence intervals
 
 ## Rationale
 
