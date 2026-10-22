@@ -127,6 +127,21 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::without_redundant_breaks(vec![1.0],           vec![1.0, 2.0_f64.powi(54)])]
+  #[case::with_redundant_breaks(   vec![1.0, 2.0, 3.0], vec![1.0, 2.0_f64.powi(54), 2.0_f64.powi(54), 2.0_f64.powi(54)])]
+  #[trace]
+  fn test_tc_schedule_piecewise_time_after_hazard_is_unchanged_by_breaks_that_keep_tc(
+    #[case] breaks: Vec<f64>,
+    #[case] values: Vec<f64>,
+  ) {
+    let schedule = TcSchedule::piecewise(breaks, values).unwrap();
+    let expected = 5.0;
+    let actual = schedule.time_after_hazard(0.0, 1.0_f64.next_up()).unwrap();
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::piecewise_negative(  TcSchedule::constant(1.0),         -1.0,     "Hazard after time 2 must be non-negative, got -1")]
   #[case::piecewise_nan(       TcSchedule::constant(1.0),         f64::NAN, "Hazard after time 2 must be non-negative, got NaN")]
   #[case::exponential_negative(TcSchedule::exponential(1.0, 1.0), -1.0,     "Hazard after time 2 must be non-negative, got -1")]

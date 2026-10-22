@@ -81,17 +81,15 @@ pub struct PiecewiseTc {
 
 impl PiecewiseTc {
   fn time_after_hazard(&self, from: f64, hazard: f64) -> f64 {
-    self
-      .segments_from(from)
-      .scan(0.0, |hazard_after, segment| {
-        let hazard_before = *hazard_after;
-        *hazard_after += (segment.end - segment.start) / segment.tc;
-        Some((segment, hazard_before, *hazard_after))
-      })
-      .find(|&(_, _, hazard_after)| hazard <= hazard_after)
-      .map_or(f64::NAN, |(segment, hazard_before, _)| {
-        segment.start + (hazard - hazard_before) * segment.tc
-      })
+    let mut remaining = hazard;
+    for segment in self.segments_from(from) {
+      let segment_hazard = (segment.end - segment.start) / segment.tc;
+      if remaining <= segment_hazard {
+        return segment.start + remaining * segment.tc;
+      }
+      remaining -= segment_hazard;
+    }
+    f64::NAN
   }
 
   fn segments_from(&self, from: f64) -> impl Iterator<Item = Segment> + '_ {
