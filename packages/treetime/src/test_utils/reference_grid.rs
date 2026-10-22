@@ -64,10 +64,7 @@ impl GridWindow {
       },
       fraction,
     )?;
-    let corrections = ends
-      .exact
-      .map(|exact| CellMoments::of(&window, &exact))
-      .transpose()?;
+    let corrections = ends.exact.map(|exact| CellMoments::of(&window, &exact)).transpose()?;
     Ok(Self { corrections, ..window })
   }
 
@@ -150,7 +147,9 @@ impl GridWindow {
       .chain(once(old))
       .tuple_windows()
       .filter(|(left, right)| right > left)
-      .map(|(left, right)| (right - left) / 6.0 * (product(left) + 4.0 * product(f64::midpoint(left, right)) + product(right)))
+      .map(|(left, right)| {
+        (right - left) / 6.0 * (product(left) + 4.0 * product(f64::midpoint(left, right)) + product(right))
+      })
       .sum();
     let corrections = self
       .corrections
@@ -220,7 +219,10 @@ impl GridWindow {
         }
         let (left, right) = (self.at(from), self.at(to));
         let inside = to - from >= 1.0;
-        (0.5 * (to - from) * (left + right), if inside { right - left } else { 0.0 })
+        (
+          0.5 * (to - from) * (left + right),
+          if inside { right - left } else { 0.0 },
+        )
       })
       .unzip();
     Stencils {
@@ -383,7 +385,11 @@ impl GridSamples {
     self
       .values
       .slice(s![to_usize(lo - self.start)..=to_usize(hi - self.start)])
-      .dot(&other.values.slice(s![to_usize(parent - hi - other.start)..=to_usize(parent - lo - other.start);-1]))
+      .dot(
+        &other
+          .values
+          .slice(s![to_usize(parent - hi - other.start)..=to_usize(parent - lo - other.start);-1]),
+      )
   }
 
   fn end(&self) -> isize {
@@ -469,14 +475,17 @@ fn cell_moments(
         return Ok(moments);
       }
       let points = piece_points(left, right, exact)?;
-      points.iter().tuple_windows().try_fold((0.0, 0.0), |(d0, d1), (&a, &b)| {
-        let (middle, half) = (f64::midpoint(a, b), 0.5 * (b - a));
-        GAUSS_LEGENDRE_8.iter().try_fold((d0, d1), |(d0, d1), &(node, weight)| {
-          let x = middle + half * node;
-          let value = half * weight * defect(x)?;
-          Ok::<_, Report>((d0 + value, d1 + value * (x - center)))
+      points
+        .iter()
+        .tuple_windows()
+        .try_fold((0.0, 0.0), |(d0, d1), (&a, &b)| {
+          let (middle, half) = (f64::midpoint(a, b), 0.5 * (b - a));
+          GAUSS_LEGENDRE_8.iter().try_fold((d0, d1), |(d0, d1), &(node, weight)| {
+            let x = middle + half * node;
+            let value = half * weight * defect(x)?;
+            Ok::<_, Report>((d0 + value, d1 + value * (x - center)))
+          })
         })
-      })
     })
     .try_fold((0.0, 0.0), |(d0, d1), moments: Result<(f64, f64), Report>| {
       let (piece_d0, piece_d1) = moments?;

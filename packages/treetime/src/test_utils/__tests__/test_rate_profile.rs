@@ -36,7 +36,14 @@ mod tests {
 
     let unbounded = izip!(&coarse, &fine)
       .filter(|(coarse, fine)| (coarse.reference.log_z - fine.reference.log_z).abs() > coarse.reference.error())
-      .map(|(coarse, fine)| (coarse.rate, coarse.reference.log_z, fine.reference.log_z, coarse.reference.error()))
+      .map(|(coarse, fine)| {
+        (
+          coarse.rate,
+          coarse.reference.log_z,
+          fine.reference.log_z,
+          coarse.reference.error(),
+        )
+      })
       .collect_vec();
     assert!(
       unbounded.is_empty(),

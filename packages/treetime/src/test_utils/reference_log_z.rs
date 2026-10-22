@@ -3,8 +3,8 @@ use crate::test_utils::reference_grid::{Ends, ExactFunction, GridWindow, convolv
 use crate::timetree::inference::result::BranchLikelihood;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use ordered_float::OrderedFloat;
 use ndarray::Array1;
+use ordered_float::OrderedFloat;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
@@ -476,7 +476,10 @@ fn node_window(
     .iter()
     .filter(|window| window.old_end().total_cmp(&old).is_eq())
     .all(|window| window.has_old_edge());
-  let leaves = messages.iter().filter_map(|message| message.leaf.as_ref()).collect_vec();
+  let leaves = messages
+    .iter()
+    .filter_map(|message| message.leaf.as_ref())
+    .collect_vec();
   let breaks = sorted(
     leaves
       .iter()
