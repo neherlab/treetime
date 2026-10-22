@@ -46,7 +46,7 @@ mod tests {
         alignment: vec![PathBuf::from("-"), PathBuf::from("-")],
       },
       reconstructed_fasta_output: ReconstructedFastaOutputArgs {
-        output_sequences: Some(dir.path().join("out.fasta")),
+        output_sequences: Some(dir.path().join("out.{alignment}.fasta")),
       },
       ..TreetimeAncestralArgsRaw::default()
     })?;

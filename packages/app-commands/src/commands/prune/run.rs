@@ -33,6 +33,7 @@ pub fn run_prune(
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   validate_args(args)?;
+  let resolved = args.resolve_outputs()?;
 
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
@@ -43,8 +44,6 @@ pub fn run_prune(
   let branch_lengths_input = parse.branch_lengths;
   let input_order = leaf_order(&graph);
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
-
-  let resolved = args.resolve_outputs()?;
 
   let sources = if args.alignment.alignment.is_empty() {
     vec![]

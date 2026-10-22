@@ -46,7 +46,7 @@ mod tests {
   #[case::documented_defaults(             &[],                                                               None)]
   #[trace]
   fn test_dependent_settings_timetree(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {
-    let argv = [&["timetree", "--tree", "t.nwk", "--alignment", "a.fasta"][..], extra].concat();
+    let argv = [&["timetree", "--tree", "t.nwk", "--metadata", "m.tsv", "--alignment", "a.fasta"][..], extra].concat();
     assert_eq!(
       expected.map(helpers::owned),
       argument_error_of::<TreetimeTimetreeArgsRaw, TreetimeTimetreeArgs>(&argv)

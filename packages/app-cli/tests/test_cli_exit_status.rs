@@ -21,7 +21,15 @@ mod tests {
   #[test]
   fn test_cli_argument_check_after_parsing_is_a_plain_usage_error() {
     let run = treetime(
-      &["timetree", "--tree", "tree.nwk", "--branch-length-mode", "marginal"],
+      &[
+        "timetree",
+        "--tree",
+        "tree.nwk",
+        "--metadata",
+        "metadata.tsv",
+        "--branch-length-mode",
+        "marginal",
+      ],
       &[],
     );
     assert_eq!(
@@ -37,23 +45,36 @@ mod tests {
   }
 
   #[test]
-  fn test_cli_run_without_outputs_is_a_plain_usage_error() {
-    let run = treetime(
-      &[
-        "clock",
-        "--tree",
-        &data_path("zika/20/tree.nwk"),
-        "--metadata",
-        &data_path("zika/20/metadata.tsv"),
-      ],
-      &[],
-    );
+  fn test_cli_timetree_without_metadata_is_a_plain_usage_error() {
+    let run = treetime(&["timetree", "--tree", "tree.nwk", "--sequence-length", "1000"], &[]);
     assert_eq!(
       Run {
         code: Some(2),
         stdout: String::new(),
-        stderr: "error: No output flags provided. At least one is required: --output-all or one of the \
-                 --output-tree-* / --output-* flags\n"
+        stderr: "error: the following required arguments were not provided:\n  --metadata <METADATA>\n".to_owned(),
+      },
+      run
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ancestral(&["ancestral", "--tree", "missing.nwk", "--alignment", "missing.fasta"])]
+  #[case::clock(    &["clock",     "--tree", "missing.nwk", "--metadata", "missing.tsv"])]
+  #[case::homoplasy(&["homoplasy", "--tree", "missing.nwk", "--alignment", "missing.fasta"])]
+  #[case::mugration(&["mugration", "--tree", "missing.nwk", "--metadata", "missing.tsv", "--attribute", "country"])]
+  #[case::optimize( &["optimize",  "--tree", "missing.nwk", "--alignment", "missing.fasta"])]
+  #[case::prune(    &["prune",     "--tree", "missing.nwk"])]
+  #[case::timetree( &["timetree",  "--tree", "missing.nwk", "--metadata", "missing.tsv", "--alignment", "missing.fasta"])]
+  #[trace]
+  fn test_cli_run_without_outputs_fails_before_reading_inputs(#[case] args: &[&str]) {
+    let run = treetime(args, &[]);
+    assert_eq!(
+      Run {
+        code: Some(2),
+        stdout: String::new(),
+        stderr: "error: No outputs selected: add -O <DIR> to write the default outputs into a folder, or a per-file \
+                 --output-* flag\n"
           .to_owned(),
       },
       run
@@ -146,6 +167,8 @@ mod tests {
         "missing/tree.nwk",
         "--metadata",
         "missing/metadata.tsv",
+        "--output-tree-nwk",
+        "missing/tree.out.nwk",
       ],
       &[],
     );
@@ -169,8 +192,8 @@ mod tests {
   #[case::no_color_always( &["ancestral", "--color", "always"],                      &[("NO_COLOR", "1")], (Some(2), true))]
   #[case::clap_never(      &["ancestral", "--no-such-flag", "--color=never"],        &[],                (Some(2), false))]
   #[case::clap_always(     &["--color=always", "ancestral", "--no-such-flag"],       &[],                (Some(2), true))]
-  #[case::failure_never(   &["clock", "--tree=x.nwk", "--metadata=x.tsv", "--color=never"],  &[],        (Some(1), false))]
-  #[case::failure_always(  &["clock", "--tree=x.nwk", "--metadata=x.tsv", "--color=always"], &[],        (Some(1), true))]
+  #[case::failure_never(   &["clock", "--tree=x.nwk", "--metadata=x.tsv", "--output-tree-nwk=x/out.nwk", "--color=never"],  &[], (Some(1), false))]
+  #[case::failure_always(  &["clock", "--tree=x.nwk", "--metadata=x.tsv", "--output-tree-nwk=x/out.nwk", "--color=always"], &[], (Some(1), true))]
   #[trace]
   fn test_cli_color_flag_controls_error_colors(
     #[case] args: &[&str],

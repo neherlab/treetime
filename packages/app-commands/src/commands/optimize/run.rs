@@ -33,6 +33,7 @@ pub fn run_optimize(
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   args.alignment.required_paths()?;
+  let resolved = args.resolve_outputs()?;
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
@@ -50,8 +51,6 @@ pub fn run_optimize(
     .into_iter()
     .map(|source| source.source)
     .collect();
-
-  let resolved = args.resolve_outputs()?;
 
   let params = OptimizeParams {
     model: args.model.clone(),

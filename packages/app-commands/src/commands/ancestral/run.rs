@@ -56,6 +56,9 @@ pub fn run_ancestral_reconstruction(
     args.aa_root_sequence.as_deref(),
     args.alignment.alignment.len(),
   )?;
+  let resolved = args.resolve_outputs()?;
+  let ambiguity = &args.ambiguity_outputs;
+  ambiguity.warn_unwritten(&resolved, log);
 
   let sequence_args = SequenceInputArgs {
     alignment: &args.alignment,
@@ -85,9 +88,6 @@ pub fn run_ancestral_reconstruction(
       .topology_order
       .resolve_topology_order(&input.graph, &names, None, args.newick_dialect.dialect())?;
 
-  let resolved = args.resolve_outputs()?;
-  let ambiguity = &args.ambiguity_outputs;
-  ambiguity.warn_unwritten(&resolved, log);
   let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
   let mut seq_sink = AncestralSeqSink::new(&resolved, descs, ambiguity)?;
 

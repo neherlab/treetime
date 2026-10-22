@@ -49,7 +49,7 @@ mod tests {
     let dir = project_root().join("data").join(dataset);
     let alignment = with_alignment.then(|| dir.join("aln.fasta.xz"));
 
-    let (mode, messages) = helpers::resolved_mode(mode, dir.join("tree.nwk"), alignment)?;
+    let (mode, messages) = helpers::resolved_mode(mode, dir.join("tree.nwk"), dir.join("metadata.tsv"), alignment)?;
 
     assert_eq!((expected_mode, expected_messages), (mode, messages));
     Ok(())
@@ -59,11 +59,13 @@ mod tests {
   fn test_branch_length_mode_auto_without_branch_lengths_is_marginal() -> Result<(), Report> {
     let dir = tempfile::tempdir()?;
     let tree = dir.path().join("tree.nwk");
+    let metadata = dir.path().join("metadata.tsv");
     let alignment = dir.path().join("aln.fasta");
     std::fs::write(&tree, "((A,B),C);")?;
+    std::fs::write(&metadata, "name\tdate\nA\t2000\nB\t2001\nC\t2002\n")?;
     std::fs::write(&alignment, ">A\nACGT\n>B\nACGA\n>C\nTCGA\n")?;
 
-    let (mode, messages) = helpers::resolved_mode(BranchLengthModeCli::Auto, tree, Some(alignment))?;
+    let (mode, messages) = helpers::resolved_mode(BranchLengthModeCli::Auto, tree, metadata, Some(alignment))?;
 
     assert_eq!(
       (
@@ -94,6 +96,7 @@ mod tests {
       tree: TreeArgs {
         tree: Some(dir.join("tree.nwk")),
       },
+      metadata: Some(dir.join("metadata.tsv")),
       sequence_length: (!with_alignment).then_some(1000),
       representation: RepresentationArgs {
         representation: Some(RepresentationCli::Dense),
@@ -166,6 +169,7 @@ mod tests {
     pub(super) fn resolved_mode(
       branch_length_mode: BranchLengthModeCli,
       tree: PathBuf,
+      metadata: PathBuf,
       alignment: Option<PathBuf>,
     ) -> Result<(BranchLengthMode, Vec<String>), Report> {
       let sequence_length = alignment.is_none().then_some(1000);
@@ -174,6 +178,7 @@ mod tests {
           alignment: alignment.into_iter().collect(),
         },
         tree: TreeArgs { tree: Some(tree) },
+        metadata: Some(metadata),
         sequence_length,
         branch_length_mode,
         ..TreetimeTimetreeArgsRaw::default()

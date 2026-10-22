@@ -38,21 +38,15 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
     vec![]
   };
 
-  let dates = args
-    .metadata
-    .as_deref()
-    .map(|path| {
-      read_input_dates(
-        path,
-        &args.metadata_id,
-        args.date_column.date_column.as_deref(),
-        &args.date_column.date_format,
-        &graph,
-        &names,
-        log,
-      )
-    })
-    .transpose()?;
+  let dates = read_input_dates(
+    &args.metadata,
+    &args.metadata_id,
+    args.date_column.date_column.as_deref(),
+    &args.date_column.date_format,
+    &graph,
+    &names,
+    log,
+  )?;
 
   Ok(InputData {
     graph,
@@ -72,5 +66,5 @@ pub(crate) struct InputData {
   pub branch_length_mode: ResolvedBranchLengthMode,
   pub input_leaf_order: Vec<GraphNodeKey>,
   pub sequences: Vec<AlignmentSource>,
-  pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
+  pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
 }

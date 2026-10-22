@@ -101,7 +101,7 @@ mod tests {
     );
     assert_error!(
       result,
-      "No output flags provided. At least one is required: --output-all or one of the --output-tree-* / --output-* flags"
+      "No outputs selected: add -O <DIR> to write the default outputs into a folder, or a per-file --output-* flag"
     );
   }
 

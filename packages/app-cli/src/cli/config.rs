@@ -644,19 +644,20 @@ mod tests {
     }
 
     #[test]
-    fn test_config_required_timetree_missing_tree_errors() {
+    fn test_config_required_timetree_missing_tree_and_metadata_lists_both() {
       assert_error!(
         TreetimeTimetreeArgs::try_from(TreetimeTimetreeArgsRaw::default()),
-        "the following required arguments were not provided:\n  --tree <TREE>"
+        "the following required arguments were not provided:\n  --tree <TREE>\n  --metadata <METADATA>"
       );
     }
 
     #[test]
-    fn test_config_required_timetree_with_tree_and_alignment_ok() {
+    fn test_config_required_timetree_with_tree_metadata_and_alignment_ok() {
       let raw = TreetimeTimetreeArgsRaw {
         tree: TreeArgs {
           tree: Some("tree.nwk".into()),
         },
+        metadata: Some("metadata.tsv".into()),
         alignment: AlignmentArgs {
           alignment: vec!["aln.fasta".into()],
         },

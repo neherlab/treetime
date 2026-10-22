@@ -36,6 +36,7 @@ pub(crate) mod tests {
       text: indoc! {r#"
         "$schema": "https://example.org/input-config-timetree.schema.json"
         tree: data/zika/20/tree.nwk
+        metadata: data/zika/20/metadata.tsv
         alignment: [data/zika/20/aln.fasta.xz]
         max_iter: 4
       "#}
@@ -65,6 +66,7 @@ pub(crate) mod tests {
       command: AppCommand::Timetree,
       text: indoc! {r#"
         tree: data/zika/20/tree.nwk
+        metadata: data/zika/20/metadata.tsv
         alignment: [data/zika/20/aln.fasta.xz]
         output_all: /home/user/results
         output_tree_nwk: /home/user/tree.nwk

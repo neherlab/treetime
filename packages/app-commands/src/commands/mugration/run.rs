@@ -36,14 +36,13 @@ pub fn run_mugration(
 ) -> Result<(), Report> {
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
+  let resolved = mugration_args.resolve_outputs()?;
+  let ambiguity = &mugration_args.ambiguity_outputs;
+  ambiguity.warn_unwritten(&resolved, log);
   let parse = read_input_tree(&mugration_args.tree, mugration_args.newick_dialect.dialect(), log)?;
   let names = parse.names;
   let graph: Graph = parse.graph;
   let branch_lengths = parse.branch_lengths;
-
-  let resolved = mugration_args.resolve_outputs()?;
-  let ambiguity = &mugration_args.ambiguity_outputs;
-  ambiguity.warn_unwritten(&resolved, log);
 
   let attribute_column = Some(mugration_args.attribute());
 

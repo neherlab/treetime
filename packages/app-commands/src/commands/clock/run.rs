@@ -35,6 +35,7 @@ pub fn run_clock(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
 
+  let resolved = clock_args.resolve_outputs()?;
   let nwk_parsed = read_input_tree(&clock_args.tree, clock_args.newick_dialect.dialect(), log)?;
   let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
@@ -50,8 +51,6 @@ pub fn run_clock(
     &names,
     log,
   )?;
-
-  let resolved = clock_args.resolve_outputs()?;
 
   let params = ClockParams {
     clock_filter: clock_args.clock_filter.clock_filter,

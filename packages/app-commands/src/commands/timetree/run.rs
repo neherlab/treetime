@@ -52,14 +52,14 @@ pub fn run_timetree_estimation(
   cancel.check()?;
   stages.report("Loading input", 0.0, "");
 
+  let mut resolved = args.resolve_outputs()?;
+  let ambiguity = &args.ambiguity_outputs;
+  ambiguity.warn_unwritten(&resolved, log);
+
   let input_data = load_input_data(args, log)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
   let branch_length_mode = input_data.branch_length_mode.mode;
-
-  let mut resolved = args.resolve_outputs()?;
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;
-  let ambiguity = &args.ambiguity_outputs;
-  ambiguity.warn_unwritten(&resolved, log);
   let reconstructed_nuc_fasta = resolved.partition_paths(OutputSelection::Sequences);
   let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
   if mutation_units {
@@ -86,7 +86,7 @@ pub fn run_timetree_estimation(
     graph: input_data.graph,
     names: input_data.names,
     sources,
-    dates: input_data.dates,
+    dates: Some(input_data.dates),
     branch_lengths: input_data.branch_lengths,
   };
 

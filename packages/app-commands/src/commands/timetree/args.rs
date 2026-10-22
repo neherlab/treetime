@@ -34,6 +34,7 @@ use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
+use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
@@ -59,6 +60,7 @@ pub struct TreetimeTimetreeArgs {
   #[deref_mut]
   pub(crate) raw: TreetimeTimetreeArgsRaw,
   pub(crate) tree: PathBuf,
+  pub(crate) metadata: PathBuf,
   pub(crate) indel_policy: IndelPolicy,
   pub(crate) max_grid_points: MaxGridPoints,
   pub(crate) include_leaves: bool,
@@ -71,15 +73,21 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   type Error = Report;
 
   fn try_from(raw: TreetimeTimetreeArgsRaw) -> Result<Self, Report> {
-    let tree = raw
-      .tree
-      .tree
-      .clone()
-      .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
+    let (tree, metadata) = match (raw.tree.tree.clone(), raw.metadata.clone()) {
+      (Some(tree), Some(metadata)) => (tree, metadata),
+      (tree, metadata) => {
+        let missing = [("tree", tree.is_none()), ("metadata", metadata.is_none())]
+          .into_iter()
+          .filter_map(|(key, missing)| missing.then_some(key))
+          .collect_vec();
+        return Err(missing_required_args::<TreetimeTimetreeArgsRaw>(&missing));
+      },
+    };
     check_sequence_source(&raw)?;
     check_dependent_settings(&raw)?;
     Ok(Self {
       tree,
+      metadata,
       indel_policy: raw.branch_lengths.indel_policy(),
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
       include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
