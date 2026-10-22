@@ -2,7 +2,10 @@
 mod __tests__;
 
 pub mod backend;
+pub mod chunks;
 pub mod exchange;
+pub mod job;
+pub mod jobs;
 pub mod start;
 
 fn main() {}

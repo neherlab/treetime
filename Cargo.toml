@@ -140,7 +140,6 @@ clap_complete = "=4.6.11"
 clap_complete_fig = "=4.5.2"
 color-eyre = "=0.6.5"
 comfy-table = "=7.2.1"
-console_error_panic_hook = "=0.1.7"
 console_log = "=1.1.0"
 criterion = { version = "=0.7.0", features = ["html_reports"] }
 crossterm = "=0.29.0"

@@ -2,12 +2,14 @@
 mod tests {
   use crate::backend::{header_list, web_router};
   use crate::exchange::PortExchange;
+  use app_backend::bridge::executor::ThreadExecutor;
   use app_server::port::port_request;
   use app_server::state::{DEFAULT_MAX_UPLOAD_SIZE, ServerConfig};
   use helpers::{config, fetch_json};
   use pretty_assertions::assert_eq;
   use serde_json::{Value, json};
   use std::path::PathBuf;
+  use std::sync::Arc;
   use tempfile::tempdir;
   use tokio_util::sync::CancellationToken;
   use treetime_schema::version_info;
@@ -17,7 +19,7 @@ mod tests {
   #[tokio::test]
   async fn test_backend_router_answers_the_public_api() {
     let runs = tempdir().unwrap();
-    let router = web_router(config(runs.path().to_owned())).unwrap();
+    let router = web_router(config(runs.path().to_owned()), Arc::new(ThreadExecutor)).unwrap();
     let expected = (200, to_json_value(&version_info()).unwrap());
     assert_eq!(
       expected,
@@ -32,7 +34,7 @@ mod tests {
   #[tokio::test]
   async fn test_backend_router_has_no_routes_of_a_local_app() {
     let runs = tempdir().unwrap();
-    let router = web_router(config(runs.path().to_owned())).unwrap();
+    let router = web_router(config(runs.path().to_owned()), Arc::new(ThreadExecutor)).unwrap();
     let (status, body) = fetch_json(PortExchange::start(
       router,
       port_request("GET", "/api/app-settings", vec![], None),

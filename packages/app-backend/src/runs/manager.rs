@@ -1,28 +1,20 @@
 use crate::atomic_write::write_atomically;
-use crate::command::AppCommandExt;
 use crate::command::config_from_request;
-use crate::command::config_from_settings;
-use crate::command::run_command;
-use crate::command::{CommandOutcome, OutputFile};
-use crate::job::{CancelToken, JobEvent, JobId, JobProgress, JobStarted, TerminalEvent, run_job};
+use crate::job::{CancelToken, JobEvent, JobId, TerminalEvent};
 use crate::runs::app_events::{AppChange, AppEventLog, run_stale_paths};
 use crate::runs::errors::{UploadTooLarge, conflict, invalid};
 use crate::runs::events::{EventLog, Subscriber, read_events};
 use crate::runs::files::{RunFile, list_run_files, resolve_run_file, write_run_zip};
-use crate::runs::headline::{RunHeadline, run_headline};
-use crate::runs::inputs::{file_sha256, hash_inputs};
+use crate::runs::inputs::file_sha256;
+use crate::runs::lifecycle::StartedRun;
 use crate::runs::record::{
-  CreateRunRequest, RunError, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest,
-  UpdateRunRequest,
+  CreateRunRequest, RunList, RunRecord, RunStatus, RunSummary, SaveRunRequest, StartRunRequest, UpdateRunRequest,
 };
 use crate::runs::store::RunStore;
-use crate::runs::warnings::WarningCollector;
 use app_commands::json_value::SparseConfig;
 use chrono::{TimeDelta, Utc};
 use deser::Serialize;
 use eyre::{Report, WrapErr};
-use itertools::Itertools;
-use log::error;
 use parking_lot::Mutex;
 use schemars::JsonSchema;
 use serde_json::{Map, Value};
@@ -33,8 +25,6 @@ use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Instant;
-use treetime::cancel::Cancel;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::fmt::float::float_to_significant_digits;
 use treetime_utils::make_internal_error;
@@ -149,12 +139,7 @@ impl RunManager {
       run
     };
     run.started.store(true, Ordering::SeqCst);
-    Ok(StartedRun {
-      manager: Arc::clone(self),
-      record,
-      run,
-      hook,
-    })
+    Ok(StartedRun::new(Arc::clone(self), record, run, hook))
   }
 
   pub fn cancel(&self, id: &JobId) -> Result<bool, Report> {
@@ -369,7 +354,11 @@ impl RunManager {
     }
   }
 
-  fn modify(&self, id: &JobId, change: impl FnOnce(&mut RunRecord) -> Result<(), Report>) -> Result<RunRecord, Report> {
+  pub(super) fn modify(
+    &self,
+    id: &JobId,
+    change: impl FnOnce(&mut RunRecord) -> Result<(), Report>,
+  ) -> Result<RunRecord, Report> {
     let _records = self.records.lock();
     let mut record = self.store.read(id)?;
     change(&mut record)?;
@@ -380,101 +369,8 @@ impl RunManager {
     Ok(record)
   }
 
-  fn finish(&self, id: &JobId) {
+  pub(super) fn finish(&self, id: &JobId) {
     self.active.lock().remove(id);
-  }
-}
-
-pub struct StartedRun {
-  manager: Arc<RunManager>,
-  record: RunRecord,
-  run: Arc<ActiveRun>,
-  hook: ConfigHook,
-}
-
-impl StartedRun {
-  pub fn record(&self) -> &RunRecord {
-    &self.record
-  }
-
-  pub fn run(self) -> TerminalEvent {
-    let Self {
-      manager,
-      record,
-      run,
-      hook,
-    } = self;
-    let id = record.id.clone();
-    let command = record.config.command();
-    let out_dir = manager.store.out_dir(&id);
-    let emit = |event: JobEvent| {
-      if let Err(err) = run.events.append(event) {
-        error!("When recording an event of run {}: {err:#}", id.as_str());
-      }
-    };
-    emit(JobEvent::Started {
-      data: JobStarted {
-        job_id: id.clone(),
-        command,
-      },
-    });
-    let progress = JobProgress::new(emit);
-    let log = WarningCollector::new(&progress);
-    let clock = Instant::now();
-
-    let terminal = run_job(&id, &run.token, || {
-      let mut config = Value::Object(record.config.settings()?);
-      hook(&mut config)?;
-      let prepared = command.prepare_run(&config, &out_dir)?;
-      let hashed = hash_inputs(command, &prepared.config)?;
-      let resolved = config_from_settings(command, &Value::Object(prepared.config.clone()))?;
-      manager.modify(&id, |record| {
-        record.config = resolved;
-        record.changed_settings = prepared.changed_settings.clone();
-        record.inputs = hashed.inputs;
-        record.config_hash = Some(hashed.config_hash);
-        Ok(())
-      })?;
-      run.token.check()?;
-      run_command(&prepared.args, &run.token, &progress, &log)
-    });
-
-    let duration = clock.elapsed().as_secs_f64();
-    let warnings = log.into_warnings();
-    let finished = manager.modify(&id, |record| {
-      record.finished_at = Some(Utc::now());
-      record.warnings = warnings;
-      record.duration_seconds = Some(duration);
-      match &terminal {
-        TerminalEvent::Ok { result, .. } => {
-          record.status = RunStatus::Ok;
-          record.output_files = relative_outputs(result, &out_dir);
-          record.headline = run_headline(record, &out_dir).unwrap_or_else(|err| {
-            error!(
-              "When reading the headline results of run {}: {err:#}",
-              record.id.as_str()
-            );
-            RunHeadline::default()
-          });
-        },
-        TerminalEvent::Error { message, causes, .. } => {
-          record.status = RunStatus::Error;
-          record.error = Some(RunError {
-            message: message.clone(),
-            causes: causes.clone(),
-          });
-        },
-        TerminalEvent::Cancelled { .. } => record.status = RunStatus::Cancelled,
-        TerminalEvent::Interrupted { .. } => record.status = RunStatus::Interrupted,
-      }
-      Ok(())
-    });
-    if let Err(err) = finished {
-      error!("When recording the end of run {}: {err:#}", id.as_str());
-    }
-    emit(JobEvent::Terminal { data: terminal.clone() });
-    manager.finish(&id);
-    terminal
   }
 }
 
@@ -493,9 +389,9 @@ pub struct UploadedInput {
   pub sha256: String,
 }
 
-struct ActiveRun {
-  token: CancelToken,
-  events: EventLog,
+pub(super) struct ActiveRun {
+  pub(super) token: CancelToken,
+  pub(super) events: EventLog,
   started: AtomicBool,
 }
 
@@ -511,17 +407,6 @@ impl ActiveRun {
   fn is_started(&self) -> bool {
     self.started.load(Ordering::SeqCst)
   }
-}
-
-fn relative_outputs(outcome: &CommandOutcome, out_dir: &Path) -> Vec<OutputFile> {
-  outcome
-    .output_files
-    .iter()
-    .map(|file| OutputFile {
-      path: file.path.strip_prefix(out_dir).unwrap_or(&file.path).to_path_buf(),
-      ..file.clone()
-    })
-    .collect_vec()
 }
 
 fn files_size(dir: &Path) -> Result<usize, Report> {

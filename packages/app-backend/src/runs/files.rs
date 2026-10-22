@@ -64,15 +64,7 @@ pub struct RunFile {
 }
 
 pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Report> {
-  let requested = Path::new(relative);
-  let escapes = requested
-    .components()
-    .any(|component| !matches!(component, Component::Normal(_)));
-  if relative.is_empty() || escapes {
-    return Err(invalid(format!(
-      "file path `{relative}` must name a file inside the run's output folder"
-    )));
-  }
+  let requested = inside_path(relative)?;
   let root = out_dir
     .canonicalize()
     .wrap_err_with(|| format!("When resolving '{}'", out_dir.display()))?;
@@ -89,6 +81,10 @@ pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Repor
     return Err(not_found(format!("the run has no output file `{relative}`")));
   }
   Ok(resolved)
+}
+
+pub fn run_file_destination(out_dir: &Path, relative: &str) -> Result<PathBuf, Report> {
+  Ok(out_dir.join(inside_path(relative)?))
 }
 
 pub fn write_run_zip(out_dir: &Path, folder_name: &str, writer: impl Write + Seek) -> Result<(), Report> {
@@ -229,6 +225,19 @@ impl Write for SharedBuffer {
   fn flush(&mut self) -> io::Result<()> {
     Ok(())
   }
+}
+
+fn inside_path(relative: &str) -> Result<&Path, Report> {
+  let requested = Path::new(relative);
+  let escapes = requested
+    .components()
+    .any(|component| !matches!(component, Component::Normal(_)));
+  if relative.is_empty() || escapes {
+    return Err(invalid(format!(
+      "file path `{relative}` must name a file inside the run's output folder"
+    )));
+  }
+  Ok(requested)
 }
 
 fn walk_files(dir: &Path) -> Result<Vec<PathBuf>, Report> {

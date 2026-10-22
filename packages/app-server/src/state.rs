@@ -1,6 +1,7 @@
 use crate::confine::PathPolicy;
 use app_backend::app_paths::AppPaths;
 use app_backend::app_settings::store::AppSettingsStore;
+use app_backend::bridge::executor::RunExecutor;
 use app_backend::bridge::service::{AppService, InputPolicy};
 use app_backend::examples_download::ExampleDownloads;
 use app_backend::run_limits::RunLimits;
@@ -15,7 +16,7 @@ use treetime_grid::MaxGridPoints;
 
 pub const DEFAULT_MAX_UPLOAD_SIZE: usize = 1 << 30;
 
-pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> {
+pub fn server_service(config: &ServerConfig, executor: Arc<dyn RunExecutor>) -> Result<Arc<AppService>, Report> {
   PathPolicy::new(&config.examples_dir, &[])?;
   let runs = RunManager::open(&config.runs_dir)?;
   let policy = Arc::new(ServerInputs {
@@ -28,6 +29,7 @@ pub fn server_service(config: &ServerConfig) -> Result<Arc<AppService>, Report> 
     config.examples_dir.clone(),
     policy,
     limits,
+    executor,
   )))
 }
 

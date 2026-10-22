@@ -1,3 +1,4 @@
+use crate::bridge::executor::RunExecutor;
 use crate::check_config::{CheckConfigRequest, CheckConfigResponse, check_config};
 use crate::check_inputs::{CheckInputsRequest, InputFacts, check_inputs};
 use crate::datasets::{DatasetCatalog, dataset_catalog};
@@ -10,40 +11,41 @@ use crate::run_config::{RunConfigRequest, RunConfigResponse, run_config};
 use crate::run_limits::RunLimits;
 use crate::runs::errors::invalid;
 use crate::runs::files::RunFile;
-use crate::runs::manager::{ConfigHook, RunManager, StartedRun};
+use crate::runs::manager::{ConfigHook, RunManager};
 use crate::runs::record::{
   CancelRunResponse, CreateRunRequest, RunList, RunRecord, RunSummary, StartRunRequest, UpdateRunRequest,
 };
 use app_commands::command::AppCommand;
 use app_commands::json_value::SparseConfig;
 use eyre::Report;
-use log::{error, info};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
 use treetime_schema::{VersionInfo, version_info};
-use treetime_utils::io::json::{JsonPretty, json_write_str};
 use treetime_utils::make_error;
-
-#[cfg(not(target_family = "wasm"))]
-use eyre::WrapErr;
-#[cfg(not(target_family = "wasm"))]
-use std::thread;
 
 pub struct AppService {
   runs: Arc<RunManager>,
   examples_dir: PathBuf,
   policy: Arc<dyn InputPolicy>,
   limits: Arc<RunLimits>,
+  executor: Arc<dyn RunExecutor>,
 }
 
 impl AppService {
-  pub fn new(runs: Arc<RunManager>, examples_dir: PathBuf, policy: Arc<dyn InputPolicy>, limits: RunLimits) -> Self {
+  pub fn new(
+    runs: Arc<RunManager>,
+    examples_dir: PathBuf,
+    policy: Arc<dyn InputPolicy>,
+    limits: RunLimits,
+    executor: Arc<dyn RunExecutor>,
+  ) -> Self {
     Self {
       runs,
       examples_dir,
       policy,
       limits: Arc::new(limits),
+      executor,
     }
   }
 
@@ -118,9 +120,9 @@ impl AppService {
   }
 
   pub fn cancel_run(&self, id: &JobId) -> Result<CancelRunResponse, Report> {
-    Ok(CancelRunResponse {
-      cancelled: self.runs.cancel(id)?,
-    })
+    let cancelled = self.runs.cancel(id)?;
+    self.executor.cancel(id);
+    Ok(CancelRunResponse { cancelled })
   }
 
   pub fn run_files(&self, id: &JobId) -> Result<Vec<RunFile>, Report> {
@@ -162,7 +164,7 @@ impl AppService {
     };
     let started = self.runs.start(id, request, self.hook(command))?;
     let record = started.record().clone();
-    execute(id, started)?;
+    self.executor.execute(started)?;
     Ok(record)
   }
 }
@@ -176,40 +178,5 @@ pub struct Unconfined;
 impl InputPolicy for Unconfined {
   fn confine(&self, _command: AppCommand, _config: &mut Value) -> Result<(), Report> {
     Ok(())
-  }
-}
-
-#[cfg(not(target_family = "wasm"))]
-#[cfg_attr(
-  dylint_lib = "custom",
-  expect(
-    spawn_handle_dropped,
-    reason = "the run thread catches a panic of the run and records every outcome in the run store, which the app reads"
-  )
-)]
-fn execute(id: &JobId, started: StartedRun) -> Result<(), Report> {
-  let run_id = id.clone();
-  thread::Builder::new()
-    .name(format!("run-{}", id.as_str()))
-    .spawn(move || finish(&run_id, started))
-    .wrap_err_with(|| format!("When starting a thread for run `{}`", id.as_str()))?;
-  Ok(())
-}
-
-#[cfg(target_family = "wasm")]
-#[expect(
-  clippy::unnecessary_wraps,
-  reason = "the native variant returns the error of the thread start; this one computes the run in the calling thread, because the WebAssembly worker has no threads"
-)]
-fn execute(id: &JobId, started: StartedRun) -> Result<(), Report> {
-  finish(id, started);
-  Ok(())
-}
-
-fn finish(id: &JobId, started: StartedRun) {
-  let terminal = started.run();
-  match json_write_str(&terminal, JsonPretty(false)) {
-    Ok(terminal) => info!("Run {} ended: {terminal}", id.as_str()),
-    Err(err) => error!("Run {} ended; its terminal event cannot be shown: {err}", id.as_str()),
   }
 }

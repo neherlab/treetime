@@ -3,6 +3,8 @@ import { type PortHeader, type PortReply, type PortRequest, portMessageSchema } 
 import type { MainModule } from "@neherlab/app-wasm";
 import { zip } from "remeda";
 
+import { transferList } from "../job/protocol";
+
 export const TRAPPED_MESSAGE = "the back end stopped after an internal error";
 
 export function messagePortEndpoint(port: MessagePort): ServeEndpoint {
@@ -33,13 +35,20 @@ export class ExchangeServer {
   readonly #endpoint: ServeEndpoint;
   readonly #backend: WasmBackend;
   readonly #onTrap: (trap: WebAssembly.RuntimeError) => void;
+  readonly #afterHead: () => void;
   readonly #open = new Map<number, WasmExchange>();
   #trapped = false;
 
-  constructor(endpoint: ServeEndpoint, backend: WasmBackend, onTrap: (trap: WebAssembly.RuntimeError) => void) {
+  constructor(
+    endpoint: ServeEndpoint,
+    backend: WasmBackend,
+    onTrap: (trap: WebAssembly.RuntimeError) => void,
+    afterHead: () => void,
+  ) {
     this.#endpoint = endpoint;
     this.#backend = backend;
     this.#onTrap = onTrap;
+    this.#afterHead = afterHead;
   }
 
   listen(): void {
@@ -91,6 +100,7 @@ export class ExchangeServer {
       const head = await exchange.head();
 
       this.#post({ kind: "head", seq, status: head.status, headers: responseHeaders(head) });
+      this.#afterHead();
 
       for (let chunk = await exchange.chunk(); chunk !== undefined; chunk = await exchange.chunk()) {
         this.#post({ kind: "chunk", seq, data: chunk }, transferList(chunk));
@@ -159,7 +169,3 @@ type Backend = InstanceType<MainModule["Backend"]>;
 type Exchange = ReturnType<Backend["fetch"]>;
 
 type ResponseHead = Awaited<ReturnType<Exchange["head"]>>;
-
-function transferList(chunk: Uint8Array): Transferable[] {
-  return chunk.buffer instanceof ArrayBuffer ? [chunk.buffer] : [];
-}

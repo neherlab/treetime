@@ -17,7 +17,6 @@ app-server = { workspace = true }
 treetime-utils = { workspace = true }
 
 axum = { workspace = true }
-console_error_panic_hook = { workspace = true }
 console_log = { workspace = true }
 eyre = { workspace = true }
 itertools = { workspace = true }

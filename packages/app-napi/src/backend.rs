@@ -3,6 +3,7 @@ use app_backend::app_paths::{AppFolderEnv, AppFolderPath, AppPaths};
 use app_backend::app_settings::store::AppSettingsStore;
 use app_backend::app_settings::workspace::{OpenedRuns, open_runs_folder};
 use app_backend::bridge::error::{ErrorCode, ErrorResponse};
+use app_backend::bridge::executor::ThreadExecutor;
 use app_backend::bridge::service::{AppService, Unconfined};
 use app_backend::examples_download::ExampleDownloads;
 use app_backend::run_limits::RunLimits;
@@ -58,6 +59,7 @@ impl DesktopService {
       examples.clone(),
       Arc::new(Unconfined),
       RunLimits::Settings(Arc::clone(&store)),
+      Arc::new(ThreadExecutor),
     ));
     let routers = local_api_routers(
       app,

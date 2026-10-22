@@ -81,7 +81,12 @@ export default projectConfig({
       allow: ["zod"],
     },
     { files: ["packages/app-ui/src/preferences/storage.ts"], dir: "app-ui", web: true, allow: ["zod", "jsonParse"] },
-    { files: ["packages/app-web2/src/backend/protocol.ts"], dir: "app-web2", web: true, allow: ["zod"] },
+    {
+      files: ["packages/app-web2/src/backend/protocol.ts", "packages/app-web2/src/job/protocol.ts"],
+      dir: "app-web2",
+      web: true,
+      allow: ["zod"],
+    },
     { files: ["packages/app-desktop/src/napi-error.ts"], dir: "app-desktop", web: false, allow: ["jsonParse"] },
     { files: ["packages/app-desktop/src/ipc-main.ts"], dir: "app-desktop", web: false, allow: ["ipcMain"] },
     { files: ["packages/app-desktop/src/ipc-renderer.ts"], dir: "app-desktop", web: false, allow: ["ipcRenderer"] },

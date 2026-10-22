@@ -17,15 +17,21 @@ const ZIP_SIGNATURE = "PK";
 
 const wasm = await createBackendModule();
 
-wasm.setPanicSink((text) => {
-  throw new Error(`the back end panicked: ${text}`);
-});
+const jobWasm = await createBackendModule();
 
 const backend = new wasm.Backend();
 
 await checkNewBackend();
 
 await checkAncestralRun();
+
+await checkCancelledRun();
+
+await checkChangedInput();
+
+await checkEmptyInput();
+
+await checkRepeatedInput();
 
 await checkEventStreamAborts();
 
@@ -57,6 +63,12 @@ async function checkAncestralRun(): Promise<void> {
     JSON_HEADERS,
   );
 
+  const computing = parse(zRunRecord, await call("GET", `/api/runs/${created.id}`));
+  const [order] = backend.takeJobOrders();
+  assert.ok(order?.job !== undefined, "the start of a run queues a start order");
+  const inputPaths = order.inputPaths;
+  const outputs = await driveJob(created.id, order.job, inputPaths);
+
   const record = parse(zRunRecord, await call("GET", `/api/runs/${created.id}`));
   const files = parse(zRunsFilesResponse, await call("GET", `/api/runs/${created.id}/files`));
   const newick = await call("GET", `/api/runs/${created.id}/file?path=ancestral.nwk`);
@@ -65,16 +77,166 @@ async function checkAncestralRun(): Promise<void> {
   assert.deepEqual(
     [
       started.status,
+      computing.status,
+      inputPaths,
+      outputs.completed,
       record.status,
+      files.map((file) => file.path),
+      record.output_files.every((file) => outputs.files.includes(file.path)),
       files.some((file) => file.path === "ancestral.reconstructed-nuc.fasta"),
       newick.status,
       text(newick).slice(0, 1),
       archive.status,
       text(archive).slice(0, ZIP_SIGNATURE.length),
     ],
-    [200, "ok", true, 200, "(", 200, ZIP_SIGNATURE],
+    [200, "running", [alignment, tree], true, "ok", outputs.files.toSorted(), true, true, 200, "(", 200, ZIP_SIGNATURE],
     text(started),
   );
+}
+
+async function checkCancelledRun(): Promise<void> {
+  const id = await startedRun("ancestral", async (runId) => ({
+    tree: await upload(runId, "tree.nwk"),
+    alignment: [await upload(runId, "aln.fasta.xz")],
+  }));
+
+  const [start] = backend.takeJobOrders();
+  const cancel = await call("POST", `/api/runs/${id}/cancel`);
+  const orders = backend.takeJobOrders().map((order) => [order.kind, order.runId]);
+  const failed = backend.failRun(id, []);
+
+  const completed = backend.completeRun(
+    id,
+    JSON.stringify({ terminal: { status: "cancelled", job_id: id }, warnings: [] }),
+  );
+
+  const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
+
+  assert.deepEqual(
+    [start?.kind, cancel.status, orders, failed, completed, record.status],
+    ["start", 200, [["cancel", id]], true, false, "cancelled"],
+  );
+}
+
+async function checkChangedInput(): Promise<void> {
+  const id = await startedRun("ancestral", async (runId) => ({
+    tree: await upload(runId, "tree.nwk"),
+    alignment: [await upload(runId, "aln.fasta.xz")],
+  }));
+
+  const [order] = backend.takeJobOrders();
+  assert.ok(order?.job !== undefined, "the start of a run queues a start order");
+  await driveJob(id, order.job, order.inputPaths, (path, bytes) =>
+    path.endsWith("tree.nwk") ? Buffer.concat([bytes, encode(" ")]) : bytes,
+  );
+  const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
+
+  assert.equal(record.status, "error");
+  assert.match(record.error?.message ?? "", /^input '.+tree\.nwk' differs from the file the run prepared/u);
+}
+
+async function checkEmptyInput(): Promise<void> {
+  const id = await startedRun("prune", async (runId) => ({
+    tree: await upload(runId, "tree.nwk"),
+    prune_nodes_list_file: await uploadBytes(runId, "empty.txt", new Uint8Array()),
+  }));
+
+  const [order] = backend.takeJobOrders();
+  assert.ok(order?.job !== undefined, "the start of a run queues a start order");
+  const outputs = await driveJob(id, order.job, order.inputPaths);
+  const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
+
+  assert.deepEqual([outputs.completed, record.status], [true, "ok"], JSON.stringify(record.error));
+}
+
+async function checkRepeatedInput(): Promise<void> {
+  const uploads: string[] = [];
+
+  const id = await startedRun("ancestral", async (runId) => {
+    const alignment = await upload(runId, "aln.fasta.xz");
+    const tree = await upload(runId, "tree.nwk");
+
+    uploads.push(alignment, tree);
+
+    return { tree, alignment: [alignment, alignment] };
+  });
+
+  const [order] = backend.takeJobOrders();
+  assert.ok(order?.job !== undefined, "the start of a run queues a start order");
+  const inputPaths = order.inputPaths;
+  const outputs = await driveJob(id, order.job, inputPaths);
+  const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
+
+  assert.deepEqual([inputPaths, outputs.completed, record.status], [uploads, true, "ok"], JSON.stringify(record.error));
+}
+
+async function startedRun(command: string, config: (id: string) => Promise<RunInputs>): Promise<string> {
+  const created = parse(
+    zRunRecord,
+    await call("POST", "/api/runs", encode({ command, config: {}, defer_start: true }), JSON_HEADERS),
+  );
+
+  const started = await call(
+    "POST",
+    `/api/runs/${created.id}/start`,
+    encode({ config: await config(created.id) }),
+    JSON_HEADERS,
+  );
+
+  assert.equal(started.status, 200, text(started));
+
+  return created.id;
+}
+
+async function driveJob(
+  id: string,
+  jobJson: string,
+  inputPaths: string[],
+  change: (path: string, bytes: Uint8Array) => Uint8Array = (_path, bytes) => bytes,
+): Promise<{ completed: boolean; files: string[] }> {
+  const job = new jobWasm.Job(jobJson, 1);
+
+  for (const path of inputPaths) {
+    const reader = backend.readRunInput(id, path);
+    const bytes = change(path, Buffer.concat(readAll(reader)));
+
+    reader.free();
+    job.beginInput(path);
+
+    if (bytes.length > 0) {
+      job.appendInput(path, bytes);
+    }
+  }
+
+  const outcome = await job.run((event) => {
+    backend.appendRunEvent(id, event);
+  });
+
+  const files = job.outputFiles();
+
+  for (const path of files) {
+    const reader = job.readOutput(path);
+
+    backend.beginRunOutput(id, path);
+    readAll(reader).forEach((chunk) => {
+      backend.appendRunOutput(id, path, chunk);
+    });
+    reader.free();
+  }
+
+  job.free();
+
+  return { completed: backend.completeRun(id, outcome), files };
+}
+
+function readAll(reader: { chunk(): Uint8Array | undefined }): Uint8Array[] {
+  const chunks: Uint8Array[] = [];
+
+  for (let chunk = reader.chunk(); chunk !== undefined; chunk = reader.chunk()) {
+    chunks.push(chunk);
+  }
+
+  return chunks;
 }
 
 async function checkEventStreamAborts(): Promise<void> {
@@ -89,12 +251,11 @@ async function checkEventStreamAborts(): Promise<void> {
 }
 
 async function upload(id: string, name: string): Promise<string> {
-  const response = await call(
-    "PUT",
-    `/api/runs/${id}/inputs/${name}`,
-    readFileSync(join(DATASET, name)),
-    BYTES_HEADERS,
-  );
+  return uploadBytes(id, name, readFileSync(join(DATASET, name)));
+}
+
+async function uploadBytes(id: string, name: string, bytes: Uint8Array): Promise<string> {
+  const response = await call("PUT", `/api/runs/${id}/inputs/${name}`, bytes, BYTES_HEADERS);
 
   return parse(zUploadedInput, response).path;
 }
@@ -135,6 +296,8 @@ function text(reply: Reply): string {
 }
 
 type Header = [name: string, value: string];
+
+type RunInputs = Record<string, string | string[]>;
 
 interface Reply {
   status: number;

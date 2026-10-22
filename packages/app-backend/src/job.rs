@@ -24,14 +24,24 @@ pub fn run_job(
   cancel: &dyn Cancel,
   work: impl FnOnce() -> Result<CommandOutcome, Report>,
 ) -> TerminalEvent {
-  let outcome = catch_unwind(AssertUnwindSafe(work));
-  match outcome {
-    Ok(Ok(result)) => TerminalEvent::Ok {
+  match run_job_step(job_id, cancel, work) {
+    Ok(result) => TerminalEvent::Ok {
       job_id: job_id.clone(),
       result,
     },
-    Ok(Err(report)) => TerminalEvent::from_report(job_id.clone(), &report, cancel),
-    Err(payload) => TerminalEvent::from_panic(job_id.clone(), payload.as_ref()),
+    Err(terminal) => terminal,
+  }
+}
+
+pub fn run_job_step<T>(
+  job_id: &JobId,
+  cancel: &dyn Cancel,
+  work: impl FnOnce() -> Result<T, Report>,
+) -> Result<T, TerminalEvent> {
+  match catch_unwind(AssertUnwindSafe(work)) {
+    Ok(Ok(value)) => Ok(value),
+    Ok(Err(report)) => Err(TerminalEvent::from_report(job_id.clone(), &report, cancel)),
+    Err(payload) => Err(TerminalEvent::from_panic(job_id.clone(), payload.as_ref())),
   }
 }
 

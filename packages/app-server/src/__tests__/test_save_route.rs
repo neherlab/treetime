@@ -163,6 +163,7 @@ mod tests {
     use app_backend::app_paths::{AppFolderEnv, AppPaths};
     use app_backend::app_settings::settings::AppPathSettings;
     use app_backend::app_settings::store::AppSettingsStore;
+    use app_backend::bridge::executor::ThreadExecutor;
     use axum::Router;
     use serde_json::json;
     use std::sync::Arc;
@@ -222,7 +223,7 @@ mod tests {
           examples: Arc::new(ExampleDownloads::new(EXAMPLES_URL, dir.path().join("examples"))),
         }),
       };
-      let routers = local_api_routers(server_service(&config).unwrap(), config).unwrap();
+      let routers = local_api_routers(server_service(&config, Arc::new(ThreadExecutor)).unwrap(), config).unwrap();
       LocalApp {
         app: TestApp {
           router: router(routers),

@@ -129,6 +129,19 @@ describe("serve exchanges", () => {
     ]);
   });
 
+  test("the job host runs after the head of a response is posted and before its body", async () => {
+    const endpoint = fakeEndpoint();
+    const steps: string[] = [];
+
+    serve(endpoint, fakeBackend(fakeExchange({ chunks: [new Uint8Array([1])] })).backend, undefined, () => {
+      steps.push(`job host after ${endpoint.posted.map(({ reply }) => reply.kind).join(",")}`);
+    });
+    endpoint.receive(REQUEST);
+    await ended(endpoint, 7);
+
+    expect(steps).toStrictEqual(["job host after head"]);
+  });
+
   test("a message that is not a port message is refused", () => {
     const endpoint = fakeEndpoint();
 
@@ -174,8 +187,9 @@ function serve(
   endpoint: ServeEndpoint,
   backend: WasmBackend,
   onTrap = (_trap: WebAssembly.RuntimeError) => undefined,
+  afterHead = () => undefined,
 ): void {
-  new ExchangeServer(endpoint, backend, onTrap).listen();
+  new ExchangeServer(endpoint, backend, onTrap, afterHead).listen();
 }
 
 function fakeEndpoint(): FakeEndpoint {

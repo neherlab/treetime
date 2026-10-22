@@ -2,6 +2,7 @@ use crate::error::plain_error;
 use crate::routes::{NO_STORE, api_router, not_found};
 use crate::state::{ServerConfig, server_service};
 use app_backend::bridge::error::ErrorCode;
+use app_backend::bridge::executor::ThreadExecutor;
 use axum::Router;
 use axum::body::Body;
 use axum::extract::{Request, State};
@@ -44,7 +45,7 @@ const SECURITY_HEADERS: &[(&str, &str)] = &[
 ];
 
 pub fn create_router(config: ServerConfig, options: &WebOptions) -> Result<Router, Report> {
-  let (api, _) = api_router(server_service(&config)?, config)?;
+  let (api, _) = api_router(server_service(&config, Arc::new(ThreadExecutor))?, config)?;
   Ok(web_router(api, options))
 }
 
