@@ -3,7 +3,7 @@ resolver = '3'
 
 package.description = "Maximum-likelihood phylodynamic inference"
 package.version = "1.0.0"
-package.documentation = "https://treetime.readthedocs.io/en/stable/"
+package.documentation = "https://github.com/neherlab/treetime"
 package.repository = "https://github.com/neherlab/treetime"
 package.homepage = "https://github.com/neherlab/treetime"
 package.edition = "2024"
