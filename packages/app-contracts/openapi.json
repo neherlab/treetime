@@ -5009,11 +5009,11 @@
         ]
       },
       "DataIndex": {
-        "description": "Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example\nconfigurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`\nseparators. The apps read the example data only through this index.",
+        "description": "Index of the example data in the `data/` folder of the repository: every tracked file outside hidden files and\nfolders, the datasets, the example configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`\nseparators. The apps read the example data only through this index.",
         "type": "object",
         "properties": {
           "files": {
-            "description": "Every tracked file of the data folder except the index itself, sorted by path.",
+            "description": "Every tracked file of the data folder except the index itself and hidden files and folders (a path component\nthat starts with `.`), sorted by path.",
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/IndexedFile"

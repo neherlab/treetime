@@ -27,14 +27,15 @@ const DATASET_INPUTS: [(InputKind, &[&str]); 3] = [
   (InputKind::Metadata, &["metadata.tsv", "metadata.csv"]),
 ];
 
-/// Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
-/// configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
+/// Index of the example data in the `data/` folder of the repository: every tracked file outside hidden files and
+/// folders, the datasets, the example configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
 /// separators. The apps read the example data only through this index.
 #[derive(Clone, Debug, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[schemars(deny_unknown_fields)]
 #[deser(deny_unknown_fields)]
 pub struct DataIndex {
-  /// Every tracked file of the data folder except the index itself, sorted by path.
+  /// Every tracked file of the data folder except the index itself and hidden files and folders (a path component
+  /// that starts with `.`), sorted by path.
   pub files: Vec<IndexedFile>,
   /// Folders that hold a `tree.nwk`, with the files that fill command inputs, sorted by name.
   pub datasets: Vec<IndexedDataset>,

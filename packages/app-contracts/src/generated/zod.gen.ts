@@ -1146,8 +1146,8 @@ export const zIndexedPipeline = z.strictObject({
 });
 
 /**
- * Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
- * configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
+ * Index of the example data in the `data/` folder of the repository: every tracked file outside hidden files and
+ * folders, the datasets, the example configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
  * separators. The apps read the example data only through this index.
  */
 export const zDataIndex = z.strictObject({

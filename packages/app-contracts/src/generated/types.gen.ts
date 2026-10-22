@@ -2295,13 +2295,14 @@ export type ExamplesFolder = {
 };
 
 /**
- * Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
- * configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
+ * Index of the example data in the `data/` folder of the repository: every tracked file outside hidden files and
+ * folders, the datasets, the example configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
  * separators. The apps read the example data only through this index.
  */
 export type DataIndex = {
   /**
-   * Every tracked file of the data folder except the index itself, sorted by path.
+   * Every tracked file of the data folder except the index itself and hidden files and folders (a path component
+   * that starts with `.`), sorted by path.
    */
   files: Array<IndexedFile>;
   /**
