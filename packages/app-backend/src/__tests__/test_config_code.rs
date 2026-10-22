@@ -88,6 +88,62 @@ mod tests {
   }
 
   #[test]
+  fn test_config_code_writes_one_partition_flag_per_entry_and_nested_yaml() {
+    let mut config = AppCommand::Ancestral.default_config().unwrap();
+    config.extend(
+      json!({
+        "tree": "t.nwk",
+        "alignment": ["a.fasta"],
+        "partition": [
+          { "name": "cp3", "sites": ["103-1600\\3"], "model": "hky85", "model_params": ["kappa=4"] },
+          { "name": "rest" },
+        ],
+      })
+      .as_object()
+      .unwrap()
+      .clone(),
+    );
+    let code = config_code(AppCommand::Ancestral, &config).unwrap();
+    assert_eq!(
+      (
+        indoc! {r#"
+          treetime ancestral \
+            --alignment a.fasta \
+            --tree t.nwk \
+            --partition "{\"name\":\"cp3\",\"sites\":[\"103-1600\\\\3\"],\"model\":\"hky85\",\"model_params\":[\"kappa=4\"]}" --partition '{"name":"rest"}' \
+            --output-all out"#}
+        .to_owned(),
+        indoc! {r#"
+          # yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
+          # treetime ancestral --config run.yaml
+          alignment:
+            - "a.fasta"
+          tree: "t.nwk"
+          partition:
+            - name: "cp3"
+              sites:
+                - "103-1600\\3"
+              model: "hky85"
+              model_params:
+                - "kappa=4"
+            - name: "rest"
+          output_all: "out"
+        "#}
+        .to_owned(),
+      ),
+      (code.command_line_text.clone(), code.yaml_text.clone())
+    );
+    assert_eq!(
+      Value::Object(with_output_dir(config.clone())),
+      Value::Object(parse_command_line(AppCommand::Ancestral, &code.command_line_text))
+    );
+    assert_eq!(
+      Value::Object(with_output_dir(config)),
+      load_yaml(AppCommand::Ancestral, &code.yaml_text)
+    );
+  }
+
+  #[test]
   fn test_config_code_line_kinds() {
     let mut config = AppCommand::Prune.default_config().unwrap();
     config.extend(

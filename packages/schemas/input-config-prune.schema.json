@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
+      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries\ncan split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear\nat most once.",
       "type": "array",
       "items": {
         "type": "string"

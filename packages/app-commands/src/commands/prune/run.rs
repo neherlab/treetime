@@ -1,5 +1,6 @@
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::leaf_order::leaf_order;
+use crate::commands::shared::partition::{log_partition_layouts, resolve_alignment_layouts};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::command_outputs::CommandKind;
@@ -7,6 +8,7 @@ use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{ResolvedOutputs, TreeWriteKind};
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::Report;
+use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime::cancel::Cancel;
@@ -38,16 +40,14 @@ pub fn run_prune(
   let graph: Graph = parse.graph;
   let branch_lengths_input = parse.branch_lengths;
   let input_order = leaf_order(&graph);
-  let sources = if args.sequences.alignments.is_empty() {
-    vec![]
-  } else {
-    args
-      .sequences
-      .read(&graph, &names, log)?
-      .into_iter()
-      .map(|source| source.source)
-      .collect()
-  };
+  let sources = args
+    .sequences
+    .read(&graph, &names, log)?
+    .into_iter()
+    .map(|source| source.source)
+    .collect_vec();
+  let layouts = resolve_alignment_layouts(&sources.iter().map(|source| source.length).collect_vec())?;
+  log_partition_layouts(&layouts, log);
 
   let node_names = node_names_to_remove(&args.remove, args.remove_file.as_deref())?;
 

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::argument_error::ArgumentError;
-  use crate::commands::shared::model::{GtrModelNameCli, parse_model_params};
+  use crate::commands::shared::model::{GtrModelNameCli, ModelSource, parse_model_params};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, Array2, array};
@@ -50,7 +50,7 @@ mod tests {
   ) -> Result<(), Report> {
     let expected = &helpers::v0_models()?[fixture_model][fixture_case];
 
-    let gtr = parse_model_params(model, &helpers::owned(items))?.build(AlphabetName::Nuc)?;
+    let gtr = parse_model_params(model, &helpers::owned(items), ModelSource::Flags)?.build(AlphabetName::Nuc)?;
 
     pretty_assert_abs_diff_eq!(expected.mu, gtr.mu(), epsilon = 1e-14);
     pretty_assert_abs_diff_eq!(expected.pi.clone(), gtr.pi().clone(), epsilon = 1e-14);
@@ -78,7 +78,7 @@ mod tests {
     #[case] items: &[&str],
     #[case] (mu, w): (f64, Array2<f64>),
   ) -> Result<(), Report> {
-    let gtr = parse_model_params(model, &helpers::owned(items))?.build(AlphabetName::Nuc)?;
+    let gtr = parse_model_params(model, &helpers::owned(items), ModelSource::Flags)?.build(AlphabetName::Nuc)?;
 
     pretty_assert_abs_diff_eq!(mu, gtr.mu(), epsilon = 1e-14);
     pretty_assert_abs_diff_eq!(array![0.25, 0.25, 0.25, 0.25], gtr.pi().clone(), epsilon = 1e-14);
@@ -100,7 +100,7 @@ mod tests {
     #[case] items: &[&str],
     #[case] expected: GtrModel,
   ) -> Result<(), Report> {
-    assert_eq!(expected, parse_model_params(model, &helpers::owned(items))?);
+    assert_eq!(expected, parse_model_params(model, &helpers::owned(items), ModelSource::Flags)?);
     Ok(())
   }
 
@@ -133,7 +133,7 @@ mod tests {
     #[case] (message, settings): (&str, &[&str]),
   ) {
     let Err(ArgumentError { message: actual_message, settings: actual_settings }) =
-      parse_model_params(model, &helpers::owned(items))
+      parse_model_params(model, &helpers::owned(items), ModelSource::Flags)
     else {
       panic!("expected an argument error");
     };
@@ -145,7 +145,7 @@ mod tests {
     let pi = Array1::range(1.0, 21.0, 1.0);
     let item = format!("pi={}", pi.iter().join(","));
 
-    let gtr = parse_model_params(GtrModelNameCli::F81, &[item])?.build(AlphabetName::AaNoStop)?;
+    let gtr = parse_model_params(GtrModelNameCli::F81, &[item], ModelSource::Flags)?.build(AlphabetName::AaNoStop)?;
 
     pretty_assert_abs_diff_eq!(&pi / pi.sum(), gtr.pi().clone(), epsilon = 1e-14);
     Ok(())
@@ -164,7 +164,7 @@ mod tests {
     #[case] alphabet: AlphabetName,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let model = parse_model_params(model, &helpers::owned(&[item]))?;
+    let model = parse_model_params(model, &helpers::owned(&[item]), ModelSource::Flags)?;
     assert_error!(model.build(alphabet), expected);
     Ok(())
   }

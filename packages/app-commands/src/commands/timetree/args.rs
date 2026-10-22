@@ -19,6 +19,7 @@ use crate::commands::shared::output_args::{
   ClockOutputArgs, DivergenceUnits, OutputCoreArgs, OutputRequest, TimetreeOutputSelectionArgs, TreeOutputPaths,
   selected_outputs,
 };
+use crate::commands::shared::partition::{PartitionArgs, PartitionSpec, partition_entries};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
 use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
@@ -109,6 +110,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     let TreetimeTimetreeArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
+      partition: PartitionArgs { partition },
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       missing_sequences,
@@ -171,6 +173,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       coalescent_confidence,
       gen_per_year,
     )?;
+    let sequences = timetree_sequence_inputs(alignment, &partition, alphabet_args, gap_fill_args, missing_sequences)?;
     let file_paths = vec![
       (OutputSelection::NodeData, output_node_data),
       (OutputSelection::Model, output_model),
@@ -187,14 +190,14 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       newick_dialect: newick_dialect.dialect(),
       dates,
       branch_lengths: timetree_branch_lengths(branch_length_mode, alignment_count, sequence_length, branch_lengths)?,
-      sequence_model: timetree_sequence_model(model_args, representation, partition_rates_args, alignment_count)?,
+      sequence_model: timetree_sequence_model(model_args, representation, partition_rates_args, &sequences)?,
       marginal_only_settings,
       clock: timetree_clock(clock_rate, clock_std_dev, confidence, clock_filter, relax)?,
       reroot: RerootTarget::new(reroot.map(Into::into), outgroup),
       keep_root,
       dating: timetree_dating(max_iter, keep_polytomies, confidence, max_grid_points, coalescent),
       outputs: timetree_outputs(output, output_selection, alignment_count, output_settings, file_paths),
-      sequences: timetree_sequence_inputs(alignment, alphabet_args, gap_fill_args, missing_sequences)?,
+      sequences,
       positions: PositionBase::from_zero_based(zero_based),
       tip_sequences: timetree_tip_sequences(tip_sequences, impute_missing_data),
       seed,
@@ -332,9 +335,13 @@ fn timetree_sequence_model(
   ModelArgs { model, model_params }: ModelArgs,
   RepresentationArgs { representation }: RepresentationArgs,
   PartitionRatesArgs { partition_rates }: PartitionRatesArgs,
-  alignment_count: usize,
+  sequences: &SequenceInputs,
 ) -> Result<TimetreeSequenceModel, Report> {
-  check_partition_rates(partition_rates, alignment_count)?;
+  check_partition_rates(
+    partition_rates,
+    sequences.alignments.len(),
+    sequences.partition_entries.len(),
+  )?;
   Ok(TimetreeSequenceModel {
     model: resolve_model(model, &model_params)?,
     dense: representation_dense(representation),
@@ -427,6 +434,7 @@ fn timetree_outputs(
 #[deny(unused_variables)]
 fn timetree_sequence_inputs(
   alignment: Vec<PathBuf>,
+  partition: &[PartitionSpec],
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   MissingSequenceArgs {
@@ -438,6 +446,7 @@ fn timetree_sequence_inputs(
     alphabet: alphabet.map(Into::into),
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
+    partition_entries: partition_entries(partition)?,
   })
 }
 
@@ -648,6 +657,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub partition: PartitionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

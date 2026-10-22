@@ -9,11 +9,13 @@ use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::method_anc::{
   MarginalReconstruction, MethodAncArgs, MethodAncestralCli, SampleFromProfileArgs, check_model_with_method_anc,
+  check_partition_with_method_anc,
 };
 use crate::commands::shared::model::{GtrModelNameCli, ModelArgs, resolve_model};
 use crate::commands::shared::output_args::{
   AncestralOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
 };
+use crate::commands::shared::partition::{PartitionArgs, PartitionSpec, partition_entries};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
 use crate::commands::shared::representation::{RepresentationArgs, RepresentationCli, representation_dense};
 use crate::commands::shared::required::missing_required_args;
@@ -120,6 +122,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
     let TreetimeAncestralArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
+      partition: PartitionArgs { partition },
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       alphabet_args,
@@ -161,6 +164,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
     let tree = tree.ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
     check_dependent_settings(&DependentSettings {
       method_anc,
+      partition: &partition,
       model,
       model_params: &model_params,
       translations: translations.is_some(),
@@ -187,7 +191,13 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
         reconstructed_fasta_output,
         output_translations,
       ),
-      sequences: ancestral_sequence_inputs(alignment, alphabet_args, gap_fill_args, allow_missing_sequences)?,
+      sequences: ancestral_sequence_inputs(
+        alignment,
+        &partition,
+        alphabet_args,
+        gap_fill_args,
+        allow_missing_sequences,
+      )?,
       allow_missing_sequences,
       positions: PositionBase::from_zero_based(zero_based),
       method_anc: method_anc.into(),
@@ -257,6 +267,7 @@ fn ancestral_outputs(
 #[deny(unused_variables)]
 fn ancestral_sequence_inputs(
   alignment: Vec<PathBuf>,
+  partition: &[PartitionSpec],
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   allow_missing_sequences: bool,
@@ -267,6 +278,7 @@ fn ancestral_sequence_inputs(
     alphabet: alphabet.map(Into::into),
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
+    partition_entries: partition_entries(partition)?,
   })
 }
 
@@ -289,6 +301,7 @@ fn ancestral_topology_order(
 
 struct DependentSettings<'a> {
   method_anc: MethodAncestralCli,
+  partition: &'a [PartitionSpec],
   model: Option<GtrModelNameCli>,
   model_params: &'a [String],
   translations: bool,
@@ -298,6 +311,7 @@ struct DependentSettings<'a> {
 
 fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Report> {
   check_model_with_method_anc(settings.method_anc, settings.model, settings.model_params)?;
+  check_partition_with_method_anc(settings.method_anc, settings.partition)?;
   let marginal = MarginalReconstruction {
     runs: settings.method_anc.is_marginal() || settings.translations,
     condition: "--method-anc marginal, or the amino-acid reconstruction of --translations",
@@ -335,6 +349,11 @@ pub struct TreetimeAncestralArgsRaw {
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub partition: PartitionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

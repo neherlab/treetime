@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
+      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries\ncan split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear\nat most once.",
       "type": "array",
       "items": {
         "type": "string"
@@ -60,14 +60,14 @@
       "x-cli-flag": "--zero-based"
     },
     "model": {
-      "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
+      "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to\nevery file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to\nentries.",
       "default": "infer",
       "$ref": "#/$defs/GtrModelName",
       "x-unset": true,
       "x-cli-flag": "--model"
     },
     "model_params": {
-      "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the\noverall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and\n`t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and\n`tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T\nfor nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0\nand 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2\npis=0.25,0.25,0.25,0.25`.",
+      "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. In commands\nwith `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to\nentries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion\nratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium\nfrequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its\norder, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the\nGC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params\nkappa=0.2 pis=0.25,0.25,0.25,0.25`.",
       "type": "array",
       "items": {
         "type": "string"

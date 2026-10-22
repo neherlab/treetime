@@ -211,7 +211,140 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+        },
+        {
+          "key": "partition",
+          "label": "Partition",
+          "flag": "--partition",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "records",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Name",
+              "kind": "text",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Name of the partition in outputs and messages",
+              "more": ""
+            },
+            {
+              "key": "alignment",
+              "label": "Alignment",
+              "kind": "integer",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Number of the alignment file in the `--alignment` list (1, 2, ...); may be left out when the list has one file",
+              "more": ""
+            },
+            {
+              "key": "sites",
+              "label": "Sites",
+              "kind": "list",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Sites of the partition, as site ranges numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b",
+              "more": "Left out, the partition takes every site of its alignment that no other entry takes."
+            },
+            {
+              "key": "model",
+              "label": "Substitution model",
+              "kind": "enum",
+              "nullable": true,
+              "options": [
+                {
+                  "value": "jc69",
+                  "help": ""
+                },
+                {
+                  "value": "k80",
+                  "help": ""
+                },
+                {
+                  "value": "f81",
+                  "help": ""
+                },
+                {
+                  "value": "hky85",
+                  "help": ""
+                },
+                {
+                  "value": "t92",
+                  "help": ""
+                },
+                {
+                  "value": "tn93",
+                  "help": ""
+                },
+                {
+                  "value": "jtt92",
+                  "help": ""
+                },
+                {
+                  "value": "infer",
+                  "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
+                }
+              ],
+              "item_kind": "string",
+              "documented_default": "infer",
+              "examples": [],
+              "help": "Substitution model of the partition",
+              "more": ""
+            },
+            {
+              "key": "model_params",
+              "label": "Model params",
+              "kind": "list",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Parameters of the model of the partition, as the `key=value` items of `--model-params`, for example `kappa=4`",
+              "more": ""
+            }
+          ],
+          "default_value": [],
+          "examples": [
+            [
+              {
+                "name": "cp12",
+                "sites": [
+                  "1-1500\\3",
+                  "2-1500\\3"
+                ]
+              },
+              {
+                "name": "cp3",
+                "sites": [
+                  "3-1500\\3"
+                ],
+                "model": "hky85",
+                "model_params": [
+                  "kappa=4"
+                ]
+              }
+            ]
+          ],
+          "value_names": [
+            "ENTRY"
+          ],
+          "conflicts": [
+            "model",
+            "model_params"
+          ],
+          "help": "One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each partition",
+          "more": "Without `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML or JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of its `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b), `model` (the substitution model, default `infer`) and `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model, so `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one entry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries of its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or without quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition \"{name: cp1, sites: ['101-1600\\3']}\" --partition \"{name: cp2, sites: ['102-1600\\3']}\" --partition \"{name: cp3, sites: ['103-1600\\3'], model: hky85, model_params: ['kappa=4']}\" --partition \"{name: noncoding}\"`."
         },
         {
           "key": "tree",
@@ -986,9 +1119,11 @@
           "value_names": [
             "MODEL"
           ],
-          "conflicts": [],
+          "conflicts": [
+            "partition"
+          ],
           "help": "Substitution model to use",
-          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to every file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to entries."
         },
         {
           "key": "model_params",
@@ -1006,9 +1141,11 @@
           "value_names": [
             "MODEL_PARAMS"
           ],
-          "conflicts": [],
+          "conflicts": [
+            "partition"
+          ],
           "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
-          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. In commands with `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to entries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "partition_rates",
@@ -1037,7 +1174,7 @@
           ],
           "conflicts": [],
           "help": "Relative substitution rates of the partitions",
-          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions."
+          "more": "Each `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions."
         },
         {
           "key": "representation",
@@ -2847,7 +2984,140 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+        },
+        {
+          "key": "partition",
+          "label": "Partition",
+          "flag": "--partition",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "records",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Name",
+              "kind": "text",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Name of the partition in outputs and messages",
+              "more": ""
+            },
+            {
+              "key": "alignment",
+              "label": "Alignment",
+              "kind": "integer",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Number of the alignment file in the `--alignment` list (1, 2, ...); may be left out when the list has one file",
+              "more": ""
+            },
+            {
+              "key": "sites",
+              "label": "Sites",
+              "kind": "list",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Sites of the partition, as site ranges numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b",
+              "more": "Left out, the partition takes every site of its alignment that no other entry takes."
+            },
+            {
+              "key": "model",
+              "label": "Substitution model",
+              "kind": "enum",
+              "nullable": true,
+              "options": [
+                {
+                  "value": "jc69",
+                  "help": ""
+                },
+                {
+                  "value": "k80",
+                  "help": ""
+                },
+                {
+                  "value": "f81",
+                  "help": ""
+                },
+                {
+                  "value": "hky85",
+                  "help": ""
+                },
+                {
+                  "value": "t92",
+                  "help": ""
+                },
+                {
+                  "value": "tn93",
+                  "help": ""
+                },
+                {
+                  "value": "jtt92",
+                  "help": ""
+                },
+                {
+                  "value": "infer",
+                  "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
+                }
+              ],
+              "item_kind": "string",
+              "documented_default": "infer",
+              "examples": [],
+              "help": "Substitution model of the partition",
+              "more": ""
+            },
+            {
+              "key": "model_params",
+              "label": "Model params",
+              "kind": "list",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Parameters of the model of the partition, as the `key=value` items of `--model-params`, for example `kappa=4`",
+              "more": ""
+            }
+          ],
+          "default_value": [],
+          "examples": [
+            [
+              {
+                "name": "cp12",
+                "sites": [
+                  "1-1500\\3",
+                  "2-1500\\3"
+                ]
+              },
+              {
+                "name": "cp3",
+                "sites": [
+                  "3-1500\\3"
+                ],
+                "model": "hky85",
+                "model_params": [
+                  "kappa=4"
+                ]
+              }
+            ]
+          ],
+          "value_names": [
+            "ENTRY"
+          ],
+          "conflicts": [
+            "model",
+            "model_params"
+          ],
+          "help": "One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each partition",
+          "more": "Without `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML or JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of its `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b), `model` (the substitution model, default `infer`) and `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model, so `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one entry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries of its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or without quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition \"{name: cp1, sites: ['101-1600\\3']}\" --partition \"{name: cp2, sites: ['102-1600\\3']}\" --partition \"{name: cp3, sites: ['103-1600\\3'], model: hky85, model_params: ['kappa=4']}\" --partition \"{name: noncoding}\"`."
         },
         {
           "key": "tree",
@@ -3116,9 +3386,11 @@
           "value_names": [
             "MODEL"
           ],
-          "conflicts": [],
+          "conflicts": [
+            "partition"
+          ],
           "help": "Substitution model to use",
-          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to every file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to entries."
         },
         {
           "key": "model_params",
@@ -3136,9 +3408,11 @@
           "value_names": [
             "MODEL_PARAMS"
           ],
-          "conflicts": [],
+          "conflicts": [
+            "partition"
+          ],
           "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
-          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. In commands with `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to entries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "aa_model",
@@ -4016,7 +4290,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -4229,7 +4503,7 @@
           ],
           "conflicts": [],
           "help": "Substitution model to use",
-          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to every file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to entries."
         },
         {
           "key": "model_params",
@@ -4249,7 +4523,7 @@
           ],
           "conflicts": [],
           "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
-          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. In commands with `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to entries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "method_anc",
@@ -6017,7 +6291,140 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+        },
+        {
+          "key": "partition",
+          "label": "Partition",
+          "flag": "--partition",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "records",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "fields": [
+            {
+              "key": "name",
+              "label": "Name",
+              "kind": "text",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Name of the partition in outputs and messages",
+              "more": ""
+            },
+            {
+              "key": "alignment",
+              "label": "Alignment",
+              "kind": "integer",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Number of the alignment file in the `--alignment` list (1, 2, ...); may be left out when the list has one file",
+              "more": ""
+            },
+            {
+              "key": "sites",
+              "label": "Sites",
+              "kind": "list",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Sites of the partition, as site ranges numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b",
+              "more": "Left out, the partition takes every site of its alignment that no other entry takes."
+            },
+            {
+              "key": "model",
+              "label": "Substitution model",
+              "kind": "enum",
+              "nullable": true,
+              "options": [
+                {
+                  "value": "jc69",
+                  "help": ""
+                },
+                {
+                  "value": "k80",
+                  "help": ""
+                },
+                {
+                  "value": "f81",
+                  "help": ""
+                },
+                {
+                  "value": "hky85",
+                  "help": ""
+                },
+                {
+                  "value": "t92",
+                  "help": ""
+                },
+                {
+                  "value": "tn93",
+                  "help": ""
+                },
+                {
+                  "value": "jtt92",
+                  "help": ""
+                },
+                {
+                  "value": "infer",
+                  "help": "Infer GTR parameters from data via Fitch parsimony substitution counts."
+                }
+              ],
+              "item_kind": "string",
+              "documented_default": "infer",
+              "examples": [],
+              "help": "Substitution model of the partition",
+              "more": ""
+            },
+            {
+              "key": "model_params",
+              "label": "Model params",
+              "kind": "list",
+              "nullable": true,
+              "options": [],
+              "item_kind": "string",
+              "examples": [],
+              "help": "Parameters of the model of the partition, as the `key=value` items of `--model-params`, for example `kappa=4`",
+              "more": ""
+            }
+          ],
+          "default_value": [],
+          "examples": [
+            [
+              {
+                "name": "cp12",
+                "sites": [
+                  "1-1500\\3",
+                  "2-1500\\3"
+                ]
+              },
+              {
+                "name": "cp3",
+                "sites": [
+                  "3-1500\\3"
+                ],
+                "model": "hky85",
+                "model_params": [
+                  "kappa=4"
+                ]
+              }
+            ]
+          ],
+          "value_names": [
+            "ENTRY"
+          ],
+          "conflicts": [
+            "model",
+            "model_params"
+          ],
+          "help": "One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each partition",
+          "more": "Without `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML or JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of its `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b), `model` (the substitution model, default `infer`) and `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model, so `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one entry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries of its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or without quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition \"{name: cp1, sites: ['101-1600\\3']}\" --partition \"{name: cp2, sites: ['102-1600\\3']}\" --partition \"{name: cp3, sites: ['103-1600\\3'], model: hky85, model_params: ['kappa=4']}\" --partition \"{name: noncoding}\"`."
         },
         {
           "key": "tree",
@@ -6508,9 +6915,11 @@
           "value_names": [
             "MODEL"
           ],
-          "conflicts": [],
+          "conflicts": [
+            "partition"
+          ],
           "help": "Substitution model to use",
-          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them."
+          "more": "`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to every file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to entries."
         },
         {
           "key": "model_params",
@@ -6528,9 +6937,11 @@
           "value_names": [
             "MODEL_PARAMS"
           ],
-          "conflicts": [],
+          "conflicts": [
+            "partition"
+          ],
           "help": "Parameters for the model selected by `--model`, given as space-separated `key=value` items",
-          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
+          "more": "The parameters apply to the model of every partition; each `--alignment` file is one partition. In commands with `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to entries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`."
         },
         {
           "key": "partition_rates",
@@ -6559,7 +6970,7 @@
           ],
           "conflicts": [],
           "help": "Relative substitution rates of the partitions",
-          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions."
+          "more": "Each `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions."
         },
         {
           "key": "representation",
@@ -7153,7 +7564,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",

@@ -77,8 +77,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::renamed_long(AppCommand::Timetree,  "metadata",  "--metadata")]
-  #[case::flattened(   AppCommand::Ancestral, "alignment", "--alignment")]
+  #[case::renamed_long(       AppCommand::Timetree,  "metadata",  "--metadata")]
+  #[case::flattened(          AppCommand::Ancestral, "alignment", "--alignment")]
+  #[case::partition_ancestral(AppCommand::Ancestral, "partition", "--partition")]
+  #[case::partition_optimize( AppCommand::Optimize,  "partition", "--partition")]
+  #[case::partition_timetree( AppCommand::Timetree,  "partition", "--partition")]
   #[trace]
   fn test_schema_annotations_flag_of_setting(
     #[case] command: AppCommand,

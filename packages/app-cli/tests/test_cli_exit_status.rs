@@ -62,6 +62,33 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::hky85_aa(&["--alphabet", "aa", "--model", "hky85"], "the model hky85 needs the alphabet nuc because it sets rates between nucleotides, but the alphabet is aa")]
+  #[case::jtt92_aa(&["--alphabet", "aa", "--model", "jtt92"], "the model jtt92 needs the alphabet aa-no-stop because its matrix holds the 20 amino acids without the stop '*', but the alphabet is aa")]
+  #[trace]
+  fn test_cli_timetree_without_alignment_checks_the_model_against_the_alphabet(
+    #[case] model: &[&str],
+    #[case] message: &str,
+  ) {
+    let dir = tempdir().unwrap();
+    let (tree, metadata) = (data_path("zika/20/tree.nwk"), data_path("zika/20/metadata.tsv"));
+    let output = dir.path().to_str().unwrap();
+    let args = [
+      &["timetree", "--tree", &tree, "--metadata", &metadata, "--sequence-length", "1000", "--output-all", output][..],
+      model,
+    ]
+    .concat();
+    assert_eq!(
+      Run {
+        code: Some(2),
+        stdout: String::new(),
+        stderr: format!("error: {message}\n"),
+      },
+      treetime(&args, &[])
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::ancestral(&["ancestral", "--tree", "missing.nwk", "--alignment", "missing.fasta"])]
   #[case::clock(    &["clock",     "--tree", "missing.nwk", "--metadata", "missing.tsv"])]
   #[case::homoplasy(&["homoplasy", "--tree", "missing.nwk", "--alignment", "missing.fasta"])]
@@ -116,6 +143,7 @@ mod tests {
   #[rstest]
   #[case::conflict(    "clock", "keep_root: true\nreroot: oldest\n",   "error: invalid configuration: `keep_root` cannot be used together with `reroot`")]
   #[case::unknown_key( "clock", "definitely_not_a_real_field: 1\n",   "error: invalid configuration: unknown field `definitely_not_a_real_field`")]
+  #[case::partition_and_model("ancestral", "partition:\n  - {name: all}\nmodel: jc69\n", "error: invalid configuration: `model` cannot be used together with `partition`")]
   #[trace]
   fn test_cli_invalid_config_file_is_a_usage_error(#[case] command: &str, #[case] text: &str, #[case] first_line: &str) {
     let dir = tempdir().unwrap();

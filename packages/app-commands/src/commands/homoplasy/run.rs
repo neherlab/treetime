@@ -6,6 +6,7 @@ use crate::commands::homoplasy::summary::{ResultContext, homoplasy_result};
 use crate::commands::shared::ancestral_trees::{
   AncestralOutputMaps, AncestralPartitionTrees, AncestralTrees, write_ancestral_trees,
 };
+use crate::commands::shared::partition::log_partitions;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
   AlignmentSource, TreeAndSources, ancestral_input, read_tree_and_sources,
@@ -39,8 +40,20 @@ pub fn run_homoplasy(
   let resolved = args.outputs.resolve()?;
   let drms = args.drms.as_deref().map(DrmTable::read_file).transpose()?;
 
-  let TreeAndSources { tree, sources } =
-    read_tree_and_sources(&args.tree, args.newick_dialect, &args.sequences, cancel, stages, log)?;
+  let TreeAndSources {
+    tree,
+    sources,
+    partitions,
+  } = read_tree_and_sources(
+    &args.tree,
+    args.newick_dialect,
+    &args.sequences,
+    &args.model,
+    cancel,
+    stages,
+    log,
+  )?;
+  log_partitions(&partitions, log);
   let [AlignmentSource { source, n_records, .. }] = <[AlignmentSource; 1]>::try_from(sources)
     .map_err(|sources| make_internal_report!("Expected one alignment source, found {}", sources.len()))?;
   progress_info!(

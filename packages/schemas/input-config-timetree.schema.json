@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). Use `-` to read\nuncompressed FASTA from standard input; `-` may appear at most once.",
+      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries\ncan split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear\nat most once.",
       "type": "array",
       "items": {
         "type": "string"
@@ -13,6 +13,36 @@
       "default": [],
       "x-path": "input",
       "x-cli-flag": "--alignment"
+    },
+    "partition": {
+      "description": "One partition: a set of sites of one `--alignment` file with its own substitution model; repeat the flag for each\npartition\n\nWithout `--partition`, each `--alignment` file is one partition with the model of `--model`. An entry is a YAML\nor JSON map with the keys `name` (the name of the partition in outputs and messages), `alignment` (the number of\nits `--alignment` file, 1, 2, ...; required with two or more files), `sites` (a list of site ranges, numbered\nfrom 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b), `model` (the substitution model, default `infer`)\nand `model_params` (the `key=value` items of `--model-params` for that model). Each entry carries its own model,\nso `--model` and `--model-params` cannot be used together with `--partition`. Every alignment needs at least one\nentry, and every site belongs to exactly one entry. An entry without `sites` takes the sites that the other entries\nof its alignment leave; one entry per alignment can leave out `sites`. Write site ranges in single quotes or\nwithout quotes, because YAML reads a backslash in double quotes as an escape. Example: `--partition \"{name: cp1,\nsites: ['101-1600\\3']}\" --partition \"{name: cp2, sites: ['102-1600\\3']}\" --partition \"{name: cp3, sites:\n['103-1600\\3'], model: hky85, model_params: ['kappa=4']}\" --partition \"{name: noncoding}\"`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PartitionSpec"
+      },
+      "examples": [
+        [
+          {
+            "name": "cp12",
+            "sites": [
+              "1-1500\\3",
+              "2-1500\\3"
+            ]
+          },
+          {
+            "name": "cp3",
+            "sites": [
+              "3-1500\\3"
+            ],
+            "model": "hky85",
+            "model_params": [
+              "kappa=4"
+            ]
+          }
+        ]
+      ],
+      "default": [],
+      "x-cli-flag": "--partition"
     },
     "tree": {
       "description": "Tree in Newick format.",
@@ -284,14 +314,14 @@
       "x-cli-flag": "--gen-per-year"
     },
     "model": {
-      "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
+      "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to\nevery file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to\nentries.",
       "default": "infer",
       "$ref": "#/$defs/GtrModelName",
       "x-unset": true,
       "x-cli-flag": "--model"
     },
     "model_params": {
-      "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the\noverall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and\n`t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and\n`tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T\nfor nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0\nand 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2\npis=0.25,0.25,0.25,0.25`.",
+      "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. In commands\nwith `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to\nentries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion\nratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium\nfrequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its\norder, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the\nGC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params\nkappa=0.2 pis=0.25,0.25,0.25,0.25`.",
       "type": "array",
       "items": {
         "type": "string"
@@ -300,7 +330,7 @@
       "x-cli-flag": "--model-params"
     },
     "partition_rates": {
-      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
+      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more\npartitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
       "default": "estimate",
       "$ref": "#/$defs/PartitionRates",
       "x-unset": true,
@@ -547,6 +577,69 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "PartitionSpec": {
+      "description": "One partition: a set of sites of one `--alignment` file and its substitution model",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the partition in outputs and messages",
+          "type": "string",
+          "x-unset": true
+        },
+        "alignment": {
+          "description": "Number of the alignment file in the `--alignment` list (1, 2, ...); may be left out when the list has one file",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 1,
+          "x-unset": true
+        },
+        "sites": {
+          "description": "Sites of the partition, as site ranges numbered from 1: `a`, `a-b`, or `a-b\\k` for every k-th site from a to b\n\nLeft out, the partition takes every site of its alignment that no other entry takes.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^([0-9]+)(?:-([0-9]+)(?:\\\\([0-9]+))?)?$"
+          },
+          "x-unset": true
+        },
+        "model": {
+          "description": "Substitution model of the partition",
+          "default": "infer",
+          "$ref": "#/$defs/GtrModelName",
+          "x-unset": true
+        },
+        "model_params": {
+          "description": "Parameters of the model of the partition, as the `key=value` items of `--model-params`, for example `kappa=4`",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-unset": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "GtrModelName": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "jc69",
+            "k80",
+            "f81",
+            "hky85",
+            "t92",
+            "tn93",
+            "jtt92"
+          ]
+        },
+        {
+          "description": "Infer GTR parameters from data via Fitch parsimony substitution counts.",
+          "type": "string",
+          "const": "infer"
+        }
+      ]
+    },
     "AlphabetName": {
       "type": "string",
       "enum": [
@@ -579,27 +672,6 @@
           "description": "Estimate the branch lengths from the alignment by marginal ancestral reconstruction",
           "type": "string",
           "const": "marginal"
-        }
-      ]
-    },
-    "GtrModelName": {
-      "oneOf": [
-        {
-          "type": "string",
-          "enum": [
-            "jc69",
-            "k80",
-            "f81",
-            "hky85",
-            "t92",
-            "tn93",
-            "jtt92"
-          ]
-        },
-        {
-          "description": "Infer GTR parameters from data via Fitch parsimony substitution counts.",
-          "type": "string",
-          "const": "infer"
         }
       ]
     },

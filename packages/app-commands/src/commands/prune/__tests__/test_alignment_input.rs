@@ -4,6 +4,7 @@ mod tests {
   use crate::commands::prune::run::run_prune;
   use clap::Parser;
   use eyre::Report;
+  use indoc::indoc;
   use std::fs;
   use std::path::{Path, PathBuf};
   use tempfile::tempdir;
@@ -34,6 +35,25 @@ mod tests {
     helpers::write_inputs(dir.path())?;
 
     helpers::run(dir.path(), &["--allow-missing-sequences"])
+  }
+
+  #[test]
+  fn test_prune_amino_acid_alignment_runs() -> Result<(), Report> {
+    let dir = tempdir()?;
+    helpers::write_inputs(dir.path())?;
+    fs::write(
+      dir.path().join("aln.fasta"),
+      indoc! {r"
+        >A
+        MKVL
+        >B
+        MKIL
+        >C
+        MRIL
+      "},
+    )?;
+
+    helpers::run(dir.path(), &["--alphabet", "aa"])
   }
 
   mod helpers {

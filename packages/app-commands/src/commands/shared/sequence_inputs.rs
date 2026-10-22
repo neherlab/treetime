@@ -1,13 +1,17 @@
 use crate::commands::shared::alignment::{PairedAlignment, pair_alignment};
+use crate::commands::shared::partition::resolve_run_partitions;
 use crate::commands::shared::tree_input::read_input_tree;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
+use itertools::Itertools;
 use schemars::JsonSchema;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use treetime::cancel::Cancel;
+use treetime::gtr::get_gtr::GtrModel;
+use treetime::partition::resolve::{PartitionEntry, PartitionPlan};
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
@@ -23,6 +27,7 @@ pub(crate) fn read_tree_and_sources(
   tree: &Path,
   newick_dialect: NewickDialect,
   sequences: &SequenceInputs,
+  model: &GtrModel,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -30,8 +35,12 @@ pub(crate) fn read_tree_and_sources(
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
   let tree = read_input_tree(tree, newick_dialect, log)?;
-  let sources = sequences.read(&tree.graph, &tree.names, log)?;
-  Ok(TreeAndSources { tree, sources })
+  let SequenceSources { alignments, partitions } = sequences.read_partitions(model, &tree.graph, &tree.names, log)?;
+  Ok(TreeAndSources {
+    tree,
+    sources: alignments,
+    partitions,
+  })
 }
 
 pub(crate) fn read_sequence_sources(
@@ -85,6 +94,7 @@ pub(crate) struct SequenceInputs {
   pub(crate) alphabet: Option<AlphabetName>,
   pub(crate) gap_fill: GapFill,
   pub(crate) missing_leaves: MissingLeafLimit,
+  pub(crate) partition_entries: Vec<PartitionEntry>,
 }
 
 impl SequenceInputs {
@@ -102,11 +112,30 @@ impl SequenceInputs {
     };
     read_sequence_sources(&self.alignments, &settings, graph, names, log)
   }
+
+  pub(crate) fn read_partitions(
+    &self,
+    model: &GtrModel,
+    graph: &Graph,
+    names: &NodeNames,
+    log: &dyn LogSink,
+  ) -> Result<SequenceSources, Report> {
+    let alignments = self.read(graph, names, log)?;
+    let lengths = alignments.iter().map(|alignment| alignment.source.length).collect_vec();
+    let partitions = resolve_run_partitions(&self.partition_entries, model, &lengths, self.alphabet, log)?;
+    Ok(SequenceSources { alignments, partitions })
+  }
 }
 
 pub(crate) struct TreeAndSources {
   pub(crate) tree: NwkParse,
   pub(crate) sources: Vec<AlignmentSource>,
+  pub(crate) partitions: Vec<PartitionPlan>,
+}
+
+pub(crate) struct SequenceSources {
+  pub(crate) alignments: Vec<AlignmentSource>,
+  pub(crate) partitions: Vec<PartitionPlan>,
 }
 
 fn read_sequence_source(

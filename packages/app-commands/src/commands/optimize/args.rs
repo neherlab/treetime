@@ -13,6 +13,7 @@ use crate::commands::shared::model::{
 use crate::commands::shared::output_args::{
   DivergenceUnits, OptimizeOutputSelectionArgs, OutputCoreArgs, OutputRequest, TreeOutputPaths, selected_outputs,
 };
+use crate::commands::shared::partition::{PartitionArgs, partition_entries};
 use crate::commands::shared::representation::{RepresentationArgs, representation_dense};
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootTarget, RootingArgs};
@@ -76,6 +77,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
     let TreetimeOptimizeArgsRaw {
       config_args: _,
       alignment: AlignmentArgs { alignment },
+      partition: PartitionArgs { partition },
       tree: TreeArgs { tree },
       newick_dialect: TreeDialectArgs { newick_dialect },
       missing_sequences: MissingSequenceArgs {
@@ -110,7 +112,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
     } = raw;
     let tree = tree.ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
     check_required_alignment_paths(&alignment)?;
-    check_partition_rates(partition_rates, alignment.len())?;
+    check_partition_rates(partition_rates, alignment.len(), partition.len())?;
     let dense = representation_dense(representation);
     check_sparse_only_settings(dense, no_merge_shared_mutations, no_hoist_reversions)?;
     Ok(Self {
@@ -122,6 +124,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
         alphabet: alphabet.map(Into::into),
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
+        partition_entries: partition_entries(&partition)?,
       },
       positions: PositionBase::from_zero_based(zero_based),
       model: resolve_model(model, &model_params)?,
@@ -255,6 +258,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[deser(flatten)]
   #[schemars(extend("x-path" = "input"))]
   pub alignment: AlignmentArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub partition: PartitionArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

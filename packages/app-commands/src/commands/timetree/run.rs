@@ -1,4 +1,5 @@
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
+use crate::commands::shared::partition::log_partitions;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
@@ -55,6 +56,7 @@ pub fn run_timetree_estimation(
   ambiguity.warn_unwritten(&resolved, log);
 
   let input_data = load_input_data(args, log)?;
+  log_partitions(&input_data.partitions, log);
   let input_leaf_order = input_data.input_leaf_order.clone();
   let branch_length_mode = input_data.branch_length_mode.mode;
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;

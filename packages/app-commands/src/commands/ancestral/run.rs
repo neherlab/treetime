@@ -7,6 +7,7 @@ use crate::commands::shared::ancestral_trees::{
   AncestralOutputMaps, AncestralPartitionTrees, AncestralTrees, write_ancestral_trees,
 };
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
+use crate::commands::shared::partition::log_partitions;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::sequence_inputs::{
@@ -54,8 +55,20 @@ pub fn run_ancestral_reconstruction(
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
 
-  let TreeAndSources { tree, sources } =
-    read_tree_and_sources(&args.tree, args.newick_dialect, &args.sequences, cancel, stages, log)?;
+  let TreeAndSources {
+    tree,
+    sources,
+    partitions,
+  } = read_tree_and_sources(
+    &args.tree,
+    args.newick_dialect,
+    &args.sequences,
+    &args.model,
+    cancel,
+    stages,
+    log,
+  )?;
+  log_partitions(&partitions, log);
   let NwkParse {
     graph,
     names,

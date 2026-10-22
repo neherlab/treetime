@@ -19,6 +19,13 @@ mod tests {
   const PARSIMONY_MODEL: &str =
     "applies only with --method-anc marginal: parsimony reconstruction uses no substitution model";
 
+  const PARSIMONY_PARTITION: &str = "applies only with --method-anc marginal: parsimony reconstruction uses no \
+                                     substitution model and treats every site alone, so partitions do not change its \
+                                     result";
+
+  const ONE_ENTRY: &str =
+    "applies only with two or more partitions, but --partition has one entry, the one partition of the run";
+
   const ANCESTRAL_MARGINAL: &str = "applies only when a marginal reconstruction runs (--method-anc marginal, or the \
                                     amino-acid reconstruction of --translations), but --method-anc is parsimony";
 
@@ -34,8 +41,11 @@ mod tests {
   #[case::gen_per_year_with_coalescent(    &["--gen-per-year", "30", "--coalescent", "10y"],                  None)]
   #[case::clock_std_dev_without_intervals( &["--clock-rate", "1e-3", "--clock-std-dev", "1e-4"],              Some((o!("--clock-std-dev applies only with --confidence: only the date intervals use the clock rate uncertainty"), ["clock_std_dev", "confidence"])))]
   #[case::clock_std_dev_with_intervals(    &["--clock-rate", "1e-3", "--clock-std-dev", "1e-4", "--confidence"], None)]
-  #[case::partition_rates_one_file(        &["--partition-rates", "equal"],                                   Some((o!("--partition-rates applies only with two or more partitions, but the run has 1 partition: each --alignment file is one partition"), ["partition_rates", "alignment"])))]
+  #[case::partition_rates_one_file(        &["--partition-rates", "equal"],                                   Some((o!("--partition-rates applies only with two or more partitions, but the run has 1 partition: without --partition, each --alignment file is one partition"), ["partition_rates", "alignment"])))]
   #[case::partition_rates_two_files(       &["--partition-rates", "equal", "--alignment", "b.fasta"],         None)]
+  #[case::partition_rates_one_entry(       &["--partition-rates", "equal", "--alignment", "b.fasta", "--partition", "{alignment: 1}"], Some((format!("--partition-rates {ONE_ENTRY}"), ["partition_rates", "partition"])))]
+  #[case::partition_rates_two_entries(     &["--partition-rates", "equal", "--partition", "{sites: ['1-9']}", "--partition", "{}"], None)]
+  #[case::partition_in_input_mode(         &["--partition", "{model: jc69}", "--branch-length-mode", "input"], None)]
   #[case::representation_in_input_mode(    &["--representation", "dense", "--branch-length-mode", "input"],   Some((format!("--representation {NEEDS_MARGINAL_MODE}"),                 ["representation", "branch_length_mode"])))]
   #[case::partition_rates_in_input_mode(   &["--partition-rates", "equal", "--alignment", "b.fasta", "--branch-length-mode", "input"], Some((format!("--partition-rates {NEEDS_MARGINAL_MODE}"), ["partition_rates", "branch_length_mode"])))]
   #[case::threshold_in_input_mode(         &["--ambiguity-threshold", "0.1", "--branch-length-mode", "input"], Some((format!("--ambiguity-threshold {NEEDS_MARGINAL_MODE}"),     ["ambiguity_threshold", "branch_length_mode"])))]
@@ -78,6 +88,9 @@ mod tests {
   #[rstest]
   #[case::model_with_parsimony(            &["--method-anc", "parsimony", "--model", "infer"],                Some((format!("--model {PARSIMONY_MODEL}"),                              ["model", "method_anc"])))]
   #[case::model_params_with_parsimony(     &["--method-anc", "parsimony", "--model-params", "mu=1"],          Some((format!("--model-params {PARSIMONY_MODEL}"),                       ["model_params", "method_anc"])))]
+  #[case::partition_with_parsimony(        &["--method-anc", "parsimony", "--partition", "{name: cp1}"],      Some((format!("--partition {PARSIMONY_PARTITION}"),                      ["partition", "method_anc"])))]
+  #[case::partition_with_parsimony_and_aa( &["--method-anc", "parsimony", "--partition", "{}", "--translations", "{cds}.fasta"], Some((format!("--partition {PARSIMONY_PARTITION}"), ["partition", "method_anc"])))]
+  #[case::partition_with_marginal(         &["--method-anc", "marginal", "--partition", "{name: cp1}"],       None)]
   #[case::model_with_parsimony_and_aa(     &["--method-anc", "parsimony", "--model", "jc69", "--translations", "{cds}.fasta"], Some((format!("--model {PARSIMONY_MODEL}"),  ["model", "method_anc"])))]
   #[case::representation_with_parsimony(   &["--method-anc", "parsimony", "--representation", "auto"],        Some((format!("--representation {ANCESTRAL_MARGINAL}"),                  ["representation", "method_anc"])))]
   #[case::threshold_with_parsimony(        &["--method-anc", "parsimony", "--ambiguity-threshold", "0.1"],    Some((format!("--ambiguity-threshold {ANCESTRAL_MARGINAL}"),             ["ambiguity_threshold", "method_anc"])))]
@@ -115,8 +128,9 @@ mod tests {
   #[case::no_hoist_reversions_dense(        &["--representation", "dense", "--no-hoist-reversions"],        Some((o!("--no-hoist-reversions applies only to the sparse representation, but --representation is dense"), ["no_hoist_reversions", "representation"])))]
   #[case::no_merge_shared_mutations_sparse( &["--representation", "sparse", "--no-merge-shared-mutations"], None)]
   #[case::no_merge_shared_mutations_auto(   &["--no-merge-shared-mutations", "--no-hoist-reversions"],      None)]
-  #[case::partition_rates_one_file(         &["--partition-rates", "estimate"],                             Some((o!("--partition-rates applies only with two or more partitions, but the run has 1 partition: each --alignment file is one partition"), ["partition_rates", "alignment"])))]
+  #[case::partition_rates_one_file(         &["--partition-rates", "estimate"],                             Some((o!("--partition-rates applies only with two or more partitions, but the run has 1 partition: without --partition, each --alignment file is one partition"), ["partition_rates", "alignment"])))]
   #[case::partition_rates_two_files(        &["--partition-rates", "estimate", "--alignment", "b.fasta"],   None)]
+  #[case::partition_rates_one_entry(       &["--partition-rates", "estimate", "--partition", "{}"],          Some((format!("--partition-rates {ONE_ENTRY}"), ["partition_rates", "partition"])))]
   #[case::documented_defaults(              &["--representation", "dense"],                                 None)]
   #[trace]
   fn test_dependent_settings_optimize(#[case] extra: &[&str], #[case] expected: Option<(String, [&str; 2])>) {

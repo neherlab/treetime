@@ -9,6 +9,7 @@ mod tests {
   const LISTS_WITHOUT_COMMAS: &[ListWithoutCommas] = &[
     ListWithoutCommas { flag: "--alignment",           values: Arity::OnePerFlag, reason: "a path can contain a comma" },
     ListWithoutCommas { flag: "--model-params",        values: Arity::OneOrMore,  reason: "an item such as pis=0.25,0.25,0.25,0.25 contains commas" },
+    ListWithoutCommas { flag: "--partition",           values: Arity::OnePerFlag, reason: "an entry is a YAML map, which contains commas" },
     ListWithoutCommas { flag: "--metadata-delimiters", values: Arity::OneOrMore,  reason: "a comma is one of its values" },
     ListWithoutCommas { flag: "--relax",               values: Arity::Exactly(2), reason: "it takes exactly two numbers" },
   ];

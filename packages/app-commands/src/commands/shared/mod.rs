@@ -19,6 +19,7 @@ pub mod method_anc;
 pub mod mirror_enum;
 pub mod model;
 pub mod output_args;
+pub mod partition;
 pub mod reconstructed_fasta;
 pub mod representation;
 pub mod required;

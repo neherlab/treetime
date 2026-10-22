@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use helpers::{ALIGNMENT, Run, TREE, path_in, planned_lines, treetime_in, write_file};
+  use helpers::{ALIGNMENT, Run, TREE, path_in, planned_lines, treetime_in, write_file, yaml_block};
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -114,6 +114,49 @@ mod tests {
         run.code,
         run.stdout.lines().any(|line| line == "branch_length_mode: \"auto\""),
         comments
+      )
+    );
+  }
+
+  #[test]
+  fn test_cli_dry_run_prints_partition_entries_as_written() {
+    let dir = tempdir().unwrap();
+    let dry_run = treetime_in(
+      dir.path(),
+      &[
+        "ancestral",
+        "--tree",
+        "missing.nwk",
+        "--alignment",
+        "missing.fasta",
+        "--partition",
+        r"{name: cp3, sites: ['3-1500\3'], model: hky85, model_params: ['kappa=4']}",
+        "--partition",
+        "{name: rest}",
+        "--output-all",
+        "out",
+        "--dry-run",
+      ],
+    );
+    let expected = indoc! {r#"
+      partition:
+        - name: "cp3"
+          sites:
+            - "3-1500\\3"
+          model: "hky85"
+          model_params:
+            - "kappa=4"
+        - name: "rest"
+    "#};
+    write_file(dir.path(), "run.yaml", &dry_run.stdout);
+    let again = treetime_in(dir.path(), &["ancestral", "--config", "run.yaml", "--dry-run"]);
+    assert_eq!(
+      (Some(0), String::new(), expected.to_owned(), dry_run.stdout.clone()),
+      (
+        dry_run.code,
+        dry_run.stderr,
+        yaml_block(&dry_run.stdout, "partition"),
+        again.stdout
       )
     );
   }
@@ -379,6 +422,20 @@ mod tests {
         .skip_while(|line| *line != "# Planned output files:")
         .map(str::to_owned)
         .collect()
+    }
+
+    pub(crate) fn yaml_block(stdout: &str, key: &str) -> String {
+      let header = format!("{key}:");
+      stdout
+        .lines()
+        .skip_while(|line| *line != header)
+        .enumerate()
+        .take_while(|(index, line)| *index == 0 || line.starts_with([' ', '-']))
+        .fold(String::new(), |mut block, (_, line)| {
+          block.push_str(line);
+          block.push('\n');
+          block
+        })
     }
 
     pub(crate) fn path_in(dir: &Path, relative: &str) -> String {

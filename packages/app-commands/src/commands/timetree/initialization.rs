@@ -1,11 +1,12 @@
 use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
-use crate::commands::shared::sequence_inputs::AlignmentSource;
+use crate::commands::shared::sequence_inputs::{AlignmentSource, SequenceSources};
 use crate::commands::shared::tree_input::read_input_tree;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, check_branch_length_settings};
 use crate::commands::timetree::branch_length_mode::{ResolvedBranchLengthMode, resolve_branch_length_mode};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
+use treetime::partition::resolve::PartitionPlan;
 use treetime::progress::LogSink;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -23,11 +24,12 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
   let branch_length_mode = resolve_branch_length_mode(args.branch_lengths.mode, has_alignment, &branch_lengths, log);
   check_branch_length_settings(&args.marginal_only_settings, &branch_length_mode)?;
 
-  let sequences = if has_alignment {
-    args.sequences.read(&graph, &names, log)?
-  } else {
-    vec![]
-  };
+  let SequenceSources {
+    alignments: sequences,
+    partitions,
+  } = args
+    .sequences
+    .read_partitions(&args.sequence_model.model, &graph, &names, log)?;
 
   let dates = read_input_dates(&args.dates, &graph, &names, log)?;
 
@@ -38,6 +40,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
     branch_length_mode,
     input_leaf_order,
     sequences,
+    partitions,
     dates,
   })
 }
@@ -49,5 +52,6 @@ pub(crate) struct InputData {
   pub branch_length_mode: ResolvedBranchLengthMode,
   pub input_leaf_order: Vec<GraphNodeKey>,
   pub sequences: Vec<AlignmentSource>,
+  pub partitions: Vec<PartitionPlan>,
   pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
 }

@@ -1,5 +1,7 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
+use crate::commands::shared::partition::log_partitions;
+use crate::commands::shared::sequence_inputs::SequenceSources;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
@@ -35,12 +37,9 @@ pub fn run_optimize(
   let names = nwk_parsed.names;
   let graph = nwk_parsed.graph;
   let branch_lengths = nwk_parsed.branch_lengths;
-  let sources = args
-    .sequences
-    .read(&graph, &names, log)?
-    .into_iter()
-    .map(|source| source.source)
-    .collect();
+  let SequenceSources { alignments, partitions } = args.sequences.read_partitions(&args.model, &graph, &names, log)?;
+  log_partitions(&partitions, log);
+  let sources = alignments.into_iter().map(|source| source.source).collect();
 
   let params = OptimizeParams {
     model: args.model.clone(),

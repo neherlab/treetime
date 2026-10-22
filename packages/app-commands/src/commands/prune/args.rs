@@ -126,6 +126,7 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
         alphabet: alphabet.map(Into::into),
         gap_fill: gap_fill.into(),
         missing_leaves: missing_leaf_limit(allow_missing_sequences),
+        partition_entries: vec![],
       },
       positions: PositionBase::from_zero_based(zero_based),
       collapse_short,

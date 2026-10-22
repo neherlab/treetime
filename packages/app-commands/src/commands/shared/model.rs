@@ -22,11 +22,16 @@ pub const MODEL_DEFAULT: GtrModelNameCli = GtrModelNameCli::Infer;
 
 pub const PARTITION_RATES_DEFAULT: PartitionRatesCli = PartitionRatesCli::Estimate;
 
-pub fn parse_model_params(model: GtrModelNameCli, items: &[String]) -> Result<GtrModel, ArgumentError> {
+pub fn parse_model_params(
+  model: GtrModelNameCli,
+  items: &[String],
+  source: ModelSource<'_>,
+) -> Result<GtrModel, ArgumentError> {
+  let params = source.params_setting();
   if let (GtrModelNameCli::Infer, Some(item)) = (model, items.first()) {
-    return Err(model_error(format!(
-      "--model-params needs a named --model: {model} fits the model from the data and takes no parameters, but got \
-       '{item}'"
+    return Err(source.model_error(format!(
+      "{params} needs a named {}: {model} fits the model from the data and takes no parameters, but got '{item}'",
+      source.model_setting()
     )));
   }
   let accepted = accepted_params(model);
@@ -36,25 +41,64 @@ pub fn parse_model_params(model: GtrModelNameCli, items: &[String]) -> Result<Gt
     let (key, value) = item
       .split_once('=')
       .filter(|(key, value)| !key.is_empty() && !value.is_empty() && !value.contains('='))
-      .ok_or_else(|| params_error(format!("--model-params takes key=value items, but got '{item}'")))?;
+      .ok_or_else(|| source.params_error(format!("{params} takes key=value items, but got '{item}'")))?;
     let param = key
       .parse::<ModelParam>()
       .ok()
       .filter(|param| accepted.contains(param))
       .ok_or_else(|| {
-        model_error(format!(
-          "--model-params item '{item}': the model {model} has no parameter '{key}'; its parameters are {}",
+        source.model_error(format!(
+          "{params} item '{item}': the model {model} has no parameter '{key}'; its parameters are {}",
           accepted.iter().join(", ")
         ))
       })?;
     if let Some(previous) = given.insert(param, item) {
-      return Err(params_error(format!(
-        "--model-params sets {param} twice: '{previous}' and '{item}'"
-      )));
+      return Err(source.params_error(format!("{params} sets {param} twice: '{previous}' and '{item}'")));
     }
-    values.set(param, item, value)?;
+    values.set(param, item, value, source)?;
   }
   Ok(values.into_model(model.into()))
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ModelSource<'a> {
+  Flags,
+  Entry { label: &'a str },
+}
+
+impl ModelSource<'_> {
+  fn params_setting(self) -> String {
+    match self {
+      Self::Flags => o!("--model-params"),
+      Self::Entry { label } => format!("{label}: model_params"),
+    }
+  }
+
+  const fn model_setting(self) -> &'static str {
+    match self {
+      Self::Flags => "--model",
+      Self::Entry { .. } => "model",
+    }
+  }
+
+  fn model_error(self, message: String) -> ArgumentError {
+    self.error(message, &["model", "model_params"])
+  }
+
+  fn params_error(self, message: String) -> ArgumentError {
+    self.error(message, &["model_params"])
+  }
+
+  fn error(self, message: String, flag_settings: &[&str]) -> ArgumentError {
+    let settings = match self {
+      Self::Flags => flag_settings,
+      Self::Entry { .. } => &["partition"],
+    };
+    ArgumentError {
+      message,
+      settings: settings.iter().map(|setting| (*setting).to_owned()).collect(),
+    }
+  }
 }
 
 /// Substitution model selection shared by every command that infers or applies a rate matrix.
@@ -73,7 +117,9 @@ pub struct ModelArgs {
   /// Substitution model to use
   ///
   /// `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
-  /// name the model type. If the named model takes parameters, use `--model-params` to set them.
+  /// name the model type. If the named model takes parameters, use `--model-params` to set them. The model applies to
+  /// every file. In commands with `--partition`, each entry carries its own model, so `--model` is an error next to
+  /// entries.
   #[cfg_attr(
     feature = "clap",
     clap(long, value_enum, ignore_case = true, help_heading = "Substitution model")
@@ -83,13 +129,14 @@ pub struct ModelArgs {
 
   /// Parameters for the model selected by `--model`, given as space-separated `key=value` items
   ///
-  /// The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the
-  /// overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and
-  /// `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and
-  /// `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T
-  /// for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0
-  /// and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2
-  /// pis=0.25,0.25,0.25,0.25`.
+  /// The parameters apply to the model of every partition; each `--alignment` file is one partition. In commands
+  /// with `--partition`, each entry carries its own model and parameters, so `--model-params` is an error next to
+  /// entries. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion
+  /// ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium
+  /// frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its
+  /// order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the
+  /// GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params
+  /// kappa=0.2 pis=0.25,0.25,0.25,0.25`.
   #[cfg_attr(
     feature = "clap",
     clap(
@@ -102,7 +149,7 @@ pub struct ModelArgs {
 }
 
 pub fn resolve_model(model: Option<GtrModelNameCli>, model_params: &[String]) -> Result<GtrModel, ArgumentError> {
-  parse_model_params(model.unwrap_or(MODEL_DEFAULT), model_params)
+  parse_model_params(model.unwrap_or(MODEL_DEFAULT), model_params, ModelSource::Flags)
 }
 
 pub fn check_model_applies(
@@ -173,7 +220,8 @@ impl_from_mirror!(GtrModelNameCli => GtrModelName { Infer, JC69, K80, F81, HKY85
 pub struct PartitionRatesArgs {
   /// Relative substitution rates of the partitions
   ///
-  /// Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,
+  /// Each `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more
+  /// partitions, all partitions share the branch lengths,
   /// and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the
   /// rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from
   /// its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that
@@ -193,7 +241,20 @@ pub fn resolve_partition_rates(partition_rates: Option<PartitionRatesCli>) -> Pa
   partition_rates.unwrap_or(PARTITION_RATES_DEFAULT).into()
 }
 
-pub fn check_partition_rates(partition_rates: Option<PartitionRatesCli>, alignment_files: usize) -> Result<(), Report> {
+pub fn check_partition_rates(
+  partition_rates: Option<PartitionRatesCli>,
+  alignment_files: usize,
+  partition_entries: usize,
+) -> Result<(), Report> {
+  if partition_entries > 0 {
+    return check_applies(
+      "partition_rates",
+      partition_rates.is_some(),
+      "partition",
+      partition_entries >= 2,
+      || o!("applies only with two or more partitions, but --partition has one entry, the one partition of the run"),
+    );
+  }
   check_applies(
     "partition_rates",
     partition_rates.is_some(),
@@ -201,7 +262,8 @@ pub fn check_partition_rates(partition_rates: Option<PartitionRatesCli>, alignme
     alignment_files >= 2,
     || {
       format!(
-        "applies only with two or more partitions, but the run has {}: each --alignment file is one partition",
+        "applies only with two or more partitions, but the run has {}: without --partition, each --alignment file \
+         is one partition",
         counted(alignment_files, "partition")
       )
     },
@@ -235,46 +297,39 @@ fn accepted_params(model: GtrModelNameCli) -> &'static [ModelParam] {
   }
 }
 
-fn model_error(message: String) -> ArgumentError {
-  ArgumentError {
-    message,
-    settings: vec![o!("model"), o!("model_params")],
-  }
-}
-
-fn params_error(message: String) -> ArgumentError {
-  ArgumentError {
-    message,
-    settings: vec![o!("model_params")],
-  }
-}
-
-fn non_negative_number(param: ModelParam, item: &str, value: &str) -> Result<f64, ArgumentError> {
+fn non_negative_number(
+  param: ModelParam,
+  item: &str,
+  value: &str,
+  source: ModelSource<'_>,
+) -> Result<f64, ArgumentError> {
   value
     .parse::<f64>()
     .ok()
     .filter(|number| number.is_finite() && *number >= 0.0)
     .ok_or_else(|| {
-      params_error(format!(
-        "--model-params item '{item}': {param} must be a non-negative finite number"
+      source.params_error(format!(
+        "{} item '{item}': {param} must be a non-negative finite number",
+        source.params_setting()
       ))
     })
 }
 
-fn gc_content(item: &str, value: &str) -> Result<f64, ArgumentError> {
+fn gc_content(item: &str, value: &str, source: ModelSource<'_>) -> Result<f64, ArgumentError> {
   value
     .parse::<f64>()
     .ok()
     .filter(|number| *number > 0.0 && *number < 1.0)
     .ok_or_else(|| {
-      params_error(format!(
-        "--model-params item '{item}': {} must be a number between 0 and 1, exclusive",
+      source.params_error(format!(
+        "{} item '{item}': {} must be a number between 0 and 1, exclusive",
+        source.params_setting(),
         ModelParam::PiGc
       ))
     })
 }
 
-fn frequencies(item: &str, value: &str) -> Result<Array1<f64>, ArgumentError> {
+fn frequencies(item: &str, value: &str, source: ModelSource<'_>) -> Result<Array1<f64>, ArgumentError> {
   value
     .split(',')
     .map(|number| {
@@ -283,8 +338,9 @@ fn frequencies(item: &str, value: &str) -> Result<Array1<f64>, ArgumentError> {
         .ok()
         .filter(|number| number.is_finite() && *number > 0.0)
         .ok_or_else(|| {
-          params_error(format!(
-            "--model-params item '{item}': each frequency of {} must be a positive finite number",
+          source.params_error(format!(
+            "{} item '{item}': each frequency of {} must be a positive finite number",
+            source.params_setting(),
             ModelParam::Pi
           ))
         })
@@ -319,14 +375,14 @@ struct ModelParamValues {
 }
 
 impl ModelParamValues {
-  fn set(&mut self, param: ModelParam, item: &str, value: &str) -> Result<(), ArgumentError> {
+  fn set(&mut self, param: ModelParam, item: &str, value: &str, source: ModelSource<'_>) -> Result<(), ArgumentError> {
     match param {
-      ModelParam::Mu => self.mu = Some(non_negative_number(param, item, value)?),
-      ModelParam::Kappa => self.kappa = Some(non_negative_number(param, item, value)?),
-      ModelParam::Kappa1 => self.kappa1 = Some(non_negative_number(param, item, value)?),
-      ModelParam::Kappa2 => self.kappa2 = Some(non_negative_number(param, item, value)?),
-      ModelParam::Pi => self.pi = Some(frequencies(item, value)?),
-      ModelParam::PiGc => self.pi_gc = Some(gc_content(item, value)?),
+      ModelParam::Mu => self.mu = Some(non_negative_number(param, item, value, source)?),
+      ModelParam::Kappa => self.kappa = Some(non_negative_number(param, item, value, source)?),
+      ModelParam::Kappa1 => self.kappa1 = Some(non_negative_number(param, item, value, source)?),
+      ModelParam::Kappa2 => self.kappa2 = Some(non_negative_number(param, item, value, source)?),
+      ModelParam::Pi => self.pi = Some(frequencies(item, value, source)?),
+      ModelParam::PiGc => self.pi_gc = Some(gc_content(item, value, source)?),
     }
     Ok(())
   }
