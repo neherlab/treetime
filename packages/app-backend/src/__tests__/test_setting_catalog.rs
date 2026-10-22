@@ -247,6 +247,13 @@ mod tests {
     assert_eq!(
       vec![
         SettingOption {
+          value: o!("auto"),
+          help: o!(
+            "`input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site, \
+             `marginal` otherwise"
+          )
+        },
+        SettingOption {
           value: o!("input"),
           help: o!("Keep the branch lengths of the input tree")
         },

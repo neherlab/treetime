@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::commands::timetree::branch_length_mode::BranchLengthModeCli;
   use crate::commands::timetree::run::reconstructed_nuc_fasta_paths;
   use app_output::output_plan::Requested;
   use eyre::Report;
@@ -9,15 +10,15 @@ mod tests {
   use std::collections::{BTreeMap, BTreeSet};
   use std::path::PathBuf;
   use treetime::alphabet::alphabet::Alphabet;
-  use treetime::optimize::params::BranchLengthMode;
   use treetime::progress::NoopProgress;
+  use treetime::timetree::params::BranchLengthMode;
   use treetime_primitives::AsciiChar;
   use treetime_utils::assert_error;
 
   #[test]
   fn test_timetree_reconstructed_fasta_requires_ancestral_reconstruction() {
     let result = helpers::run_reconstructed_fasta("test-tt-recon-input-mode", |args| {
-      args.branch_length_mode = BranchLengthMode::Input;
+      args.branch_length_mode = BranchLengthModeCli::Input;
     });
     assert_error!(
       result,

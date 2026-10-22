@@ -637,6 +637,7 @@ args = "--prune-nodes-list-file={dataset}/prune-nodes.txt"
 
 [[timetree]]
 variant = "basic"
+fail.'lassa/L/20' = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
 fail.'lassa/L/200' = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]

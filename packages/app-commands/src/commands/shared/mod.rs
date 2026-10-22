@@ -3,7 +3,6 @@ pub mod alphabet;
 pub mod ambiguity;
 pub mod ancestral_trees;
 pub mod argument_error;
-pub mod branch_length_mode;
 pub mod branch_lengths;
 pub mod clock_filter;
 pub mod config;

@@ -551,6 +551,10 @@
           "nullable": false,
           "options": [
             {
+              "value": "auto",
+              "help": "`input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site, `marginal` otherwise"
+            },
+            {
               "value": "input",
               "help": "Keep the branch lengths of the input tree"
             },
@@ -560,14 +564,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "marginal",
+          "default_value": "auto",
           "examples": [],
           "value_names": [
             "BRANCH_LENGTH_MODE"
           ],
           "conflicts": [],
-          "help": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
-          "more": ""
+          "help": "How the branch lengths of the time inference are obtained",
+          "more": "`auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer than 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary distances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses `marginal`. The run logs the choice."
         },
         {
           "key": "max_iter",

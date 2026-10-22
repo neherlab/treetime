@@ -2707,7 +2707,7 @@ export type SettingCatalog = {
   commands: Array<CommandSettings>;
 };
 
-export type BranchLengthMode = 'input' | 'marginal';
+export type BranchLengthMode = 'auto' | 'input' | 'marginal';
 
 export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest';
 
@@ -2807,7 +2807,12 @@ export type TimetreeConfig = {
    */
   clock_std_dev?: number;
   /**
-   * If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
+   * How the branch lengths of the time inference are obtained
+   *
+   * `auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer
+   * than 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary
+   * distances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses
+   * `marginal`. The run logs the choice.
    */
   branch_length_mode?: BranchLengthMode;
   /**

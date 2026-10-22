@@ -114,9 +114,9 @@
       "x-cli-flag": "--clock-std-dev"
     },
     "branch_length_mode": {
-      "description": "If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.",
+      "description": "How the branch lengths of the time inference are obtained\n\n`auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer\nthan 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary\ndistances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses\n`marginal`. The run logs the choice.",
       "$ref": "#/$defs/BranchLengthMode",
-      "default": "marginal",
+      "default": "auto",
       "x-cli-flag": "--branch-length-mode"
     },
     "confidence": {
@@ -546,6 +546,11 @@
   "$defs": {
     "BranchLengthMode": {
       "oneOf": [
+        {
+          "description": "`input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site,\n`marginal` otherwise",
+          "type": "string",
+          "const": "auto"
+        },
         {
           "description": "Keep the branch lengths of the input tree",
           "type": "string",

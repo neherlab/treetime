@@ -1,4 +1,5 @@
 mod test_alignment_input;
+mod test_branch_length_mode;
 mod test_clock_csv;
 mod test_coalescent_arg;
 mod test_model_params;

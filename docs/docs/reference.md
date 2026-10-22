@@ -146,11 +146,15 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--sequence-length <SEQUENCE_LENGTH>` — Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided
 * `--clock-rate <CLOCK_RATE>` — If specified, the rate of the molecular clock won't be optimized
 * `--clock-std-dev <CLOCK_STD_DEV>` — Standard deviation of the provided clock rate estimate
-* `--branch-length-mode <BRANCH_LENGTH_MODE>` — If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances
+* `--branch-length-mode <BRANCH_LENGTH_MODE>` — How the branch lengths of the time inference are obtained
 
-  Default value: `marginal`
+   `auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer than 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary distances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses `marginal`. The run logs the choice.
+
+  Default value: `auto`
 
   Possible values:
+  - `auto`:
+    `input` without an alignment or when the longest input branch is longer than 0.1 substitutions per site, `marginal` otherwise
   - `input`:
     Keep the branch lengths of the input tree
   - `marginal`:

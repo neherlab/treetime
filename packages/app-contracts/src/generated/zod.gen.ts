@@ -1321,6 +1321,7 @@ export const zSettingCatalog = z.object({
 });
 
 export const zBranchLengthMode = z.union([
+  z.literal('auto'),
   z.literal('input'),
   z.literal('marginal')
 ]);

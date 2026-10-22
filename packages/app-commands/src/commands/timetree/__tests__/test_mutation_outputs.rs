@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::shared::alignment::AlignmentArgs;
-  use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
   use crate::commands::shared::output_args::{DivergenceUnits, OutputCoreArgs};
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+  use crate::commands::timetree::branch_length_mode::BranchLengthModeCli;
   use crate::commands::timetree::run::run_timetree_estimation;
   use eyre::{Report, WrapErr};
   use helpers::{node_mutations, write_timetree_outputs};

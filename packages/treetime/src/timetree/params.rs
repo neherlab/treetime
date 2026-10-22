@@ -3,10 +3,10 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::gtr::get_gtr::GtrModel;
 use crate::optimize::indel::IndelPolicy;
-use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::timetree::coalescent_timescale::CoalescentMode;
 use std::fmt::Debug;
+use strum_macros::Display;
 use treetime_grid::MaxGridPoints;
 
 pub struct TimetreeParams {
@@ -51,4 +51,11 @@ pub(crate) enum FinalSequences {
   Skip,
   FromLastRound,
   AfterMarginalUpdate,
+}
+
+#[derive(Copy, Debug, Clone, Display, PartialEq, Eq, PartialOrd, Ord)]
+#[strum(serialize_all = "kebab-case")]
+pub enum BranchLengthMode {
+  Input,
+  Marginal,
 }

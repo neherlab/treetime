@@ -4,7 +4,6 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::divergence::root_to_node_divergences;
   use crate::error::OperationError;
-  use crate::optimize::params::BranchLengthMode;
   use crate::partition::result::{PartitionResult, PartitionSequences};
   use crate::progress::{NoopProgress, RunWarning, RunWarningKind, StageSink};
   use crate::seq::sink::SeqSink;
@@ -13,7 +12,7 @@ mod tests {
     marginal_timetree_params, sequence_source,
   };
   use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
-  use crate::timetree::params::TimetreeParams;
+  use crate::timetree::params::{BranchLengthMode, TimetreeParams};
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
   use itertools::Itertools;

@@ -21,7 +21,6 @@ use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
 use treetime::clock::find_best_root::params::RerootSpec;
 use treetime::make_internal_error;
-use treetime::optimize::params::BranchLengthMode;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
@@ -31,7 +30,7 @@ use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::coalescent_timescale::CoalescentMode;
 use treetime::timetree::confidence::NodeConfidenceInterval;
-use treetime::timetree::params::TimetreeParams;
+use treetime::timetree::params::{BranchLengthMode, TimetreeParams};
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -53,13 +52,14 @@ pub fn run_timetree_estimation(
 
   let input_data = load_input_data(args, log)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
+  let branch_length_mode = input_data.branch_length_mode;
 
   let resolved = args.resolve_outputs()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
-  let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, args.branch_length_mode, log)?;
+  let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, branch_length_mode, log)?;
   let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
-  if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
+  if mutation_units && branch_length_mode == BranchLengthMode::Input {
     return Err(argument_error(
       &["divergence_units", "branch_length_mode"],
       "--divergence-units=mutations requires ancestral reconstruction; \
@@ -73,7 +73,7 @@ pub fn run_timetree_estimation(
     .seed_args
     .resolve(args.resolve_polytomies.then_some("Polytomy resolution"), log);
   let reroot_spec = args.reroot.spec(&args.rooting, &input_data.graph, &input_data.names)?;
-  let params = timetree_params(args, reroot_spec, sequence_outputs_requested, seed);
+  let params = timetree_params(args, branch_length_mode, reroot_spec, sequence_outputs_requested, seed);
 
   let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
     .sequences
@@ -135,6 +135,7 @@ pub fn run_timetree_estimation(
 
 fn timetree_params(
   args: &TreetimeTimetreeArgs,
+  branch_length_mode: BranchLengthMode,
   reroot_spec: RerootSpec,
   sequence_outputs_requested: bool,
   seed: u64,
@@ -143,7 +144,7 @@ fn timetree_params(
     model: args.model.clone(),
     alphabet: args.alphabet_args.alphabet_name(),
     dense: args.representation.dense,
-    branch_length_mode: args.branch_length_mode,
+    branch_length_mode,
     indel_policy: args.indel_policy,
     partition_rates: args.partition_rates_args.partition_rates(),
     sequence_length: args.sequence_length,

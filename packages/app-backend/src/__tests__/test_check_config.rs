@@ -286,11 +286,13 @@ pub(crate) mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::alignment(                   "alignment: [a.fasta]",                            None)]
-  #[case::sequence_length(             "branch_length_mode: input\nsequence_length: 1000", None)]
-  #[case::neither(                     "branch_length_mode: input",                       Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
-  #[case::zero_sequence_length(        "branch_length_mode: input\nsequence_length: 0",    Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
-  #[case::marginal_without_alignment(  "sequence_length: 1000",                           Some((["alignment", "branch_length_mode"], MARGINAL_NEEDS_ALIGNMENT)))]
+  #[case::alignment(                   "alignment: [a.fasta]",                                None)]
+  #[case::auto_sequence_length(        "sequence_length: 1000",                               None)]
+  #[case::input_sequence_length(       "branch_length_mode: input\nsequence_length: 1000",     None)]
+  #[case::auto_neither(                "max_iter: 2",                                         Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
+  #[case::input_neither(               "branch_length_mode: input",                           Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
+  #[case::zero_sequence_length(        "branch_length_mode: input\nsequence_length: 0",        Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
+  #[case::marginal_without_alignment(  "branch_length_mode: marginal\nsequence_length: 1000",  Some((["alignment", "branch_length_mode"], MARGINAL_NEEDS_ALIGNMENT)))]
   #[trace]
   fn test_check_config_timetree_blocks_a_run_without_sequence_length(
     #[case] settings: &str,

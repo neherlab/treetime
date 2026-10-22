@@ -3,7 +3,6 @@ use crate::clock::find_best_root::params::RerootSpec;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::gtr::get_gtr::{GtrModel, JC69Params};
 use crate::optimize::indel::IndelPolicy;
-use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::branch_model::BranchModel;
@@ -13,7 +12,7 @@ use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
 };
-use crate::timetree::params::TimetreeParams;
+use crate::timetree::params::{BranchLengthMode, TimetreeParams};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;

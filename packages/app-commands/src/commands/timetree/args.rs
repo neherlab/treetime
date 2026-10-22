@@ -2,7 +2,6 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::TimetreeAmbiguityArgs;
 use crate::commands::shared::argument_error::argument_error;
-use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::branch_lengths::BranchLengthArgs;
 use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
@@ -21,6 +20,7 @@ use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceA
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
+use crate::commands::timetree::branch_length_mode::BranchLengthModeCli;
 use crate::commands::timetree::coalescent::CoalescentArg;
 #[cfg(feature = "clap")]
 use crate::commands::timetree::coalescent::parse_coalescent;
@@ -35,7 +35,6 @@ use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
-use treetime::optimize::params::BranchLengthMode;
 use treetime_grid::MaxGridPoints;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
@@ -54,7 +53,6 @@ pub struct TreetimeTimetreeArgs {
   #[deref_mut]
   pub(crate) raw: TreetimeTimetreeArgsRaw,
   pub(crate) tree: PathBuf,
-  pub(crate) branch_length_mode: BranchLengthMode,
   pub(crate) indel_policy: IndelPolicy,
   pub(crate) max_grid_points: MaxGridPoints,
   pub(crate) include_leaves: bool,
@@ -75,7 +73,6 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
     check_sequence_source(&raw)?;
     Ok(Self {
       tree,
-      branch_length_mode: raw.branch_length_mode.into(),
       indel_policy: raw.branch_lengths.indel_policy(),
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
       include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
@@ -171,7 +168,12 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub clock_std_dev: Option<f64>,
 
-  /// If set to 'input', the provided branch length will be used without modification. Branch lengths optimized by treetime are only accurate at short evolutionary distances.
+  /// How the branch lengths of the time inference are obtained
+  ///
+  /// `auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer
+  /// than 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary
+  /// distances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses
+  /// `marginal`. The run logs the choice.
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default(), help_heading = "Branch lengths"))]
   pub branch_length_mode: BranchLengthModeCli,
 

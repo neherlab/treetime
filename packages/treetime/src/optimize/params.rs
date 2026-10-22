@@ -3,13 +3,6 @@ use crate::optimize::partition_rates::PartitionRates;
 use smart_default::SmartDefault;
 use strum_macros::Display;
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
-pub enum BranchLengthMode {
-  Input,
-  #[default]
-  Marginal,
-}
-
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum InitialGuessMode {
   #[default]

@@ -11,7 +11,6 @@ use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regres
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::coalescent::population_size::effective_population_size;
 use crate::error::OperationError;
-use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::fix_equal_rates;
 use crate::partition::create::Representation;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
@@ -33,7 +32,7 @@ use crate::timetree::inference::input_branch_length::input_branch_model;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
-use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
+use crate::timetree::params::{BranchLengthMode, FinalSequences, TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times};
