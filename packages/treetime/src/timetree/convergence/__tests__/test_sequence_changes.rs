@@ -8,6 +8,7 @@ mod tests {
   use crate::partition::set::PartitionSet;
   use crate::progress::NoopProgress;
   use crate::seq::overlay::SeqOverlay;
+  use crate::test_utils::jc69_input_branch_model;
   use crate::test_utils::leaf_seq_inputs;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::sequence_changes::{
@@ -76,7 +77,10 @@ mod tests {
   fn test_capture_ancestral_states_without_reconstruction_is_empty() -> Result<(), Report> {
     let graph = nwk_read(TREE.as_bytes())?.graph;
 
-    assert_eq!(0, capture_ancestral_states(&graph, &BranchModel::Input).len());
+    assert_eq!(
+      0,
+      capture_ancestral_states(&graph, &jc69_input_branch_model(1000)).len()
+    );
     Ok(())
   }
 

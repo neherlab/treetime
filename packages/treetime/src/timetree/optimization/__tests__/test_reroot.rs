@@ -466,7 +466,7 @@ mod tests {
           .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?
           .0,
       ),
-      BranchModel::Input => BranchModel::Input,
+      BranchModel::Input(model) => BranchModel::Input(model),
     };
 
     let RerootedTree {

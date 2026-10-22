@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::date_constraints::DateConstraints;
+  use crate::test_utils::jc69_input_branch_model;
   use crate::test_utils::{empty_time_inference, find_node_key_by_name, point_date_constraints};
-  use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::result::{NodePosterior, TimeInference, given_times, likely_times};
   use crate::timetree::optimization::polytomy::resolve::{PolytomyResolution, resolve_polytomies};
   use eyre::Report;
@@ -156,7 +156,7 @@ mod tests {
       graph,
       &mut names,
       branch_lengths,
-      &BranchModel::Input,
+      &jc69_input_branch_model(1000),
       POLYTOMY_MUTATION_RATE,
       0,
       &PiecewiseConstantFn::new(array![], array![POLYTOMY_MERGER_RATE]),

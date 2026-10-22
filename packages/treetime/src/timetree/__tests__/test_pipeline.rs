@@ -196,8 +196,7 @@ mod tests {
   }
 
   #[test]
-  fn test_pipeline_input_mode_undated_single_child_root_fails_with_point_division_known_issue_h_timetree_input_branch_lengths_abort_on_point_division()
-  -> Result<(), Report> {
+  fn test_pipeline_input_mode_dates_every_node_of_a_tree_with_an_undated_single_child_root() -> Result<(), Report> {
     let input = helpers::zika_input(&helpers::zika_newick_with_stem()?, helpers::zika_dates()?, false)?;
     let params = TimetreeParams {
       branch_length_mode: BranchLengthMode::Input,
@@ -207,14 +206,15 @@ mod tests {
       ..marginal_timetree_params()
     };
 
-    let Err(report) = helpers::run(&params, input, None) else {
-      panic!("input mode must fail on this tree until the point division is defined");
-    };
+    let output = helpers::run(&params, input, None)?;
 
-    assert_eq!(
-      "Cannot divide point by point: operation not well-defined",
-      report.root_cause().to_string()
-    );
+    let undated = output
+      .graph
+      .get_nodes()
+      .filter(|node| output.node_dates[&node.key()].is_none())
+      .map(|node| output.names[node.key()].to_owned())
+      .collect_vec();
+    assert_eq!(Vec::<String>::new(), undated);
     Ok(())
   }
 

@@ -141,6 +141,7 @@ fn timetree_params(
 ) -> TimetreeParams {
   TimetreeParams {
     model: args.model.clone(),
+    alphabet: args.alphabet_args.alphabet_name(),
     dense: args.representation.dense,
     branch_length_mode: args.branch_length_mode,
     indel_policy: args.indel_policy,

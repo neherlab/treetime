@@ -16,6 +16,7 @@ mod tests {
   use crate::pretty_assert_ulps_eq;
   use crate::progress::NoopProgress;
   use crate::test_utils::dates_by_node;
+  use crate::test_utils::jc69_input_branch_model;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{find_node_key_by_name, marginal_timetree_params, parent_edge_key};
   use crate::timetree::branch_model::BranchModel;
@@ -241,7 +242,7 @@ mod tests {
       },
     )?;
     let state = RoundState {
-      branch_model: BranchModel::Input,
+      branch_model: jc69_input_branch_model(context.sequence_length),
       ..state
     };
 

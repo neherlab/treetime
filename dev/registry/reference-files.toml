@@ -140,6 +140,19 @@ files = [
 ]
 
 [[reference]]
+name = "gm_input_branch_length"
+kind = "golden-master"
+test = "packages/treetime/src/timetree/inference/__tests__/test_gm_input_branch_length.rs"
+origin = "TreeTime v0 (Python) BranchLenInterpolator with branch_length_mode='input'"
+revision = "vendored in-repo reference at packages/legacy/treetime"
+capture = "./dev/docker/python python packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_input_branch_length_capture"
+normalization = "the negative log likelihood is evaluated at the v0 grid points and shifted to a minimum of 0 over them, as v0 shifts it, then compared with a relative tolerance"
+files = [
+  "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_input_branch_length_inputs.json",
+  "packages/treetime/src/timetree/inference/__tests__/__fixtures__/gm_input_branch_length_outputs.json",
+]
+
+[[reference]]
 name = "gm_relaxed_clock"
 kind = "golden-master"
 test = "packages/treetime/src/timetree/optimization/__tests__/test_relaxed_clock.rs"

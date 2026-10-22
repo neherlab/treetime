@@ -11,16 +11,15 @@ use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::bad_branches::derive_bad_branches;
 use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
 use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
+use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, NodeTimes, PosteriorSummaries, TimeInference, log_marginal_likelihood,
 };
 use crate::{progress_info, progress_warn};
-use eyre::Report;
+use eyre::{Report, WrapErr};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
-use std::sync::Arc;
-use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -77,9 +76,9 @@ fn infer_times(
   let bad_branches = derive_bad_branches(graph, date_constraints, leaf_bad_branches)?;
 
   let branches = match branch_model {
-    BranchModel::Input => {
+    BranchModel::Input(model) => {
       progress_info!(log, "## Creating branch distributions from input lengths");
-      create_branch_distributions_input_mode(graph, branch_lengths, gammas, clock_rate)
+      create_branch_distributions_input_mode(graph, *model, branch_lengths, gammas, clock_rate, max_grid_points)?
     },
     BranchModel::Marginal(partitions) => {
       progress_info!(log, "## Computing branch distributions from partitions");
@@ -310,26 +309,35 @@ fn compute_branch_distributions_marginal_mode(
 
 pub(super) fn create_branch_distributions_input_mode(
   graph: &Graph,
+  model: InputBranchModel,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   gammas: &BTreeMap<GraphEdgeKey, f64>,
   clock_rate: f64,
-) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
+  max_grid_points: MaxGridPoints,
+) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
   graph
     .get_edges()
     .collect::<Vec<_>>()
     .into_par_iter()
-    .map(|edge_ref| {
+    .map(|edge_ref| -> Result<(GraphEdgeKey, BranchLikelihood), Report> {
       let key = edge_ref.key();
-      // TODO: this is wrong. The branch length distribution should be a gamma distribution with branch_length/one_mutation
-      // as the shape parameter. n_mut = branch_length/one_mutation --> P(dt) = (mu*dt)^n_mut * exp(-mu*dt) / n_mut!
-      // v0 input mode uses a Poisson approximation for short branches and a Gaussian one for longer branches,
-      // see kb/algo/unimplemented.md, section "Branch Length Interpolator (Input Mode)".
-      let time_length = branch_lengths[&key].map(|branch_length| branch_length / (clock_rate * gammas[&key]));
-      let branch = BranchLikelihood {
-        distribution: time_length.map(|time_length| Arc::new(Distribution::point(time_length, 0.0))),
-        time_length,
+      let Some(branch_length) = branch_lengths[&key] else {
+        let branch = BranchLikelihood {
+          distribution: None,
+          time_length: None,
+        };
+        return Ok((key, branch));
       };
-      (key, branch)
+      let branch_rate = clock_rate * gammas[&key];
+      let distribution = model
+        .likelihood(branch_length)
+        .distribution(branch_rate, max_grid_points)
+        .wrap_err_with(|| format!("When building the input branch-length distribution of edge {key:?}"))?;
+      let branch = BranchLikelihood {
+        distribution: Some(distribution),
+        time_length: Some(branch_length / branch_rate),
+      };
+      Ok((key, branch))
     })
     .collect()
 }

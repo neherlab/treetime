@@ -201,7 +201,7 @@ fn edge_mutation_count(
   total_length: usize,
 ) -> Result<u32, Report> {
   let exact = match branch_model {
-    BranchModel::Input => None,
+    BranchModel::Input(_) => None,
     BranchModel::Marginal(partitions) => partitions
       .edge_sub_count(graph, edge_key)
       .wrap_err_with(|| format!("When counting the substitutions on edge {edge_key}"))?,

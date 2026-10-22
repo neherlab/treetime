@@ -86,6 +86,22 @@ pub(crate) fn build_sparse_reconstruction(
   Ok(SparseReconstruction::seeded(partition, gtr, node_states))
 }
 
+pub(crate) fn source_gtr(
+  model: &GtrModel,
+  rate: InferredRate,
+  graph: &Graph,
+  alphabet: Alphabet,
+  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  log: &dyn LogSink,
+) -> Result<GTR, Report> {
+  if !model.is_infer() {
+    return named_gtr(model, alphabet.name(), log);
+  }
+  let fitch = create_fitch_partition(graph, alphabet, node_inputs)?;
+  fitch_gtr(model, rate, &fitch, graph, branch_lengths, log)
+}
+
 fn fitch_gtr(
   model: &GtrModel,
   rate: InferredRate,

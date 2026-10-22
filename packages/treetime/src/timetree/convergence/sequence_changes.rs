@@ -14,7 +14,7 @@ pub(crate) fn count_sequence_changes(previous: &[AncestralStateSnapshot], curren
 
 pub(crate) fn capture_ancestral_states(graph: &Graph, branch_model: &BranchModel) -> Vec<AncestralStateSnapshot> {
   match branch_model {
-    BranchModel::Input => vec![],
+    BranchModel::Input(_) => vec![],
     BranchModel::Marginal(partitions) => partitions
       .iter()
       .map(|partition| {

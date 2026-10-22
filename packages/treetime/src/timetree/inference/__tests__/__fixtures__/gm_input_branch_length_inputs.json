@@ -1,0 +1,11 @@
+{
+  "zero_length": { "mutation_length": 0.0, "sequence_length": 1000, "pi": [0.25, 0.25, 0.25, 0.25] },
+  "below_one_tenth_mutation": { "mutation_length": 5e-5, "sequence_length": 1000, "pi": [0.25, 0.25, 0.25, 0.25] },
+  "poisson_one_mutation": { "mutation_length": 0.001, "sequence_length": 1000, "pi": [0.25, 0.25, 0.25, 0.25] },
+  "poisson_ten_mutations": { "mutation_length": 0.01, "sequence_length": 1000, "pi": [0.25, 0.25, 0.25, 0.25] },
+  "poisson_long_genome": { "mutation_length": 0.001, "sequence_length": 30000, "pi": [0.3, 0.2, 0.2, 0.3] },
+  "poisson_below_threshold": { "mutation_length": 0.0499, "sequence_length": 10000, "pi": [0.25, 0.25, 0.25, 0.25] },
+  "gaussian_at_threshold": { "mutation_length": 0.05, "sequence_length": 10000, "pi": [0.25, 0.25, 0.25, 0.25] },
+  "gaussian_skewed_pi": { "mutation_length": 0.3, "sequence_length": 1000, "pi": [0.34, 0.19, 0.24, 0.23] },
+  "gaussian_very_long": { "mutation_length": 1.5, "sequence_length": 7000, "pi": [0.28, 0.21, 0.19, 0.32] }
+}

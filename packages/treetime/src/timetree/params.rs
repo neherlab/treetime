@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::AlphabetName;
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
 use crate::gtr::get_gtr::GtrModel;
@@ -29,6 +30,7 @@ pub(crate) fn compute_effective_time_marginal(
 
 pub struct TimetreeParams {
   pub model: GtrModel,
+  pub alphabet: Option<AlphabetName>,
   pub dense: Option<bool>,
   pub branch_length_mode: BranchLengthMode,
   pub indel_policy: IndelPolicy,

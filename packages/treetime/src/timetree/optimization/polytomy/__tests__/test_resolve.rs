@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
+  use crate::test_utils::jc69_input_branch_model;
   use crate::test_utils::{find_node_key_by_name, point_date_constraints};
-  use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::result::NodeTimes;
   use crate::timetree::optimization::polytomy::resolve::{
@@ -371,7 +371,7 @@ mod tests {
         graph,
         names,
         branch_lengths,
-        &BranchModel::Input,
+        &jc69_input_branch_model(1000),
         TEST_MUTATION_RATE,
         0,
         &merger_rate,

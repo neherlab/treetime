@@ -47,6 +47,7 @@ pub(crate) use simulation::{
 };
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
-  FullPosterior, constraint_expectation, empty_time_inference, full_posterior, marginal_timetree_params,
-  parent_edge_key, point_coalescent_prior, point_coalescent_prior_by_key, point_date_constraints, unknown_branches,
+  FullPosterior, JC69_NUCLEOTIDE_SATURATED_DIFFERENCE, constraint_expectation, empty_time_inference, full_posterior,
+  jc69_input_branch_model, marginal_timetree_params, parent_edge_key, point_coalescent_prior,
+  point_coalescent_prior_by_key, point_date_constraints, unknown_branches,
 };

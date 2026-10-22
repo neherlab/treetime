@@ -29,6 +29,7 @@ use crate::timetree::confidence::{
 };
 use crate::timetree::convergence::optimizer::TraceSink;
 use crate::timetree::dates_outside_input::dates_outside_input_dates;
+use crate::timetree::inference::input_branch_length::input_branch_model;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
@@ -76,7 +77,7 @@ pub fn run(
     estimate_initial_clock(params, &context, graph, &mut names, branch_lengths, log)
       .map_err(OperationError::classify)?;
   let has_alignment = !sources.is_empty();
-  let (sources, branch_model) = initialize_branch_model(params, &graph, &branch_lengths, sources, log)?;
+  let (sources, branch_model) = initialize_branch_model(params, &context, &graph, &branch_lengths, sources, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
@@ -294,6 +295,7 @@ fn estimate_initial_clock(
 
 fn initialize_branch_model(
   params: &TimetreeParams,
+  context: &TimetreeContext,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   sources: Vec<SequenceSource>,
@@ -302,7 +304,17 @@ fn initialize_branch_model(
   match params.branch_length_mode {
     BranchLengthMode::Input => {
       progress_info!(log, "Branch length mode: Input - using tree branch lengths");
-      Ok((vec![], BranchModel::Input))
+      let model = input_branch_model(
+        &params.model,
+        params.alphabet,
+        context.sequence_length,
+        graph,
+        branch_lengths,
+        sources,
+        log,
+      )
+      .map_err(OperationError::classify)?;
+      Ok((vec![], BranchModel::Input(model)))
     },
     BranchLengthMode::Marginal => {
       progress_info!(

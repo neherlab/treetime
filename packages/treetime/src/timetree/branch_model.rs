@@ -2,6 +2,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
 use crate::progress_info;
+use crate::timetree::inference::input_branch_length::InputBranchModel;
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -9,7 +10,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
 
 pub(crate) enum BranchModel {
-  Input,
+  Input(InputBranchModel),
   Marginal(PartitionSet),
 }
 
@@ -24,14 +25,14 @@ impl BranchModel {
     branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   ) -> Result<Self, Report> {
     Ok(match self {
-      Self::Input => Self::Input,
+      Self::Input(model) => Self::Input(model),
       Self::Marginal(partitions) => Self::Marginal(partitions.marginal_update(graph, branch_lengths)?.0),
     })
   }
 
   pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
     Ok(match self {
-      Self::Input => Self::Input,
+      Self::Input(model) => Self::Input(model),
       Self::Marginal(partitions) => Self::Marginal(partitions.reconcile_topology(graph, merges)?),
     })
   }

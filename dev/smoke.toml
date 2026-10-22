@@ -650,7 +650,6 @@ variant = "branch-input"
 datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--branch-length-mode=input"
 selection = "nwk,nexus,auspice,augur-node-data,clock-model"
-fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 
 # Input branch lengths with the default outputs: input mode reconstructs no sequences, so `--output-all` skips the
 # reconstructed FASTA
@@ -658,14 +657,12 @@ fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 variant = "branch-input-all-outputs"
 datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--branch-length-mode=input"
-fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 
 [[timetree]]
 variant = "input-keeproot"
 datasets = ["ebola/362"]
 args = "--branch-length-mode=input --keep-root"
 selection = "nwk,nexus,auspice,augur-node-data,clock-model"
-fail = "kb/issues/H-timetree-input-branch-lengths-abort-on-point-division.md"
 
 [[timetree]]
 variant = "reconstruct-tips"

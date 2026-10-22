@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Capture v0 branch-length interpolators of input mode (`branch_length_mode='input'`)."""
+
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+from treetime import config as ttconf
+from treetime.branch_len_interpolator import BranchLenInterpolator
+from treetime.gtr import GTR
+
+FIXTURES_DIR = Path(__file__).parent
+
+
+def capture_case(case: dict[str, object]) -> dict[str, object]:
+    """Return the saturation term, the grid, and the peak-shifted negative log likelihood of one v0 interpolator.
+
+    The four-state alphabet `nuc_nogap` keeps the given frequencies; v0's default `nuc` adds the gap as a fifth state.
+    """
+    gtr = GTR.custom(pi=np.asarray(case["pi"], dtype=float), W=None, alphabet="nuc_nogap")
+    node = SimpleNamespace(up=SimpleNamespace(), mutation_length=float(case["mutation_length"]))
+    interpolator = BranchLenInterpolator(
+        node,
+        gtr,
+        one_mutation=1.0 / float(case["sequence_length"]),
+        branch_length_mode="input",
+        n_grid_points=ttconf.BRANCH_GRID_SIZE,
+    )
+    return {
+        "saturated_difference": float(1.0 - np.sum(gtr.Pi**2)),
+        "branch_lengths": [float(value) for value in interpolator._func.x],
+        "neg_log_lh": [float(value) for value in interpolator._func.y],
+    }
+
+
+def main() -> None:
+    """Capture every input case from the canonical v0 implementation."""
+    inputs_path = FIXTURES_DIR / "gm_input_branch_length_inputs.json"
+    outputs_path = FIXTURES_DIR / "gm_input_branch_length_outputs.json"
+    with inputs_path.open() as file:
+        inputs = json.load(file)
+    outputs = {name: capture_case(case) for name, case in inputs.items()}
+    with outputs_path.open("w") as file:
+        json.dump(outputs, file, indent=2)
+        file.write("\n")
+
+
+if __name__ == "__main__":
+    main()

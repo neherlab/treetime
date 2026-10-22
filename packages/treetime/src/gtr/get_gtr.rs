@@ -160,6 +160,19 @@ impl GtrModel {
     }
   }
 
+  pub const fn alphabet(&self) -> Option<AlphabetName> {
+    match self {
+      Self::Infer => None,
+      Self::JC69(JC69Params { alphabet, .. })
+      | Self::K80(K80Params { alphabet, .. })
+      | Self::F81(F81Params { alphabet, .. })
+      | Self::HKY85(HKY85Params { alphabet, .. })
+      | Self::T92(T92Params { alphabet, .. })
+      | Self::TN93(TN93Params { alphabet, .. })
+      | Self::Jtt92(Jtt92Params { alphabet, .. }) => Some(*alphabet),
+    }
+  }
+
   pub const fn is_infer(&self) -> bool {
     matches!(self, Self::Infer)
   }

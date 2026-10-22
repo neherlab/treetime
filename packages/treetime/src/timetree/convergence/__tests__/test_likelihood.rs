@@ -9,6 +9,7 @@ mod tests {
   use crate::partition::storage::dense::{DenseNodeState, DenseSeqDistribution, DenseSeqInfo};
   use crate::progress::NoopProgress;
 
+  use crate::test_utils::jc69_input_branch_model;
   use crate::test_utils::{dense_partition_with_constant_leaves, empty_time_inference, find_node_key_by_name};
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::convergence::likelihood::compute_sequence_log_lh;
@@ -44,7 +45,7 @@ mod tests {
   fn test_likelihood_sequence_log_lh_absent_in_input_mode() -> Result<(), Report> {
     let (graph, _) = helpers::single_root_graph()?;
 
-    let actual = compute_sequence_log_lh(&graph, &BranchModel::Input);
+    let actual = compute_sequence_log_lh(&graph, &jc69_input_branch_model(1000));
 
     assert_eq!(None, actual);
     Ok(())

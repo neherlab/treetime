@@ -6,8 +6,10 @@ use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::test_utils::find_node_key_by_name;
+use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent_timescale::CoalescentMode;
 use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
+use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
 };
@@ -22,6 +24,15 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::MaxGridPoints;
+
+pub(crate) const JC69_NUCLEOTIDE_SATURATED_DIFFERENCE: f64 = 0.75;
+
+pub(crate) fn jc69_input_branch_model(sequence_length: usize) -> BranchModel {
+  BranchModel::Input(InputBranchModel::new(
+    sequence_length,
+    JC69_NUCLEOTIDE_SATURATED_DIFFERENCE,
+  ))
+}
 
 pub(crate) fn constraint_expectation(
   graph: &Graph,
@@ -58,6 +69,7 @@ pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
 pub(crate) fn marginal_timetree_params() -> TimetreeParams {
   TimetreeParams {
     model: GtrModel::JC69(JC69Params::default()),
+    alphabet: None,
     dense: None,
     branch_length_mode: BranchLengthMode::Marginal,
     indel_policy: IndelPolicy::Include,

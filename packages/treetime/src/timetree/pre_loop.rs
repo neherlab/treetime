@@ -54,7 +54,7 @@ pub(crate) fn run_pre_loop(
   };
   let state = if !inputs.has_alignment {
     state
-  } else if matches!(state.branch_model, BranchModel::Input) {
+  } else if matches!(state.branch_model, BranchModel::Input(_)) {
     progress_info!(log, "Using input branch lengths for timetree inference");
     state
   } else {
