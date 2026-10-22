@@ -72,7 +72,7 @@ Follows the Nextclade pattern (`nextclade-cli/src/cli/nextclade_cli.rs`):
 
 Tier 1: bulk directory -- `--output-all` (`-O`): produce all default formats into a directory. Default basename is command-specific (e.g. `timetree`, `annotated_tree`). Replaces the current `--outdir` (`-O`) flag -- the short flag stays the same, the long flag changes to match Nextclade's convention. v1 has not shipped, so no backward compatibility concern.
 
-Tier 2: output selection -- `--output-selection` (`-s`): comma-separated list of output names to include when using `--output-all`. Covers both tree formats and non-tree outputs in a single enum (matching Nextclade's `--output-selection` pattern). Default tree formats: `nwk,nexus`. This intentionally drops `graph-json` and `dot` from the current default set (`write_graph_files_with_options` at `treetime-io/src/graph.rs:18-53` unconditionally writes all four). Example: `--output-selection=nwk,nwk-annotated,auspice,augur-node-data`.
+Tier 2: output selection -- `--output-selection` (`-s`): comma-separated list of output names to include when using `--output-all`. Covers both tree formats and non-tree outputs in a single enum (matching Nextclade's `--output-selection` pattern). Default tree formats: `nwk,nexus`. This intentionally drops `graph-json` and `dot` from the current default set (`write_graph_files_with_options` at `treetime-io/src/graph.rs:18-53` unconditionally writes all four). Example: `--output-selection=nwk,nwk-annotated,auspice,node-data`.
 
 Tier 3: per-file path overrides -- one flag per format variant: `--output-tree-nwk=<path>`, `--output-tree-nwk-annotated=<path>`, `--output-tree-auspice=<path>`, etc. Each takes an `Option<PathBuf>`. A per-file flag produces that format regardless of Tier 2 selection, at the specified path.
 
@@ -102,11 +102,11 @@ Per-file flags for multi-tree commands use the tree identity as prefix: `--outpu
 
 Flat per-file flags, no format axis. `--output-all` produces all non-tree outputs that the command supports alongside the selected tree formats. Per-file flags override or suppress individual non-tree outputs.
 
-- `--output-augur-node-data=<path>` (ancestral, timetree)
+- `--output-node-data=<path>` (ancestral, timetree)
 - `--output-fasta=<path>` (ancestral)
 - `--output-clock-model=<path>` (timetree, clock)
-- `--output-traits-csv=<path>` (mugration)
-- `--output-gtr=<path>` (ancestral, optimize, timetree, mugration)
+- `--output-traits=<path>` (mugration)
+- `--output-model=<path>` (ancestral, optimize, timetree, mugration)
 - `--output-confidence=<path>` (timetree, mugration)
 
 ### Compression

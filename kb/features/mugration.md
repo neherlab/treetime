@@ -32,7 +32,7 @@
 - [x] `traits.csv` (per-node trait assignments, all nodes)
 - [x] `annotated_tree.nexus` (`mugration.nexus`: Nexus with the trait in BEAST comments)
 - [x] `annotated_tree.nwk` (`mugration.nwk`: Newick with the trait in comments with `--newick-annotations beast` or `nhx`, plain otherwise)
-- [x] `gtr.json` (model document with one `trait` entry: attribute, ordered state labels, model parameters)
+- [x] `model.json` (model document with one `trait` entry: attribute, ordered state labels, model parameters)
 
 ## Additional Features
 
@@ -40,4 +40,4 @@
 - [x] Sampling bias correction (`--sampling-bias-correction`)
 - [x] Confidence CSV output (`--confidence`)
 - [x] `--pc` pseudo-counts
-- [x] Optional ambiguity report in the traits CSV, augur node data, and Auspice JSON (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))
+- [x] Optional ambiguity report in the traits table, augur node data, and Auspice JSON (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))

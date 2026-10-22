@@ -12,8 +12,8 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
 - [x] `--initial-branch-lengths` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output Newick and Nexus trees with the branch mutations (Nexus always, Newick with `--newick-annotations beast` or `nhx`)
-- [x] Model document (`--output-gtr`) with one entry per alignment file
-- [x] Augur-compatible node data JSON (`optimize.augur-node-data.json`, `--output-augur-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
+- [x] Model document (`--output-model`) with one entry per alignment file
+- [x] Augur-compatible node data JSON (`optimize.node-data.json`, `--output-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
 
 ## Rerooting (v1-only, date-free)
 

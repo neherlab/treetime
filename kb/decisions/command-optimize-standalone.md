@@ -26,7 +26,7 @@ v1 adds a dedicated `treetime optimize` subcommand (`fn run_optimize()` in [pack
 | `--max-iter`               | 10                                          | Maximum outer iterations                                   |
 | `--tolerance`              | 0.1                                         | Convergence tolerance (log-likelihood delta)               |
 | `--output-all` (`-O`)      | (optional)                                  | Output directory for default outputs                       |
-| `--output-augur-node-data` | `<dir>/annotated_tree.augur-node-data.json` | Path for the augur-compatible node data JSON               |
+| `--output-node-data` | `<dir>/annotated_tree.node-data.json` | Path for the augur-compatible node data JSON               |
 
 ### Algorithm
 
@@ -39,7 +39,7 @@ The command runs an iterative cycle of marginal ancestral reconstruction and per
    - Run marginal reconstruction, computing total log-likelihood.
    - Stop on the convergence conditions of `run_optimize_loop()`.
    - Optimize each branch length independently with the method of `--optimizer`, by default Brent's method in $\sqrt{t}$ space as in v0. The Newton-Raphson method is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
-5. Write `annotated_tree.nwk`, `annotated_tree.nexus`, `gtr.json`, and `optimize.augur-node-data.json` to the output directory.
+5. Write `annotated_tree.nwk`, `annotated_tree.nexus`, `optimize.model.json`, and `optimize.node-data.json` to the output directory.
 
 ### Augur node data JSON output
 

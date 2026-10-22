@@ -13,7 +13,7 @@
 - [x] Equilibrium frequencies (pi vector, normalized)
 - [x] Exchangeability matrix (W, symmetric, normalized by avg_transition)
 - [x] Rate scaling (mu parameter)
-- [x] Model document (`--output-gtr`): one JSON document `ModelOutput` with one entry per model, tagged `kind`. A `sequence` entry holds the partition number, the alignment path, the number of sites, the indel rate, in timetree the clock rate of the file (clock rate of the run times μ), and the model fields W, π, μ and number of states; a `trait` entry (mugration) holds the attribute, the ordered state labels and the model fields. A run without any model reports the output as unavailable
+- [x] Model document (`--output-model`): one JSON document `ModelOutput` with one entry per model, tagged `kind`. A `sequence` entry holds the partition number, the alignment path, the number of sites, the indel rate, in timetree the clock rate of the file (clock rate of the run times μ), and the model fields W, π, μ and number of states; a `trait` entry (mugration) holds the attribute, the ordered state labels and the model fields. A run without any model reports the output as unavailable
 - [x] One relative rate μ per alignment file in optimize and timetree with several files (`--partition-rates estimate|equal`; rate step with W and π fixed, normalization to a site-weighted mean of 1: [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 
 ## Not Implemented

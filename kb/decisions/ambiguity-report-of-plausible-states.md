@@ -14,11 +14,11 @@ The optional ambiguity report of `ancestral`, `timetree`, and `mugration` names,
 
 | Output | Carrier name | Report |
 | --- | --- | --- |
-| Reconstructed nucleotide FASTA (`ancestral`, `timetree`) | `reconstructed-nuc-fasta` | IUPAC code of the plausible states at the position, `N` for all four |
-| Reconstructed amino-acid FASTA (`ancestral`) | `reconstructed-aa-fasta` | `B` for `D` and `N`, `Z` for `E` and `Q`, `J` for `I` and `L`, otherwise `X` |
-| Node sequences of the augur node data (`ancestral`) | `augur-node-data` | the same codes as the nucleotide FASTA |
-| Traits CSV (`mugration`) | `traits-csv` | column `<attribute>_ambiguous`: the plausible state names joined by `\|` in the order of the state names, empty for an unambiguous node |
-| Augur node data (`mugration`) | `augur-node-data` | node field `<attribute>_ambiguous` with the same text, only for ambiguous nodes |
+| Reconstructed nucleotide FASTA (`ancestral`, `timetree`) | `sequences` | IUPAC code of the plausible states at the position, `N` for all four |
+| Reconstructed amino-acid FASTA (`ancestral`) | `translations` | `B` for `D` and `N`, `Z` for `E` and `Q`, `J` for `I` and `L`, otherwise `X` |
+| Node sequences of the augur node data (`ancestral`) | `node-data` | the same codes as the nucleotide FASTA |
+| Traits table (`mugration`) | `traits` | column `<attribute>_ambiguous`: the plausible state names joined by `\|` in the order of the state names, empty for an unambiguous node |
+| Augur node data (`mugration`) | `node-data` | node field `<attribute>_ambiguous` with the same text, only for ambiguous nodes |
 | Auspice JSON (`mugration`) | `auspice` | node attribute `<attribute>_ambiguous` with the same text as `value`, only for ambiguous nodes. Auspice shows every node attribute in the panel of a clicked node |
 
 - Sequences: internal nodes have a report at every position outside gaps and unknown regions, leaves only at the positions that `--impute-missing-data` imputes. A node whose sequence `--sample-from-profile` draws has no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior. The sparse representation reads the profile of each fixed state for the positions that carry that state. Both representations give the same report, except at the unknown columns of an imputed tip below a variable column of its parent, where the sparse backend has no posterior of the tip ([kb/issues/M-ancestral-sparse-imputation-of-unknown-tip-columns-ignores-parent-posterior.md](../issues/M-ancestral-sparse-imputation-of-unknown-tip-columns-ignores-parent-posterior.md))

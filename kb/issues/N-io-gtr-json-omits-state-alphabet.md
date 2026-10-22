@@ -2,7 +2,7 @@
 
 ## Summary
 
-The GTR output (`*.gtr.json`) is an object `{"models": [...]}` with one entry per partition that has a model, tagged by `kind`. A `trait` entry (mugration) carries `states`, the trait states in the order of `pi` and `W`. A `sequence` entry carries `partition`, `alignment`, `sites`, the optional `indel_rate` and `clock_rate`, and the model parameters `model_type`, `model_name`, `mu`, `pi`, `W` and `n_states`, but not the alphabet that orders `pi` and `W`. A reader cannot tell which frequency belongs to which nucleotide or amino acid without knowing the internal state order of the command that wrote the file.
+The GTR output (`*.model.json`) is an object `{"models": [...]}` with one entry per partition that has a model, tagged by `kind`. A `trait` entry (mugration) carries `states`, the trait states in the order of `pi` and `W`. A `sequence` entry carries `partition`, `alignment`, `sites`, the optional `indel_rate` and `clock_rate`, and the model parameters `model_type`, `model_name`, `mu`, `pi`, `W` and `n_states`, but not the alphabet that orders `pi` and `W`. A reader cannot tell which frequency belongs to which nucleotide or amino acid without knowing the internal state order of the command that wrote the file.
 
 ## Evidence
 

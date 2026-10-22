@@ -176,7 +176,7 @@ The order is the v0 order of `reconstruct_discrete_traits()`, with a rate step a
 
 ## GTR Output
 
-`struct GtrOutput` at [`packages/treetime/src/gtr/get_gtr.rs#L25`](../../packages/treetime/src/gtr/get_gtr.rs#L25) holds the GTR model parameters (model type, model name, mu, pi, W). Each command writes it with `json_write_file()` to the path of the `gtr` output (`.gtr.json` by default). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
+`struct GtrOutput` at [`packages/treetime/src/gtr/get_gtr.rs#L25`](../../packages/treetime/src/gtr/get_gtr.rs#L25) holds the GTR model parameters (model type, model name, mu, pi, W). Each command writes it with `json_write_file()` to the path of the `model` output (`.model.json` by default). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
 
 ---
 

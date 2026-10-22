@@ -2,7 +2,7 @@
 
 ## Motivation
 
-TreeTime infers a GTR substitution model and a molecular-clock model alongside the tree. The analysis commands write these to sidecar files (`--output-gtr`, `--output-clock-model`). Some tree formats can carry model parameters inline, which would make a single output file self-contained for downstream tools.
+TreeTime infers a GTR substitution model and a molecular-clock model alongside the tree. The analysis commands write these to sidecar files (`--output-model`, `--output-clock-model`). Some tree formats can carry model parameters inline, which would make a single output file self-contained for downstream tools.
 
 The graph-backed output path (Auspice v2, UShER MAT) currently carries only per-node and per-branch data plus minimal graph-level metadata. It does not embed the GTR or clock model.
 

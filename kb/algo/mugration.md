@@ -100,7 +100,7 @@ The ancestral command types (`enum MarginalReconstruction`, `enum AncestralParti
 
 GTR refinement lives in `fn refine_gtr()` ([packages/treetime/src/gtr/refinement.rs#L17-L83](../../packages/treetime/src/gtr/refinement.rs#L17-L83)), generic over `trait TransitionCounts`; mugration is its only caller. A `struct GtrRefinement { iterations, inference, sampling_bias_correction }` selects the run.
 
-The writers of every output (traits CSV, confidence CSV, augur node data, Auspice JSON, Newick and Nexus comments) read the state posteriors through `struct TreeTraits { attribute, states, posteriors }` ([packages/app-output/src/annotated_graph.rs#L86-L91](../../packages/app-output/src/annotated_graph.rs#L86-L91)) and compute no argmax or entropy. The branch transition label (`parent → child`) has one owner, `fn trait_change()` ([packages/app-output/src/trait_annotations.rs#L16-L27](../../packages/app-output/src/trait_annotations.rs#L16-L27)), and the confidence filter (`> 0.001`) has one owner, `fn build_confidence_map()` ([packages/app-output/src/trait_annotations.rs#L9-L14](../../packages/app-output/src/trait_annotations.rs#L9-L14)). Every output writes the probabilities and the entropy at full precision ([kb/decisions/trait-probabilities-written-at-full-precision.md](../decisions/trait-probabilities-written-at-full-precision.md)).
+The writers of every output (traits table, trait-probabilities table, augur node data, Auspice JSON, Newick and Nexus comments) read the state posteriors through `struct TreeTraits { attribute, states, posteriors }` ([packages/app-output/src/annotated_graph.rs#L86-L91](../../packages/app-output/src/annotated_graph.rs#L86-L91)) and compute no argmax or entropy. The branch transition label (`parent → child`) has one owner, `fn trait_change()` ([packages/app-output/src/trait_annotations.rs#L16-L27](../../packages/app-output/src/trait_annotations.rs#L16-L27)), and the confidence filter (`> 0.001`) has one owner, `fn build_confidence_map()` ([packages/app-output/src/trait_annotations.rs#L9-L14](../../packages/app-output/src/trait_annotations.rs#L9-L14)). Every output writes the probabilities and the entropy at full precision ([kb/decisions/trait-probabilities-written-at-full-precision.md](../decisions/trait-probabilities-written-at-full-precision.md)).
 
 ---
 
@@ -132,7 +132,7 @@ Pseudo-count smoothing of the initial pi and root state uniform-threshold filter
 
 ## Confidence Profiles
 
-The `profile` of each `StatePosterior` is the full posterior distribution `profile[n_states]` of a node, in the order of the state alphabet. This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles, high entropy). The confidence CSV writes the full profile; augur node data and Auspice write the states above 0.001 (`fn build_confidence_map()`) and the entropy.
+The `profile` of each `StatePosterior` is the full posterior distribution `profile[n_states]` of a node, in the order of the state alphabet. This enables uncertainty quantification for trait assignments and identification of ambiguous nodes (flat profiles, high entropy). The trait-probabilities table writes the full profile; augur node data and Auspice write the states above 0.001 (`fn build_confidence_map()`) and the entropy.
 
 ---
 

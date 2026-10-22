@@ -22,7 +22,7 @@ The ambiguity report ([kb/decisions/ambiguity-report-of-plausible-states.md](../
 ./dev/docker/run just r treetime ancestral --method-anc=marginal --representation=dense --tree=data/rsv/a/20/tree.nwk --alignment=data/rsv/a/20/aln.fasta.xz --output-all=tmp/residues/dense
 ```
 
-Compare `ancestral.reconstructed-nuc.fasta` of the two runs position by position.
+Compare `ancestral.sequences.fasta` of the two runs position by position.
 
 ## Measurement on simulated data
 

@@ -2,7 +2,7 @@
 
 ## Motivation
 
-TreeTime v1 already writes inferred scalar GTR parameters as JSON through `--output-gtr`. The missing contract is invariant-safe input and reuse: schema versioning, alphabet identity, normalization, validation, and construction of a usable `GTR` value. TreeTime v0's text output is rounded and therefore lossy; it is not a reliable round-trip format.
+TreeTime v1 already writes inferred scalar GTR parameters as JSON through `--output-model`. The missing contract is invariant-safe input and reuse: schema versioning, alphabet identity, normalization, validation, and construction of a usable `GTR` value. TreeTime v0's text output is rounded and therefore lossy; it is not a reliable round-trip format.
 
 > **Status:** This proposal is not ready for implementation. The normalization of $W$ versus $\mu$, invariant-safe deserialization, and external-format contracts remain unapproved decisions.
 

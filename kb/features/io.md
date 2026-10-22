@@ -21,7 +21,7 @@
 - [x] Newick (plain, or with BEAST or NHX node comments through `--newick-annotations`)
 - [x] Nexus (always with BEAST node comments: mutations, date, trait)
 - [x] JSON (model document, clock model, graph)
-- [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, Nexus, Newick with `--newick-annotations beast` or `nhx`, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
+- [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, Nexus, Newick with `--newick-annotations beast` or `nhx`, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{alignment}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] CSV (clock regression, confidence intervals)
 - [x] SVG/PNG/PDF charts (clock regression)
 - [x] Graphviz DOT

@@ -9,7 +9,7 @@ The confidence-interval variant exists. `--output-confidence-tsv` writes `timetr
 - The pipeline computes the intervals only with `--confidence` ([packages/treetime/src/timetree/pipeline.rs#L453-L462](../../packages/treetime/src/timetree/pipeline.rs#L453-L462))
 - `--output-all` without `--output-selection` leaves it out, because it is in the list of outputs that are not written by default ([packages/app-output/src/output_plan.rs#L605-L612](../../packages/app-output/src/output_plan.rs#L605-L612))
 
-The same node date data (node name, `numdate`, calendar `date`, and `num_date_confidence` lower and upper bounds) is in `timetree.augur-node-data.json`.
+The same node date data (node name, `numdate`, calendar `date`, and `num_date_confidence` lower and upper bounds) is in `timetree.node-data.json`.
 
 ## Remaining work
 

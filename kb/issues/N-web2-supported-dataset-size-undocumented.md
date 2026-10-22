@@ -15,7 +15,7 @@ Measured with the release profile of the single-threaded module in Node 24, befo
 
 - web2 memory is the size of the linear memory of the module after the run; it never shrinks, so it is the peak. The Node process that ran the module peaked at 1.8 to 2.7 GiB, because the in-memory file system of Emscripten keeps the input and output files in JavaScript memory outside the linear memory
 - On one thread, web2 took 1.1 times the time of the CLI for `timetree` and 1.8 times for `ancestral`; against the CLI on 16 threads it took 3 to 7 times as long
-- The run outputs of `mpox/clade-ii/2000` ancestral are 1.1 GB, among them `ancestral.augur-node-data.json` with 785 MB. A job worker holds them in its file system until it has sent them, and the back-end worker holds them for the rest of the page session
+- The run outputs of `mpox/clade-ii/2000` ancestral are 1.1 GB, among them `ancestral.node-data.json` with 785 MB. A job worker holds them in its file system until it has sent them, and the back-end worker holds them for the rest of the page session
 - A trial of the threaded module in Chrome measured `sc2/4500` timetree at 15.8 s with threads against 1 min 44 s single-threaded
 
 Times and peak linear memory of the job module by the URL parameter `jobs` (`jobs=1` is the single-threaded module), measured with the dist builds under Node, compute time only, in a container limited to 20 CPUs on a machine that other jobs loaded with 20 to 36 busy threads, so the times are noisy. On the same machine without load, the single-threaded module computed `sc2/4500` timetree in 18.7 s:

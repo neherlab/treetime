@@ -23,7 +23,7 @@ Define whether output descriptors own command capability and data prerequisites,
 - Missing prerequisites fail before partial output is written.
 
 > [!IMPORTANT]
-> **Decision required.** When a run fails late, should it keep the output files that it already finished? One option writes each output file as soon as its data is ready, so users can salvage part of the results. The other keeps the outputs of a run transactional, as the validation below assumes, so a failed run leaves no partial result. A failed `timetree` run today leaves an empty `timetree.reconstructed-nuc.fasta`, which fits neither option.
+> **Decision required.** When a run fails late, should it keep the output files that it already finished? One option writes each output file as soon as its data is ready, so users can salvage part of the results. The other keeps the outputs of a run transactional, as the validation below assumes, so a failed run leaves no partial result. A failed `timetree` run today leaves an empty `timetree.sequences.fasta`, which fits neither option.
 
 ## Validation
 

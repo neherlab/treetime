@@ -8,14 +8,14 @@ A config case of `dev/smoke` runs `treetime <command> --config=<file>` in a sand
 
 ## Evidence
 
-`./dev/smoke --only optimize` on a branch with identical `optimize` results reported one `changed` case, `config/flu/h3n2/20/optimize`, with this difference in `optimize.augur-node-data.json`:
+`./dev/smoke --only optimize` on a branch with identical `optimize` results reported one `changed` case, `config/flu/h3n2/20/optimize`, with this difference in `optimize.node-data.json`:
 
 ```
 alignment:  ".../snapshots/<baseline>/cases/config/flu/h3n2/20/optimize/sandbox/data/flu/h3n2/20/aln.fasta.xz" -> ".../snapshots/<current>/cases/..."
 input_tree: ".../snapshots/<baseline>/cases/config/flu/h3n2/20/optimize/sandbox/data/flu/h3n2/20/tree.nwk"     -> ".../snapshots/<current>/cases/..."
 ```
 
-The CLI case `cli/pipeline-steps-timetree` also runs a config file (`pipeline --config=... --steps=timetree`) in a sandbox and shows the same difference in `timetree/timetree.augur-node-data.json`.
+The CLI case `cli/pipeline-steps-timetree` also runs a config file (`pipeline --config=... --steps=timetree`) in a sandbox and shows the same difference in `timetree/timetree.node-data.json`.
 
 ## Fix direction
 
