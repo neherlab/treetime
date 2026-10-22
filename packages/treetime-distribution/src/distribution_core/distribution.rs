@@ -219,8 +219,6 @@ impl<Y: YAxisPolicy> Distribution<Y> {
   }
 }
 
-impl Distribution<Plain> {}
-
 impl Distribution<NegLog> {
   pub fn log_mass(&self) -> Result<f64, Report> {
     crate::distribution_ops::mass_domain::log_mass(self)
