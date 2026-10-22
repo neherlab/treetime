@@ -62,7 +62,7 @@ mod tests {
       format!(
         "In alignment '{}': More than one third of terminal nodes (2 of 3) cannot be assigned a sequence. \
          Are you sure the alignment belongs to the tree? \
-         Pass --ignore-missing-alns to proceed, treating missing tips as fully ambiguous.",
+         Pass --allow-missing-sequences to proceed, treating missing tips as fully ambiguous.",
         second.display()
       )
     );

@@ -5,6 +5,7 @@ use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelectionArgs};
 use crate::commands::shared::required::missing_required_args;
+use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
@@ -74,6 +75,11 @@ pub struct TreetimePruneArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree_dialect: TreeDialectArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

@@ -236,9 +236,9 @@ args = "--method-anc=marginal --sample-from-profile=all"
 
 # A tree with tips that the alignment lacks
 [[ancestral]]
-variant = "ignore-missing-alns"
+variant = "allow-missing-sequences"
 datasets = ["zika/20"]
-args = "--tree={data}/zika/86/tree.nwk --ignore-missing-alns"
+args = "--tree={data}/zika/86/tree.nwk --allow-missing-sequences"
 
 # Amino-acid reconstruction of every CDS, from the translations that `data/translate` writes. The CDSes are listed
 # because the GFF reader rejects the unstranded (`.`) CDS rows of this annotation.

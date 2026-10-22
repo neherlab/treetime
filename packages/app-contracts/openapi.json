@@ -5899,6 +5899,11 @@
             ],
             "x-cli-flag": "--tree-dialect"
           },
+          "allow_missing_sequences": {
+            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
+            "type": "boolean",
+            "x-cli-flag": "--allow-missing-sequences"
+          },
           "metadata": {
             "description": "Metadata table (CSV or TSV) with one row per sample\n\n`--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the\nsample, such as its sampling date or its traits.",
             "type": "string",
@@ -6782,10 +6787,10 @@
             "type": "boolean",
             "x-cli-flag": "--impute-missing-data"
           },
-          "ignore_missing_alns": {
-            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.\nUseful when consuming per-CDS translations where some samples have no peptide for a given CDS.",
+          "allow_missing_sequences": {
+            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
             "type": "boolean",
-            "x-cli-flag": "--ignore-missing-alns"
+            "x-cli-flag": "--allow-missing-sequences"
           },
           "output_augur_node_data": {
             "description": "Path to output augur-compatible node data JSON.\n\nContains per-node nucleotide mutations, reconstructed sequences, the alignment\nmask, genome annotations, and the reference (root) sequence. The output is\ncompatible with augur export v2 --node-data for Nextstrain pipeline integration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).",
@@ -7069,10 +7074,10 @@
             "type": "boolean",
             "x-cli-flag": "--impute-missing-data"
           },
-          "ignore_missing_alns": {
-            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.\nUseful when consuming per-CDS translations where some samples have no peptide for a given CDS.",
+          "allow_missing_sequences": {
+            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
             "type": "boolean",
-            "x-cli-flag": "--ignore-missing-alns"
+            "x-cli-flag": "--allow-missing-sequences"
           },
           "sample_from_profile": {
             "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -7610,6 +7615,11 @@
             ],
             "x-cli-flag": "--tree-dialect"
           },
+          "allow_missing_sequences": {
+            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
+            "type": "boolean",
+            "x-cli-flag": "--allow-missing-sequences"
+          },
           "alphabet": {
             "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
             "$ref": "#/components/schemas/AlphabetName",
@@ -7892,6 +7902,11 @@
               "rich,mrbayes"
             ],
             "x-cli-flag": "--tree-dialect"
+          },
+          "allow_missing_sequences": {
+            "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
+            "type": "boolean",
+            "x-cli-flag": "--allow-missing-sequences"
           },
           "alphabet": {
             "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",

@@ -12,7 +12,6 @@ use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_par
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
 use treetime::optimize::params::OptimizeLoopSettings;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
@@ -44,7 +43,7 @@ pub fn run_optimize(
   let settings = SourceSettings {
     alphabet: &alphabet,
     gap_fill: Some(args.gap_fill_args.gap_fill()),
-    missing_leaves: MissingLeafLimit::Enforced,
+    missing_leaves: args.missing_sequences.limit(),
   };
   let sources = read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
     .into_iter()

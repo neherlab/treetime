@@ -184,8 +184,9 @@ mod tests {
   #[rstest]
   #[case::ancestral_up_to_a_third(  AppCommand::Ancestral, json!({}),                              5,  vec![("tips-without-sequence", CheckLevel::Warn, "5 of 20 tree tips have no sequence in the alignment: A, B, C, and 2 more. TreeTime treats their sequences as unknown.")])]
   #[case::ancestral_over_a_third(   AppCommand::Ancestral, json!({}),                              7,  vec![("tips-without-sequence", CheckLevel::Block, "7 of 20 tree tips have no sequence in the alignment: A, B, C, and 4 more. More than a third of the tips are missing, so the alignment may not belong to the tree.")])]
-  #[case::ancestral_over_but_ignored(AppCommand::Ancestral, json!({ "ignore_missing_alns": true }), 7,  vec![("tips-without-sequence", CheckLevel::Warn, "7 of 20 tree tips have no sequence in the alignment: A, B, C, and 4 more. TreeTime treats their sequences as unknown.")])]
+  #[case::ancestral_over_but_allowed(AppCommand::Ancestral, json!({ "allow_missing_sequences": true }), 7,  vec![("tips-without-sequence", CheckLevel::Warn, "7 of 20 tree tips have no sequence in the alignment: A, B, C, and 4 more. TreeTime treats their sequences as unknown.")])]
   #[case::optimize_over_a_third(    AppCommand::Optimize,  json!({}),                              7,  vec![("tips-without-sequence", CheckLevel::Block, "7 of 20 tree tips have no sequence in the alignment: A, B, C, and 4 more. More than a third of the tips are missing, so the alignment may not belong to the tree.")])]
+  #[case::optimize_over_but_allowed(AppCommand::Optimize, json!({ "allow_missing_sequences": true }), 7,  vec![("tips-without-sequence", CheckLevel::Warn, "7 of 20 tree tips have no sequence in the alignment: A, B, C, and 4 more. TreeTime treats their sequences as unknown.")])]
   #[case::prune_up_to_a_third(      AppCommand::Prune,     json!({}),                              1,  vec![("tips-without-sequence", CheckLevel::Warn, "1 of 20 tree tips have no sequence in the alignment: A. TreeTime treats their sequences as unknown.")])]
   #[case::clock_ignores_sequences(  AppCommand::Clock,     json!({}),                              20, vec![])]
   #[case::mugration_without_alignment(AppCommand::Mugration, json!({}),                            5,  vec![])]
@@ -236,11 +237,11 @@ mod tests {
     let found = checks(AppCommand::Ancestral, Some(&config), None, Some(&facts));
     assert_eq!(
       vec![(
-        vec_of_owned!["alignment", "ignore_missing_alns"],
+        vec_of_owned!["alignment", "allow_missing_sequences"],
         Some(CheckFix {
           label: o!("Treat missing sequences as unknown"),
           patch: vec![SettingPatch {
-            key: o!("ignore_missing_alns"),
+            key: o!("allow_missing_sequences"),
             value: Some(JsonValue(Value::Bool(true))),
           }],
         })

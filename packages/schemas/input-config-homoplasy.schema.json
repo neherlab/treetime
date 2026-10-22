@@ -94,11 +94,11 @@
       "default": false,
       "x-cli-flag": "--impute-missing-data"
     },
-    "ignore_missing_alns": {
-      "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.\nUseful when consuming per-CDS translations where some samples have no peptide for a given CDS.",
+    "allow_missing_sequences": {
+      "description": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.\n\nWithout this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may\nnot belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.",
       "type": "boolean",
       "default": false,
-      "x-cli-flag": "--ignore-missing-alns"
+      "x-cli-flag": "--allow-missing-sequences"
     },
     "sample_from_profile": {
       "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",

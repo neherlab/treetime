@@ -299,6 +299,25 @@
           "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
+          "key": "allow_missing_sequences",
+          "label": "Allow missing sequences",
+          "flag": "--allow-missing-sequences",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "ALLOW_MISSING_SEQUENCES"
+          ],
+          "conflicts": [],
+          "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS."
+        },
+        {
           "key": "metadata",
           "label": "Metadata",
           "flag": "--metadata",
@@ -2932,9 +2951,9 @@
           "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
-          "key": "ignore_missing_alns",
-          "label": "Ignore missing alignments",
-          "flag": "--ignore-missing-alns",
+          "key": "allow_missing_sequences",
+          "label": "Allow missing sequences",
+          "flag": "--allow-missing-sequences",
           "group": "Input data",
           "role": "setting",
           "kind": "switch",
@@ -2944,11 +2963,11 @@
           "default_value": false,
           "examples": [],
           "value_names": [
-            "IGNORE_MISSING_ALNS"
+            "ALLOW_MISSING_SEQUENCES"
           ],
           "conflicts": [],
           "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
-          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS."
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS."
         },
         {
           "key": "translations",
@@ -4068,9 +4087,9 @@
           "more": "Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1."
         },
         {
-          "key": "ignore_missing_alns",
-          "label": "Ignore missing alignments",
-          "flag": "--ignore-missing-alns",
+          "key": "allow_missing_sequences",
+          "label": "Allow missing sequences",
+          "flag": "--allow-missing-sequences",
           "group": "Input data",
           "role": "setting",
           "kind": "switch",
@@ -4080,11 +4099,11 @@
           "default_value": false,
           "examples": [],
           "value_names": [
-            "IGNORE_MISSING_ALNS"
+            "ALLOW_MISSING_SEQUENCES"
           ],
           "conflicts": [],
           "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
-          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS."
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS."
         },
         {
           "key": "model",
@@ -5948,6 +5967,25 @@
           "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
         },
         {
+          "key": "allow_missing_sequences",
+          "label": "Allow missing sequences",
+          "flag": "--allow-missing-sequences",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "ALLOW_MISSING_SEQUENCES"
+          ],
+          "conflicts": [],
+          "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS."
+        },
+        {
           "key": "alphabet",
           "label": "Alphabet",
           "flag": "--alphabet",
@@ -7031,6 +7069,25 @@
           "conflicts": [],
           "help": "Newick dialect of the tree inputs (the tree and the reference topology)",
           "more": "A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error."
+        },
+        {
+          "key": "allow_missing_sequences",
+          "label": "Allow missing sequences",
+          "flag": "--allow-missing-sequences",
+          "group": "Input data",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "ALLOW_MISSING_SEQUENCES"
+          ],
+          "conflicts": [],
+          "help": "Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.",
+          "more": "Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS."
         },
         {
           "key": "alphabet",

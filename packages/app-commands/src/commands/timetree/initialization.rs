@@ -7,7 +7,6 @@ use crate::commands::timetree::branch_length_mode::{ResolvedBranchLengthMode, re
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::progress::LogSink;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -32,7 +31,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
     let settings = SourceSettings {
       alphabet: &alphabet,
       gap_fill: Some(args.gap_fill_args.gap_fill()),
-      missing_leaves: MissingLeafLimit::Enforced,
+      missing_leaves: args.missing_sequences.limit(),
     };
     read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
   } else {

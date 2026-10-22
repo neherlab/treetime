@@ -44,7 +44,7 @@ pub fn complete_alignment_for_leaves(
     return match limit {
       MissingLeafLimit::Enforced => make_error!("{message}"),
       MissingLeafLimit::Overridable { .. } => {
-        make_error!("{message} Pass --ignore-missing-alns to proceed, treating missing tips as fully ambiguous.")
+        make_error!("{message} Pass --allow-missing-sequences to proceed, treating missing tips as fully ambiguous.")
       },
     };
   }

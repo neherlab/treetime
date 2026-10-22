@@ -62,7 +62,7 @@ pub fn run_ancestral_reconstruction(
     tree_dialect: args.tree_dialect.dialect(),
     alphabet_args: &args.alphabet_args,
     gap_fill_args: &args.gap_fill_args,
-    ignore_missing_alns: args.missing_sequences.ignore_missing_alns,
+    missing_leaves: args.missing_sequences.limit(),
   };
   let TreeAndSources { tree, sources } = read_tree_and_sources(&sequence_args, cancel, stages, log)?;
   let NwkParse {
@@ -311,7 +311,7 @@ fn run_aa_reconstructions(
     impute_missing_data: ancestral_args.impute_missing_data,
     sample_from_profile: ancestral_args.sample_from_profile,
     seed: inputs.seed,
-    ignore_missing_alns: ancestral_args.missing_sequences.ignore_missing_alns,
+    ignore_missing_alns: ancestral_args.missing_sequences.allow_missing_sequences,
   };
 
   let cds_inputs = cdses

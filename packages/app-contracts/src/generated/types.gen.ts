@@ -2772,6 +2772,13 @@ export type TimetreeConfig = {
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+   *
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
+   * not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
+   */
+  allow_missing_sequences?: boolean;
+  /**
    * Metadata table (CSV or TSV) with one row per sample
    *
    * `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the
@@ -3712,10 +3719,10 @@ export type AncestralConfig = {
   /**
    * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *
-   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
-   * Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
+   * not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
    */
-  ignore_missing_alns?: boolean;
+  allow_missing_sequences?: boolean;
   /**
    * Path to output augur-compatible node data JSON.
    *
@@ -4067,10 +4074,10 @@ export type HomoplasyConfig = {
   /**
    * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
    *
-   * Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
-   * Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
+   * not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
    */
-  ignore_missing_alns?: boolean;
+  allow_missing_sequences?: boolean;
   /**
    * How to pick ancestral states from the marginal posterior profile.
    *
@@ -4651,6 +4658,13 @@ export type OptimizeConfig = {
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+   *
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
+   * not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
+   */
+  allow_missing_sequences?: boolean;
+  /**
    * Sequence alphabet
    *
    * When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when
@@ -5011,6 +5025,13 @@ export type PruneConfig = {
    * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   tree_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
+  /**
+   * Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+   *
+   * Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
+   * not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
+   */
+  allow_missing_sequences?: boolean;
   /**
    * Sequence alphabet
    *

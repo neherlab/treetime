@@ -44,7 +44,7 @@ mod tests {
       ),
       "More than one third of terminal nodes (1 of 2) cannot be assigned a sequence. \
        Are you sure the alignment belongs to the tree? \
-       Pass --ignore-missing-alns to proceed, treating missing tips as fully ambiguous."
+       Pass --allow-missing-sequences to proceed, treating missing tips as fully ambiguous."
     );
   }
 
@@ -62,7 +62,7 @@ mod tests {
   }
 
   #[test]
-  fn test_attach_ignore_missing_alns_bypasses_threshold() {
+  fn test_attach_allow_missing_sequences_bypasses_threshold() {
     let (graph, names) = helpers::two_leaf_tree();
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
     let sequences = helpers::records(&[("A", "ACGT")]);

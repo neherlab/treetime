@@ -17,7 +17,7 @@ const MONTH_ROUNDING_FACTOR: usize = 4;
 
 const DATE_COLUMN_SETTING: &str = "date_column";
 
-const IGNORE_MISSING_SEQUENCES_SETTING: &str = "ignore_missing_alns";
+const ALLOW_MISSING_SEQUENCES_SETTING: &str = "allow_missing_sequences";
 
 const RULES: [fn(&CheckContext<'_>) -> Vec<RunCheck>; 8] = [
   missing_inputs,
@@ -163,10 +163,9 @@ fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
   let Some(tree) = context.facts.and_then(|facts| facts.tree.as_ref()) else {
     return vec![];
   };
-  let limit = context.command.missing_sequences();
-  let ignored = context
+  let allowed = context
     .config
-    .and_then(|config| config.get(IGNORE_MISSING_SEQUENCES_SETTING))
+    .and_then(|config| config.get(ALLOW_MISSING_SEQUENCES_SETTING))
     == Some(&Value::Bool(true));
   sequence_files(context)
     .filter_map(|alignment| {
@@ -183,16 +182,12 @@ fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
         tree.tips,
         name_list(missing)
       );
-      let check = match limit {
-        MissingSequences::Limited if over_limit => block(
-          id,
-          format!("{text}. More than a third of the tips are missing, so the alignment may not belong to the tree."),
-        ),
-        MissingSequences::LimitedUnlessIgnored if over_limit && !ignored => RunCheck {
+      let check = if over_limit && !allowed {
+        RunCheck {
           fix: Some(CheckFix {
             label: "Treat missing sequences as unknown".to_owned(),
             patch: vec![SettingPatch {
-              key: IGNORE_MISSING_SEQUENCES_SETTING.to_owned(),
+              key: ALLOW_MISSING_SEQUENCES_SETTING.to_owned(),
               value: Some(JsonValue(Value::Bool(true))),
             }],
           }),
@@ -200,12 +195,10 @@ fn tips_without_sequence(context: &CheckContext<'_>) -> Vec<RunCheck> {
             id,
             format!("{text}. More than a third of the tips are missing, so the alignment may not belong to the tree."),
           )
-          .concerning(&[InputKind::Alignment.setting(), IGNORE_MISSING_SEQUENCES_SETTING])
-        },
-        MissingSequences::Limited | MissingSequences::LimitedUnlessIgnored => {
-          warn(id, format!("{text}. TreeTime treats their sequences as unknown."))
-        },
-        MissingSequences::Unread => return None,
+          .concerning(&[InputKind::Alignment.setting(), ALLOW_MISSING_SEQUENCES_SETTING])
+        }
+      } else {
+        warn(id, format!("{text}. TreeTime treats their sequences as unknown."))
       };
       Some(check)
     })
@@ -301,20 +294,13 @@ fn dates_rounded_to_the_month(context: &CheckContext<'_>) -> Vec<RunCheck> {
 }
 
 fn sequence_files<'a>(context: &CheckContext<'a>) -> impl Iterator<Item = &'a AlignmentFacts> {
-  let read = context.command.missing_sequences() != MissingSequences::Unread;
+  let read = reads(context.command, InputKind::Alignment);
   context
     .facts
     .filter(|_| read)
     .map(|facts| facts.alignments.as_slice())
     .unwrap_or_default()
     .iter()
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MissingSequences {
-  Unread,
-  Limited,
-  LimitedUnlessIgnored,
 }
 
 fn alignment_id(context: &CheckContext<'_>, id: &str, alignment: &AlignmentFacts) -> String {

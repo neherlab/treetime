@@ -18,6 +18,7 @@ use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootArgs, RootingArgs};
 use crate::commands::shared::seed::SeedArgs;
+use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
@@ -253,6 +254,11 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree_dialect: TreeDialectArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
 
   /// Metadata table (CSV or TSV) with one row per sample
   ///

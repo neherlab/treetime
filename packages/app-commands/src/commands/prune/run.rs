@@ -14,7 +14,6 @@ use maplit::btreeset;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
 use treetime::make_report;
 use treetime::partition::result::PartitionSequences;
@@ -54,7 +53,7 @@ pub fn run_prune(
     let settings = SourceSettings {
       alphabet: &alphabet,
       gap_fill: None,
-      missing_leaves: MissingLeafLimit::Enforced,
+      missing_leaves: args.missing_sequences.limit(),
     };
     read_sequence_sources(&args.alignment, &settings, &graph, &names, log)?
       .into_iter()

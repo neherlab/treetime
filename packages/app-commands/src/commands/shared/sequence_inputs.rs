@@ -36,9 +36,7 @@ pub(crate) fn read_tree_and_sources(
   let settings = SourceSettings {
     alphabet: &alphabet,
     gap_fill: Some(args.gap_fill_args.gap_fill()),
-    missing_leaves: MissingLeafLimit::Overridable {
-      ignored: args.ignore_missing_alns,
-    },
+    missing_leaves: args.missing_leaves,
   };
   let sources = read_sequence_sources(args.alignment, &settings, &tree.graph, &tree.names, log)?;
   Ok(TreeAndSources { tree, sources })
@@ -78,10 +76,18 @@ pub(crate) fn ancestral_input(
 pub struct MissingSequenceArgs {
   /// Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
   ///
-  /// Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0.
-  /// Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
+  /// Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may
+  /// not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
-  pub ignore_missing_alns: bool,
+  pub allow_missing_sequences: bool,
+}
+
+impl MissingSequenceArgs {
+  pub fn limit(&self) -> MissingLeafLimit {
+    MissingLeafLimit::Overridable {
+      ignored: self.allow_missing_sequences,
+    }
+  }
 }
 
 pub(crate) struct SequenceInputArgs<'a> {
@@ -90,7 +96,7 @@ pub(crate) struct SequenceInputArgs<'a> {
   pub(crate) tree_dialect: NewickDialect,
   pub(crate) alphabet_args: &'a AlphabetArgs,
   pub(crate) gap_fill_args: &'a GapFillArgs,
-  pub(crate) ignore_missing_alns: bool,
+  pub(crate) missing_leaves: MissingLeafLimit,
 }
 
 pub(crate) struct TreeAndSources {

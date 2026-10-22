@@ -12,6 +12,7 @@ use crate::commands::shared::output_args::{OptimizeOutputSelectionArgs, OutputCo
 use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RootingArgs, resolve_outgroup};
+use crate::commands::shared::sequence_inputs::MissingSequenceArgs;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
@@ -142,6 +143,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub tree_dialect: TreeDialectArgs,
+
+  #[cfg_attr(feature = "clap", clap(flatten))]
+  #[schemars(flatten)]
+  #[deser(flatten)]
+  pub missing_sequences: MissingSequenceArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

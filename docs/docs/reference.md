@@ -126,6 +126,9 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
 
+* `--allow-missing-sequences` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+
+   Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
 * `-d`, `--metadata <METADATA>` [alias: `dates`] — Metadata table (CSV or TSV) with one row per sample
 
    `--metadata-id-columns` names the column that links a row to a tree tip. The other columns hold the data of the sample, such as its sampling date or its traits.
@@ -481,6 +484,9 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
   Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
 
+* `--allow-missing-sequences` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+
+   Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -746,6 +752,9 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
   Possible values: `classic,plain`, `classic,beast`, `classic,nhx`, `classic,mrbayes`, `enewick,plain`, `enewick,beast`, `enewick,nhx`, `enewick,mrbayes`, `rich,plain`, `rich,beast`, `rich,nhx`, `rich,mrbayes`
 
+* `--allow-missing-sequences` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+
+   Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
 * `--alphabet <ALPHABET>` — Sequence alphabet
 
    When omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when detection is ambiguous.
@@ -996,9 +1005,9 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 * `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
 
    Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous characters on terminal branches then disappear from the branch mutations. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-* `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+* `--allow-missing-sequences` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
-   Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
+   Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
 * `--output-augur-node-data <OUTPUT_AUGUR_NODE_DATA>` — Path to output augur-compatible node data JSON.
 
    Contains per-node nucleotide mutations, reconstructed sequences, the alignment mask, genome annotations, and the reference (root) sequence. The output is compatible with augur export v2 --node-data for Nextstrain pipeline integration.
@@ -1422,9 +1431,9 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 * `--impute-missing-data` — Resolve ambiguous and unknown tip states (`N` and IUPAC codes such as `R`) to the most likely inferred state.
 
    Gaps are left as deletions, because they are inferred structure, not missing data. Changes that involve ambiguous characters on terminal branches then disappear from the branch mutations. Only defined for marginal reconstruction; a no-op with a warning under `--method-anc=parsimony`.
-* `--ignore-missing-alns` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
+* `--allow-missing-sequences` — Treat tree tips that have no sequence in the alignment as fully ambiguous (missing data) instead of aborting.
 
-   Without this flag the run aborts when more than one third of the tips lack a sequence, matching TreeTime v0. Useful when consuming per-CDS translations where some samples have no peptide for a given CDS.
+   Without this flag the run aborts when more than one third of the tips lack a sequence, because the alignment may not belong to the tree. Useful for per-CDS translations, where some samples have no peptide for a given CDS.
 * `--sample-from-profile <SAMPLE_FROM_PROFILE>` — How to pick ancestral states from the marginal posterior profile.
 
    'argmax': most likely state at every node (deterministic, default). 'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`). 'all': sample from the posterior at every node.

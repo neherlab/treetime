@@ -1446,6 +1446,7 @@ export const zTimetreeConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
+  allow_missing_sequences: z.boolean().optional(),
   metadata: z.string().optional(),
   metadata_id_columns: z.array(z.string()).optional(),
   metadata_delimiters: z.array(z.string().length(1)).optional(),
@@ -1660,7 +1661,7 @@ export const zAncestralConfig = z.strictObject({
   reconstruct_tip_states: z.boolean().optional(),
   report_ambiguous: z.boolean().optional(),
   impute_missing_data: z.boolean().optional(),
-  ignore_missing_alns: z.boolean().optional(),
+  allow_missing_sequences: z.boolean().optional(),
   output_augur_node_data: z.string().optional(),
   output_gtr: z.string().optional(),
   output_reconstructed_nuc_fasta: z.string().optional(),
@@ -1733,7 +1734,7 @@ export const zHomoplasyConfig = z.strictObject({
   gap_fill: zGapFill.optional(),
   zero_based: z.boolean().optional(),
   impute_missing_data: z.boolean().optional(),
-  ignore_missing_alns: z.boolean().optional(),
+  allow_missing_sequences: z.boolean().optional(),
   sample_from_profile: zSampleMode.optional(),
   seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
   constant_sites: z.int().gte(0).optional(),
@@ -1900,6 +1901,7 @@ export const zOptimizeConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
+  allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
   zero_based: z.boolean().optional(),
   model: zGtrModelName.optional(),
@@ -1973,6 +1975,7 @@ export const zPruneConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
+  allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
   zero_based: z.boolean().optional(),
   output_all: z.string().optional(),
