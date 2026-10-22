@@ -10,7 +10,7 @@ Each line names the issue and the options that a maintainer must choose from.
 
 - **[kb/issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md](issues/M-ancestral-aa-path-ignores-method-and-include-leaves.md)**: honor each of the two flags that the amino-acid path ignores, reject the combination, or document the flag as nucleotide-only
 - **[kb/issues/M-app-runs-folder-grows-without-retention-or-quota.md](issues/M-app-runs-folder-grows-without-retention-or-quota.md)**: choose a quota, an age-based retention, or both, their defaults for the deploy, and whether the UI warns before it removes a run
-- **[kb/issues/M-cli-help-text-defects.md](issues/M-cli-help-text-defects.md)**: give each behavior item its own issue with a parse and runtime contract, or fix all items in one CLI cleanup
+- **[kb/issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md](issues/N-cli-timetree-relax-takes-two-values-in-one-flag.md)**: take the slack and the coupling of the relaxed clock as two flags, as one comma-separated value, or keep the two space-separated values of TreeTime 0.x
 - **[kb/issues/M-clock-command-reports-no-rate-uncertainty.md](issues/M-clock-command-reports-no-rate-uncertainty.md)**: report the Gaussian rate uncertainty in `clock` from a sequence length, or keep `clock` without uncertainty and record the divergence from v0
 - **[kb/issues/M-clock-filter-outlier-clade-dated-after-the-samples.md](issues/M-clock-filter-outlier-clade-dated-after-the-samples.md)**: keep the v0 behavior with its warning, keep the date ranges of flagged tips in the time inference, or use a local clock filter
 - **[kb/issues/M-coalescent-tc-band-undercovers-on-simulated-data.md](issues/M-coalescent-tc-band-undercovers-on-simulated-data.md)**: keep the Tc band and document its limit, or include the uncertainty of the node times in the band
@@ -110,6 +110,7 @@ Each line names the issue and the measurement or analysis that must come first.
 
 - **[kb/issues/M-gtr-fitch-fit-frequencies-do-not-improve-with-more-sites.md](issues/M-gtr-fitch-fit-frequencies-do-not-improve-with-more-sites.md)**: measure the signed error of each frequency of the Fitch fit at 1000 and at 10000 simulated sites, and compare it with the composition of the simulated root
 - **[kb/issues/M-ancestral-sparse-root-invariance.md](issues/M-ancestral-sparse-root-invariance.md)**: find the sparse representation mapping and an independent oracle that define a fix for the failing root invariance
+- **[kb/issues/M-cli-output-selection-accepts-values-the-command-rejects.md](issues/M-cli-output-selection-accepts-values-the-command-rejects.md)**: list each command and `--output-selection` value that the parser accepts and the run rejects
 - **[kb/issues/M-coalescent-skyline-underestimates-tc-on-simulated-data.md](issues/M-coalescent-skyline-underestimates-tc-on-simulated-data.md)**: run v0 and v1 with the skyline on the same simulated trees and compare Tc with the truth by depth
 - **[kb/issues/M-distribution-convolution-drops-operand-tails.md](issues/M-distribution-convolution-drops-operand-tails.md)**: measure the date interval coverage on the validation suite for runs dominated by short branches, with and without the operand tails
 - **[kb/issues/M-io-gff3-cds-phase-ignored.md](issues/M-io-gff3-cds-phase-ignored.md)**: confirm how the Augur node-data annotation schema represents the phase of each CDS segment
@@ -195,6 +196,7 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/M-ancestral-genbank-annotation-unsupported.md](issues/M-ancestral-genbank-annotation-unsupported.md)**: read GenBank files for `--annotation`
 - **[kb/issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md](issues/M-io-dot-output-writes-an-edge-per-leaf-pair.md)**: stop writing the invisible edges between every pair of leaves in DOT output
 - **[kb/issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md](issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md)**: reconstruct sequences only for outputs that read mutations or sequences
+- **[kb/issues/N-cli-root-help-mixes-tool-and-analysis-commands.md](issues/N-cli-root-help-mixes-tool-and-analysis-commands.md)**: show the analysis commands and the tool commands as two groups in the root help
 - **[kb/issues/N-output-vocabulary-spelled-out-in-six-places.md](issues/N-output-vocabulary-spelled-out-in-six-places.md)**: derive every output list from one table of outputs
 - **[kb/issues/N-io-gtr-json-omits-state-alphabet.md](issues/N-io-gtr-json-omits-state-alphabet.md)**: write the alphabet states into each sequence model of the GTR JSON
 - **[kb/issues/N-array-owned-signatures-force-projection-copies.md](issues/N-array-owned-signatures-force-projection-copies.md)**: pass transposed views to `propagate_raw()` instead of copied matrices
