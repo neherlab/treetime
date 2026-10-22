@@ -34,11 +34,11 @@ mod tests {
   const GRID_LEN: usize = 2401;
 
   // TODO: kb/issues/M-timetree-time-pass-posteriors-deviate-from-the-exact-posterior.md
-  // The CDFs of the time passes differ from the exact posterior by up to 1.4e-2 (node R, zero counts near the tips).
+  // The CDFs of the time passes differ from the exact posterior by up to 5.3e-3 (node R, both tips at zero).
   #[rustfmt::skip]
   #[rstest]
   #[case::mixed_counts(           [3, 0, 2, 6],  [1e-4, 1e-2])]
-  #[case::zero_counts_near_tips(  [1, 0, 0, 2],  [1e-3, 1e-1])]
+  #[case::zero_counts_near_tips(  [1, 0, 0, 2],  [1e-3, 1e-3])]
   #[case::long_branches(          [8, 4, 5, 12], [1e-3, 1e-3])]
   #[case::both_tips_at_zero(      [0, 0, 1, 1],  [1e-4, 1e-2])]
   #[trace]
