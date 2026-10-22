@@ -1,11 +1,12 @@
 use crate::error::input_error;
-use approx::ulps_eq;
 use eyre::Report;
 use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
+
+const EDGE_END_SNAP_FRACTION: f64 = 1e-5;
 
 pub(crate) fn root_moves(
   graph: &Graph,
@@ -28,8 +29,8 @@ pub(crate) enum RootTarget {
 impl RootTarget {
   pub(crate) fn on_edge(graph: &Graph, edge_key: GraphEdgeKey, split: f64, split_edge: bool) -> Result<Self, Report> {
     let (source_key, target_key) = graph.edge_endpoints(edge_key)?;
-    let at_target = ulps_eq!(split, 1.0, max_ulps = 5) || (!split_edge && split >= 0.5);
-    Ok(if ulps_eq!(split, 0.0, max_ulps = 5) {
+    let at_target = 1.0 - split < EDGE_END_SNAP_FRACTION || (!split_edge && split >= 0.5);
+    Ok(if split < EDGE_END_SNAP_FRACTION {
       Self::Node(source_key)
     } else if at_target && graph.is_leaf(target_key) {
       if split_edge {

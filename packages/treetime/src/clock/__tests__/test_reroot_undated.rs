@@ -63,6 +63,28 @@ mod tests {
   }
 
   #[test]
+  fn test_reroot_undated_min_dev_keeps_the_root_when_the_optimum_is_within_the_edge_end_band() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(A:1,B:1,C:1.000012)R;".as_slice())?;
+    let mut names = nwk_parsed.names.clone();
+    let mut graph = nwk_parsed.graph;
+    let mut branch_lengths = nwk_parsed.branch_lengths;
+
+    let result = reroot_undated(
+      &mut graph,
+      &mut names,
+      &mut branch_lengths,
+      &RerootSpec::Method(RerootMethod::MinDev),
+      &NoopProgress,
+    )?;
+
+    assert_eq!("R", &names[result.new_root_key]);
+    assert_eq!(4, graph.num_nodes());
+    let dists = root_to_tip_distances(&graph, &branch_lengths);
+    pretty_assert_abs_diff_eq!(dists.as_slice(), [1.0, 1.0, 1.000012].as_slice(), epsilon = 1e-15);
+    Ok(())
+  }
+
+  #[test]
   fn test_reroot_undated_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;".as_slice())?;
     let mut names = nwk_parsed.names.clone();
