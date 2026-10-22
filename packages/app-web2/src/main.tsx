@@ -7,6 +7,7 @@ import {
   PreferencesProvider,
   QueryProvider,
   reloadOnChunkError,
+  TAB_BACKEND,
   ThemeProvider,
 } from "@neherlab/app-ui";
 import { createPortFetch } from "@neherlab/app-ui/port-fetch";
@@ -36,7 +37,7 @@ if (root) {
           <QueryProvider>
             <ApiProvider client={client}>
               <PreferencesProvider storage={preferences}>
-                <App host={null} />
+                <App host={null} browserBackend={TAB_BACKEND} />
               </PreferencesProvider>
             </ApiProvider>
           </QueryProvider>
