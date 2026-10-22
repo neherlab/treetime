@@ -100,7 +100,7 @@ mod tests {
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, array![2.0, 10.0])?;
     let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
-    assert_eq!(expected, actual);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
     Ok(())
   }
 

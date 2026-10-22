@@ -80,14 +80,14 @@ mod tests {
   #[trace]
   fn test_distribution_point_eval_at_a_date(#[case] t: f64, #[case] expected: f64) -> Result<(), Report> {
     let actual = Distribution::<Plain>::point(2015.5, 5.0).eval(t)?;
-    assert_eq!(expected, actual);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
     Ok(())
   }
 
   #[test]
   fn test_distribution_point_at_zero_is_zero_at_a_tiny_nonzero_time() -> Result<(), Report> {
     let actual = Distribution::<Plain>::point(0.0, 5.0).eval(1e-17)?;
-    assert_eq!(0.0, actual);
+    pretty_assert_ulps_eq!(0.0, actual, max_ulps = 0);
     Ok(())
   }
 

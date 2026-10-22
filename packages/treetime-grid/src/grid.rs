@@ -7,12 +7,13 @@ use num_traits::Float;
 use std::cmp::min;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::cast::ToF64Exact;
+use treetime_utils::float_compare::within_epsilons_of_scale;
 use treetime_utils::make_error;
 
 const MAX_COINCIDENCE_ULPS: f64 = 4.0;
 
 pub fn coordinates_coincide(a: f64, b: f64, scale: f64) -> bool {
-  a == b || (a.is_finite() && b.is_finite() && (a - b).abs() <= MAX_COINCIDENCE_ULPS * f64::EPSILON * scale)
+  within_epsilons_of_scale(a, b, scale, MAX_COINCIDENCE_ULPS)
 }
 
 impl<T: InterpElem> IntoIterator for &Grid<T>

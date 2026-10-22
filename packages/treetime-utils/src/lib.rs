@@ -7,6 +7,7 @@ pub mod collections;
 pub mod datetime;
 pub mod env;
 pub mod error;
+pub mod float_compare;
 pub mod fmt;
 pub mod init;
 pub mod interval;

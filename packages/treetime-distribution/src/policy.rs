@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
+use treetime_utils::float_compare::within_epsilons_of_scale;
 
 const MAX_VALUE_ULPS: f64 = 10.0;
 
@@ -68,7 +69,7 @@ impl YAxisPolicy for Plain {
   }
 
   fn same_value(a: f64, b: f64) -> bool {
-    values_coincide(a, b, a.abs().max(b.abs()))
+    within_epsilons_of_scale(a, b, a.abs().max(b.abs()), MAX_VALUE_ULPS)
   }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -116,7 +117,7 @@ impl YAxisPolicy for NegLog {
   }
 
   fn same_value(a: f64, b: f64) -> bool {
-    values_coincide(a, b, a.abs().max(b.abs()).max(1.0))
+    within_epsilons_of_scale(a, b, a.abs().max(b.abs()).max(1.0), MAX_VALUE_ULPS)
   }
 }
 
@@ -127,8 +128,4 @@ impl<Y: YAxisPolicy> PolicyMarker<Y> {
   pub(crate) fn new() -> Self {
     Self(PhantomData)
   }
-}
-
-fn values_coincide(a: f64, b: f64, scale: f64) -> bool {
-  a == b || (a.is_finite() && b.is_finite() && (a - b).abs() <= MAX_VALUE_ULPS * f64::EPSILON * scale)
 }
