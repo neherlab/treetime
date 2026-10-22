@@ -3,9 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { zRunList, zRunRecord, zRunsFilesResponse, zUploadedInput, zVersionInfo } from "@neherlab/app-contracts";
+import createBackendModule from "@neherlab/app-wasm";
 import type * as z from "zod";
-
-import createBackendModule from "./pkg/app_wasm.js";
 
 const DATASET = join(import.meta.dirname, "../../data/flu/h3n2/20");
 

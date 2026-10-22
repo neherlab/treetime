@@ -92,7 +92,9 @@ RUN set -euxo pipefail >/dev/null \
 && rm /tmp/cc-check
 
 # The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
-# libraries and the toolchain that cargo-hawk is built against.
+# libraries, the toolchain that cargo-hawk is built against, and the nightly of
+# the threaded WebAssembly build, which rebuilds std with atomics from rust-src
+# (-Zbuild-std).
 ENV RUSTUP_HOME="/usr/local/rustup"
 ENV CARGO_HOME="/usr/local/cargo"
 ENV PATH="/usr/local/cargo/bin:${PATH}"
@@ -101,14 +103,15 @@ COPY rust-toolchain.toml /tmp/rust/
 COPY dev/lints/dylint-custom/rust-toolchain.toml /tmp/lints/dylint-custom/
 COPY dev/lints/dylint-mordant/rust-toolchain.toml /tmp/lints/dylint-mordant/
 COPY dev/lints/dylint-trailofbits/rust-toolchain.toml /tmp/lints/dylint-trailofbits/
-COPY dev/docker/files/hawk-toolchain /tmp/
+COPY dev/docker/files/hawk-toolchain dev/docker/files/wasm-threads-toolchain /tmp/
 # hadolint ignore=DL3003
 RUN set -euxo pipefail >/dev/null \
 && /install-rust "/tmp/rust" \
 && for dir in /tmp/lints/*; do (cd "${dir}" && rustup toolchain install); done \
 && rustup toolchain install "$(cat /tmp/hawk-toolchain)" --profile minimal --component rustc-dev,llvm-tools-preview,rust-src \
+&& rustup toolchain install "$(cat /tmp/wasm-threads-toolchain)" --profile minimal --component rust-src,clippy \
 && chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" \
-&& rm -rf /install-rust /tmp/rust /tmp/lints /tmp/hawk-toolchain
+&& rm -rf /install-rust /tmp/rust /tmp/lints /tmp/hawk-toolchain /tmp/wasm-threads-toolchain
 
 # mise installs every tool of .config/mise.toml at the URL and sha256 of .config/mise.lock and
 # links their executables into /usr/local/bin. The cargo registry that source
@@ -137,14 +140,18 @@ done \
 # from binarylandia/build_openblas, and liblzma and libzstd from
 # binarylandia/staticbourg, for this Emscripten version, because Emscripten
 # gives no ABI guarantee between versions; an Emscripten upgrade needs new
-# releases of both first. Only the emcc front end goes on PATH, so the clang of
-# Emscripten stays out of native builds. The cache holds the prebuilt system
-# libraries and stays writable for its lock and sanity files.
+# releases of both first. The single-threaded and the threaded OpenBLAS each get
+# their own prefix, because wasm-ld rejects the single-threaded archive in a
+# threaded link and the compression libraries put their prefix on every link
+# line. Only the emcc front end goes on PATH, so the clang of Emscripten stays
+# out of native builds. The cache holds the prebuilt system libraries, the
+# threaded ones included, and stays writable for its lock and sanity files.
 ENV PATH="/opt/emscripten/emscripten:${PATH}"
 COPY dev/docker/files/install-emscripten dev/docker/files/install-openblas-emscripten /
 RUN set -euxo pipefail >/dev/null \
 && /install-emscripten "/opt/emscripten" \
-&& /install-openblas-emscripten "/usr/local/wasm32-unknown-emscripten" \
+&& /install-openblas-emscripten "st" "/usr/local/wasm32-unknown-emscripten-openblas" \
+&& /install-openblas-emscripten "mt" "/usr/local/wasm32-unknown-emscripten-openblas-mt" \
 && /install-compression-libs "wasm32-unknown-emscripten" "/usr/local/wasm32-unknown-emscripten" \
 && chmod -R a+rwX "/opt/emscripten/emscripten/cache" \
 && rm /install-emscripten /install-openblas-emscripten /install-compression-libs

@@ -1,0 +1,12 @@
+# Cargo settings of the single-threaded WebAssembly build of app-wasm, passed
+# with `--config dev/cargo/wasm-st.toml` by every cargo call for
+# wasm32-unknown-emscripten without threads. The common settings of the target
+# are in .cargo/config.toml.
+
+# The single-threaded OpenBLAS archive that binarylandia/build_openblas builds
+# with emcc for the Emscripten version of the image, installed by
+# dev/docker/files/install-openblas-emscripten; it needs no Fortran runtime and
+# no pthreads.
+[target.wasm32-unknown-emscripten.openblas]
+rustc-link-lib = ["static:-bundle=openblas"]
+rustc-link-search = ["/usr/local/wasm32-unknown-emscripten-openblas/lib"]

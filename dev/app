@@ -14,9 +14,11 @@
 #               answering, or started from another commit than the checkout HEAD
 #   status      Print the resolved ports and URLs and what each server was started from
 #   up-web2     Start the web2 development server in the foreground until Ctrl-C;
-#               the WebAssembly back end must be built (just build-wasm)
+#               both WebAssembly modules must be built (just build-wasm, just
+#               build-wasm-mt)
 #   serve-web2  Build the web2 app for production and serve it in the foreground
-#               until Ctrl-C; the WebAssembly back end must be built (just build-wasm prod)
+#               until Ctrl-C; both WebAssembly modules must be built (just
+#               build-wasm prod, just build-wasm-mt prod)
 #
 # Each checkout resolves its own ports from its path, so worktrees run side by
 # side. TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT,

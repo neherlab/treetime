@@ -62,7 +62,7 @@ produce_napi_types() {
 
 produce_wasm_types() {
   mkdir -p "${1}/packages/app-wasm/pkg"
-  cargo build --locked --quiet --target=wasm32-unknown-emscripten -p app-wasm >&2
+  cargo build --locked --quiet --config=dev/cargo/wasm-st.toml --target=wasm32-unknown-emscripten -p app-wasm >&2
   cp "${CARGO_TARGET_DIR:-target}/wasm32-unknown-emscripten/debug/deps/app-wasm.d.ts" \
     "${1}/packages/app-wasm/pkg/app_wasm.d.ts"
   printf 'packages/app-wasm/pkg/app_wasm.d.ts\n'

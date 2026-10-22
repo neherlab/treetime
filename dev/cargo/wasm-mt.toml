@@ -1,0 +1,33 @@
+# Cargo settings of the threaded WebAssembly build of app-wasm, passed with
+# `--config dev/cargo/wasm-mt.toml` by every cargo call for
+# wasm32-unknown-emscripten with threads. Cargo appends these rustflags to those
+# of .cargo/config.toml. The build runs on the nightly of
+# dev/docker/files/wasm-threads-toolchain.
+#
+# - std is rebuilt with atomics, because the std of rustup is built without them
+# - the threaded OpenBLAS archive (`-pthread`, `USE_LOCKING=1`), installed by
+#   dev/docker/files/install-openblas-emscripten; wasm-ld rejects the
+#   single-threaded archive in a threaded link
+# - a new pthread worker starts only after its creator returns to the event
+#   loop, and rayon waits for every thread of its pool while it builds the pool,
+#   so the module starts its pthread pool before main: the rayon threads of the
+#   job, its run thread, and one spare. The job worker sets
+#   `globalThis.treetimeJobs` before it calls the module factory, and the
+#   runtime evaluates the expression when it starts the pool
+# - a pthread request beyond the pool fails instead of waiting for a worker that
+#   never starts
+
+[unstable]
+build-std = ["std", "panic_abort"]
+
+[target.wasm32-unknown-emscripten]
+rustflags = [
+  "-Ctarget-feature=+atomics,+bulk-memory,+mutable-globals",
+  "-Clink-arg=-pthread",
+  "-Clink-arg=-sPTHREAD_POOL_SIZE=globalThis.treetimeJobs+2",
+  "-Clink-arg=-sPTHREAD_POOL_SIZE_STRICT=2",
+]
+
+[target.wasm32-unknown-emscripten.openblas]
+rustc-link-lib = ["static:-bundle=openblas"]
+rustc-link-search = ["/usr/local/wasm32-unknown-emscripten-openblas-mt/lib"]

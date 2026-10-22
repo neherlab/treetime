@@ -55,7 +55,8 @@ export KACHE_MAX_SIZE := env("KACHE_MAX_SIZE", "100GiB")
 export KACHE_PRESERVE_INCREMENTAL := "1"
 export RUSTC_WRAPPER := if kache_store != "" { "kache" } else { env("RUSTC_WRAPPER", "") }
 export KACHE_CACHE_DIR := if kache_store != "" { kache_prefix + "-build" } else { env("KACHE_CACHE_DIR", "") }
-lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + if kache_store != "" { " KACHE_CACHE_DIR=" + quote(kache_prefix + "-clippy") } else { "" }
+lint_kache_env := if kache_store != "" { "KACHE_CACHE_DIR=" + quote(kache_prefix + "-clippy") } else { "" }
+lint_env := "CARGO_TARGET_DIR=" + quote(lint_target_dir) + " " + lint_kache_env
 uncached_env := "RUSTC_WRAPPER= CARGO_INCREMENTAL=0"
 
 # The dylint driver, shared by the check, fix, and baseline recipes. It loads
@@ -89,9 +90,19 @@ public_api_crates := "treetime_utils util_newick util_phyloxml util_augur_node_d
 cargo_min_age := "RUSTC_BOOTSTRAP=1 cargo -Zmin-publish-age --config 'registry.global-min-publish-age=\"7 days\"'"
 hawk_toolchain := trim(read("dev/docker/files/hawk-toolchain"))
 
+# The nightly of the threaded WebAssembly build, which rebuilds std with atomics
+# (`-Zbuild-std` in dev/cargo/wasm-mt.toml). The threaded build and its clippy
+# run use their own target folders, because their std differs from the std of
+# the other builds.
+wasm_threads_toolchain := trim(read("dev/docker/files/wasm-threads-toolchain"))
+
 # The package that emcc and wasm-bindgen write for the WebAssembly back end of
-# the web2 app: the JavaScript module, the WebAssembly binary, and the
-# TypeScript declarations. Only the declarations are committed
+# the web2 app: the single-threaded module in st/ and the threaded module in mt/,
+# each a JavaScript module and a WebAssembly binary under the names that emcc
+# gives them in deps/ of the target folder, and the TypeScript declarations that
+# both modules share. The threaded JavaScript starts its pthread workers from
+# its own file name, so the recipes copy the files of deps/ instead of the
+# `app-wasm.js` that cargo renames. Only the declarations are committed
 # (`just gen wasm-types`).
 # The build modes: dev and release are the cargo profiles of the same name; prod,
 # the shipped build, is the cargo profile dist. Cargo writes the dev profile to
@@ -104,16 +115,16 @@ react_pin_reason := "Auspice runs in-process and is verified only on React 19"
 # Groups of the full gate, one CI job each (`just check-group <group>`). Hawk
 # needs a second full compilation and runs locally only.
 checks_format := "fmt-check-rs fmt-check-ts fmt-check-other lint-shell lint-docker lint-workflows deny shear fixtures-check prebuilt-libs-check"
-checks_clippy := "lint-rs lint-wasm"
+checks_clippy := "lint-rs lint-wasm lint-wasm-mt"
 checks_dylint := "dylint"
 checks_tests := "test-rs test-wasm"
 checks_generated := "generated-check"
 checks_typescript := "typecheck lint-ts knip test-ts"
 checks_hawk := "hawk"
-check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-wasm lint-ts typecheck"
+check_fast := "fmt-check-rs fmt-check-ts fmt-check-other lint-rs lint-wasm lint-wasm-mt lint-ts typecheck"
 check_full := checks_format + " " + checks_clippy + " " + checks_dylint + " " + checks_tests + " " + checks_generated + " " + checks_typescript + " " + checks_hawk
-lint_fast := "lint-rs lint-wasm lint-ts"
-lint_full := "lint-rs lint-wasm lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
+lint_fast := "lint-rs lint-wasm lint-wasm-mt lint-ts"
+lint_full := "lint-rs lint-wasm lint-wasm-mt lint-ts typecheck dylint hawk knip deny shear lint-shell lint-docker lint-workflows"
 dockerfiles := "dev/docker/*.dockerfile dev/deploy/*.dockerfile"
 
 alias b := build
@@ -198,16 +209,29 @@ build-napi profile="dev":
     {{ if profile == "dev" { "" } else { "source dev/lib/dist-flags.sh && export_dist_flags &&" } }} cargo build --locked -p app-napi --lib --profile {{ quote(profile) }}
     cp {{ quote(CARGO_TARGET_DIR / (if profile == "dev" { "debug" } else { profile }) / "libapp_napi.so") }} packages/app-napi/app-napi.node
 
-# Build the WebAssembly back end of the web2 app into packages/app-wasm/pkg/: just build-wasm [dev|release|prod]; prod, as shipped, uses the dist profile
+# Build the single-threaded WebAssembly back end of the web2 app into packages/app-wasm/pkg/st/: just build-wasm [dev|release|prod]; prod, as shipped, uses the dist profile
 [group("build")]
 [script]
 build-wasm mode="dev":
     out={{ quote(CARGO_TARGET_DIR / "wasm32-unknown-emscripten" / (if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode })) }}
-    cargo build --locked --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
-    mkdir -p {{ wasm_pkg }}
-    cp "${out}/app-wasm.js" {{ wasm_pkg }}/app_wasm.js
-    cp "${out}/app_wasm.wasm" {{ wasm_pkg }}/app_wasm.wasm
+    cargo build --locked --config=dev/cargo/wasm-st.toml --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
+    mkdir -p {{ wasm_pkg }}/st
+    cp "${out}/deps/app_wasm.js" "${out}/deps/app_wasm.wasm" {{ wasm_pkg }}/st/
     cp "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts
+
+# Build the threaded WebAssembly back end of the web2 app into packages/app-wasm/pkg/mt/: just build-wasm-mt [dev|release|prod]; fails when its exports differ from the declarations of the single-threaded build
+[group("build")]
+[script]
+build-wasm-mt mode="dev":
+    target_dir={{ quote(CARGO_TARGET_DIR / "wasm-mt") }}
+    out="${target_dir}/wasm32-unknown-emscripten/{{ if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode } }}"
+    CARGO_TARGET_DIR="${target_dir}" cargo +{{ wasm_threads_toolchain }} build --locked --config=dev/cargo/wasm-mt.toml --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
+    if ! cmp -s "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts; then
+      printf 'The threaded module declares other exports than %s. Run `just build-wasm` or `just gen wasm-types` after a change of the exports.\n' {{ quote(wasm_pkg / "app_wasm.d.ts") }} >&2
+      exit 1
+    fi
+    mkdir -p {{ wasm_pkg }}/mt
+    cp "${out}/deps/app_wasm.js" "${out}/deps/app_wasm.wasm" {{ wasm_pkg }}/mt/
 
 # Cross-compile shipped (dist profile) binaries in the cross images (host only, needs Docker): just cross [--target=<triple>]
 [group("build")]
@@ -370,7 +394,12 @@ lint-rs *args:
 # Clippy over the WebAssembly back end for the WebAssembly target; reports the warnings of every crate, then fails if there were any
 [group("lint")]
 lint-wasm *args:
-    {{ lint_env }} CARGO_BUILD_WARNINGS=deny cargo clippy --locked -p app-wasm --bins --target=wasm32-unknown-emscripten --keep-going "$@"
+    {{ lint_env }} CARGO_BUILD_WARNINGS=deny cargo clippy --locked --config=dev/cargo/wasm-st.toml -p app-wasm --bins --target=wasm32-unknown-emscripten --keep-going "$@"
+
+# Clippy over the threaded WebAssembly back end, which compiles the code gated on `target_feature = "atomics"`; reports the warnings of every crate, then fails if there were any
+[group("lint")]
+lint-wasm-mt *args:
+    CARGO_TARGET_DIR={{ quote(lint_target_dir / "wasm-mt") }} {{ lint_kache_env }} CARGO_BUILD_WARNINGS=deny cargo +{{ wasm_threads_toolchain }} clippy --locked --config=dev/cargo/wasm-mt.toml -p app-wasm --bins --target=wasm32-unknown-emscripten --keep-going "$@"
 
 # Apply clippy's machine-applicable fixes; stage your changes first
 [group("lint")]
@@ -569,12 +598,12 @@ status:
 
 # Start the web2 dev server, the web app on the WebAssembly back end in a web worker, in the foreground until Ctrl-C; after a Rust change run `just build-wasm` again
 [group("app")]
-up-web2: _js (build-wasm "dev")
+up-web2: _js (build-wasm "dev") (build-wasm-mt "dev")
     dev/app up-web2
 
 # Build the web2 app for production (WebAssembly back end of the dist profile) and serve it until Ctrl-C
 [group("app")]
-serve-web2: _js (build-wasm "prod")
+serve-web2: _js (build-wasm "prod") (build-wasm-mt "prod")
     dev/app serve-web2
 
 # Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
@@ -594,7 +623,7 @@ build-web: _js
 
 # Production build of the web2 app, with the WebAssembly back end of the dist profile
 [group("app")]
-build-web2: _js (build-wasm "prod")
+build-web2: _js (build-wasm "prod") (build-wasm-mt "prod")
     bun run --silent build:web2
 
 # Production build of the desktop app, with the Node addon of the dist profile
