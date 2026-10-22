@@ -1,0 +1,111 @@
+name: "Web app"
+
+# Builds the web app on the WebAssembly back end (packages/app-web2) and uploads
+# it with dev/publish-web to one site per commit, per branch, and per open pull
+# request of the branch, at <site>.previews.neherlab.click. Pushes to rust also
+# update https://treetime.neherlab.click. A push run publishes the sites of the
+# open pull requests of its branch, so a pull request triggers a run of its own
+# only when it is opened or reopened. Pull requests from forks build without an
+# upload, because they get no secrets.
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types:
+      - opened
+      - reopened
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # A cancelled upload would leave treetime.neherlab.click between two versions.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/rust' }}
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  CARGO_INCREMENTAL: "0"
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+  FORCE_COLOR: "1"
+
+jobs:
+  web:
+    name: "Build and upload the web app"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          cache: "web2"
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name == 'push' && github.ref == 'refs/heads/rust' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Build"
+        run: dev/docker/run just build-web2
+
+      - name: "Upload"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          prefix="neherlab--treetime--"
+
+          if [[ -n "${PR_NUMBER}" ]]; then
+            prs_text="${PR_NUMBER}"
+          else
+            prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open \
+              --json number,headRepositoryOwner \
+              --jq ".[] | select(.headRepositoryOwner.login == \"${GITHUB_REPOSITORY_OWNER}\") | .number")"
+          fi
+          prs=()
+          if [[ -n "${prs_text}" ]]; then
+            mapfile -t prs <<<"${prs_text}"
+          fi
+
+          sites=("${prefix}commit-${COMMIT:0:7}" "${prefix}branch-${BRANCH}")
+          for pr in "${prs[@]}"; do
+            sites+=("${prefix}pr-${pr}")
+          done
+          if [[ "${GITHUB_REF}" == "refs/heads/rust" && "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            sites+=("treetime")
+          fi
+
+          urls_text="$(dev/publish-web "${sites[@]}")"
+          mapfile -t urls <<<"${urls_text}"
+
+          index=2
+          for pr in "${prs[@]}"; do
+            body="$(printf '<!-- web-preview -->\nWeb app preview: %s\n\nCommit %s: %s ([build](%s/%s/actions/runs/%s))\n' \
+              "${urls[index]}" "${COMMIT:0:7}" "${urls[0]}" "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}")"
+            comment_ids="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
+              --jq '.[] | select(.body | startswith("<!-- web-preview -->")) | .id')"
+            comment_id="${comment_ids%%$'\n'*}"
+            if [[ -n "${comment_id}" ]]; then
+              gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -f body="${body}" >/dev/null
+            else
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" -f body="${body}" >/dev/null
+            fi
+            index=$((index + 1))
+          done

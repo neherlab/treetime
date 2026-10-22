@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [options] <site>...
+#
+# Upload the production build of the web2 app (`just build-web2`) to each site
+# of the preview host, then clear the cache of the host. Each site is a folder of
+# the S3 bucket, and the CloudFront distribution in front of the bucket serves it
+# at https://<site>.previews.neherlab.click. The site `treetime` is also served at
+# https://treetime.neherlab.click. A site name is lowercased, every character
+# other than a-z, 0-9, and `-` becomes `-`, and the name is cut to the 63
+# characters of a DNS label.
+#
+# The edge functions of the distribution (AWS account preview-deployments, not in
+# this repository) map the first label of the host name to the folder of the same
+# name, serve `index` for `/`, and for sites whose name starts with
+# `neherlab--treetime--` or equals `treetime`, serve `index` for every path
+# without a file extension outside `data/`, add the cross-origin isolation
+# headers that the threaded WebAssembly module needs, and leave the content
+# security policy to the page.
+#
+# Every file is stored under its path in the build, except `*.html`, which loses
+# its extension, so `index.html` is the object `index`. A file with a `.gz` copy
+# from the build is stored as that copy with `Content-Encoding: gzip`; the `.gz`
+# and `.br` copies are not stored themselves. Files in `assets/` whose names
+# carry a content hash are cached for a year, every other file is revalidated on
+# each use. The pages of a site are stored after all other files, so a page never
+# refers to a file that is not stored yet. Files that a previous upload stored and
+# this build lacks stay, so open pages of the previous version keep working.
+#
+# Options:
+#   -h, --help       Show this help
+#   --dist <dir>     Build to upload (default: packages/app-web2/dist)
+#
+# Environment:
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY   Credentials that may write the
+#                                              bucket and clear the cache
+#
+# Examples:
+#   $0 neherlab--treetime--branch-rust treetime
+#
+set -euo pipefail
+shopt -s inherit_errexit
+trap "exit" INT
+
+BUCKET="click.neherlab.previews"
+BUCKET_REGION="eu-central-1"
+DISTRIBUTION_ID="EMDRDU0K6TEI5"
+PREVIEWS_DOMAIN="previews.neherlab.click"
+PRODUCTION_SITE="treetime"
+PRODUCTION_URL="https://treetime.neherlab.click"
+UPLOAD_JOBS=16
+
+# Vite names an emitted file `assets/<name>-<hash>.<ext>`, with 8 characters of
+# base64url as the hash.
+HASHED_NAME='-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$'
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  local dist="packages/app-web2/dist"
+
+  # shfmt:off
+  while (($# > 0)); do
+    case "${1}" in
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    --dist)
+      if (($# < 2)); then
+        printf "Missing value of %s\n" "${1}" >&2
+        exit 1
+      fi
+      dist="${2}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      printf "Unknown option: %s\n" "${1}" >&2
+      exit 1
+      ;;
+    *) break ;;
+    esac
+  done
+  # shfmt:on
+
+  if (($# == 0)); then
+    printf "No site given. Run %s --help for usage\n" "${0##*/}" >&2
+    exit 1
+  fi
+
+  : "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is not set}"
+  : "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is not set}"
+
+  if [[ ! -f "${dist}/index.html" ]]; then
+    printf "No web2 build in %s: run just build-web2 first\n" "${dist}" >&2
+    exit 1
+  fi
+
+  local sites=()
+  local name site
+  for name in "$@"; do
+    site="$(site_name "${name}")"
+    if [[ ! "${site}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
+      printf "Invalid site name: '%s' (as a DNS label: '%s')\n" "${name}" "${site}" >&2
+      exit 1
+    fi
+    sites+=("${site}")
+  done
+
+  local files=() pages=() file
+  shopt -s globstar dotglob nullglob
+  pushd "${dist}" >/dev/null
+  for file in **; do
+    if [[ ! -f "${file}" ]] || is_compressed_copy "${file}"; then
+      continue
+    elif [[ "${file}" == *.html ]]; then
+      pages+=("${file}")
+    else
+      files+=("${file}")
+    fi
+  done
+  popd >/dev/null
+
+  export DIST="${dist}" BUCKET BUCKET_REGION HASHED_NAME
+  export -f upload_file content_type cache_control
+
+  for site in "${sites[@]}"; do
+    printf "Uploading %d files to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${site}" >&2
+    upload_all "${site}" "${files[@]}"
+    upload_all "${site}" "${pages[@]}"
+  done
+
+  aws cloudfront create-invalidation --distribution-id "${DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id" >/dev/null
+
+  local urls=()
+  for site in "${sites[@]}"; do
+    urls+=("$(site_url "${site}")")
+  done
+  printf "%s\n" "${urls[@]}"
+
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    {
+      printf "## Web app\n\n"
+      printf -- "- %s\n" "${urls[@]}"
+    } >>"${GITHUB_STEP_SUMMARY}"
+  fi
+}
+
+site_name() {
+  printf "%s" "${1}" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9-]/-/g; s/^-+//' |
+    cut -c1-63 |
+    sed -E 's/-+$//'
+}
+
+site_url() {
+  if [[ "${1}" == "${PRODUCTION_SITE}" ]]; then
+    printf "%s\n" "${PRODUCTION_URL}"
+  else
+    printf "https://%s.%s\n" "${1}" "${PREVIEWS_DOMAIN}"
+  fi
+}
+
+is_compressed_copy() {
+  local file="${1}"
+  [[ ("${file}" == *.gz || "${file}" == *.br) && -f "${file%.*}" ]]
+}
+
+upload_all() {
+  local site="${1}"
+  shift
+  (($# > 0)) || return 0
+  # shellcheck disable=SC2016 # $1 and $2 expand in the child shell
+  printf "%s\0" "$@" |
+    xargs -0 -P "${UPLOAD_JOBS}" -I {} bash -c 'upload_file "$1" "$2" || exit 255' _ "${site}" {}
+}
+
+upload_file() {
+  local site="${1}" file="${2}"
+  local key="${file%.html}"
+  local body="${DIST}/${file}"
+  local args=(
+    --region "${BUCKET_REGION}"
+    --content-type "$(content_type "${file}")"
+    --cache-control "$(cache_control "${file}")"
+    --no-guess-mime-type
+    --only-show-errors
+  )
+  if [[ -f "${body}.gz" ]]; then
+    body="${body}.gz"
+    args+=(--content-encoding gzip)
+  fi
+  aws s3 cp "${args[@]}" "${body}" "s3://${BUCKET}/${site}/${key}"
+}
+
+content_type() {
+  case "${1##*/}" in
+  *.html) printf "text/html; charset=utf-8" ;;
+  *.js | *.mjs) printf "text/javascript; charset=utf-8" ;;
+  *.css) printf "text/css; charset=utf-8" ;;
+  *.json) printf "application/json" ;;
+  *.webmanifest) printf "application/manifest+json" ;;
+  *.wasm) printf "application/wasm" ;;
+  *.svg) printf "image/svg+xml" ;;
+  *.png) printf "image/png" ;;
+  *.ico) printf "image/x-icon" ;;
+  *.woff2) printf "font/woff2" ;;
+  *.woff) printf "font/woff" ;;
+  *.csv) printf "text/csv; charset=utf-8" ;;
+  *.tsv) printf "text/tab-separated-values; charset=utf-8" ;;
+  *.md) printf "text/markdown; charset=utf-8" ;;
+  *.yaml | *.yml) printf "application/yaml" ;;
+  *.xml) printf "application/xml" ;;
+  *.xz) printf "application/x-xz" ;;
+  *.txt | *.nwk | *.nex | *.fasta | *.phylip | *.gff3 | *.vcf) printf "text/plain; charset=utf-8" ;;
+  *) printf "application/octet-stream" ;;
+  esac
+}
+
+cache_control() {
+  if [[ "${1}" == assets/* && "${1##*/}" =~ ${HASHED_NAME} ]]; then
+    printf "public, max-age=31536000, immutable"
+  else
+    printf "no-cache"
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

@@ -481,11 +481,24 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 
 `./dev/trigger-nightly --only cli` runs only the CLI release, `--only desktop` only the desktop release; the scheduled run does both. A desktop-only release has no CLI binaries, so the scheduled run still builds the CLI for the same commit, and a desktop-only run also runs when `rust` is unchanged.
 
+### Web app deploys
+
+`.github/workflows/web.yml` builds the web2 app (`just build-web2`) on every push and uploads it with `dev/publish-web` to the preview host, a CloudFront distribution in front of an S3 bucket in the AWS account `preview-deployments` of neherlab. Each upload goes to several sites:
+
+- `https://neherlab--treetime--commit-<short-sha>.previews.neherlab.click`: the commit
+- `https://neherlab--treetime--branch-<branch>.previews.neherlab.click`: the latest upload of the branch
+- `https://neherlab--treetime--pr-<number>.previews.neherlab.click`: the latest upload of each open pull request of the branch; the run adds or updates a comment with the link in the pull request
+- `https://treetime.neherlab.click`: the latest push to `rust`
+
+Opening or reopening a pull request also starts a run, so a pull request gets its site without a new push. Pull requests from forks build without an upload, because workflows of forks get no secrets. The upload needs the organization secrets `PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID` and `PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY`. `dev/publish-web --help` describes the stored files, their caching, and what the edge functions of the distribution do; the edge functions themselves are not in this repository.
+
 ## Continuous integration
 
 `.github/workflows/cli.yml` runs on pull requests and on pushes to `rust`:
 
 - The check groups of `just check-all` in parallel jobs, except `hawk`, which needs a second full compilation; run it locally
 - On pushes to `rust`: the release builds of every target and compatibility runs on Linux distributions, macOS, and Windows
+
+`.github/workflows/web.yml` builds and uploads the web2 app on every push (see Web app deploys).
 
 The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Only pushes to `rust` publish images.
