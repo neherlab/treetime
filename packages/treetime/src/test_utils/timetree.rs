@@ -147,13 +147,27 @@ pub(crate) fn point_coalescent_prior(
   times: &[(&str, f64)],
   tc: f64,
 ) -> Result<CoalescentPrior, Report> {
-  let posterior = times
+  let times = times
     .iter()
     .map(|(name, time)| {
       let key = find_node_key_by_name(graph, names, name).expect("timed node must exist");
+      (key, *time)
+    })
+    .collect();
+  point_coalescent_prior_by_key(graph, &times, tc)
+}
+
+pub(crate) fn point_coalescent_prior_by_key(
+  graph: &Graph,
+  times: &BTreeMap<GraphNodeKey, f64>,
+  tc: f64,
+) -> Result<CoalescentPrior, Report> {
+  let posterior = times
+    .iter()
+    .map(|(&key, &time)| {
       let entry = NodePosterior {
-        likely_time: Some(*time),
-        time: Some(*time),
+        likely_time: Some(time),
+        time: Some(time),
         ..NodePosterior::default()
       };
       (key, entry)
