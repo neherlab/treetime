@@ -4,7 +4,7 @@ mod tests {
     Mutations, NUC_ALPHABET, ancestral_graph, ancestral_setup, auspice_tree_of, dated_graph, dated_setup, mutation_on,
   };
   use crate::annotated_graph::{AnnotatedGraph, TreeSequences};
-  use crate::output_plan::CommandKind;
+  use crate::command_outputs::CommandKind;
   use eyre::Report;
   use helpers::four_leaf_auspice_color_by;
   use pretty_assertions::assert_eq;
@@ -67,7 +67,7 @@ mod tests {
       NUC_ALPHABET, annotated, auspice_tree_of, no_mutations, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, TreeSequences};
-    use crate::output_plan::CommandKind;
+    use crate::command_outputs::CommandKind;
     use eyre::Report;
     use std::str::FromStr;
     use treetime::seq::mutation::{Mutation, MutationTrack, PositionBase, Sub};

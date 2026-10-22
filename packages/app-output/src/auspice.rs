@@ -1,5 +1,6 @@
 use crate::annotated_graph::{AnnotatedTreeView, Divergence, TreeSequences, TreeTraits};
-use crate::output_plan::{CommandKind, OutputSelection};
+use crate::command_outputs::CommandKind;
+use crate::output_plan::OutputSelection;
 use crate::trait_annotations::{build_confidence_map, trait_change};
 use deser_value::{Map, Value, to_value};
 use eyre::{Report, WrapErr};

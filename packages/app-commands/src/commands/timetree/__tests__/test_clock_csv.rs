@@ -5,7 +5,6 @@ mod tests {
   use crate::commands::shared::seed::SeedArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
-  use app_output::output_plan::OutputSelection;
   use app_output::table_output::table_read_file;
   use eyre::Report;
   use helpers::{fixed_rate_intercept, ordinary_least_squares, run_zika, zika_dir};
@@ -167,7 +166,7 @@ mod tests {
       configure(&mut raw);
       let args = TreetimeTimetreeArgs::try_from(raw)?;
       run_timetree_estimation(&args, &NoopCancel, &NoopProgress, &NoopProgress)?;
-      let rows = table_read_file(OutputSelection::Rtt, &output.join("timetree.rtt.tsv"))?;
+      let rows = table_read_file(&output.join("timetree.rtt.tsv"))?;
       let model = json_read_file(output.join("timetree.clock-model.json"))?;
       Ok((rows, model))
     }

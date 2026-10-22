@@ -1,4 +1,3 @@
-use crate::output_plan::OutputSelection;
 use crate::table_output::table_create;
 use eyre::Report;
 use std::path::Path;
@@ -14,7 +13,7 @@ pub struct TraceCsvSink {
 impl TraceCsvSink {
   pub fn new(filepath: &Path) -> Result<Self, Report> {
     Ok(Self {
-      writer: table_create(OutputSelection::Tracelog, filepath)?,
+      writer: table_create(filepath)?,
     })
   }
 

@@ -10,7 +10,6 @@ mod tests {
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
-  use app_output::output_plan::OutputSelection;
   use app_output::table_output::table_read_file;
   use eyre::Report;
   use helpers::run_symmetric;
@@ -192,7 +191,7 @@ seed_args: SeedArgs { seed: Some(7) },
 
     fn read_run(output: &Path) -> Result<SymmetricRun, Report> {
       let clock_model: ClockModel = json_read_file(output.join("timetree.clock-model.json"))?;
-      let rows: Vec<ClockRegressionResult> = table_read_file(OutputSelection::Rtt, &output.join("timetree.rtt.tsv"))?;
+      let rows: Vec<ClockRegressionResult> = table_read_file(&output.join("timetree.rtt.tsv"))?;
       let divergence = rows.into_iter().map(|row| (row.name, row.div)).collect();
       Ok(SymmetricRun {
         clock_rate: clock_model.clock_rate(),

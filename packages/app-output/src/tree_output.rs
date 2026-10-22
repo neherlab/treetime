@@ -1,7 +1,8 @@
 use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
 use crate::auspice::auspice_tree;
+use crate::command_outputs::CommandKind;
 use crate::nwk_comments::nwk_node_comments;
-use crate::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
+use crate::output_plan::{ResolvedOutputs, TreeWriteKind};
 use crate::usher_mat::mat_tree;
 use chrono::Utc;
 use eyre::{Report, WrapErr};

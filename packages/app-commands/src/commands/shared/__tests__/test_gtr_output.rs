@@ -179,6 +179,7 @@ mod tests {
           OutputSelection::Model => PlannedFile {
             path: dir.path().join("model.json"),
             requested,
+            condition: None,
           },
         },
         tree_outputs_by_partition: btreemap! {},

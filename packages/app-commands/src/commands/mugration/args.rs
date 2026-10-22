@@ -8,6 +8,7 @@ use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use app_output::ambiguity_outputs::AmbiguityOutputs;
+use app_output::output_conditions::OutputSettings;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -69,6 +70,13 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
   }
 }
 
+pub(crate) fn mugration_output_settings(raw: &TreetimeMugrationArgsRaw) -> OutputSettings {
+  OutputSettings {
+    trait_probabilities: raw.confidence,
+    ..OutputSettings::default()
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -117,10 +125,17 @@ pub struct TreetimeMugrationArgsRaw {
   #[deser(flatten)]
   pub metadata_id: MetadataIdArgs,
 
+  /// Write the probability of every state at every node
+  ///
+  /// Adds the `trait-probabilities` table to the outputs of `--output-all`, also when `--output-selection` lists
+  /// other outputs. Without `--output-all`, give the file with `--output-trait-probabilities`.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Output"))]
+  pub confidence: bool,
+
   /// Path to output the state probabilities of every node as a table.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
-  #[cfg_attr(feature = "clap", clap(long, visible_alias = "confidence", value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
   pub output_trait_probabilities: Option<PathBuf>,
 

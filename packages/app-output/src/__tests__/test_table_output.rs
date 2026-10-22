@@ -1,8 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::output_plan::OutputSelection;
+  use crate::output_format::table_format;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::path::Path;
   use treetime::timetree::confidence::NodeConfidenceInterval;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::csv::{CsvWriter, TableFormat};
@@ -10,18 +11,16 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::confidence_tsv(OutputSelection::ConfidenceTsv, Some(TableFormat::Tsv))]
-  #[case::coalescent_tsv(OutputSelection::Coalescent, Some(TableFormat::Tsv))]
-  #[case::confidence_csv(OutputSelection::TraitProbabilities, Some(TableFormat::Tsv))]
-  #[case::traits_csv(    OutputSelection::Traits,     Some(TableFormat::Tsv))]
-  #[case::clock_csv(     OutputSelection::Rtt,      Some(TableFormat::Tsv))]
-  #[case::tracelog(      OutputSelection::Tracelog,      Some(TableFormat::Tsv))]
-  #[case::coalescent_json(OutputSelection::CoalescentJson, None)]
-  #[case::auspice(       OutputSelection::Auspice,       None)]
-  #[case::nuc_fasta(     OutputSelection::Sequences, None)]
+  #[case::tsv(           "rtt.tsv",     Some(TableFormat::Tsv))]
+  #[case::csv(           "rtt.csv",     Some(TableFormat::Csv))]
+  #[case::compressed_tsv("rtt.tsv.gz",  Some(TableFormat::Tsv))]
+  #[case::compressed_csv("rtt.csv.zst", Some(TableFormat::Csv))]
+  #[case::stdout(        "-",           Some(TableFormat::Tsv))]
+  #[case::semicolons(    "rtt.ssv",     None)]
+  #[case::text(          "rtt.txt",     None)]
   #[trace]
-  fn test_table_output_format_of_selection(#[case] selection: OutputSelection, #[case] expected: Option<TableFormat>) {
-    assert_eq!(expected, selection.table_format());
+  fn test_table_output_format_follows_the_extension(#[case] path: &str, #[case] expected: Option<TableFormat>) {
+    assert_eq!(expected, table_format(Path::new(path)));
   }
 
   #[test]
@@ -35,7 +34,7 @@ mod tests {
     }];
 
     let mut buf = Vec::new();
-    let mut csv = CsvWriter::new(&mut buf, OutputSelection::ConfidenceTsv.table_format().unwrap());
+    let mut csv = CsvWriter::new(&mut buf, TableFormat::Tsv);
     intervals
       .iter()
       .try_for_each(|interval| csv.write_row(interval))

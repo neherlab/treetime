@@ -388,7 +388,6 @@ mod tests {
 
   #[rstest]
   #[case::ancestral_marginal(AppCommand::Ancestral, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")], "method_anc": "marginal" }))]
-  #[case::collapse_empty(AppCommand::Prune, json!({ "tree": zika("tree.nwk"), "alignment": [zika("aln.fasta.xz")], "collapse_empty": true }))]
   fn test_run_results_list_the_sequence_model_the_run_fitted(
     #[case] command: AppCommand,
     #[case] config: Value,

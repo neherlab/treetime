@@ -7,6 +7,7 @@ use app_commands::config::load::InvalidSetting;
 use app_commands::config::resolve_paths::resolve_config_paths;
 use app_commands::config::source::escape_pointer;
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
+use app_output::output_conditions::OutputCondition;
 use app_output::output_plan::{OutputSelection, PathPlaceholder};
 use eyre::Report;
 use itertools::Itertools;
@@ -61,6 +62,7 @@ pub(crate) fn resolve_pipeline(
     let outputs = StepOutputs {
       output_all: command.output_all().map(Path::to_path_buf),
       by_selection: resolved.paths_by_selection(),
+      conditional: resolved.conditional_selections(),
     };
 
     index.insert(raw.name.clone(), resolved_steps.len());
@@ -253,6 +255,17 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
     );
   };
 
+  if let Some(condition) = producer.outputs.conditional.get(&parsed) {
+    return make_error!(
+      "step `{step}` references `{selection}` from step `{}`, an output {}; set `{}` in step `{}` to write it \
+       in every run",
+      producer.name,
+      condition.description(),
+      condition.requirement(),
+      producer.name
+    );
+  }
+
   match by_selection.get(&parsed).map(Vec::as_slice) {
     None | Some([]) => make_error!(
       "step `{step}` references `{selection}` from step `{}`, which does not produce it; it produces: {}",
@@ -284,6 +297,11 @@ pub(crate) struct ResolvedStep {
 pub(crate) struct StepOutputs {
   pub output_all: Option<PathBuf>,
   pub by_selection: BTreeMap<OutputSelection, Vec<PathBuf>>,
+  #[expect(
+    clippy::zero_sized_map_values,
+    reason = "the map names the condition of each output, of which there is one kind"
+  )]
+  pub conditional: BTreeMap<OutputSelection, OutputCondition>,
 }
 
 fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
@@ -404,6 +422,41 @@ mod tests {
   }
 
   #[test]
+  fn test_resolve_chain_reference_to_a_conditional_output_names_the_mode() {
+    let config = json!({
+      "output_all": "tmp/run",
+      "steps": [
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"] } },
+        { "name": "opt", "optimize": { "tree": "in.nwk", "alignment": ["{{ steps.tt.outputs.sequences }}"] } }
+      ]
+    });
+    assert_error!(
+      resolve(config),
+      "step `opt` references `sequences` from step `tt`, an output written when auto resolves to marginal; set \
+       `branch_length_mode: marginal` in step `tt` to write it in every run"
+    );
+  }
+
+  #[test]
+  fn test_resolve_chain_reference_to_sequences_of_marginal_mode_resolves() {
+    let config = json!({
+      "output_all": "tmp/run",
+      "steps": [
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"], "branch_length_mode": "marginal" } },
+        { "name": "opt", "optimize": { "tree": "in.nwk", "alignment": ["{{ steps.tt.outputs.sequences }}"] } }
+      ]
+    });
+    let resolved = resolve(config).unwrap();
+    let CommandConfig::Optimize { config: args } = &step(&resolved, "opt").command else {
+      panic!("expected optimize step");
+    };
+    assert_eq!(
+      vec![PathBuf::from("/pipeline/tmp/run/tt/timetree.sequences.fasta")],
+      args.alignment.alignment
+    );
+  }
+
+  #[test]
   fn test_resolve_chain_reference_to_a_per_alignment_nexus_is_ambiguous() {
     let config = json!({
       "output_all": "tmp/run",
@@ -479,7 +532,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `traits` from step `tt`, which does not produce it; it produces: `node-data`, `auspice`, `clock-model`, `coalescent`, `gtr`, `nexus`, `nwk`, `sequences`"
+      "step `anc` references `traits` from step `tt`, which does not produce it; it produces: `auspice`, `clock-model`, `model`, `nexus`, `node-data`, `nwk`"
     );
   }
 

@@ -10,7 +10,7 @@ use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use app_commands::commands::prune::args::TreetimePruneArgsRaw;
 use app_commands::commands::shared::output_args::{
   AncestralOutputSelection, ClockOutputSelection, HomoplasyOutputSelection, MugrationOutputSelection,
-  OptimizeOutputSelection, PruneOutputSelection, TimetreeOutputSelection,
+  OptimizeOutputSelection, PruneOutputSelection, ResolveOutputs, TimetreeOutputSelection,
 };
 use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
 use app_commands::config::cli_rules::cli_rule_diagnostics;
@@ -21,7 +21,9 @@ use app_commands::config::properties::{PathRole, setting_properties};
 use app_commands::config::schema::command_schema;
 use app_commands::config::source::{ConfigSource, render_and_bail};
 use app_commands::json_value::SparseConfig;
-use app_output::output_plan::{CommandKind, OutputSelection, PathPlaceholder, ResolvedOutputs};
+use app_output::command_outputs::CommandKind;
+use app_output::output_conditions::OutputSettings;
+use app_output::output_plan::{OutputSelection, PathPlaceholder, ResolvedOutputs};
 use deser::adapters::As;
 use deser::{Deserialize, Serialize};
 use deser_serde::Serde;
@@ -273,7 +275,12 @@ macro_rules! impl_run_config {
       fn set_run_outputs(&mut self, out_dir: &Path) {
         self.output.output_all = Some(out_dir.to_path_buf());
         self.output_selection.output_selection =
-          run_output_selection(CommandKind::$kind, &self.output_selection.output_selection, &[$($required),*]);
+          run_output_selection(
+            CommandKind::$kind,
+            self.output_settings(),
+            &self.output_selection.output_selection,
+            &[$($required),*],
+          );
       }
     }
   };
@@ -294,11 +301,7 @@ impl_run_config!(
   Optimize,
   [OptimizeOutputSelection::Auspice, OptimizeOutputSelection::Model]
 );
-impl_run_config!(
-  TreetimePruneArgsRaw,
-  Prune,
-  [PruneOutputSelection::Auspice, PruneOutputSelection::Model]
-);
+impl_run_config!(TreetimePruneArgsRaw, Prune, [PruneOutputSelection::Auspice]);
 impl_run_config!(
   TreetimeAncestralArgsRaw,
   Ancestral,
@@ -340,11 +343,12 @@ fn changed_settings(
 
 fn run_output_selection<S: Copy + PartialEq + Into<OutputSelection> + IntoEnumIterator>(
   command: CommandKind,
+  settings: OutputSettings,
   chosen: &[S],
   required: &[S],
 ) -> Vec<S> {
   let chosen = if chosen.is_empty() {
-    let defaults = command.default_outputs();
+    let defaults = command.default_outputs(settings);
     S::iter()
       .filter(|selection| defaults.contains(&(*selection).into()))
       .collect_vec()

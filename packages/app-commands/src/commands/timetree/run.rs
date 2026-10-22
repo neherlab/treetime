@@ -3,18 +3,21 @@ use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::reconstructed_fasta::NucFastaWriters;
 use crate::commands::timetree::args::TreetimeTimetreeArgs;
+use crate::commands::timetree::branch_length_mode::settle_branch_length_outputs;
 use crate::commands::timetree::coalescent::CoalescentArg;
 use crate::commands::timetree::initialization::load_input_data;
 use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
+use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
+use app_output::output_format::FileFormat;
+use app_output::output_plan::{OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
@@ -53,10 +56,11 @@ pub fn run_timetree_estimation(
   let input_leaf_order = input_data.input_leaf_order.clone();
   let branch_length_mode = input_data.branch_length_mode.mode;
 
-  let resolved = args.resolve_outputs()?;
+  let mut resolved = args.resolve_outputs()?;
+  settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
-  let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, branch_length_mode, log)?;
+  let reconstructed_nuc_fasta = resolved.partition_paths(OutputSelection::Sequences);
   let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
   if mutation_units {
     input_data
@@ -173,8 +177,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
   if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
     match output.confidence_intervals.as_ref() {
       Some(intervals) => {
-        table_write_file(OutputSelection::ConfidenceTsv, &file.path, intervals)
-          .wrap_err("Failed to write confidence intervals")?;
+        table_write_file(&file.path, intervals).wrap_err("Failed to write confidence intervals")?;
         progress_info!(log, "Wrote confidence intervals to {}", file.path.display());
       },
       None => output_unavailable(
@@ -203,7 +206,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
     json_write_file(path, &output.clock_model, JsonPretty(true))?;
   }
   if let Some(path) = resolved.path(OutputSelection::Rtt) {
-    table_write_file(OutputSelection::Rtt, path, &output.clock_regression)?;
+    table_write_file(path, &output.clock_regression)?;
   }
 
   write_gtr_output(
@@ -215,30 +218,9 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
 }
 
 fn write_coalescent(selection: OutputSelection, coalescent: &CoalescentOutput, path: &Path) -> Result<(), Report> {
-  match selection.table_format() {
-    Some(_) => table_write_file(selection, path, coalescent.rows()),
-    None => json_write_file(path, coalescent, JsonPretty(true)),
-  }
-}
-
-pub(crate) fn reconstructed_nuc_fasta_paths(
-  resolved: &ResolvedOutputs,
-  branch_length_mode: BranchLengthMode,
-  log: &dyn LogSink,
-) -> Result<BTreeMap<usize, PathBuf>, Report> {
-  match branch_length_mode {
-    BranchLengthMode::Marginal => Ok(resolved.partition_paths(OutputSelection::Sequences)),
-    BranchLengthMode::Input => {
-      for file in resolved.partition_files(OutputSelection::Sequences) {
-        output_unavailable(
-          OutputSelection::Sequences,
-          file,
-          "--branch-length-mode=input reconstructs no ancestral sequences",
-          log,
-        )?;
-      }
-      Ok(BTreeMap::new())
-    },
+  match selection.file_format() {
+    FileFormat::Table => table_write_file(path, coalescent.rows()),
+    FileFormat::Chart | FileFormat::Fixed => json_write_file(path, coalescent, JsonPretty(true)),
   }
 }
 

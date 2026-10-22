@@ -5,8 +5,9 @@ mod tests {
     mugration_setup_from, no_mutations, node_key, parent_edge, substitution, topology, topology_from,
   };
   use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
+  use crate::command_outputs::CommandKind;
   use crate::nwk_comments::nwk_node_comments;
-  use crate::output_plan::{CommandKind, TreeWriteKind};
+  use crate::output_plan::TreeWriteKind;
   use crate::tree_output::write_tree_outputs;
   use eyre::Report;
   use indoc::indoc;

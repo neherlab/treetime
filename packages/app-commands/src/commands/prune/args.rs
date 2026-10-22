@@ -2,7 +2,6 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
-use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::output_args::{OutputCoreArgs, PruneOutputSelectionArgs};
 use crate::commands::shared::required::missing_required_args;
@@ -96,11 +95,6 @@ pub struct TreetimePruneArgsRaw {
   #[schemars(flatten)]
   #[deser(flatten)]
   pub output: OutputCoreArgs,
-
-  #[cfg_attr(feature = "clap", clap(flatten))]
-  #[schemars(flatten)]
-  #[deser(flatten)]
-  pub gtr_output: GtrOutputArgs,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]

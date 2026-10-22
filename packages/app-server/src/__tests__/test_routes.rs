@@ -44,7 +44,6 @@ pub(crate) mod tests {
           "model",
           "sequences",
           "clock-model",
-          "coalescent",
           "tracelog",
           "rtt"
         ])

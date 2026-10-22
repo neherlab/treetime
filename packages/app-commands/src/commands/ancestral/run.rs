@@ -14,8 +14,9 @@ use crate::commands::shared::sequence_inputs::{
 };
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::augur_node_data_ancestral::AncestralNodeSequences;
+use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs, output_unavailable};
+use app_output::output_plan::{OutputSelection, ResolvedOutputs, output_unavailable};
 use eyre::Report;
 use itertools::izip;
 use std::collections::BTreeMap;

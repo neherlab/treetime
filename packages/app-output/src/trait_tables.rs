@@ -12,13 +12,13 @@ use treetime_io::csv::CsvWriter;
 use treetime_utils::make_internal_report;
 
 pub fn write_traits_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> Result<(), Report> {
-  let mut csv = table_create(OutputSelection::Traits, path)?;
+  let mut csv = table_create(path)?;
   write_traits_rows(tree, &mut csv)?;
   csv.finish()
 }
 
 pub fn write_trait_confidence_csv(tree: &AnnotatedTreeView<'_>, path: &Path) -> Result<(), Report> {
-  let mut csv = table_create(OutputSelection::TraitProbabilities, path)?;
+  let mut csv = table_create(path)?;
   write_trait_confidence_rows(tree, &mut csv)?;
   csv.finish()
 }

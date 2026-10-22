@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeTraits};
-  use app_output::output_plan::{CommandKind, TreeWriteKind};
+  use app_output::command_outputs::CommandKind;
+  use app_output::output_plan::TreeWriteKind;
   use app_output::tree_output::write_tree_outputs;
   use eyre::Report;
   use indoc::indoc;

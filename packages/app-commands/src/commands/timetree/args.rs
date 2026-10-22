@@ -28,6 +28,7 @@ use crate::commands::timetree::coalescent::CoalescentArg;
 #[cfg(feature = "clap")]
 use crate::commands::timetree::coalescent::parse_coalescent;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
+use app_output::output_conditions::{NotReconstructed, OutputSettings, SequenceOutputs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use derive_more::{Deref, DerefMut};
@@ -104,6 +105,20 @@ pub(crate) fn check_branch_length_settings(
     }
   }
   Ok(())
+}
+
+pub(crate) fn timetree_output_settings(raw: &TreetimeTimetreeArgsRaw) -> OutputSettings {
+  let sequences = match (raw.branch_length_mode, raw.alignment.alignment.is_empty()) {
+    (BranchLengthModeCli::Input, _) => SequenceOutputs::NotReconstructed(NotReconstructed::InputBranchLengths),
+    (_, true) => SequenceOutputs::NotReconstructed(NotReconstructed::NoAlignment),
+    (BranchLengthModeCli::Marginal, false) => SequenceOutputs::Reconstructed,
+    (BranchLengthModeCli::Auto, false) => SequenceOutputs::WhenBranchLengthsReestimated,
+  };
+  OutputSettings {
+    coalescent: raw.coalescent.is_some(),
+    trait_probabilities: false,
+    sequences,
+  }
 }
 
 fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {

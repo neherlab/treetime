@@ -1,9 +1,8 @@
 use itertools::Itertools;
 
-const LABELS: [(&str, &str); 10] = [
+const LABELS: [(&str, &str); 9] = [
   ("clock_std_dev", "Clock rate std. dev."),
   ("coalescent", "Coalescent prior"),
-  ("confidence", "Date confidence intervals"),
   ("max_iter", "Iterations"),
   ("method_anc", "Ancestral method"),
   ("model", "Substitution model"),
@@ -13,7 +12,7 @@ const LABELS: [(&str, &str); 10] = [
   ("reroot", "Reroot method"),
 ];
 
-const WORDS: [(&str, &str); 16] = [
+const WORDS: [(&str, &str); 17] = [
   ("aa", "amino-acid"),
   ("anc", "ancestral"),
   ("aln", "alignment"),
@@ -29,6 +28,7 @@ const WORDS: [(&str, &str); 16] = [
   ("pb", "protobuf"),
   ("pc", "pseudocount"),
   ("pi", "pi"),
+  ("rtt", "root-to-tip"),
   ("tsv", "TSV"),
 ];
 

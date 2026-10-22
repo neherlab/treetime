@@ -1,4 +1,6 @@
 use crate::commands::shared::argument_error::argument_error;
+use app_output::output_conditions::OutputCondition;
+use app_output::output_plan::ResolvedOutputs;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
@@ -29,6 +31,18 @@ pub fn resolve_branch_length_mode(
     );
   }
   resolved
+}
+
+pub fn settle_branch_length_outputs(
+  outputs: &mut ResolvedOutputs,
+  resolved: &ResolvedBranchLengthMode,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let holds = resolved.mode == BranchLengthMode::Marginal;
+  let Err(unmet) = outputs.settle(OutputCondition::BranchLengthsReestimated, holds, log) else {
+    return Ok(());
+  };
+  resolved.require_marginal(&[&unmet.selection.setting_key()], unmet.selection.flag_name())
 }
 
 pub fn longest_branch_length(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Option<f64> {

@@ -10,8 +10,9 @@ use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{
   AlignmentSource, SequenceInputArgs, TreeAndSources, ancestral_input, read_tree_and_sources,
 };
+use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::io::Write;

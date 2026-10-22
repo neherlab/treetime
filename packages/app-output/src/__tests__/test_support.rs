@@ -5,7 +5,8 @@ pub(crate) mod tests {
     AnnotatedGraph, AnnotatedTreeView, Divergence, TreeAminoAcids, TreeDates, TreeSequences, TreeTraits,
   };
   use crate::auspice::auspice_tree;
-  use crate::output_plan::{CommandKind, OutputSelection};
+  use crate::command_outputs::CommandKind;
+  use crate::output_plan::OutputSelection;
   use crate::usher_mat::mat_tree;
   use eyre::Report;
   use jsonschema::{Retrieve, Uri, Validator};

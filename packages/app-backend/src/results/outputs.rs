@@ -65,11 +65,11 @@ impl RunOutputs {
         self.auspice = Some(auspice);
       },
       OutputSelection::ClockModel => self.clock_model = Some(json_read_file(path)?),
-      OutputSelection::Rtt => self.clock_rows = Some(table_read_file(kind, path)?),
+      OutputSelection::Rtt => self.clock_rows = Some(table_read_file(path)?),
       OutputSelection::NodeData => self.node_data = Some(json_read_file(path)?),
       OutputSelection::Model => self.gtr = Some(json_read_file(path)?),
-      OutputSelection::Tracelog => self.trace = Some(table_read_file(kind, path)?),
-      OutputSelection::Coalescent => self.coalescent = Some(table_read_file(kind, path)?),
+      OutputSelection::Tracelog => self.trace = Some(table_read_file(path)?),
+      OutputSelection::Coalescent => self.coalescent = Some(table_read_file(path)?),
       OutputSelection::HomoplasyStats => self.homoplasy = Some(json_read_file(path)?),
       _ => {},
     }
@@ -93,7 +93,7 @@ pub struct OutputProblem {
   pub message: String,
 }
 
-fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
+pub fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
   match command {
     AppCommand::Timetree => &[
       OutputSelection::Auspice,
@@ -115,8 +115,7 @@ fn result_outputs(command: AppCommand) -> &'static [OutputSelection] {
       OutputSelection::Model,
     ],
     AppCommand::Homoplasy => &[OutputSelection::Auspice, OutputSelection::HomoplasyStats],
-    AppCommand::Ancestral | AppCommand::Mugration | AppCommand::Prune => {
-      &[OutputSelection::Auspice, OutputSelection::Model]
-    },
+    AppCommand::Ancestral | AppCommand::Mugration => &[OutputSelection::Auspice, OutputSelection::Model],
+    AppCommand::Prune => &[OutputSelection::Auspice],
   }
 }

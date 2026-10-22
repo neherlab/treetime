@@ -79,12 +79,18 @@
       ],
       "x-cli-flag": "--metadata-delimiters"
     },
-    "output_confidence_csv": {
-      "description": "Path to output state-probability-profile CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+    "confidence": {
+      "description": "Write the probability of every state at every node\n\nAdds the `trait-probabilities` table to the outputs of `--output-all`, also when `--output-selection` lists\nother outputs. Without `--output-all`, give the file with `--output-trait-probabilities`.",
+      "type": "boolean",
+      "default": false,
+      "x-cli-flag": "--confidence"
+    },
+    "output_trait_probabilities": {
+      "description": "Path to output the state probabilities of every node as a table.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-confidence-csv"
+      "x-cli-flag": "--output-trait-probabilities"
     },
     "pc": {
       "description": "Pseudo-count of the substitution model fit. Higher values give flatter models.",
@@ -133,29 +139,29 @@
       "default": false,
       "x-cli-flag": "--filter-uninformative-root"
     },
-    "output_augur_node_data": {
+    "output_node_data": {
       "description": "Path to output augur-compatible node data JSON.\n\nContains per-node discrete trait assignments, confidence profiles, entropy,\nthe inferred substitution model, and branch state-change labels. The output\nis compatible with augur export v2 --node-data for Nextstrain pipeline\nintegration.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-augur-node-data"
+      "x-cli-flag": "--output-node-data"
     },
-    "output_gtr": {
-      "description": "Path to output GTR model JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+    "output_model": {
+      "description": "Path to output the fitted substitution models as JSON.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-gtr"
+      "x-cli-flag": "--output-model"
     },
-    "output_traits_csv": {
-      "description": "Path to output traits CSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+    "output_traits": {
+      "description": "Path to output the inferred trait state of every node as a table.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-traits-csv"
+      "x-cli-flag": "--output-traits"
     },
     "output_all": {
-      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-augur-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{partition}`, which is replaced by the number. Other tree outputs with\n`{partition}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
+      "description": "Write all default output files into this directory.\n\nProduces the default set of tree and non-tree outputs for the command, using\n`<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which\noutputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or\nsupplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the\nsubstitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and\n`.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to\nstandard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written\nonce per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER\nMAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the\norder of the `--alignment` list. Their default names carry the number after the command\nname (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output\nmust contain `{alignment}`, which is replaced by the number. Other tree outputs with\n`{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The\ncompression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`,\n`XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress\nwith all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and\nto read than the other formats.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -168,35 +174,35 @@
       "x-cli-flag": "--newick-annotations"
     },
     "output_tree_nwk": {
-      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n`--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is\nwritten per alignment, and the file name must contain `{partition}`, which is replaced by the\nnumber of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Newick tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n`--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is\nwritten per alignment, and the file name must contain `{alignment}`, which is replaced by the\nnumber of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nwk"
     },
     "output_tree_nexus": {
-      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. The\nnodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must\ncontain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Nexus tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`. The\nnodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must\ncontain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-nexus"
     },
     "output_tree_auspice": {
-      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output Auspice v2 JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-auspice"
     },
     "output_tree_mat_pb": {
-      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT protobuf tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
       "x-cli-flag": "--output-tree-mat-pb"
     },
     "output_tree_mat_json": {
-      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
+      "description": "Path to output UShER MAT JSON tree file.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.\n\nWith several `--alignment` files, one file is written per alignment, and the file name\nmust contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.\nUse `-` to write uncompressed to stdout.\n\nParent directories are created if missing.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
@@ -217,7 +223,7 @@
       "x-cli-flag": "--output-tree-dot"
     },
     "output_selection": {
-      "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails.",
+      "description": "List of outputs to produce with `--output-all`.\n\nRestricts which outputs `--output-all` writes. Special value `all` expands to every output available for this\ncommand. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution\nmodel of a run that fits none. A per-file flag for such an output fails. An output that the settings rule\nout fails in both forms, for example the sequences of `timetree --branch-length-mode input`.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/MugrationOutputSelection"
@@ -226,7 +232,7 @@
       "x-cli-flag": "--output-selection"
     },
     "ambiguity_threshold": {
-      "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits CSV and no field in the JSON outputs.",
+      "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA trait output names the reported states of a node with more than one reported state, joined by `|` in the order of the state names, for example `American Samoa|Samoa`. A node with one reported state has an empty cell in the traits table and no field in the JSON outputs.",
       "type": "number",
       "minimum": 0.0,
       "maximum": 1.0,
@@ -294,23 +300,23 @@
         "mat-json",
         "graph-json",
         "dot",
-        "augur-node-data",
-        "gtr",
-        "confidence-csv",
-        "traits-csv"
+        "node-data",
+        "model",
+        "trait-probabilities",
+        "traits"
       ]
     },
     "MugrationAmbiguityOutput": {
       "oneOf": [
         {
-          "description": "Extra column `<attribute>_ambiguous` in the traits CSV",
+          "description": "Extra column `<attribute>_ambiguous` in the traits table",
           "type": "string",
-          "const": "traits-csv"
+          "const": "traits"
         },
         {
           "description": "Extra node field `<attribute>_ambiguous` in the augur node data",
           "type": "string",
-          "const": "augur-node-data"
+          "const": "node-data"
         },
         {
           "description": "Extra node attribute `<attribute>_ambiguous` in the Auspice JSON",

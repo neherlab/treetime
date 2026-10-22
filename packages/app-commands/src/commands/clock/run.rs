@@ -6,9 +6,10 @@ use crate::commands::shared::tree_input::read_input_tree;
 #[cfg(not(target_family = "wasm"))]
 use crate::rtt_chart::write_rtt_chart;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};
+use app_output::command_outputs::CommandKind;
 #[cfg(target_family = "wasm")]
 use app_output::output_plan::output_unavailable;
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
@@ -113,7 +114,7 @@ fn write_clock_run_outputs(
     json_write_file(path, clock_model, JsonPretty(true))?;
   }
   if let Some(path) = resolved.path(OutputSelection::Rtt) {
-    table_write_file(OutputSelection::Rtt, path, regression_results)?;
+    table_write_file(path, regression_results)?;
   }
   write_clock_chart(resolved, clock_model, regression_results, log)
 }

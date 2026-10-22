@@ -78,7 +78,7 @@
         "clock_std_dev",
         "confidence",
         "coalescent",
-        "skyline_n_points",
+        "n_skyline",
         "skyline_stiffness",
         "reroot",
         "outgroup",
@@ -434,8 +434,8 @@
             "SEQUENCE_LENGTH"
           ],
           "conflicts": [],
-          "help": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
-          "more": ""
+          "help": "Length of the sequences, used to calculate the expected variation of the branch lengths",
+          "more": "Required without `--alignment`, and applies only then: with an alignment, the run takes the length from the alignment."
         },
         {
           "key": "alphabet",
@@ -523,7 +523,7 @@
           ],
           "conflicts": [],
           "help": "Standard deviation of the provided clock rate estimate",
-          "more": ""
+          "more": "Applies only with `--confidence`, whose date intervals include the clock rate uncertainty."
         },
         {
           "key": "relax",
@@ -661,7 +661,7 @@
         },
         {
           "key": "confidence",
-          "label": "Date confidence intervals",
+          "label": "Confidence",
           "flag": "--confidence",
           "group": "Dating",
           "role": "setting",
@@ -748,24 +748,24 @@
           "more": "A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node times have no coalescent prior."
         },
         {
-          "key": "skyline_n_points",
-          "label": "Skyline number of points",
-          "flag": "--skyline-n-points",
+          "key": "n_skyline",
+          "label": "Skyline grid points",
+          "flag": "--n-skyline",
           "group": "Coalescent prior",
           "role": "setting",
           "kind": "integer",
-          "nullable": false,
+          "nullable": true,
           "options": [],
           "item_kind": "string",
-          "default_value": 20,
-          "minimum": 0.0,
+          "documented_default": 20,
+          "minimum": 2.0,
           "examples": [],
           "value_names": [
-            "SKYLINE_N_POINTS"
+            "N_SKYLINE"
           ],
           "conflicts": [],
           "help": "Number of grid points in skyline coalescent model.",
-          "more": "Only used with --coalescent skyline. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default."
+          "more": "Applies only to --coalescent skyline. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2."
         },
         {
           "key": "skyline_stiffness",
@@ -774,17 +774,17 @@
           "group": "Coalescent prior",
           "role": "setting",
           "kind": "number",
-          "nullable": false,
+          "nullable": true,
           "options": [],
           "item_kind": "string",
-          "default_value": 2.0,
+          "documented_default": 2.0,
           "examples": [],
           "value_names": [
             "SKYLINE_STIFFNESS"
           ],
           "conflicts": [],
           "help": "Smoothing stiffness for the skyline coalescent.",
-          "more": "Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used with --coalescent skyline."
+          "more": "Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Applies only to --coalescent skyline."
         },
         {
           "key": "coalescent_confidence",
@@ -793,17 +793,17 @@
           "group": "Coalescent prior",
           "role": "setting",
           "kind": "number",
-          "nullable": false,
+          "nullable": true,
           "options": [],
           "item_kind": "string",
-          "default_value": 2.0,
+          "documented_default": 2.0,
           "examples": [],
           "value_names": [
             "COALESCENT_CONFIDENCE"
           ],
           "conflicts": [],
           "help": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.",
-          "more": "Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed time scale is not inferred and therefore has no band."
+          "more": "Applies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed time scale is not inferred and therefore has no band."
         },
         {
           "key": "gen_per_year",
@@ -812,17 +812,17 @@
           "group": "Coalescent prior",
           "role": "setting",
           "kind": "number",
-          "nullable": false,
+          "nullable": true,
           "options": [],
           "item_kind": "string",
-          "default_value": 50.0,
+          "documented_default": 50.0,
           "examples": [],
           "value_names": [
             "GEN_PER_YEAR"
           ],
           "conflicts": [],
           "help": "Generations per year for converting the coalescent time scale Tc into an effective population size.",
-          "more": "The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference."
+          "more": "The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with `--coalescent`."
         },
         {
           "key": "reroot",
@@ -913,7 +913,7 @@
           "group": "Substitution model",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "jc69",
@@ -949,7 +949,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "infer",
+          "documented_default": "infer",
           "examples": [],
           "value_names": [
             "MODEL"
@@ -984,7 +984,7 @@
           "group": "Substitution model",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "estimate",
@@ -996,14 +996,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "estimate",
+          "documented_default": "estimate",
           "examples": [],
           "value_names": [
             "PARTITION_RATES"
           ],
           "conflicts": [],
           "help": "Relative substitution rates of the partitions",
-          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate."
+          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions."
         },
         {
           "key": "representation",
@@ -1012,7 +1012,7 @@
           "group": "Ancestral reconstruction",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "auto",
@@ -1028,7 +1028,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "auto",
+          "documented_default": "auto",
           "examples": [],
           "value_names": [
             "REPRESENTATION"
@@ -1247,7 +1247,7 @@
         },
         {
           "key": "output_rtt",
-          "label": "Output rtt",
+          "label": "Output root-to-tip",
           "flag": "--output-rtt",
           "group": "Output",
           "role": "output",
@@ -1351,15 +1351,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -1376,14 +1376,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -1401,7 +1401,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -1419,7 +1419,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -1597,7 +1597,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "ambiguity_threshold",
@@ -2240,15 +2240,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -2265,14 +2265,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -2290,7 +2290,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -2308,7 +2308,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -2420,7 +2420,7 @@
         },
         {
           "key": "output_rtt",
-          "label": "Output rtt",
+          "label": "Output root-to-tip",
           "flag": "--output-rtt",
           "group": "Output",
           "role": "output",
@@ -2438,7 +2438,7 @@
         },
         {
           "key": "output_rtt_chart",
-          "label": "Output rtt chart",
+          "label": "Output root-to-tip chart",
           "flag": "--output-rtt-chart",
           "group": "Output",
           "role": "output",
@@ -2538,7 +2538,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "topology_order",
@@ -2969,7 +2969,7 @@
           "group": "Substitution model",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "jc69",
@@ -3005,7 +3005,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "infer",
+          "documented_default": "infer",
           "examples": [],
           "value_names": [
             "MODEL"
@@ -3096,7 +3096,7 @@
           "group": "Ancestral reconstruction",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "auto",
@@ -3112,7 +3112,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "auto",
+          "documented_default": "auto",
           "examples": [],
           "value_names": [
             "REPRESENTATION"
@@ -3367,15 +3367,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -3392,14 +3392,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -3417,7 +3417,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -3435,7 +3435,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -3593,7 +3593,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "ambiguity_threshold",
@@ -3612,7 +3612,7 @@
           ],
           "conflicts": [],
           "help": "Report every state whose posterior probability is at most this far below the probability of the most likely state.",
-          "more": "The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.\n\nA sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior."
+          "more": "The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.\n\nA sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report. The setting applies only when a marginal reconstruction runs (`--method-anc marginal`, or the amino-acid reconstruction of `--translations`), because Fitch parsimony computes no posterior."
         },
         {
           "key": "ambiguity_outputs",
@@ -4041,7 +4041,7 @@
           "group": "Substitution model",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "jc69",
@@ -4077,7 +4077,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "infer",
+          "documented_default": "infer",
           "examples": [],
           "value_names": [
             "MODEL"
@@ -4140,7 +4140,7 @@
           "group": "Ancestral reconstruction",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "auto",
@@ -4156,7 +4156,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "auto",
+          "documented_default": "auto",
           "examples": [],
           "value_names": [
             "REPRESENTATION"
@@ -4379,15 +4379,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -4404,14 +4404,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -4429,7 +4429,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -4447,7 +4447,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -4633,7 +4633,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "topology_order",
@@ -5031,6 +5031,25 @@
           "more": ""
         },
         {
+          "key": "confidence",
+          "label": "Confidence",
+          "flag": "--confidence",
+          "group": "Output",
+          "role": "setting",
+          "kind": "switch",
+          "nullable": false,
+          "options": [],
+          "item_kind": "string",
+          "default_value": false,
+          "examples": [],
+          "value_names": [
+            "CONFIDENCE"
+          ],
+          "conflicts": [],
+          "help": "Write the probability of every state at every node",
+          "more": "Adds the `trait-probabilities` table to the outputs of `--output-all`, also when `--output-selection` lists other outputs. Without `--output-all`, give the file with `--output-trait-probabilities`."
+        },
+        {
           "key": "output_trait_probabilities",
           "label": "Output trait probabilities",
           "flag": "--output-trait-probabilities",
@@ -5118,15 +5137,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -5143,14 +5162,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -5168,7 +5187,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -5186,7 +5205,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -5344,7 +5363,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "ambiguity_threshold",
@@ -5953,7 +5972,7 @@
           "group": "Substitution model",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "jc69",
@@ -5989,7 +6008,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "infer",
+          "documented_default": "infer",
           "examples": [],
           "value_names": [
             "MODEL"
@@ -6024,7 +6043,7 @@
           "group": "Substitution model",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "estimate",
@@ -6036,14 +6055,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "estimate",
+          "documented_default": "estimate",
           "examples": [],
           "value_names": [
             "PARTITION_RATES"
           ],
           "conflicts": [],
           "help": "Relative substitution rates of the partitions",
-          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate."
+          "more": "Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions."
         },
         {
           "key": "representation",
@@ -6052,7 +6071,7 @@
           "group": "Ancestral reconstruction",
           "role": "setting",
           "kind": "enum",
-          "nullable": false,
+          "nullable": true,
           "options": [
             {
               "value": "auto",
@@ -6068,7 +6087,7 @@
             }
           ],
           "item_kind": "string",
-          "default_value": "auto",
+          "documented_default": "auto",
           "examples": [],
           "value_names": [
             "REPRESENTATION"
@@ -6125,15 +6144,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -6150,14 +6169,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -6175,7 +6194,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -6193,7 +6212,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -6407,7 +6426,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "no_indels",
@@ -6582,7 +6601,7 @@
           ],
           "conflicts": [],
           "help": "Disable merging of polytomy siblings that share substitutions.",
-          "more": "By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--representation dense` and the flag is then a no-op."
+          "more": "By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. The step and the flag apply only to the sparse representation."
         },
         {
           "key": "no_hoist_reversions",
@@ -6601,7 +6620,7 @@
           ],
           "conflicts": [],
           "help": "Disable the reversion hoist in polytomies.",
-          "more": "By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--representation dense` and the flag is then a no-op."
+          "more": "By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. The step and the flag apply only to the sparse representation."
         },
         {
           "key": "topology_order",
@@ -7058,15 +7077,15 @@
           ],
           "conflicts": [],
           "help": "Write all default output files into this directory.",
-          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
+          "more": "Produces the default set of tree and non-tree outputs for the command, using `<dir>/<command>.<ext>` paths. Combine with `--output-selection` to restrict which outputs are written.\n\nPer-file flags (`--output-tree-nwk`, `--output-node-data`, etc.) override or supplement the files produced by `--output-all`.\n\nAn output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.\n\nTable outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to standard output. Default names use `.tsv`.\n\nWith several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{alignment}`, which is replaced by the number. Other tree outputs with `{alignment}` in their file name are also written once per file.\n\nAn output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats."
         },
         {
-          "key": "output_nwk_style",
-          "label": "Newick style",
-          "flag": "--output-nwk-style",
+          "key": "newick_annotations",
+          "label": "Newick annotations",
+          "flag": "--newick-annotations",
           "group": "Output",
           "role": "setting",
-          "kind": "enum-list",
+          "kind": "enum",
           "nullable": false,
           "options": [
             {
@@ -7083,14 +7102,14 @@
             }
           ],
           "item_kind": "string",
-          "default_value": [],
+          "default_value": "plain",
           "examples": [],
           "value_names": [
-            "OUTPUT_NWK_STYLE"
+            "NEWICK_ANNOTATIONS"
           ],
           "conflicts": [],
-          "help": "NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.",
-          "more": "Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`."
+          "help": "Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.",
+          "more": "`plain` writes no comments. `beast` writes a comment such as `[&mutations=\"A45G,G136T\",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads."
         },
         {
           "key": "output_tree_nwk",
@@ -7108,7 +7127,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Newick tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.\n\nWith several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_nexus",
@@ -7126,7 +7145,7 @@
           ],
           "conflicts": [],
           "help": "Path to output Nexus tree file.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.\n\nWith several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations=\"A45G,G136T\",date=2016.45]`).\n\nWith several `--alignment` files, one file is written per alignment, and the file name must contain `{alignment}`, which is replaced by the number of the alignment (1, 2, ...).\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
           "key": "output_tree_auspice",
@@ -7219,24 +7238,6 @@
           "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`.\n\nCompression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.\n\nParent directories are created if missing."
         },
         {
-          "key": "output_model",
-          "label": "Output model",
-          "flag": "--output-model",
-          "group": "Output",
-          "role": "output",
-          "kind": "text",
-          "nullable": true,
-          "options": [],
-          "item_kind": "string",
-          "examples": [],
-          "value_names": [
-            "OUTPUT_MODEL"
-          ],
-          "conflicts": [],
-          "help": "Path to output the fitted substitution models as JSON.",
-          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
-        },
-        {
           "key": "output_selection",
           "label": "Output files",
           "flag": "--output-selection",
@@ -7276,10 +7277,6 @@
             {
               "value": "dot",
               "help": ""
-            },
-            {
-              "value": "model",
-              "help": ""
             }
           ],
           "item_kind": "string",
@@ -7290,7 +7287,7 @@
           ],
           "conflicts": [],
           "help": "List of outputs to produce with `--output-all`.",
-          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails."
+          "more": "Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.\n\nA selected output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."
         },
         {
           "key": "topology_order",

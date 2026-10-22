@@ -2,8 +2,10 @@
 mod tests {
   use crate::commands::clock::args::TreetimeClockArgsRaw;
   use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs, ResolveOutputs};
+  use app_output::command_outputs::CommandKind;
+  use app_output::output_conditions::OutputSettings;
   use app_output::output_plan::TreeWriteKind;
-  use app_output::output_plan::{CommandKind, OutputSelection, PlannedFile, Requested, ResolvedOutputs};
+  use app_output::output_plan::{OutputSelection, PlannedFile, Requested, ResolvedOutputs};
   use clap::Parser;
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
@@ -23,7 +25,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Ancestral,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
       .unwrap();
 
     assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nwk(NwkStyle::Plain)));
@@ -46,7 +54,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[OutputSelection::Nwk], &[])
+      .resolve(
+        CommandKind::Ancestral,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[OutputSelection::Nwk],
+        &[],
+      )
       .unwrap();
 
     assert_eq!(helpers::tree_paths(&resolved).len(), 1);
@@ -60,7 +74,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Ancestral,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
       .unwrap();
 
     assert_eq!(
@@ -72,7 +92,13 @@ mod tests {
   #[test]
   fn test_resolve_no_outputs_errors() {
     let args = OutputCoreArgs::default();
-    let result = args.resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[]);
+    let result = args.resolve(
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    );
     assert_error!(
       result,
       "No output flags provided. At least one is required: --output-all or one of the --output-tree-* / --output-* flags"
@@ -90,6 +116,7 @@ mod tests {
     let result = args.resolve(
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
+      OutputSettings::default(),
       &[],
       &[(OutputSelection::Model, Some(path.as_path()))],
     );
@@ -117,6 +144,7 @@ mod tests {
     let result = args.resolve(
       CommandKind::Ancestral,
       NonZeroUsize::MIN,
+      OutputSettings::default(),
       &[],
       &[(OutputSelection::Model, Some(Path::new(gtr_path)))],
     );
@@ -133,7 +161,13 @@ mod tests {
       ..OutputCoreArgs::default()
     };
 
-    let result = args.resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[]);
+    let result = args.resolve(
+      CommandKind::Ancestral,
+      NonZeroUsize::MIN,
+      OutputSettings::default(),
+      &[],
+      &[],
+    );
 
     assert_error!(
       result,
@@ -153,6 +187,7 @@ mod tests {
       .resolve(
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[],
         &[(OutputSelection::Model, Some(gtr_path.as_path()))],
       )
@@ -161,6 +196,7 @@ mod tests {
     let expected = PlannedFile {
       path: gtr_path,
       requested: Requested::Named,
+      condition: None,
     };
     assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model]);
   }
@@ -176,6 +212,7 @@ mod tests {
       .resolve(
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[],
         &[(OutputSelection::Model, None)],
       )
@@ -184,6 +221,7 @@ mod tests {
     let expected = PlannedFile {
       path: dir.path().join("ancestral.model.json"),
       requested: Requested::All,
+      condition: None,
     };
     assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model]);
   }
@@ -196,7 +234,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Clock, NonZeroUsize::MIN, &[OutputSelection::Nwk], &[])
+      .resolve(
+        CommandKind::Clock,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[OutputSelection::Nwk],
+        &[],
+      )
       .unwrap();
     assert_eq!(
       &helpers::tree_paths(&resolved)[&TreeWriteKind::Nwk(NwkStyle::Plain)],
@@ -212,7 +256,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Timetree, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Timetree,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
       .unwrap();
     assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Auspice));
   }
@@ -232,7 +282,7 @@ mod tests {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
-    let resolved = args.resolve(command, NonZeroUsize::MIN, &[OutputSelection::All], &[]).unwrap();
+    let resolved = args.resolve(command, NonZeroUsize::MIN, OutputSettings::default(), &[OutputSelection::All], &[]).unwrap();
     let actual = helpers::tree_paths(&resolved).keys().copied().collect();
     let expected = btreeset! {
       TreeWriteKind::Nwk(NwkStyle::Plain),
@@ -252,7 +302,15 @@ mod tests {
       output_tree_mat_pb: Some(PathBuf::from("/tmp/out.pb")),
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, &[], &[]).unwrap();
+    let resolved = args
+      .resolve(
+        CommandKind::Clock,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
+      .unwrap();
     assert_eq!(
       &PathBuf::from("/tmp/out.pb"),
       &helpers::tree_paths(&resolved)[&TreeWriteKind::MatPb]
@@ -265,7 +323,15 @@ mod tests {
       output_tree_auspice: Some(PathBuf::from("/tmp/out.auspice.json")),
       ..Default::default()
     };
-    let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, &[], &[]).unwrap();
+    let resolved = args
+      .resolve(
+        CommandKind::Clock,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
+      .unwrap();
     assert_eq!(
       &PathBuf::from("/tmp/out.auspice.json"),
       &helpers::tree_paths(&resolved)[&TreeWriteKind::Auspice]
@@ -283,6 +349,7 @@ mod tests {
       .resolve(
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[OutputSelection::Nwk, OutputSelection::Nexus],
         &[],
       )
@@ -313,6 +380,7 @@ mod tests {
       .resolve(
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[OutputSelection::Nwk, OutputSelection::Nexus],
         &[],
       )
@@ -331,7 +399,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Ancestral,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
       .unwrap();
     assert_eq!(
       helpers::tree_paths(&resolved),
@@ -347,7 +421,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Ancestral,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
       .unwrap();
     assert_eq!(
       helpers::tree_paths(&resolved),
@@ -367,6 +447,7 @@ mod tests {
       .resolve(
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[OutputSelection::Nwk, OutputSelection::Nexus],
         &[],
       )
@@ -390,6 +471,7 @@ mod tests {
       .resolve(
         CommandKind::Ancestral,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[OutputSelection::Nexus],
         &[],
       )
@@ -410,7 +492,13 @@ mod tests {
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Ancestral,
+        NonZeroUsize::MIN,
+        OutputSettings::default(),
+        &[],
+        &[],
+      )
       .unwrap();
     let expected: BTreeMap<TreeWriteKind, PathBuf> = btreemap! {
       TreeWriteKind::Nwk(NwkStyle::Nhx) => PathBuf::from("my.nwk"),
@@ -420,14 +508,23 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_timetree_default_includes_coalescent_tsv_not_csv_json() {
+  fn test_resolve_timetree_default_with_a_prior_includes_the_coalescent_table_not_json() {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       ..Default::default()
     };
     let resolved = args
-      .resolve(CommandKind::Timetree, NonZeroUsize::MIN, &[], &[])
+      .resolve(
+        CommandKind::Timetree,
+        NonZeroUsize::MIN,
+        OutputSettings {
+          coalescent: true,
+          ..OutputSettings::default()
+        },
+        &[],
+        &[],
+      )
       .unwrap();
 
     assert_eq!(
@@ -451,6 +548,7 @@ mod tests {
       .resolve(
         CommandKind::Timetree,
         NonZeroUsize::MIN,
+        OutputSettings::default(),
         &[OutputSelection::CoalescentJson],
         &[],
       )
@@ -460,6 +558,7 @@ mod tests {
       OutputSelection::CoalescentJson => PlannedFile {
         path: dir.path().join("timetree.coalescent.json"),
         requested: Requested::All,
+        condition: None,
       },
     };
     assert_eq!(expected, resolved.non_tree_outputs);
@@ -471,7 +570,7 @@ mod tests {
       OutputSelection::Coalescent,
       OutputSelection::CoalescentJson,
     };
-    assert!(coalescent.is_subset(&CommandKind::Timetree.all_selectable()));
+    assert!(coalescent.is_subset(&CommandKind::Timetree.all_selectable(OutputSettings::default())));
   }
 
   #[rustfmt::skip]
@@ -488,7 +587,7 @@ mod tests {
       OutputSelection::CoalescentJson,
     };
     assert!(
-      command.all_selectable().is_disjoint(&coalescent),
+      command.all_selectable(OutputSettings::default()).is_disjoint(&coalescent),
       "{command:?} must not offer coalescent outputs"
     );
   }
@@ -509,7 +608,7 @@ mod tests {
       ..Default::default()
     };
 
-    let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, &selection, &[]).unwrap();
+    let resolved = args.resolve(CommandKind::Clock, NonZeroUsize::MIN, OutputSettings::default(), &selection, &[]).unwrap();
 
     let expected: BTreeMap<OutputSelection, PlannedFile> = expected
       .into_iter()
@@ -517,6 +616,7 @@ mod tests {
         let file = PlannedFile {
           path: dir.path().join(name),
           requested: Requested::All,
+          condition: None,
         };
         (selection, file)
       })

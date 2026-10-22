@@ -211,7 +211,8 @@ mod tests {
       Mutations, NUC_ALPHABET, ancestral_graph, ancestral_setup, annotated, no_mutations, parent_edge, topology_from,
     };
     use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences};
-    use crate::output_plan::{CommandKind, TreeWriteKind};
+    use crate::command_outputs::CommandKind;
+    use crate::output_plan::TreeWriteKind;
     use crate::tree_output::write_tree_outputs;
     use crate::usher_mat::{MatGapCounts, MatOutput, mat_tree};
     use eyre::{Report, WrapErr};

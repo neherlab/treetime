@@ -115,6 +115,14 @@ pub enum TableFormat {
 }
 
 impl TableFormat {
+  pub fn from_path(filepath: impl AsRef<Path>) -> Option<Self> {
+    match delimiter_from_path(filepath)? {
+      b',' => Some(Self::Csv),
+      b'\t' => Some(Self::Tsv),
+      _ => None,
+    }
+  }
+
   pub const fn delimiter(self) -> u8 {
     match self {
       Self::Csv => b',',

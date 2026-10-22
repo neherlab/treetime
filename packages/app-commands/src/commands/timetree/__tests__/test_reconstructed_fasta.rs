@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::timetree::branch_length_mode::BranchLengthModeCli;
-  use crate::commands::timetree::run::reconstructed_nuc_fasta_paths;
-  use app_output::output_plan::Requested;
+  use crate::commands::shared::argument_error::ArgumentError;
+  use crate::commands::timetree::branch_length_mode::{
+    BranchLengthModeCli, ResolvedBranchLengthMode, settle_branch_length_outputs,
+  };
+  use app_output::output_plan::{OutputSelection, Requested};
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -11,9 +13,8 @@ mod tests {
   use std::path::PathBuf;
   use treetime::alphabet::alphabet::Alphabet;
   use treetime::progress::NoopProgress;
-  use treetime::timetree::params::BranchLengthMode;
   use treetime_primitives::AsciiChar;
-  use treetime_utils::assert_error;
+  use treetime_utils::{assert_error, o};
 
   #[test]
   fn test_timetree_reconstructed_fasta_requires_ancestral_reconstruction() {
@@ -22,7 +23,8 @@ mod tests {
     });
     assert_error!(
       result,
-      "--output-sequences was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
+      "--output-sequences was requested, but --branch-length-mode input keeps the input branch lengths and reconstructs \
+       no sequences"
     );
   }
 
@@ -119,29 +121,45 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::marginal_named(  (BranchLengthMode::Marginal, Requested::Named), btreemap! { 1 => PathBuf::from("out.fasta") })]
-  #[case::marginal_all(    (BranchLengthMode::Marginal, Requested::All),   btreemap! { 1 => PathBuf::from("out.fasta") })]
-  #[case::input_all(       (BranchLengthMode::Input,    Requested::All),   btreemap! {})]
+  #[case::marginal_named((Some(0.05), Requested::Named), btreemap! { 1 => PathBuf::from("out.fasta") })]
+  #[case::marginal_all(  (Some(0.05), Requested::All),   btreemap! { 1 => PathBuf::from("out.fasta") })]
+  #[case::no_length_all( (None,       Requested::All),   btreemap! { 1 => PathBuf::from("out.fasta") })]
+  #[case::input_all(     (Some(0.25), Requested::All),   btreemap! {})]
   #[trace]
-  fn test_timetree_reconstructed_fasta_path_follows_reconstruction(
-    #[case] (mode, requested): (BranchLengthMode, Requested),
+  fn test_timetree_conditional_fasta_follows_the_resolved_mode(
+    #[case] (longest_branch, requested): (Option<f64>, Requested),
     #[case] expected: BTreeMap<usize, PathBuf>,
   ) -> Result<(), Report> {
-    let resolved = helpers::fasta_outputs(requested);
+    let mut resolved = helpers::conditional_fasta_outputs(requested);
+    let mode = ResolvedBranchLengthMode::new(BranchLengthModeCli::Auto, true, longest_branch);
 
-    let actual = reconstructed_nuc_fasta_paths(&resolved, mode, &NoopProgress)?;
+    settle_branch_length_outputs(&mut resolved, &mode, &NoopProgress)?;
 
-    assert_eq!(expected, actual);
+    assert_eq!(
+      (expected, true),
+      (resolved.partition_paths(OutputSelection::Sequences), resolved.conditional_selections().is_empty())
+    );
     Ok(())
   }
 
   #[test]
-  fn test_timetree_reconstructed_fasta_named_in_input_mode_fails() {
-    let resolved = helpers::fasta_outputs(Requested::Named);
+  fn test_timetree_conditional_fasta_named_fails_when_auto_resolves_to_input() {
+    let mut resolved = helpers::conditional_fasta_outputs(Requested::Named);
+    let mode = ResolvedBranchLengthMode::new(BranchLengthModeCli::Auto, true, Some(0.25));
 
-    assert_error!(
-      reconstructed_nuc_fasta_paths(&resolved, BranchLengthMode::Input, &NoopProgress),
-      "--output-sequences was requested, but --branch-length-mode=input reconstructs no ancestral sequences"
+    let result = settle_branch_length_outputs(&mut resolved, &mode, &NoopProgress);
+
+    let Err(ArgumentError { message, settings }) = result.map_err(|report| report.downcast::<ArgumentError>().unwrap())
+    else {
+      panic!("expected an argument error");
+    };
+    assert_eq!(
+      (
+        "--output-sequences requires re-estimated branch lengths (--branch-length-mode marginal), but \
+         --branch-length-mode auto chose input: the longest input branch is 2.500e-1 substitutions per site",
+        vec![o!("output_sequences"), o!("branch_length_mode")]
+      ),
+      (message.as_str(), settings)
     );
   }
 
@@ -153,6 +171,7 @@ mod tests {
     use crate::commands::shared::tree_input::TreeArgs;
     use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
     use crate::commands::timetree::run::run_timetree_estimation;
+    use app_output::output_conditions::OutputCondition;
     use app_output::output_plan::{OutputSelection, PlannedFile, Requested, ResolvedOutputs};
     use eyre::{Report, WrapErr};
     use maplit::btreemap;
@@ -207,17 +226,18 @@ mod tests {
       fasta_read_file(fasta, &Alphabet::default())
     }
 
-    pub(super) fn fasta_outputs(requested: Requested) -> ResolvedOutputs {
+    pub(super) fn conditional_fasta_outputs(requested: Requested) -> ResolvedOutputs {
       ResolvedOutputs {
         partition_count: NonZeroUsize::MIN,
         tree_outputs: btreemap! {},
         non_tree_outputs: btreemap! {},
         tree_outputs_by_partition: btreemap! {},
         non_tree_outputs_by_partition: btreemap! {
-          OutputSelection::Sequences => vec![PlannedFile {
-            path: PathBuf::from("out.fasta"),
+          OutputSelection::Sequences => vec![PlannedFile::new(
+            PathBuf::from("out.fasta"),
             requested,
-          }],
+            Some(OutputCondition::BranchLengthsReestimated),
+          )],
         },
       }
     }

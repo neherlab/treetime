@@ -1,13 +1,13 @@
 use crate::commands::prune::args::TreetimePruneArgs;
 use crate::commands::shared::argument_error::argument_error;
-use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
 use crate::commands::shared::sequence_inputs::{SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
+use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
-use app_output::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
+use app_output::output_plan::{ResolvedOutputs, TreeWriteKind};
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
@@ -85,7 +85,6 @@ pub fn run_prune(
     names,
     branch_lengths: branch_lengths_opt,
   } = output;
-  let models = partition_models(&results, None);
   let maps = if resolved.tree_write_kinds().any(TreeWriteKind::is_per_partition) {
     results
       .iter_mut()
@@ -110,13 +109,6 @@ pub fn run_prune(
     .get_edges()
     .map(|edge| (edge.key(), branch_lengths_opt[&edge.key()]))
     .collect();
-
-  write_gtr_output(
-    &resolved,
-    models,
-    "no substitution model was used (prune uses one only with --alignment)",
-    log,
-  )?;
 
   let sequences = results
     .iter()

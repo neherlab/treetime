@@ -63,7 +63,6 @@ pub(crate) mod tests {
 
   #[rustfmt::skip]
   const FLAG_EXCEPTIONS: &[FlagException] = &[
-    FlagException { flag: "--confidence",                       change: Change::Missing, commands: &[MU],                 pending: Pending::MugrationConfidenceFlag },
     FlagException { flag: "--dry-run",                          change: Change::Missing, commands: &[EXAMPLES_GET, SCHEMA_WRITE], pending: Pending::DryRun },
   ];
 
@@ -131,7 +130,7 @@ pub(crate) mod tests {
     assert_eq!(expected, actual, "{}", describe_exceptions(path, FLAG_EXCEPTIONS));
   }
 
-  mod helpers {
+  pub(crate) mod helpers {
     use super::Family;
     use crate::__tests__::test_cli_support::tests::helpers::Pending;
     use clap::Command;
@@ -198,7 +197,7 @@ pub(crate) mod tests {
         .join("\n")
     }
 
-    pub(super) fn per_file_output_flags(command: &Command) -> BTreeSet<String> {
+    pub(crate) fn per_file_output_flags(command: &Command) -> BTreeSet<String> {
       command
         .get_arguments()
         .filter(|arg| arg.get_value_parser().type_id() == TypeId::of::<PathBuf>())

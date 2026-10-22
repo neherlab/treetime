@@ -7,7 +7,6 @@ mod tests {
   use crate::commands::shared::tree_input::TreeArgs;
   use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
-  use app_output::output_plan::OutputSelection;
   use app_output::table_output::table_read_file;
   use deser::Deserialize;
   use eyre::Report;
@@ -72,14 +71,11 @@ mod tests {
       .get_internal_nodes()
       .map(|node| tree.names[node.key()].to_owned())
       .collect();
-    let confidence_names = table_read_file::<NamedRow>(
-      OutputSelection::ConfidenceTsv,
-      &output.path().join("timetree.confidence.tsv"),
-    )?
-    .into_iter()
-    .map(|row| row.name)
-    .sorted()
-    .collect_vec();
+    let confidence_names = table_read_file::<NamedRow>(&output.path().join("timetree.confidence.tsv"))?
+      .into_iter()
+      .map(|row| row.name)
+      .sorted()
+      .collect_vec();
     let fasta_names: BTreeSet<String> =
       fasta_read_file(output.path().join("timetree.sequences.fasta"), &Alphabet::default())?
         .into_iter()

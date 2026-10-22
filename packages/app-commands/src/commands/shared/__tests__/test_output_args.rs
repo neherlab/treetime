@@ -283,33 +283,6 @@ mod tests {
   }
 
   #[test]
-  fn test_mugration_output_confidence_csv_parses_with_alias() {
-    let canonical = TreetimeMugrationArgsRaw::try_parse_from([
-      "treetime",
-      "--metadata=/dev/null",
-      "--attribute=country",
-      "--output-trait-probabilities=/tmp/conf.csv",
-    ])
-    .unwrap();
-    assert_eq!(
-      canonical.output_trait_probabilities.as_deref(),
-      Some(Path::new("/tmp/conf.csv"))
-    );
-
-    let aliased = TreetimeMugrationArgsRaw::try_parse_from([
-      "treetime",
-      "--metadata=/dev/null",
-      "--attribute=country",
-      "--confidence=/tmp/conf.csv",
-    ])
-    .unwrap();
-    assert_eq!(
-      aliased.output_trait_probabilities.as_deref(),
-      Some(Path::new("/tmp/conf.csv"))
-    );
-  }
-
-  #[test]
   fn test_mugration_selection_confidence_csv_parses() {
     let args = TreetimeMugrationArgsRaw::try_parse_from([
       "treetime",
@@ -326,13 +299,10 @@ mod tests {
   }
 
   #[test]
-  fn test_prune_output_gtr_parses() {
-    let args =
-      TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/gtr.json"]).unwrap();
-    assert_eq!(
-      args.gtr_output.output_model.as_deref(),
-      Some(Path::new("/tmp/gtr.json"))
-    );
+  fn test_prune_rejects_the_model_output() {
+    let result =
+      TreetimePruneArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/model.json"]);
+    assert!(result.is_err(), "prune fits no model, so it offers no model output");
   }
 
   #[test]

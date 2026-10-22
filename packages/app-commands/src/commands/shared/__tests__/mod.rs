@@ -7,6 +7,7 @@ mod test_metadata_args;
 mod test_model_args;
 mod test_model_params;
 mod test_output_args;
+mod test_output_requests;
 mod test_output_resolution;
 mod test_seed_args;
 mod test_sequence_inputs;

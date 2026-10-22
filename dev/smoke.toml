@@ -109,7 +109,7 @@ selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,mat-pb,mat-json"
 [commands.prune]
 args = "--tree={dataset}/tree.nwk --alignment={dataset}/aln.fasta.xz --output-all={out}"
 outputs = ["prune.nwk"]
-selection = "nwk,nexus,auspice,graph-json,dot,model,mat-pb,mat-json"
+selection = "nwk,nexus,auspice,graph-json,dot,mat-pb,mat-json"
 
 [commands.timetree]
 args = "--tree={dataset}/tree.nwk --metadata={metadata} --alignment={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
@@ -407,7 +407,13 @@ args = "--pc=1.0 --weights={data}/zika/country_weights.csv"
 [[mugration]]
 variant = "country-confidence"
 datasets = ["zika/20"]
-args = "--pc=1.0 --output-trait-probabilities={out}/confidence.csv"
+args = "--pc=1.0 --confidence"
+selection = "nwk"
+
+[[mugration]]
+variant = "country-trait-probabilities-csv"
+datasets = ["zika/20"]
+args = "--pc=1.0 --output-trait-probabilities={out}/trait-probabilities.csv"
 
 [[mugration]]
 variant = "pc-default"
@@ -647,12 +653,13 @@ datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--branch-length-mode=input"
 selection = "nwk,nexus,auspice,node-data,clock-model"
 
-# Input branch lengths with the default outputs: input mode reconstructs no sequences, so `--output-all` skips the
+# Input branch lengths with every output: input mode reconstructs no sequences, so `all` leaves out the
 # reconstructed FASTA
 [[timetree]]
 variant = "branch-input-all-outputs"
 datasets = ["flu/h3n2/20", "ebola/20"]
 args = "--branch-length-mode=input"
+selection = "all"
 
 [[timetree]]
 variant = "input-keeproot"

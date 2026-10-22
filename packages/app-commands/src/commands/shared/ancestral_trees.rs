@@ -1,6 +1,7 @@
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, TreeSequences};
 use app_output::augur_node_data_ancestral::{AncestralNodeSequences, write_augur_node_data_ancestral};
-use app_output::output_plan::{CommandKind, OutputSelection, ResolvedOutputs};
+use app_output::command_outputs::CommandKind;
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use app_output::tree_output::{write_partition_tree_outputs, write_run_tree_outputs};
 use eyre::Report;
 use itertools::Itertools;

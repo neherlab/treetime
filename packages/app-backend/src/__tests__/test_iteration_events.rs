@@ -145,14 +145,14 @@ mod tests {
       let text = fs::read_to_string(path).unwrap();
       let mut lines = text.lines();
       assert_eq!(
-        Some("n_diff,n_resolved,max_time_change,rms_time_change,log_lh_seq,log_lh_time,log_lh_coal"),
+        Some("n_diff\tn_resolved\tmax_time_change\trms_time_change\tlog_lh_seq\tlog_lh_time\tlog_lh_coal"),
         lines.next(),
         "the tracelog columns are unchanged"
       );
       lines
         .map(|line| {
           line
-            .split(',')
+            .split('\t')
             .map(|cell| {
               if cell.is_empty() {
                 String::new()

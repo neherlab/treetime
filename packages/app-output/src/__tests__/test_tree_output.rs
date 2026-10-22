@@ -8,7 +8,8 @@ pub(super) mod tests {
   };
   use crate::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, TreeSequences, TreeTraits};
   use crate::auspice::{format_number, group_mutations};
-  use crate::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
+  use crate::command_outputs::CommandKind;
+  use crate::output_plan::{ResolvedOutputs, TreeWriteKind};
   use crate::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
   use deser_value::Map;
   use eyre::{Report, WrapErr};

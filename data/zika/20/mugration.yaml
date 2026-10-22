@@ -18,11 +18,5 @@ attribute: "country"
 weights: "../country_weights.csv"
 pc: 1.0
 
-# The default outputs, plus the confidence of the reconstructed states as a CSV.
-output_selection:
-  - "nwk"
-  - "nexus"
-  - "node-data"
-  - "model"
-  - "traits"
-  - "trait-probabilities"
+# The default outputs, plus the probability of every state at every node.
+confidence: true

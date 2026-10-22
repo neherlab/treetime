@@ -2,7 +2,8 @@
 mod tests {
   use crate::__tests__::test_support::tests::{NUC_ALPHABET, c, edge_mutation_map};
   use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates, TreeSequences};
-  use app_output::output_plan::{CommandKind, TreeWriteKind};
+  use app_output::command_outputs::CommandKind;
+  use app_output::output_plan::TreeWriteKind;
   use app_output::tree_output::write_tree_outputs;
   use eyre::Report;
   use indoc::indoc;

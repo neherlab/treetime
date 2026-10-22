@@ -1,12 +1,17 @@
 use crate::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use crate::commands::clock::args::TreetimeClockArgsRaw;
 use crate::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
-use crate::commands::mugration::args::TreetimeMugrationArgsRaw;
+use crate::commands::mugration::args::{TreetimeMugrationArgsRaw, mugration_output_settings};
 use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
 use crate::commands::prune::args::TreetimePruneArgsRaw;
 use crate::commands::shared::argument_error::argument_error;
-use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
-use app_output::output_plan::{self, CommandKind, MissingOutputs, OutputPlanRequest, OutputSelection, ResolvedOutputs};
+use crate::commands::timetree::args::{TreetimeTimetreeArgsRaw, timetree_output_settings};
+use app_output::command_outputs::CommandKind;
+use app_output::output_conditions::{OutputSettings, UnavailableOutput};
+use app_output::output_format::UnsupportedExtension;
+use app_output::output_plan::{
+  self, AddedOutputWithoutFolder, MissingOutputs, OutputPlanRequest, OutputSelection, ResolvedOutputs,
+};
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
@@ -20,8 +25,17 @@ use treetime_io::nwk::NwkStyle;
 #[cfg(feature = "clap")]
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
+macro_rules! output_settings {
+  ($raw:expr) => {
+    OutputSettings::default()
+  };
+  ($raw:expr, $settings:path) => {
+    $settings($raw)
+  };
+}
+
 macro_rules! command_outputs {
-  ($name:ident, $args:ident for $raw:ty, $kind:ident $(alignment: $alignment:ident)? { $($extra:ident: $($field:ident).+),* $(,)? }) => {
+  ($name:ident, $args:ident for $raw:ty, $kind:ident $(alignment: $alignment:ident)? $(settings: $settings:path)? { $($extra:ident: $($field:ident).+),* $(,)? }) => {
     #[derive(Copy, Clone, Debug, Eq, PartialEq, schemars::JsonSchema, strum_macros::EnumIter, Serialize, Deserialize)]
     #[schemars(rename_all = "kebab-case")]
     #[deser(rename_all = "kebab-case")]
@@ -66,7 +80,8 @@ macro_rules! command_outputs {
       /// command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
       ///
       /// A selected output that the run has no data for is skipped without a message, for example the substitution
-      /// model of a run that fits none. A per-file flag for such an output fails.
+      /// model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule
+      /// out fails in both forms, for example the sequences of `timetree --branch-length-mode input`.
       #[cfg_attr(
         feature = "clap",
         clap(long, short = 's', num_args = 1.., value_delimiter = ',', requires = "output_all", help_heading = "Output")
@@ -75,6 +90,10 @@ macro_rules! command_outputs {
     }
 
     impl ResolveOutputs for $raw {
+      fn output_settings(&self) -> OutputSettings {
+        output_settings!(self $(, $settings)?)
+      }
+
       fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report> {
         let selection = self
           .output_selection
@@ -87,6 +106,7 @@ macro_rules! command_outputs {
         self.output.resolve(
           CommandKind::$kind,
           partition_count(alignment_count),
+          self.output_settings(),
           &selection,
           &[$((OutputSelection::$extra, self.$($field).+.as_deref())),*],
         )
@@ -96,6 +116,8 @@ macro_rules! command_outputs {
 }
 
 pub trait ResolveOutputs {
+  fn output_settings(&self) -> OutputSettings;
+
   fn resolve_outputs(&self) -> Result<ResolvedOutputs, Report>;
 }
 
@@ -109,7 +131,7 @@ command_outputs!(AncestralOutputSelection, AncestralOutputSelectionArgs for Tree
   Sequences: reconstructed_fasta_output.output_sequences,
   Translations: output_translations,
 });
-command_outputs!(TimetreeOutputSelection, TimetreeOutputSelectionArgs for TreetimeTimetreeArgsRaw, Timetree alignment: alignment {
+command_outputs!(TimetreeOutputSelection, TimetreeOutputSelectionArgs for TreetimeTimetreeArgsRaw, Timetree alignment: alignment settings: timetree_output_settings {
   NodeData: output_node_data,
   Model: gtr_output.output_model,
   Sequences: reconstructed_fasta_output.output_sequences,
@@ -125,7 +147,7 @@ command_outputs!(ClockOutputSelection, ClockOutputSelectionArgs for TreetimeCloc
   Rtt: clock_output.output_rtt,
   RttChart: output_rtt_chart,
 });
-command_outputs!(MugrationOutputSelection, MugrationOutputSelectionArgs for TreetimeMugrationArgsRaw, Mugration {
+command_outputs!(MugrationOutputSelection, MugrationOutputSelectionArgs for TreetimeMugrationArgsRaw, Mugration settings: mugration_output_settings {
   NodeData: output_node_data,
   Model: gtr_output.output_model,
   TraitProbabilities: output_trait_probabilities,
@@ -135,9 +157,7 @@ command_outputs!(OptimizeOutputSelection, OptimizeOutputSelectionArgs for Treeti
   NodeData: output_node_data,
   Model: gtr_output.output_model,
 });
-command_outputs!(PruneOutputSelection, PruneOutputSelectionArgs for TreetimePruneArgsRaw, Prune alignment: alignment {
-  Model: gtr_output.output_model,
-});
+command_outputs!(PruneOutputSelection, PruneOutputSelectionArgs for TreetimePruneArgsRaw, Prune alignment: alignment {});
 command_outputs!(HomoplasyOutputSelection, HomoplasyOutputSelectionArgs for TreetimeHomoplasyArgsRaw, Homoplasy {
   HomoplasyStats: output_homoplasy_stats,
   HomoplasyReport: output_homoplasy_report,
@@ -165,6 +185,10 @@ pub struct OutputCoreArgs {
   ///
   /// An output that the run has no data for is skipped without a message, for example the
   /// substitution model of a run that fits none. A per-file flag for such an output fails.
+  ///
+  /// Table outputs choose the delimiter by the extension of their path: `.tsv` writes tabs and
+  /// `.csv` commas, also before a compression suffix (`dates.tsv.gz`); `-` writes tabs to
+  /// standard output. Default names use `.tsv`.
   ///
   /// With several `--alignment` files, the outputs that carry sequence positions are written
   /// once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
@@ -304,6 +328,7 @@ impl OutputCoreArgs {
     &self,
     command: CommandKind,
     partition_count: NonZeroUsize,
+    settings: OutputSettings,
     selection: &[OutputSelection],
     non_tree_fields: &[(OutputSelection, Option<&Path>)],
   ) -> Result<ResolvedOutputs, Report> {
@@ -318,6 +343,7 @@ impl OutputCoreArgs {
         .iter()
         .filter_map(|&(sel, path)| path.map(|path| (sel, path.to_path_buf())))
         .collect(),
+      settings,
     };
     output_plan::plan(&request).map_err(missing_outputs_argument_error)
   }
@@ -339,13 +365,27 @@ impl OutputCoreArgs {
 }
 
 fn missing_outputs_argument_error(report: Report) -> Report {
-  match report.downcast_ref::<MissingOutputs>() {
-    Some(missing @ MissingOutputs::SelectionWithoutFolder) => {
-      argument_error(&["output_selection", "output_all"], missing.to_string())
-    },
-    Some(missing @ MissingOutputs::NoOutputs) => argument_error(&["output_all"], missing.to_string()),
-    None => report,
+  if let Some(missing) = report.downcast_ref::<MissingOutputs>() {
+    return match missing {
+      MissingOutputs::SelectionWithoutFolder => {
+        argument_error(&["output_selection", "output_all"], missing.to_string())
+      },
+      MissingOutputs::NoOutputs => argument_error(&["output_all"], missing.to_string()),
+    };
   }
+  if let Some(unsupported) = report.downcast_ref::<UnsupportedExtension>() {
+    return argument_error(&[&unsupported.selection.setting_key()], unsupported.to_string());
+  }
+  if let Some(unavailable) = report.downcast_ref::<UnavailableOutput>() {
+    return argument_error(
+      &[&unavailable.request_setting(), unavailable.cause.setting()],
+      unavailable.to_string(),
+    );
+  }
+  if let Some(added) = report.downcast_ref::<AddedOutputWithoutFolder>() {
+    return argument_error(&[added.setting, &added.selection.setting_key()], added.to_string());
+  }
+  report
 }
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]

@@ -1,8 +1,10 @@
+use crate::command_outputs::CommandKind;
+use crate::output_conditions::{OutputCondition, OutputSettings, UnavailableOutput, UnmetCondition};
+use crate::output_format::FileFormat;
 use derive_more::{Display, Error};
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use itertools::Itertools;
-use maplit::btreeset;
 use schemars::JsonSchema;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
@@ -11,14 +13,14 @@ use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf, is_separator};
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use treetime::progress::LogSink;
-use treetime::progress_debug;
-use treetime_io::csv::TableFormat;
+use treetime::{progress_debug, progress_info};
 use treetime_io::nwk::NwkStyle;
 use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::make_error;
 
 pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let command = request.command;
+  let settings = request.settings;
   let stem = command.stem();
   let partitioned = request.partition_count.get() > 1;
 
@@ -34,23 +36,25 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   }
 
   for (&sel, path) in &request.non_tree_overrides {
+    ensure_available(settings, sel, Requested::Named)?;
     non_tree_outputs.insert(
       sel,
-      PlannedFile {
-        path: path.clone(),
-        requested: Requested::Named,
-      },
+      PlannedFile::new(path.clone(), Requested::Named, settings.condition(sel)),
     );
   }
 
   if let Some(dir) = &request.output_all {
-    let effective: BTreeSet<OutputSelection> = if request.selection.is_empty() {
-      command.default_outputs()
+    let mut effective: BTreeSet<OutputSelection> = if request.selection.is_empty() {
+      command.default_outputs(settings)
     } else if request.selection.contains(&OutputSelection::All) {
-      command.all_selectable()
+      command.all_selectable(settings)
     } else {
+      for &selection in &request.selection {
+        ensure_available(settings, selection, Requested::All)?;
+      }
       request.selection.iter().copied().collect()
     };
+    effective.extend(command.added_outputs(settings).map(|(selection, _)| selection));
 
     for &variant in &effective {
       if variant.is_meta() {
@@ -68,9 +72,12 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
         }
       } else {
         let stem = default_stem(stem, partitioned && command.is_per_partition(variant));
-        non_tree_outputs.entry(variant).or_insert_with(|| PlannedFile {
-          path: dir.join(format!("{stem}{}", variant.extension())),
-          requested: Requested::All,
+        non_tree_outputs.entry(variant).or_insert_with(|| {
+          PlannedFile::new(
+            dir.join(format!("{stem}{}", variant.extension())),
+            Requested::All,
+            settings.condition(variant),
+          )
         });
       }
     }
@@ -78,11 +85,21 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
     return Err(Report::new(MissingOutputs::SelectionWithoutFolder));
   }
 
+  if request.output_all.is_none() {
+    for (selection, setting) in command.added_outputs(settings) {
+      if !non_tree_outputs.contains_key(&selection) {
+        return Err(Report::new(AddedOutputWithoutFolder { selection, setting }));
+      }
+    }
+  }
   if tree_outputs.is_empty() && non_tree_outputs.is_empty() {
     return Err(Report::new(MissingOutputs::NoOutputs));
   }
 
   let resolved = expand_partitions(command, request.partition_count, tree_outputs, non_tree_outputs)?;
+  for planned in resolved.planned_paths() {
+    planned.selection.file_format().check(planned.selection, planned.path)?;
+  }
   ensure_unique_destinations(
     resolved
       .planned_paths()
@@ -125,10 +142,7 @@ fn expand_partitions(
     if command.is_per_partition(selection) {
       let files = expand_path_template(label, &file.path, PathPlaceholder::Partition, &partitions)?
         .into_iter()
-        .map(|path| PlannedFile {
-          path,
-          requested: file.requested,
-        })
+        .map(|path| PlannedFile::new(path, file.requested, file.condition))
         .collect();
       resolved.non_tree_outputs_by_partition.insert(selection, files);
     } else {
@@ -257,6 +271,8 @@ pub struct OutputPlanRequest {
   pub tree_overrides: BTreeMap<OutputSelection, PathBuf>,
 
   pub non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+
+  pub settings: OutputSettings,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Display, Error)]
@@ -278,6 +294,60 @@ pub struct ResolvedOutputs {
 }
 
 impl ResolvedOutputs {
+  #[expect(
+    clippy::zero_sized_map_values,
+    reason = "the map names the condition of each output, of which there is one kind"
+  )]
+  pub fn conditional_selections(&self) -> BTreeMap<OutputSelection, OutputCondition> {
+    self
+      .non_tree_outputs
+      .iter()
+      .map(|(&selection, file)| (selection, file.condition))
+      .chain(
+        self
+          .non_tree_outputs_by_partition
+          .iter()
+          .flat_map(|(&selection, files)| files.iter().map(move |file| (selection, file.condition))),
+      )
+      .filter_map(|(selection, condition)| Some((selection, condition?)))
+      .collect()
+  }
+
+  pub fn settle(&mut self, condition: OutputCondition, holds: bool, log: &dyn LogSink) -> Result<(), UnmetCondition> {
+    let files = self
+      .non_tree_outputs
+      .iter_mut()
+      .map(|(&selection, file)| (selection, file))
+      .chain(
+        self
+          .non_tree_outputs_by_partition
+          .iter_mut()
+          .flat_map(|(&selection, files)| files.iter_mut().map(move |file| (selection, file))),
+      )
+      .filter(|(_, file)| file.condition == Some(condition));
+    let mut skipped = Vec::new();
+    for (selection, file) in files {
+      if holds {
+        file.condition = None;
+      } else if file.requested == Requested::Named {
+        return Err(UnmetCondition { selection, condition });
+      } else {
+        progress_info!(
+          log,
+          "Not writing '{}': {}",
+          file.path.display(),
+          condition.unmet_reason()
+        );
+        skipped.push(selection);
+      }
+    }
+    for selection in skipped {
+      self.non_tree_outputs.remove(&selection);
+      self.non_tree_outputs_by_partition.remove(&selection);
+    }
+    Ok(())
+  }
+
   pub fn paths_by_selection(&self) -> BTreeMap<OutputSelection, Vec<PathBuf>> {
     let mut by_selection: BTreeMap<OutputSelection, Vec<PathBuf>> = BTreeMap::new();
     for planned in self.planned_paths() {
@@ -441,12 +511,49 @@ pub fn output_unavailable(
 pub struct PlannedFile {
   pub path: PathBuf,
   pub requested: Requested,
+  pub condition: Option<OutputCondition>,
+}
+
+impl PlannedFile {
+  pub const fn new(path: PathBuf, requested: Requested, condition: Option<OutputCondition>) -> Self {
+    Self {
+      path,
+      requested,
+      condition,
+    }
+  }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Requested {
   Named,
   All,
+}
+
+fn ensure_available(
+  settings: OutputSettings,
+  selection: OutputSelection,
+  requested: Requested,
+) -> Result<(), UnavailableOutput> {
+  match settings.unavailable(selection) {
+    Some(cause) => Err(UnavailableOutput {
+      selection,
+      requested,
+      cause,
+    }),
+    None => Ok(()),
+  }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Error)]
+#[display(
+  "--{} has no effect without --output-all: add --output-all <DIR>, or give the file with {} <FILE>",
+  setting.replace('_', "-"),
+  selection.flag_name()
+)]
+pub struct AddedOutputWithoutFolder {
+  pub selection: OutputSelection,
+  pub setting: &'static str,
 }
 
 fn tree_write_kind_selection(kind: TreeWriteKind) -> OutputSelection {
@@ -458,122 +565,6 @@ fn tree_write_kind_selection(kind: TreeWriteKind) -> OutputSelection {
     TreeWriteKind::MatJson => OutputSelection::MatJson,
     TreeWriteKind::GraphJson => OutputSelection::GraphJson,
     TreeWriteKind::Dot => OutputSelection::Dot,
-  }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum CommandKind {
-  Ancestral,
-  Timetree,
-  Optimize,
-  Mugration,
-  Clock,
-  Prune,
-  Homoplasy,
-}
-
-impl CommandKind {
-  pub fn all_selectable(self) -> BTreeSet<OutputSelection> {
-    &Self::available_tree_outputs() | &self.non_tree_outputs()
-  }
-
-  pub fn default_outputs(self) -> BTreeSet<OutputSelection> {
-    let mut non_tree = self.non_tree_outputs();
-    let tree_defaults = if self == Self::Timetree {
-      non_tree.remove(&OutputSelection::Rtt);
-      btreeset![OutputSelection::Nwk, OutputSelection::Nexus, OutputSelection::Auspice]
-    } else {
-      btreeset![OutputSelection::Nwk, OutputSelection::Nexus]
-    };
-    for non_default in [
-      OutputSelection::Translations,
-      OutputSelection::ConfidenceTsv,
-      OutputSelection::TraitProbabilities,
-      OutputSelection::Tracelog,
-      OutputSelection::CoalescentJson,
-    ] {
-      non_tree.remove(&non_default);
-    }
-    &tree_defaults | &non_tree
-  }
-
-  fn available_tree_outputs() -> BTreeSet<OutputSelection> {
-    btreeset![
-      OutputSelection::Nwk,
-      OutputSelection::Nexus,
-      OutputSelection::Auspice,
-      OutputSelection::MatPb,
-      OutputSelection::MatJson,
-      OutputSelection::GraphJson,
-      OutputSelection::Dot
-    ]
-  }
-
-  fn non_tree_outputs(self) -> BTreeSet<OutputSelection> {
-    match self {
-      Self::Ancestral => btreeset![
-        OutputSelection::NodeData,
-        OutputSelection::Model,
-        OutputSelection::Sequences,
-        OutputSelection::Translations
-      ],
-      Self::Timetree => btreeset![
-        OutputSelection::NodeData,
-        OutputSelection::Model,
-        OutputSelection::Sequences,
-        OutputSelection::ClockModel,
-        OutputSelection::Rtt,
-        OutputSelection::ConfidenceTsv,
-        OutputSelection::Tracelog,
-        OutputSelection::Coalescent,
-        OutputSelection::CoalescentJson
-      ],
-      Self::Optimize => btreeset![OutputSelection::NodeData, OutputSelection::Model],
-      Self::Mugration => btreeset![
-        OutputSelection::NodeData,
-        OutputSelection::Model,
-        OutputSelection::TraitProbabilities,
-        OutputSelection::Traits
-      ],
-      Self::Clock => btreeset![
-        OutputSelection::ClockModel,
-        OutputSelection::Rtt,
-        OutputSelection::RttChart
-      ],
-      Self::Prune => btreeset![OutputSelection::Model],
-      Self::Homoplasy => btreeset![OutputSelection::HomoplasyStats, OutputSelection::HomoplasyReport],
-    }
-  }
-
-  pub(crate) fn stem(self) -> &'static str {
-    match self {
-      Self::Ancestral => "ancestral",
-      Self::Timetree => "timetree",
-      Self::Optimize => "optimize",
-      Self::Mugration => "mugration",
-      Self::Clock => "clock",
-      Self::Prune => "prune",
-      Self::Homoplasy => "homoplasy",
-    }
-  }
-
-  fn reads_alignments(self) -> bool {
-    match self {
-      Self::Ancestral | Self::Timetree | Self::Optimize | Self::Prune | Self::Homoplasy => true,
-      Self::Mugration | Self::Clock => false,
-    }
-  }
-
-  fn is_per_partition(self, selection: OutputSelection) -> bool {
-    match selection {
-      OutputSelection::Sequences => true,
-      OutputSelection::NodeData => self == Self::Ancestral,
-      _ => false,
-    }
-  }
-
-  fn is_per_partition_tree(self, kind: TreeWriteKind) -> bool {
-    self.reads_alignments() && kind.is_per_partition()
   }
 }
 
@@ -649,12 +640,16 @@ impl OutputSelection {
     self.facts().description
   }
 
-  pub const fn table_format(self) -> Option<TableFormat> {
-    self.facts().table_format
+  pub const fn file_format(self) -> FileFormat {
+    self.facts().format
   }
 
   pub const fn flag_name(self) -> &'static str {
     self.facts().flag_name
+  }
+
+  pub fn setting_key(self) -> String {
+    self.flag_name().trim_start_matches("--").replace('-', "_")
   }
 
   fn is_tree(self) -> bool {
@@ -691,31 +686,33 @@ impl OutputSelection {
 
   #[rustfmt::skip]
   const fn facts(self) -> OutputFacts {
-    const TSV: Option<TableFormat> = Some(TableFormat::Tsv);
+    const TABLE: FileFormat = FileFormat::Table;
+    const CHART: FileFormat = FileFormat::Chart;
+    const FIXED: FileFormat = FileFormat::Fixed;
     match self {
-      Self::All                => OutputFacts::new("",                          "--output-selection=all",       None, false, "Every output of the command"),
-      Self::Nwk                => OutputFacts::new(".nwk",                      "--output-tree-nwk",            None, true,  "Tree in Newick format"),
-      Self::Nexus              => OutputFacts::new(".nexus",                    "--output-tree-nexus",          None, true,  "Tree with node annotations in Nexus format"),
-      Self::Auspice            => OutputFacts::new(".auspice.json",             "--output-tree-auspice",        None, true,  "Tree for Auspice and Nextstrain"),
-      Self::MatPb              => OutputFacts::new(".mat.pb",                   "--output-tree-mat-pb",         None, true,  "Mutation-annotated tree (UShER protobuf)"),
-      Self::MatJson            => OutputFacts::new(".mat.json",                 "--output-tree-mat-json",       None, true,  "Mutation-annotated tree (JSON)"),
-      Self::GraphJson          => OutputFacts::new(".graph.json",               "--output-tree-graph-json",     None, false, "Tree as a graph (JSON)"),
-      Self::Dot                => OutputFacts::new(".dot",                      "--output-tree-dot",            None, false, "Tree as a graph (Graphviz)"),
-      Self::NodeData           => OutputFacts::new(".node-data.json",           "--output-node-data",           None, true,  "Node data for augur: dates, intervals, mutations"),
-      Self::Model              => OutputFacts::new(".model.json",               "--output-model",               None, false, "Fitted substitution models"),
-      Self::ClockModel         => OutputFacts::new(".clock-model.json",         "--output-clock-model",         None, false, "Clock rate, intercept and regression statistics"),
-      Self::ConfidenceTsv      => OutputFacts::new(".confidence.tsv",           "--output-confidence-tsv",      TSV,  false, "Date intervals of every node"),
-      Self::TraitProbabilities => OutputFacts::new(".trait-probabilities.tsv",  "--output-trait-probabilities", TSV,  true,  "State probabilities of every node"),
-      Self::Sequences          => OutputFacts::new(".sequences.fasta",          "--output-sequences",           None, false, "Sequences of samples and ancestors"),
-      Self::Translations       => OutputFacts::new(".translations.{cds}.fasta", "--output-translations",        None, false, "Protein sequences of samples and ancestors"),
-      Self::Traits             => OutputFacts::new(".traits.tsv",               "--output-traits",              TSV,  true,  "Inferred state of every node"),
-      Self::Rtt                => OutputFacts::new(".rtt.tsv",                  "--output-rtt",                 TSV,  false, "Root-to-tip distance, date and clock prediction of every node"),
-      Self::Tracelog           => OutputFacts::new(".tracelog.tsv",             "--output-tracelog",            TSV,  false, "Convergence values of every iteration"),
-      Self::Coalescent         => OutputFacts::new(".coalescent.tsv",           "--output-coalescent",          TSV,  false, "Coalescent time scale and effective population size"),
-      Self::CoalescentJson     => OutputFacts::new(".coalescent.json",          "--output-coalescent-json",     None, false, "Coalescent model and its likelihood"),
-      Self::RttChart           => OutputFacts::new(".rtt.svg",                  "--output-rtt-chart",           None, false, "Root-to-tip regression chart (SVG, PNG or PDF, by the file extension)"),
-      Self::HomoplasyStats     => OutputFacts::new(".stats.json",               "--output-homoplasy-stats",     None, false, "Recurrent mutations: counts, histograms and ranked lists (JSON)"),
-      Self::HomoplasyReport    => OutputFacts::new(".report.txt",               "--output-homoplasy-report",    None, false, "Recurrent mutations: text report"),
+      Self::All                => OutputFacts::new("",                          "--output-selection=all",       FIXED, false, "Every output of the command"),
+      Self::Nwk                => OutputFacts::new(".nwk",                      "--output-tree-nwk",            FIXED, true,  "Tree in Newick format"),
+      Self::Nexus              => OutputFacts::new(".nexus",                    "--output-tree-nexus",          FIXED, true,  "Tree with node annotations in Nexus format"),
+      Self::Auspice            => OutputFacts::new(".auspice.json",             "--output-tree-auspice",        FIXED, true,  "Tree for Auspice and Nextstrain"),
+      Self::MatPb              => OutputFacts::new(".mat.pb",                   "--output-tree-mat-pb",         FIXED, true,  "Mutation-annotated tree (UShER protobuf)"),
+      Self::MatJson            => OutputFacts::new(".mat.json",                 "--output-tree-mat-json",       FIXED, true,  "Mutation-annotated tree (JSON)"),
+      Self::GraphJson          => OutputFacts::new(".graph.json",               "--output-tree-graph-json",     FIXED, false, "Tree as a graph (JSON)"),
+      Self::Dot                => OutputFacts::new(".dot",                      "--output-tree-dot",            FIXED, false, "Tree as a graph (Graphviz)"),
+      Self::NodeData           => OutputFacts::new(".node-data.json",           "--output-node-data",           FIXED, true,  "Node data for augur: dates, intervals, mutations"),
+      Self::Model              => OutputFacts::new(".model.json",               "--output-model",               FIXED, false, "Fitted substitution models"),
+      Self::ClockModel         => OutputFacts::new(".clock-model.json",         "--output-clock-model",         FIXED, false, "Clock rate, intercept and regression statistics"),
+      Self::ConfidenceTsv      => OutputFacts::new(".confidence.tsv",           "--output-confidence-tsv",      TABLE, false, "Date intervals of every node"),
+      Self::TraitProbabilities => OutputFacts::new(".trait-probabilities.tsv",  "--output-trait-probabilities", TABLE, true,  "State probabilities of every node"),
+      Self::Sequences          => OutputFacts::new(".sequences.fasta",          "--output-sequences",           FIXED, false, "Sequences of samples and ancestors"),
+      Self::Translations       => OutputFacts::new(".translations.{cds}.fasta", "--output-translations",        FIXED, false, "Protein sequences of samples and ancestors"),
+      Self::Traits             => OutputFacts::new(".traits.tsv",               "--output-traits",              TABLE, true,  "Inferred state of every node"),
+      Self::Rtt                => OutputFacts::new(".rtt.tsv",                  "--output-rtt",                 TABLE, false, "Root-to-tip distance, date and clock prediction of every node"),
+      Self::Tracelog           => OutputFacts::new(".tracelog.tsv",             "--output-tracelog",            TABLE, false, "Convergence values of every iteration"),
+      Self::Coalescent         => OutputFacts::new(".coalescent.tsv",           "--output-coalescent",          TABLE, false, "Coalescent time scale and effective population size"),
+      Self::CoalescentJson     => OutputFacts::new(".coalescent.json",          "--output-coalescent-json",     FIXED, false, "Coalescent model and its likelihood"),
+      Self::RttChart           => OutputFacts::new(".rtt.svg",                  "--output-rtt-chart",           CHART, false, "Root-to-tip regression chart (SVG, PNG or PDF, by the file extension)"),
+      Self::HomoplasyStats     => OutputFacts::new(".stats.json",               "--output-homoplasy-stats",     FIXED, false, "Recurrent mutations: counts, histograms and ranked lists (JSON)"),
+      Self::HomoplasyReport    => OutputFacts::new(".report.txt",               "--output-homoplasy-report",    FIXED, false, "Recurrent mutations: text report"),
     }
   }
 }
@@ -744,7 +741,7 @@ impl TreeWriteKind {
 struct OutputFacts {
   extension: &'static str,
   flag_name: &'static str,
-  table_format: Option<TableFormat>,
+  format: FileFormat,
   reads_tree: bool,
   description: &'static str,
 }
@@ -753,14 +750,14 @@ impl OutputFacts {
   const fn new(
     extension: &'static str,
     flag_name: &'static str,
-    table_format: Option<TableFormat>,
+    format: FileFormat,
     reads_tree: bool,
     description: &'static str,
   ) -> Self {
     Self {
       extension,
       flag_name,
-      table_format,
+      format,
       reads_tree,
       description,
     }

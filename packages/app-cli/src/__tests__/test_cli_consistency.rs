@@ -43,6 +43,11 @@ mod tests {
       "the node data of each command holds the per-node results of that command",
     ),
     (
+      "--confidence",
+      &[Property::Heading, Property::Help, Property::LongHelp],
+      "timetree writes date intervals and mugration the state probabilities, as the flag does in TreeTime 0.x and augur",
+    ),
+    (
       "--config",
       &[
         Property::Required,
@@ -66,9 +71,6 @@ mod tests {
 
   #[rustfmt::skip]
   const KNOWN_EXCEPTIONS: &[(&str, &[Property], Pending)] = &[
-    ("--confidence",    &[Property::ValueType, Property::Action, Property::NumArgs, Property::ValueNames, Property::Defaults,
-                          Property::Aliases, Property::Heading, Property::Help, Property::LongHelp],
-                                                                                                 Pending::MugrationConfidenceFlag),
   ];
 
   #[test]

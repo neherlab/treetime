@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::output_plan::{
-    CommandKind, OutputSelection, PlannedFile, Requested, TreeWriteKind, output_unavailable, plan,
-  };
+  use crate::command_outputs::CommandKind;
+  use crate::output_conditions::{NotReconstructed, OutputCondition, OutputSettings, SequenceOutputs};
+  use crate::output_plan::{OutputSelection, PlannedFile, Requested, TreeWriteKind, output_unavailable, plan};
   use eyre::Report;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::path::{Path, PathBuf};
@@ -74,6 +74,7 @@ mod tests {
     let expected = PlannedFile {
       path: PathBuf::from("my.model.json"),
       requested: Requested::Named,
+      condition: None,
     };
     assert_eq!(expected, resolved.non_tree_outputs[&OutputSelection::Model]);
     Ok(())
@@ -84,6 +85,7 @@ mod tests {
     let file = PlannedFile {
       path: PathBuf::from("my.model.json"),
       requested: Requested::Named,
+      condition: None,
     };
     let (log, messages) = helpers::recording_log();
 
@@ -100,6 +102,7 @@ mod tests {
     let file = PlannedFile {
       path: PathBuf::from("out/ancestral.model.json"),
       requested: Requested::All,
+      condition: None,
     };
     let (log, messages) = helpers::recording_log();
 
@@ -525,8 +528,212 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::tsv(           OutputSelection::Rtt,      "rtt.tsv")]
+  #[case::csv(           OutputSelection::Rtt,      "rtt.csv")]
+  #[case::compressed(    OutputSelection::Rtt,      "rtt.tsv.gz")]
+  #[case::upper_case(    OutputSelection::Rtt,      "rtt.CSV")]
+  #[case::table_stdout(  OutputSelection::Rtt,      "-")]
+  #[case::svg(           OutputSelection::RttChart, "rtt.svg")]
+  #[case::png(           OutputSelection::RttChart, "rtt.png")]
+  #[case::chart_stdout(  OutputSelection::RttChart, "-")]
+  #[case::fixed_format(  OutputSelection::ClockModel, "clock.txt")]
+  #[trace]
+  fn test_output_plan_accepts_the_extensions_of_the_output(
+    #[case] selection: OutputSelection,
+    #[case] path: &str,
+  ) -> Result<(), Report> {
+    let resolved = plan(&helpers::clock_request(btreemap! { selection => PathBuf::from(path) }))?;
+    assert_eq!(Some(Path::new(path)), resolved.path(selection));
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::semicolons(     OutputSelection::Rtt,      "rtt.ssv",  "--output-rtt",       ".tsv (tab-separated) or .csv (comma-separated)")]
+  #[case::text(           OutputSelection::Rtt,      "rtt.txt",  "--output-rtt",       ".tsv (tab-separated) or .csv (comma-separated)")]
+  #[case::no_extension(   OutputSelection::Rtt,      "rtt",      "--output-rtt",       ".tsv (tab-separated) or .csv (comma-separated)")]
+  #[case::only_compressed(OutputSelection::Rtt,      "rtt.gz",   "--output-rtt",       ".tsv (tab-separated) or .csv (comma-separated)")]
+  #[case::jpeg_chart(     OutputSelection::RttChart, "rtt.jpg",  "--output-rtt-chart", ".svg, .png or .pdf")]
+  #[trace]
+  fn test_output_plan_rejects_an_unknown_extension(
+    #[case] selection: OutputSelection,
+    #[case] path: &str,
+    #[case] flag: &str,
+    #[case] extensions: &str,
+  ) {
+    assert_error!(
+      plan(&helpers::clock_request(btreemap! { selection => PathBuf::from(path) })),
+      format!(
+        "The file name '{path}' of {flag} must end in {extensions}, optionally followed by a compression suffix such \
+         as .gz, or be '-' for standard output"
+      )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_set(vec![],                           Requested::All)]
+  #[case::selection(  vec![OutputSelection::Sequences], Requested::All)]
+  #[case::all(        vec![OutputSelection::All],       Requested::All)]
+  #[trace]
+  fn test_output_plan_auto_branch_lengths_make_sequences_conditional(
+    #[case] selection: Vec<OutputSelection>,
+    #[case] requested: Requested,
+  ) -> Result<(), Report> {
+    let settings = OutputSettings { sequences: SequenceOutputs::WhenBranchLengthsReestimated, ..OutputSettings::default() };
+    let resolved = plan(&helpers::timetree_request(settings, selection, btreemap! {}))?;
+    assert_eq!(
+      vec![PlannedFile::new(PathBuf::from("out/timetree.sequences.fasta"), requested, Some(OutputCondition::BranchLengthsReestimated))],
+      resolved.partition_files(OutputSelection::Sequences)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_auto_branch_lengths_keep_the_per_file_flag_conditional() -> Result<(), Report> {
+    let settings = OutputSettings {
+      sequences: SequenceOutputs::WhenBranchLengthsReestimated,
+      ..OutputSettings::default()
+    };
+    let resolved = plan(&helpers::timetree_request(
+      settings,
+      vec![],
+      btreemap! { OutputSelection::Sequences => PathBuf::from("seq.fasta") },
+    ))?;
+    assert_eq!(
+      btreemap! { OutputSelection::Sequences => OutputCondition::BranchLengthsReestimated },
+      resolved.conditional_selections()
+    );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::input_default(  NotReconstructed::InputBranchLengths, vec![])]
+  #[case::input_all(      NotReconstructed::InputBranchLengths, vec![OutputSelection::All])]
+  #[case::no_alignment(   NotReconstructed::NoAlignment,        vec![])]
+  #[trace]
+  fn test_output_plan_sequences_leave_the_set_without_reconstruction(
+    #[case] cause: NotReconstructed,
+    #[case] selection: Vec<OutputSelection>,
+  ) -> Result<(), Report> {
+    let settings = OutputSettings { sequences: SequenceOutputs::NotReconstructed(cause), ..OutputSettings::default() };
+    let resolved = plan(&helpers::timetree_request(settings, selection, btreemap! {}))?;
+    assert!(!resolved.paths_by_selection().contains_key(&OutputSelection::Sequences));
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::per_file_flag(
+    NotReconstructed::InputBranchLengths, vec![], true,
+    "--output-sequences was requested, but --branch-length-mode input keeps the input branch lengths and reconstructs no sequences",
+  )]
+  #[case::selection(
+    NotReconstructed::InputBranchLengths, vec![OutputSelection::Sequences], false,
+    "--output-selection lists sequences, but --branch-length-mode input keeps the input branch lengths and reconstructs no sequences",
+  )]
+  #[case::no_alignment(
+    NotReconstructed::NoAlignment, vec![], true,
+    "--output-sequences was requested, but a run without --alignment reconstructs no sequences",
+  )]
+  #[trace]
+  fn test_output_plan_request_for_sequences_without_reconstruction_fails(
+    #[case] cause: NotReconstructed,
+    #[case] selection: Vec<OutputSelection>,
+    #[case] per_file_flag: bool,
+    #[case] message: &str,
+  ) {
+    let settings = OutputSettings { sequences: SequenceOutputs::NotReconstructed(cause), ..OutputSettings::default() };
+    let overrides = if per_file_flag {
+      btreemap! { OutputSelection::Sequences => PathBuf::from("seq.fasta") }
+    } else {
+      btreemap! {}
+    };
+    assert_error!(plan(&helpers::timetree_request(settings, selection, overrides)), message);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::without_prior(false, false)]
+  #[case::with_prior(   true,  true)]
+  #[trace]
+  fn test_output_plan_timetree_writes_the_coalescent_table_by_default_with_a_prior(
+    #[case] coalescent: bool,
+    #[case] expected: bool,
+  ) {
+    let settings = OutputSettings { coalescent, ..OutputSettings::default() };
+    assert_eq!(expected, CommandKind::Timetree.default_outputs(settings).contains(&OutputSelection::Coalescent));
+  }
+
+  #[test]
+  fn test_output_plan_prune_writes_only_the_trees_by_default() {
+    assert_eq!(
+      btreeset! { OutputSelection::Nwk, OutputSelection::Nexus },
+      CommandKind::Prune.default_outputs(OutputSettings::default())
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_set(vec![])]
+  #[case::selection(  vec![OutputSelection::Nwk])]
+  #[trace]
+  fn test_output_plan_mugration_confidence_adds_the_trait_probabilities(
+    #[case] selection: Vec<OutputSelection>,
+  ) -> Result<(), Report> {
+    let settings = OutputSettings { trait_probabilities: true, ..OutputSettings::default() };
+    let resolved = plan(&helpers::mugration_request(settings, Some("out"), selection, btreemap! {}))?;
+    assert_eq!(
+      Some(Path::new("out/mugration.trait-probabilities.tsv")),
+      resolved.path(OutputSelection::TraitProbabilities)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_output_plan_mugration_confidence_without_output_all_needs_the_per_file_flag() {
+    let settings = OutputSettings {
+      trait_probabilities: true,
+      ..OutputSettings::default()
+    };
+    assert_error!(
+      plan(&helpers::mugration_request(
+        settings,
+        None,
+        vec![],
+        btreemap! { OutputSelection::Traits => PathBuf::from("traits.tsv") },
+      )),
+      "--confidence has no effect without --output-all: add --output-all <DIR>, or give the file with \
+       --output-trait-probabilities <FILE>"
+    );
+  }
+
+  #[test]
+  fn test_output_plan_mugration_confidence_with_the_per_file_flag_writes_the_table() -> Result<(), Report> {
+    let settings = OutputSettings {
+      trait_probabilities: true,
+      ..OutputSettings::default()
+    };
+    let resolved = plan(&helpers::mugration_request(
+      settings,
+      None,
+      vec![],
+      btreemap! { OutputSelection::TraitProbabilities => PathBuf::from("probabilities.tsv") },
+    ))?;
+    assert_eq!(
+      Some(Path::new("probabilities.tsv")),
+      resolved.path(OutputSelection::TraitProbabilities)
+    );
+    Ok(())
+  }
+
   mod helpers {
-    use crate::output_plan::{CommandKind, OutputPlanRequest, OutputSelection};
+    use crate::command_outputs::CommandKind;
+    use crate::output_conditions::OutputSettings;
+    use crate::output_plan::{OutputPlanRequest, OutputSelection};
     use std::collections::BTreeMap;
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
@@ -546,6 +753,7 @@ mod tests {
         selection,
         tree_overrides: BTreeMap::new(),
         non_tree_overrides,
+        settings: OutputSettings::default(),
       }
     }
 
@@ -575,6 +783,55 @@ mod tests {
         newick_annotations: NwkStyle::Plain,
         tree_overrides,
         non_tree_overrides,
+        settings: OutputSettings::default(),
+      }
+    }
+
+    pub(super) fn timetree_request(
+      settings: OutputSettings,
+      selection: Vec<OutputSelection>,
+      non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+    ) -> OutputPlanRequest {
+      OutputPlanRequest {
+        command: CommandKind::Timetree,
+        partition_count: NonZeroUsize::MIN,
+        output_all: Some(PathBuf::from("out")),
+        newick_annotations: NwkStyle::Plain,
+        selection,
+        tree_overrides: BTreeMap::new(),
+        non_tree_overrides,
+        settings,
+      }
+    }
+
+    pub(super) fn mugration_request(
+      settings: OutputSettings,
+      output_all: Option<&str>,
+      selection: Vec<OutputSelection>,
+      non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
+    ) -> OutputPlanRequest {
+      OutputPlanRequest {
+        command: CommandKind::Mugration,
+        partition_count: NonZeroUsize::MIN,
+        output_all: output_all.map(PathBuf::from),
+        newick_annotations: NwkStyle::Plain,
+        selection,
+        tree_overrides: BTreeMap::new(),
+        non_tree_overrides,
+        settings,
+      }
+    }
+
+    pub(super) fn clock_request(non_tree_overrides: BTreeMap<OutputSelection, PathBuf>) -> OutputPlanRequest {
+      OutputPlanRequest {
+        command: CommandKind::Clock,
+        partition_count: NonZeroUsize::MIN,
+        output_all: None,
+        newick_annotations: NwkStyle::Plain,
+        selection: vec![],
+        tree_overrides: BTreeMap::new(),
+        non_tree_overrides,
+        settings: OutputSettings::default(),
       }
     }
 
@@ -587,6 +844,7 @@ mod tests {
         selection: vec![],
         tree_overrides: BTreeMap::new(),
         non_tree_overrides,
+        settings: OutputSettings::default(),
       }
     }
 
