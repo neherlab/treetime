@@ -11,6 +11,27 @@ mod tests {
   #[case::ndarray_conv(&NdarrayConvolve)]
   #[case::fft(&FftConvolve)]
   #[trace]
+  fn test_convolution_algorithms_agree_with_the_trapezoid_rule_at_hard_ends(#[case] algo: &dyn ConvolveAlgo) {
+    let (f, g) = (array![1.0, 2.0, 1.0], array![1.0, 2.0]);
+    let trapezoid_by_hand = array![0.25, 2.0, 2.5, 0.5];
+    let actual = helpers::scaled_to_unit_peak(&algo.convolve(1.0, &f, &g).unwrap());
+    pretty_assert_abs_diff_eq!(
+      helpers::scaled_to_unit_peak(&trapezoid_by_hand),
+      actual,
+      epsilon = 1e-15
+    );
+
+    let (f, g) = (helpers::exponential(1.5, 81, 0.05), helpers::exponential(4.0, 41, 0.05));
+    let direct = helpers::scaled_to_unit_peak(&DirectConvolve.convolve(0.05, &f, &g).unwrap());
+    let actual = helpers::scaled_to_unit_peak(&algo.convolve(0.05, &f, &g).unwrap());
+    pretty_assert_abs_diff_eq!(direct, actual, epsilon = 1e-12);
+  }
+
+  #[rstest]
+  #[case::direct(&DirectConvolve)]
+  #[case::ndarray_conv(&NdarrayConvolve)]
+  #[case::fft(&FftConvolve)]
+  #[trace]
   fn test_convolution_inner_outputs_are_trapezoid_sums_and_extreme_outputs_are_quarter_end_products(
     #[case] algo: &dyn ConvolveAlgo,
   ) {
@@ -57,5 +78,19 @@ mod tests {
       algo.convolve(1.0, &f, &g),
       format!("Trapezoid convolution needs at least 2 samples per operand, {lengths}")
     );
+  }
+
+  mod helpers {
+    use ndarray::Array1;
+    use treetime_utils::array::ndarray::max_or;
+    use treetime_utils::cast::ToF64Exact;
+
+    pub(super) fn exponential(rate: f64, len: usize, dx: f64) -> Array1<f64> {
+      Array1::from_shape_fn(len, |i| (-rate * i.to_f64_exact() * dx).exp())
+    }
+
+    pub(super) fn scaled_to_unit_peak(values: &Array1<f64>) -> Array1<f64> {
+      values / max_or(values, f64::NAN)
+    }
   }
 }
