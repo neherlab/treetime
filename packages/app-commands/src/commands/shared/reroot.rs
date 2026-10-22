@@ -1,10 +1,10 @@
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
-use treetime::make_report;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
@@ -74,7 +74,7 @@ pub fn resolve_reroot_tips(tips: &[String], graph: &Graph, names: &NodeNames) ->
       leaf_of
         .get(tip.as_str())
         .copied()
-        .ok_or_else(|| make_report!("Reroot tip not found: {tip}"))
+        .ok_or_else(|| argument_error(&["reroot_tips"], format!("Reroot tip not found: {tip}")))
     })
     .collect()
 }

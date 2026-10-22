@@ -1,4 +1,4 @@
-use crate::commands::shared::required::missing_settings;
+use crate::commands::shared::argument_error::argument_error;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::output_plan::OutputSelection;
 use deser::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ macro_rules! ambiguity_args {
         match self.ambiguity_threshold {
           Some(threshold) => Ok(AmbiguityOutputs::new(threshold, &selected, $output::iter().map(OutputSelection::from))),
           None if selected.is_empty() => Ok(AmbiguityOutputs::default()),
-          None => Err(missing_settings(
+          None => Err(argument_error(
             &["ambiguity_threshold", "ambiguity_outputs"],
             "--ambiguity-outputs requires --ambiguity-threshold",
           )),

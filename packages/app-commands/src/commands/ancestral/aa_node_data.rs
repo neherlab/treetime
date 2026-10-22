@@ -1,3 +1,4 @@
+use crate::commands::shared::argument_error::argument_error;
 use app_output::output_plan::{OutputSelection, PathPlaceholder, expand_path_template};
 use deser_value::Value;
 use eyre::Report;
@@ -23,25 +24,37 @@ pub(crate) fn validate_aa_args(
   }
 
   let Some(template) = translations else {
-    return make_error!("--translations is required when using --cdses, --annotation, or --aa-root-sequence");
+    return Err(argument_error(
+      &["translations", "cdses", "annotation", "aa_root_sequence"],
+      "--translations is required when using --cdses, --annotation, or --aa-root-sequence",
+    ));
   };
 
   if n_alignments > 1 {
-    return make_error!(
-      "--translations and --annotation need exactly one --alignment file, but {n_alignments} were given: \
-       CDS coordinates refer to the positions of one nucleotide alignment"
-    );
+    return Err(argument_error(
+      &["translations", "annotation", "alignment"],
+      format!(
+        "--translations and --annotation need exactly one --alignment file, but {n_alignments} were given: \
+         CDS coordinates refer to the positions of one nucleotide alignment"
+      ),
+    ));
   }
 
   if !PathPlaceholder::Cds.is_in(template) {
-    return make_error!(
-      "--translations must contain a CDS placeholder ({})",
-      PathPlaceholder::Cds.quoted_tokens()
-    );
+    return Err(argument_error(
+      &["translations"],
+      format!(
+        "--translations must contain a CDS placeholder ({})",
+        PathPlaceholder::Cds.quoted_tokens()
+      ),
+    ));
   }
 
   if cdses.is_empty() && annotation.is_none() {
-    return make_error!("--cdses must list at least one CDS, or pass --annotation to derive the CDS set");
+    return Err(argument_error(
+      &["cdses", "annotation"],
+      "--cdses must list at least one CDS, or pass --annotation to derive the CDS set",
+    ));
   }
 
   validate_file_arg("--annotation", annotation)?;
@@ -50,10 +63,13 @@ pub(crate) fn validate_aa_args(
   let mut seen = BTreeSet::new();
   for cds in cdses {
     if cds.is_empty() {
-      return make_error!("--cdses must not contain an empty CDS name");
+      return Err(argument_error(&["cdses"], "--cdses must not contain an empty CDS name"));
     }
     if !seen.insert(cds) {
-      return make_error!("--cdses contains duplicate CDS '{cds}'");
+      return Err(argument_error(
+        &["cdses"],
+        format!("--cdses contains duplicate CDS '{cds}'"),
+      ));
     }
   }
 

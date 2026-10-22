@@ -1,4 +1,5 @@
 use crate::commands::prune::args::TreetimePruneArgs;
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::output_args::ResolveOutputs;
@@ -15,11 +16,11 @@ use std::path::PathBuf;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::cancel::Cancel;
+use treetime::make_report;
 use treetime::partition::result::PartitionSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::Mutation;
-use treetime::{make_error, make_report};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -188,15 +189,17 @@ fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   args.alignment.paths()?;
 
   if args.prune_empty && args.alignment.alignment.is_empty() {
-    return make_error!(
-      "The --prune-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations."
-    );
+    return Err(argument_error(
+      &["prune_empty", "alignment"],
+      "The --prune-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations.",
+    ));
   }
 
   if args.merge_shared_mutations && args.alignment.alignment.is_empty() {
-    return make_error!(
-      "The --merge-shared-mutations requires --alignment. Without sequence data, it's not possible to determine which branches share mutations."
-    );
+    return Err(argument_error(
+      &["merge_shared_mutations", "alignment"],
+      "The --merge-shared-mutations requires --alignment. Without sequence data, it's not possible to determine which branches share mutations.",
+    ));
   }
 
   Ok(())

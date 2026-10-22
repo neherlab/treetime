@@ -1,6 +1,7 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::TimetreeAmbiguityArgs;
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::branch_length_mode::BranchLengthModeCli;
 use crate::commands::shared::branch_lengths::BranchLengthArgs;
 use crate::commands::shared::clock_filter::ClockFilterArgs;
@@ -13,7 +14,7 @@ use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{ClockOutputArgs, OutputCoreArgs, TimetreeOutputSelectionArgs};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
 use crate::commands::shared::representation::RepresentationArgs;
-use crate::commands::shared::required::{missing_required_args, missing_settings};
+use crate::commands::shared::required::missing_required_args;
 use crate::commands::shared::reroot::{RerootArgs, RootingArgs};
 use crate::commands::shared::seed::SeedArgs;
 use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceArgs};
@@ -88,13 +89,13 @@ fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
     return Ok(());
   }
   if raw.branch_length_mode == BranchLengthModeCli::Marginal {
-    return Err(missing_settings(
+    return Err(argument_error(
       &["alignment", "branch_length_mode"],
       "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input",
     ));
   }
   if raw.sequence_length.is_none_or(|length| length == 0) {
-    return Err(missing_settings(
+    return Err(argument_error(
       &["alignment", "sequence_length"],
       "--sequence-length is required without an alignment: the time inference needs the sequence length",
     ));

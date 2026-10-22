@@ -1,3 +1,4 @@
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::leaf_order::leaf_order;
 #[cfg(feature = "clap")]
 use clap::ValueHint;
@@ -17,7 +18,6 @@ use treetime_io::name_list::name_list_read_file;
 use treetime_io::nwk::NewickDialect;
 use treetime_io::tree::tree_read_file;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
-use treetime_utils::{make_error, make_report};
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
@@ -82,9 +82,15 @@ impl TopologyOrderArgs {
       .is_some_and(|order| TopologyOrderPreset::from(order).is_target_order());
 
     if target_fields_present && !target_mode {
-      return make_error!(
-        "--topology-order-target-* options require --topology-order=target-order or target-order-reverse"
-      );
+      return Err(argument_error(
+        &[
+          "topology_order",
+          "topology_order_target_source",
+          "topology_order_target_file",
+          "topology_order_target_aggregate",
+        ],
+        "--topology-order-target-* options require --topology-order=target-order or target-order-reverse",
+      ));
     }
 
     if target_mode
@@ -94,7 +100,10 @@ impl TopologyOrderArgs {
       )
       && self.topology_order_target_file.is_none()
     {
-      return make_error!("--topology-order-target-file is required for reference-topology and list target sources");
+      return Err(argument_error(
+        &["topology_order_target_source", "topology_order_target_file"],
+        "--topology-order-target-file is required for reference-topology and list target sources",
+      ));
     }
 
     Ok(())
@@ -122,10 +131,12 @@ impl TopologyOrderArgs {
         );
       },
       TopologyOrderTargetSourceArg::ReferenceTopology => {
-        let path = self
-          .topology_order_target_file
-          .as_ref()
-          .ok_or_else(|| make_report!("--topology-order-target-file is required for reference-topology"))?;
+        let path = self.topology_order_target_file.as_ref().ok_or_else(|| {
+          argument_error(
+            &["topology_order_target_file"],
+            "--topology-order-target-file is required for reference-topology",
+          )
+        })?;
         let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading target reference topology")?;
         leaf_order(&nwk_parsed.graph)
           .into_iter()
@@ -133,10 +144,12 @@ impl TopologyOrderArgs {
           .collect_vec()
       },
       TopologyOrderTargetSourceArg::List => {
-        let path = self
-          .topology_order_target_file
-          .as_ref()
-          .ok_or_else(|| make_report!("--topology-order-target-file is required for list"))?;
+        let path = self.topology_order_target_file.as_ref().ok_or_else(|| {
+          argument_error(
+            &["topology_order_target_file"],
+            "--topology-order-target-file is required for list",
+          )
+        })?;
         name_list_read_file(path, b'\n').wrap_err("When reading the topology order target list")?
       },
     };

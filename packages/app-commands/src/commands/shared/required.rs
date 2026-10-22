@@ -1,12 +1,15 @@
+use crate::commands::shared::argument_error::argument_error;
 use eyre::Report;
 use itertools::Itertools;
-use treetime::make_report;
 
 #[cfg(feature = "clap")]
 pub fn missing_required_args<C: clap::CommandFactory>(missing_ids: &[&str]) -> Report {
   let command = C::command();
   let list = missing_ids.iter().map(|id| required_flag(&command, id)).join("\n  ");
-  make_report!("the following required arguments were not provided:\n  {list}")
+  argument_error(
+    missing_ids,
+    format!("the following required arguments were not provided:\n  {list}"),
+  )
 }
 
 #[cfg(feature = "clap")]
@@ -30,21 +33,9 @@ pub fn missing_required_args<C>(missing_ids: &[&str]) -> Report {
   let list = missing_ids
     .iter()
     .map(|id| format!("--{} <{}>", id.replace('_', "-"), id.to_uppercase()))
-    .collect::<Vec<_>>()
     .join("\n  ");
-  make_report!("the following required arguments were not provided:\n  {list}")
-}
-
-pub fn missing_settings(settings: &[&str], message: impl Into<String>) -> Report {
-  Report::new(MissingSettings {
-    message: message.into(),
-    settings: settings.iter().map(|setting| (*setting).to_owned()).collect(),
-  })
-}
-
-#[derive(Debug, derive_more::Display, derive_more::Error)]
-#[display("{message}")]
-pub struct MissingSettings {
-  pub message: String,
-  pub settings: Vec<String>,
+  argument_error(
+    missing_ids,
+    format!("the following required arguments were not provided:\n  {list}"),
+  )
 }

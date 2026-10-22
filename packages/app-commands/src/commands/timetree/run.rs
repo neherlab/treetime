@@ -1,3 +1,4 @@
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
@@ -18,6 +19,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
 use treetime::clock::find_best_root::params::RerootSpec;
+use treetime::make_internal_error;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::PartitionSequences;
@@ -29,7 +31,6 @@ use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::TimetreeParams;
 use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
-use treetime::{make_error, make_internal_error};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -57,10 +58,11 @@ pub fn run_timetree_estimation(
   let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, args.branch_length_mode, log)?;
   let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
   if mutation_units && args.branch_length_mode == BranchLengthMode::Input {
-    return make_error!(
+    return Err(argument_error(
+      &["divergence_units", "branch_length_mode"],
       "--divergence-units=mutations requires ancestral reconstruction; \
-       incompatible with --branch-length-mode=input"
-    );
+       incompatible with --branch-length-mode=input",
+    ));
   }
   let sequence_outputs_requested =
     sequence_outputs_requested(&resolved, mutation_units, !reconstructed_nuc_fasta.is_empty());

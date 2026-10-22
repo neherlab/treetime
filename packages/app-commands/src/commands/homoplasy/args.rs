@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::method_anc::{MethodAncArgs, SampleFromProfileArgs};
@@ -22,7 +23,6 @@ use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
-use treetime::make_error;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
@@ -59,14 +59,20 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeHomoplasyArgsRaw>(&["tree"]))?;
     if !raw.rescale.is_finite() || raw.rescale <= 0.0 {
-      return make_error!("--rescale must be a positive finite number, but got {}", raw.rescale);
+      return Err(argument_error(
+        &["rescale"],
+        format!("--rescale must be a positive finite number, but got {}", raw.rescale),
+      ));
     }
     let n_alignments = raw.alignment.alignment.len();
     if n_alignments > 1 {
-      return make_error!(
-        "homoplasy reads exactly one --alignment file, but {n_alignments} were given: \
-         the reported positions refer to the coordinates of one alignment"
-      );
+      return Err(argument_error(
+        &["alignment"],
+        format!(
+          "homoplasy reads exactly one --alignment file, but {n_alignments} were given: \
+           the reported positions refer to the coordinates of one alignment"
+        ),
+      ));
     }
     Ok(Self {
       tree,

@@ -1,3 +1,4 @@
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
@@ -6,7 +7,6 @@ use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use treetime::make_error;
 use treetime::progress::{LogSink, RunWarningKind};
 use treetime::seq::alignment::LeafSequences;
 use treetime_graph::graph::Graph;
@@ -53,7 +53,10 @@ impl AlignmentArgs {
   pub fn paths(&self) -> Result<&[PathBuf], Report> {
     let n_stdin = self.alignment.iter().filter(|path| is_path_stdin(path)).count();
     if n_stdin > 1 {
-      return make_error!("Standard input ('-') can be read only once, but --alignment lists it {n_stdin} times");
+      return Err(argument_error(
+        &["alignment"],
+        format!("Standard input ('-') can be read only once, but --alignment lists it {n_stdin} times"),
+      ));
     }
     Ok(&self.alignment)
   }
@@ -61,7 +64,10 @@ impl AlignmentArgs {
   pub fn required_paths(&self) -> Result<&[PathBuf], Report> {
     let paths = self.paths()?;
     if paths.is_empty() {
-      return make_error!("--alignment is required: pass one or more FASTA files, or '-' to read standard input");
+      return Err(argument_error(
+        &["alignment"],
+        "--alignment is required: pass one or more FASTA files, or '-' to read standard input",
+      ));
     }
     Ok(paths)
   }
