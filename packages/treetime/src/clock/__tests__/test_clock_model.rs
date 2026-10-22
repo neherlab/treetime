@@ -9,6 +9,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use treetime_utils::io::json::json_read_str;
   use treetime_utils::io::json::{JsonPretty, json_write_str};
+  use treetime_utils::pretty_assert_relative_eq;
 
   fn clock_set_with_rate(target_rate: f64) -> ClockSet {
     let t1 = 0.0;
@@ -217,7 +218,7 @@ mod tests {
 
     let restated = model.estimated_at_rate(&set, Some(1e-3));
 
-    approx::assert_relative_eq!(model.chisq().unwrap(), restated.chisq().unwrap(), max_relative = 1e-6);
+    pretty_assert_relative_eq!(model.chisq().unwrap(), restated.chisq().unwrap(), max_relative = 1e-6);
     assert_eq!((model.r_val(), Some(1e-3)), (restated.r_val(), restated.rate_std()));
     Ok(())
   }

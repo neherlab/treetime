@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::*;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   fn make_neglog_power_law_grid(t_hard: f64, a: f64, b: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
@@ -38,7 +38,7 @@ mod tests {
     if expected.is_infinite() {
       assert!(actual.is_infinite() && actual > 0.0, "expected +inf, got {actual}");
     } else {
-      assert_abs_diff_eq!(expected, actual, epsilon = 1e-14);
+      pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-14);
     }
   }
 
@@ -56,8 +56,8 @@ mod tests {
   ) -> Result<(), Report> {
     let grid = make_neglog_power_law_grid(t_hard, a, b, 0.1, 1.0, 20);
     let law = HardApproachLaw::fit(&grid, t_hard, Side::Left, 10).expect("fit should succeed");
-    assert_abs_diff_eq!(t_hard, law.t_hard, epsilon = 1e-14);
-    assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(t_hard, law.t_hard, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     Ok(())
   }
 
@@ -78,8 +78,8 @@ mod tests {
     let law = HardApproachLaw { t_hard, b };
     let edge = GridEdge { t: t_edge, y: y_edge };
     let position = law.position_at(edge, level);
-    assert_abs_diff_eq!(expected, position, epsilon = 1e-15);
-    assert_abs_diff_eq!(level.max(y_edge), law.eval(edge, position), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(expected, position, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(level.max(y_edge), law.eval(edge, position), epsilon = 1e-15);
   }
 
   #[rustfmt::skip]
@@ -103,7 +103,7 @@ mod tests {
     let y = Array1::linspace(8.0, 9.9, 20).mapv(|t: f64| 2.0 - b * (t_hard - t).ln());
     let grid = GridFn::from_range_values((8.0, 9.9), y)?;
     let law = HardApproachLaw::fit(&grid, t_hard, Side::Right, 10).expect("fit should succeed");
-    assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(b, law.b, epsilon = 1e-10);
     Ok(())
   }
 
@@ -143,7 +143,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let law = HardApproachLaw { t_hard, b };
-    assert_abs_diff_eq!(expected, law.mass(GridEdge { t: t_edge, y: y_edge }), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(expected, law.mass(GridEdge { t: t_edge, y: y_edge }), epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -171,7 +171,7 @@ mod tests {
       })
       .sum();
 
-    assert_abs_diff_eq!(closed_form, quad, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(closed_form, quad, epsilon = 1e-6);
   }
 
   #[rustfmt::skip]
@@ -202,7 +202,7 @@ mod tests {
     )?;
     let behavior = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 1.0 });
 
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       2.0_f64.ln(),
       grid.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
@@ -212,12 +212,12 @@ mod tests {
         .interp_with_extrap(0.0, behavior, BoundaryBehavior::Error)?
         .is_infinite()
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       0.0,
       grid.interp_with_extrap(-0.5, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
-    assert_abs_diff_eq!(0.0, grid.interp(1.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(0.0, grid.interp(1.0)?, epsilon = 1e-14);
     Ok(())
   }
 
@@ -226,17 +226,17 @@ mod tests {
     let grid = GridFn::from_range_values((0.1, 1.0), ndarray::array![5.0, 5.0, 5.0, 5.0, 5.0])?;
     let behavior = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: 0.0 });
 
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       5.0,
       grid.interp_with_extrap(0.05, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       5.0,
       grid.interp_with_extrap(0.0, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       0.0,
       grid.interp_with_extrap(-0.1, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-14
@@ -254,7 +254,7 @@ mod tests {
 
     let before = grid.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?;
     let shifted = grid.shift_y(10.0);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       before + 10.0,
       shifted.interp_with_extrap(0.5, behavior, BoundaryBehavior::Error)?,
       epsilon = 1e-13

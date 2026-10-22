@@ -7,23 +7,23 @@ mod tests {
   use crate::optimize::method_newton::chain_rule_sqrt;
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use approx::assert_abs_diff_eq;
   use ndarray::array;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_optimize_method_chain_rule_at_zero() {
     let (ds, d2s) = chain_rule_sqrt(0.0, 100.0, -500.0);
-    assert_abs_diff_eq!(ds, 0.0, epsilon = 1e-15);
-    assert_abs_diff_eq!(d2s, 200.0, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(ds, 0.0, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(d2s, 200.0, epsilon = 1e-15);
   }
 
   #[test]
   fn test_optimize_method_chain_rule_analytical() {
     let s = 0.3;
     let (ds, d2s) = chain_rule_sqrt(s, 10.0, -100.0);
-    assert_abs_diff_eq!(ds, 6.0, epsilon = 1e-14);
-    assert_abs_diff_eq!(d2s, -16.0, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(ds, 6.0, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(d2s, -16.0, epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -59,7 +59,7 @@ mod tests {
     };
     let dl_ds_numerical = (eval_s(s + h) - eval_s(s - h)) / (2.0 * h);
 
-    assert_abs_diff_eq!(dl_ds_analytical, dl_ds_numerical, epsilon = 1e-4);
+    pretty_assert_abs_diff_eq!(dl_ds_analytical, dl_ds_numerical, epsilon = 1e-4);
   }
 
   #[rustfmt::skip]
@@ -95,6 +95,6 @@ mod tests {
     };
     let d2l_ds2_numerical = (eval_s(s + h) - 2.0 * eval_s(s) + eval_s(s - h)) / (h * h);
 
-    assert_abs_diff_eq!(d2l_ds2_analytical, d2l_ds2_numerical, epsilon = 1e-2);
+    pretty_assert_abs_diff_eq!(d2l_ds2_analytical, d2l_ds2_numerical, epsilon = 1e-2);
   }
 }

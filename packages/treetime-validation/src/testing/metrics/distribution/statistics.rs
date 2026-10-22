@@ -125,8 +125,8 @@ fn compute_kurtosis(sorted_data: &[f64], mean: f64, std: f64) -> f64 {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use ndarray::array;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[test]
   fn test_statistical_metrics() {
@@ -135,12 +135,12 @@ mod tests {
 
     let expected_std = 2.5_f64.sqrt();
 
-    assert_ulps_eq!(stats.mean, 3.0, max_ulps = 4);
-    assert_ulps_eq!(stats.median, 3.0, max_ulps = 4);
-    assert_ulps_eq!(stats.std, expected_std, max_ulps = 4);
+    pretty_assert_ulps_eq!(stats.mean, 3.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(stats.median, 3.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(stats.std, expected_std, max_ulps = 4);
 
-    assert_ulps_eq!(stats.skewness, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(stats.skewness, 0.0, max_ulps = 4);
 
-    assert_abs_diff_eq!(stats.kurtosis, -1.2, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(stats.kurtosis, -1.2, epsilon = 1e-14);
   }
 }

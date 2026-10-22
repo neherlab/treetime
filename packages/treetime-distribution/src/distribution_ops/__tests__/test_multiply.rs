@@ -5,7 +5,6 @@ mod tests {
   use crate::distribution_core::formula::DistributionFormula;
   use crate::distribution_ops::multiply::{distribution_multiplication, guarded_empty_result, hard_domains_disjoint};
   use crate::policy::Plain;
-  use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
@@ -31,7 +30,7 @@ mod tests {
     };
 
     let expected = array![2.0, 12.0, 30.0, 56.0, 90.0];
-    assert_ulps_eq!(expected, result_fn.y(), max_ulps = 10);
+    pretty_assert_ulps_eq!(expected, result_fn.y(), max_ulps = 10);
   }
 
   #[test]
@@ -50,7 +49,7 @@ mod tests {
       panic!("Both results should be Function variants");
     };
 
-    assert_ulps_eq!(ff_fn.y(), fxf_fn.y(), max_ulps = 10);
+    pretty_assert_ulps_eq!(ff_fn.y(), fxf_fn.y(), max_ulps = 10);
   }
 
   #[test]
@@ -203,8 +202,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
-    assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 3.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
     let peak = result.likely_time().unwrap().unwrap();
     assert!(peak > 5.5 && peak < 7.5, "Peak at {peak}, expected ~6.5");
   }
@@ -217,8 +216,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
-    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 10.0, max_ulps = 4);
   }
 
   #[test]
@@ -233,8 +232,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function, got {result:?}")
     };
-    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
     assert!(result.likely_time().unwrap().is_some());
   }
 
@@ -258,8 +257,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function (non-empty product), got {result:?}")
     };
-    assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 1970.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 2000.0, max_ulps = 4);
     let peak = result.likely_time().unwrap().unwrap();
     assert!(peak > 1985.0 && peak < 1995.0, "Peak at {peak}, expected near 1990");
   }
@@ -287,8 +286,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function (interval, not point contact), got {result:?}")
     };
-    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 5.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 5.0, max_ulps = 4);
   }
 
   #[test]
@@ -299,8 +298,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
-    assert_ulps_eq!(f.x_min(), 5.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 15.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 5.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 15.0, max_ulps = 4);
   }
 
   #[test]
@@ -323,8 +322,8 @@ mod tests {
     let DistributionPlain::Function(f) = &result else {
       panic!("Expected Function")
     };
-    assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
-    assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_min(), 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(f.x_max(), 8.0, max_ulps = 4);
     assert!(result.likely_time().unwrap().is_some());
   }
 
@@ -341,9 +340,9 @@ mod tests {
     let (DistributionPlain::Function(fab), DistributionPlain::Function(fba)) = (&ab, &ba) else {
       panic!("Both results should be Function")
     };
-    assert_ulps_eq!(fab.x_min(), fba.x_min(), max_ulps = 4);
-    assert_ulps_eq!(fab.x_max(), fba.x_max(), max_ulps = 4);
-    assert_ulps_eq!(fab.y(), fba.y(), max_ulps = 10);
+    pretty_assert_ulps_eq!(fab.x_min(), fba.x_min(), max_ulps = 4);
+    pretty_assert_ulps_eq!(fab.x_max(), fba.x_max(), max_ulps = 4);
+    pretty_assert_ulps_eq!(fab.y(), fba.y(), max_ulps = 10);
   }
 
   #[test]
@@ -443,7 +442,7 @@ mod tests {
     let BoundaryBehavior::Linear(law) = fab.left_extrap() else {
       panic!("Expected a composed Linear left tail, got {:?}", fab.left_extrap())
     };
-    assert_ulps_eq!(-0.005, law.slope, max_ulps = 4);
+    pretty_assert_ulps_eq!(-0.005, law.slope, max_ulps = 4);
     assert_eq!(BoundaryBehavior::Error, fab.right_extrap());
   }
 

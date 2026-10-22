@@ -5,13 +5,13 @@ mod tests {
   use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::clock::reroot::reroot_undated;
   use crate::progress::NoopProgress;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn root_to_tip_distances(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
     let divergences = root_to_node_divergences(graph, |key| branch_length_or_zero(branch_lengths, key)).unwrap();
@@ -37,8 +37,8 @@ mod tests {
 
     let dists = root_to_tip_distances(&graph, &branch_lengths);
     assert_eq!(2, dists.len());
-    assert_abs_diff_eq!(dists[0], 0.2, epsilon = 1e-15);
-    assert_abs_diff_eq!(dists[1], 0.2, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(dists[0], 0.2, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(dists[1], 0.2, epsilon = 1e-15);
     Ok(())
   }
 
@@ -58,7 +58,7 @@ mod tests {
     )?;
 
     let dists = root_to_tip_distances(&graph, &branch_lengths);
-    assert_abs_diff_eq!(dists.as_slice(), [3.25, 3.75, 4.25].as_slice(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(dists.as_slice(), [3.25, 3.75, 4.25].as_slice(), epsilon = 1e-12);
     Ok(())
   }
 
@@ -92,7 +92,7 @@ mod tests {
     assert_eq!(3, graph.get_leaves().count());
     let expected = root_to_tip_distances(&unstemmed_graph, &unstemmed_branch_lengths);
     let actual = root_to_tip_distances(&graph, &branch_lengths);
-    assert_abs_diff_eq!(expected.as_slice(), actual.as_slice(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected.as_slice(), actual.as_slice(), epsilon = 1e-12);
     Ok(())
   }
 }

@@ -3,7 +3,6 @@ pub(super) mod tests {
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
   use crate::policy::NegLog;
   use crate::{BoundaryBehavior, DistributionFunction};
-  use approx::assert_relative_eq;
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::Array1;
@@ -12,6 +11,7 @@ pub(super) mod tests {
   use statrs::function::gamma::gamma;
   use std::f64::consts::PI;
   use treetime_grid::{DEFAULT_TAIL_FIT_POINTS, Side, SoftTailLaw};
+  use treetime_utils::pretty_assert_relative_eq;
 
   const CELLS: [usize; 4] = [100, 200, 400, 800];
   const CELLS_FINE: [usize; 4] = [800, 1600, 3200, 6400];
@@ -26,7 +26,7 @@ pub(super) mod tests {
     let f = helpers::sampled((-8.0, 8.0), cells, |t| t * t / 2.0)?;
     let profile = MassProfile::new(&f)?;
     let total = profile.fractions(TailMass::Required).unwrap().total();
-    assert_relative_eq!((2.0 * PI).sqrt(), (-profile.neg_log_mass(total)).exp(), epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!((2.0 * PI).sqrt(), (-profile.neg_log_mass(total)).exp(), epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 

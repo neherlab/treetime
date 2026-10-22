@@ -3,12 +3,12 @@ mod tests {
 
   use crate::optimize::indel::IndelPolicy;
   use crate::optimize::params::BranchOptMethod;
-  use approx::assert_relative_eq;
   use eyre::Report;
   use helpers::{load_gm_inputs, load_gm_outputs, setup_and_run};
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::path::Path;
+  use treetime_utils::pretty_assert_relative_eq;
 
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20_jc69_damped")]
@@ -42,7 +42,7 @@ mod tests {
       .map(|e| result.branch_lengths.get(&e.key()).copied().flatten().unwrap_or(0.0))
       .sum();
 
-    assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
+    pretty_assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
 
     Ok(())
   }
@@ -84,7 +84,7 @@ mod tests {
       if expected_bl.abs() < 1e-5 {
         continue;
       }
-      assert_relative_eq!(actual_bl, expected_bl, max_relative = 0.10);
+      pretty_assert_relative_eq!(actual_bl, expected_bl, max_relative = 0.10);
     }
 
     Ok(())

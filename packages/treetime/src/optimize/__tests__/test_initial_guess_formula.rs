@@ -15,7 +15,6 @@ mod tests {
   use crate::partition::set::PartitionSet;
   use crate::test_utils::SingleReconstruction;
   use crate::test_utils::leaf_seq_inputs;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -23,6 +22,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
@@ -65,7 +65,7 @@ mod tests {
         0.0
       };
 
-      assert_abs_diff_eq!(expected_bl, actual_bl, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(expected_bl, actual_bl, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -104,7 +104,7 @@ mod tests {
         0.0
       };
 
-      assert_abs_diff_eq!(expected_bl, actual_bl, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(expected_bl, actual_bl, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -198,8 +198,8 @@ mod tests {
     );
     for (edge_name, (dense_log_lh, dense_derivative, _dense_second_derivative)) in dense_metrics {
       let (sparse_log_lh, sparse_derivative, _sparse_second_derivative) = sparse_metrics[&edge_name];
-      assert_abs_diff_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-12);
-      assert_abs_diff_eq!(dense_derivative, sparse_derivative, epsilon = 1e-12);
+      pretty_assert_abs_diff_eq!(dense_log_lh, sparse_log_lh, epsilon = 1e-12);
+      pretty_assert_abs_diff_eq!(dense_derivative, sparse_derivative, epsilon = 1e-12);
     }
     Ok(())
   }

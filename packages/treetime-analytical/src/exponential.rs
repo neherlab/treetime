@@ -27,54 +27,54 @@ fn exponential_convolution(a: f64, b: f64, x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_exponential_pdf_positive() {
     let rate = 2.0;
     let result = exponential_pdf(rate, 1.0);
     let expected = 2.0 * (-2.0_f64).exp();
-    assert_ulps_eq!(result, expected, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_pdf_negative() {
     let result = exponential_pdf(1.0, -1.0);
-    assert_ulps_eq!(result, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, 0.0, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_pdf_zero() {
     let rate = 2.0;
     let result = exponential_pdf(rate, 0.0);
-    assert_ulps_eq!(result, rate, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, rate, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_distinct_rates() {
     let result = exponential_convolution(1.0, 2.0, 1.0);
     let expected = 2.0 * 1.0_f64.exp_m1() * (-2.0_f64).exp();
-    assert_ulps_eq!(result, expected, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_equal_rates() {
     let result = exponential_convolution(1.5, 1.5, 2.0);
     let expected = 4.5 * (-3.0_f64).exp();
-    assert_ulps_eq!(result, expected, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_negative_x() {
     let result = exponential_convolution(1.0, 2.0, -1.0);
-    assert_ulps_eq!(result, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, 0.0, max_ulps = 4);
   }
 
   #[test]
   fn test_exponential_convolution_at_zero() {
     let result = exponential_convolution(1.0, 2.0, 0.0);
-    assert_ulps_eq!(result, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -83,10 +83,10 @@ mod tests {
     let rate = 1.0;
     let result = exponential_pdf_grid(rate, &grid);
 
-    assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
-    assert_ulps_eq!(result[1], 1.0, max_ulps = 4);
-    assert_ulps_eq!(result[2], (-1.0_f64).exp(), max_ulps = 4);
-    assert_ulps_eq!(result[3], (-2.0_f64).exp(), max_ulps = 4);
+    pretty_assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result[1], 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result[2], (-1.0_f64).exp(), max_ulps = 4);
+    pretty_assert_ulps_eq!(result[3], (-2.0_f64).exp(), max_ulps = 4);
   }
 
   #[test]
@@ -94,8 +94,8 @@ mod tests {
     let grid = array![-1.0, 0.0, 1.0];
     let result = exponential_convolution_grid(1.0, 2.0, &grid);
 
-    assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
-    assert_ulps_eq!(result[1], 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result[0], 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result[1], 0.0, max_ulps = 4);
     assert!(result[2] > 0.0);
   }
 }

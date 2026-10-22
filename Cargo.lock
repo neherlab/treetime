@@ -5076,6 +5076,7 @@ dependencies = [
  "ctor",
  "deser",
  "ndarray",
+ "pretty_assertions",
  "rayon",
  "statrs",
  "treetime-ops",
@@ -5186,6 +5187,7 @@ dependencies = [
  "eyre",
  "ndarray",
  "ndarray-conv",
+ "pretty_assertions",
  "rayon",
  "treetime-utils",
 ]
@@ -5309,6 +5311,7 @@ dependencies = [
  "ndarray-stats",
  "ordered-float",
  "plotters",
+ "pretty_assertions",
  "rayon",
  "smart-default",
  "strum",

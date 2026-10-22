@@ -4,7 +4,6 @@ mod tests {
   use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{HKY85Params, K80Params, hky85, k80};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array2, Axis, array};
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -119,8 +118,8 @@ mod tests {
       alphabet: AlphabetName::Nuc,
     })?;
 
-    assert_abs_diff_eq!(rate_matrix(&h), rate_matrix(&k), epsilon = 1e-14);
-    assert_abs_diff_eq!(h.expQt(1.0), k.expQt(1.0), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(rate_matrix(&h), rate_matrix(&k), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(h.expQt(1.0), k.expQt(1.0), epsilon = 1e-14);
 
     Ok(())
   }
@@ -160,7 +159,7 @@ mod tests {
     );
 
     let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
-    assert_abs_diff_eq!(p, expected, epsilon = 1e-3);
+    pretty_assert_abs_diff_eq!(p, expected, epsilon = 1e-3);
 
     Ok(())
   }

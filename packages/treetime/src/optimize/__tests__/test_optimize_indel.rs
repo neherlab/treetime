@@ -19,7 +19,6 @@ pub(super) mod tests {
   use crate::pretty_assert_neg_inf;
   use crate::seq::indel::InDel;
   use crate::test_utils::{ReconstructionMut, SingleReconstruction, deletion, sparse_reconstruction_mut};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
@@ -27,6 +26,7 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
@@ -80,7 +80,7 @@ pub(super) mod tests {
     let rate = IndelPolicy::Include
       .edge_indels(&graph, &reconstruction, &branch_lengths)
       .rate();
-    assert_abs_diff_eq!(rate, 0.0, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(rate, 0.0, epsilon = 1e-15);
     Ok(())
   }
 
@@ -105,7 +105,7 @@ pub(super) mod tests {
       .map(|e| branch_lengths.get(&e.key()).copied().flatten().unwrap_or(0.0))
       .sum();
     let expected_rate = 1.0 / total_bl;
-    assert_abs_diff_eq!(rate, expected_rate, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(rate, expected_rate, epsilon = 1e-10);
     Ok(())
   }
 
@@ -142,7 +142,7 @@ pub(super) mod tests {
       })
       .sum();
 
-    assert_abs_diff_eq!(total_lh, expected_total_lh, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(total_lh, expected_total_lh, epsilon = 1e-10);
     Ok(())
   }
 
@@ -458,7 +458,7 @@ pub(super) mod tests {
     let mu = 3.0;
     let t_mle = k.to_f64_exact() / mu;
     let metrics = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
-    assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
+    pretty_assert_abs_diff_eq!(metrics.derivative, 0.0, epsilon = 1e-13);
   }
 
   #[rustfmt::skip]
@@ -500,7 +500,7 @@ pub(super) mod tests {
       .log_lh
       .value();
     let numerical_deriv = (lh_plus - lh_minus) / (2.0 * h1);
-    assert_abs_diff_eq!(metrics.derivative, numerical_deriv, epsilon = 1e-8);
+    pretty_assert_abs_diff_eq!(metrics.derivative, numerical_deriv, epsilon = 1e-8);
 
     let h2 = 1e-4;
     let lh_plus2 = poisson_indel_log_lh(k, mu, t + h2)
@@ -516,7 +516,7 @@ pub(super) mod tests {
       .log_lh
       .value();
     let numerical_second = (lh_plus2 - 2.0 * lh_center + lh_minus2) / (h2 * h2);
-    assert_abs_diff_eq!(metrics.second_derivative, numerical_second, epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(metrics.second_derivative, numerical_second, epsilon = 1e-5);
   }
 
   #[test]
@@ -617,7 +617,7 @@ pub(super) mod tests {
     let t_mle = k.to_f64_exact() / mu;
 
     let metrics_at_mle = poisson_indel_log_lh(k, mu, t_mle).expect("valid Poisson parameters");
-    assert_abs_diff_eq!(metrics_at_mle.derivative, 0.0, epsilon = 1e-13);
+    pretty_assert_abs_diff_eq!(metrics_at_mle.derivative, 0.0, epsilon = 1e-13);
     assert!(metrics_at_mle.second_derivative < 0.0, "Second derivative must be negative at MLE");
 
     let t_start = t_mle * 1.5;

@@ -10,9 +10,9 @@ mod tests {
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
   use crate::progress::NoopProgress;
   use crate::test_utils::{TestDataset, leaf_seq_inputs, sequence_source};
-  use approx::assert_ulps_eq;
   use eyre::Report;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_optimize_pipeline_infer_gtr_mu_normalized() -> Result<(), Report> {
@@ -52,7 +52,7 @@ mod tests {
       panic!("one alignment gives one result");
     };
     let gtr = result.gtr.as_ref().expect("optimize fits a model");
-    assert_ulps_eq!(gtr.mu(), 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(gtr.mu(), 1.0, max_ulps = 4);
 
     Ok(())
   }

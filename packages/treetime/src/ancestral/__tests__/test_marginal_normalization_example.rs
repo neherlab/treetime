@@ -5,11 +5,11 @@ mod tests {
     run_dense_marginal_for_input, run_sparse_marginal_for_input,
   };
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::aview1;
   use treetime_io::fasta::fasta_read;
   use treetime_primitives::AlignmentRecord;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{pretty_assert_array_finite, pretty_assert_array_nonneg};
 
   fn example_input() -> Result<MarginalTestInput, Report> {
@@ -79,7 +79,7 @@ ACGTACGC
       pretty_assert_array_finite!(dis);
       pretty_assert_array_nonneg!(dis, epsilon = 1e-14);
       for row in dis.rows() {
-        assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
+        pretty_assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
       }
     }
     for edge_data in partition.edges.forward.values() {
@@ -90,7 +90,7 @@ ACGTACGC
       pretty_assert_array_finite!(dis);
       pretty_assert_array_nonneg!(dis, epsilon = 1e-14);
       for row in dis.rows() {
-        assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
+        pretty_assert_abs_diff_eq!(1.0, row.sum(), epsilon = 1e-8);
       }
     }
     Ok(())
@@ -114,12 +114,12 @@ ACGTACGC
       for (_, var_pos) in &profile.variable {
         pretty_assert_array_finite!(aview1(var_pos.dis));
         pretty_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-14);
-        assert_abs_diff_eq!(1.0, aview1(var_pos.dis).sum(), epsilon = 1e-8);
+        pretty_assert_abs_diff_eq!(1.0, aview1(var_pos.dis).sum(), epsilon = 1e-8);
       }
       for fixed_dis in profile.fixed.iter().map(|fixed| &fixed.dis) {
         pretty_assert_array_finite!(aview1(fixed_dis));
         pretty_assert_array_nonneg!(aview1(fixed_dis), epsilon = 1e-14);
-        assert_abs_diff_eq!(1.0, aview1(fixed_dis).sum(), epsilon = 1e-8);
+        pretty_assert_abs_diff_eq!(1.0, aview1(fixed_dis).sum(), epsilon = 1e-8);
       }
     }
     for edge_data in partition.edges.forward.values() {
@@ -132,12 +132,12 @@ ACGTACGC
       for (_, var_pos) in &profile.variable {
         pretty_assert_array_finite!(aview1(var_pos.dis));
         pretty_assert_array_nonneg!(aview1(var_pos.dis), epsilon = 1e-14);
-        assert_abs_diff_eq!(1.0, aview1(var_pos.dis).sum(), epsilon = 1e-8);
+        pretty_assert_abs_diff_eq!(1.0, aview1(var_pos.dis).sum(), epsilon = 1e-8);
       }
       for fixed_dis in profile.fixed.iter().map(|fixed| &fixed.dis) {
         pretty_assert_array_finite!(aview1(fixed_dis));
         pretty_assert_array_nonneg!(aview1(fixed_dis), epsilon = 1e-14);
-        assert_abs_diff_eq!(1.0, aview1(fixed_dis).sum(), epsilon = 1e-8);
+        pretty_assert_abs_diff_eq!(1.0, aview1(fixed_dis).sum(), epsilon = 1e-8);
       }
     }
     Ok(())

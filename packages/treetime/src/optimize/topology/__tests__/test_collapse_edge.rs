@@ -8,7 +8,6 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -16,6 +15,7 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -152,8 +152,8 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       match target_name {
-        "A" => assert_abs_diff_eq!(bl.unwrap(), 0.4, epsilon = 1e-7),
-        "B" => assert_abs_diff_eq!(bl.unwrap(), 0.5, epsilon = 1e-7),
+        "A" => pretty_assert_abs_diff_eq!(bl.unwrap(), 0.4, epsilon = 1e-7),
+        "B" => pretty_assert_abs_diff_eq!(bl.unwrap(), 0.5, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -182,8 +182,8 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       match target_name {
-        "A" => assert_abs_diff_eq!(bl.unwrap(), 0.1, epsilon = 1e-7),
-        "B" => assert_abs_diff_eq!(bl.unwrap(), 0.2, epsilon = 1e-7),
+        "A" => pretty_assert_abs_diff_eq!(bl.unwrap(), 0.1, epsilon = 1e-7),
+        "B" => pretty_assert_abs_diff_eq!(bl.unwrap(), 0.2, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -212,7 +212,7 @@ mod tests {
       let target_name = &names[target.key()];
       match target_name {
         "A" => assert_eq!(branch_lengths[&edge.key()], None),
-        "B" => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.5, epsilon = 1e-7),
+        "B" => pretty_assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.5, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }
@@ -239,8 +239,8 @@ mod tests {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = &names[target.key()];
       match target_name {
-        "A" => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.1, epsilon = 1e-7),
-        "B" => assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.2, epsilon = 1e-7),
+        "A" => pretty_assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.1, epsilon = 1e-7),
+        "B" => pretty_assert_abs_diff_eq!(branch_lengths[&edge.key()].unwrap(), 0.2, epsilon = 1e-7),
         other => unreachable!("unexpected target node: {other:?}"),
       }
     }

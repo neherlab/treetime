@@ -12,7 +12,6 @@ mod tests {
   use crate::progress::{LogLevel, NoopProgress};
   use crate::test_utils::{RecordingLog, SingleReconstruction};
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{chain_alignment, chain_alignment_jc69_distance, manual_total_indel_log_lh};
   use pretty_assertions::assert_eq;
@@ -21,6 +20,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_run_optimize_loop_records_lh_history() -> Result<(), Report> {
@@ -98,7 +98,7 @@ mod tests {
     )?;
 
     assert_eq!(2, result.lh_history.len());
-    assert_abs_diff_eq!(result.lh_history[0].value(), expected_total_lh, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(result.lh_history[0].value(), expected_total_lh, epsilon = 1e-10);
     Ok(())
   }
 

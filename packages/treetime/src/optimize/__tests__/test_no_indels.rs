@@ -20,11 +20,11 @@ mod tests {
   use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
   use crate::progress::NoopProgress;
   use crate::test_utils::{deletion, sparse_reconstruction_mut};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_no_indels_drops_indel_contribution_from_likelihood() -> Result<(), Report> {
@@ -204,7 +204,7 @@ mod tests {
       .zip(&result_flag.lh_history)
       .enumerate()
     {
-      assert_abs_diff_eq!(lh_nf.value(), lh_f.value(), epsilon = 1e-10);
+      pretty_assert_abs_diff_eq!(lh_nf.value(), lh_f.value(), epsilon = 1e-10);
     }
     Ok(())
   }

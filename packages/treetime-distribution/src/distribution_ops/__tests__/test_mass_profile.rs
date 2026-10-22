@@ -3,13 +3,13 @@ mod tests {
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
   use crate::policy::NegLog;
   use crate::{BoundaryBehavior, DistributionFunction};
-  use approx::assert_relative_eq;
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, array};
   use rstest::rstest;
   use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_relative_eq;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   const HARD: BoundaryBehavior = BoundaryBehavior::Hard;
@@ -48,7 +48,7 @@ mod tests {
     let (y0, y1) = (0.3, 1.7);
     let profile = MassProfile::new(&helpers::function((0.0, 2.0), array![y0, y1], HARD, HARD)?)?;
     let expected = helpers::linear_density_mass(2.0, (y0, y1), (a, b)) / (-y0).exp();
-    assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 
@@ -75,10 +75,10 @@ mod tests {
     let below_hard_point = |t: f64| (-anchor_y).exp() * (3.0 - t).powf(power) / power;
     for (a, b) in [(2.0, 3.0), (2.0, 2.5), (2.6, 2.99), (2.999, 3.0)] {
       let expected = (below_hard_point(a) - below_hard_point(b)) / (-profile.y_peak()).exp();
-      assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-14);
+      pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-14);
     }
     let quadrature = helpers::gauss_legendre(|t| (-(f.interp(t).unwrap() - profile.y_peak())).exp(), (2.0, 3.0), 2000);
-    assert_relative_eq!(quadrature, profile.mass_between(2.0, 3.0)?, epsilon = 0.0, max_relative = 1e-13);
+    pretty_assert_relative_eq!(quadrature, profile.mass_between(2.0, 3.0)?, epsilon = 0.0, max_relative = 1e-13);
     Ok(())
   }
 
@@ -99,14 +99,14 @@ mod tests {
     let survival = (1.0 - x).powf(power);
     let cdf = -(power * (-x).ln_1p()).exp_m1();
     pretty_assert_abs_diff_eq!(1.0 / power, fractions.total(), epsilon = 1e-15);
-    assert_relative_eq!(cdf, fractions.cdf(x), epsilon = 0.0, max_relative = 1e-15);
-    assert_relative_eq!(survival, fractions.survival(x), epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(cdf, fractions.cdf(x), epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(survival, fractions.survival(x), epsilon = 0.0, max_relative = 1e-15);
     if x <= 0.5 {
-      assert_relative_eq!(x, fractions.quantile(cdf), epsilon = 0.0, max_relative = 1e-15);
+      pretty_assert_relative_eq!(x, fractions.quantile(cdf), epsilon = 0.0, max_relative = 1e-15);
       pretty_assert_abs_diff_eq!(x, fractions.survival_inverse(survival), epsilon = 1e-15);
     } else {
       let distance_to_hard_point = 1.0 - fractions.survival_inverse(survival);
-      assert_relative_eq!(1.0 - x, distance_to_hard_point, epsilon = 0.0, max_relative = 1e-15);
+      pretty_assert_relative_eq!(1.0 - x, distance_to_hard_point, epsilon = 0.0, max_relative = 1e-15);
     }
     Ok(())
   }
@@ -221,7 +221,7 @@ mod tests {
       let target = helpers::linear_density_mass(h, (y0, y1), (0.0, x - range.0)) / total;
       (x - range.0, fractions.quantile(target) - range.0)
     };
-    assert_relative_eq!(distance, actual_distance, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(distance, actual_distance, epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 
@@ -285,8 +285,8 @@ mod tests {
   ) -> Result<(), Report> {
     let y = array![0.0, 0.0, 100.0, 100.0, 100.0, 100.0, 0.0, 0.0];
     let profile = MassProfile::new(&helpers::function((0.0, 7.0), y, HARD, HARD)?)?;
-    assert_relative_eq!(valley_width * (-100.0_f64).exp(), profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
-    assert_relative_eq!(100.0 - valley_width.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(valley_width * (-100.0_f64).exp(), profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(100.0 - valley_width.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 
@@ -323,7 +323,7 @@ mod tests {
     }
     let r_min = pieces.iter().map(|(r, _)| *r).fold(f64::INFINITY, f64::min);
     let expected = r_min - pieces.iter().map(|(r, factor)| factor * (r_min - r).exp()).sum::<f64>().ln();
-    assert_relative_eq!(expected, profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 
@@ -336,7 +336,7 @@ mod tests {
   #[trace]
   fn test_mass_profile_neg_log_mass_agrees_with_linear_mass_near_peak(#[case] (a, b): (f64, f64)) -> Result<(), Report> {
     let profile = MassProfile::new(&helpers::piecewise_model()?)?;
-    assert_relative_eq!(-profile.mass_between(a, b)?.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(-profile.mass_between(a, b)?.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 
@@ -362,7 +362,7 @@ mod tests {
   ) -> Result<(), Report> {
     let left = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard: 0.0, b: beta });
     let profile = MassProfile::new(&helpers::function((0.0, h), array![f64::INFINITY, 0.0], left, HARD)?)?;
-    assert_relative_eq!(expected, profile.neg_log_mass_between(0.0, distance)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, profile.neg_log_mass_between(0.0, distance)?, epsilon = 0.0, max_relative = 1e-15);
     Ok(())
   }
 
@@ -392,7 +392,7 @@ mod tests {
       .try_collect::<_, _, Report>()?;
     for (i, k) in (0..x.len()).tuple_combinations() {
       let expected: f64 = cells[i..k].iter().sum();
-      assert_relative_eq!(expected, profile.mass_between(x[i], x[k])?, epsilon = 0.0, max_relative = 1e-15);
+      pretty_assert_relative_eq!(expected, profile.mass_between(x[i], x[k])?, epsilon = 0.0, max_relative = 1e-15);
     }
     Ok(())
   }

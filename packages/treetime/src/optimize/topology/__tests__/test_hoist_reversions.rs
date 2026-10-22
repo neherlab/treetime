@@ -7,7 +7,6 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion};
   use crate::test_utils::{sparse_topology_partition, sparse_topology_partitions};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
   use pretty_assertions::assert_eq;
@@ -17,6 +16,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   const NWK: &str = "(((A:0.1,B:0.1,Z:0.1)V:0.2)U:0.1)root:0.0;";
 
@@ -156,8 +156,8 @@ mod tests {
     let root_to_v = bl(ru) + bl(h.un) + bl(h.nv);
     let root_to_a = bl(ru) + bl(h.un) + bl(h.nc);
 
-    assert_abs_diff_eq!(root_to_v, 0.1 + 0.2, epsilon = 1e-9);
-    assert_abs_diff_eq!(root_to_a, 0.1 + 0.2 + 0.1, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(root_to_v, 0.1 + 0.2, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(root_to_a, 0.1 + 0.2 + 0.1, epsilon = 1e-9);
     Ok(())
   }
 

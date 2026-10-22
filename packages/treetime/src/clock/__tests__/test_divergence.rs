@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::divergence::{root_to_node_divergences, root_to_node_divergences_where_known};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -9,6 +8,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{assert_error, pretty_assert_map_abs_diff_eq};
 
   #[rustfmt::skip]
@@ -128,7 +128,7 @@ mod tests {
 
     let leaf = parsed.graph.get_leaves().next().unwrap().key();
     assert_eq!("A", &names[leaf]);
-    assert_abs_diff_eq!(19.0 * 0.05, actual[&leaf], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(19.0 * 0.05, actual[&leaf], epsilon = 1e-12);
     Ok(())
   }
 }

@@ -3,10 +3,10 @@ mod tests {
   use crate::partition::marginal::sparse::message::propagate_raw_per_site;
   use crate::partition::storage::sparse::{FixedProfiles, SparseSeqDistribution};
   use crate::partition::storage::var_pos_map::VarPosMap;
-  use approx::assert_abs_diff_eq;
   use helpers::jc69_with_site_rates;
   use ndarray::{array, aview1};
   use treetime_primitives::{AsciiChar, LogLh};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_message_propagate_raw_per_site_forward() {
@@ -55,9 +55,9 @@ mod tests {
       0.10588158412715153
     ];
 
-    assert_abs_diff_eq!(aview1(result.variable.get(0).unwrap().dis), expected_0, epsilon = 1e-14);
-    assert_abs_diff_eq!(aview1(result.variable.get(5).unwrap().dis), expected_5, epsilon = 1e-14);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(aview1(result.variable.get(0).unwrap().dis), expected_0, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(aview1(result.variable.get(5).unwrap().dis), expected_5, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
       aview1(result.variable.get(10).unwrap().dis),
       expected_10,
       epsilon = 1e-14
@@ -111,9 +111,9 @@ mod tests {
       0.10588158412715153
     ];
 
-    assert_abs_diff_eq!(aview1(result.variable.get(0).unwrap().dis), expected_0, epsilon = 1e-14);
-    assert_abs_diff_eq!(aview1(result.variable.get(5).unwrap().dis), expected_5, epsilon = 1e-14);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(aview1(result.variable.get(0).unwrap().dis), expected_0, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(aview1(result.variable.get(5).unwrap().dis), expected_5, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
       aview1(result.variable.get(10).unwrap().dis),
       expected_10,
       epsilon = 1e-14

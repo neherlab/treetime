@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::method_newton::sqrt_step_lower_bound;
-  use approx::assert_abs_diff_eq;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_optimize_method_step_clamping_sqrt_at_zero() {
-    assert_abs_diff_eq!(sqrt_step_lower_bound(0.0), -1.0, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(sqrt_step_lower_bound(0.0), -1.0, epsilon = 1e-15);
   }
 
   #[rustfmt::skip]
@@ -17,7 +17,7 @@ mod tests {
   #[case::s_10(  10.0, 10.0 - 101.0_f64.sqrt())]
   #[trace]
   fn test_optimize_method_step_clamping_sqrt_analytical(#[case] s: f64, #[case] expected: f64) {
-    assert_abs_diff_eq!(sqrt_step_lower_bound(s), expected, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(sqrt_step_lower_bound(s), expected, epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -48,7 +48,7 @@ mod tests {
     let s_new = s - delta_s;
     let t_old = s * s;
     let t_new = s_new * s_new;
-    assert_abs_diff_eq!(t_new - t_old, 1.0, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(t_new - t_old, 1.0, epsilon = 1e-10);
   }
 
   #[test]
@@ -56,7 +56,7 @@ mod tests {
     let s = 1000.0;
     let bound = sqrt_step_lower_bound(s);
     let asymptote = -1.0 / (2.0 * s);
-    assert_abs_diff_eq!(bound, asymptote, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(bound, asymptote, epsilon = 1e-9);
   }
 
   #[rustfmt::skip]

@@ -9,8 +9,8 @@ mod tests {
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
-  use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn make_dense_contribution(coefficients: Array2<f64>) -> OptimizationContribution {
     let gtr = jc69(JC69Params::default()).unwrap();
@@ -176,14 +176,14 @@ mod tests {
   fn test_is_zero_branch_optimal_derivative_magnitude_dense() {
     let contribution = make_dense_contribution(array![[0.0, 1.0, 0.0, 0.0]]);
     let derivative = contribution.zero_branch_length_derivative();
-    assert_abs_diff_eq!(-4.0 / 3.0, derivative, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(-4.0 / 3.0, derivative, epsilon = 1e-10);
   }
 
   #[test]
   fn test_is_zero_branch_optimal_derivative_magnitude_sparse() {
     let contribution = make_sparse_contribution(vec![(3.0, vec![0.0, 1.0, 0.0, 0.0])]);
     let derivative = contribution.zero_branch_length_derivative();
-    assert_abs_diff_eq!(-4.0, derivative, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(-4.0, derivative, epsilon = 1e-10);
   }
 
   #[test]
@@ -195,7 +195,7 @@ mod tests {
     ];
     let contribution = make_dense_contribution(coefficients);
     let derivative = contribution.zero_branch_length_derivative();
-    assert_abs_diff_eq!(-8.0 / 3.0, derivative, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(-8.0 / 3.0, derivative, epsilon = 1e-10);
   }
 
   #[test]
@@ -205,7 +205,7 @@ mod tests {
     let sparse = make_sparse_contribution(vec![(1.0, coeffs)]);
 
     assert_eq!(dense.all_sites_valid_at_zero(), sparse.all_sites_valid_at_zero());
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       dense.zero_branch_length_derivative(),
       sparse.zero_branch_length_derivative(),
       epsilon = 1e-10
@@ -227,7 +227,7 @@ mod tests {
     ]);
 
     assert_eq!(dense.all_sites_valid_at_zero(), sparse.all_sites_valid_at_zero());
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       dense.zero_branch_length_derivative(),
       sparse.zero_branch_length_derivative(),
       epsilon = 1e-10
@@ -276,13 +276,13 @@ mod tests {
 
     let expected_derivative = -0.96 * 10.0 / 1.96 + 0.8 / 0.2;
     let derivative = fast.zero_branch_length_derivative() + slow.zero_branch_length_derivative();
-    assert_abs_diff_eq!(expected_derivative, derivative, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_derivative, derivative, epsilon = 1e-12);
 
     let contributions = [fast, slow];
     let log_lh = |t: f64| evaluate_partitions_log_lh_only(&contributions, t).unwrap().value();
     let expected_log_lh = |t: f64| ((1.0 + 0.96 * (-10.0 * t).exp()) * (1.0 - 0.8 * (-t).exp())).ln();
-    assert_abs_diff_eq!(expected_log_lh(0.0), log_lh(0.0), epsilon = 1e-12);
-    assert_abs_diff_eq!(expected_log_lh(0.5), log_lh(0.5), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_log_lh(0.0), log_lh(0.0), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(expected_log_lh(0.5), log_lh(0.5), epsilon = 1e-12);
     assert!(
       log_lh(0.5) > log_lh(0.0),
       "precondition: L(0.5) must exceed L(0) although the derivative at zero is negative"

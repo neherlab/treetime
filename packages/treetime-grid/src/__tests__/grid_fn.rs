@@ -2,7 +2,6 @@
 mod tests {
   use crate::MaxGridPoints;
   use crate::*;
-  use approx::assert_ulps_eq;
   use eyre::Report;
   use ndarray::{Array1, array, s};
   use pretty_assertions::assert_eq;
@@ -10,6 +9,7 @@ mod tests {
   use std::ops::RangeInclusive;
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -27,7 +27,7 @@ mod tests {
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, max_ulps = 4);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -49,7 +49,7 @@ mod tests {
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp(query)?;
-    assert_ulps_eq!(expected, actual, max_ulps = 4);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -57,7 +57,7 @@ mod tests {
   fn test_gridfn_resample_range_dx_clamped_holds_boundary_on_overshoot() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
     let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4, MaxGridPoints::default())?;
-    assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
+    pretty_assert_ulps_eq!(clamped.y(), &array![0.0, 4.0, 8.0, 10.0], max_ulps = 4);
     Ok(())
   }
 
@@ -65,7 +65,7 @@ mod tests {
   fn test_gridfn_resample_range_dx_clamped_interpolates_within_support() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
     let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5, MaxGridPoints::default())?;
-    assert_ulps_eq!(clamped.y(), &array![0.0, 5.0, 10.0], max_ulps = 4);
+    pretty_assert_ulps_eq!(clamped.y(), &array![0.0, 5.0, 10.0], max_ulps = 4);
     Ok(())
   }
 
@@ -81,7 +81,7 @@ mod tests {
   ) -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values(x_range, y)?;
     let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
-    assert_ulps_eq!(0.0, actual, max_ulps = 4);
+    pretty_assert_ulps_eq!(0.0, actual, max_ulps = 4);
     Ok(())
   }
 
@@ -102,9 +102,9 @@ mod tests {
     let y = array![10.0, 20.0, 30.0];
     let grid_fn = GridFn::from_range_values(x_range, y.clone())?;
     let x = grid_fn.x();
-    assert_ulps_eq!(x[0], 0.0);
-    assert_ulps_eq!(x[1], 1.0);
-    assert_ulps_eq!(x[2], 2.0);
+    pretty_assert_ulps_eq!(x[0], 0.0);
+    pretty_assert_ulps_eq!(x[1], 1.0);
+    pretty_assert_ulps_eq!(x[2], 2.0);
     assert_eq!(&y, grid_fn.y());
     Ok(())
   }
@@ -142,7 +142,7 @@ mod tests {
 
     let actual = grid_fn.interp(query)?;
 
-    approx::assert_abs_diff_eq!(law(query), actual, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(law(query), actual, epsilon = 1e-9);
     Ok(())
   }
 
@@ -158,7 +158,7 @@ mod tests {
 
     let actual = grid_fn.interp_with_extrap(3.5, BoundaryBehavior::Hard, law)?;
 
-    approx::assert_abs_diff_eq!(-3.0 * 0.5_f64.ln(), actual, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(-3.0 * 0.5_f64.ln(), actual, epsilon = 1e-12);
     Ok(())
   }
 
@@ -181,7 +181,7 @@ mod tests {
     if expected.is_infinite() {
       assert!(actual.is_infinite() && actual > 0.0, "expected +inf at {query}, got {actual}");
     } else if !expected.is_nan() {
-      assert_ulps_eq!(expected, actual, max_ulps = 4);
+      pretty_assert_ulps_eq!(expected, actual, max_ulps = 4);
     }
     Ok(())
   }
@@ -224,8 +224,8 @@ mod tests {
       .hard_cell(3, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
       .unwrap();
     assert_eq!(GridEdge { t: 3.0, y: 0.0 }, actual.anchor);
-    assert_ulps_eq!(4.0, actual.law.t_hard, max_ulps = 0);
-    assert_ulps_eq!(3.0, actual.law.b, max_ulps = 4);
+    pretty_assert_ulps_eq!(4.0, actual.law.t_hard, max_ulps = 0);
+    pretty_assert_ulps_eq!(3.0, actual.law.b, max_ulps = 4);
     Ok(())
   }
 
@@ -237,7 +237,7 @@ mod tests {
       let hard_cell = grid_fn
         .hard_cell(cell, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?
         .unwrap();
-      assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp(t)?, max_ulps = 0);
+      pretty_assert_ulps_eq!(hard_cell.eval(t), grid_fn.interp(t)?, max_ulps = 0);
     }
     Ok(())
   }

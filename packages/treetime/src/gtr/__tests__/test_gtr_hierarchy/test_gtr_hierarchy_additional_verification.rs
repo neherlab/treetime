@@ -3,9 +3,9 @@ mod tests {
   use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{HKY85Params, JC69Params, K80Params, hky85, jc69, k80};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::array;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_gtr_jc69_q_symmetric() -> Result<(), Report> {
@@ -15,7 +15,7 @@ mod tests {
     })?;
 
     let q = rate_matrix(&jc);
-    assert_abs_diff_eq!(q, q.t(), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(q, q.t(), epsilon = 1e-14);
 
     Ok(())
   }
@@ -29,7 +29,7 @@ mod tests {
     })?;
 
     let q = rate_matrix(&k);
-    assert_abs_diff_eq!(q, q.t(), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(q, q.t(), epsilon = 1e-14);
 
     Ok(())
   }
@@ -52,7 +52,7 @@ mod tests {
 
     let q1 = rate_matrix(&h1);
     let q2 = rate_matrix(&h2);
-    assert_abs_diff_eq!(q1, q2, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(q1, q2, epsilon = 1e-14);
 
     assert!((h1.mu() - h2.mu()).abs() > 0.1);
 

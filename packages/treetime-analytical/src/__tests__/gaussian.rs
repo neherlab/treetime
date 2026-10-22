@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::gaussian::*;
-  use approx::assert_ulps_eq;
   use ndarray::array;
   use std::f64::consts::PI;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_gaussian_product_params_single() {
@@ -15,9 +15,9 @@ mod tests {
 
     let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(result.mu, 1.0, max_ulps = 4);
-    assert_ulps_eq!(result.sigma, 2.0, max_ulps = 4);
-    assert_ulps_eq!(result.log_scale, 3.0_f64.ln(), max_ulps = 4);
+    pretty_assert_ulps_eq!(result.mu, 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.sigma, 2.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.log_scale, 3.0_f64.ln(), max_ulps = 4);
   }
 
   #[test]
@@ -37,9 +37,9 @@ mod tests {
 
     let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
-    assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
-    assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
+    pretty_assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -59,8 +59,8 @@ mod tests {
 
     let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
-    assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
+    pretty_assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.sigma, 1.0 / 2.0_f64.sqrt(), max_ulps = 4);
   }
 
   #[test]
@@ -68,9 +68,9 @@ mod tests {
     let params: [GaussianParams; 0] = [];
     let result = gaussian_product_params(&params);
 
-    assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.mu, 0.0, max_ulps = 4);
     assert!(result.sigma.is_infinite());
-    assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -91,11 +91,11 @@ mod tests {
 
     let result = gaussian_product(&params, &grid);
 
-    assert_ulps_eq!(result.normalized[2], 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[2], 1.0, max_ulps = 4);
     assert!(result.normalized[0] < result.normalized[2]);
     assert!(result.normalized[4] < result.normalized[2]);
-    assert_ulps_eq!(result.normalized[0], result.normalized[4], max_ulps = 4);
-    assert_ulps_eq!(result.normalized[1], result.normalized[3], max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[0], result.normalized[4], max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[1], result.normalized[3], max_ulps = 4);
   }
 
   #[test]
@@ -104,7 +104,7 @@ mod tests {
     let sigma = 1.0;
     let result = gaussian_pdf(mu, sigma, mu);
     let expected = 1.0 / (sigma * (2.0_f64 * PI).sqrt());
-    assert_ulps_eq!(result, expected, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]
@@ -114,7 +114,7 @@ mod tests {
     let delta = 0.5;
     let left = gaussian_pdf(mu, sigma, mu - delta);
     let right = gaussian_pdf(mu, sigma, mu + delta);
-    assert_ulps_eq!(left, right, max_ulps = 4);
+    pretty_assert_ulps_eq!(left, right, max_ulps = 4);
   }
 
   #[test]
@@ -124,7 +124,7 @@ mod tests {
     let grid = array![-1.0, 0.0, 1.0];
     let result = gaussian_pdf_grid(mu, sigma, &grid);
 
-    assert_ulps_eq!(result[0], result[2], max_ulps = 4);
+    pretty_assert_ulps_eq!(result[0], result[2], max_ulps = 4);
     assert!(result[1] > result[0]);
   }
 
@@ -136,7 +136,7 @@ mod tests {
     let result = gaussian_convolution_pdf(sigma_f, sigma_g, mu, 0.0);
     let expected_sigma = sigma_f.hypot(sigma_g);
     let expected = 1.0 / (expected_sigma * (2.0_f64 * PI).sqrt());
-    assert_ulps_eq!(result, expected, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, expected, max_ulps = 4);
   }
 
   #[test]

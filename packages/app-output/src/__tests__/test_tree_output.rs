@@ -10,7 +10,6 @@ pub(super) mod tests {
   use crate::auspice::{format_number, group_mutations};
   use crate::output_plan::{CommandKind, ResolvedOutputs, TreeWriteKind};
   use crate::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
-  use approx::assert_ulps_eq;
   use deser_value::Map;
   use eyre::{Report, WrapErr};
   use maplit::{btreemap, btreeset};
@@ -33,6 +32,7 @@ pub(super) mod tests {
   use treetime_primitives::Seq;
   use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::io::json::{json_value_read_file, to_json_value};
+  use treetime_utils::pretty_assert_ulps_eq;
   use treetime_utils::{assert_error, o};
 
   #[test]
@@ -571,10 +571,10 @@ pub(super) mod tests {
 
   #[test]
   fn test_tree_output_format_number_fractional_precision() {
-    assert_ulps_eq!(0.123457, format_number(0.12345678, 6), max_ulps = 0);
-    assert_ulps_eq!(123.456789, format_number(123.456789, 6), max_ulps = 0);
-    assert_ulps_eq!(0.0, format_number(0.0, 6), max_ulps = 0);
-    assert_ulps_eq!(2020.123, format_number(2020.1234567, 3), max_ulps = 0);
+    pretty_assert_ulps_eq!(0.123457, format_number(0.12345678, 6), max_ulps = 0);
+    pretty_assert_ulps_eq!(123.456789, format_number(123.456789, 6), max_ulps = 0);
+    pretty_assert_ulps_eq!(0.0, format_number(0.0, 6), max_ulps = 0);
+    pretty_assert_ulps_eq!(2020.123, format_number(2020.1234567, 3), max_ulps = 0);
   }
 
   #[test]

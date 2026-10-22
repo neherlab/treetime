@@ -2,7 +2,6 @@
 mod tests {
   use crate::timetree::confidence::{CI_FRACTION, extract_confidence_intervals};
   use crate::timetree::inference::result::{PosteriorSummaries, TimeInference};
-  use approx::assert_relative_eq;
   use helpers::{add_named, laplace};
   use maplit::btreemap;
   use ndarray::Array1;
@@ -16,6 +15,7 @@ mod tests {
   use treetime_grid::{HardApproachLaw, SoftTailLaw};
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_relative_eq;
 
   #[test]
   fn test_extract_confidence_intervals_names_unnamed_nodes() {
@@ -62,9 +62,9 @@ mod tests {
     let state = helpers::state(&graph, &[(key, Some(2020.5), None)]);
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(1, intervals.len());
-    assert_relative_eq!(intervals[0].date, 2020.5);
-    assert_relative_eq!(intervals[0].lower, 2020.5);
-    assert_relative_eq!(intervals[0].upper, 2020.5);
+    pretty_assert_relative_eq!(intervals[0].date, 2020.5);
+    pretty_assert_relative_eq!(intervals[0].lower, 2020.5);
+    pretty_assert_relative_eq!(intervals[0].upper, 2020.5);
   }
 
   #[test]
@@ -79,10 +79,10 @@ mod tests {
     let state = helpers::state(&graph, &[(key, Some(2020.0), Some(dist))]);
     let intervals = extract_confidence_intervals(&graph, &state, &BTreeMap::new(), &names).unwrap();
     assert_eq!(1, intervals.len());
-    assert_relative_eq!(intervals[0].date, 2020.0);
+    pretty_assert_relative_eq!(intervals[0].date, 2020.0);
     let uniform_mass_from_latest_date = (2021.0 - 0.9 * 2.0, 2021.0);
-    assert_relative_eq!(intervals[0].lower, uniform_mass_from_latest_date.0, epsilon = 1e-12);
-    assert_relative_eq!(intervals[0].upper, uniform_mass_from_latest_date.1, epsilon = 1e-12);
+    pretty_assert_relative_eq!(intervals[0].lower, uniform_mass_from_latest_date.0, epsilon = 1e-12);
+    pretty_assert_relative_eq!(intervals[0].upper, uniform_mass_from_latest_date.1, epsilon = 1e-12);
   }
 
   #[test]
@@ -123,9 +123,9 @@ mod tests {
     let intervals = extract_confidence_intervals(&graph, &state, &rate_map, &names).unwrap();
     assert_eq!(1, intervals.len());
     let z = Normal::standard().inverse_cdf(0.95);
-    assert_relative_eq!(intervals[0].date, 2010.0);
-    assert_relative_eq!(intervals[0].lower, 2010.0 - z, epsilon = 1e-15);
-    assert_relative_eq!(intervals[0].upper, 2010.0 + z, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].date, 2010.0);
+    pretty_assert_relative_eq!(intervals[0].lower, 2010.0 - z, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].upper, 2010.0 + z, epsilon = 1e-15);
   }
 
   #[test]
@@ -149,8 +149,8 @@ mod tests {
     let normal_hpd_half_width = z * std_dev;
     let rate_half_width = z * 1.0;
     let half_width = normal_hpd_half_width.hypot(rate_half_width);
-    assert_relative_eq!(intervals[0].lower, mean - half_width, epsilon = 1e-7);
-    assert_relative_eq!(intervals[0].upper, mean + half_width, epsilon = 1e-7);
+    pretty_assert_relative_eq!(intervals[0].lower, mean - half_width, epsilon = 1e-7);
+    pretty_assert_relative_eq!(intervals[0].upper, mean + half_width, epsilon = 1e-7);
   }
 
   #[test]
@@ -168,8 +168,8 @@ mod tests {
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
     let z = Normal::standard().inverse_cdf(0.95);
-    assert_relative_eq!(intervals[0].upper, 2020.5);
-    assert_relative_eq!(intervals[0].lower, 2020.0 - 0.1 * z, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].upper, 2020.5);
+    pretty_assert_relative_eq!(intervals[0].lower, 2020.0 - 0.1 * z, epsilon = 1e-15);
   }
 
   #[test]
@@ -187,8 +187,8 @@ mod tests {
     assert!(intervals[0].lower <= intervals[0].date);
     assert!(intervals[0].date <= intervals[0].upper);
     let z = Normal::standard().inverse_cdf(0.95);
-    assert_relative_eq!(intervals[0].lower, 2019.5);
-    assert_relative_eq!(intervals[0].upper, 2020.0 + 0.1 * z, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].lower, 2019.5);
+    pretty_assert_relative_eq!(intervals[0].upper, 2020.0 + 0.1 * z, epsilon = 1e-15);
   }
 
   #[test]
@@ -214,8 +214,8 @@ mod tests {
 
     let hpd_lower = 0.0;
     let truncated_exponential_quantile = -(1.0 - 0.9 * (1.0 - (-10.0_f64).exp())).ln();
-    assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-12);
-    assert_relative_eq!(intervals[0].upper, truncated_exponential_quantile, epsilon = 1e-7);
+    pretty_assert_relative_eq!(intervals[0].lower, hpd_lower, epsilon = 1e-12);
+    pretty_assert_relative_eq!(intervals[0].upper, truncated_exponential_quantile, epsilon = 1e-7);
   }
 
   #[rustfmt::skip]
@@ -263,8 +263,8 @@ mod tests {
     let three_point_laplace_region_half_width = -(0.05 * (1.0 + 3.0 * (-1.0_f64).exp())).ln() / rate;
     let half_width = three_point_laplace_region_half_width.hypot(z);
     assert_eq!(1, intervals.len());
-    assert_relative_eq!(intervals[0].lower, t0 - half_width, epsilon = 1e-15);
-    assert_relative_eq!(intervals[0].upper, t0 + half_width, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].lower, t0 - half_width, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].upper, t0 + half_width, epsilon = 1e-15);
   }
 
   #[rustfmt::skip]
@@ -291,7 +291,7 @@ mod tests {
 
     let soft_lower_beyond_rate_bound = t0 - 5.0 * Normal::standard().inverse_cdf(0.95);
     assert_eq!(1, intervals.len());
-    assert_relative_eq!(intervals[0].upper, expected_upper, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].upper, expected_upper, epsilon = 1e-15);
     assert!(intervals[0].lower < soft_lower_beyond_rate_bound);
   }
 
@@ -321,8 +321,8 @@ mod tests {
     let region_half_width = (1.0 - (1.0 - CI_FRACTION * slope * mass).sqrt()) / slope;
     let half_width = region_half_width.hypot(5.0 * Normal::standard().inverse_cdf(0.95));
     assert_eq!(1, intervals.len());
-    assert_relative_eq!(intervals[0].lower, t0 - half_width, epsilon = 1e-15);
-    assert_relative_eq!(intervals[0].upper, t0 + half_width, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].lower, t0 - half_width, epsilon = 1e-15);
+    pretty_assert_relative_eq!(intervals[0].upper, t0 + half_width, epsilon = 1e-15);
   }
 
   #[test]

@@ -14,7 +14,6 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs};
-  use approx::assert_relative_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -26,6 +25,7 @@ mod tests {
   use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AsciiChar, Seq};
+  use treetime_utils::pretty_assert_relative_eq;
 
   fn c(b: u8) -> AsciiChar {
     AsciiChar::from_byte_unchecked(b)
@@ -328,10 +328,10 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       match target_name {
-        None => assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
-        Some("A") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
-        Some("B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
-        Some("C") => assert_relative_eq!(bl.unwrap(), 0.3, epsilon = 1e-6),
+        None => pretty_assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
+        Some("A") => pretty_assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
+        Some("B") => pretty_assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
+        Some("C") => pretty_assert_relative_eq!(bl.unwrap(), 0.3, epsilon = 1e-6),
         _ => {},
       }
     }
@@ -368,7 +368,7 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       if target_name == Some("A") {
-        assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15);
+        pretty_assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15);
       }
     }
 
@@ -437,7 +437,7 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       if target_name.is_none() {
-        assert_relative_eq!(bl.unwrap(), d_expected, epsilon = 1e-15);
+        pretty_assert_relative_eq!(bl.unwrap(), d_expected, epsilon = 1e-15);
       }
     }
 
@@ -564,7 +564,7 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       if target_name.is_none() {
-        assert_relative_eq!(bl.unwrap(), d_expected, epsilon = 1e-15);
+        pretty_assert_relative_eq!(bl.unwrap(), d_expected, epsilon = 1e-15);
       }
     }
 
@@ -603,8 +603,8 @@ mod tests {
       let bl = branch_lengths[&edge.key()];
 
       match target_name {
-        None => assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
-        Some("A" | "B") => assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
+        None => pretty_assert_relative_eq!(bl.unwrap(), d, epsilon = 1e-15),
+        Some("A" | "B") => pretty_assert_relative_eq!(bl.unwrap(), 0.0, epsilon = 1e-15),
         _ => {},
       }
     }
@@ -641,8 +641,8 @@ mod tests {
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
     let expected_bl_a = helpers::expected_jc_bl(n_unique_a, length);
     let expected_bl_b = helpers::expected_jc_bl(n_unique_b, length);
-    assert_relative_eq!(bls["A"], expected_bl_a, epsilon = 1e-15);
-    assert_relative_eq!(bls["B"], expected_bl_b, epsilon = 1e-15);
+    pretty_assert_relative_eq!(bls["A"], expected_bl_a, epsilon = 1e-15);
+    pretty_assert_relative_eq!(bls["B"], expected_bl_b, epsilon = 1e-15);
 
     Ok(())
   }
@@ -678,8 +678,8 @@ mod tests {
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
-    assert_relative_eq!(bls["A"], helpers::expected_jc_bl(1, 100), epsilon = 1e-15);
-    assert_relative_eq!(bls["B"], helpers::expected_jc_bl(0, 100), epsilon = 1e-15);
+    pretty_assert_relative_eq!(bls["A"], helpers::expected_jc_bl(1, 100), epsilon = 1e-15);
+    pretty_assert_relative_eq!(bls["B"], helpers::expected_jc_bl(0, 100), epsilon = 1e-15);
 
     Ok(())
   }
@@ -726,8 +726,8 @@ mod tests {
     graph.build()?;
 
     let bls = helpers::extract_branch_lengths(&names, &graph, &branch_lengths);
-    assert_relative_eq!(bls["A"], helpers::expected_jc_bl(3, 300), epsilon = 1e-15);
-    assert_relative_eq!(bls["B"], helpers::expected_jc_bl(0, 300), epsilon = 1e-15);
+    pretty_assert_relative_eq!(bls["A"], helpers::expected_jc_bl(3, 300), epsilon = 1e-15);
+    pretty_assert_relative_eq!(bls["B"], helpers::expected_jc_bl(0, 300), epsilon = 1e-15);
 
     Ok(())
   }

@@ -164,7 +164,6 @@ mod tests {
 
     use crate::gtr::__tests__::rate_matrix::rate_matrix;
     use crate::gtr::gtr::GTR;
-    use approx::assert_abs_diff_eq;
     use deser::Deserialize;
     use indexmap::IndexMap;
     use ndarray::{Array1, Array2};
@@ -172,6 +171,7 @@ mod tests {
     use treetime_utils::adapters::{Array2Rows, ArrayVec};
     use treetime_utils::array::ndarray::sorted;
     use treetime_utils::io::json::json_read_str;
+    use treetime_utils::pretty_assert_abs_diff_eq;
 
     #[derive(Debug, Deserialize)]
     pub(super) struct JC69Input {
@@ -287,12 +287,12 @@ mod tests {
     }
 
     pub(super) fn compare_gtr(gtr: &GTR, expected: &GtrOutput) {
-      assert_abs_diff_eq!(gtr.mu(), expected.mu, epsilon = 1e-14);
-      assert_abs_diff_eq!(gtr.pi(), &expected.pi, epsilon = 1e-14);
-      assert_abs_diff_eq!(gtr.W(), &expected.w, epsilon = 1e-14);
-      assert_abs_diff_eq!(rate_matrix(gtr), expected.q, epsilon = 1e-14);
+      pretty_assert_abs_diff_eq!(gtr.mu(), expected.mu, epsilon = 1e-14);
+      pretty_assert_abs_diff_eq!(gtr.pi(), &expected.pi, epsilon = 1e-14);
+      pretty_assert_abs_diff_eq!(gtr.W(), &expected.w, epsilon = 1e-14);
+      pretty_assert_abs_diff_eq!(rate_matrix(gtr), expected.q, epsilon = 1e-14);
 
-      assert_abs_diff_eq!(
+      pretty_assert_abs_diff_eq!(
         sorted(&(gtr.rate_eigvals() / gtr.mu())),
         sorted(&expected.eigenvals),
         epsilon = 1e-14
@@ -300,7 +300,7 @@ mod tests {
 
       for entry in &expected.exp_qts {
         let actual = gtr.expQt(entry.time);
-        assert_abs_diff_eq!(actual, entry.exp_qt, epsilon = 1e-14);
+        pretty_assert_abs_diff_eq!(actual, entry.exp_qt, epsilon = 1e-14);
       }
     }
   }

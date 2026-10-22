@@ -12,6 +12,7 @@ mod tests {
   use treetime_distribution::Distribution;
   use treetime_io::dates_csv::DateConstraint;
   use treetime_utils::assert_error;
+  use treetime_utils::pretty_assert_relative_eq;
 
   const SMALL_TREE_NWK: &str = "((leaf1:1.0,leaf2:1.0)internal1:1.0,leaf3:1.0)root:1.0;";
 
@@ -164,8 +165,8 @@ mod tests {
 
     let result = constant_skyline(&expectation(&graph, &constraints))?;
 
-    approx::assert_relative_eq!(20.0, result.tc_schedule.values()[0], max_relative = 1e-15);
-    approx::assert_relative_eq!(
+    pretty_assert_relative_eq!(20.0, result.tc_schedule.values()[0], max_relative = 1e-15);
+    pretty_assert_relative_eq!(
       -3.0 - 3.0 * 20.0_f64.ln(),
       result.log_likelihood.value(),
       max_relative = 1e-15

@@ -12,13 +12,13 @@ fn gaussian_exponential_convolution(a: f64, x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_gaussian_exponential_convolution_positive_x() {
     let result = gaussian_exponential_convolution(0.5, 1.0);
-    assert_ulps_eq!(result, 0.23761736816002352, max_ulps = 4);
+    pretty_assert_ulps_eq!(result, 0.23761736816002352, max_ulps = 4);
   }
 
   #[test]

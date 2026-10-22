@@ -224,8 +224,8 @@ mod tests {
     use super::*;
     use crate::optimize::sparse_eval::evaluate_sparse_contribution;
     use crate::partition::optimize::sparse::{PartitionContribution, SiteContribution};
-    use approx::assert_abs_diff_eq;
     use rstest::rstest;
+    use treetime_utils::pretty_assert_abs_diff_eq;
 
     #[rustfmt::skip]
     #[rstest]
@@ -260,8 +260,8 @@ mod tests {
       let d1_minus = evaluate_sparse_contribution(&contribution, branch_length - h, true).expect("valid branch length").derivative;
       let numerical = (d1_plus - d1_minus) / (2.0 * h);
 
-      assert_abs_diff_eq!(metrics.second_derivative, expected, epsilon = 1e-12);
-      assert_abs_diff_eq!(metrics.second_derivative, numerical, epsilon = 1e-8);
+      pretty_assert_abs_diff_eq!(metrics.second_derivative, expected, epsilon = 1e-12);
+      pretty_assert_abs_diff_eq!(metrics.second_derivative, numerical, epsilon = 1e-8);
     }
   }
 }

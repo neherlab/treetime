@@ -16,7 +16,6 @@ pub(super) mod tests {
   use crate::progress::NoopProgress;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{deletion, dense_reconstruction_mut};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -25,6 +24,7 @@ pub(super) mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
@@ -187,7 +187,7 @@ pub(super) mod tests {
     );
 
     for i in 1..original_lengths.len() {
-      assert_abs_diff_eq!(original_lengths[i], updated_lengths[i], epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(original_lengths[i], updated_lengths[i], epsilon = 1e-15);
     }
     Ok(())
   }

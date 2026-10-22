@@ -2,9 +2,9 @@
 mod tests {
   use super::super::test_grid_search_support::tests::{grid_search, make_dense_contribution};
   use crate::optimize::zero_boundary::grid_search_branch_lengths;
-  use approx::assert_abs_diff_eq;
   use ndarray::Array2;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_grid_search_branch_lengths_zero_branch_covers_full_range() {
@@ -14,8 +14,8 @@ mod tests {
     let lower = grid[0];
     let upper = grid[grid.len() - 1];
 
-    assert_abs_diff_eq!(lower, 0.1 * one_mutation, epsilon = 1e-10);
-    assert_abs_diff_eq!(upper, 0.5, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(lower, 0.1 * one_mutation, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(upper, 0.5, epsilon = 1e-10);
     assert!(
       upper / lower > 1000.0,
       "Grid range {lower}..{upper} spans less than 3 orders of magnitude"
@@ -31,7 +31,7 @@ mod tests {
     let upper = grid[grid.len() - 1];
     let expected_upper = 1.5 * branch_length + one_mutation;
 
-    assert_abs_diff_eq!(upper, expected_upper, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(upper, expected_upper, epsilon = 1e-10);
   }
 
   #[test]
@@ -58,7 +58,7 @@ mod tests {
 
     let ratio_start = grid[1] / grid[0];
     let ratio_end = grid[grid.len() - 1] / grid[grid.len() - 2];
-    assert_abs_diff_eq!(ratio_start, ratio_end, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(ratio_start, ratio_end, epsilon = 1e-10);
   }
 
   #[test]

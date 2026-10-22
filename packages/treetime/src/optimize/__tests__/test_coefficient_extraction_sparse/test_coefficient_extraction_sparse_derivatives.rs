@@ -6,9 +6,9 @@ mod tests {
   use crate::partition::optimize;
   use crate::partition::optimize::sparse::{PartitionContribution, SiteContribution};
   use crate::pretty_assert_ulps_eq;
-  use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -34,7 +34,7 @@ mod tests {
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h, true).expect("valid branch length");
     let numerical_d1 = (metrics_plus.log_lh.value() - metrics_minus.log_lh.value()) / (2.0 * h);
 
-    assert_abs_diff_eq!(metrics.derivative, numerical_d1, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(metrics.derivative, numerical_d1, epsilon = 1e-9);
   }
 
   #[rustfmt::skip]
@@ -60,7 +60,7 @@ mod tests {
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h, true).expect("valid branch length");
     let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
-    assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-9);
   }
 
   #[rustfmt::skip]
@@ -86,7 +86,7 @@ mod tests {
     let metrics_minus = evaluate_sparse_contribution(&contribution, branch_length - h, true).expect("valid branch length");
     let numerical_d2 = (metrics_plus.derivative - metrics_minus.derivative) / (2.0 * h);
 
-    assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-8);
+    pretty_assert_abs_diff_eq!(metrics.second_derivative, numerical_d2, epsilon = 1e-8);
   }
 
   #[test]

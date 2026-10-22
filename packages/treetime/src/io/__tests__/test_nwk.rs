@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -8,6 +7,7 @@ mod tests {
   use treetime_graph::graph::Graph;
   use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_read_file, nwk_write_str};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_nwk_roundtrip_binary_tree() -> Result<(), Report> {
@@ -175,22 +175,22 @@ mod tests {
       branch_lengths.insert(names[target_key].to_owned(), edge_lengths[&edge_ref.key()]);
     }
 
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       branch_lengths["A"].expect("A should have branch length"),
       0.123,
       epsilon = 1e-10
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       branch_lengths["B"].expect("B should have branch length"),
       0.456,
       epsilon = 1e-10
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       branch_lengths["AB"].expect("AB should have branch length"),
       0.789,
       epsilon = 1e-10
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       branch_lengths["C"].expect("C should have branch length"),
       1.5,
       epsilon = 1e-10
@@ -253,7 +253,7 @@ mod tests {
       branch_lengths.insert(names[edge_ref.target()].to_owned(), edge_lengths[&edge_ref.key()]);
     }
 
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       branch_lengths["A"].expect("A should have branch length"),
       0.1,
       epsilon = 1e-10

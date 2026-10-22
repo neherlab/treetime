@@ -3,10 +3,10 @@ mod tests {
   use crate::optimize::branch_length::{is_valid_branch_length, is_valid_branch_length_value};
   use crate::optimize::eval::evaluate_site_contributions;
   use crate::optimize::indel::poisson_indel_log_lh;
-  use approx::assert_abs_diff_eq;
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -64,7 +64,7 @@ mod tests {
   #[test]
   fn test_branch_length_validation_poisson_zero_boundary_depends_on_indel_count() {
     let no_indels = poisson_indel_log_lh(0, 1.0, 0.0).expect("zero is valid without indels");
-    assert_abs_diff_eq!(0.0, no_indels.log_lh.value(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(0.0, no_indels.log_lh.value(), epsilon = 1e-15);
 
     let error = poisson_indel_log_lh(1, 1.0, 0.0).expect_err("zero is invalid with observed indels");
     assert!(error.to_string().contains("positive branch length"));

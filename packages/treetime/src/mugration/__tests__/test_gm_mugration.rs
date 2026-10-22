@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{
     confidence_by_name, load_gm_mugration_inputs, load_gm_mugration_outputs, run_gm_mugration_case, states_vec,
@@ -9,6 +8,7 @@ mod tests {
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -67,7 +67,7 @@ mod tests {
         .get(node_name)
         .unwrap_or_else(|| panic!("missing confidence for node '{node_name}'"));
       let expected_arr = Array1::from_vec(expected_profile.clone());
-      assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-7);
+      pretty_assert_abs_diff_eq!(expected_arr, actual_profile, epsilon = 1e-7);
     }
 
     Ok(())

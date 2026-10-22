@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::o;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{get_outlier_names, prefilter_outlier_names, run_clock};
   use pretty_assertions::assert_eq;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_dengue100_clock_pipeline_structural_properties() -> Result<(), Report> {
@@ -56,14 +56,14 @@ mod tests {
     let clock_model = &output.clock_model;
     let outlier_names = get_outlier_names(&output);
 
-    assert_abs_diff_eq!(clock_model.clock_rate(), 6.460054526225851e-04, epsilon = 1e-10);
-    assert_abs_diff_eq!(clock_model.intercept(), -1.0489843878244214, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(clock_model.clock_rate(), 6.460054526225851e-04, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(clock_model.intercept(), -1.0489843878244214, epsilon = 1e-7);
 
     let r_val = clock_model.r_val().expect("should have r_val");
-    assert_abs_diff_eq!(r_val, 0.9667050948340442, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(r_val, 0.9667050948340442, epsilon = 1e-7);
 
     let chisq = clock_model.chisq().expect("should have chisq");
-    assert_abs_diff_eq!(chisq, 3.279828724500099e-04, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(chisq, 3.279828724500099e-04, epsilon = 1e-9);
 
     #[rustfmt::skip]
     let expected_outliers = vec![

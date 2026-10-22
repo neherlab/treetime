@@ -33,7 +33,7 @@ impl LineFit {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_abs_diff_eq;
+  use crate::pretty_assert_abs_diff_eq;
   use rstest::rstest;
 
   #[rustfmt::skip]
@@ -47,7 +47,7 @@ mod tests {
   fn test_least_squares_fit(#[case] xs: &[f64], #[case] ys: &[f64], #[case] expected: (f64, f64)) {
     let (slope, intercept) = expected;
     let fit = LineFit::least_squares(xs, ys);
-    assert_abs_diff_eq!(slope, fit.slope, epsilon = 1e-12);
-    assert_abs_diff_eq!(intercept, fit.intercept, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(slope, fit.slope, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(intercept, fit.intercept, epsilon = 1e-12);
   }
 }

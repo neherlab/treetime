@@ -11,13 +11,13 @@ mod tests {
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::progress::NoopProgress;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use num_traits::pow::pow;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -40,7 +40,7 @@ mod tests {
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
     for bl in bls.values() {
-      assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -64,7 +64,7 @@ mod tests {
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
     for bl in bls.values() {
-      assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -188,7 +188,7 @@ mod tests {
 
     let marginal_bl = branch_lengths_or_zero(&result.branch_lengths);
     let (_, log_lh) = result.partitions.marginal_update(&graph, &marginal_bl)?;
-    assert_abs_diff_eq!(log_lh.value(), best_lh, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(log_lh.value(), best_lh, epsilon = 1e-9);
     Ok(())
   }
 

@@ -13,7 +13,6 @@ mod tests {
   use crate::test_utils::node_keys_named;
   use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
-  use approx::assert_relative_eq;
   use eyre::Report;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -23,6 +22,7 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::seq;
   use treetime_utils::make_report;
+  use treetime_utils::pretty_assert_relative_eq;
 
   #[test]
   fn test_collapse_sparse_edges_from_leaf_recursive_basic() -> Result<(), Report> {
@@ -445,9 +445,9 @@ mod tests {
       let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
-        assert_relative_eq!(branch_length.unwrap(), 0.5, epsilon = 1e-6);
+        pretty_assert_relative_eq!(branch_length.unwrap(), 0.5, epsilon = 1e-6);
       } else if target_name.as_deref() == Some("B") {
-        assert_relative_eq!(branch_length.unwrap(), 0.4, epsilon = 1e-6);
+        pretty_assert_relative_eq!(branch_length.unwrap(), 0.4, epsilon = 1e-6);
       }
     }
 

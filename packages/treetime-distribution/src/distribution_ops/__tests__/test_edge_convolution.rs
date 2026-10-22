@@ -9,7 +9,6 @@ mod tests {
     Distribution, MassProfile, MessageSpacing, TailMass, convolve_across_edge, convolve_forward_across_edge,
     distribution_multiplication,
   };
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
@@ -31,9 +30,9 @@ mod tests {
     )?;
 
     let y0 = result.eval(0.0)?;
-    assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
-    assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-6);
-    assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
+    pretty_assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-5);
     Ok(())
   }
 
@@ -86,7 +85,7 @@ mod tests {
     let Distribution::Function(f) = &result else {
       panic!("expected a gridded Function message");
     };
-    assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = f.dx());
+    pretty_assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = f.dx());
     Ok(())
   }
 

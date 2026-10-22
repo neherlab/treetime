@@ -20,7 +20,6 @@ mod tests {
   use crate::timetree::inference::result::PosteriorSummaries;
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::relaxed_clock::unit_gammas;
-  use approx::assert_relative_eq;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -34,6 +33,7 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
+  use treetime_utils::pretty_assert_relative_eq;
 
   const FIXTURE_CLOCK_RATE: f64 = 0.002;
 
@@ -53,7 +53,7 @@ mod tests {
   #[trace]
   fn test_quantile_to_zscore(#[case] p: f64, #[case] expected: f64) {
     let z = quantile_to_zscore(p);
-    assert_relative_eq!(z, expected, epsilon = 1e-4);
+    pretty_assert_relative_eq!(z, expected, epsilon = 1e-4);
   }
 
   #[rustfmt::skip]
@@ -70,14 +70,14 @@ mod tests {
     #[case] (expected_lower, expected_upper): (f64, f64),
   ) {
     let (lower, upper) = date_uncertainty_due_to_rate(dates, interval);
-    assert_relative_eq!(lower, expected_lower, epsilon = 1e-4);
-    assert_relative_eq!(upper, expected_upper, epsilon = 1e-4);
+    pretty_assert_relative_eq!(lower, expected_lower, epsilon = 1e-4);
+    pretty_assert_relative_eq!(upper, expected_upper, epsilon = 1e-4);
   }
 
   #[test]
   fn test_determine_rate_std_explicit_clock_std_dev_overrides_estimate() {
     let result = determine_rate_std(Some(0.001), Some(2e-4)).unwrap();
-    assert_relative_eq!(result.unwrap(), 0.001);
+    pretty_assert_relative_eq!(result.unwrap(), 0.001);
   }
 
   #[test]
@@ -95,7 +95,7 @@ mod tests {
   #[test]
   fn test_determine_rate_std_falls_back_to_estimate() {
     let result = determine_rate_std(None, Some(2e-4)).unwrap();
-    assert_relative_eq!(result.unwrap(), 2e-4);
+    pretty_assert_relative_eq!(result.unwrap(), 2e-4);
   }
 
   #[test]

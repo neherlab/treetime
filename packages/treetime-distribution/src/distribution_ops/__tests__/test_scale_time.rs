@@ -3,18 +3,18 @@ mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::DistributionFunction;
   use crate::policy::NegLog;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use treetime_grid::{BoundaryBehavior, HardApproachLaw, SoftTailLaw};
   use treetime_utils::assert_error;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_scale_time_moves_values_and_keeps_level() -> Result<(), Report> {
     let f = DistributionNegLog::Function(helpers::branch_like()?.with_amplitude(1.5));
     let scaled = f.scale_time(0.25)?;
     for t in [0.05, 0.3, 1.0, 2.5, 3.9, 6.0] {
-      assert_abs_diff_eq!(f.eval(t)?, scaled.eval(0.25 * t)?, epsilon = 1e-12);
+      pretty_assert_abs_diff_eq!(f.eval(t)?, scaled.eval(0.25 * t)?, epsilon = 1e-12);
     }
     Ok(())
   }
@@ -22,7 +22,7 @@ mod tests {
   #[test]
   fn test_scale_time_scales_the_mass() -> Result<(), Report> {
     let f = DistributionNegLog::Function(helpers::branch_like()?);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       f.log_mass()? + 3.0_f64.ln(),
       f.scale_time(3.0)?.log_mass()?,
       epsilon = 1e-12

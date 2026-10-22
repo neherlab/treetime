@@ -26,7 +26,8 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::{
-    pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_ulps_eq,
+    pretty_assert_array_diag_abs, pretty_assert_array_nonneg, pretty_assert_array_positive, pretty_assert_relative_eq,
+    pretty_assert_ulps_eq,
   };
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -262,7 +263,7 @@ mod tests {
 
     pretty_assert_array_positive!(dense.Ti);
     pretty_assert_array_positive!(sparse.Ti);
-    approx::assert_relative_eq!(dense.Ti, sparse.Ti, max_relative = 1e-2);
+    pretty_assert_relative_eq!(dense.Ti, sparse.Ti, max_relative = 1e-2);
 
     let dense_total = dense.root_state.sum();
     let sparse_total = sparse.root_state.sum();

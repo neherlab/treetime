@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::iterator::mean_by_key::*;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use pretty_assertions::assert_eq;
 
   #[test]
@@ -15,14 +15,14 @@ mod tests {
   fn test_mean_by_key_f64() {
     let data = [1.0, 2.0, 3.0, 4.0];
     let mean: f64 = data.iter().mean_by_key(|x| *x);
-    assert_ulps_eq!(mean, 2.5);
+    pretty_assert_ulps_eq!(mean, 2.5);
   }
 
   #[test]
   fn test_mean_by_key_f32() {
     let data = [1.0_f32, 2.0, 3.0];
     let mean: f32 = data.iter().mean_by_key(|x| *x * 2.0);
-    assert_ulps_eq!(mean, 4.0);
+    pretty_assert_ulps_eq!(mean, 4.0);
   }
 
   #[test]
@@ -36,7 +36,7 @@ mod tests {
   fn test_mean_by_key_single() {
     let data = [42.0];
     let mean: f64 = data.iter().mean_by_key(|x| *x);
-    assert_ulps_eq!(mean, 42.0);
+    pretty_assert_ulps_eq!(mean, 42.0);
   }
 
   #[test]
@@ -56,8 +56,8 @@ mod tests {
     let mean_x: f64 = points.iter().mean_by_key(|p| p.x);
     let mean_y: f64 = points.iter().mean_by_key(|p| p.y);
 
-    assert_ulps_eq!(mean_x, 3.0);
-    assert_ulps_eq!(mean_y, 4.0);
+    pretty_assert_ulps_eq!(mean_x, 3.0);
+    pretty_assert_ulps_eq!(mean_y, 4.0);
   }
 
   #[test]
@@ -78,7 +78,7 @@ mod tests {
   fn test_mean_by_key_negative_floats() {
     let data = [-3.5, -1.5, 0.0, 1.5, 3.5];
     let mean: f64 = data.iter().mean_by_key(|x| *x);
-    assert_ulps_eq!(mean, 0.0);
+    pretty_assert_ulps_eq!(mean, 0.0);
   }
 
   #[test]
@@ -120,14 +120,14 @@ mod tests {
   fn test_mean_by_key_very_small_floats() {
     let data = [1e-10, 2e-10, 3e-10];
     let mean: f64 = data.iter().mean_by_key(|x| *x);
-    assert_ulps_eq!(mean, 2e-10);
+    pretty_assert_ulps_eq!(mean, 2e-10);
   }
 
   #[test]
   fn test_mean_by_key_mixed_precision() {
     let data = [0.1, 0.2, 0.3];
     let mean: f64 = data.iter().mean_by_key(|x| *x);
-    assert_ulps_eq!(mean, 0.2);
+    pretty_assert_ulps_eq!(mean, 0.2);
   }
 
   #[test]

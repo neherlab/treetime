@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::*;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
 
   fn make_neglog_linear_grid(slope: f64, x_min: f64, x_max: f64, n: usize) -> GridFn<f64> {
@@ -28,7 +28,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let law = SoftTailLaw { slope };
-    assert_abs_diff_eq!(expected, law.eval(GridEdge { t: t_edge, y: y_edge }, t), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(expected, law.eval(GridEdge { t: t_edge, y: y_edge }, t), epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -45,21 +45,21 @@ mod tests {
   ) {
     let grid = make_neglog_linear_grid(slope, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, side, 10).expect("fit should succeed");
-    assert_abs_diff_eq!(expected_slope, law.slope, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(expected_slope, law.slope, epsilon = 1e-10);
   }
 
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_right_tail_to_flat() {
     let grid = make_neglog_linear_grid(-1.0, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, Side::Right, 10).expect("fit should succeed");
-    assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
   }
 
   #[test]
   fn test_soft_tail_law_fit_clamps_growing_left_tail_to_flat() {
     let grid = make_neglog_linear_grid(1.0, 0.1, 2.0, 20);
     let law = SoftTailLaw::fit(&grid, Side::Left, 10).expect("fit should succeed");
-    assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(0.0, law.slope, epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -79,8 +79,8 @@ mod tests {
     let law = SoftTailLaw { slope };
     let edge = GridEdge { t: t_edge, y: y_edge };
     let position = law.position_at(edge, level, side);
-    assert_abs_diff_eq!(expected, position, epsilon = 1e-12);
-    assert_abs_diff_eq!(level.max(y_edge), law.eval(edge, position), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(expected, position, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(level.max(y_edge), law.eval(edge, position), epsilon = 1e-15);
   }
 
   #[rustfmt::skip]
@@ -121,7 +121,7 @@ mod tests {
   #[trace]
   fn test_soft_tail_law_mass(#[case] slope: f64, #[case] y_edge: f64, #[case] expected: f64) {
     let law = SoftTailLaw { slope };
-    assert_abs_diff_eq!(expected, law.mass(y_edge), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(expected, law.mass(y_edge), epsilon = 1e-14);
   }
 
   #[test]
@@ -142,7 +142,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let composed = SoftTailLaw { slope: slope_a }.compose_multiply(&SoftTailLaw { slope: slope_b });
-    assert_abs_diff_eq!(expected, composed.slope, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(expected, composed.slope, epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -154,7 +154,7 @@ mod tests {
   #[case::compress(        -1.5,  0.5, -3.0)]
   #[trace]
   fn test_soft_tail_law_scale_arg_divides_the_slope(#[case] slope: f64, #[case] factor: f64, #[case] expected: f64) {
-    assert_abs_diff_eq!(expected, SoftTailLaw { slope }.scale_arg(factor).slope, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(expected, SoftTailLaw { slope }.scale_arg(factor).slope, epsilon = 1e-14);
   }
 
   #[test]
@@ -168,8 +168,8 @@ mod tests {
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![4.0, 3.0, 2.0])?;
     let right = BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 });
 
-    assert_abs_diff_eq!(2.0, grid.interp(2.0)?, epsilon = 1e-14);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(2.0, grid.interp(2.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
       2.5,
       grid.interp_with_extrap(2.5, BoundaryBehavior::Error, right)?,
       epsilon = 1e-14
@@ -182,8 +182,8 @@ mod tests {
     let grid = GridFn::from_range_values((0.0, 2.0), ndarray::array![2.0, 3.0, 4.0])?;
     let left = BoundaryBehavior::Linear(SoftTailLaw { slope: -1.0 });
 
-    assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(2.0, grid.interp(0.0)?, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(
       2.5,
       grid.interp_with_extrap(-0.5, left, BoundaryBehavior::Error)?,
       epsilon = 1e-14

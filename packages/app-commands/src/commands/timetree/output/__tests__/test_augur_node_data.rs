@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
   use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
+  use treetime_utils::pretty_assert_relative_eq;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
   #[test]
@@ -11,31 +11,31 @@ mod tests {
     let data = case.write_and_read();
 
     let leaf_a = &data.nodes["leaf_a"];
-    assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
-    assert_relative_eq!(leaf_a.branch_length, 5.0);
-    assert_relative_eq!(leaf_a.clock_length.unwrap(), 5.0);
-    assert_relative_eq!(leaf_a.numdate.unwrap(), 2005.0);
+    pretty_assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
+    pretty_assert_relative_eq!(leaf_a.branch_length, 5.0);
+    pretty_assert_relative_eq!(leaf_a.clock_length.unwrap(), 5.0);
+    pretty_assert_relative_eq!(leaf_a.numdate.unwrap(), 2005.0);
     assert_eq!(leaf_a.date.as_deref(), Some("2005-01-01"));
     assert_eq!(leaf_a.raw_date.as_deref(), Some("2005"));
     assert_eq!(leaf_a.date_inferred, Some(false));
     let ci = leaf_a.num_date_confidence.unwrap();
-    assert_relative_eq!(ci[0], 2004.0);
-    assert_relative_eq!(ci[1], 2006.0);
+    pretty_assert_relative_eq!(ci[0], 2004.0);
+    pretty_assert_relative_eq!(ci[1], 2006.0);
 
     let leaf_b = &data.nodes["leaf_b"];
-    assert_relative_eq!(leaf_b.mutation_length.unwrap(), 0.010);
-    assert_relative_eq!(leaf_b.branch_length, 10.0);
-    assert_relative_eq!(leaf_b.clock_length.unwrap(), 10.0);
+    pretty_assert_relative_eq!(leaf_b.mutation_length.unwrap(), 0.010);
+    pretty_assert_relative_eq!(leaf_b.branch_length, 10.0);
+    pretty_assert_relative_eq!(leaf_b.clock_length.unwrap(), 10.0);
     assert_eq!(leaf_b.raw_date.as_deref(), Some("2010-XX-XX"));
     assert_eq!(leaf_b.date_inferred, Some(true));
     assert!(leaf_b.num_date_confidence.is_none());
 
     let clock = data.metadata.clock.as_ref().unwrap();
-    assert_relative_eq!(clock.rate, 0.002);
-    assert_relative_eq!(clock.intercept, -4.0);
-    assert_relative_eq!(clock.rtt_tmrca, 2000.0);
+    pretty_assert_relative_eq!(clock.rate, 0.002);
+    pretty_assert_relative_eq!(clock.intercept, -4.0);
+    pretty_assert_relative_eq!(clock.rtt_tmrca, 2000.0);
     assert!(clock.cov.is_none());
-    assert_relative_eq!(clock.rate_std.unwrap(), 1e-4);
+    pretty_assert_relative_eq!(clock.rate_std.unwrap(), 1e-4);
 
     assert_eq!(data.metadata.input_tree.as_deref(), Some("tree.nwk"));
     assert_eq!(data.metadata.alignment.as_deref(), Some("aln.fasta"));
@@ -49,7 +49,7 @@ mod tests {
     let mut checked = 0;
     for node in data.nodes.values() {
       if let Some(clock_length) = node.clock_length {
-        assert_relative_eq!(node.branch_length, clock_length);
+        pretty_assert_relative_eq!(node.branch_length, clock_length);
         checked += 1;
       }
     }
@@ -62,7 +62,7 @@ mod tests {
     let data = case.write_and_read();
 
     let leaf_a = &data.nodes["leaf_a"];
-    assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
+    pretty_assert_relative_eq!(leaf_a.mutation_length.unwrap(), 0.005);
     assert!((leaf_a.mutation_length.unwrap() - leaf_a.branch_length).abs() > 1.0);
   }
 
@@ -72,12 +72,12 @@ mod tests {
     let data = case.write_and_read();
 
     let root = &data.nodes["root"];
-    assert_relative_eq!(root.branch_length, 0.0);
-    assert_relative_eq!(root.clock_length.unwrap(), 0.0);
-    assert_relative_eq!(root.mutation_length.unwrap(), 0.0);
+    pretty_assert_relative_eq!(root.branch_length, 0.0);
+    pretty_assert_relative_eq!(root.clock_length.unwrap(), 0.0);
+    pretty_assert_relative_eq!(root.mutation_length.unwrap(), 0.0);
     assert!(root.raw_date.is_none());
     assert_eq!(root.date_inferred, Some(true));
-    assert_relative_eq!(root.numdate.unwrap(), 2000.0);
+    pretty_assert_relative_eq!(root.numdate.unwrap(), 2000.0);
   }
 
   #[test]
@@ -106,8 +106,8 @@ mod tests {
     let case = helpers::sample_case();
     let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
 
-    assert_relative_eq!(data.nodes["leaf_a"].mutation_length.unwrap(), 3.0);
-    assert_relative_eq!(data.nodes["leaf_b"].mutation_length.unwrap(), 7.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_a"].mutation_length.unwrap(), 3.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_b"].mutation_length.unwrap(), 7.0);
   }
 
   #[test]
@@ -115,8 +115,8 @@ mod tests {
     let case = helpers::sample_case();
     let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
 
-    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 5.0);
-    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 10.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_a"].branch_length, 5.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_b"].branch_length, 10.0);
   }
 
   #[test]
@@ -124,8 +124,8 @@ mod tests {
     let case = helpers::sample_case();
     let data = case.write_and_read_with_mutations(&[(0, 3), (1, 7)]);
 
-    assert_relative_eq!(data.nodes["root"].mutation_length.unwrap(), 0.0);
-    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+    pretty_assert_relative_eq!(data.nodes["root"].mutation_length.unwrap(), 0.0);
+    pretty_assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
   }
 
   mod helpers {

@@ -3,9 +3,9 @@ mod tests {
   use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::__tests__::rate_matrix::rate_matrix;
   use crate::gtr::get_gtr::{HKY85Params, hky85};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array2, array};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_gtr_expqt_zero_branch() -> Result<(), Report> {
@@ -19,7 +19,7 @@ mod tests {
     let p = gtr.expQt(0.0);
     let identity = Array2::eye(4);
 
-    assert_abs_diff_eq!(p, identity, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(p, identity, epsilon = 1e-14);
 
     Ok(())
   }
@@ -42,7 +42,7 @@ mod tests {
     );
 
     let identity = Array2::eye(4);
-    assert_abs_diff_eq!(p, identity, epsilon = 1e-8);
+    pretty_assert_abs_diff_eq!(p, identity, epsilon = 1e-8);
 
     Ok(())
   }
@@ -62,7 +62,7 @@ mod tests {
 
     let taylor_approx = Array2::eye(4) + gtr.mu() * t * &q;
 
-    assert_abs_diff_eq!(p, taylor_approx, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(p, taylor_approx, epsilon = 1e-10);
 
     Ok(())
   }
@@ -81,7 +81,7 @@ mod tests {
 
     let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
 
-    assert_abs_diff_eq!(p, expected, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(p, expected, epsilon = 1e-6);
 
     Ok(())
   }
@@ -104,7 +104,7 @@ mod tests {
     );
 
     let expected = Array2::from_shape_fn((4, 4), |(i, _j)| gtr.pi()[i]);
-    assert_abs_diff_eq!(p, expected, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(p, expected, epsilon = 1e-10);
 
     Ok(())
   }

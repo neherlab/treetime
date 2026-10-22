@@ -1,20 +1,20 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::jc_distance::*;
-  use approx::assert_abs_diff_eq;
   use rstest::rstest;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_jukes_cantor_distance_zero_p_returns_zero() {
-    assert_abs_diff_eq!(0.0, jukes_cantor_distance(0.0, 4), epsilon = 0.0);
-    assert_abs_diff_eq!(0.0, jukes_cantor_distance(0.0, 20), epsilon = 0.0);
+    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(0.0, 4), epsilon = 0.0);
+    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(0.0, 20), epsilon = 0.0);
   }
 
   #[test]
   fn test_jukes_cantor_distance_negative_p_clamped_to_zero() {
-    assert_abs_diff_eq!(0.0, jukes_cantor_distance(-0.1, 4), epsilon = 0.0);
-    assert_abs_diff_eq!(0.0, jukes_cantor_distance(-1.0, 4), epsilon = 0.0);
+    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(-0.1, 4), epsilon = 0.0);
+    pretty_assert_abs_diff_eq!(0.0, jukes_cantor_distance(-1.0, 4), epsilon = 0.0);
   }
 
   #[rustfmt::skip]
@@ -31,7 +31,7 @@ mod tests {
     #[case] expected: f64,
   ) {
     let actual = jukes_cantor_distance(p, n_states);
-    assert_abs_diff_eq!(expected, actual, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-15);
   }
 
   #[rustfmt::skip]

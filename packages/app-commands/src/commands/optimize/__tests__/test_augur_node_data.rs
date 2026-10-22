@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::project_root;
-  use approx::assert_relative_eq;
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use std::path::PathBuf;
@@ -9,15 +8,16 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::io::json::{json_read_str, json_value_read_str, to_json_value};
+  use treetime_utils::pretty_assert_relative_eq;
   use util_augur_node_data_json::AugurNodeDataJsonRefine;
 
   #[test]
   fn test_augur_node_data_optimize_branch_lengths() {
     let data = helpers::write_and_read("(leaf_a:0.005,leaf_b:0.010)root;");
 
-    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 0.005, max_relative = 1e-10);
-    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 0.010, max_relative = 1e-10);
-    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_a"].branch_length, 0.005, max_relative = 1e-10);
+    pretty_assert_relative_eq!(data.nodes["leaf_b"].branch_length, 0.010, max_relative = 1e-10);
+    pretty_assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
   }
 
   #[test]
@@ -98,9 +98,9 @@ mod tests {
   fn test_augur_node_data_optimize_mutations_mode_branch_length_is_count() {
     let data = helpers::write_and_read_with_mutations("(leaf_a:0.005,leaf_b:0.010)root;", &[(0, 3), (1, 7)]);
 
-    assert_relative_eq!(data.nodes["leaf_a"].branch_length, 3.0);
-    assert_relative_eq!(data.nodes["leaf_b"].branch_length, 7.0);
-    assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_a"].branch_length, 3.0);
+    pretty_assert_relative_eq!(data.nodes["leaf_b"].branch_length, 7.0);
+    pretty_assert_relative_eq!(data.nodes["root"].branch_length, 0.0);
   }
 
   #[test]

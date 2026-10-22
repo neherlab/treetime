@@ -4,7 +4,6 @@ mod tests {
   use crate::mugration::pipeline::{
     MugrationParams, apply_pseudo_counts, compute_pi_from_weights, compute_pi_uniform, validate_weight_coverage,
   };
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{confidence_of, mugration_params, run_mugration_case, trait_assignments_by_name};
   use indexmap::IndexSet;
@@ -13,6 +12,7 @@ mod tests {
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::iter::once;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::{assert_error, o, vec_of_owned};
 
   #[test]
@@ -41,7 +41,7 @@ mod tests {
     let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
     let expected_missing: IndexSet<String> = once(o!("germany")).collect();
     assert_eq!(expected_missing, coverage.missing_values);
-    assert_abs_diff_eq!(0.5, coverage.missing_ratio, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.5, coverage.missing_ratio, epsilon = 1e-10);
   }
 
   #[test]
@@ -53,7 +53,7 @@ mod tests {
 
     let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
     assert!(coverage.missing_values.is_empty());
-    assert_abs_diff_eq!(0.0, coverage.missing_ratio, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.0, coverage.missing_ratio, epsilon = 1e-10);
   }
 
   #[test]
@@ -65,7 +65,7 @@ mod tests {
 
     let coverage = validate_weight_coverage(&unique_values, &weights_keys, missing_data, threshold).unwrap();
     assert!(coverage.missing_values.is_empty());
-    assert_abs_diff_eq!(0.0, coverage.missing_ratio, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.0, coverage.missing_ratio, epsilon = 1e-10);
   }
 
   #[test]
@@ -79,9 +79,9 @@ mod tests {
     let pi = compute_pi_from_weights(&states, &weights);
 
     assert_eq!(2, pi.len());
-    assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.75, pi[1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.75, pi[1], epsilon = 1e-10);
     Ok(())
   }
 
@@ -96,11 +96,11 @@ mod tests {
     let pi = compute_pi_from_weights(&states, &weights);
 
     assert_eq!(3, pi.len());
-    assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
     let total = 9.0;
-    assert_abs_diff_eq!(3.0 / total, pi[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(4.0 / total, pi[1], epsilon = 1e-10);
-    assert_abs_diff_eq!(2.0 / total, pi[2], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(3.0 / total, pi[0], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(4.0 / total, pi[1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(2.0 / total, pi[2], epsilon = 1e-10);
     Ok(())
   }
 
@@ -109,11 +109,11 @@ mod tests {
     let pi = compute_pi_uniform(4);
 
     assert_eq!(4, pi.len());
-    assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.25, pi[1], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.25, pi[2], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.25, pi[3], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, pi.sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.25, pi[0], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.25, pi[1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.25, pi[2], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.25, pi[3], epsilon = 1e-10);
   }
 
   #[test]
@@ -124,9 +124,9 @@ mod tests {
     let result = apply_pseudo_counts(pi, pc);
 
     assert_eq!(2, result.len());
-    assert_abs_diff_eq!(1.0, result.sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.375, result[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.625, result[1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, result.sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.375, result[0], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.625, result[1], epsilon = 1e-10);
   }
 
   #[test]
@@ -136,7 +136,7 @@ mod tests {
 
     let result = apply_pseudo_counts(pi, pc);
 
-    assert_abs_diff_eq!(1.0, result.sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, result.sum(), epsilon = 1e-10);
   }
 
   #[test]
@@ -153,7 +153,7 @@ mod tests {
       output.states.iter().map(|s| s.to_owned()).collect_vec()
     );
     assert_eq!(2, output.gtr.pi().len());
-    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
     assert!(
       output.gtr.mu() > 0.1 && output.gtr.mu() < 100.0,
       "mu should be in reasonable range for 2-state model: {}",
@@ -167,7 +167,7 @@ mod tests {
     assert_eq!(Some(&o!("germany")), assignments.get("B"));
 
     let root_confidence = confidence_of(&output, &names, "root");
-    assert_abs_diff_eq!(1.0, root_confidence.sum(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0, root_confidence.sum(), epsilon = 1e-12);
 
     Ok(())
   }
@@ -191,12 +191,12 @@ mod tests {
       vec_of_owned!["france", "germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-12);
-    assert_abs_diff_eq!(4.0 / total, output.gtr.pi()[1], epsilon = 1e-12);
-    assert_abs_diff_eq!(2.0 / total, output.gtr.pi()[2], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(4.0 / total, output.gtr.pi()[1], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(2.0 / total, output.gtr.pi()[2], epsilon = 1e-12);
 
     Ok(())
   }
@@ -219,12 +219,12 @@ mod tests {
       vec_of_owned!["france", "germany", "usa"],
       output.states.iter().map(|s| s.to_owned()).collect_vec()
     );
-    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-12);
 
     let total = 7.0;
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-12);
-    assert_abs_diff_eq!(4.0 / total, output.gtr.pi()[1], epsilon = 1e-12);
-    assert_abs_diff_eq!(2.0 / total, output.gtr.pi()[2], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(4.0 / total, output.gtr.pi()[1], epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(2.0 / total, output.gtr.pi()[2], epsilon = 1e-12);
 
     Ok(())
   }
@@ -251,10 +251,10 @@ mod tests {
       },
     )?;
 
-    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, output.gtr.pi()[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.2, output.gtr.pi()[1], epsilon = 1e-10);
-    assert_abs_diff_eq!(0.6, output.gtr.pi()[2], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.2, output.gtr.pi()[0], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.2, output.gtr.pi()[1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(0.6, output.gtr.pi()[2], epsilon = 1e-10);
 
     Ok(())
   }
@@ -283,10 +283,10 @@ mod tests {
     )?;
 
     let total = 5.0;
-    assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-10);
-    assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[1], epsilon = 1e-10);
-    assert_abs_diff_eq!(3.0 / total, output.gtr.pi()[2], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0, output.gtr.pi().sum(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[0], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(1.0 / total, output.gtr.pi()[1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(3.0 / total, output.gtr.pi()[2], epsilon = 1e-10);
 
     Ok(())
   }
@@ -348,7 +348,7 @@ mod tests {
       },
     )?;
 
-    assert_abs_diff_eq!(corrected.gtr.mu(), base_mu * 2.0, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(corrected.gtr.mu(), base_mu * 2.0, epsilon = 1e-6);
 
     Ok(())
   }
@@ -382,7 +382,7 @@ mod tests {
       assignments.keys().cloned().sorted().collect_vec()
     );
     let leaf_b_confidence = confidence_of(&output, &names, "B");
-    assert_abs_diff_eq!(1.0, leaf_b_confidence.sum(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(1.0, leaf_b_confidence.sum(), epsilon = 1e-12);
 
     Ok(())
   }
@@ -424,7 +424,7 @@ mod tests {
     );
 
     assert!(with_iter.gtr.mu() > 0.0);
-    assert_abs_diff_eq!(with_iter.gtr.pi().sum(), 1.0, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(with_iter.gtr.pi().sum(), 1.0, epsilon = 1e-10);
     assert!(with_iter.gtr.pi().iter().all(|&p| p > 0.0));
 
     Ok(())
@@ -464,7 +464,7 @@ mod tests {
       },
     )?;
 
-    assert_abs_diff_eq!(output.gtr.pi().sum(), 1.0, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(output.gtr.pi().sum(), 1.0, epsilon = 1e-10);
     assert!(output.gtr.mu() > 0.0);
 
     Ok(())

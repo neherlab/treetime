@@ -5,7 +5,6 @@ mod tests {
   use crate::optimize::indel::EdgeIndels;
   use crate::optimize::params::BranchOptMethod;
   use crate::pretty_assert_abs_diff_eq;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use helpers::{DenseSetup, optimize_once, root_edge_branch_lengths};
   use indoc::indoc;
@@ -55,7 +54,7 @@ mod tests {
     let total_after = bl0_after + bl1_after;
     let ratio_after = bl0_after / total_after;
 
-    assert_abs_diff_eq!(ratio_before, ratio_after, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(ratio_before, ratio_after, epsilon = 1e-12);
     assert!(total_after > 0.0, "optimized total should be positive");
     Ok(())
   }
@@ -88,7 +87,7 @@ mod tests {
       "optimizer should produce positive total from zero-start edges"
     );
     let ratio = bl0 / total;
-    assert_abs_diff_eq!(ratio, 0.5, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(ratio, 0.5, epsilon = 1e-12);
     Ok(())
   }
 
@@ -166,7 +165,7 @@ mod tests {
     let total_after = bl0_after + bl1_after;
     let ratio_after = bl0_after / total_after;
 
-    assert_abs_diff_eq!(ratio_before, ratio_after, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(ratio_before, ratio_after, epsilon = 1e-12);
     Ok(())
   }
 
@@ -214,7 +213,7 @@ mod tests {
     optimize_once(&mut setup, &indel_counts, indel_rate)?;
     let actual_sum: f64 = chain.iter().map(|(name, _)| setup.branch_length(name)).sum();
 
-    assert_abs_diff_eq!(expected_sum, actual_sum, epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(expected_sum, actual_sum, epsilon = 1e-5);
     Ok(())
   }
 

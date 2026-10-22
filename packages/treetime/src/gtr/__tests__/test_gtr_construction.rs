@@ -5,13 +5,13 @@ mod tests {
     t92, tn93,
   };
   use crate::gtr::gtr::{GTR, Mu};
-  use approx::{assert_abs_diff_eq, assert_ulps_eq};
   use eyre::Report;
   use helpers::normalized;
   use ndarray::{Array1, Array2, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::assert_error;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
   #[rstest]
@@ -28,7 +28,7 @@ mod tests {
     #[case] pi: Array1<f64>,
   ) {
     let f81_decay_rate = 1.0 / (1.0 - pi.dot(&pi));
-    assert_abs_diff_eq!(f81_decay_rate, gtr.certified_decay_rate().unwrap(), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(f81_decay_rate, gtr.certified_decay_rate().unwrap(), epsilon = 1e-14);
   }
 
   #[rustfmt::skip]
@@ -57,7 +57,7 @@ mod tests {
       ]),
     )?;
     let jc69_decay_rate = 4.0 / 3.0;
-    assert_abs_diff_eq!(jc69_decay_rate, gtr.certified_decay_rate().unwrap(), epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(jc69_decay_rate, gtr.certified_decay_rate().unwrap(), epsilon = 1e-14);
     Ok(())
   }
 
@@ -71,7 +71,7 @@ mod tests {
     let decay_rate = gtr.certified_decay_rate().unwrap();
     let rate_eigvals = gtr.rate_eigvals();
     let expected = array![-decay_rate, -decay_rate, -decay_rate, 0.0];
-    assert_abs_diff_eq!(expected, rate_eigvals, epsilon = 1e-14);
+    pretty_assert_abs_diff_eq!(expected, rate_eigvals, epsilon = 1e-14);
     Ok(())
   }
 
@@ -80,7 +80,7 @@ mod tests {
     let mut gtr = jc69(JC69Params::default())?;
     gtr.set_mu(2.0)?;
     let jc69_decay_rate_at_mu_2 = 8.0 / 3.0;
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       jc69_decay_rate_at_mu_2,
       gtr.certified_decay_rate().unwrap(),
       epsilon = 1e-14
@@ -97,7 +97,7 @@ mod tests {
       .pi(array![0.2, 0.3, 0.5])
       .build()?;
     let mu_times_exchangeability = 1.5 * 2.0;
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       mu_times_exchangeability,
       gtr.certified_decay_rate().unwrap(),
       epsilon = 1e-14
@@ -110,8 +110,8 @@ mod tests {
     let original = hky85(HKY85Params::default())?;
     let mut updated = original.clone();
     updated.set_mu(3.0)?;
-    assert_ulps_eq!(3.0, updated.mu(), max_ulps = 0);
-    assert_ulps_eq!(
+    pretty_assert_ulps_eq!(3.0, updated.mu(), max_ulps = 0);
+    pretty_assert_ulps_eq!(
       original.rate_eigvals() / original.mu(),
       updated.rate_eigvals() / updated.mu(),
       max_ulps = 4

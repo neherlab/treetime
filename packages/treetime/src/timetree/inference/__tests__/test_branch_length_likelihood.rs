@@ -4,13 +4,13 @@ mod tests {
   use crate::partition::optimize::contribution::OptimizationContribution;
   use crate::timetree::inference::branch_length_likelihood::compute_branch_length_distribution;
   use crate::timetree::inference::runner::{EPS, GRID_POINTS};
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
   use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
   use treetime_grid::MaxGridPoints;
   use treetime_utils::array::ndarray::has_uniform_spacing;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rustfmt::skip]
   #[rstest]
@@ -31,7 +31,7 @@ mod tests {
       MaxGridPoints::default(),
     )?;
 
-    assert_abs_diff_eq!(helpers::eval(&distribution, t), 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(helpers::eval(&distribution, t), 0.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -40,10 +40,10 @@ mod tests {
     let distribution = helpers::build_indel_rate_only_distribution()?;
 
     let (t_min, _t_max) = distribution.time_bounds().unwrap();
-    assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");
-    assert_abs_diff_eq!(peak_time, 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(peak_time, 0.0, epsilon = 1e-12);
 
     let Distribution::Function(function) = distribution.as_ref() else {
       panic!("branch-length distribution must be a Function");
@@ -66,7 +66,7 @@ mod tests {
 
     let indel_rate = 1.0;
     let expected = indel_rate * t;
-    assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(helpers::eval(&distribution, t), expected, epsilon = 1e-10);
 
     Ok(())
   }
@@ -105,7 +105,7 @@ mod tests {
 
     let indel_rate = 1.0;
     let expected = indel_rate * t;
-    assert_abs_diff_eq!(distribution.eval(t)?, expected, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(distribution.eval(t)?, expected, epsilon = 1e-10);
     Ok(())
   }
 
@@ -132,7 +132,7 @@ mod tests {
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");
-    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
+    pretty_assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
     Ok(())
   }
 
@@ -159,7 +159,7 @@ mod tests {
     let expected_peak_time = t_mle_bl / (clock_rate * gamma);
 
     let peak_time = distribution.likely_time()?.expect("distribution has a peak");
-    assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
+    pretty_assert_abs_diff_eq!(peak_time, expected_peak_time, epsilon = 1e-2);
     Ok(())
   }
 
@@ -182,7 +182,7 @@ mod tests {
       MaxGridPoints::default(),
     )?;
 
-    assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(helpers::eval(&with_zero_indels, t), 0.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -200,7 +200,7 @@ mod tests {
     )?;
 
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
-    assert_abs_diff_eq!(t_max, 0.5, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(t_max, 0.5, epsilon = 1e-12);
     Ok(())
   }
 
@@ -218,7 +218,7 @@ mod tests {
     )?;
 
     let (_t_min, t_max) = distribution.time_bounds().unwrap();
-    assert_abs_diff_eq!(t_max, 5.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(t_max, 5.0, epsilon = 1e-12);
     Ok(())
   }
 
@@ -237,7 +237,7 @@ mod tests {
     )?;
 
     let (t_min, _t_max) = distribution.time_bounds().unwrap();
-    assert_abs_diff_eq!(t_min, one_mutation * 0.01, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(t_min, one_mutation * 0.01, epsilon = 1e-12);
     Ok(())
   }
 
@@ -245,7 +245,7 @@ mod tests {
   fn test_branch_length_likelihood_finite_boundary_grid_starts_at_zero() -> Result<(), Report> {
     let distribution = helpers::build_indel_rate_only_distribution()?;
     let (t_min, _t_max) = distribution.time_bounds().unwrap();
-    assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(t_min, 0.0, epsilon = 1e-12);
     Ok(())
   }
 

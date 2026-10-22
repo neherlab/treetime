@@ -7,7 +7,6 @@ mod tests {
   use crate::timetree::optimization::marginal_clock_rate::{
     MarginalRateInputs, RateWindow, STEP_FRACTION, branches_at_rate, marginal_log_lh_at_rate, step_marginal_clock_rate,
   };
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;
@@ -56,8 +55,8 @@ mod tests {
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
 
     let target = parabola_maximum(reference);
-    assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-6);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(
       reference * (STEP_FRACTION * target).exp(),
       step.clock_rate,
       epsilon = 1e-6
@@ -85,8 +84,8 @@ mod tests {
   -> Result<(), Report> {
     let setup = helpers::cherry()?;
     let step = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 1.0, RateWindow::FollowSlope))?;
-    assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
-    assert_abs_diff_eq!(2.0_f64.powf(STEP_FRACTION), step.clock_rate, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(2.0_f64.powf(STEP_FRACTION), step.clock_rate, epsilon = 1e-12);
     Ok(())
   }
 

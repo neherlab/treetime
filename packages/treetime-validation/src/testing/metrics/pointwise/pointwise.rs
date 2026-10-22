@@ -72,8 +72,8 @@ fn compute_grid_spacing(x: &Array1<f64>) -> eyre::Result<f64> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_perfect_agreement() {
@@ -82,9 +82,9 @@ mod tests {
     let result = PointwiseMetrics::new_with_config(&x, &y, &y, &PointwiseConfig::default()).unwrap();
 
     assert_eq!(5, result.total_points);
-    assert_ulps_eq!(result.errors.summary.abs_max, 0.0, max_ulps = 4);
-    assert_ulps_eq!(result.errors.summary.rel_max, 0.0, max_ulps = 4);
-    assert_ulps_eq!(result.errors.summary.signed_bias, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.errors.summary.abs_max, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.errors.summary.rel_max, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.errors.summary.signed_bias, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -95,9 +95,9 @@ mod tests {
     let result = PointwiseMetrics::new_with_config(&x, &actual, &expected, &PointwiseConfig::default()).unwrap();
 
     for i in 0..5 {
-      assert_ulps_eq!(result.errors.absolute[i], 0.5, max_ulps = 4);
-      assert_ulps_eq!(result.errors.signed[i], 0.5, max_ulps = 4);
+      pretty_assert_ulps_eq!(result.errors.absolute[i], 0.5, max_ulps = 4);
+      pretty_assert_ulps_eq!(result.errors.signed[i], 0.5, max_ulps = 4);
     }
-    assert_ulps_eq!(result.errors.summary.signed_bias, 0.5, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.errors.summary.signed_bias, 0.5, max_ulps = 4);
   }
 }

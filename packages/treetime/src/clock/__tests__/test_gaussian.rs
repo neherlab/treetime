@@ -9,6 +9,7 @@ mod tests {
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_relative_eq};
 
   const SEQUENCE_LENGTH: usize = 1000;
   const RATE: f64 = 1e-3;
@@ -128,8 +129,8 @@ mod tests {
     let i_cross = -(ll(hm, ht) - ll(hm, -ht) - ll(-hm, ht) + ll(-hm, -ht)) / (4.0 * hm * ht);
     let cov = invert([[i_mm, i_cross], [i_cross, i_tt]]);
 
-    approx::assert_relative_eq!(clock.rate_std.unwrap(), cov[0][0].sqrt(), max_relative = 1e-7);
-    approx::assert_relative_eq!(clock.root_time_std.unwrap(), cov[1][1].sqrt(), max_relative = 1e-7);
+    pretty_assert_relative_eq!(clock.rate_std.unwrap(), cov[0][0].sqrt(), max_relative = 1e-7);
+    pretty_assert_relative_eq!(clock.root_time_std.unwrap(), cov[1][1].sqrt(), max_relative = 1e-7);
     Ok(())
   }
 
@@ -166,7 +167,7 @@ mod tests {
     let step = 1e-4 * rate;
     let slope = (profile(rate + step) - profile(rate - step)) / (2.0 * step);
     let curvature = (profile(rate + step) - 2.0 * profile(rate) + profile(rate - step)) / (step * step);
-    approx::assert_abs_diff_eq!(0.0, slope / (curvature.abs() * rate), epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(0.0, slope / (curvature.abs() * rate), epsilon = 1e-6);
     assert!(profile(rate) > profile(0.99 * rate) && profile(rate) > profile(1.01 * rate));
     Ok(())
   }

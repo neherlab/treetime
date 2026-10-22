@@ -7,7 +7,7 @@ mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::__tests__::test_mass_profile_convergence::tests::helpers::assert_second_order;
   use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution};
-  use approx::{assert_abs_diff_eq, ulps_eq};
+  use approx::ulps_eq;
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, array, s};
@@ -30,9 +30,9 @@ mod tests {
     let result = distribution_convolution(&gaussian(1.0)?, &gaussian(1.0)?, MaxGridPoints::default())?;
 
     let y0 = result.eval(0.0)?;
-    assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
-    assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-3);
-    assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-3);
+    pretty_assert_abs_diff_eq!(0.0, result.likely_time()?.unwrap(), epsilon = 0.05);
+    pretty_assert_abs_diff_eq!(0.25, result.eval(1.0)? - y0, epsilon = 1e-3);
+    pretty_assert_abs_diff_eq!(1.00, result.eval(2.0)? - y0, epsilon = 1e-3);
     Ok(())
   }
 
@@ -276,7 +276,7 @@ mod tests {
 
     let tail_cell_neg_log_mass = -(-(-1.0_f64).exp_m1()).ln();
     let cancelled_at_ulp_of_1000 = actual.eval(1001.0)?;
-    assert_abs_diff_eq!(tail_cell_neg_log_mass, cancelled_at_ulp_of_1000, epsilon = 1e-13);
+    pretty_assert_abs_diff_eq!(tail_cell_neg_log_mass, cancelled_at_ulp_of_1000, epsilon = 1e-13);
     Ok(())
   }
 
@@ -551,8 +551,8 @@ mod tests {
       panic!("expected a Function result, got {actual:?}");
     };
     assert_eq!(2 * num_points - 1, result_fn.len());
-    assert_abs_diff_eq!(0.0, result_fn.x_min(), epsilon = 1e-15);
-    assert_abs_diff_eq!(dx, result_fn.dx(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(0.0, result_fn.x_min(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(dx, result_fn.dx(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -574,7 +574,7 @@ mod tests {
     };
     let rise_cell = 2e-7 / 8.0;
     assert_eq!(1 + (n + 1) * 4, f.len());
-    assert_abs_diff_eq!(rise_cell, f.dx(), epsilon = 1e-22);
+    pretty_assert_abs_diff_eq!(rise_cell, f.dx(), epsilon = 1e-22);
     Ok(())
   }
 
@@ -603,7 +603,7 @@ mod tests {
     };
 
     assert_eq!(expected_points, actual.len());
-    assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
     Ok(())
   }
 
@@ -618,7 +618,7 @@ mod tests {
     };
 
     assert_eq!(expected_points, actual.len());
-    assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
     Ok(())
   }
 

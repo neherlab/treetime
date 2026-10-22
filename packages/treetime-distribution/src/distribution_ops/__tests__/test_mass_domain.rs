@@ -12,7 +12,6 @@ mod tests {
   use crate::distribution_ops::mass_profile::{MassProfile, TailMass};
   use crate::policy::NegLog;
   use crate::{Distribution, DistributionFunction};
-  use approx::assert_abs_diff_eq;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -28,7 +27,7 @@ mod tests {
   fn test_mass_domain_total_mass_exponential_matches_analytic() {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
-    assert_abs_diff_eq!(helpers::total_mass(&f), 1.0 / lambda, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(helpers::total_mass(&f), 1.0 / lambda, epsilon = 1e-6);
   }
 
   #[test]
@@ -36,8 +35,8 @@ mod tests {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 5.0, 8001);
     let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
-    assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
-    assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
 
   #[test]
@@ -45,8 +44,8 @@ mod tests {
     let lambda = 1.0;
     let f = helpers::exponential_neglog(lambda, 10.0, 16001);
     let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
-    assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
-    assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(lo, 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(hi, -EPS.ln() / lambda, epsilon = 1e-6);
   }
 
   #[test]
@@ -55,8 +54,8 @@ mod tests {
     let f = helpers::laplace_neglog(slope, 12.0, 24001);
     let (lo, hi) = mass_bounded_domain(&MassProfile::new(&f).unwrap(), EPS).unwrap();
     let expected = -(2.0 * EPS).ln() / slope;
-    assert_abs_diff_eq!(hi, expected, epsilon = 1e-6);
-    assert_abs_diff_eq!(lo, -expected, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(hi, expected, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(lo, -expected, epsilon = 1e-6);
   }
 
   #[test]
@@ -85,7 +84,7 @@ mod tests {
 
     let mass_100 = helpers::total_mass(&current);
     let mode_100 = current.likely_time().unwrap().unwrap();
-    assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-6 * mass_once);
+    pretty_assert_abs_diff_eq!(mass_100, mass_once, epsilon = 1e-6 * mass_once);
     assert!(
       (mode_100 - mode_once).abs() <= dx,
       "mode moved {} beyond one spacing {dx}",
@@ -100,7 +99,7 @@ mod tests {
       rewindow_to_mass(&Distribution::Function(f), EPS, GRID_POINTS, MaxGridPoints::default()).unwrap(),
     );
 
-    assert_abs_diff_eq!(rewindowed.x_min(), 0.0, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(rewindowed.x_min(), 0.0, epsilon = 1e-12);
     let mode_index =
       rewindowed
         .y()

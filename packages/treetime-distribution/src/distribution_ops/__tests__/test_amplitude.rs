@@ -5,10 +5,10 @@ mod tests {
   use crate::distribution_ops::convolve::distribution_convolution_fine;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::policy::NegLog;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use ndarray::{Array1, array};
   use treetime_grid::{BoundaryBehavior, MaxGridPoints};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_amplitude_repeak_keeps_values_and_moves_the_peak() -> Result<(), Report> {
@@ -17,8 +17,8 @@ mod tests {
     let DistributionNegLog::Function(g) = &repeaked else {
       panic!("expected a function");
     };
-    assert_abs_diff_eq!(&array![3.0, 0.0, 2.0], g.y(), epsilon = 1e-15);
-    assert_abs_diff_eq!(1.0, g.amplitude(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(&array![3.0, 0.0, 2.0], g.y(), epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(1.0, g.amplitude(), epsilon = 1e-15);
     assert_eq!(f, repeaked);
     Ok(())
   }
@@ -28,7 +28,7 @@ mod tests {
     let f =
       DistributionFunction::<f64, NegLog>::from_start_dx_values(0.0, 1.0, array![1.0, 0.0, 2.0])?.with_amplitude(5.0);
     let normalized = DistributionNegLog::Function(f).normalize()?;
-    assert_abs_diff_eq!(array![1.0, 0.0, 2.0], normalized.y()?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(array![1.0, 0.0, 2.0], normalized.y()?, epsilon = 1e-15);
     Ok(())
   }
 
@@ -50,7 +50,7 @@ mod tests {
     let conv = distribution_convolution_fine(&a, &b, MaxGridPoints::default())?
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
-    assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(a.log_mass()? + b.log_mass()?, conv.log_mass()?, epsilon = 1e-15);
     Ok(())
   }
 
@@ -60,15 +60,15 @@ mod tests {
     let b = DistributionNegLog::Function(helpers::gaussian(0.5, 0.4)?.with_amplitude(-1.5));
     let product = distribution_multiplication(&a, &b, MaxGridPoints::default())?;
     for t in [-1.0, 0.0, 0.25, 1.0] {
-      assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(a.eval(t)? + b.eval(t)?, product.eval(t)?, epsilon = 1e-15);
     }
     Ok(())
   }
 
   #[test]
   fn test_amplitude_log_mass_of_point_and_range() -> Result<(), Report> {
-    assert_abs_diff_eq!(-0.7, DistributionNegLog::point(3.0, 0.7).log_mass()?, epsilon = 1e-15);
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(-0.7, DistributionNegLog::point(3.0, 0.7).log_mass()?, epsilon = 1e-15);
+    pretty_assert_abs_diff_eq!(
       2.0_f64.ln() - 0.7,
       DistributionNegLog::range((1.0, 3.0), 0.7).log_mass()?,
       epsilon = 1e-15
@@ -80,7 +80,7 @@ mod tests {
   fn test_amplitude_log_mass_of_gaussian() -> Result<(), Report> {
     let f = DistributionNegLog::Function(helpers::gaussian(0.0, 0.5)?.with_amplitude(2.0));
     let expected = (2.0 * std::f64::consts::PI).sqrt().ln() + 0.5_f64.ln() - 2.0;
-    assert_abs_diff_eq!(expected, f.log_mass()?, epsilon = 1e-9);
+    pretty_assert_abs_diff_eq!(expected, f.log_mass()?, epsilon = 1e-9);
     Ok(())
   }
 

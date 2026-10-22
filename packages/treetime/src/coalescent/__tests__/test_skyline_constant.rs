@@ -4,6 +4,7 @@ mod tests {
   use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use helpers::{tree3, tree3_analytic_tc};
+  use treetime_utils::pretty_assert_relative_eq;
 
   #[test]
   fn test_skyline_constant_returns_positive_finite_optimum() -> Result<(), Report> {
@@ -37,7 +38,7 @@ mod tests {
     for &(t_x, t_tip) in &[(2005.0, 2010.0), (2003.0, 2015.0), (2010.0, 2020.0)] {
       let (graph, constraints) = tree3(2000.0, t_x, t_tip)?;
       let result = constant_skyline(&expectation(&graph, &constraints))?;
-      approx::assert_relative_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_relative = 1e-15);
+      pretty_assert_relative_eq!(tree3_analytic_tc(2000.0, t_x, t_tip), tc(&result), max_relative = 1e-15);
     }
 
     Ok(())

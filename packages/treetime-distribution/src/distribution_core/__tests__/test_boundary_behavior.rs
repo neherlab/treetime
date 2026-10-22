@@ -6,13 +6,13 @@ mod tests {
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::multiply::distribution_multiplication;
   use crate::policy::{NegLog, Plain};
-  use approx::assert_ulps_eq;
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{BoundaryBehavior, Side, SoftTailLaw};
   use treetime_utils::assert_error;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   type DistFnPlain = DistributionFunction<f64, Plain>;
   type DistFnNegLog = DistributionFunction<f64, NegLog>;
@@ -45,8 +45,8 @@ mod tests {
     let f = f
       .with_left_extrap(BoundaryBehavior::Hard)?
       .with_right_extrap(BoundaryBehavior::Hard)?;
-    assert_ulps_eq!(0.0, f.interp(-1.0)?, max_ulps = 4);
-    assert_ulps_eq!(0.0, f.interp(3.0)?, max_ulps = 4);
+    pretty_assert_ulps_eq!(0.0, f.interp(-1.0)?, max_ulps = 4);
+    pretty_assert_ulps_eq!(0.0, f.interp(3.0)?, max_ulps = 4);
     Ok(())
   }
 
@@ -77,8 +77,8 @@ mod tests {
     let point: DistributionPlain = Distribution::point(1.0, 2.0);
     let range: Distribution<NegLog> = Distribution::range((0.0, 2.0), 3.0);
 
-    assert_ulps_eq!(0.0, empty.eval(1.0)?, max_ulps = 4);
-    assert_ulps_eq!(0.0, point.eval(0.0)?, max_ulps = 4);
+    pretty_assert_ulps_eq!(0.0, empty.eval(1.0)?, max_ulps = 4);
+    pretty_assert_ulps_eq!(0.0, point.eval(0.0)?, max_ulps = 4);
     assert!(range.eval(3.0)?.is_infinite());
     Ok(())
   }
@@ -89,7 +89,7 @@ mod tests {
     let fitted = formula.fit_soft_tail(Side::Right, 10)?;
 
     assert!(matches!(fitted, Distribution::Formula(_)));
-    assert_ulps_eq!(2.5, fitted.eval(2.5)?, max_ulps = 8);
+    pretty_assert_ulps_eq!(2.5, fitted.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 
@@ -105,7 +105,7 @@ mod tests {
       BoundaryBehavior::Linear(SoftTailLaw { slope: 1.0 }),
       fitted.right_extrap()
     );
-    assert_ulps_eq!(2.5, distribution.eval(2.5)?, max_ulps = 8);
+    pretty_assert_ulps_eq!(2.5, distribution.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 
@@ -149,7 +149,7 @@ mod tests {
     )?;
 
     let expected = 5.0 + f64::midpoint(slope_a, slope_b);
-    assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
+    pretty_assert_ulps_eq!(expected, product.eval(2.5)?, max_ulps = 8);
     Ok(())
   }
 

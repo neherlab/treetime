@@ -10,12 +10,12 @@ mod tests {
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::run_loop::{ConvergenceReason, run_optimize_loop};
   use crate::progress::NoopProgress;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_parse_branch_lengths_covers_all_edges() -> Result<(), Report> {
@@ -72,7 +72,7 @@ mod tests {
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
     for bl in bls.values() {
-      assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(bl.unwrap(), expected_old_weight, epsilon = 1e-15);
     }
     Ok(())
   }
@@ -93,7 +93,7 @@ mod tests {
     for (&key, &old) in &old_bls {
       let damped = bls[&key].unwrap();
       let expected = if (old.unwrap() - 0.1).abs() < 1e-9 { 0.15 } else { 0.30 };
-      assert_abs_diff_eq!(damped, expected, epsilon = 1e-8);
+      pretty_assert_abs_diff_eq!(damped, expected, epsilon = 1e-8);
     }
     Ok(())
   }

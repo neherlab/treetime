@@ -41,8 +41,8 @@ impl SpatialMetrics {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_ulps_eq;
   use ndarray::array;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_perfect_agreement() {
@@ -51,8 +51,8 @@ mod tests {
     let result = SpatialMetrics::new_with_config(&x, &y, &y, 1.0, &SpatialConfig::default()).unwrap();
 
     assert_eq!(5, result.total_points);
-    assert_ulps_eq!(result.cumulative.summary.final_value, 0.0, max_ulps = 4);
-    assert_ulps_eq!(result.cumulative.summary.max_abs, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.cumulative.summary.final_value, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.cumulative.summary.max_abs, 0.0, max_ulps = 4);
   }
 
   #[test]
@@ -63,7 +63,7 @@ mod tests {
 
     let result = SpatialMetrics::new_with_config(&x, &actual, &expected, 1.0, &SpatialConfig::default()).unwrap();
 
-    assert_ulps_eq!(result.cumulative.summary.final_value, 0.5, max_ulps = 4);
-    assert_ulps_eq!(result.cumulative.summary.max_abs, 0.5, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.cumulative.summary.final_value, 0.5, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.cumulative.summary.max_abs, 0.5, max_ulps = 4);
   }
 }

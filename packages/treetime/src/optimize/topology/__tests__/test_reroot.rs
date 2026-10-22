@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
   use crate::test_utils::find_node_key_by_name;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{
@@ -9,6 +8,7 @@ mod tests {
   };
   use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[test]
   fn test_reroot_split_edge_divides_branch_length() -> Result<(), Report> {
@@ -29,13 +29,13 @@ mod tests {
     let info = split_edge(&mut graph, &mut names, edge_key, 0.25, branch_lengths[&edge_key])?;
 
     assert_eq!(info.old_edge_key, edge_key);
-    assert_abs_diff_eq!(info.split_position, 0.25, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(info.split_position, 0.25, epsilon = 1e-7);
 
     let parent_bl = info.parent_side_length.unwrap();
-    assert_abs_diff_eq!(parent_bl, 0.15, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(parent_bl, 0.15, epsilon = 1e-7);
 
     let child_bl = info.child_side_length.unwrap();
-    assert_abs_diff_eq!(child_bl, 0.45, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(child_bl, 0.45, epsilon = 1e-7);
 
     assert!(graph.get_node(info.new_node_key).is_some());
 
@@ -63,10 +63,10 @@ mod tests {
     let info = split_edge(&mut graph, &mut names, edge_key, 0.5, branch_lengths[&edge_key])?;
 
     let parent_bl = info.parent_side_length.unwrap();
-    assert_abs_diff_eq!(parent_bl, 1.0, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(parent_bl, 1.0, epsilon = 1e-7);
 
     let child_bl = info.child_side_length.unwrap();
-    assert_abs_diff_eq!(child_bl, 1.0, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(child_bl, 1.0, epsilon = 1e-7);
 
     Ok(())
   }
@@ -148,7 +148,7 @@ mod tests {
     assert!(graph.get_node(mid_key).is_none());
 
     let merged_bl = merge_info.merged_branch_length.unwrap();
-    assert_abs_diff_eq!(merged_bl, 0.8, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(merged_bl, 0.8, epsilon = 1e-7);
 
     let expected = "(B:0.2,A:0.8)root;";
     let actual = nwk_write_str(
@@ -266,7 +266,7 @@ mod tests {
       .filter_map(|e| branch_lengths.get(&e.key()).copied().flatten())
       .sum();
 
-    assert_abs_diff_eq!(total_bl_before, total_bl_after, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(total_bl_before, total_bl_after, epsilon = 1e-7);
 
     Ok(())
   }

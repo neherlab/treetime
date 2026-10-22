@@ -3,7 +3,7 @@ mod tests {
   use crate::array::softmax_with_log_norm::*;
   use crate::cast::ToF64Exact;
   use crate::pretty_assert_neg_inf;
-  use approx::assert_ulps_eq;
+  use crate::pretty_assert_ulps_eq;
   use ndarray::array;
   use ndarray::{Array1, Array2};
   use rstest::rstest;
@@ -72,7 +72,7 @@ mod tests {
     let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
     let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact());
-    assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
+    pretty_assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
     pretty_assert_neg_inf!(log_norm, "expected NEG_INFINITY, got {log_norm}");
   }
 
@@ -88,7 +88,7 @@ mod tests {
     let log_norm = softmax_with_log_norm_inplace(normalized.view_mut());
 
     let expected_uniform = Array1::from_elem(n_states, 1.0 / n_states.to_f64_exact());
-    assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
+    pretty_assert_ulps_eq!(normalized, expected_uniform, max_ulps = 0);
     assert!(log_norm.is_finite());
   }
 
@@ -110,8 +110,8 @@ mod tests {
     let shifted_log_norm = softmax_with_log_norm_inplace(shifted_norm.view_mut());
 
     helpers::assert_valid_distribution(&shifted_norm);
-    assert_ulps_eq!(shifted_norm, base_norm, max_ulps = 2);
-    assert_ulps_eq!(shifted_log_norm, base_log_norm + offset, max_ulps = 2);
+    pretty_assert_ulps_eq!(shifted_norm, base_norm, max_ulps = 2);
+    pretty_assert_ulps_eq!(shifted_log_norm, base_log_norm + offset, max_ulps = 2);
   }
 
   #[rustfmt::skip]
@@ -131,7 +131,7 @@ mod tests {
 
     assert_eq!(expected, matrix.column(1));
     assert_eq!(Array1::<f64>::zeros(expected.len()), matrix.column(0), "other columns must stay untouched");
-    assert_ulps_eq!(expected_log_norm, log_norm, max_ulps = 0);
+    pretty_assert_ulps_eq!(expected_log_norm, log_norm, max_ulps = 0);
   }
 
   mod stress {
@@ -256,7 +256,7 @@ mod tests {
   }
 
   mod helpers {
-    use approx::assert_abs_diff_eq;
+    use crate::pretty_assert_abs_diff_eq;
     use ndarray::Array1;
 
     pub(super) fn assert_valid_distribution(normalized: &Array1<f64>) {
@@ -268,7 +268,7 @@ mod tests {
         normalized.iter().all(|&v| v.is_finite()),
         "all probabilities must be finite: {normalized}"
       );
-      assert_abs_diff_eq!(normalized.sum(), 1.0, epsilon = 1e-15);
+      pretty_assert_abs_diff_eq!(normalized.sum(), 1.0, epsilon = 1e-15);
     }
   }
 }

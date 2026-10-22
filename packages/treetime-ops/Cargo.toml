@@ -14,6 +14,9 @@ version.workspace = true
 [lib]
 doctest = false
 
+[package.metadata.cargo-shear]
+ignored = ["approx", "pretty_assertions"]
+
 [dependencies]
 # [internal]
 treetime-utils = { workspace = true }
@@ -26,6 +29,7 @@ ndarray-conv = { workspace = true }
 [dev-dependencies]
 approx = { workspace = true }
 ctor = { workspace = true }
+pretty_assertions = { workspace = true }
 rayon = { workspace = true }
 
 [lints]

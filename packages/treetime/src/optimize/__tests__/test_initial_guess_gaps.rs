@@ -13,7 +13,6 @@ mod tests {
   use crate::partition::set::PartitionSet;
   use crate::test_utils::SingleReconstruction;
   use crate::test_utils::leaf_seq_inputs;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
@@ -21,6 +20,7 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   use treetime_io::fasta::{FastaRecord, fasta_read};
   use treetime_io::nwk::nwk_read;
@@ -299,9 +299,9 @@ mod tests {
     let ratio = 16.0 / 12.0;
     for (clean, gappy) in bl_clean.iter().zip(bl_gappy.iter()) {
       if *clean > 0.0 {
-        assert_abs_diff_eq!(gappy / clean, ratio, epsilon = 1e-10);
+        pretty_assert_abs_diff_eq!(gappy / clean, ratio, epsilon = 1e-10);
       } else {
-        assert_abs_diff_eq!(*gappy, 0.0, epsilon = 1e-10);
+        pretty_assert_abs_diff_eq!(*gappy, 0.0, epsilon = 1e-10);
       }
     }
 

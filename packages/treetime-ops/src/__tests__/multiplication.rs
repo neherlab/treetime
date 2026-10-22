@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::multiplication::*;
-  use approx::assert_ulps_eq;
   use ndarray::{Array1, array};
   use std::iter::repeat_n;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_ulps_eq;
 
   #[test]
   fn test_multiply_many_empty() {
@@ -18,10 +18,10 @@ mod tests {
     let a = array![1.0, 4.0, 2.0];
     let result = multiply_many_lazy_normalize(&[&a]);
 
-    assert_ulps_eq!(result.normalized[0], 0.25, max_ulps = 4);
-    assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
-    assert_ulps_eq!(result.normalized[2], 0.5, max_ulps = 4);
-    assert_ulps_eq!(result.log_scale, 4.0_f64.ln(), max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[0], 0.25, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[2], 0.5, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.log_scale, 4.0_f64.ln(), max_ulps = 4);
   }
 
   #[test]
@@ -29,9 +29,9 @@ mod tests {
     let a = array![1.0, 2.0, 1.0];
     let result = multiply_many_lazy_normalize(&[&a, &a]);
 
-    assert_ulps_eq!(result.normalized[0], 0.25, max_ulps = 4);
-    assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
-    assert_ulps_eq!(result.normalized[2], 0.25, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[0], 0.25, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[2], 0.25, max_ulps = 4);
     assert!(result.log_scale.is_finite());
   }
 
@@ -48,7 +48,7 @@ mod tests {
     assert!(result.log_scale.is_finite());
 
     let expected_log_scale = n.to_f64_exact() * small_val.ln();
-    assert_ulps_eq!(result.log_scale, expected_log_scale, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.log_scale, expected_log_scale, max_ulps = 4);
   }
 
   #[test]
@@ -69,9 +69,9 @@ mod tests {
     let agg = multiply_many(&[&a, &b]);
 
     for i in 0..lazy.normalized.len() {
-      assert_ulps_eq!(lazy.normalized[i], agg.normalized[i], max_ulps = 4);
+      pretty_assert_ulps_eq!(lazy.normalized[i], agg.normalized[i], max_ulps = 4);
     }
-    assert_ulps_eq!(lazy.log_scale, agg.log_scale, max_ulps = 4);
+    pretty_assert_ulps_eq!(lazy.log_scale, agg.log_scale, max_ulps = 4);
   }
 
   #[test]
@@ -82,9 +82,9 @@ mod tests {
 
     let result = multiply_many_lazy_normalize(&[&a, &b, &c]);
 
-    assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
-    assert_ulps_eq!(result.normalized[0], 0.125, max_ulps = 4);
-    assert_ulps_eq!(result.normalized[2], 0.125, max_ulps = 4);
-    assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[1], 1.0, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[0], 0.125, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.normalized[2], 0.125, max_ulps = 4);
+    pretty_assert_ulps_eq!(result.log_scale, 0.0, max_ulps = 4);
   }
 }

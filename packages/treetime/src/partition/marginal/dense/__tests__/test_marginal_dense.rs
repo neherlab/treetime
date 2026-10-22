@@ -2,8 +2,8 @@
 mod tests {
   use crate::partition::marginal::shared::normalize::{normalize_from_log, normalize_inplace};
   use crate::pretty_assert_neg_inf;
-  use approx::assert_abs_diff_eq;
   use ndarray::{Array2, array};
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn assert_valid_rows(dis: &Array2<f64>) {
     for row in dis.rows() {
@@ -11,7 +11,7 @@ mod tests {
         row.iter().all(|&v| v >= 0.0 && v.is_finite()),
         "all probabilities must be non-negative and finite: {row}"
       );
-      assert_abs_diff_eq!(row.sum(), 1.0, epsilon = 1e-10);
+      pretty_assert_abs_diff_eq!(row.sum(), 1.0, epsilon = 1e-10);
     }
   }
 
@@ -21,7 +21,7 @@ mod tests {
     let (dis, log_lh) = normalize_from_log(log_dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, Array2::from_elem((2, 4), 0.25), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((2, 4), 0.25), epsilon = 1e-10);
     assert!(log_lh.is_finite());
   }
 
@@ -39,8 +39,8 @@ mod tests {
     ]];
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
-    assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
   }
 
   #[test]
@@ -49,7 +49,7 @@ mod tests {
     let (dis, log_lh) = normalize_from_log(log_dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, Array2::from_elem((1, 4), 0.25), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((1, 4), 0.25), epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
@@ -59,7 +59,7 @@ mod tests {
     let (dis, log_lh) = normalize_from_log(log_dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, Array2::from_elem((3, 4), 0.25), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((3, 4), 0.25), epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
@@ -74,7 +74,7 @@ mod tests {
     let (dis, log_lh) = normalize_from_log(log_dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
     let sum = 1.0 + (-1.0_f64).exp() + (-2.0_f64).exp() + (-3.0_f64).exp();
     let expected_row1 = array![
       1.0 / sum,
@@ -82,7 +82,7 @@ mod tests {
       (-2.0_f64).exp() / sum,
       (-3.0_f64).exp() / sum
     ];
-    assert_abs_diff_eq!(dis.row(1), expected_row1, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(1), expected_row1, epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
@@ -95,8 +95,8 @@ mod tests {
     let expected = array![[1.0 / sum, 0.0, (-1.0_f64).exp() / sum, 0.0]];
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
-    assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, expected, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(log_lh, sum.ln(), epsilon = 1e-10);
   }
 
   #[test]
@@ -108,8 +108,8 @@ mod tests {
     let (ref_dis, ref_log_lh) = normalize_from_log(reference);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, ref_dis, epsilon = 1e-10);
-    assert_abs_diff_eq!(log_lh, ref_log_lh - 1000.0, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, ref_dis, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(log_lh, ref_log_lh - 1000.0, epsilon = 1e-10);
   }
 
   #[test]
@@ -118,7 +118,7 @@ mod tests {
     let (dis, log_lh) = normalize_from_log(log_dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis, Array2::from_elem((1, 3), 1.0 / 3.0), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis, Array2::from_elem((1, 3), 1.0 / 3.0), epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY, got {log_lh}");
   }
 
@@ -128,9 +128,9 @@ mod tests {
     let log_lh = normalize_inplace(&mut dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis.row(0), array![0.1, 0.2, 0.3, 0.4], epsilon = 1e-10);
-    assert_abs_diff_eq!(dis.row(1), array![0.4, 0.3, 0.2, 0.1], epsilon = 1e-10);
-    assert_abs_diff_eq!(log_lh, 10.0_f64.ln() + 10.0_f64.ln(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(0), array![0.1, 0.2, 0.3, 0.4], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(1), array![0.4, 0.3, 0.2, 0.1], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(log_lh, 10.0_f64.ln() + 10.0_f64.ln(), epsilon = 1e-10);
   }
 
   #[test]
@@ -139,7 +139,7 @@ mod tests {
     let log_lh = normalize_inplace(&mut dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY for all-zero row, got {log_lh}");
   }
 
@@ -149,8 +149,8 @@ mod tests {
     let log_lh = normalize_inplace(&mut dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
-    assert_abs_diff_eq!(dis.row(1), array![0.2, 0.4, 0.2, 0.2], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(1), array![0.2, 0.4, 0.2, 0.2], epsilon = 1e-10);
     pretty_assert_neg_inf!(
       log_lh,
       "log_lh should be NEG_INFINITY when any row is zero, got {log_lh}"
@@ -163,7 +163,7 @@ mod tests {
     let log_lh = normalize_inplace(&mut dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY for NaN row, got {log_lh}");
   }
 
@@ -173,7 +173,7 @@ mod tests {
     let log_lh = normalize_inplace(&mut dis);
 
     assert_valid_rows(&dis);
-    assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dis.row(0), array![0.25, 0.25, 0.25, 0.25], epsilon = 1e-10);
     pretty_assert_neg_inf!(log_lh, "log_lh should be NEG_INFINITY for inf row, got {log_lh}");
   }
 }

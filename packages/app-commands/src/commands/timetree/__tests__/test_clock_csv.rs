@@ -7,7 +7,6 @@ mod tests {
   use crate::commands::timetree::run::run_timetree_estimation;
   use app_output::output_plan::OutputSelection;
   use app_output::table_output::table_read_file;
-  use approx::{assert_relative_eq, assert_ulps_eq};
   use eyre::Report;
   use helpers::{fixed_rate_intercept, ordinary_least_squares, run_zika, zika_dir};
   use itertools::Itertools;
@@ -24,6 +23,7 @@ mod tests {
   use treetime_io::dates_csv::metadata_read_file;
   use treetime_io::nwk::nwk_read_file;
   use treetime_utils::io::json::json_read_file;
+  use treetime_utils::{pretty_assert_relative_eq, pretty_assert_ulps_eq};
 
   const UNDATED_TIP: &str = "GZ01|KU820898|2016-02-14|china";
 
@@ -54,8 +54,8 @@ mod tests {
       None => ordinary_least_squares(&points),
     };
 
-    assert_relative_eq!(model.clock_rate(), rate, max_relative = 1e-8);
-    assert_relative_eq!(model.intercept(), intercept, max_relative = 1e-8);
+    pretty_assert_relative_eq!(model.clock_rate(), rate, max_relative = 1e-8);
+    pretty_assert_relative_eq!(model.intercept(), intercept, max_relative = 1e-8);
     Ok(())
   }
 
@@ -90,7 +90,7 @@ mod tests {
       let name = row.name.as_str();
       let expected = dates[name].as_ref().expect("zika/20 dates every sample").mean();
       assert_eq!(Some(ClockDateSource::Input), row.date_source, "{name}");
-      assert_ulps_eq!(expected, row.date.expect("an input date"), max_ulps = 4);
+      pretty_assert_ulps_eq!(expected, row.date.expect("an input date"), max_ulps = 4);
     }
     Ok(())
   }

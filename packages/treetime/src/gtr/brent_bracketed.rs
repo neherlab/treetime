@@ -158,9 +158,9 @@ where
 #[cfg(test)]
 mod tests {
   use super::*;
-  use approx::assert_abs_diff_eq;
   use argmin::core::Executor;
   use eyre::Report;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   struct Fn1D(fn(f64) -> f64);
 
@@ -188,28 +188,28 @@ mod tests {
   #[test]
   fn test_brent_bracketed_quadratic() -> Result<(), Report> {
     let xmin = minimize(|x| (x - 3.0) * (x - 3.0), 0.0, 3.5, 10.0)?;
-    assert_abs_diff_eq!(xmin, 3.0, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(xmin, 3.0, epsilon = 1e-7);
     Ok(())
   }
 
   #[test]
   fn test_brent_bracketed_shifted_quadratic() -> Result<(), Report> {
     let xmin = minimize(|x| (x - 0.7) * (x - 0.7) + 1.0, 0.0, 1.0, 5.0)?;
-    assert_abs_diff_eq!(xmin, 0.7, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(xmin, 0.7, epsilon = 1e-7);
     Ok(())
   }
 
   #[test]
   fn test_brent_bracketed_cosine() -> Result<(), Report> {
     let xmin = minimize(f64::cos, 2.0, 3.0, 5.0)?;
-    assert_abs_diff_eq!(xmin, std::f64::consts::PI, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(xmin, std::f64::consts::PI, epsilon = 1e-7);
     Ok(())
   }
 
   #[test]
   fn test_brent_bracketed_seeds_at_interior_point() -> Result<(), Report> {
     let xmin = minimize(|x| (x - 5.0) * (x - 5.0), 0.0, 4.9, 10.0)?;
-    assert_abs_diff_eq!(xmin, 5.0, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(xmin, 5.0, epsilon = 1e-7);
     Ok(())
   }
 }

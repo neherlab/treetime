@@ -7,10 +7,10 @@ mod tests {
   use crate::optimize::sparse_eval::evaluate_sparse_contribution;
   use crate::partition::optimize;
   use crate::partition::optimize::dense::{PartitionContribution, get_coefficients};
-  use approx::assert_abs_diff_eq;
   use ndarray::{Array1, Axis, array, concatenate};
   use rstest::rstest;
   use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   fn test_gtr() -> GTR {
     jc69(JC69Params::default()).expect("JC69 creation failed")
@@ -73,9 +73,9 @@ mod tests {
     let multi = optimize::sparse::PartitionContribution::new(vec![sparse_site(&parent, &child, &gtr, multiplicity)], gtr.clone());
     let multi_metrics = evaluate_sparse_contribution(&multi, branch_length, true).expect("valid branch length");
 
-    assert_abs_diff_eq!(multi_metrics.log_lh.value(), multiplicity * single_metrics.log_lh.value(), epsilon = 1e-12);
-    assert_abs_diff_eq!(multi_metrics.derivative, multiplicity * single_metrics.derivative, epsilon = 1e-12);
-    assert_abs_diff_eq!(multi_metrics.second_derivative, multiplicity * single_metrics.second_derivative, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(multi_metrics.log_lh.value(), multiplicity * single_metrics.log_lh.value(), epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(multi_metrics.derivative, multiplicity * single_metrics.derivative, epsilon = 1e-12);
+    pretty_assert_abs_diff_eq!(multi_metrics.second_derivative, multiplicity * single_metrics.second_derivative, epsilon = 1e-12);
   }
 
   #[rustfmt::skip]
@@ -104,9 +104,9 @@ mod tests {
     let sparse_contrib = optimize::sparse::PartitionContribution::new(vec![sparse_site(&parent, &child, &gtr, n_rows.to_f64_exact())], gtr.clone());
     let sparse_metrics = evaluate_sparse_contribution(&sparse_contrib, branch_length, true).expect("valid branch length");
 
-    assert_abs_diff_eq!(dense_metrics.log_lh.value(), sparse_metrics.log_lh.value(), epsilon = 1e-10);
-    assert_abs_diff_eq!(dense_metrics.derivative, sparse_metrics.derivative, epsilon = 1e-10);
-    assert_abs_diff_eq!(dense_metrics.second_derivative, sparse_metrics.second_derivative, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dense_metrics.log_lh.value(), sparse_metrics.log_lh.value(), epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dense_metrics.derivative, sparse_metrics.derivative, epsilon = 1e-10);
+    pretty_assert_abs_diff_eq!(dense_metrics.second_derivative, sparse_metrics.second_derivative, epsilon = 1e-10);
   }
 
   #[test]
@@ -141,17 +141,17 @@ mod tests {
     let metrics_combined =
       evaluate_dense_contribution(&contrib_combined, branch_length, true).expect("valid branch length");
 
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       metrics_combined.log_lh.value(),
       metrics_a.log_lh.value() + metrics_b.log_lh.value(),
       epsilon = 1e-12
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       metrics_combined.derivative,
       metrics_a.derivative + metrics_b.derivative,
       epsilon = 1e-12
     );
-    assert_abs_diff_eq!(
+    pretty_assert_abs_diff_eq!(
       metrics_combined.second_derivative,
       metrics_a.second_derivative + metrics_b.second_derivative,
       epsilon = 1e-12

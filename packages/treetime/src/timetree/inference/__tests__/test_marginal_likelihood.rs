@@ -6,7 +6,6 @@ mod tests {
   use crate::timetree::inference::backward_pass::propagate_distributions_backward;
   use crate::timetree::inference::result::{BranchLikelihood, log_marginal_likelihood};
   use crate::timetree::optimization::marginal_clock_rate::branches_at_rate;
-  use approx::assert_abs_diff_eq;
   use eyre::Report;
   use itertools::{Itertools, izip};
   use ndarray::Array1;
@@ -20,6 +19,7 @@ mod tests {
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_abs_diff_eq;
 
   #[rstest]
   #[case::no_prior_reference_rate(1e-3, None)]
@@ -45,7 +45,7 @@ mod tests {
     )?;
     let actual = log_marginal_likelihood(&backward, setup.graph.root_key()?)?.expect("root has a distribution");
     let expected = helpers::piecewise_log_z(&setup, branches, model.as_ref())?;
-    assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
     Ok(())
   }
 
