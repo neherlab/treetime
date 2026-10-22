@@ -33,29 +33,13 @@ The help of `--alphabet` says that the alphabet is detected from the sequence co
 
 `timetree`/`clock`: `-d --metadata` with alias `--dates`. `mugration`: `-s --metadata` with alias `--states`. Same long flag name, different short flags.
 
-### I2: `--clock-filter` description differs between `timetree` and `clock`
-
-"inter-quartile" (hyphenated) in `timetree` vs "interquartile" (one word) in `clock`. Both include redundant prose "Default=3.0" alongside the `[default: 3.0]` metadata.
-
-### I3: `--dense` description differs across four commands
-
-`timetree`: "Use dense representation for sequences (store full probability distributions)". `optimize`: "Use dense representation of sequences on the tree", with an extra paragraph on dense and sparse mode. `ancestral`/`homoplasy`: "Use dense representation (stores full probability vectors at each position)", with an extra paragraph on `--model infer`.
-
 ### I4: `--vcf-reference` description has two phrasings
 
 `timetree`/`clock`: "Only for vcf input: fasta file of the sequence the VCF was mapped to". `ancestral`: "FASTA file of the sequence the VCF was mapped to (only for vcf input)".
 
-### I5: `--max-iter` default and description differ
-
-`timetree`: default 2, "maximal number" (lowercase). `optimize`: default 10, "Maximum number" (capitalized). Different defaults are intentional but the descriptions diverge without reason.
-
 ### I6: Capitalization inconsistent across all commands
 
-Some descriptions start lowercase ("don't reroot the tree", "ignore tips", "excess variance", "maximal number", "use an autocorrelated", "rescale branch lengths"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
-
-### I7: `--branch-length-mode` description differs subtly
-
-`timetree`: "Branch lengths optimized by treetime are only accurate at short evolutionary distances". `clock`: "Note that branch lengths optimized by treetime are only accurate at short evolutionary distances".
+Some descriptions of `timetree` start lowercase ("use an autocorrelated", "add posterior LH", "filename to save the plot to", "add tip labels", "don't show tip labels"), others uppercase ("If set to 'input'", "Method used for", "Length of the sequence").
 
 ## UX / ergonomics
 
