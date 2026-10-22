@@ -62,8 +62,8 @@
 
 - [x] `--clock-rate` (fixed rate bypasses estimation)
 - [x] `--allow-negative-rate` (for midpoint rooting)
-- [ ] `--tip-slack`, `--covariation`, `--sequence-length`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
+- [ ] `--tip-slack`, `--covariation`, `--sequence-length`: removed in v1; the CLI stops at `--tip-slack` and `--covariation` with a message, and drops `--sequence-length` with its value ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--outgroup` / `--keep-root`
-- [ ] `--aln`, `--gtr`, `--gtr-params`, `--vcf-reference`, `--branch-length-mode`, `--method-anc`, `--prune-short`: removed in v1, because the regression uses the branch lengths of the input tree and v0 reads the alignment only for `--covariation` ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
+- [ ] `--aln`, `--gtr`, `--gtr-params`, `--vcf-reference`, `--branch-length-mode`, `--method-anc`, `--prune-short`: removed in v1, because the regression uses the branch lengths of the input tree and v0 reads the alignment only for `--covariation` ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)). The CLI drops the 0.x `--aln` with its value and stops at `--vcf-reference` with a message
 - [ ] `--seed` (not accepted: clock has no random step; see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

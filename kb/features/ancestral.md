@@ -87,4 +87,5 @@
 - [x] Optional ambiguity report as IUPAC codes in the reconstructed FASTA outputs and the node sequences of augur node data (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))
 - [ ] VCF input with `--vcf-reference` ([kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))
 - [x] Alignment input `--alignment` (v0 `--aln`)
+- [x] TreeTime 0.x spellings: `--aln`, `--gtr`, `--gtr-params`, `--marginal`, the 0.x `--method-anc` values `probabilistic`, `ml` and `fitch`, `--aa`, `--keep-overhangs`, `--rng-seed`, `--outdir` and `--verbose <N>` run as their TreeTime 1 flags (`packages/app-cli/src/cli/v0_args.rs`)
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

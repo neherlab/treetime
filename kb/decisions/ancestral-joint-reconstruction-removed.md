@@ -67,9 +67,9 @@ Neither option aligns with v1's design. The marginal approach provides strictly 
 
 ## Practical impact
 
-`treetime ancestral` without `--method-anc` runs marginal reconstruction. `--method-anc=joint` fails at argument parsing, before any input is read, with the list of valid values. A v0 command line or configuration file that selects `joint` must switch to `marginal` or `parsimony`.
+`treetime ancestral` without `--method-anc` runs marginal reconstruction. `--method-anc=joint` fails at argument parsing, before any input is read, with the list of valid values. The CLI reads the v0 values `probabilistic` and `ml` of `ancestral` and `homoplasy` as `marginal`, and `fitch` as `parsimony`; a configuration file must use `marginal` or `parsimony`.
 
-The `timetree` and `clock` commands accept `--method-anc` but ignore it: timetree always uses marginal reconstruction, and clock reconstructs no sequences.
+`timetree` has no `--method-anc`: it always uses marginal reconstruction. The CLI drops the v0 values `probabilistic` and `ml` there and stops at `parsimony` and `fitch` with a message. `clock` reconstructs no sequences.
 
 No golden master tests exist for joint reconstruction in v1. Marginal reconstruction is the recommended method for all use cases.
 

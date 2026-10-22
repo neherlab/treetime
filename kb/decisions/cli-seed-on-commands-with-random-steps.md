@@ -31,7 +31,7 @@ One v0 random step is not ported yet and must follow this rule when it is: root 
 
 - A seed that no random step reads gives the user a false promise of reproducibility
 - Drawing one seed per run and logging it makes an unseeded stochastic run reproducible after the fact, which v0 does not offer
-- v1 has no backward compatibility requirement, so a v0 invocation that passes `--rng-seed` to `clock` or `mugration` now fails with an unknown-argument error instead of silently ignoring the value
+- The CLI reads the v0 spelling `--rng-seed` as `--seed` in `timetree`, `ancestral` and `homoplasy`, and drops it with its value in `clock` and `mugration`, where no random step reads a seed
 - Xoshiro256++ fits scientific use: it passes the BigCrush and PractRand statistical test suites, its authors recommend it for simulation, and SplitMix64 seeding is the seeding they recommend ([Blackman and Vigna 2021](https://doi.org/10.1145/3460772)). It is fast, holds 32 bytes of state, can be copied, and gives the same numbers for a seed on every platform, WebAssembly included. `rand` ships it without a feature or an extra crate, and its output is fixed by the algorithm, so it does not change with `rand` releases the way `StdRng` may. A cryptographic generator such as ChaCha12 adds cost and gives unpredictability, which a scientific run does not need.
 
 ## Consequences
