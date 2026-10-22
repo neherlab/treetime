@@ -7,7 +7,7 @@
 - [x] Tree loading from `--tree`
 - [x] Discrete state table from `--states`
 - [x] Attribute column selection with `--attribute`
-- [x] Custom taxon-name column with `--name-column`
+- [x] Custom taxon-name column with `--metadata-id-columns`
 - [x] Auto-detect taxon-name column from `name`, `strain`, or `accession`
 - [x] Weights file parsing and validation
 - [x] Merge categories observed in states and weights files

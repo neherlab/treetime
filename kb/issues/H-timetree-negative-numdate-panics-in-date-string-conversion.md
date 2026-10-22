@@ -10,14 +10,14 @@ A fixed clock rate far below the substitution rate of the data places the root t
 
 ```bash
 treetime timetree --tree=data/zika/20/tree.nwk --dates=data/zika/20/metadata.tsv \
-  --aln=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
+  --alignment=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
 ```
 
 The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. Without a fixed rate, the `timetree/lassa/L/200/basic` case panics the same way:
 
 ```bash
 treetime timetree --tree=data/lassa/L/200/tree.nwk --dates=data/lassa/L/200/metadata.tsv \
-  --aln=data/lassa/L/200/aln.fasta.xz --name-column=accession --output-all=<dir>
+  --alignment=data/lassa/L/200/aln.fasta.xz --metadata-id-columns=accession --output-all=<dir>
 ```
 
 The clock filter marks 7 tips dated 2009 to 2017 as outliers, with apparent dates between 1589 and 1758. The written clock model has rate $1.18 \cdot 10^{-4}$ and intercept $0.119$, so the regression line reaches zero divergence near the year $-1000$, and the panic comes from the augur node data writer (`fn refine_dates()` calling `year_fraction_to_datestring()`).

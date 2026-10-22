@@ -1,6 +1,6 @@
 # Per-edge branch length optimization: Brent and Newton-Raphson in sqrt(t) space
 
-v1 offers two per-edge branch length optimization methods via `--opt-method`: Brent's method and Newton-Raphson, both in $\sqrt{t}$ space. The default `brent` uses the v0 method, Brent in $\sqrt{t}$ space, but differs from v0 in the search interval, the start, the objective penalty, the stopping tolerance, and the failure handling, so per-edge results can differ from v0 ([kb/issues/M-optimize-brent-setup-differs-from-v0.md](../issues/M-optimize-brent-setup-differs-from-v0.md)). v0 offers only Brent in $\sqrt{t}$ space.
+v1 offers two per-edge branch length optimization methods via `--optimizer`: Brent's method and Newton-Raphson, both in $\sqrt{t}$ space. The default `brent` uses the v0 method, Brent in $\sqrt{t}$ space, but differs from v0 in the search interval, the start, the objective penalty, the stopping tolerance, and the failure handling, so per-edge results can differ from v0 ([kb/issues/M-optimize-brent-setup-differs-from-v0.md](../issues/M-optimize-brent-setup-differs-from-v0.md)). v0 offers only Brent in $\sqrt{t}$ space.
 
 ## What v0 does
 
@@ -16,7 +16,7 @@ v0 also adds a regularization penalty `exp(s^4/10000)`, that is $e^{t^2/10^4}$, 
 
 ## What v1 does
 
-v1 `optimize_edge_lengths()` ([packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)) offers two per-edge optimization methods selectable via `--opt-method`:
+v1 `optimize_edge_lengths()` ([packages/treetime/src/optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)) offers two per-edge optimization methods selectable via `--optimizer`:
 
 ### Brent's method (derivative-free)
 
@@ -47,7 +47,7 @@ Both methods share:
 
 ## Why v1 offers method selection
 
-**One parameterization.** The $\sqrt{t}$ parameterization is the v0 parameterization and improves numerical conditioning on short branches and indel-bearing edges. Both methods use it, so a change of `--opt-method` changes only the solver.
+**One parameterization.** The $\sqrt{t}$ parameterization is the v0 parameterization and improves numerical conditioning on short branches and indel-bearing edges. Both methods use it, so a change of `--optimizer` changes only the solver.
 
 **Newton-Raphson for analytical derivatives.** v1's eigenvalue-space coefficient caching (`k_c`) computes the likelihood as `sum_c k_c exp(lambda_c * t)`. The first and second derivatives follow by multiplying `k_c` by `lambda_c` and `lambda_c^2`, reusing the same exponentials. Newton achieves quadratic convergence near the optimum (3-5 iterations typical vs 10-30 function evaluations for Brent).
 
@@ -63,7 +63,7 @@ Both methods share:
 
 **Still lost: Hamming distance fallback.** v0 returns raw Hamming distance when Brent reports failure. v1 has no equivalent: solver errors propagate through `Result<EdgeSolution, Report>` to `optimize_edge_lengths`, which surfaces them to the caller; at the iteration limit both methods keep their best point. Each command run raises at most one `branch-lengths-not-converged` run warning. It names every edge that reached the iteration limit, or stopped at the upper end of the search interval with the likelihood still rising, in any optimization round of the run, and it counts these edges and the affected rounds. v1 prefers a loud error over v0's silent substitution because the silent fallback biased downstream branch lengths and made likelihood comparisons unreliable.
 
-**Gained: method selection.** Users can choose between Brent's method and Newton-Raphson via `--opt-method`, matching the pattern in the `clock` command's `--branch-split-method`.
+**Gained: method selection.** Users can choose between Brent's method and Newton-Raphson via `--optimizer`, matching the pattern in the `clock` command's `--branch-split-method`.
 
 ## Practical impact
 

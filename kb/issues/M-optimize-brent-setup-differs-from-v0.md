@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **Research and decision required before any change.** The v1 Brent setup stays as it is until the maintainers decide. This issue records how the v1 and v0 setups differ, axis by axis, and which setup is better on each axis with the scientific reason. The open choices are in [Options](#options). The measured effect on the six example datasets is below $10^{-6}$ log-likelihood units per edge; larger effects are possible on long genomes, long branches, and models that were not measured (see the **Investigation required** blocks).
 
-Both versions optimize each branch length with Brent's method in $s = \sqrt{t}$, but they differ in the search interval, the start, the objective, the stopping rule, and the failure handling. `--opt-method brent` (the default) therefore does not reproduce v0 per-edge results exactly.
+Both versions optimize each branch length with Brent's method in $s = \sqrt{t}$, but they differ in the search interval, the start, the objective, the stopping rule, and the failure handling. `--optimizer brent` (the default) therefore does not reproduce v0 per-edge results exactly.
 
 Notation: $t$ is the branch length, $s = \sqrt{t}$, $\ell$ the log-likelihood of the edge, $L$ the number of alignment sites, $h$ the Hamming distance between the parent and child profiles, $t_0$ the branch length before the optimization step.
 

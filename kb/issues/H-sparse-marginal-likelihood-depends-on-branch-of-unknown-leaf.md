@@ -30,6 +30,10 @@ The same values appear on `rust` at `3825359a2` with `treetime optimize --model=
 
 The sparse value falls with $x$, so the sparse backend treats the unknown leaf as if it had a known sequence.
 
+## Reachability
+
+Every command that reads an alignment fills a leaf without a sequence with unknown characters (`fn complete_alignment_for_leaves()` in `packages/treetime/src/ancestral/attach.rs`). Without `--allow-missing-sequences`, a run stops when more than one third of the tips lack a sequence, so up to one third of the leaves can be all unknown. With `--allow-missing-sequences`, `timetree`, `ancestral`, `homoplasy`, `optimize` and `prune` accept any number of such leaves, and every one of them reaches the sparse backend.
+
 > [!IMPORTANT]
 > **Investigation required.** The cause is not traced. Candidates: the Fitch compression or the fixed-position composition of the sparse partition counts the unknown leaf at positions without variation, or the sparse leaf messages do not mark unknown ranges as missing data. Trace a leaf with all positions unknown through `create_fitch_partition()` and the sparse marginal messages, and check whether partly unknown leaves are affected the same way.
 

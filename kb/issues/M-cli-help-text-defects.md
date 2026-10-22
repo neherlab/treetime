@@ -23,7 +23,7 @@ Some descriptions of `timetree` start lowercase ("use an autocorrelated"), other
 
 ## UX / ergonomics
 
-### U2: `--opt-method` renders LaTeX in terminal
+### U2: `--optimizer` renders LaTeX in terminal
 
 Command: `optimize`. The description and possible value descriptions contain `$\sqrt{t}$`, `$s = \sqrt{t}$`, `$O(1/t^2)$` which display as raw LaTeX in terminal output. Should be `sqrt(t)`, `s = sqrt(t)`, `O(1/t^2)`.
 

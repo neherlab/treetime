@@ -12,7 +12,7 @@ v0 reads PHYLIP through `Bio.AlignIO`, and the bundled dataset `data/flu/h3n2/20
 ## Reproduction
 
 ```bash
-treetime ancestral --tree=data/flu/h3n2/20/tree.nwk --aln=data/flu/h3n2/20/aln.phylip --output-all=<dir>
+treetime ancestral --tree=data/flu/h3n2/20/tree.nwk --alignment=data/flu/h3n2/20/aln.phylip --output-all=<dir>
 ```
 
 This is the `ancestral/flu/h3n2/20/input-phylip-alignment` case of `dev/smoke`, declared an expected failure in `dev/smoke.toml`.

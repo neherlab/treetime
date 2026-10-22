@@ -19,12 +19,12 @@ v1 adds a dedicated `treetime optimize` subcommand (`fn run_optimize()` in [pack
 | Argument                   | Default                                     | Purpose                                                    |
 | -------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
 | `--tree`                   | (required)                                  | Input tree in Newick/Nexus/Phylip                          |
-| `--aln`                    | (required)                                  | FASTA alignment (supports compression)                     |
+| `--alignment`              | (required)                                  | FASTA alignment (supports compression)                     |
 | `--model`                  | `infer`                                     | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
 | `--alphabet`               | auto                                        | Nucleotide or amino acid alphabet                          |
 | `--representation`         | `auto`                                      | Dense or sparse sequence representation                    |
 | `--max-iter`               | 10                                          | Maximum outer iterations                                   |
-| `--dp`                     | 0.1                                         | Convergence tolerance (log-likelihood delta)               |
+| `--tolerance`              | 0.1                                         | Convergence tolerance (log-likelihood delta)               |
 | `--output-all` (`-O`)      | (optional)                                  | Output directory for default outputs                       |
 | `--output-augur-node-data` | `<dir>/annotated_tree.augur-node-data.json` | Path for the augur-compatible node data JSON               |
 
@@ -34,11 +34,11 @@ The command runs an iterative cycle of marginal ancestral reconstruction and per
 
 1. Read alignment and tree. Create one partition from the full alignment, sparse by default or dense with `--representation dense`.
 2. Run Fitch reconstruction. Initialize marginal reconstruction (backward and forward passes).
-3. Keep valid input branch lengths and fill the others with the observed substitution count divided by the effective sequence length (`--branch-length-initial-guess`).
+3. Keep valid input branch lengths and fill the others with the observed substitution count divided by the effective sequence length (`--initial-branch-lengths`).
 4. Iterate until convergence or `max-iter`:
    - Run marginal reconstruction, computing total log-likelihood.
    - Stop on the convergence conditions of `run_optimize_loop()`.
-   - Optimize each branch length independently with the method of `--opt-method`, by default Brent's method in $\sqrt{t}$ space as in v0. The Newton-Raphson method is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
+   - Optimize each branch length independently with the method of `--optimizer`, by default Brent's method in $\sqrt{t}$ space as in v0. The Newton-Raphson method is documented separately in [optimize-newton-raphson-per-edge.md](optimize-newton-raphson-per-edge.md).
 5. Write `annotated_tree.nwk`, `annotated_tree.nexus`, `gtr.json`, and `optimize.augur-node-data.json` to the output directory.
 
 ### Augur node data JSON output
@@ -103,9 +103,9 @@ Standard practice in phylogenetic ML software (RAxML, IQ-TREE, PhyML) is coordin
 | Aspect              | v0 (internal)                            | v1 (standalone command)                                                                               |
 | ------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Exposure            | Internal method within `optimize_tree()` | Standalone CLI subcommand                                                                             |
-| Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--dp`                                                                |
+| Convergence control | Hardcoded parameters                     | User-specified `--max-iter` and `--tolerance`                                                                |
 | Outer loop damping  | Exponential decay (factor 0.75)          | Exponential decay (`--damping`, default 0: no damping)                                                |
-| Per-branch method   | Brent's method in sqrt(t) space          | `--opt-method`: Brent or Newton-Raphson in sqrt(t) space; default Brent |
+| Per-branch method   | Brent's method in sqrt(t) space          | `--optimizer`: Brent or Newton-Raphson in sqrt(t) space; default Brent |
 | Partition support   | Dense only                               | Dense or sparse (`--representation`)                                                                           |
 | Model selection     | GTR inferred internally                  | User-specified via `--model`                                                                          |
 
@@ -113,7 +113,7 @@ The per-branch optimization method difference (Newton-Raphson vs Brent) is docum
 
 ## Practical impact
 
-Users can run `treetime optimize --tree=tree.nwk --aln=aln.fasta --output-all=out/` to refine branch lengths without performing ancestral reconstruction or timetree inference. The output tree retains the input topology with updated branch lengths.
+Users can run `treetime optimize --tree=tree.nwk --alignment=aln.fasta --output-all=out/` to refine branch lengths without performing ancestral reconstruction or timetree inference. The output tree retains the input topology with updated branch lengths.
 
 v1 offers the outer-loop exponential damping of v0 (`--damping`), but applies none by default, because optimizing edges in series as one sum removes the oscillation that damping suppressed in v0 ([optimize-damping-disabled-by-default.md](optimize-damping-disabled-by-default.md)).
 

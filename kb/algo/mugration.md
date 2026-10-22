@@ -115,7 +115,7 @@ Start model:
 - Equilibrium frequencies `pi`: uniform (1/n_states) or from the weights file (fixed during refinement); optional pseudo-count smoothing with `--smooth-initial-pi`
 - Exchangeability matrix `W`: uniform (all transitions equally likely), rate `Mu::FromMatrix(1.0)`
 
-Refinement spec: `GtrRefinement { iterations: --iterations, inference: InferGtrOptions { pc: --pc (default 1.0), fixed_pi: pi of the weights }, sampling_bias_correction: --sampling-bias-correction }`.
+Refinement spec: `GtrRefinement { iterations: --model-iterations, inference: InferGtrOptions { pc: --pc (default 1.0), fixed_pi: pi of the weights }, sampling_bias_correction: --sampling-bias-correction }`.
 
 Refinement order of `fn refine_gtr()`, the order of v0's `reconstruct_discrete_traits()` ([packages/legacy/treetime/treetime/wrappers.py#L785-L811](../../packages/legacy/treetime/treetime/wrappers.py#L785-L811)):
 

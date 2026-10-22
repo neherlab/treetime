@@ -22,7 +22,7 @@ v1 adds a dedicated `treetime prune` subcommand ([packages/app-commands/src/comm
 | Argument                  | Default    | Purpose                                                     |
 | ------------------------- | ---------- | ----------------------------------------------------------- |
 | `--tree`                  | (required) | Input tree in Newick/Nexus/Phylip                           |
-| `--aln`                   | (none)     | FASTA alignment (required if `--prune-empty`)               |
+| `--alignment`             | (none)     | FASTA alignment (required if `--prune-empty`)               |
 | `--alphabet`              | auto       | Nucleotide or amino acid alphabet                           |
 | `--output-all` (`-O`)     | (optional) | Output directory for default outputs                        |
 | `--prune-short`           | (none)     | Threshold for short branch pruning (substitutions per site) |
@@ -87,6 +87,6 @@ Removing specific taxa (leaves) from a phylogenetic tree is a standard preproces
 
 ## Practical impact
 
-Users can run `treetime prune --tree=tree.nwk --aln=aln.fasta --prune-short=1e-6 --prune-empty --output-all=out/` to simplify a tree before downstream analysis. The command is composable with other v1 commands: prune first, then run ancestral reconstruction or timetree inference on the simplified tree.
+Users can run `treetime prune --tree=tree.nwk --alignment=aln.fasta --prune-short=1e-6 --prune-empty --output-all=out/` to simplify a tree before downstream analysis. The command is composable with other v1 commands: prune first, then run ancestral reconstruction or timetree inference on the simplified tree.
 
-The three pruning criteria are independent and can be combined freely. Using `--prune-empty` without `--aln` produces an error. Using `--prune-short` or `--prune-nodes-list` without `--aln` works on topology and branch lengths alone.
+The three pruning criteria are independent and can be combined freely. Using `--prune-empty` without `--alignment` produces an error. Using `--prune-short` or `--prune-nodes-list` without `--alignment` works on topology and branch lengths alone.

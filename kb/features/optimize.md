@@ -4,13 +4,13 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 
 ## Standalone Command (v1-only)
 
-- [x] `optimize` command with `--tree`, `--aln`, `--output-all`
+- [x] `optimize` command with `--tree`, `--alignment`, `--output-all`
 - [x] Dense or sparse partition setup, one partition per `--alignment` file, selected by `--representation` for the whole run
 - [x] Several alignment files share the branch lengths, with one relative rate per file (`--partition-rates`, only with two or more files, default `estimate`: a rate step and a site-weighted normalization after each iteration; `equal` fixes every rate at 1) and one indel rate per file in one combined Poisson term ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [x] Short-branch floors use the total length of all files
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
-- [x] `--branch-length-initial-guess` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
+- [x] `--initial-branch-lengths` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output Newick and Nexus trees with the branch mutations (Nexus always, Newick with `--newick-annotations beast` or `nhx`)
 - [x] Model document (`--output-gtr`) with one entry per alignment file
 - [x] Augur-compatible node data JSON (`optimize.augur-node-data.json`, `--output-augur-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
@@ -27,13 +27,13 @@ The optimize command has no sampling dates, so only date-free rooting policies a
 
 ## Per-Edge Likelihood (v0 parity via different method)
 
-v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 offers two methods via `--opt-method`: Brent and Newton-Raphson, both in $\sqrt{t}$ space. Default is `brent` (matches v0). Both v0 and v1 use eigendecomposition-based likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
+v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with Hamming distance bracket. v1 offers two methods via `--optimizer`: Brent and Newton-Raphson, both in $\sqrt{t}$ space. Default is `brent` (matches v0). Both v0 and v1 use eigendecomposition-based likelihood (`expQt = V diag(exp(lambda*t)) V_inv`).
 
 - [x] Eigenvalue-space coefficient caching (dense: `msg.dot(V) * msg.dot(V_inv.T)`, sparse: per-site with multiplicity)
 - [x] Analytical first and second derivatives (v1-only, v0 uses derivative-free Brent)
 - [x] Newton's method in sqrt(t) space (`solve_newton`, safeguarded by a slope bracket and bisection, max 50 inner iterations, step in `[s - sqrt(s^2 + 1), s]`, absolute tolerance floor 1e-8, reduces indel Hessian singularity from O(1/t^2) to O(1/t))
 - [x] Brent's method in sqrt(t) space (`solve_brent`, derivative-free via `argmin::BrentOpt`, default, matches v0 exactly)
-- [x] Per-edge optimization method selection (`--opt-method`: `brent` default, `newton`)
+- [x] Per-edge optimization method selection (`--optimizer`: `brent` default, `newton`)
 - [x] Grid search for zero-boundary reconciliation (100 points, log-spaced grid with 0.5 subs/site minimum upper bound)
 - [x] Zero branch length short-circuit (combined likelihood > 0.01 and derivative < 0 at zero)
 - [x] `compute_derivatives` flag to skip derivative computation for log-likelihood-only evaluation
@@ -48,8 +48,8 @@ v0 uses Brent's method (`scipy.optimize.minimize_scalar`) in sqrt(t) space with 
 ## Convergence Loop
 
 - [x] Iterative marginal reconstruction + optimization loop bounded by `--max-iter`
-- [x] Early stop when absolute likelihood change is below `--dp`
-- [x] Oscillation detection: stop when 2-step likelihood difference is below `--dp`
+- [x] Early stop when absolute likelihood change is below `--tolerance`
+- [x] Oscillation detection: stop when 2-step likelihood difference is below `--tolerance`
 - [x] Worsened detection: stop and revert to best branch lengths when likelihood decreases from peak
 - [x] Damping in marginal loop (`--damping`, `new*(1-d^i) + old*d^i` as in v0; default 0, v0 default 0.75: [kb/decisions/optimize-damping-disabled-by-default.md](../decisions/optimize-damping-disabled-by-default.md))
 - [x] Damping floor (`DAMPING_FLOOR = 0.01`) prevents fully undamped late iterations when `--damping` is above 0
@@ -65,7 +65,7 @@ Once per iteration, `prune_and_merge_in_loop` simplifies the tree. Sparse partit
 - [x] Shared-mutation merge: siblings in a polytomy that carry identical substitutions are grouped under a new internal node (`merge_shared_mutation_branches`).
 - [x] Reversion hoist: when a child edge reverts a substitution on the node's parent edge, a new node is inserted grouping that child with its sibling subtree, lifting the non-reverted substitutions above it. Removes one mutation per reverted position and adds none; branch lengths split proportionally to preserve root-to-node distances ([kb/decisions/optimize-polytomy-reversion-resolution.md](../decisions/optimize-polytomy-reversion-resolution.md)).
 - [x] Helper-node retirement: mutation-free edges to nodes created during the routine are collapsed, dissolving the transient helpers the merge and hoist leave behind.
-- [x] Per-step toggles: `--no-collapse-short-branches`, `--no-merge-siblings`, `--no-flip-parent-child` disable individual steps (all default on, so output is unchanged without them). Carried in-memory as `TopologyOps` on `OptimizeParams`. Merge and flip-parent-child are sparse-only, so `--no-merge-siblings` and `--no-flip-parent-child` together with `--representation dense` stop the run with an argument error. When collapse is disabled the optimizer may leave zero-length internal edges in the output; they are kept as-is.
+- [x] Per-step toggles: `--no-collapse-zero-branches`, `--no-merge-shared-mutations`, `--no-hoist-reversions` disable individual steps (all default on, so output is unchanged without them). Carried in-memory as `TopologyOps` on `OptimizeParams`. Merge and flip-parent-child are sparse-only, so `--no-merge-shared-mutations` and `--no-hoist-reversions` together with `--representation dense` stop the run with an argument error. When collapse is disabled the optimizer may leave zero-length internal edges in the output; they are kept as-is.
 
 The merge, hoist, and retire steps form one per-polytomy routine (`resolve_polytomies`) run every iteration and driven to a fixpoint by a monotone (mutation count, node count) potential. A polytomy whose children all revert the same position collapses to a single reverting child that the two-children guard leaves in place ([kb/issues/M-optimize-reversion-hoist-single-child-residual.md](../issues/M-optimize-reversion-hoist-single-child-residual.md)).
 

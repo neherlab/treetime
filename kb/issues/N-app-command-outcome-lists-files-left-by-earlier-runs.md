@@ -15,4 +15,4 @@ Return the written paths from the runners, or record them in a sink that every w
 ## Validation
 
 - A run into a folder that holds a GTR file from an earlier run, without a fitted model, does not list the GTR file
-- An ancestral run with `--cdses=S` into a folder that holds the FASTA of CDS `M` lists only the FASTA of `S`
+- An ancestral run with `--cds-selection=S` into a folder that holds the FASTA of CDS `M` lists only the FASTA of `S`

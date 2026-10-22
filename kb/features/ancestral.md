@@ -39,7 +39,7 @@
 - [x] One partition per `--alignment` file, each with its own model and reconstruction ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [x] For the most likely reconstruction, a run with several files equals separate single-file runs, and the log-likelihood is their sum. Posterior sampling (`--sample-from-profile` with `root` or `all`) draws from one random generator per run, file after file in the order of the `--alignment` list. A sampled result therefore depends on the order of the files, and every file after the first draws other values than in a separate run with the same seed
 - [x] Each file keeps its own short-branch floor
-- [x] Missing-tip check per file (stop above one third unless `--ignore-missing-alns`)
+- [x] Missing-tip check per file (stop above one third unless `--allow-missing-sequences`)
 - [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, Nexus, Newick with `--newick-annotations beast` or `nhx`, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] `--translations` and `--annotation` stop with an error on several files
 
@@ -79,7 +79,7 @@
 - [x] `--seed` for reproducibility; a generated seed is logged when sampling runs without one (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [x] `--model-params` (`key=value` parameters of a named model, as v0 `--gtr-params`; an unknown key or a malformed item is an error)
 - [x] `--translations` per-CDS AA FASTA input (both `{cds}` and `%GENE` placeholders)
-- [x] `--cdses` / `--genes` CDS names (derived from `--annotation` when omitted)
+- [x] `--cds-selection` CDS names (derived from `--annotation` when omitted)
 - [x] `--annotation` GFF3 annotation (CDS coordinates for node data; GenBank: [kb/issues/M-ancestral-genbank-annotation-unsupported.md](../issues/M-ancestral-genbank-annotation-unsupported.md))
 - [x] `--aa-model` AA substitution model (infer default, jtt92 opt-in)
 - [x] `--aa-root-sequence` per-CDS root/reference override

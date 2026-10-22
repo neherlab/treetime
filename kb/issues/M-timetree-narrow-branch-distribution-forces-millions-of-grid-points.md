@@ -6,7 +6,7 @@ A branch-time distribution far narrower than the node distribution it meets pass
 
 ```bash
 treetime timetree --tree=data/mpox/clade-ii/20/tree.nwk --metadata=data/mpox/clade-ii/20/metadata.tsv \
-  --name-column=accession --alignment=data/mpox/clade-ii/20/aln.fasta.xz \
+  --metadata-id-columns=accession --alignment=data/mpox/clade-ii/20/aln.fasta.xz \
   --clock-rate=0.5 --max-iter=1 --output-all=tmp/grid-point-limit
 ```
 
@@ -14,7 +14,7 @@ The smoke matrix declares this run as the expected failure `variant = "grid-poin
 
 - **`rust` of 2026-10-19**: the run stops with "A grid over [2019.14, 2022] with spacing 2.17304e-7 needs 13175607 points, more than the limit of 1000000". The backtrace shows the forward pass: `fn refine_distribution_from_parent()` calls `fn distribution_multiplication()`, the product of the forward message and the subtree distribution of the first refined node
 - **The forward-posterior trimming prototype** (commit `6d06d211a` on branch `claude-grid-trim`, `TT_TRIM=p TT_COARSE=1`, see [kb/proposals/timetree-forward-pass-grid-support.md](../proposals/timetree-forward-pass-grid-support.md)): the run stops in the same product with 13 869 392 points over \[2019.14, 2022.45\], and before that warns that `PP852952` has an empty time distribution and gets no date. Trimming the posterior does not help, because the large grid is a product of untrimmed messages
-- **With the forward-posterior trim and the spacing cap** ([kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md), code of 2026-10-20): `data/mpox/clade-ii/1000` with `--name-column=accession --clock-rate=0.5 --max-iter=1` stops with a grid over \[2019.48, 2023.14\] at spacing $2.04 \cdot 10^{-7}$ years, 17 968 319 points. Which operation requests this grid is not recorded
+- **With the forward-posterior trim and the spacing cap** ([kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md), code of 2026-10-20): `data/mpox/clade-ii/1000` with `--metadata-id-columns=accession --clock-rate=0.5 --max-iter=1` stops with a grid over \[2019.48, 2023.14\] at spacing $2.04 \cdot 10^{-7}$ years, 17 968 319 points. Which operation requests this grid is not recorded
 - **Default `timetree` run on `data/lassa/L/20`**: `--branch-length-mode auto` resolves to `input` (longest branch 0.49), and input mode keeps the weak positive regression rate $4.97 \cdot 10^{-5}$ ($r^2 = 0$). The run stops with "grid of 1208376 points" at the spacing 0.0102 years of a month-precision tip date, over a support of more than 11 000 years. Marginal mode with `--clock-rate=4.971e-5` stops the same way; the default marginal run starts from the Gaussian rate $1.74 \cdot 10^{-4}$ and completes. v0 completes in input mode on its non-uniform grid of 125 points, with a root date of -9107
 
 ## Mechanism
@@ -41,7 +41,7 @@ The smoke matrix declares this run as the expected failure `variant = "grid-poin
 ## Validation
 
 - The reproduction above finishes under the default grid point limit, every node dated
-- `data/mpox/clade-ii/1000` with `--name-column=accession --clock-rate=0.5 --max-iter=1` finishes, every node dated
+- `data/mpox/clade-ii/1000` with `--metadata-id-columns=accession --clock-rate=0.5 --max-iter=1` finishes, every node dated
 - Dates and intervals against the current output on runs at realistic clock rates
 
 ## Related

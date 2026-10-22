@@ -15,7 +15,7 @@
 
 ## Validation
 
-- [x] `--prune-empty` without `--aln` returns explicit error
+- [x] `--prune-empty` without `--alignment` returns explicit error
 - [x] `--prune-empty` loads sparse partitions and compresses sequences
 - [x] Mutation counts come from sparse edge substitutions
 

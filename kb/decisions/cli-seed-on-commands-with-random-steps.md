@@ -1,6 +1,6 @@
 # Seed handling: one seed per run, only on commands with a random step
 
-v1 accepts `--seed` (alias `--rng-seed`) only on the commands that draw random numbers, `ancestral` and `timetree`. A run resolves one seed in the command layer and passes it to every random step. Without `--seed`, the command draws a seed and logs it whenever the run has a random step, so any run can be reproduced from its log.
+v1 accepts `--seed` only on the commands that draw random numbers, `ancestral` and `timetree`. A run resolves one seed in the command layer and passes it to every random step. Without `--seed`, the command draws a seed and logs it whenever the run has a random step, so any run can be reproduced from its log.
 
 ## What v0 does
 

@@ -34,7 +34,7 @@
 - [x] `marginal` (optimize via marginal reconstruction)
   - [x] Dense marginal partition branch
   - [x] Sparse marginal partition branch (compresses sequences first)
-  - [x] GTR model selection from `--gtr` flag (named models and inference)
+  - [x] GTR model selection from `--model` flag (named models and inference)
 - [ ] `joint` (v0 supports joint optimization)
 
 ## Time Marginal Modes
@@ -160,7 +160,7 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] `--confidence` (final marginal round, rate susceptibility)
 - [ ] `--covariation`, `--tip-slack`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--outgroup` / `--keep-root`
-- [x] `--gtr` (model selection: named models and inference)
+- [x] `--model` (model selection: named models and inference)
 - [x] `--model-params` (`key=value` parameters of a named model, as v0 `--gtr-params`; an unknown key or a malformed item is an error)
 - [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)
 - [x] `--include-leaves` / `--impute-missing-data` / `--reconstruct-tip-states` (drive the reconstructed FASTA: emit tips, impute ambiguous tip states, alias enabling both; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
