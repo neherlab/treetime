@@ -5,5 +5,10 @@
     "types": ["node", "bun-types/test", "bun-types/test-globals"],
     "noEmit": true
   },
-  "include": ["build", "../../test-matchers.d.ts"]
+  "include": ["build", "../../test-matchers.d.ts"],
+  "references": [
+    {
+      "path": "../app-contracts/tsconfig.generated.json"
+    }
+  ]
 }

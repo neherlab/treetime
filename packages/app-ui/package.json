@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./build/auspice-vite": "./build/auspice-vite.ts",
     "./build/content-security-policy-vite": "./build/content-security-policy-vite.ts",
+    "./build/example-data-vite": "./build/example-data-vite.ts",
     "./build/icons-vite": "./build/icons-vite.ts",
     "./build/public-dir": "./build/public-dir.ts",
     "./icons": "./src/icons.d.ts",
@@ -70,7 +71,9 @@
     "@types/react-redux": "7.1.34",
     "@types/styled-components": "5.1.36",
     "p-wait-for": "catalog:",
+    "tinyglobby": "0.2.17",
     "unplugin-icons": "24.0.0",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vite-plugin-static-copy": "4.1.1"
   }
 }

@@ -2,6 +2,7 @@ import zlib from "node:zlib";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
 import { contentSecurityPolicyMeta } from "@neherlab/app-ui/build/content-security-policy-vite";
+import { exampleData } from "@neherlab/app-ui/build/example-data-vite";
 import { icons } from "@neherlab/app-ui/build/icons-vite";
 import { publicDir } from "@neherlab/app-ui/build/public-dir";
 import tailwindcss from "@tailwindcss/vite";
@@ -26,6 +27,7 @@ export default defineConfig({
   plugins: [
     contentSecurityPolicyMeta({ webAssembly: true }),
     auspice(),
+    exampleData(),
     icons(),
     tailwindcss(),
     react(),

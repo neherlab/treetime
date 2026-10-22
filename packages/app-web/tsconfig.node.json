@@ -5,5 +5,10 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts"],
+  "references": [
+    {
+      "path": "../app-contracts/tsconfig.generated.json"
+    }
+  ]
 }
