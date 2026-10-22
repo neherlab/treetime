@@ -1,6 +1,7 @@
-use crate::cli::pipeline::inputs::labeled_input_paths;
+use crate::cli::pipeline::inputs::step_inputs;
 use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
 use crate::cli::pipeline::runner::select_steps;
+use app_commands::commands::shared::run_paths::RunPath;
 use eyre::{Report, WrapErr};
 use itertools::izip;
 use std::collections::{BTreeMap, BTreeSet};
@@ -15,7 +16,7 @@ pub(crate) fn print_pipeline_plan(
   let producers = producers_by_path(pipeline);
   let step_inputs = steps
     .iter()
-    .map(|step| labeled_input_paths(&step.command))
+    .map(|step| step_inputs(&step.command))
     .collect::<Result<Vec<_>, Report>>()?;
 
   write_pipeline_plan(
@@ -44,7 +45,7 @@ fn write_pipeline_plan(
   out: &mut impl Write,
   workdir: Option<&Path>,
   steps: &[&ResolvedStep],
-  step_inputs: &[Vec<(&'static str, String)>],
+  step_inputs: &[Vec<RunPath>],
   producers: &BTreeMap<String, String>,
 ) -> io::Result<()> {
   if let Some(workdir) = workdir {
@@ -63,13 +64,13 @@ fn write_pipeline_plan(
 fn write_inputs(
   out: &mut impl Write,
   step: &ResolvedStep,
-  inputs: &[(&'static str, String)],
+  inputs: &[RunPath],
   producers: &BTreeMap<String, String>,
 ) -> io::Result<()> {
-  for (label, path) in inputs {
+  for RunPath { setting, path, .. } in inputs {
     match producers.get(path) {
-      Some(producer) if producer != &step.name => writeln!(out, "    {label}: {path} (from step {producer})")?,
-      _ => writeln!(out, "    {label}: {path}")?,
+      Some(producer) if producer != &step.name => writeln!(out, "    {setting}: {path} (from step {producer})")?,
+      _ => writeln!(out, "    {setting}: {path}")?,
     }
   }
   Ok(())

@@ -1,5 +1,6 @@
-use crate::cli::pipeline::inputs::input_paths;
+use crate::cli::pipeline::inputs::step_inputs;
 use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
+use app_commands::commands::shared::run_paths::RunPath;
 use app_commands::config::cli_rules::cli_rule_diagnostics;
 use app_commands::config::source::{ConfigSource, render_and_bail};
 use app_output::output_plan::PathPlaceholder;
@@ -17,7 +18,6 @@ pub(crate) fn validate_plan(
   reject_cli_rule_violations(pipeline, source)?;
   reject_stdio_paths(pipeline)?;
   reject_output_collisions(pipeline)?;
-  reject_self_truncation(pipeline)?;
   reject_missing_upstream(pipeline, selected)?;
   Ok(())
 }
@@ -41,7 +41,7 @@ fn reject_cli_rule_violations(pipeline: &ResolvedPipeline, source: &ConfigSource
 
 fn reject_stdio_paths(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   for step in &pipeline.steps {
-    if input_paths(&step.command)?.iter().any(|path| path == STDIO_PATH) {
+    if step_inputs(&step.command)?.iter().any(RunPath::is_stdio) {
       return make_error!(
         "step `{}` uses `-` (stdin) for an input; a pipeline runs many steps in one process, so steps need real file paths",
         step.name
@@ -74,21 +74,6 @@ fn reject_output_collisions(pipeline: &ResolvedPipeline) -> Result<(), Report> {
   Ok(())
 }
 
-fn reject_self_truncation(pipeline: &ResolvedPipeline) -> Result<(), Report> {
-  for step in &pipeline.steps {
-    let outputs: BTreeSet<String> = output_paths(step).into_iter().collect();
-    for input in input_paths(&step.command)? {
-      if outputs.contains(&input) {
-        return make_error!(
-          "step `{}` reads and writes the same file `{input}`, which would truncate the input",
-          step.name
-        );
-      }
-    }
-  }
-  Ok(())
-}
-
 fn reject_missing_upstream(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
   let Some(selected) = selected else {
     return Ok(());
@@ -105,7 +90,7 @@ fn reject_missing_upstream(pipeline: &ResolvedPipeline, selected: Option<&BTreeS
     if !selected.contains(&step.name) {
       continue;
     }
-    for input in input_paths(&step.command)? {
+    for RunPath { path: input, .. } in step_inputs(&step.command)? {
       if let Some(producer) = producers.get(&input) {
         if !selected.contains(*producer) && !Path::new(&input).exists() {
           return make_error!(
@@ -148,7 +133,7 @@ mod tests {
   fn validate(config: Value, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
     let source = ConfigSource::new("pipeline.json", config.to_string());
     let doc = PipelineDoc::from_value(config).unwrap();
-    let pipeline = resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None).unwrap();
+    let pipeline = resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None)?;
     validate_plan(&pipeline, &source, selected)
   }
 
@@ -198,20 +183,43 @@ mod tests {
     );
     assert_error!(
       result,
-      "step `a` reads and writes the same file `/pipeline/same.nwk`, which would truncate the input"
+      "in pipeline step `a`: --tree '/pipeline/same.nwk' names the same file as the output --output-tree-nwk \
+       '/pipeline/same.nwk': the run would overwrite its own input"
     );
   }
 
   #[test]
-  fn test_safety_stdio_input_rejected() {
+  fn test_safety_translation_template_that_matches_an_output_rejected() {
     let result = validate(
       json!({
         "steps": [
-          { "name": "a", "ancestral": { "tree": "-", "output_model": "g.json" } }
+          { "name": "a", "ancestral": {
+            "tree": "in.nwk",
+            "alignment": ["aln.fasta"],
+            "translations": "aa/{cds}.fasta",
+            "cds_selection": ["S"],
+            "output_sequences": "aa/S.fasta"
+          } }
         ]
       }),
       None,
     );
+    assert_error!(
+      result,
+      "in pipeline step `a`: --translations '/pipeline/aa/{cds}.fasta' can name the same file as the output \
+       --output-sequences '/pipeline/aa/S.fasta': the run would overwrite its own input"
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::tree(        json!({ "ancestral": { "tree": "-", "output_model": "g.json" } }))]
+  #[case::remove_file( json!({ "prune": { "tree": "in.nwk", "remove_file": "-", "output_tree_nwk": "out.nwk" } }))]
+  #[trace]
+  fn test_safety_stdio_input_rejected(#[case] step: Value) {
+    let mut step = step;
+    step["name"] = json!("a");
+    let result = validate(json!({ "steps": [step] }), None);
     assert_error!(
       result,
       "step `a` uses `-` (stdin) for an input; a pipeline runs many steps in one process, so steps need real file paths"
