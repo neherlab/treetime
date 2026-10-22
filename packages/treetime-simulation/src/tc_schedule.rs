@@ -118,6 +118,9 @@ impl ExponentialTc {
       return 0.0;
     }
     let growth_exponent = duration / self.scale;
+    if growth_exponent.is_infinite() {
+      return (self.scale.ln() - self.tc0.ln() + to / self.scale).exp();
+    }
     let growth = if growth_exponent == 0.0 {
       1.0
     } else {

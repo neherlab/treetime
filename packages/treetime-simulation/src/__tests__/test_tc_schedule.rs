@@ -144,6 +144,14 @@ mod tests {
     pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
   }
 
+  #[test]
+  fn test_tc_schedule_exponential_hazard_is_infinite_when_the_growth_exponent_overflows() {
+    let schedule = TcSchedule::exponential(1.0, 1e-320).unwrap();
+    let expected = f64::INFINITY;
+    let actual = schedule.hazard_between(0.0, 1.0);
+    pretty_assert_ulps_eq!(expected, actual, max_ulps = 0);
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::piecewise_negative(  TcSchedule::constant(1.0),         -1.0,     "Hazard after time 2 must be non-negative, got -1")]
