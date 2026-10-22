@@ -22,8 +22,16 @@ The claims refer to validation `const` sets ($T_c = 10$, 400 tips) with $L$ the 
   - Status: not measured
   - Evidence to settle it: the same comparison on the current code, with the normalization and with `log_normalization()` set to 0
 - **Survival functions on probability levels change no result.** No new failure in the timetree validation suite, median changes of date RMSE, date bias and rate error below $2\cdot10^{-3}$, 90% coverage 0.898 on 80 calibration runs, peak memory down from 56.5 to 47.0 MB, and run time down by 12% to 18% with a coalescent prior (8% in [kb/decisions/timetree-posterior-statistics-count-tail-mass.md](../decisions/timetree-posterior-statistics-count-tail-mass.md))
-  - Status: not measured. These numbers come without the commands, data sets and code states that produced them
-  - Evidence to settle it: an end-to-end comparison of `rust` before and after the survival levels on real data sets: `log_lh_time`, clock rate, root date, run time and peak memory
+  - Status: partly measured. These numbers come without the commands, data sets and code states that produced them. An end-to-end comparison of `rust` before and after the whole change (trapezoid rule, normalization of `log_lh_time`, survival levels) shows no deterioration on real data sets. Command: `treetime --jobs 4 timetree --seed 1 --coalescent-opt` with the tree, metadata and alignment of each data set, release builds, 3 runs per build interleaved on a shared host under load (load average about 45 on 20 threads), so run times carry noise of several percent. Every run of a build gives the same values:
+
+    | data set | clock rate before | clock rate after | root date before | root date after | run time (s) | peak memory (MB) |
+    | --- | --- | --- | --- | --- | --- | --- |
+    | `data/flu/h3n2/200` | 2.8422e-3 | 2.8500e-3 | 1963.708 | 1963.723 | 1.55 -> 1.20 | 50.5 -> 42.8 |
+    | `data/ebola/100` | 7.2596e-4 | 7.2805e-4 | 2013.773 | 2013.773 | 0.63 -> 0.53 | 40.0 -> 36.3 |
+    | `data/lassa/L/200` | 6.3389e-4 | 6.3416e-4 | 1498.628 | 1498.841 | 19.03 -> 18.85 | 240.6 -> 223.8 |
+
+    `log_lh_coal` changes by at most 1.1 and `log_lh_seq` by at most 1.1 nats. `log_lh_time` rises by 147 to 2506 nats, mostly from its normalization, so its values before and after are not comparable
+  - Evidence to settle the rest: the timetree validation suite and the calibration runs before and after the survival levels alone (date RMSE, date bias, rate error, 90% coverage)
 
 - **$\log Z$ at 300 grid points.** $\log Z$ lies 5 to 32 nats above its converged value at 300 grid points, and the gap halves with each doubling of the points (first order)
   - Status: not measured. This is the target of [H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md), whose numbers predate the trapezoid rule
