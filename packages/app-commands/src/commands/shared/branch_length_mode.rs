@@ -10,7 +10,9 @@ use treetime::optimize::params::BranchLengthMode;
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "BranchLengthMode")]
 pub enum BranchLengthModeCli {
+  /// Keep the branch lengths of the input tree
   Input,
+  /// Estimate the branch lengths from the alignment by marginal ancestral reconstruction
   #[default]
   Marginal,
 }

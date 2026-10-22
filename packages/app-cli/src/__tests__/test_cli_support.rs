@@ -40,7 +40,6 @@ pub(crate) mod tests {
     pub(crate) enum Pending {
       SettingsThatApplyOnlyWithAnother,
       ResolvePolytomiesByDefault,
-      ConfidenceAsTheOnlyIntervalSwitch,
       RepresentationAndRootingGroup,
       NewickAnnotationsFlag,
       MugrationConfidenceFlag,

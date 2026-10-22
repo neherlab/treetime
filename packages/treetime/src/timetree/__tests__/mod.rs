@@ -4,7 +4,6 @@ mod test_confidence_extract;
 mod test_confidence_rate;
 mod test_dates_outside_input;
 mod test_max_posterior_region;
-mod test_params;
 mod test_pipeline;
 mod test_pipeline_partitions;
 mod test_posterior_statistics;

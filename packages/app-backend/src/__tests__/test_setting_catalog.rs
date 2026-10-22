@@ -176,13 +176,13 @@ mod tests {
 
   #[test]
   fn test_setting_catalog_description_splits_into_help_and_more() {
-    let time_marginal = spec(AppCommand::Timetree, "time_marginal");
+    let confidence = spec(AppCommand::Timetree, "confidence");
     assert_eq!(
       (
-        "Control when marginal time distributions are used for output.",
-        "All modes use marginal inference during optimization. The mode controls whether confidence intervals are extracted from the resulting distributions:\n\n- `never`: no confidence interval output (default) - `always`: write confidence intervals from distributions computed during optimization - `only-final`: run one extra inference pass after optimization, then write confidence intervals"
+        "Estimate the 90% intervals of the node dates",
+        "Runs a final marginal round of the time inference after the iterations and writes the 90% interval of every dated node. The intervals include the clock rate uncertainty when one is known: `--clock-std-dev` for a given rate, or the Gaussian estimate of an estimated rate. The rate uncertainty is added by inferring the dates again at the rate plus and minus one standard deviation and combining both parts in quadrature."
       ),
-      (time_marginal.help.as_str(), time_marginal.more.as_str())
+      (confidence.help.as_str(), confidence.more.as_str())
     );
   }
 
@@ -243,20 +243,16 @@ mod tests {
 
   #[test]
   fn test_setting_catalog_enum_options_carry_their_descriptions() {
-    let options = spec(AppCommand::Timetree, "time_marginal").options;
+    let options = spec(AppCommand::Timetree, "branch_length_mode").options;
     assert_eq!(
       vec![
         SettingOption {
-          value: o!("never"),
-          help: o!("")
+          value: o!("input"),
+          help: o!("Keep the branch lengths of the input tree")
         },
         SettingOption {
-          value: o!("always"),
-          help: o!("")
-        },
-        SettingOption {
-          value: o!("only-final"),
-          help: o!("")
+          value: o!("marginal"),
+          help: o!("Estimate the branch lengths from the alignment by marginal ancestral reconstruction")
         },
       ],
       options

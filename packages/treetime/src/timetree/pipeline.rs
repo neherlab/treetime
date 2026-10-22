@@ -33,7 +33,7 @@ use crate::timetree::inference::input_branch_length::input_branch_model;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::fit_clock_to_dates;
-use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams, compute_effective_time_marginal};
+use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times};
@@ -239,7 +239,6 @@ fn prepare_inputs(
       ))
     })?,
   };
-  let time_marginal = compute_effective_time_marginal(params.time_marginal, params.confidence, log);
 
   let date_constraints = if let Some(dates) = dates {
     load_date_constraints(dates, graph, log)
@@ -252,14 +251,13 @@ fn prepare_inputs(
   let final_sequences = if !params.sequence_outputs_requested || params.branch_length_mode != BranchLengthMode::Marginal
   {
     FinalSequences::Skip
-  } else if time_marginal.runs_final_round() {
+  } else if params.confidence {
     FinalSequences::FromLastRound
   } else {
     FinalSequences::AfterMarginalUpdate
   };
   Ok(TimetreeContext {
     final_sequences,
-    time_marginal,
     date_constraints,
     sequence_length,
   })
@@ -415,8 +413,7 @@ fn refine_final_times(
     (None, BTreeMap::new())
   };
 
-  let runs_final_round = inputs.context.time_marginal.runs_final_round();
-  if runs_final_round {
+  if params.confidence {
     progress_info!(log, "### Final round: marginal reconstruction for confidence intervals");
   }
   let (state, time_inference) = if let Some(central) = central {
@@ -427,7 +424,7 @@ fn refine_final_times(
     let time_inference = infer_final_times(inputs, final_prior, &state, log)?;
     (state, time_inference)
   };
-  let state = if runs_final_round {
+  let state = if params.confidence {
     final_marginal_round(time_inference, state, log)?
   } else {
     RoundState {
@@ -438,7 +435,6 @@ fn refine_final_times(
 
   Ok(FinalTimes {
     state,
-    rate_std,
     rate_susceptibility_dates,
   })
 }
@@ -451,11 +447,11 @@ fn gather_results(
 ) -> Result<FinalResults, Report> {
   let FinalTimes {
     state,
-    rate_std,
     rate_susceptibility_dates,
   } = final_times;
 
-  let confidence_intervals = (context.time_marginal.gives_confidence_intervals() || rate_std.is_some())
+  let confidence_intervals = params
+    .confidence
     .then(|| {
       extract_confidence_intervals(
         &state.graph,
@@ -498,7 +494,6 @@ fn gather_results(
 
 struct FinalTimes {
   state: RoundState,
-  rate_std: Option<f64>,
   rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
 }
 

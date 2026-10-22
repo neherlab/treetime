@@ -150,21 +150,15 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
   Default value: `marginal`
 
-  Possible values: `input`, `marginal`
+  Possible values:
+  - `input`:
+    Keep the branch lengths of the input tree
+  - `marginal`:
+    Estimate the branch lengths from the alignment by marginal ancestral reconstruction
 
-* `--time-marginal <TIME_MARGINAL>` — Control when marginal time distributions are used for output.
+* `--confidence` — Estimate the 90% intervals of the node dates
 
-   All modes use marginal inference during optimization. The mode controls whether confidence intervals are extracted from the resulting distributions:
-
-   - `never`: no confidence interval output (default) - `always`: write confidence intervals from distributions computed during optimization - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-
-  Default value: `never`
-
-  Possible values: `never`, `always`, `only-final`
-
-* `--confidence` — Add rate-uncertainty to confidence intervals.
-
-   `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs. This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian approximation of the timetree, which needs the alignment or `--sequence-length`. When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
+   Runs a final marginal round of the time inference after the iterations and writes the 90% interval of every dated node. The intervals include the clock rate uncertainty when one is known: `--clock-std-dev` for a given rate, or the Gaussian estimate of an estimated rate. The rate uncertainty is added by inferring the dates again at the rate plus and minus one standard deviation and combining both parts in quadrature.
 * `--max-grid-points <MAX_GRID_POINTS>` — Largest number of points of one probability grid during time inference.
 
    A run stops with an error when a grid would need more points. The value bounds single grids, not the total memory of a run. When unset, the run takes the limit of the app or server that runs it, otherwise 1000000.

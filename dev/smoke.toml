@@ -675,20 +675,15 @@ datasets = ["ebola/20"]
 args = "--impute-missing-data"
 
 [[timetree]]
-variant = "marginal-always"
-datasets = ["flu/h3n2/20", "flu/h3n2/200", "ebola/20", "zika/20"]
-args = "--time-marginal=always"
+variant = "confidence"
+datasets = ["flu/h3n2/200", "ebola/20", "zika/20"]
+args = "--confidence"
 
 [[timetree]]
 variant = "clock-csv-no-iterations"
 datasets = ["zika/20"]
 args = "--max-iter=0"
 outputs = ["timetree.clock.csv"]
-
-[[timetree]]
-variant = "marginal-final"
-datasets = ["flu/h3n2/20"]
-args = "--time-marginal=only-final"
 
 [[timetree]]
 variant = "confidence"
@@ -821,24 +816,19 @@ datasets = ["flu/h3n2/200"]
 args = "--coalescent=10y --resolve-polytomies --max-iter=3"
 
 [[timetree]]
-variant = "coal-opt-marginal"
+variant = "coal-opt-confidence"
 datasets = ["flu/h3n2/20"]
-args = "--coalescent=opt --time-marginal=always"
+args = "--coalescent=opt --confidence"
 
 [[timetree]]
-variant = "coal-opt-marginal"
+variant = "coal-opt-confidence"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent=opt --time-marginal=always --max-iter=3"
+args = "--coalescent=opt --confidence --max-iter=3"
 
 [[timetree]]
-variant = "skyline-marginal"
+variant = "skyline-confidence"
 datasets = ["flu/h3n2/20"]
-args = "--coalescent=skyline --time-marginal=always"
-
-[[timetree]]
-variant = "conf-marginal-final"
-datasets = ["flu/h3n2/20"]
-args = "--confidence --time-marginal=only-final"
+args = "--coalescent=skyline --confidence"
 
 [[timetree]]
 variant = "no-filter-keeproot"
@@ -906,7 +896,7 @@ outputs = ["timetree.annotated.nwk", "timetree.nhx.nwk"]
 [[timetree]]
 variant = "all-outputs"
 datasets = ["flu/h3n2/20"]
-args = "--time-marginal=always"
+args = "--confidence"
 selection = "all"
 
 # MAT output with the transitions of ambiguous states

@@ -26,7 +26,6 @@ mod tests {
   use crate::timetree::inference::runner::{TimeInferenceInputs, run_timetree};
   use crate::timetree::optimization::marginal_clock_rate::{MarginalRateInputs, RateWindow, step_marginal_clock_rate};
   use crate::timetree::optimization::relaxed_clock::{apply_relaxed_clock, unit_gammas};
-  use crate::timetree::params::TimeMarginalMode;
   use crate::timetree::params::{FinalSequences, TimetreeContext, TimetreeParams};
   use crate::timetree::round::{RoundInputs, RoundOutcome, RoundState, TopologyOutcome, refinement_round};
   use eyre::Report;
@@ -594,7 +593,6 @@ mod tests {
     fn context(date_constraints: DateConstraints, sequence_length: usize) -> TimetreeContext {
       TimetreeContext {
         final_sequences: FinalSequences::Skip,
-        time_marginal: TimeMarginalMode::Never,
         date_constraints,
         sequence_length,
       }

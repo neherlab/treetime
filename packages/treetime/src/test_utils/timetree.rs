@@ -13,7 +13,6 @@ use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
 };
-use crate::timetree::params::TimeMarginalMode;
 use crate::timetree::params::TimetreeParams;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
@@ -89,7 +88,6 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     skyline_stiffness: 0.0,
     coalescent_confidence: 0.0,
     gen_per_year: 0.0,
-    time_marginal: TimeMarginalMode::Never,
     confidence: false,
     include_leaves: false,
     report_ambiguous: true,

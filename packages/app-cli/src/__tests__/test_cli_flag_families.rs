@@ -73,7 +73,6 @@ pub(crate) mod tests {
     FlagException { flag: "--skyline-n-points",                 change: Change::Extra,   commands: &[TT],                 pending: Pending::SettingsThatApplyOnlyWithAnother },
     FlagException { flag: "--n-skyline",                        change: Change::Missing, commands: &[TT],                 pending: Pending::SettingsThatApplyOnlyWithAnother },
     FlagException { flag: "--resolve-polytomies",               change: Change::Extra,   commands: &[TT],                 pending: Pending::ResolvePolytomiesByDefault },
-    FlagException { flag: "--time-marginal",                    change: Change::Extra,   commands: &[TT],                 pending: Pending::ConfidenceAsTheOnlyIntervalSwitch },
     FlagException { flag: "--dense",                            change: Change::Extra,   commands: &[TT, AN, HO, OP],     pending: Pending::RepresentationAndRootingGroup },
     FlagException { flag: "--representation",                   change: Change::Missing, commands: &[TT, AN, HO, OP],     pending: Pending::RepresentationAndRootingGroup },
     FlagException { flag: "--reroot-tips",                      change: Change::Extra,   commands: &[TT, CL, OP],         pending: Pending::RepresentationAndRootingGroup },

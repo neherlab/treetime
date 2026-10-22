@@ -10,7 +10,6 @@ use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
 use crate::commands::shared::metadata::{DateColumnArgs, MetadataIdArgs};
-use crate::commands::shared::mirror_enum::impl_from_mirror;
 use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{ClockOutputArgs, OutputCoreArgs, TimetreeOutputSelectionArgs};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
@@ -37,7 +36,6 @@ use std::path::PathBuf;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::params::BranchLengthMode;
-use treetime::timetree::params::TimeMarginalMode;
 use treetime_grid::MaxGridPoints;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
@@ -58,7 +56,6 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) tree: PathBuf,
   pub(crate) branch_length_mode: BranchLengthMode,
   pub(crate) indel_policy: IndelPolicy,
-  pub(crate) time_marginal: TimeMarginalMode,
   pub(crate) max_grid_points: MaxGridPoints,
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
@@ -80,7 +77,6 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       tree,
       branch_length_mode: raw.branch_length_mode.into(),
       indel_policy: raw.branch_lengths.indel_policy(),
-      time_marginal: raw.time_marginal.into(),
       max_grid_points: raw.max_grid_points.unwrap_or_default(),
       include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
       impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
@@ -179,24 +175,12 @@ pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = BranchLengthModeCli::default(), help_heading = "Branch lengths"))]
   pub branch_length_mode: BranchLengthModeCli,
 
-  /// Control when marginal time distributions are used for output.
+  /// Estimate the 90% intervals of the node dates
   ///
-  /// All modes use marginal inference during optimization. The mode controls whether
-  /// confidence intervals are extracted from the resulting distributions:
-  ///
-  /// - `never`: no confidence interval output (default)
-  /// - `always`: write confidence intervals from distributions computed during optimization
-  /// - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-  #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = TimeMarginalModeCli::default(), help_heading = "Dating"))]
-  pub time_marginal: TimeMarginalModeCli,
-
-  /// Add rate-uncertainty to confidence intervals.
-  ///
-  /// `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
-  /// This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
-  /// via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian
-  /// approximation of the timetree, which needs the alignment or `--sequence-length`.
-  /// When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
+  /// Runs a final marginal round of the time inference after the iterations and writes the 90% interval of every
+  /// dated node. The intervals include the clock rate uncertainty when one is known: `--clock-std-dev` for a given
+  /// rate, or the Gaussian estimate of an estimated rate. The rate uncertainty is added by inferring the dates again
+  /// at the rate plus and minus one standard deviation and combining both parts in quadrature.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Dating"))]
   pub confidence: bool,
 
@@ -441,17 +425,3 @@ pub struct TreetimeTimetreeArgsRaw {
   )]
   pub gen_per_year: f64,
 }
-
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, JsonSchema, Serialize, Deserialize)]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
-#[schemars(rename_all = "kebab-case")]
-#[deser(rename_all = "kebab-case")]
-#[schemars(rename = "TimeMarginalMode")]
-pub enum TimeMarginalModeCli {
-  #[default]
-  Never,
-  Always,
-  OnlyFinal,
-}
-
-impl_from_mirror!(TimeMarginalModeCli => TimeMarginalMode { Never, Always, OnlyFinal });

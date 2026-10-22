@@ -2709,8 +2709,6 @@ export type SettingCatalog = {
 
 export type BranchLengthMode = 'input' | 'marginal';
 
-export type TimeMarginalMode = 'never' | 'always' | 'only-final';
-
 export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest';
 
 export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | 'jtt92' | 'infer';
@@ -2813,24 +2811,12 @@ export type TimetreeConfig = {
    */
   branch_length_mode?: BranchLengthMode;
   /**
-   * Control when marginal time distributions are used for output.
+   * Estimate the 90% intervals of the node dates
    *
-   * All modes use marginal inference during optimization. The mode controls whether
-   * confidence intervals are extracted from the resulting distributions:
-   *
-   * - `never`: no confidence interval output (default)
-   * - `always`: write confidence intervals from distributions computed during optimization
-   * - `only-final`: run one extra inference pass after optimization, then write confidence intervals
-   */
-  time_marginal?: TimeMarginalMode;
-  /**
-   * Add rate-uncertainty to confidence intervals.
-   *
-   * `--time-marginal=always` and `only-final` already write mutation-stochasticity CIs.
-   * This flag adds rate-uncertainty CIs (re-runs inference at rate +/- sigma), combined
-   * via quadrature sum. The rate std. dev. is `--clock-std-dev` if given, else estimated by a Gaussian
-   * approximation of the timetree, which needs the alignment or `--sequence-length`.
-   * When set with `--time-marginal=never` (default), automatically promotes to `only-final`.
+   * Runs a final marginal round of the time inference after the iterations and writes the 90% interval of every
+   * dated node. The intervals include the clock rate uncertainty when one is known: `--clock-std-dev` for a given
+   * rate, or the Gaussian estimate of an estimated rate. The rate uncertainty is added by inferring the dates again
+   * at the rate plus and minus one standard deviation and combining both parts in quadrature.
    */
   confidence?: boolean;
   /**

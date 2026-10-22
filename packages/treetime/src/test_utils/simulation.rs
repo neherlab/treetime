@@ -4,7 +4,7 @@ use crate::gtr::gtr::{GTR, Mu};
 use crate::optimize::pipeline::OptimizeInput;
 use crate::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use crate::test_utils::{leaf_seq_inputs, marginal_timetree_params, sequence_source};
-use crate::timetree::params::{TimeMarginalMode, TimetreeParams};
+use crate::timetree::params::TimetreeParams;
 use crate::timetree::pipeline::TimetreeInput;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
@@ -69,7 +69,7 @@ pub(crate) fn timetree_cell_params() -> TimetreeParams {
     keep_root: true,
     clock_filter: 0.0,
     max_iter: 2,
-    time_marginal: TimeMarginalMode::OnlyFinal,
+    confidence: true,
     ..marginal_timetree_params()
   }
 }

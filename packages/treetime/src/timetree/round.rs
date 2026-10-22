@@ -78,7 +78,7 @@ pub(crate) fn infer_final_times(
 ) -> Result<TimeInference, Report> {
   let time_inputs = TimeInferenceInputs {
     posterior_summaries: PosteriorSummaries {
-      regions: inputs.context.time_marginal.gives_confidence_intervals(),
+      regions: inputs.params.confidence,
       lineage_survival: false,
     },
     ..state.time_inference_inputs(inputs)

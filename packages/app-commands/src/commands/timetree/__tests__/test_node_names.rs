@@ -5,7 +5,7 @@ mod tests {
   use crate::commands::shared::output_args::{OutputCoreArgs, TimetreeOutputSelection};
   use crate::commands::shared::seed::SeedArgs;
   use crate::commands::shared::tree_input::TreeArgs;
-  use crate::commands::timetree::args::{TimeMarginalModeCli, TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
+  use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
   use crate::commands::timetree::run::run_timetree_estimation;
   use app_output::output_plan::OutputSelection;
   use app_output::table_output::table_read_file;
@@ -48,7 +48,7 @@ mod tests {
           TimetreeOutputSelection::ReconstructedNucFasta,
         ],
       },
-      time_marginal: TimeMarginalModeCli::OnlyFinal,
+      confidence: true,
       resolve_polytomies,
       seed_args: SeedArgs { seed: Some(7) },
       ..TreetimeTimetreeArgsRaw::default()

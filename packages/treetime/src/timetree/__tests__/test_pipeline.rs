@@ -13,7 +13,7 @@ mod tests {
     marginal_timetree_params, sequence_source,
   };
   use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
-  use crate::timetree::params::{TimeMarginalMode, TimetreeParams};
+  use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
   use eyre::Report;
   use itertools::Itertools;
@@ -253,15 +253,15 @@ mod tests {
   fn test_pipeline_estimated_rate_dates_are_inferred_at_the_reported_rate(
     #[case] coalescent: CoalescentMode,
   ) -> Result<(), Report> {
-    let params = |time_marginal| TimetreeParams {
+    let params = |confidence| TimetreeParams {
       coalescent,
-      time_marginal,
+      confidence,
       ..marginal_timetree_params()
     };
 
-    let output = helpers::run(&params(TimeMarginalMode::Never), helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?, None)?;
+    let output = helpers::run(&params(false), helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?, None)?;
     let at_reported_rate = helpers::run(
-      &params(TimeMarginalMode::OnlyFinal),
+      &params(true),
       helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?,
       None,
     )?;
@@ -328,20 +328,17 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::never(                    (TimeMarginalMode::Never,     false, None),       false)]
-  #[case::always(                   (TimeMarginalMode::Always,    false, None),       true)]
-  #[case::only_final(               (TimeMarginalMode::OnlyFinal, false, None),       true)]
-  #[case::confidence_with_rate_std( (TimeMarginalMode::Never,     true,  Some(1e-4)), true)]
-  #[case::always_with_rate_std(     (TimeMarginalMode::Always,    true,  Some(1e-4)), true)]
+  #[case::no_confidence(            (false, None),       false)]
+  #[case::confidence(               (true,  None),       true)]
+  #[case::confidence_with_rate_std( (true,  Some(1e-4)), true)]
   #[trace]
-  fn test_pipeline_gives_a_confidence_interval_for_every_dated_node_when_marginal_times_are_requested(
-    #[case] (time_marginal, confidence, clock_std_dev): (TimeMarginalMode, bool, Option<f64>),
+  fn test_pipeline_gives_a_confidence_interval_for_every_dated_node_with_confidence(
+    #[case] (confidence, clock_std_dev): (bool, Option<f64>),
     #[case] expected_intervals: bool,
   ) -> Result<(), Report> {
     let input = helpers::zika_input(&helpers::zika_newick()?, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
       clock_rate: Some(ZIKA_CLOCK_RATE),
-      time_marginal,
       confidence,
       clock_std_dev,
       ..marginal_timetree_params()

@@ -161,7 +161,6 @@ fn timetree_params(
     skyline_stiffness: args.skyline_stiffness,
     coalescent_confidence: args.coalescent_confidence,
     gen_per_year: args.gen_per_year,
-    time_marginal: args.time_marginal,
     confidence: args.confidence,
     include_leaves: args.include_leaves,
     report_ambiguous: args.tip_sequences.report_ambiguous,
@@ -183,7 +182,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
       None => output_unavailable(
         OutputSelection::ConfidenceTsv,
         file,
-        "no confidence intervals were computed (use --time-marginal)",
+        "no confidence intervals were computed (use --confidence)",
         log,
       )?,
     }

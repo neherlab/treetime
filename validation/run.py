@@ -55,7 +55,7 @@ TIMETREE_EXTRA = {  # estimated clock rate
     'rate-keep-none-est': ('rate', ['--keep-root']),
     'rate-reroot-opt-est': ('rate', ['--reroot', 'least-squares', '--coalescent', 'opt']),
     'keep-tc10-est': ('realized', ['--keep-root', '--coalescent', '10y']),
-    'keep-skyline-est-ci': ('realized', ['--keep-root', '--coalescent', 'skyline', '--time-marginal', 'only-final']),
+    'keep-skyline-est-ci': ('realized', ['--keep-root', '--coalescent', 'skyline', '--confidence']),
 }
 EXTRA_SETS = r'/rep0[0-2]/L1000_mu0\.00[31]$'
 SMOKE_SETS = r'/rep00/L1000_'

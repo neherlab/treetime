@@ -1320,12 +1320,9 @@ export const zSettingCatalog = z.object({
   commands: z.array(zCommandSettings)
 });
 
-export const zBranchLengthMode = z.enum(['input', 'marginal']);
-
-export const zTimeMarginalMode = z.enum([
-  'never',
-  'always',
-  'only-final'
+export const zBranchLengthMode = z.union([
+  z.literal('input'),
+  z.literal('marginal')
 ]);
 
 export const zRerootMethod = z.enum([
@@ -1453,7 +1450,6 @@ export const zTimetreeConfig = z.strictObject({
   clock_rate: z.number().optional(),
   clock_std_dev: z.number().optional(),
   branch_length_mode: zBranchLengthMode.optional(),
-  time_marginal: zTimeMarginalMode.optional(),
   confidence: z.boolean().optional(),
   max_grid_points: z.int().gte(1000).optional(),
   keep_polytomies: z.boolean().optional(),

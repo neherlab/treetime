@@ -5,28 +5,9 @@ use crate::gtr::get_gtr::GtrModel;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::params::BranchLengthMode;
 use crate::optimize::partition_rates::PartitionRates;
-use crate::progress::LogSink;
-use crate::progress_info;
 use crate::timetree::coalescent_timescale::CoalescentMode;
-use smart_default::SmartDefault;
 use std::fmt::Debug;
 use treetime_grid::MaxGridPoints;
-
-pub(crate) fn compute_effective_time_marginal(
-  time_marginal: TimeMarginalMode,
-  confidence: bool,
-  log: &dyn LogSink,
-) -> TimeMarginalMode {
-  if confidence && time_marginal == TimeMarginalMode::Never {
-    progress_info!(
-      log,
-      "--confidence: promoting time-marginal from never to only-final for CI estimation"
-    );
-    TimeMarginalMode::OnlyFinal
-  } else {
-    time_marginal
-  }
-}
 
 pub struct TimetreeParams {
   pub model: GtrModel,
@@ -50,7 +31,6 @@ pub struct TimetreeParams {
   pub skyline_stiffness: f64,
   pub coalescent_confidence: f64,
   pub gen_per_year: f64,
-  pub time_marginal: TimeMarginalMode,
   pub confidence: bool,
   pub include_leaves: bool,
   pub report_ambiguous: bool,
@@ -62,7 +42,6 @@ pub struct TimetreeParams {
 
 pub(crate) struct TimetreeContext {
   pub final_sequences: FinalSequences,
-  pub time_marginal: TimeMarginalMode,
   pub date_constraints: DateConstraints,
   pub sequence_length: usize,
 }
@@ -72,22 +51,4 @@ pub(crate) enum FinalSequences {
   Skip,
   FromLastRound,
   AfterMarginalUpdate,
-}
-
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
-pub enum TimeMarginalMode {
-  #[default]
-  Never,
-  Always,
-  OnlyFinal,
-}
-
-impl TimeMarginalMode {
-  pub(crate) fn runs_final_round(self) -> bool {
-    self == Self::OnlyFinal
-  }
-
-  pub(crate) fn gives_confidence_intervals(self) -> bool {
-    matches!(self, Self::OnlyFinal | Self::Always)
-  }
 }
