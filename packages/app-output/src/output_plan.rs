@@ -658,7 +658,8 @@ impl CommandKind {
         OutputSelection::ClockModel,
         OutputSelection::ClockCsv,
         OutputSelection::ClockChartSvg,
-        OutputSelection::ClockChartPng
+        OutputSelection::ClockChartPng,
+        OutputSelection::ClockChartPdf
       ],
       Self::Prune => btreeset![OutputSelection::Gtr],
       Self::Homoplasy => btreeset![OutputSelection::HomoplasyStats, OutputSelection::HomoplasyReport],
@@ -766,6 +767,7 @@ pub enum OutputSelection {
   CoalescentJson,
   ClockChartSvg,
   ClockChartPng,
+  ClockChartPdf,
   HomoplasyStats,
   HomoplasyReport,
 }
@@ -845,6 +847,7 @@ impl OutputSelection {
       Self::CoalescentJson        => OutputFacts::new(".coalescent.json",              "--output-coalescent-json",        None, false, "Coalescent model and its likelihood"),
       Self::ClockChartSvg         => OutputFacts::new(".svg",                          "--output-clock-chart-svg",        None, false, "Root-to-tip regression chart (SVG)"),
       Self::ClockChartPng         => OutputFacts::new(".png",                          "--output-clock-chart-png",        None, false, "Root-to-tip regression chart (PNG)"),
+      Self::ClockChartPdf         => OutputFacts::new(".pdf",                          "--output-clock-chart-pdf",        None, false, "Root-to-tip regression chart (PDF)"),
       Self::HomoplasyStats        => OutputFacts::new(".stats.json",                   "--output-homoplasy-stats",        None, false, "Recurrent mutations: counts, histograms and ranked lists (JSON)"),
       Self::HomoplasyReport       => OutputFacts::new(".report.txt",                   "--output-homoplasy-report",       None, false, "Recurrent mutations: text report"),
     }

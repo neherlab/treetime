@@ -31,6 +31,7 @@ members = [
   "packages/app-wasm",
   "packages/treetime",
   "packages/treetime-analytical",
+  "packages/treetime-charts",
   "packages/treetime-distribution",
   "packages/treetime-graph",
   "packages/treetime-grid",
@@ -112,6 +113,7 @@ gzp = { version = "=2.0.4", default-features = false, features = ["deflate_rust"
 liblzma = { version = "=0.4.8", features = ["static"] }
 zstd = "=0.14.0"
 
+ab_glyph = "=0.2.32"
 aide = { version = "=0.16.0-alpha.4", features = ["axum", "axum-json", "axum-query"] }
 approx = "=0.5.1"
 argmin = { version = "=0.11.0", default-features = false }
@@ -144,11 +146,11 @@ deser-yaml = "=0.9.0"
 dirs = "=6.0.0"
 env_logger = "=0.11.11"
 eyre = "=0.6.14"
+fontdb = "=0.23.0"
 gcollections = "=1.6.0"
 getset = "=0.1.7"
 headers = "=0.4.1"
 heck = "=0.5.0"
-image = { version = "=0.25.10", default-features = false, features = ["png"] }
 indexmap = { version = "=2.14.2", features = ["rayon"] }
 indicatif = "=0.18.6"
 indoc = "=2.0.7"
@@ -156,6 +158,8 @@ intervallum = { version = "=1.4.4", package = "intervallum" }
 itertools = "=0.13.0"
 js-sys = "=0.3.106"
 jsonschema = { version = "=0.48.1", default-features = false }
+krilla = "=0.8.2"
+krilla-svg = "=0.8.1"
 libc = "=0.2.189"
 log = "=0.4.34"
 maplit = "=1.0.2"
@@ -174,7 +178,12 @@ percent-encoding = "=2.3.2"
 pest = "=2.9.1"
 pest_derive = "=2.9.1"
 pkg-config = "=0.3.34"
-plotters = { version = "=0.3.7", default-features = false, features = ["all_series", "all_elements", "svg_backend"] }
+plotters = { version = "=0.3.7", default-features = false, features = [
+  "ab_glyph",
+  "all_series",
+  "all_elements",
+  "svg_backend",
+] }
 pretty_assertions = "=1.4.1"
 pretty_dtoa = "=0.3.0"
 proptest = "=1.11.0"
@@ -186,6 +195,7 @@ rayon = "=1.12.0"
 regex = "=1.13.1"
 relative-path = "=1.9.3"
 reqwest = { version = "=0.13.4", default-features = false, features = ["blocking", "rustls-no-provider"] }
+resvg = "=0.47.0"
 rgb = "=0.8.53"
 rstest = "=0.26.1"
 rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
@@ -204,6 +214,7 @@ tempfile = "=3.27.0"
 textplots = "=0.8.7"
 thiserror = "=2.0.21"
 tikv-jemallocator = "=0.6.0"
+tiny-skia = "=0.12.0"
 tokio = "=1.53.1"
 tokio-stream = "=0.1.19"
 tokio-util = { version = "=0.7.19", features = ["io", "io-util"] }
@@ -214,6 +225,7 @@ tower-http = { version = "=0.7.1", features = [
   "compression-zstd",
   "set-header",
 ] }
+usvg = "=0.47.0"
 wasm-bindgen = "=0.2.129"
 wasm-bindgen-futures = "=0.4.79"
 zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2"] }
@@ -226,6 +238,7 @@ app-output = { path = "packages/app-output" }
 app-server = { path = "packages/app-server" }
 treetime = { path = "packages/treetime" }
 treetime-analytical = { path = "packages/treetime-analytical" }
+treetime-charts = { path = "packages/treetime-charts" }
 treetime-distribution = { path = "packages/treetime-distribution" }
 treetime-graph = { path = "packages/treetime-graph" }
 treetime-grid = { path = "packages/treetime-grid" }

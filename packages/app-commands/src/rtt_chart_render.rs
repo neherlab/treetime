@@ -5,6 +5,7 @@ use plotters::coord::types::RangedCoordf32;
 use plotters::prelude::*;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
+use treetime_charts::font::CHART_FONT_FAMILY;
 use treetime_utils::fmt::float::float_to_significant_digits;
 
 const NORM_POINT_COLOR: RGBColor = RGBColor(8, 232, 140);
@@ -36,7 +37,7 @@ where
   let mut chart = ChartBuilder::on(drawing_area)
     .caption(
       "Clock regression",
-      ("sans-serif", 40).into_font().style(FontStyle::Bold),
+      (CHART_FONT_FAMILY, 40).into_font().style(FontStyle::Bold),
     )
     .x_label_area_size(60)
     .y_label_area_size(60)
@@ -51,9 +52,9 @@ where
     .x_label_formatter(&|&date| float_to_significant_digits(date, 6))
     .y_desc("Div")
     .y_label_formatter(&|&div| float_to_significant_digits(div, 3))
-    .axis_desc_style(("sans-serif", 20).into_font().style(FontStyle::Bold))
-    .x_label_style(("sans-serif", 16))
-    .y_label_style(("sans-serif", 16))
+    .axis_desc_style((CHART_FONT_FAMILY, 20).into_font().style(FontStyle::Bold))
+    .x_label_style((CHART_FONT_FAMILY, 16))
+    .y_label_style((CHART_FONT_FAMILY, 16))
     .draw()?;
 
   for (points, color, label) in [
@@ -120,7 +121,7 @@ where
 
   chart
     .configure_series_labels()
-    .label_font(("sans-serif", 20).into_font())
+    .label_font((CHART_FONT_FAMILY, 20).into_font())
     .margin(5)
     .border_style(RGBAColor(128, 128, 128, 0.5))
     .background_style(RGBAColor(200, 200, 200, 0.5))

@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
+  use crate::commands::clock::args::TreetimeClockArgsRaw;
+  use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs, ResolveOutputs};
   use app_output::output_plan::TreeWriteKind;
   use app_output::output_plan::{CommandKind, OutputSelection, PlannedFile, Requested, ResolvedOutputs};
+  use clap::Parser;
   use helpers::{nexus, nwk};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
@@ -521,7 +523,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::default_set(  vec![],                       vec![("clock.svg", OutputSelection::ClockChartSvg), ("clock.png", OutputSelection::ClockChartPng)])]
+  #[case::default_set(  vec![],                       vec![("clock.svg", OutputSelection::ClockChartSvg), ("clock.png", OutputSelection::ClockChartPng), ("clock.pdf", OutputSelection::ClockChartPdf)])]
   #[case::nwk_only(     vec![OutputSelection::Nwk],   vec![])]
   #[case::svg_selected( vec![OutputSelection::ClockChartSvg], vec![("clock.svg", OutputSelection::ClockChartSvg)])]
   #[trace]
@@ -550,13 +552,61 @@ mod tests {
     let actual: BTreeMap<OutputSelection, PlannedFile> = resolved
       .non_tree_outputs
       .into_iter()
-      .filter(|(selection, _)| matches!(selection, OutputSelection::ClockChartSvg | OutputSelection::ClockChartPng))
+      .filter(|(selection, _)| helpers::is_clock_chart(*selection))
+      .collect();
+    assert_eq!(expected, actual);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default_set(      &["--output-all={dir}"],                                                          &[("clock.svg", OutputSelection::ClockChartSvg, Requested::All), ("clock.png", OutputSelection::ClockChartPng, Requested::All), ("clock.pdf", OutputSelection::ClockChartPdf, Requested::All)])]
+  #[case::pdf_selected(     &["--output-all={dir}", "--output-selection=clock-chart-pdf"],                    &[("clock.pdf", OutputSelection::ClockChartPdf, Requested::All)])]
+  #[case::pdf_path(         &["--output-clock-chart-pdf={dir}/chart.pdf"],                                    &[("chart.pdf", OutputSelection::ClockChartPdf, Requested::Named)])]
+  #[case::pdf_path_over_all(&["--output-all={dir}", "--output-clock-chart-pdf={dir}/chart.pdf"],              &[("clock.svg", OutputSelection::ClockChartSvg, Requested::All), ("clock.png", OutputSelection::ClockChartPng, Requested::All), ("chart.pdf", OutputSelection::ClockChartPdf, Requested::Named)])]
+  #[trace]
+  fn test_resolve_clock_chart_pdf_from_command_line(
+    #[case] flags: &[&str],
+    #[case] expected: &[(&str, OutputSelection, Requested)],
+  ) {
+    let dir = TempDir::new().unwrap();
+    let dir_str = dir.path().to_str().unwrap();
+    let args = TreetimeClockArgsRaw::try_parse_from(
+      ["treetime", "--metadata=/dev/null"]
+        .into_iter()
+        .map(str::to_owned)
+        .chain(flags.iter().map(|flag| flag.replace("{dir}", dir_str))),
+    )
+    .unwrap();
+
+    let resolved = args.resolve_outputs().unwrap();
+
+    let expected: BTreeMap<OutputSelection, PlannedFile> = expected
+      .iter()
+      .map(|&(name, selection, requested)| {
+        let file = PlannedFile {
+          path: dir.path().join(name),
+          requested,
+        };
+        (selection, file)
+      })
+      .collect();
+    let actual: BTreeMap<OutputSelection, PlannedFile> = resolved
+      .non_tree_outputs
+      .into_iter()
+      .filter(|(selection, _)| helpers::is_clock_chart(*selection))
       .collect();
     assert_eq!(expected, actual);
   }
 
   mod helpers {
     use super::*;
+
+    pub(super) fn is_clock_chart(selection: OutputSelection) -> bool {
+      matches!(
+        selection,
+        OutputSelection::ClockChartSvg | OutputSelection::ClockChartPng | OutputSelection::ClockChartPdf
+      )
+    }
 
     pub(super) fn nwk(style: NwkStyle) -> TreeWriteKind {
       TreeWriteKind::Nwk(style)

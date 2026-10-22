@@ -3127,6 +3127,24 @@
           "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
         },
         {
+          "key": "output_clock_chart_pdf",
+          "label": "Output clock chart pdf",
+          "flag": "--output-clock-chart-pdf",
+          "group": "Output",
+          "role": "output",
+          "kind": "text",
+          "nullable": true,
+          "options": [],
+          "item_kind": "string",
+          "examples": [],
+          "value_names": [
+            "OUTPUT_CLOCK_CHART_PDF"
+          ],
+          "conflicts": [],
+          "help": "Path to output root-to-tip regression chart in PDF format.",
+          "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
+        },
+        {
           "key": "output_selection",
           "label": "Output files",
           "flag": "--output-selection",
@@ -3181,6 +3199,10 @@
             },
             {
               "value": "clock-chart-png",
+              "help": ""
+            },
+            {
+              "value": "clock-chart-pdf",
               "help": ""
             }
           ],

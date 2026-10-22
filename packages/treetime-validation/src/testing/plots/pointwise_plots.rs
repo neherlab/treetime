@@ -1,19 +1,19 @@
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::plots::utils::expand_range;
+use crate::testing::plots::utils::{LABEL_FONT, expand_range};
 use eyre::Report;
+use plotters::coord::Shift;
 use plotters::prelude::*;
 use std::iter::once;
+use treetime_charts::font::CHART_FONT_FAMILY;
 
-const POINTWISE_PLOT_SIZE: (u32, u32) = (1200, 900);
-const DERIVATIVE_PLOT_SIZE: (u32, u32) = (1200, 450);
-
-pub(crate) fn plot_pointwise_error_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_pointwise_error_profiles<T>(
+  result: &TestResult<T>,
+  root: &DrawingArea<SVGBackend<'_>, Shift>,
+) -> Result<(), Report>
 where
   T: TestCase,
 {
-  let output_path = format!("{output_dir}/pointwise_error_profiles.svg");
-  let root = SVGBackend::new(&output_path, POINTWISE_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((2, 2));
@@ -27,12 +27,12 @@ where
     );
     let (y_min, y_max) = expand_range(0.0, pw.errors.absolute.iter().fold(0.0_f64, |a, &b| a.max(b)));
     let mut chart = ChartBuilder::on(&areas[0])
-      .caption("Absolute Error", ("Arial", 20))
+      .caption("Absolute Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter().zip(pw.errors.absolute.iter()).map(|(&x, &y)| (x, y)),
       RED.stroke_width(2),
@@ -53,12 +53,12 @@ where
       .fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_rel);
     let mut chart = ChartBuilder::on(&areas[1])
-      .caption("Relative Error", ("Arial", 20))
+      .caption("Relative Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
         .zip(pw.errors.relative.iter())
@@ -76,12 +76,12 @@ where
     let max_signed = pw.errors.signed.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let (y_min, y_max) = expand_range(min_signed, max_signed);
     let mut chart = ChartBuilder::on(&areas[2])
-      .caption("Signed Error (bias)", ("Arial", 20))
+      .caption("Signed Error (bias)", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter().zip(pw.errors.signed.iter()).map(|(&x, &y)| (x, y)),
       GREEN.stroke_width(2),
@@ -106,12 +106,12 @@ where
       .fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_log);
     let mut chart = ChartBuilder::on(&areas[3])
-      .caption("Logarithmic Error (tails)", ("Arial", 20))
+      .caption("Logarithmic Error (tails)", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
         .zip(pw.errors.logarithmic.iter())
@@ -119,17 +119,16 @@ where
       MAGENTA.stroke_width(2),
     ))?;
   }
-
-  root.present()?;
   Ok(())
 }
 
-pub(crate) fn plot_derivative_errors<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_derivative_errors<T>(
+  result: &TestResult<T>,
+  root: &DrawingArea<SVGBackend<'_>, Shift>,
+) -> Result<(), Report>
 where
   T: TestCase,
 {
-  let output_path = format!("{output_dir}/derivative_errors.svg");
-  let root = SVGBackend::new(&output_path, DERIVATIVE_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((1, 2));
@@ -144,12 +143,12 @@ where
     let max_d1 = pw.structural.first_derivative.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_d1);
     let mut chart = ChartBuilder::on(&areas[0])
-      .caption("First Derivative Error", ("Arial", 20))
+      .caption("First Derivative Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
         .zip(pw.structural.first_derivative.iter())
@@ -162,12 +161,12 @@ where
     let max_d2 = pw.structural.second_derivative.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_d2);
     let mut chart = ChartBuilder::on(&areas[1])
-      .caption("Second Derivative Error", ("Arial", 20))
+      .caption("Second Derivative Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
         .zip(pw.structural.second_derivative.iter())
@@ -175,7 +174,5 @@ where
       BLUE.stroke_width(2),
     ))?;
   }
-
-  root.present()?;
   Ok(())
 }

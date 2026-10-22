@@ -403,6 +403,7 @@ export const zOutputSelection = z.enum([
   'coalescent-json',
   'clock-chart-svg',
   'clock-chart-png',
+  'clock-chart-pdf',
   'homoplasy-stats',
   'homoplasy-report'
 ]);
@@ -1544,7 +1545,8 @@ export const zClockOutputSelection = z.enum([
   'clock-model',
   'clock-csv',
   'clock-chart-svg',
-  'clock-chart-png'
+  'clock-chart-png',
+  'clock-chart-pdf'
 ]);
 
 /**
@@ -1601,6 +1603,7 @@ export const zClockConfig = z.strictObject({
   output_clock_csv: z.string().optional(),
   output_clock_chart_svg: z.string().optional(),
   output_clock_chart_png: z.string().optional(),
+  output_clock_chart_pdf: z.string().optional(),
   output_selection: z.array(zClockOutputSelection).optional(),
   ladderize: zLadderizeArg.optional(),
   topology_order: zTopologyOrderArg.optional(),

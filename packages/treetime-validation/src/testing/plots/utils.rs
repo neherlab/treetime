@@ -1,6 +1,9 @@
 use itertools::Itertools;
 use ndarray::Array1;
+use treetime_charts::font::CHART_FONT_FAMILY;
 use treetime_utils::cast::f64_to_usize_saturating;
+
+pub(crate) const LABEL_FONT: (&str, i32) = (CHART_FONT_FAMILY, 12);
 
 pub(crate) fn combined_range(arrays: &[&Array1<f64>]) -> (f64, f64) {
   arrays

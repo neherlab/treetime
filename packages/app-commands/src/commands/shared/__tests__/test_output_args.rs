@@ -237,20 +237,27 @@ mod tests {
       "--metadata=/dev/null",
       "--output-clock-chart-svg=/tmp/chart.svg",
       "--output-clock-chart-png=/tmp/chart.png",
+      "--output-clock-chart-pdf=/tmp/chart.pdf",
       "--output-all=/tmp/out",
-      "--output-selection=clock-chart-svg,clock-chart-png",
+      "--output-selection=clock-chart-svg,clock-chart-png,clock-chart-pdf",
     ])
     .unwrap();
     assert_eq!(
       (
         args.output_clock_chart_svg.as_deref(),
         args.output_clock_chart_png.as_deref(),
+        args.output_clock_chart_pdf.as_deref(),
         args.output_selection,
       ),
       (
         Some(Path::new("/tmp/chart.svg")),
         Some(Path::new("/tmp/chart.png")),
-        vec![ClockOutputSelection::ClockChartSvg, ClockOutputSelection::ClockChartPng],
+        Some(Path::new("/tmp/chart.pdf")),
+        vec![
+          ClockOutputSelection::ClockChartSvg,
+          ClockOutputSelection::ClockChartPng,
+          ClockOutputSelection::ClockChartPdf,
+        ],
       )
     );
   }

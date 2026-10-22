@@ -51,6 +51,8 @@ await checkEmptyInput();
 
 await checkRepeatedInput();
 
+await checkClockRunWithoutCharts();
+
 await checkEventStreamAborts();
 
 async function checkNewBackend(): Promise<void> {
@@ -186,6 +188,32 @@ async function checkRepeatedInput(): Promise<void> {
   const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
 
   assert.deepEqual([inputPaths, outputs.completed, record.status], [uploads, true, "ok"], JSON.stringify(record.error));
+}
+
+async function checkClockRunWithoutCharts(): Promise<void> {
+  const id = await startedRun("clock", async (runId) => ({
+    tree: await upload(runId, "tree.nwk"),
+    metadata: await upload(runId, "metadata.tsv"),
+  }));
+
+  const [order] = backend.takeJobOrders();
+  assert.ok(order?.job !== undefined, "the start of a clock run queues a start order");
+  const outputs = await driveJob(id, order.job, order.inputPaths);
+
+  const record = parse(zRunRecord, await call("GET", `/api/runs/${id}`));
+  const files = parse(zRunsFilesResponse, await call("GET", `/api/runs/${id}/files`));
+  const paths = new Set(files.map((file) => file.path));
+
+  assert.deepEqual(
+    [
+      outputs.completed,
+      record.status,
+      ["clock.clock-model.json", "clock.clock.csv", "clock.nwk"].filter((path) => !paths.has(path)),
+      ["clock.svg", "clock.png", "clock.pdf"].filter((path) => paths.has(path)),
+    ],
+    [true, "ok", [], []],
+    JSON.stringify(record.error),
+  );
 }
 
 async function startedRun(command: string, config: (id: string) => Promise<RunInputs>): Promise<string> {

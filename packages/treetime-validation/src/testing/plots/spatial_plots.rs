@@ -1,18 +1,19 @@
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::plots::utils::expand_range;
+use crate::testing::plots::utils::{LABEL_FONT, expand_range};
 use eyre::Report;
+use plotters::coord::Shift;
 use plotters::prelude::*;
 use std::iter::once;
+use treetime_charts::font::CHART_FONT_FAMILY;
 
-const SPATIAL_PLOT_SIZE: (u32, u32) = (1200, 900);
-
-pub(crate) fn plot_spatial_profiles<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_spatial_profiles<T>(
+  result: &TestResult<T>,
+  root: &DrawingArea<SVGBackend<'_>, Shift>,
+) -> Result<(), Report>
 where
   T: TestCase,
 {
-  let output_path = format!("{output_dir}/spatial_profiles.svg");
-  let root = SVGBackend::new(&output_path, SPATIAL_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let areas = root.split_evenly((2, 2));
@@ -27,12 +28,12 @@ where
     let max_rms = sp.windowed.sliding_rms.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_rms);
     let mut chart = ChartBuilder::on(&areas[0])
-      .caption("Sliding Window RMS Error", ("Arial", 20))
+      .caption("Sliding Window RMS Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter().zip(sp.windowed.sliding_rms.iter()).map(|(&x, &y)| (x, y)),
       RED.stroke_width(2),
@@ -43,12 +44,12 @@ where
     let max_max = sp.windowed.sliding_max.iter().copied().fold(0.0_f64, f64::max);
     let (y_min, y_max) = expand_range(0.0, max_max);
     let mut chart = ChartBuilder::on(&areas[1])
-      .caption("Sliding Window Max Error", ("Arial", 20))
+      .caption("Sliding Window Max Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter().zip(sp.windowed.sliding_max.iter()).map(|(&x, &y)| (x, y)),
       BLUE.stroke_width(2),
@@ -70,12 +71,12 @@ where
       .fold(f64::NEG_INFINITY, f64::max);
     let (y_min, y_max) = expand_range(min_cum, max_cum);
     let mut chart = ChartBuilder::on(&areas[2])
-      .caption("Cumulative Error", ("Arial", 20))
+      .caption("Cumulative Error", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart.draw_series(LineSeries::new(
       x.iter()
         .zip(sp.cumulative.cumulative_error.iter())
@@ -106,12 +107,12 @@ where
     let max_y = max_peak.max(max_tail);
     let (y_min, y_max) = expand_range(0.0, max_y);
     let mut chart = ChartBuilder::on(&areas[3])
-      .caption("Peak & Tail Region Errors", ("Arial", 20))
+      .caption("Peak & Tail Region Errors", (CHART_FONT_FAMILY, 20))
       .margin(10)
       .x_label_area_size(30)
       .y_label_area_size(50)
       .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-    chart.configure_mesh().draw()?;
+    chart.configure_mesh().label_style(LABEL_FONT).draw()?;
     chart
       .draw_series(LineSeries::new(
         x.iter()
@@ -132,11 +133,10 @@ where
       .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], CYAN.stroke_width(2)));
     chart
       .configure_series_labels()
+      .label_font(LABEL_FONT)
       .border_style(BLACK)
       .background_style(WHITE.mix(0.8))
       .draw()?;
   }
-
-  root.present()?;
   Ok(())
 }

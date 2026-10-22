@@ -1,16 +1,17 @@
 use crate::testing::framework::results::TestResult;
 use crate::testing::framework::test_case::TestCase;
-use crate::testing::plots::utils::{combined_range, expand_range, tolerance_label};
+use crate::testing::plots::utils::{LABEL_FONT, combined_range, expand_range, tolerance_label};
 use eyre::Report;
 use itertools::izip;
+use plotters::coord::Shift;
 use plotters::prelude::*;
+use treetime_charts::font::CHART_FONT_FAMILY;
 use treetime_utils::cast::ToF64Exact;
 
-const ABSOLUTE_ERROR_PLOT_SIZE: (u32, u32) = (960, 480);
-const TOLERANCE_PLOT_SIZE: (u32, u32) = (800, 600);
-const ERROR_HISTOGRAM_PLOT_SIZE: (u32, u32) = (960, 640);
-
-pub(crate) fn plot_absolute_error<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_absolute_error<T>(
+  result: &TestResult<T>,
+  root: &DrawingArea<SVGBackend<'_>, Shift>,
+) -> Result<(), Report>
 where
   T: TestCase,
 {
@@ -36,49 +37,52 @@ where
   if y_max <= y_min {
     y_max = y_min + 1.0;
   }
-  let output_path = format!("{output_dir}/absolute_error.svg");
-  let root = SVGBackend::new(&output_path, ABSOLUTE_ERROR_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
-  let mut chart = ChartBuilder::on(&root)
+  let mut chart = ChartBuilder::on(root)
     .caption(
       format!("{} | {} | Absolute Error", result.test_case.name(), result.algorithm),
-      ("Arial", 24),
+      (CHART_FONT_FAMILY, 24),
     )
     .margin(20)
     .x_label_area_size(40)
     .y_label_area_size(60)
     .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-  chart.configure_mesh().y_desc("|actual - expected|").draw()?;
+  chart
+    .configure_mesh()
+    .label_style(LABEL_FONT)
+    .y_desc("|actual - expected|")
+    .draw()?;
   chart
     .draw_series(LineSeries::new(error_points.iter().copied(), RED.stroke_width(2)))?
     .label("Absolute error")
     .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 12, y)], RED.stroke_width(2)));
   chart
     .configure_series_labels()
+    .label_font(LABEL_FONT)
     .border_style(BLACK)
     .background_style(WHITE.mix(0.8))
     .draw()?;
-  root.present()?;
   Ok(())
 }
 
-pub(crate) fn plot_tolerance_metrics<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_tolerance_metrics<T>(
+  result: &TestResult<T>,
+  root: &DrawingArea<SVGBackend<'_>, Shift>,
+) -> Result<(), Report>
 where
   T: TestCase,
 {
   let abs = result.metrics.aggregate.domain_agreement.abs_tolerance_fractions;
   let rel = result.metrics.aggregate.domain_agreement.rel_tolerance_fractions;
-  let output_path = format!("{output_dir}/tolerance_metrics.svg");
-  let root = SVGBackend::new(&output_path, TOLERANCE_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
-  let mut chart = ChartBuilder::on(&root)
+  let mut chart = ChartBuilder::on(root)
     .caption(
       format!(
         "{} | {} | Tolerance Fractions",
         result.test_case.name(),
         result.algorithm
       ),
-      ("Arial", 24),
+      (CHART_FONT_FAMILY, 24),
     )
     .margin(20)
     .x_label_area_size(50)
@@ -86,6 +90,7 @@ where
     .build_cartesian_2d(-0.2..3.0, 0.0..1.05)?;
   chart
     .configure_mesh()
+    .label_style(LABEL_FONT)
     .x_labels(3)
     .y_labels(6)
     .x_desc("Tolerance level")
@@ -111,19 +116,20 @@ where
     .legend(|(x, y)| Rectangle::new([(x - 6, y - 6), (x + 6, y + 6)], RED.mix(0.6).filled()));
   chart
     .configure_series_labels()
+    .label_font(LABEL_FONT)
     .border_style(BLACK)
     .background_style(WHITE.mix(0.8))
     .draw()?;
-  root.present()?;
   Ok(())
 }
 
-pub(crate) fn plot_error_histogram<T>(result: &TestResult<T>, output_dir: &str) -> Result<(), Report>
+pub(crate) fn plot_error_histogram<T>(
+  result: &TestResult<T>,
+  root: &DrawingArea<SVGBackend<'_>, Shift>,
+) -> Result<(), Report>
 where
   T: TestCase,
 {
-  let output_path = format!("{output_dir}/error_histogram.svg");
-  let root = SVGBackend::new(&output_path, ERROR_HISTOGRAM_PLOT_SIZE).into_drawing_area();
   root.fill(&WHITE)?;
 
   let dist = &result.metrics.distribution;
@@ -137,14 +143,14 @@ where
   let x_max = hist.bin_centers.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
   let y_max = (*hist.bin_counts.iter().max().unwrap_or(&0)).to_f64_exact();
 
-  let mut chart = ChartBuilder::on(&root)
+  let mut chart = ChartBuilder::on(root)
     .caption(
       format!(
         "{} | {} | Error Distribution",
         result.test_case.name(),
         result.algorithm
       ),
-      ("Arial", 24),
+      (CHART_FONT_FAMILY, 24),
     )
     .margin(20)
     .x_label_area_size(40)
@@ -153,6 +159,7 @@ where
 
   chart
     .configure_mesh()
+    .label_style(LABEL_FONT)
     .x_desc("log10(Absolute Error)")
     .y_desc("Count")
     .draw()?;
@@ -178,7 +185,5 @@ where
         )
       }),
   )?;
-
-  root.present()?;
   Ok(())
 }

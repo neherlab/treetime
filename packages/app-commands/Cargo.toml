@@ -38,12 +38,10 @@ deser-serde = { workspace = true }
 deser-value = { workspace = true }
 deser-yaml = { workspace = true }
 eyre = { workspace = true }
-image = { workspace = true, optional = true }
 itertools = { workspace = true }
 jsonschema = { workspace = true }
 maplit = { workspace = true }
 miette = { workspace = true }
-plotters = { workspace = true }
 rand = { workspace = true }
 saphyr = { workspace = true }
 schemars = { workspace = true }
@@ -60,9 +58,9 @@ default = ["clap"]
 # The `clap` derives on the command configs give the CLI its arguments, and give every client the
 # CLI flag names in validation messages.
 clap = ["dep:clap", "treetime-schema/clap"]
-png = ["image", "plotters/bitmap_backend", "plotters/ttf"]
 
 [dev-dependencies]
+ab_glyph = { workspace = true }
 approx = { workspace = true }
 axum = { workspace = true, features = ["http1", "tokio"] }
 ctor = { workspace = true }
@@ -72,13 +70,18 @@ pretty_assertions = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
+tiny-skia = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 
 # The HTTP client of the examples download of the local apps; reqwest has no
-# blocking client on WebAssembly targets.
+# blocking client on WebAssembly targets. The web app back end draws no charts:
+# plotters measures text through the browser page on WebAssembly targets, which
+# the web worker and Node do not have.
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
+plotters = { workspace = true }
 reqwest = { workspace = true }
 rustls = { workspace = true }
+treetime-charts = { workspace = true }
 
 [lints]
 workspace = true

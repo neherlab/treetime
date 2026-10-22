@@ -663,7 +663,7 @@ export type OutputFile = {
  * selection enums into this type, and [`plan`] resolves each key to a path.
  * Tree variants do not encode the separately selected Newick style.
  */
-export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png' | 'homoplasy-stats' | 'homoplasy-report';
+export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'augur-node-data' | 'gtr' | 'clock-model' | 'confidence-tsv' | 'confidence-csv' | 'reconstructed-nuc-fasta' | 'reconstructed-aa-fasta' | 'traits-csv' | 'clock-csv' | 'tracelog' | 'coalescent-tsv' | 'coalescent-csv' | 'coalescent-json' | 'clock-chart-svg' | 'clock-chart-png' | 'clock-chart-pdf' | 'homoplasy-stats' | 'homoplasy-report';
 
 /**
  * The alignment file of an output written once per alignment file.
@@ -3346,7 +3346,7 @@ export type TimetreeConfig = {
   gen_per_year?: number;
 };
 
-export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'clock-model' | 'clock-csv' | 'clock-chart-svg' | 'clock-chart-png';
+export type ClockOutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | 'mat-json' | 'graph-json' | 'dot' | 'clock-model' | 'clock-csv' | 'clock-chart-svg' | 'clock-chart-png' | 'clock-chart-pdf';
 
 /**
  * Sequence alignment input shared by all commands that accept an alignment.
@@ -3607,6 +3607,12 @@ export type ClockConfig = {
    * Takes precedence over paths configured with `--output-all` and `--output-selection`.
    */
   output_clock_chart_png?: string;
+  /**
+   * Path to output root-to-tip regression chart in PDF format.
+   *
+   * Takes precedence over paths configured with `--output-all` and `--output-selection`.
+   */
+  output_clock_chart_pdf?: string;
   /**
    * Comma-separated list of outputs to produce with `--output-all`.
    *

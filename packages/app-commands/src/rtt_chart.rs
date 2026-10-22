@@ -2,79 +2,48 @@ use crate::rtt_chart_render::draw_chart;
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, chain};
 use plotters::prelude::*;
+use std::io::Write;
 use std::path::Path;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime::progress::LogSink;
-#[cfg(not(feature = "png"))]
-use treetime::progress_warn;
-use treetime_utils::make_error;
-
-use std::io::Write;
+use treetime_charts::convert::ChartFormat;
+use treetime_charts::font::register_chart_fonts;
 use treetime_utils::io::file::write_file_with;
-
-#[cfg(feature = "png")]
-use image::{ColorType, DynamicImage, ImageBuffer, ImageEncoder, Rgb, codecs::png::PngEncoder};
+use treetime_utils::make_error;
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
 
-pub fn write_clock_regression_chart_svg(
+pub fn write_clock_regression_charts(
   results: &[ClockRegressionResult],
   clock_model: &ClockModel,
-  filepath: impl AsRef<Path>,
+  outputs: &[(ChartFormat, &Path)],
 ) -> Result<(), Report> {
+  if outputs.is_empty() {
+    return Ok(());
+  }
+  let svg = clock_regression_chart_svg(results, clock_model)?;
+  outputs.iter().try_for_each(|&(format, filepath)| {
+    let bytes = format.encode(&svg)?;
+    write_file_with(filepath, |writer| {
+      writer
+        .write_all(&bytes)
+        .wrap_err_with(|| format!("When writing the {format:?} chart"))
+    })
+  })
+}
+
+pub(crate) fn clock_regression_chart_svg(
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+) -> Result<String, Report> {
+  register_chart_fonts()?;
   let mut text = String::new();
   {
     let svg = SVGBackend::with_string(&mut text, CHART_SIZE).into_drawing_area();
     draw_chart(results, clock_model, &svg)?;
     svg.present()?;
   }
-  write_file_with(filepath, |writer| {
-    writer.write_all(text.as_bytes()).wrap_err("When writing the SVG chart")
-  })
-}
-
-#[cfg(feature = "png")]
-pub fn write_clock_regression_chart_png(
-  results: &[ClockRegressionResult],
-  clock_model: &ClockModel,
-  filepath: impl AsRef<Path>,
-  _log: &dyn LogSink,
-) -> Result<(), Report> {
-  let img = write_clock_regression_chart_bitmap(results, clock_model)?;
-  write_file_with(filepath, |f| {
-    PngEncoder::new(f).write_image(img.as_bytes(), img.width(), img.height(), ColorType::Rgb8.into())?;
-    Ok(())
-  })
-}
-
-#[cfg(not(feature = "png"))]
-pub fn write_clock_regression_chart_png(
-  _results: &[ClockRegressionResult],
-  _clock_model: &ClockModel,
-  _filepath: impl AsRef<Path>,
-  log: &dyn LogSink,
-) -> Result<(), Report> {
-  progress_warn!(
-    log,
-    "PNG chart output requested but binary was built without the 'png' feature"
-  );
-  Ok(())
-}
-
-#[cfg(feature = "png")]
-fn write_clock_regression_chart_bitmap(
-  results: &[ClockRegressionResult],
-  clock_model: &ClockModel,
-) -> Result<DynamicImage, Report> {
-  let (width, height) = CHART_SIZE;
-  let mut img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::new(width, height);
-  {
-    let bitmap = BitMapBackend::with_buffer(img.as_flat_samples_mut().samples, (width, height)).into_drawing_area();
-    draw_chart(results, clock_model, &bitmap)?;
-    bitmap.present()?;
-  }
-  Ok(DynamicImage::ImageRgb8(img))
+  Ok(text)
 }
 
 #[expect(

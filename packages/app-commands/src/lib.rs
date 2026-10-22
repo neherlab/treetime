@@ -9,7 +9,9 @@ pub mod examples_download;
 #[cfg(not(target_family = "wasm"))]
 mod examples_fetch;
 pub mod json_value;
+#[cfg(not(target_family = "wasm"))]
 pub mod rtt_chart;
+#[cfg(not(target_family = "wasm"))]
 mod rtt_chart_render;
 pub mod version;
 pub mod yaml;

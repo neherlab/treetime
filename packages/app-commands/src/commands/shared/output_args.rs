@@ -99,6 +99,7 @@ command_outputs!(ClockOutputSelection for TreetimeClockArgsRaw, Clock {
   ClockCsv: output_clock_csv,
   ClockChartSvg: output_clock_chart_svg,
   ClockChartPng: output_clock_chart_png,
+  ClockChartPdf: output_clock_chart_pdf,
 });
 command_outputs!(MugrationOutputSelection for TreetimeMugrationArgsRaw, Mugration {
   AugurNodeData: output_augur_node_data,

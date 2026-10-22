@@ -180,6 +180,13 @@ pub struct TreetimeClockArgsRaw {
   #[schemars(extend("x-path" = "output"))]
   pub output_clock_chart_png: Option<PathBuf>,
 
+  /// Path to output root-to-tip regression chart in PDF format.
+  ///
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
+  #[schemars(extend("x-path" = "output"))]
+  pub output_clock_chart_pdf: Option<PathBuf>,
+
   /// Comma-separated list of outputs to produce with `--output-all`.
   ///
   /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output

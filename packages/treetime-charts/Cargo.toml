@@ -1,0 +1,37 @@
+[package]
+name = "treetime-charts"
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+eyre = { workspace = true }
+fontdb = { workspace = true }
+krilla = { workspace = true }
+krilla-svg = { workspace = true }
+plotters = { workspace = true }
+resvg = { workspace = true }
+tiny-skia = { workspace = true }
+treetime-utils = { workspace = true }
+usvg = { workspace = true }
+
+[dev-dependencies]
+ab_glyph = { workspace = true }
+ctor = { workspace = true }
+indoc = { workspace = true }
+pretty_assertions = { workspace = true }
+rayon = { workspace = true }
+rstest = { workspace = true }
+
+[lints]
+workspace = true

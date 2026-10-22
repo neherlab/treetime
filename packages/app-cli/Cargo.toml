@@ -58,7 +58,6 @@ textplots = { workspace = true }
 tikv-jemallocator = { workspace = true }
 
 [features]
-"png" = ["app-commands/png"]
 # Compile jemalloc with heap profiling and statistics, for `just build-profiling-heap`
 "heap-profiling" = ["tikv-jemallocator/profiling", "tikv-jemallocator/stats"]
 
