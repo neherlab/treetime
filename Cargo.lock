@@ -162,6 +162,7 @@ dependencies = [
  "pretty_assertions",
  "rand 0.10.3",
  "rayon",
+ "relative-path",
  "rstest",
  "schemars",
  "serde_json",

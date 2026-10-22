@@ -196,6 +196,7 @@ rand = { version = "=0.10.3", features = ["log"] }
 rand_distr = { version = "=0.6.0", features = ["std_math"] }
 rayon = "=1.12.0"
 regex = "=1.13.1"
+relative-path = "=1.9.3"
 reqwest = { version = "=0.13.4", default-features = false, features = ["blocking", "rustls-no-provider"] }
 rgb = "=0.8.53"
 rstest = "=0.26.1"
