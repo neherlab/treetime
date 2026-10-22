@@ -4,7 +4,7 @@ mod tests {
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
-  use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs};
+  use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs};
   use crate::commands::shared::representation::RepresentationCli;
   use eyre::{Report, WrapErr};
   use helpers::written_mutations;
@@ -175,7 +175,7 @@ mod tests {
         },
         output_augur_node_data: Some(augur_path.clone()),
         output: OutputCoreArgs {
-          output_nwk_style: vec![NwkStyleArg::Beast],
+          newick_annotations: NewickAnnotationsArg::Beast,
           output_tree_nwk: Some(nwk_path.clone()),
           output_tree_mat_json: Some(mat_path.clone()),
           ..OutputCoreArgs::default()

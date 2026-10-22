@@ -196,7 +196,8 @@ mod tests {
     ))?;
 
     let expected = btreemap! {
-      OutputSelection::Nwk => vec![PathBuf::from("out/ancestral.annotated.nwk"), PathBuf::from("out/ancestral.nwk")],
+      OutputSelection::Nwk => vec![PathBuf::from("out/ancestral.nwk")],
+      OutputSelection::Nexus => vec![PathBuf::from("out/ancestral.nexus")],
       OutputSelection::Auspice => vec![PathBuf::from("out/ancestral.auspice.json")],
       OutputSelection::MatPb => vec![PathBuf::from("out/ancestral.mat.pb")],
       OutputSelection::AugurNodeData => vec![PathBuf::from("out/ancestral.augur-node-data.json")],
@@ -217,11 +218,8 @@ mod tests {
     ))?;
 
     let expected = btreemap! {
-      OutputSelection::Nwk => vec![
-        PathBuf::from("out/ancestral.1.annotated.nwk"),
-        PathBuf::from("out/ancestral.2.annotated.nwk"),
-        PathBuf::from("out/ancestral.nwk"),
-      ],
+      OutputSelection::Nwk => vec![PathBuf::from("out/ancestral.nwk")],
+      OutputSelection::Nexus => vec![PathBuf::from("out/ancestral.1.nexus"), PathBuf::from("out/ancestral.2.nexus")],
       OutputSelection::Auspice => vec![
         PathBuf::from("out/ancestral.1.auspice.json"),
         PathBuf::from("out/ancestral.2.auspice.json"),
@@ -252,7 +250,7 @@ mod tests {
 
     let actual = (
       [1, 2, 3].map(|partition| resolved.partition_path(OutputSelection::ReconstructedNucFasta, partition)),
-      [0, 2].map(|partition| resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Beast), partition)),
+      [0, 2].map(|partition| resolved.tree_partition_path(TreeWriteKind::Nexus, partition)),
       resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Plain), 1),
       resolved.partition_path(OutputSelection::Gtr, 1),
     );
@@ -263,7 +261,7 @@ mod tests {
         Some(Path::new("out/ancestral.2.reconstructed-nuc.fasta")),
         None,
       ],
-      [None, Some(Path::new("out/ancestral.2.annotated.nwk"))],
+      [None, Some(Path::new("out/ancestral.2.nexus"))],
       None,
       None,
     );
@@ -297,7 +295,7 @@ mod tests {
       None,
       Some(Path::new("out/ancestral.gtr.json")),
       vec![TreeWriteKind::Nwk(NwkStyle::Plain)],
-      vec![TreeWriteKind::Nwk(NwkStyle::Beast), TreeWriteKind::Auspice, TreeWriteKind::MatPb],
+      vec![TreeWriteKind::Nexus, TreeWriteKind::Auspice, TreeWriteKind::MatPb],
     );
     assert_eq!(expected, actual);
     Ok(())
@@ -307,14 +305,20 @@ mod tests {
   fn test_output_plan_trees_of_commands_without_alignments_are_written_once() -> Result<(), Report> {
     let mut request = helpers::partitioned_request(1, Some("out"), btreemap! {}, btreemap! {});
     request.command = CommandKind::Mugration;
-    request.selection = vec![OutputSelection::Nwk, OutputSelection::Auspice, OutputSelection::MatPb];
+    request.selection = vec![
+      OutputSelection::Nwk,
+      OutputSelection::Nexus,
+      OutputSelection::Auspice,
+      OutputSelection::MatPb,
+    ];
+    request.newick_annotations = NwkStyle::Beast;
 
     let resolved = plan(&request)?;
 
     let expected = (
       vec![
-        TreeWriteKind::Nwk(NwkStyle::Plain),
         TreeWriteKind::Nwk(NwkStyle::Beast),
+        TreeWriteKind::Nexus,
         TreeWriteKind::Auspice,
         TreeWriteKind::MatPb,
       ],
@@ -351,6 +355,7 @@ mod tests {
       None,
       btreemap! {
         OutputSelection::Nwk => PathBuf::from("trees/{partition}.nwk"),
+        OutputSelection::Nexus => PathBuf::from("trees/{partition}.nexus"),
         OutputSelection::Auspice => PathBuf::from("auspice/segment-{partition}.json"),
         OutputSelection::GraphJson => PathBuf::from("graph.json"),
         OutputSelection::Dot => PathBuf::from("graph.{partition}.dot"),
@@ -362,12 +367,8 @@ mod tests {
     ))?;
 
     let expected = btreemap! {
-      OutputSelection::Nwk => vec![
-        PathBuf::from("trees/1.annotated.nwk"),
-        PathBuf::from("trees/1.nwk"),
-        PathBuf::from("trees/2.annotated.nwk"),
-        PathBuf::from("trees/2.nwk"),
-      ],
+      OutputSelection::Nwk => vec![PathBuf::from("trees/1.nwk"), PathBuf::from("trees/2.nwk")],
+      OutputSelection::Nexus => vec![PathBuf::from("trees/1.nexus"), PathBuf::from("trees/2.nexus")],
       OutputSelection::Auspice => vec![
         PathBuf::from("auspice/segment-1.json"),
         PathBuf::from("auspice/segment-2.json"),
@@ -418,18 +419,62 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_output_plan_two_partitions_need_the_placeholder_in_styled_tree_paths() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::nexus(        OutputSelection::Nexus, "tree.nexus", NwkStyle::Plain, "--output-tree-nexus")]
+  #[case::newick_beast( OutputSelection::Nwk,   "tree.nwk",   NwkStyle::Beast, "--output-tree-nwk")]
+  #[case::newick_nhx(   OutputSelection::Nwk,   "tree.nwk",   NwkStyle::Nhx,   "--output-tree-nwk")]
+  #[trace]
+  fn test_output_plan_two_partitions_need_the_placeholder_in_tree_paths_with_comments(
+    #[case] selection: OutputSelection,
+    #[case] path: &str,
+    #[case] newick_annotations: NwkStyle,
+    #[case] flag: &str,
+  ) {
+    let mut request = helpers::partitioned_request(2, None, btreemap! { selection => PathBuf::from(path) }, btreemap! {});
+    request.newick_annotations = newick_annotations;
     assert_error!(
-      plan(&helpers::partitioned_request(
-        2,
-        None,
-        btreemap! { OutputSelection::Nwk => PathBuf::from("tree.nwk") },
-        btreemap! {},
-      )),
-      "--output-tree-nwk (style beast) needs a partition placeholder ('{partition}') in its file name when the run \
-       has several alignment files, otherwise each partition overwrites the same output file"
+      plan(&request),
+      format!(
+        "{flag} needs a partition placeholder ('{{partition}}') in its file name when the run has several \
+         alignment files, otherwise each partition overwrites the same output file"
+      )
     );
+  }
+
+  #[test]
+  fn test_output_plan_two_partitions_write_plain_newick_once() -> Result<(), Report> {
+    let resolved = plan(&helpers::partitioned_request(
+      2,
+      None,
+      btreemap! { OutputSelection::Nwk => PathBuf::from("tree.nwk") },
+      btreemap! {},
+    ))?;
+
+    let expected = btreemap! { TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("tree.nwk") };
+    assert_eq!(expected, resolved.tree_outputs);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::beast(NwkStyle::Beast)]
+  #[case::nhx(  NwkStyle::Nhx)]
+  #[trace]
+  fn test_output_plan_two_partitions_write_annotated_newick_once_per_alignment(
+    #[case] newick_annotations: NwkStyle,
+  ) -> Result<(), Report> {
+    let mut request = helpers::partitioned_request(2, Some("out"), btreemap! {}, btreemap! {});
+    request.selection = vec![OutputSelection::Nwk];
+    request.newick_annotations = newick_annotations;
+
+    let resolved = plan(&request)?;
+
+    let expected = btreemap! {
+      TreeWriteKind::Nwk(newick_annotations) => vec![PathBuf::from("out/ancestral.1.nwk"), PathBuf::from("out/ancestral.2.nwk")],
+    };
+    assert_eq!(expected, resolved.tree_outputs_by_partition);
+    Ok(())
   }
 
   #[rustfmt::skip]
@@ -497,7 +542,7 @@ mod tests {
         command: CommandKind::Ancestral,
         partition_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
-        nwk_styles: vec![],
+        newick_annotations: NwkStyle::Plain,
         selection,
         tree_overrides: BTreeMap::new(),
         non_tree_overrides,
@@ -516,6 +561,7 @@ mod tests {
         selection: if output_all.is_some() {
           vec![
             OutputSelection::Nwk,
+            OutputSelection::Nexus,
             OutputSelection::Auspice,
             OutputSelection::MatPb,
             OutputSelection::AugurNodeData,
@@ -526,7 +572,7 @@ mod tests {
           vec![]
         },
         output_all: output_all.map(PathBuf::from),
-        nwk_styles: vec![NwkStyle::Plain, NwkStyle::Beast],
+        newick_annotations: NwkStyle::Plain,
         tree_overrides,
         non_tree_overrides,
       }
@@ -537,7 +583,7 @@ mod tests {
         command: CommandKind::Homoplasy,
         partition_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
-        nwk_styles: vec![],
+        newick_annotations: NwkStyle::Plain,
         selection: vec![],
         tree_overrides: BTreeMap::new(),
         non_tree_overrides,

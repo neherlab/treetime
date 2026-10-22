@@ -374,7 +374,7 @@ export const zRunInput = z.object({
 /**
  * Canonical lookup key for selectable outputs. Command adapters convert their
  * selection enums into this type, and [`plan`] resolves each key to a path.
- * Tree variants do not encode the separately selected Newick style.
+ * Tree variants do not encode the separately selected Newick annotations.
  */
 export const zOutputSelection = z.enum([
   'all',
@@ -1369,10 +1369,7 @@ export const zGapFill = z.enum([
 
 export const zDivergenceUnits = z.enum(['mutations-per-site', 'mutations']);
 
-/**
- * CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
- */
-export const zNwkStyleArg = z.enum([
+export const zNewickAnnotationsArg = z.enum([
   'plain',
   'beast',
   'nhx'
@@ -1501,7 +1498,7 @@ export const zTimetreeConfig = z.strictObject({
   output_coalescent_csv: z.string().optional(),
   output_coalescent_json: z.string().optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),
@@ -1566,7 +1563,7 @@ export const zClockConfig = z.strictObject({
   outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),
@@ -1674,7 +1671,7 @@ export const zAncestralConfig = z.strictObject({
   aa_model: zAaModelName.optional(),
   output_reconstructed_aa_fasta: z.string().optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),
@@ -1745,7 +1742,7 @@ export const zHomoplasyConfig = z.strictObject({
   drms: z.string().optional(),
   num_mut: z.int().gte(0).optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),
@@ -1819,7 +1816,7 @@ export const zMugrationConfig = z.strictObject({
   output_gtr: z.string().optional(),
   output_traits_csv: z.string().optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),
@@ -1910,7 +1907,7 @@ export const zOptimizeConfig = z.strictObject({
   partition_rates: zPartitionRates.optional(),
   representation: zRepresentation.optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),
@@ -1979,7 +1976,7 @@ export const zPruneConfig = z.strictObject({
   alphabet: zAlphabetName.optional(),
   zero_based: z.boolean().optional(),
   output_all: z.string().optional(),
-  output_nwk_style: z.array(zNwkStyleArg).optional(),
+  newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
   output_tree_nexus: z.string().optional(),
   output_tree_auspice: z.string().optional(),

@@ -1,11 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::clock::args::TreetimeClockArgsRaw;
-  use crate::commands::shared::output_args::{NwkStyleArg, OutputCoreArgs, ResolveOutputs};
+  use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs, ResolveOutputs};
   use app_output::output_plan::TreeWriteKind;
   use app_output::output_plan::{CommandKind, OutputSelection, PlannedFile, Requested, ResolvedOutputs};
   use clap::Parser;
-  use helpers::{nexus, nwk};
   use maplit::{btreemap, btreeset};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -27,8 +26,8 @@ mod tests {
       .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
       .unwrap();
 
-    assert!(helpers::tree_paths(&resolved).contains_key(&nwk(NwkStyle::Plain)));
-    assert!(helpers::tree_paths(&resolved).contains_key(&nexus(NwkStyle::Plain)));
+    assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nwk(NwkStyle::Plain)));
+    assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nexus));
     assert!(
       !helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::GraphJson),
       "GraphJson is not a default output"
@@ -51,7 +50,7 @@ mod tests {
       .unwrap();
 
     assert_eq!(helpers::tree_paths(&resolved).len(), 1);
-    assert!(helpers::tree_paths(&resolved).contains_key(&nwk(NwkStyle::Plain)));
+    assert!(helpers::tree_paths(&resolved).contains_key(&TreeWriteKind::Nwk(NwkStyle::Plain)));
   }
 
   #[test]
@@ -66,7 +65,7 @@ mod tests {
 
     assert_eq!(
       helpers::tree_paths(&resolved),
-      btreemap! { nwk(NwkStyle::Plain) => PathBuf::from("/tmp/test.nwk") }
+      btreemap! { TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("/tmp/test.nwk") }
     );
   }
 
@@ -200,7 +199,7 @@ mod tests {
       .resolve(CommandKind::Clock, NonZeroUsize::MIN, &[OutputSelection::Nwk], &[])
       .unwrap();
     assert_eq!(
-      &helpers::tree_paths(&resolved)[&nwk(NwkStyle::Plain)],
+      &helpers::tree_paths(&resolved)[&TreeWriteKind::Nwk(NwkStyle::Plain)],
       &dir.path().join("clock.nwk")
     );
   }
@@ -236,8 +235,8 @@ mod tests {
     let resolved = args.resolve(command, NonZeroUsize::MIN, &[OutputSelection::All], &[]).unwrap();
     let actual = helpers::tree_paths(&resolved).keys().copied().collect();
     let expected = btreeset! {
-      nwk(NwkStyle::Plain),
-      nexus(NwkStyle::Plain),
+      TreeWriteKind::Nwk(NwkStyle::Plain),
+      TreeWriteKind::Nexus,
       TreeWriteKind::Auspice,
       TreeWriteKind::MatPb,
       TreeWriteKind::MatJson,
@@ -274,7 +273,7 @@ mod tests {
   }
 
   #[test]
-  fn test_s2_row1_output_all_default_style() {
+  fn test_s2_row1_output_all_default_annotations() {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
@@ -289,18 +288,25 @@ mod tests {
       )
       .unwrap();
     let expected = btreemap! {
-      nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
-      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
+      TreeWriteKind::Nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
+      TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
     };
     assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
-  #[test]
-  fn test_s2_row2_output_all_two_styles() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::beast(NewickAnnotationsArg::Beast, NwkStyle::Beast)]
+  #[case::nhx(  NewickAnnotationsArg::Nhx,   NwkStyle::Nhx)]
+  #[trace]
+  fn test_s2_row2_output_all_newick_annotations_keep_the_file_names(
+    #[case] newick_annotations: NewickAnnotationsArg,
+    #[case] style: NwkStyle,
+  ) {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
-      output_nwk_style: vec![NwkStyleArg::Plain, NwkStyleArg::Beast],
+      newick_annotations,
       ..Default::default()
     };
     let resolved = args
@@ -312,16 +318,14 @@ mod tests {
       )
       .unwrap();
     let expected = btreemap! {
-      nwk(NwkStyle::Plain) => dir.path().join("ancestral.nwk"),
-      nwk(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nwk"),
-      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
-      nexus(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nexus"),
+      TreeWriteKind::Nwk(style) => dir.path().join("ancestral.nwk"),
+      TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
     };
     assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
-  fn test_s2_row3_per_file_default_style() {
+  fn test_s2_row3_per_file_default_annotations() {
     let args = OutputCoreArgs {
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
       ..Default::default()
@@ -331,15 +335,15 @@ mod tests {
       .unwrap();
     assert_eq!(
       helpers::tree_paths(&resolved),
-      btreemap! { nwk(NwkStyle::Plain) => PathBuf::from("my.nwk") }
+      btreemap! { TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("my.nwk") }
     );
   }
 
   #[test]
-  fn test_s2_row4_per_file_single_non_plain_style_used_as_is() {
+  fn test_s2_row4_per_file_with_annotations_used_as_is() {
     let args = OutputCoreArgs {
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
-      output_nwk_style: vec![NwkStyleArg::Beast],
+      newick_annotations: NewickAnnotationsArg::Beast,
       ..Default::default()
     };
     let resolved = args
@@ -347,34 +351,16 @@ mod tests {
       .unwrap();
     assert_eq!(
       helpers::tree_paths(&resolved),
-      btreemap! { nwk(NwkStyle::Beast) => PathBuf::from("my.nwk") }
+      btreemap! { TreeWriteKind::Nwk(NwkStyle::Beast) => PathBuf::from("my.nwk") }
     );
   }
 
   #[test]
-  fn test_s2_row5_per_file_two_styles_insert_secondary() {
-    let args = OutputCoreArgs {
-      output_tree_nwk: Some(PathBuf::from("my.nwk")),
-      output_nwk_style: vec![NwkStyleArg::Plain, NwkStyleArg::Beast],
-      ..Default::default()
-    };
-    let resolved = args
-      .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
-      .unwrap();
-    let expected = btreemap! {
-      nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
-      nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
-    };
-    assert_eq!(helpers::tree_paths(&resolved), expected);
-  }
-
-  #[test]
-  fn test_s2_row6_per_file_overrides_output_all_nwk_only() {
+  fn test_s2_row5_per_file_overrides_output_all_nwk_only() {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
-      output_nwk_style: vec![NwkStyleArg::Plain, NwkStyleArg::Beast],
       ..Default::default()
     };
     let resolved = args
@@ -386,16 +372,14 @@ mod tests {
       )
       .unwrap();
     let expected = btreemap! {
-      nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
-      nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
-      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
-      nexus(NwkStyle::Beast) => dir.path().join("ancestral.annotated.nexus"),
+      TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
+      TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
     };
     assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
-  fn test_s2_row7_per_file_supplements_selection() {
+  fn test_s2_row6_per_file_supplements_selection() {
     let dir = TempDir::new().unwrap();
     let args = OutputCoreArgs {
       output_all: Some(dir.path().to_path_buf()),
@@ -411,28 +395,26 @@ mod tests {
       )
       .unwrap();
     let expected = btreemap! {
-      nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
-      nexus(NwkStyle::Plain) => dir.path().join("ancestral.nexus"),
+      TreeWriteKind::Nwk(NwkStyle::Plain) => PathBuf::from("my.nwk"),
+      TreeWriteKind::Nexus => dir.path().join("ancestral.nexus"),
     };
     assert_eq!(helpers::tree_paths(&resolved), expected);
   }
 
   #[test]
-  fn test_s2_row8_two_per_file_two_non_plain_styles() {
+  fn test_s2_row7_newick_annotations_leave_the_nexus_comments_unchanged() {
     let args = OutputCoreArgs {
       output_tree_nwk: Some(PathBuf::from("my.nwk")),
       output_tree_nexus: Some(PathBuf::from("my.nexus")),
-      output_nwk_style: vec![NwkStyleArg::Beast, NwkStyleArg::Nhx],
+      newick_annotations: NewickAnnotationsArg::Nhx,
       ..Default::default()
     };
     let resolved = args
       .resolve(CommandKind::Ancestral, NonZeroUsize::MIN, &[], &[])
       .unwrap();
     let expected: BTreeMap<TreeWriteKind, PathBuf> = btreemap! {
-      nwk(NwkStyle::Beast) => PathBuf::from("my.annotated.nwk"),
-      nwk(NwkStyle::Nhx) => PathBuf::from("my.nhx.nwk"),
-      nexus(NwkStyle::Beast) => PathBuf::from("my.annotated.nexus"),
-      nexus(NwkStyle::Nhx) => PathBuf::from("my.nhx.nexus"),
+      TreeWriteKind::Nwk(NwkStyle::Nhx) => PathBuf::from("my.nwk"),
+      TreeWriteKind::Nexus => PathBuf::from("my.nexus"),
     };
     assert_eq!(helpers::tree_paths(&resolved), expected);
   }
@@ -606,14 +588,6 @@ mod tests {
         selection,
         OutputSelection::ClockChartSvg | OutputSelection::ClockChartPng | OutputSelection::ClockChartPdf
       )
-    }
-
-    pub(super) fn nwk(style: NwkStyle) -> TreeWriteKind {
-      TreeWriteKind::Nwk(style)
-    }
-
-    pub(super) fn nexus(style: NwkStyle) -> TreeWriteKind {
-      TreeWriteKind::Nexus(style)
     }
 
     pub(super) fn tree_paths(resolved: &ResolvedOutputs) -> BTreeMap<TreeWriteKind, PathBuf> {

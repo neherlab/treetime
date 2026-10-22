@@ -127,7 +127,7 @@ pub(crate) enum TreetimeCommands {
   /// Prunes short branches and/or branches without mutations from a phylogenetic tree.
   Prune(TreetimePruneArgsRaw),
 
-  /// Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction and `--output-nwk-style=beast` or `nhx`, each branch of the Newick and Nexus trees carries its mutations as a comment, like `A45G,G136T`, with 1-based positions.
+  /// Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based positions.
   Ancestral(TreetimeAncestralArgsRaw),
 
   /// Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`.

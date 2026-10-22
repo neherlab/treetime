@@ -6,7 +6,6 @@ use maplit::btreeset;
 use schemars::JsonSchema;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf, is_separator};
@@ -22,7 +21,6 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let command = request.command;
   let stem = command.stem();
   let partitioned = request.partition_count.get() > 1;
-  let styles = effective_nwk_styles(command, &request.nwk_styles);
 
   let mut tree_outputs: BTreeMap<TreeWriteKind, PathBuf> = BTreeMap::new();
   let mut non_tree_outputs: BTreeMap<OutputSelection, PlannedFile> = BTreeMap::new();
@@ -30,11 +28,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let mut overridden_tree: BTreeSet<OutputSelection> = BTreeSet::new();
   for (&variant, path) in &request.tree_overrides {
     overridden_tree.insert(variant);
-    if variant.is_styled_tree() {
-      for (style, p) in expand_override_styles(path, &styles) {
-        tree_outputs.insert(styled_tree_write_kind(variant, style), p);
-      }
-    } else if let Some(kind) = variant.to_tree_write_kind() {
+    if let Some(kind) = variant.to_tree_write_kind(request.newick_annotations) {
       tree_outputs.insert(kind, path.clone());
     }
   }
@@ -66,11 +60,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
         if overridden_tree.contains(&variant) {
           continue;
         }
-        if variant.is_styled_tree() {
-          for (style, p) in expand_outputall_styles(dir, stem, partitioned, command, variant, &styles) {
-            tree_outputs.entry(styled_tree_write_kind(variant, style)).or_insert(p);
-          }
-        } else if let Some(kind) = variant.to_tree_write_kind() {
+        if let Some(kind) = variant.to_tree_write_kind(request.newick_annotations) {
           let stem = default_stem(stem, partitioned && command.is_per_partition_tree(kind));
           tree_outputs
             .entry(kind)
@@ -119,14 +109,14 @@ fn expand_partitions(
     non_tree_outputs_by_partition: BTreeMap::new(),
   };
   for (kind, path) in tree_outputs {
-    let label = tree_write_kind_label(kind);
+    let label = tree_write_kind_selection(kind).flag_name();
     if command.is_per_partition_tree(kind)
       || (command.reads_alignments() && PathPlaceholder::Partition.is_in_file_name(&path))
     {
-      let paths = expand_path_template(&label, &path, PathPlaceholder::Partition, &partitions)?;
+      let paths = expand_path_template(label, &path, PathPlaceholder::Partition, &partitions)?;
       resolved.tree_outputs_by_partition.insert(kind, paths);
     } else {
-      ensure_no_partition_placeholder(&label, &path)?;
+      ensure_no_partition_placeholder(label, &path)?;
       resolved.tree_outputs.insert(kind, path);
     }
   }
@@ -191,75 +181,6 @@ fn ensure_no_partition_placeholder(label: &str, path: &Path) -> Result<(), Repor
   Ok(())
 }
 
-fn tree_write_kind_label(kind: TreeWriteKind) -> Cow<'static, str> {
-  let flag = tree_write_kind_selection(kind).flag_name();
-  match kind {
-    TreeWriteKind::Nwk(style) | TreeWriteKind::Nexus(style) => {
-      Cow::Owned(format!("{flag} (style {})", nwk_style_name(style)))
-    },
-    TreeWriteKind::Auspice
-    | TreeWriteKind::MatPb
-    | TreeWriteKind::MatJson
-    | TreeWriteKind::GraphJson
-    | TreeWriteKind::Dot => Cow::Borrowed(flag),
-  }
-}
-
-fn expand_override_styles(path: &Path, styles: &[NwkStyle]) -> Vec<(NwkStyle, PathBuf)> {
-  let multi = styles.len() > 1;
-  styles
-    .iter()
-    .map(|&style| {
-      let p = if multi {
-        insert_secondary_ext(path, nwk_style_secondary_ext(style))
-      } else {
-        path.to_path_buf()
-      };
-      (style, p)
-    })
-    .collect()
-}
-
-fn insert_secondary_ext(path: &Path, secondary: &str) -> PathBuf {
-  if secondary.is_empty() {
-    return path.to_path_buf();
-  }
-  if let (Some(stem), Some(ext)) = (path.file_stem(), path.extension()) {
-    let mut name = OsString::from(stem);
-    name.push(secondary);
-    name.push(".");
-    name.push(ext);
-    path.with_file_name(name)
-  } else {
-    let mut name = OsString::from(path.as_os_str());
-    name.push(secondary);
-    PathBuf::from(name)
-  }
-}
-
-fn expand_outputall_styles(
-  dir: &Path,
-  stem: &str,
-  partitioned: bool,
-  command: CommandKind,
-  variant: OutputSelection,
-  styles: &[NwkStyle],
-) -> Vec<(NwkStyle, PathBuf)> {
-  let multi = styles.len() > 1;
-  let primary = variant.extension();
-  styles
-    .iter()
-    .map(|&style| {
-      let secondary = if multi { nwk_style_secondary_ext(style) } else { "" };
-      let stem = default_stem(
-        stem,
-        partitioned && command.is_per_partition_tree(styled_tree_write_kind(variant, style)),
-      );
-      (style, dir.join(format!("{stem}{secondary}{primary}")))
-    })
-    .collect()
-}
-
 fn default_stem(stem: &str, per_partition: bool) -> Cow<'_, str> {
   match (per_partition, PathPlaceholder::Partition.tokens()) {
     (true, [token, ..]) => Cow::Owned(format!("{stem}.{token}")),
@@ -322,30 +243,6 @@ impl PathPlaceholder {
   }
 }
 
-fn styled_tree_write_kind(variant: OutputSelection, style: NwkStyle) -> TreeWriteKind {
-  match variant {
-    OutputSelection::Nwk => TreeWriteKind::Nwk(style),
-    OutputSelection::Nexus => TreeWriteKind::Nexus(style),
-    _ => unreachable!("styled_tree_write_kind called on non-styled variant"),
-  }
-}
-
-fn nwk_style_name(style: NwkStyle) -> &'static str {
-  match style {
-    NwkStyle::Plain => "plain",
-    NwkStyle::Beast => "beast",
-    NwkStyle::Nhx => "nhx",
-  }
-}
-
-fn nwk_style_secondary_ext(style: NwkStyle) -> &'static str {
-  match style {
-    NwkStyle::Plain => "",
-    NwkStyle::Beast => ".annotated",
-    NwkStyle::Nhx => ".nhx",
-  }
-}
-
 pub struct OutputPlanRequest {
   pub command: CommandKind,
 
@@ -353,7 +250,7 @@ pub struct OutputPlanRequest {
 
   pub output_all: Option<PathBuf>,
 
-  pub nwk_styles: Vec<NwkStyle>,
+  pub newick_annotations: NwkStyle,
 
   pub selection: Vec<OutputSelection>,
 
@@ -555,27 +452,13 @@ pub enum Requested {
 fn tree_write_kind_selection(kind: TreeWriteKind) -> OutputSelection {
   match kind {
     TreeWriteKind::Nwk(_) => OutputSelection::Nwk,
-    TreeWriteKind::Nexus(_) => OutputSelection::Nexus,
+    TreeWriteKind::Nexus => OutputSelection::Nexus,
     TreeWriteKind::Auspice => OutputSelection::Auspice,
     TreeWriteKind::MatPb => OutputSelection::MatPb,
     TreeWriteKind::MatJson => OutputSelection::MatJson,
     TreeWriteKind::GraphJson => OutputSelection::GraphJson,
     TreeWriteKind::Dot => OutputSelection::Dot,
   }
-}
-
-fn effective_nwk_styles(command: CommandKind, requested: &[NwkStyle]) -> Vec<NwkStyle> {
-  if requested.is_empty() {
-    return command.default_nwk_styles();
-  }
-  let mut seen: BTreeSet<NwkStyle> = BTreeSet::new();
-  let mut styles = Vec::new();
-  for &style in requested {
-    if seen.insert(style) {
-      styles.push(style);
-    }
-  }
-  styles
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -696,10 +579,6 @@ impl CommandKind {
   fn is_per_partition_tree(self, kind: TreeWriteKind) -> bool {
     self.reads_alignments() && kind.is_per_partition()
   }
-
-  fn default_nwk_styles(self) -> Vec<NwkStyle> {
-    vec![NwkStyle::Plain]
-  }
 }
 
 fn ensure_unique_destinations<'a>(
@@ -721,7 +600,7 @@ fn ensure_unique_destinations<'a>(
 
 /// Canonical lookup key for selectable outputs. Command adapters convert their
 /// selection enums into this type, and [`plan`] resolves each key to a path.
-/// Tree variants do not encode the separately selected Newick style.
+/// Tree variants do not encode the separately selected Newick annotations.
 #[derive(
   Copy,
   Clone,
@@ -796,10 +675,6 @@ impl OutputSelection {
     self.facts().reads_tree
   }
 
-  fn is_styled_tree(self) -> bool {
-    matches!(self, Self::Nwk | Self::Nexus)
-  }
-
   fn is_meta(self) -> bool {
     matches!(self, Self::All)
   }
@@ -808,8 +683,10 @@ impl OutputSelection {
     self.facts().extension
   }
 
-  fn to_tree_write_kind(self) -> Option<TreeWriteKind> {
+  fn to_tree_write_kind(self, newick_annotations: NwkStyle) -> Option<TreeWriteKind> {
     match self {
+      Self::Nwk => Some(TreeWriteKind::Nwk(newick_annotations)),
+      Self::Nexus => Some(TreeWriteKind::Nexus),
       Self::Auspice => Some(TreeWriteKind::Auspice),
       Self::MatPb => Some(TreeWriteKind::MatPb),
       Self::MatJson => Some(TreeWriteKind::MatJson),
@@ -857,7 +734,7 @@ impl OutputSelection {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TreeWriteKind {
   Nwk(NwkStyle),
-  Nexus(NwkStyle),
+  Nexus,
   Auspice,
   MatPb,
   MatJson,
@@ -868,8 +745,8 @@ pub enum TreeWriteKind {
 impl TreeWriteKind {
   pub fn is_per_partition(self) -> bool {
     match self {
-      Self::Nwk(style) | Self::Nexus(style) => style != NwkStyle::Plain,
-      Self::Auspice | Self::MatPb | Self::MatJson => true,
+      Self::Nwk(annotations) => annotations != NwkStyle::Plain,
+      Self::Nexus | Self::Auspice | Self::MatPb | Self::MatJson => true,
       Self::GraphJson | Self::Dot => false,
     }
   }

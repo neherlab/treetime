@@ -53,18 +53,18 @@ mod tests {
       "output_all": "/etc",
       "output_tree_nwk": "/etc/passwd",
       "output_clock_model": "../x.json",
-      "output_nwk_style": ["beast"],
+      "newick_annotations": "beast",
     });
     let prepared = AppCommand::Clock
       .prepare_run(&config, Path::new("/runs/r/out"))
       .unwrap();
     assert_eq!(
-      (Some(json!("/runs/r/out")), None, None, Some(json!(["beast"]))),
+      (Some(json!("/runs/r/out")), None, None, Some(json!("beast"))),
       (
         prepared.config.get("output_all").cloned(),
         prepared.config.get("output_tree_nwk").cloned(),
         prepared.config.get("output_clock_model").cloned(),
-        prepared.config.get("output_nwk_style").cloned()
+        prepared.config.get("newick_annotations").cloned()
       )
     );
   }

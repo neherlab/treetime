@@ -6,11 +6,14 @@ mod tests {
   use crate::commands::optimize::args::TreetimeOptimizeArgsRaw;
   use crate::commands::prune::args::TreetimePruneArgsRaw;
   use crate::commands::shared::output_args::{
-    AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, NwkStyleArg, TimetreeOutputSelection,
+    AncestralOutputSelection, ClockOutputSelection, MugrationOutputSelection, NewickAnnotationsArg,
+    TimetreeOutputSelection,
   };
   use crate::commands::timetree::args::TreetimeTimetreeArgsRaw;
   use clap::Parser;
+  use clap::error::ErrorKind;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::path::Path;
 
   #[test]
@@ -64,18 +67,31 @@ mod tests {
     );
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::default(&[],                              NewickAnnotationsArg::Plain)]
+  #[case::beast(  &["--newick-annotations=beast"],  NewickAnnotationsArg::Beast)]
+  #[case::nhx(    &["--newick-annotations", "nhx"], NewickAnnotationsArg::Nhx)]
+  #[trace]
+  fn test_output_args_newick_annotations_parse(#[case] flags: &[&str], #[case] expected: NewickAnnotationsArg) {
+    let args = TreetimeAncestralArgsRaw::try_parse_from(
+      ["treetime", "--tree=/dev/null", "--output-tree-nwk=/tmp/my.nwk"].iter().chain(flags),
+    )
+    .unwrap();
+    assert_eq!(expected, args.output.newick_annotations);
+  }
+
   #[test]
-  fn test_output_args_nwk_style_parses_csv() {
-    let args = TreetimeAncestralArgsRaw::try_parse_from([
+  fn test_output_args_newick_annotations_take_one_value() {
+    let result = TreetimeAncestralArgsRaw::try_parse_from([
       "treetime",
       "--tree=/dev/null",
       "--output-tree-nwk=/tmp/my.nwk",
-      "--output-nwk-style=plain,beast",
-    ])
-    .unwrap();
+      "--newick-annotations=plain,beast",
+    ]);
     assert_eq!(
-      args.output.output_nwk_style,
-      vec![NwkStyleArg::Plain, NwkStyleArg::Beast]
+      Err(ErrorKind::InvalidValue),
+      result.map(|_| ()).map_err(|error| error.kind())
     );
   }
 

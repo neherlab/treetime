@@ -9,6 +9,7 @@ mod tests {
   use crate::output_plan::{CommandKind, TreeWriteKind};
   use crate::tree_output::write_tree_outputs;
   use eyre::Report;
+  use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -235,6 +236,57 @@ mod tests {
     let expected =
       "(A[&mutations=\"A55G,T93C\",date=2020.00]:0.1,B[&date=2021.00]:0,C[&date=2022.00]:0.5)root[&date=2023.00];\n";
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::plain(TreeWriteKind::Nwk(NwkStyle::Plain), "(A:0.1,B:0,C:0.5)root;\n")]
+  #[case::beast(TreeWriteKind::Nwk(NwkStyle::Beast), "(A[&mutations=\"A55G\",date=2020.00]:0.1,B[&date=2021.00]:0,C[&date=2022.00]:0.5)root[&date=2023.00];\n")]
+  #[case::nhx(  TreeWriteKind::Nwk(NwkStyle::Nhx),   "(A[&&NHX:mutations=A55G:date=2020.00]:0.1,B[&&NHX:date=2021.00]:0,C[&&NHX:date=2022.00]:0.5)root[&&NHX:date=2023.00];\n")]
+  #[case::nexus(TreeWriteKind::Nexus,                indoc! {r#"
+    #NEXUS
+
+    Begin Taxa;
+      Dimensions NTax=3;
+      TaxLabels
+        A
+        B
+        C
+      ;
+    End;
+
+    Begin Trees;
+      Tree tree1 = (A[&mutations="A55G",date=2020.00]:0.1,B[&date=2021.00]:0,C[&date=2022.00]:0.5)root[&date=2023.00];
+    End;
+  "#})]
+  #[trace]
+  fn test_nwk_comments_written_by_each_tree_kind(#[case] kind: TreeWriteKind, #[case] expected: &str) -> Result<(), Report> {
+    let setup = dated_setup()?;
+    let mut edge_mutations = no_mutations(&setup.topology);
+    edge_mutations.insert(parent_edge(&setup.topology, "A")?, vec![substitution(b'A', 54, b'G')?]);
+    let root_sequence = Seq::try_from_str("ACGT")?;
+    let graph = AnnotatedGraph {
+      sequences: Some(TreeSequences {
+        alphabet: &NUC_ALPHABET,
+        root_sequence: &root_sequence,
+        edge_mutations: &edge_mutations,
+        amino_acids: None,
+        comment_positions: PositionBase::One,
+      }),
+      ..dated_graph(&setup, None)
+    };
+    let dir = TempDir::new()?;
+    let path = dir.path().join("tree");
+
+    write_tree_outputs(
+      &AnnotatedTreeView::new(&graph)?,
+      &btreemap! { kind => path.clone() },
+      CommandKind::Timetree,
+      &NoopProgress,
+    )?;
+
+    assert_eq!(expected, read_file_to_string(&path)?);
     Ok(())
   }
 

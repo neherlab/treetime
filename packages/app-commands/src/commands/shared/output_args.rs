@@ -148,7 +148,7 @@ command_outputs!(HomoplasyOutputSelection, HomoplasyOutputSelectionArgs for Tree
 
 /// Output selection shared by every tree-writing command. `--output-all`
 /// chooses the directory, `--output-selection` restricts generated files, and
-/// per-file flags override or add paths. Style and topology order are separate.
+/// per-file flags override or add paths. Newick annotations and topology order are separate.
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -171,7 +171,7 @@ pub struct OutputCoreArgs {
   ///
   /// With several `--alignment` files, the outputs that carry sequence positions are written
   /// once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER
-  /// MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the
+  /// MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the
   /// order of the `--alignment` list. Their default names carry the number after the command
   /// name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output
   /// must contain `{partition}`, which is replaced by the number. Other tree outputs with
@@ -186,21 +186,27 @@ pub struct OutputCoreArgs {
   #[schemars(extend("x-path" = "output"))]
   pub output_all: Option<PathBuf>,
 
-  /// NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+  /// Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
   ///
-  /// Applies to every NWK and Nexus output. With more than one style, files are distinguished by a
-  /// secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
-  #[cfg_attr(feature = "clap", clap(long, num_args = 1.., value_delimiter = ',', help_heading = "Output"))]
-  pub output_nwk_style: Vec<NwkStyleArg>,
+  /// `plain` writes no comments. `beast` writes a comment such as
+  /// `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as
+  /// `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date,
+  /// and its inferred trait value, as far as the command infers them. Nexus outputs always carry
+  /// `beast` comments, which FigTree reads.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_enum, default_value_t = NewickAnnotationsArg::default(), help_heading = "Output")
+  )]
+  pub newick_annotations: NewickAnnotationsArg,
 
   /// Path to output Newick tree file.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-  /// multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
+  /// `--newick-annotations` sets the node comments.
   ///
-  /// With several `--alignment` files, the styles other than `plain` write one file per
-  /// alignment, and the file name must contain `{partition}`, which is replaced by the number
-  /// of the alignment (1, 2, ...).
+  /// With several `--alignment` files and `--newick-annotations` other than `plain`, one file is
+  /// written per alignment, and the file name must contain `{partition}`, which is replaced by the
+  /// number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -212,12 +218,11 @@ pub struct OutputCoreArgs {
 
   /// Path to output Nexus tree file.
   ///
-  /// Takes precedence over paths configured with `--output-all` and `--output-selection`. With
-  /// multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+  /// Takes precedence over paths configured with `--output-all` and `--output-selection`. The
+  /// nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
   ///
-  /// With several `--alignment` files, the styles other than `plain` write one file per
-  /// alignment, and the file name must contain `{partition}`, which is replaced by the number
-  /// of the alignment (1, 2, ...).
+  /// With several `--alignment` files, one file is written per alignment, and the file name must
+  /// contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
   ///
   /// Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output.
   /// Use `-` to write uncompressed to stdout.
@@ -309,7 +314,7 @@ impl OutputCoreArgs {
       command,
       partition_count,
       output_all: self.output_all.clone(),
-      nwk_styles: self.output_nwk_style.iter().copied().map(NwkStyle::from).collect(),
+      newick_annotations: self.newick_annotations.into(),
       selection: selection.to_vec(),
       tree_overrides: self.tree_overrides(),
       non_tree_overrides: non_tree_fields
@@ -371,23 +376,23 @@ pub struct ClockOutputArgs {
   pub output_clock_csv: Option<PathBuf>,
 }
 
-/// CLI-facing NWK/Nexus annotation style for `--output-nwk-style`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, JsonSchema, Serialize, Deserialize)]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
-pub enum NwkStyleArg {
+pub enum NewickAnnotationsArg {
+  #[default]
   Plain,
   Beast,
   Nhx,
 }
 
-impl From<NwkStyleArg> for NwkStyle {
-  fn from(value: NwkStyleArg) -> Self {
+impl From<NewickAnnotationsArg> for NwkStyle {
+  fn from(value: NewickAnnotationsArg) -> Self {
     match value {
-      NwkStyleArg::Plain => Self::Plain,
-      NwkStyleArg::Beast => Self::Beast,
-      NwkStyleArg::Nhx => Self::Nhx,
+      NewickAnnotationsArg::Plain => Self::Plain,
+      NewickAnnotationsArg::Beast => Self::Beast,
+      NewickAnnotationsArg::Nhx => Self::Nhx,
     }
   }
 }

@@ -43,6 +43,7 @@ strum_macros = { workspace = true }
 # [external]
 approx = { workspace = true }
 ctor = { workspace = true }
+indoc = { workspace = true }
 jsonschema = { workspace = true }
 pretty_assertions = { workspace = true }
 rayon = { workspace = true }

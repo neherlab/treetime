@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-const LABELS: [(&str, &str); 11] = [
+const LABELS: [(&str, &str); 10] = [
   ("clock_std_dev", "Clock rate std. dev."),
   ("coalescent", "Coalescent prior"),
   ("confidence", "Date confidence intervals"),
@@ -8,7 +8,6 @@ const LABELS: [(&str, &str); 11] = [
   ("method_anc", "Ancestral method"),
   ("model", "Substitution model"),
   ("n_skyline", "Skyline grid points"),
-  ("output_nwk_style", "Newick style"),
   ("output_selection", "Output files"),
   ("relax", "Relaxed clock (slack, coupling)"),
   ("reroot", "Reroot method"),

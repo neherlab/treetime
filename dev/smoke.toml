@@ -887,12 +887,18 @@ variant = "input-nexus-tree"
 datasets = ["flu/h3n2/20"]
 args = "--tree={dataset}/tree.nex"
 
-# Tree output styles and all output formats
+# Newick comments and all output formats
 [[timetree]]
-variant = "nwk-style-beast-nhx"
+variant = "newick-annotations-beast"
 datasets = ["flu/h3n2/20"]
-args = "--output-nwk-style=beast --output-nwk-style=nhx"
-outputs = ["timetree.annotated.nwk", "timetree.nhx.nwk"]
+args = "--newick-annotations=beast"
+outputs = ["timetree.nwk"]
+
+[[timetree]]
+variant = "newick-annotations-nhx"
+datasets = ["flu/h3n2/20"]
+args = "--newick-annotations=nhx"
+outputs = ["timetree.nwk"]
 
 [[timetree]]
 variant = "all-outputs"

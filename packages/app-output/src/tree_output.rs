@@ -77,7 +77,7 @@ pub fn write_graph_outputs(
       TreeWriteKind::GraphJson => json_write_file(path, graph.graph, JsonPretty(false))?,
       TreeWriteKind::Dot => graphviz_write_file(path, graph.graph, graph.names, graph.divergence_branch_lengths)?,
       TreeWriteKind::Nwk(_)
-      | TreeWriteKind::Nexus(_)
+      | TreeWriteKind::Nexus
       | TreeWriteKind::Auspice
       | TreeWriteKind::MatPb
       | TreeWriteKind::MatJson => {},
@@ -119,27 +119,27 @@ fn write_tree_formats(
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let graph = tree.graph();
-  let comments = if outputs.keys().copied().any(is_annotated_newick) {
+  let comments = if outputs.keys().copied().any(carries_comments) {
     nwk_node_comments(tree)?
   } else {
     NwkNodeComments::new()
   };
   for (kind, path) in outputs {
     match kind {
-      TreeWriteKind::Nwk(style) => nwk_write_file(
+      TreeWriteKind::Nwk(annotations) => nwk_write_file(
         path,
         tree.tree(),
         graph.names,
         graph.tree_branch_lengths(),
-        &nwk_options(*style),
+        &nwk_options(*annotations),
         &comments,
       )?,
-      TreeWriteKind::Nexus(style) => nex_write_file(
+      TreeWriteKind::Nexus => nex_write_file(
         path,
         tree.tree(),
         graph.names,
         graph.tree_branch_lengths(),
-        &nwk_options(*style),
+        &nwk_options(NwkStyle::Beast),
         &comments,
       )?,
       TreeWriteKind::Auspice => json_write_file(
@@ -158,9 +158,10 @@ fn write_tree_formats(
   )
 }
 
-fn is_annotated_newick(kind: TreeWriteKind) -> bool {
+fn carries_comments(kind: TreeWriteKind) -> bool {
   match kind {
-    TreeWriteKind::Nwk(style) | TreeWriteKind::Nexus(style) => style != NwkStyle::Plain,
+    TreeWriteKind::Nwk(annotations) => annotations != NwkStyle::Plain,
+    TreeWriteKind::Nexus => true,
     TreeWriteKind::Auspice
     | TreeWriteKind::MatPb
     | TreeWriteKind::MatJson

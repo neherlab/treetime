@@ -143,15 +143,15 @@ describe("form config", () => {
 
     const previous = withSetting(
       withSetting(defaultConfig(ancestral), "output_selection", ["nwk", "gtr"]),
-      "output_nwk_style",
-      ["nhx"],
+      "newick_annotations",
+      "nhx",
     );
 
     const config = carryOverConfig(homoplasy, ancestral, previous);
 
-    expect({ selection: config["output_selection"], style: config["output_nwk_style"] }).toStrictEqual({
+    expect({ selection: config["output_selection"], annotations: config["newick_annotations"] }).toStrictEqual({
       selection: [],
-      style: ["nhx"],
+      annotations: "nhx",
     });
   });
 });

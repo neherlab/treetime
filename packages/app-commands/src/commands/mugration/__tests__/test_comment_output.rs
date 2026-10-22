@@ -13,7 +13,7 @@ mod tests {
   use treetime::mugration::pipeline::{self, MugrationInput, MugrationParams};
   use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
   use treetime::progress::NoopProgress;
-  use treetime_io::nwk::{NwkStyle, nwk_read};
+  use treetime_io::nwk::nwk_read;
   use treetime_utils::io::fs::read_file_to_string;
   use treetime_utils::o;
 
@@ -70,7 +70,7 @@ mod tests {
 
     write_tree_outputs(
       &AnnotatedTreeView::new(&annotated)?,
-      &btreemap! { TreeWriteKind::Nexus(NwkStyle::Beast) => path.clone() },
+      &btreemap! { TreeWriteKind::Nexus => path.clone() },
       CommandKind::Mugration,
       &NoopProgress,
     )?;

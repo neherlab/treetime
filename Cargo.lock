@@ -357,6 +357,7 @@ dependencies = [
  "deser",
  "deser-value",
  "eyre",
+ "indoc",
  "itertools",
  "jsonschema",
  "maplit",

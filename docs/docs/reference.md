@@ -52,7 +52,7 @@ Exit status: 0 on success, 1 on failure, 2 on a usage error (invalid flags or co
 * `timetree` — Estimates time trees from an initial tree topology, a set of date constraints (e.g. tip dates), and an alignment (optional)
 * `optimize` — Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned sequences
 * `prune` — Prunes short branches and/or branches without mutations from a phylogenetic tree
-* `ancestral` — Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction and `--output-nwk-style=beast` or `nhx`, each branch of the Newick and Nexus trees carries its mutations as a comment, like `A45G,G136T`, with 1-based positions
+* `ancestral` — Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based positions
 * `clock` — Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the tree. It will reroot the tree to maximize the clock-like signal and recalculate branch length unless run with `--keep-root`
 * `homoplasy` — Reconstructs ancestral sequences and maps mutations to the tree. The tree is then scanned for homoplasies. An excess number of homoplasies might suggest contamination, recombination, culture adaptation or similar
 * `mugration` — Reconstructs discrete ancestral states, for example geographic location, host, or similar. In addition to ancestral states, a GTR model of state transitions is inferred
@@ -326,29 +326,31 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
@@ -544,29 +546,31 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
@@ -759,29 +763,31 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
@@ -895,7 +901,7 @@ Prunes short branches and/or branches without mutations from a phylogenetic tree
 
 ## `treetime ancestral`
 
-Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction and `--output-nwk-style=beast` or `nhx`, each branch of the Newick and Nexus trees carries its mutations as a comment, like `A45G,G136T`, with 1-based positions
+Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*` flags select the outputs, such as reconstructed sequences, trees, and the inferred GTR model. With marginal reconstruction, each branch of the Nexus trees, and of the Newick trees with `--newick-annotations beast` or `nhx`, carries its mutations as a comment, like `A45G,G136T`, with 1-based positions
 
 **Usage:** `treetime ancestral [OPTIONS]`
 
@@ -1043,29 +1049,31 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
@@ -1220,29 +1228,31 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
@@ -1458,29 +1468,31 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
@@ -1637,29 +1649,31 @@ Reconstructs discrete ancestral states, for example geographic location, host, o
 
    An output that the run has no data for is skipped without a message, for example the substitution model of a run that fits none. A per-file flag for such an output fails.
 
-   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, and Newick and Nexus trees in an annotated style. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
+   With several `--alignment` files, the outputs that carry sequence positions are written once per file: reconstructed sequences, the augur node data of `ancestral`, Auspice, UShER MAT, Nexus, and Newick with `--newick-annotations` other than `plain`. Files are numbered 1, 2, ... in the order of the `--alignment` list. Their default names carry the number after the command name (`<dir>/<command>.1.<ext>`), and the file name of a per-file flag for such an output must contain `{partition}`, which is replaced by the number. Other tree outputs with `{partition}` in their file name are also written once per file.
 
    An output path that ends in `.gz`, `.bz2`, `.xz`, or `.zst` writes a compressed file. The compression level is 2, unless the environment variable `GZ_COMPRESSION`, `BZ2_COMPRESSION`, `XZ_COMPRESSION`, or `ZST_COMPRESSION` sets another level. `.gz`, `.xz`, and `.zst` compress with all `--jobs` threads. `.bz2` compresses with one thread and is much slower to write and to read than the other formats.
-* `--output-nwk-style <OUTPUT_NWK_STYLE>` — NWK/Nexus annotation styles to write: `plain`, `beast`, `nhx`.
+* `--newick-annotations <NEWICK_ANNOTATIONS>` — Node comments of the Newick outputs: `plain`, `beast`, or `nhx`.
 
-   Applies to every NWK and Nexus output. With more than one style, files are distinguished by a secondary extension (`.annotated` for beast, `.nhx` for nhx). Default: `plain`.
+   `plain` writes no comments. `beast` writes a comment such as `[&mutations="A45G,G136T",date=2016.45]` after each node, and `nhx` writes the same values as `[&&NHX:key=value]`. The comments hold the mutations on the branch above the node, its date, and its inferred trait value, as far as the command infers them. Nexus outputs always carry `beast` comments, which FigTree reads.
+
+  Default value: `plain`
 
   Possible values: `plain`, `beast`, `nhx`
 
 * `--output-tree-nwk <OUTPUT_TREE_NWK>` — Path to output Newick tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. `--newick-annotations` sets the node comments.
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files and `--newick-annotations` other than `plain`, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 
    Parent directories are created if missing.
 * `--output-tree-nexus <OUTPUT_TREE_NEXUS>` — Path to output Nexus tree file.
 
-   Takes precedence over paths configured with `--output-all` and `--output-selection`. With multiple `--output-nwk-style` values, a secondary extension is inserted per style.
+   Takes precedence over paths configured with `--output-all` and `--output-selection`. The nodes carry BEAST comments (`[&mutations="A45G,G136T",date=2016.45]`).
 
-   With several `--alignment` files, the styles other than `plain` write one file per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
+   With several `--alignment` files, one file is written per alignment, and the file name must contain `{partition}`, which is replaced by the number of the alignment (1, 2, ...).
 
    Compression: path ending in `.gz`, `.bz2`, `.xz`, `.zst` writes compressed output. Use `-` to write uncompressed to stdout.
 

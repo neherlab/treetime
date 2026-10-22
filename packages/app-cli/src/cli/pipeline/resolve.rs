@@ -267,9 +267,8 @@ fn resolve_selection_path(step: &str, producer: &ResolvedStep, selection: &str) 
     ),
     Some([path]) => Ok(path.to_string_lossy().into_owned()),
     Some(paths) => make_error!(
-      "step `{step}` references `{selection}` from step `{}`, which resolves to more than one file ({}); \
-       each output style, CDS, and alignment file gets its own file: pin a single style or CDS, \
-       or reference one of these paths, such as the file of one alignment",
+      "step `{step}` references `{selection}` from step `{}`, which resolves to one file per alignment file ({}); \
+       reference one of these paths instead",
       producer.name,
       paths.iter().map(|path| format!("`{}`", path.display())).join(", ")
     ),
@@ -400,23 +399,23 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `opt` references `reconstructed-nuc-fasta` from step `anc`, which resolves to more than one file (`/pipeline/tmp/run/anc/ancestral.1.reconstructed-nuc.fasta`, `/pipeline/tmp/run/anc/ancestral.2.reconstructed-nuc.fasta`); each output style, CDS, and alignment file gets its own file: pin a single style or CDS, or reference one of these paths, such as the file of one alignment"
+      "step `opt` references `reconstructed-nuc-fasta` from step `anc`, which resolves to one file per alignment file (`/pipeline/tmp/run/anc/ancestral.1.reconstructed-nuc.fasta`, `/pipeline/tmp/run/anc/ancestral.2.reconstructed-nuc.fasta`); reference one of these paths instead"
     );
   }
 
   #[test]
-  fn test_resolve_chain_multi_style_reference_is_ambiguous() {
+  fn test_resolve_chain_reference_to_a_per_alignment_nexus_is_ambiguous() {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "output_nwk_style": ["plain", "beast"] } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
+        { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "alignment": ["a.fasta", "b.fasta"] } },
+        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nexus }}" } }
       ]
     });
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `nwk` from step `tt`, which resolves to more than one file (`/pipeline/tmp/run/tt/timetree.annotated.nwk`, `/pipeline/tmp/run/tt/timetree.nwk`); each output style, CDS, and alignment file gets its own file: pin a single style or CDS, or reference one of these paths, such as the file of one alignment"
+      "step `anc` references `nexus` from step `tt`, which resolves to one file per alignment file (`/pipeline/tmp/run/tt/timetree.1.nexus`, `/pipeline/tmp/run/tt/timetree.2.nexus`); reference one of these paths instead"
     );
   }
 

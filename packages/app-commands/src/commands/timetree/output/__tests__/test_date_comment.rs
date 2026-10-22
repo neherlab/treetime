@@ -14,7 +14,7 @@ mod tests {
   use treetime::seq::mutation::{PositionBase, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_io::nwk::{NwkStyle, nwk_read};
+  use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
   use treetime_utils::io::fs::read_file_to_string;
 
@@ -65,7 +65,7 @@ mod tests {
 
     write_tree_outputs(
       &AnnotatedTreeView::new(&annotated)?,
-      &btreemap! { TreeWriteKind::Nexus(NwkStyle::Beast) => path.clone() },
+      &btreemap! { TreeWriteKind::Nexus => path.clone() },
       CommandKind::Timetree,
       &NoopProgress,
     )?;

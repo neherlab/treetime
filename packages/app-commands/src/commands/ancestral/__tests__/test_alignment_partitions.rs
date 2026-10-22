@@ -7,6 +7,7 @@ mod tests {
   use eyre::Report;
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
@@ -56,8 +57,16 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_ancestral_two_alignments_write_each_sequence_output_once_per_alignment() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::plain_newick(    "plain", &[],                                     &["ancestral.nwk"])]
+  #[case::annotated_newick("beast", &["ancestral.1.nwk", "ancestral.2.nwk"], &[])]
+  #[trace]
+  fn test_ancestral_two_alignments_write_each_sequence_output_once_per_alignment(
+    #[case] newick_annotations: &str,
+    #[case] newick_per_alignment: &[&str],
+    #[case] newick_once: &[&str],
+  ) -> Result<(), Report> {
     let dir = tempdir()?;
     let blocks = write_column_blocks(&project_root().join("data/zika/20/aln.fasta.xz"), CUT, dir.path())?;
     let out = dir.path().join("out");
@@ -67,8 +76,7 @@ mod tests {
       &[
         format!("--output-all={}", out.display()),
         "--output-selection=all".to_owned(),
-        "--output-nwk-style=plain".to_owned(),
-        "--output-nwk-style=beast".to_owned(),
+        format!("--newick-annotations={newick_annotations}"),
       ],
     )?;
 
@@ -82,30 +90,30 @@ mod tests {
       .map(|partition| helpers::sequence_output_lengths(&out, partition))
       .into_iter()
       .collect::<Result<Vec<_>, Report>>()?;
-    let expected = (
-      vec![
-        "ancestral.1.annotated.nexus",
-        "ancestral.1.annotated.nwk",
-        "ancestral.1.augur-node-data.json",
-        "ancestral.1.auspice.json",
-        "ancestral.1.mat.json",
-        "ancestral.1.mat.pb",
-        "ancestral.1.reconstructed-nuc.fasta",
-        "ancestral.2.annotated.nexus",
-        "ancestral.2.annotated.nwk",
-        "ancestral.2.augur-node-data.json",
-        "ancestral.2.auspice.json",
-        "ancestral.2.mat.json",
-        "ancestral.2.mat.pb",
-        "ancestral.2.reconstructed-nuc.fasta",
-        "ancestral.dot",
-        "ancestral.graph.json",
-        "ancestral.gtr.json",
-        "ancestral.nexus",
-        "ancestral.nwk",
-      ],
-      vec![[CUT; 3], [ZIKA_COLUMNS - CUT; 3]],
-    );
+    let expected_files = [
+      "ancestral.1.augur-node-data.json",
+      "ancestral.1.auspice.json",
+      "ancestral.1.mat.json",
+      "ancestral.1.mat.pb",
+      "ancestral.1.nexus",
+      "ancestral.1.reconstructed-nuc.fasta",
+      "ancestral.2.augur-node-data.json",
+      "ancestral.2.auspice.json",
+      "ancestral.2.mat.json",
+      "ancestral.2.mat.pb",
+      "ancestral.2.nexus",
+      "ancestral.2.reconstructed-nuc.fasta",
+      "ancestral.dot",
+      "ancestral.graph.json",
+      "ancestral.gtr.json",
+    ]
+    .iter()
+    .chain(newick_per_alignment)
+    .chain(newick_once)
+    .copied()
+    .sorted()
+    .collect_vec();
+    let expected = (expected_files, vec![[CUT; 3], [ZIKA_COLUMNS - CUT; 3]]);
     assert_eq!(expected, (files.iter().map(String::as_str).collect_vec(), lengths));
     Ok(())
   }
