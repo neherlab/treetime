@@ -20,7 +20,7 @@ import {
 import { configure, within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
 import pWaitFor from "p-wait-for";
-import { act, useEffect, useState } from "react";
+import { act, useCallback, useEffect, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
@@ -29,6 +29,7 @@ import { useDraftStore } from "../../store/draft";
 import { Toaster } from "../../ui/toast";
 import { type FormConfig, fromFormConfig, toFormConfig } from "../formValues";
 import { InputsSection } from "../InputsSection";
+import { useDatasetLoader, useExampleIndex } from "../useExampleData";
 
 const NATIVE_FETCH = { fetch, Request, Response, Headers, Blob, File, FormData, AbortController, AbortSignal };
 
@@ -167,6 +168,22 @@ describe("example data of the web apps", () => {
       JSON.stringify(["/runs/r1/inputs/aln.fasta.xz"]),
       { label: "metadata.tsv", size: 9, origin: "upload", run_id: "r1" },
     ]);
+  });
+
+  test("a dataset loads outside the form, as the command palette loads it", async () => {
+    const server = fakeServer();
+    await render(server, "timetree");
+
+    await userEvent.setup({ document }).click(page().getByRole("button", { name: "Load a dataset outside the form" }));
+    await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
+
+    expect([server.uploads, settingText("Tree setting"), useDraftStore.getState().draft.sources["tree"]]).toStrictEqual(
+      [
+        ["tree.nwk:11", "metadata.tsv:9", "aln.fasta.xz:4"],
+        JSON.stringify("/runs/r1/inputs/tree.nwk"),
+        { label: "tree.nwk", size: 11, origin: "upload", run_id: "r1" },
+      ],
+    );
   });
 
   test("a dataset file that cannot be read uploads nothing", async () => {
@@ -482,7 +499,30 @@ function DraftPage() {
   const epoch = useDraftStore((state) => state.epoch);
   const command = useDraftStore((state) => state.draft.command);
 
-  return <DraftForm key={`${command}:${epoch}`} command={command} />;
+  return (
+    <>
+      <DatasetOutsideForm command={command} />
+      <DraftForm key={`${command}:${epoch}`} command={command} />
+    </>
+  );
+}
+
+function DatasetOutsideForm({ command }: { command: AppCommand }) {
+  const { data: examples } = useExampleIndex();
+  const loadDataset = useDatasetLoader();
+  const dataset = examples?.index?.datasets[0];
+
+  const onClick = useCallback(() => {
+    if (examples !== undefined && dataset !== undefined) {
+      void loadDataset(examples, dataset, command);
+    }
+  }, [command, dataset, examples, loadDataset]);
+
+  return (
+    <button type="button" onClick={onClick}>
+      Load a dataset outside the form
+    </button>
+  );
 }
 
 function DraftForm({ command }: { command: AppCommand }) {

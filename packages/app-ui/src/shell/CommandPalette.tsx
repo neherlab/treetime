@@ -1,4 +1,4 @@
-import { errorMessage, type IndexedConfig } from "@neherlab/app-contracts";
+import { errorMessage, type IndexedConfig, type IndexedDataset } from "@neherlab/app-contracts";
 import { runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -6,7 +6,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis/ExamplesDownload";
 import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
-import { useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
+import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
@@ -25,7 +25,14 @@ import {
   CommandList,
 } from "../ui/command";
 import { useToastManager } from "../ui/toast";
-import { matchingPaletteItems, type PaletteGroup, type PaletteItem, paletteGroups, paletteItem } from "./paletteItems";
+import {
+  datasetPaletteItems,
+  matchingPaletteItems,
+  type PaletteGroup,
+  type PaletteItem,
+  paletteGroups,
+  paletteItem,
+} from "./paletteItems";
 import { changedFlags, listedRuns } from "./runList";
 import { nextTheme } from "./SiteHeader";
 
@@ -138,6 +145,7 @@ function usePaletteItems(): PaletteItem[] {
   const host = useHost();
   const { theme, chooseTheme } = useThemeChoice();
   const loadExampleConfig = useExampleConfigLoader();
+  const loadExampleDataset = useDatasetLoader();
   const toasts = useToastManager();
   const downloadStatus = useExamplesDownloadStatus(host !== null);
   const { mutate: startDownload } = useStartExamplesDownload();
@@ -159,6 +167,21 @@ function usePaletteItems(): PaletteItem[] {
       }
     },
     [examples, loadExampleConfig, toasts],
+  );
+
+  const loadDataset = useCallback(
+    async (dataset: IndexedDataset) => {
+      if (examples === undefined) {
+        return;
+      }
+
+      try {
+        await loadExampleDataset(examples, dataset, command);
+      } catch (error: unknown) {
+        toasts.add({ title: `${dataset.name} cannot be loaded`, description: errorMessage(error) });
+      }
+    },
+    [command, examples, loadExampleDataset, toasts],
   );
 
   return useMemo(() => {
@@ -218,6 +241,8 @@ function usePaletteItems(): PaletteItem[] {
       }
     }
 
+    items.push(...datasetPaletteItems(examples?.index?.datasets ?? [], command, loadDataset));
+
     for (const config of examples?.index?.configs ?? []) {
       items.push(
         paletteItem("Example", `example-${config.path}`, config.title, config.path, () => loadExample(config)),
@@ -254,6 +279,7 @@ function usePaletteItems(): PaletteItem[] {
     downloadStatus,
     examples,
     host,
+    loadDataset,
     loadExample,
     navigate,
     runList,

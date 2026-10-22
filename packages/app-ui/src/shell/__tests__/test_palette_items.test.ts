@@ -1,4 +1,6 @@
-import { matchingPaletteItems, paletteGroups, paletteItem } from "../paletteItems";
+import type { IndexedDataset } from "@neherlab/app-contracts";
+
+import { datasetPaletteItems, matchingPaletteItems, paletteGroups, paletteItem } from "../paletteItems";
 
 const NOOP = () => undefined;
 
@@ -7,15 +9,35 @@ const ITEMS = [
   paletteItem("Run", "run-1", "Ebola time tree", "Time tree  --clock-rate", NOOP),
   paletteItem("Action", "action-new", "New analysis", "", NOOP),
   paletteItem("Run", "run-2", "Zika clock", "Clock", NOOP),
+  paletteItem("Dataset", "dataset-zika/20", "zika/20", "tree, metadata", NOOP),
+];
+
+const DATASETS: IndexedDataset[] = [
+  {
+    name: "zika/20",
+    inputs: [
+      { kind: "tree", path: "zika/20/tree.nwk" },
+      { kind: "alignment", path: "zika/20/aln.fasta.xz" },
+      { kind: "metadata", path: "zika/20/metadata.tsv" },
+    ],
+  },
+  { name: "flu/h3n2/20", inputs: [{ kind: "alignment", path: "flu/h3n2/20/aln.fasta.xz" }] },
 ];
 
 describe("command palette items", () => {
-  test("groups follow the order actions, runs, settings, examples, and keep the item order within a group", () => {
+  test("groups follow the order actions, runs, settings, datasets, examples, and keep the item order within a group", () => {
     expect(paletteGroups(ITEMS).map((group) => [group.kind, group.items.map((item) => item.id)])).toStrictEqual([
       ["Action", ["action-new"]],
       ["Run", ["run-1", "run-2"]],
+      ["Dataset", ["dataset-zika/20"]],
       ["Example", ["example-flu"]],
     ]);
+  });
+
+  test("the indexed datasets with inputs of the current command are listed with the inputs they fill", () => {
+    expect(
+      datasetPaletteItems(DATASETS, "mugration", NOOP).map((item) => [item.id, item.title, item.description]),
+    ).toStrictEqual([["dataset-zika/20", "zika/20", "tree, metadata"]]);
   });
 
   test("no group is listed for a kind without items", () => {

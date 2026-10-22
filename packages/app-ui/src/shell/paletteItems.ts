@@ -1,6 +1,9 @@
+import type { AppCommand, IndexedDataset } from "@neherlab/app-contracts";
+
+import { indexedDatasetInputs } from "../analysis/exampleData";
 import { fuzzyFilter } from "../fuzzy";
 
-const PALETTE_KINDS = ["Action", "Run", "Setting", "Example"] as const;
+const PALETTE_KINDS = ["Action", "Run", "Setting", "Dataset", "Example"] as const;
 
 export function paletteItem(
   kind: PaletteKind,
@@ -11,6 +14,28 @@ export function paletteItem(
   focusId?: string,
 ): PaletteItem {
   return { id, kind, title, description, keywords: [kind, title, description].join(" "), run, focusId };
+}
+
+export function datasetPaletteItems(
+  datasets: readonly IndexedDataset[],
+  command: AppCommand,
+  load: (dataset: IndexedDataset) => Promise<void> | void,
+): PaletteItem[] {
+  return datasets.flatMap((dataset) => {
+    const inputs = indexedDatasetInputs(dataset, command);
+
+    return inputs.length === 0
+      ? []
+      : [
+          paletteItem(
+            "Dataset",
+            `dataset-${dataset.name}`,
+            dataset.name,
+            inputs.map((input) => input.key).join(", "),
+            () => load(dataset),
+          ),
+        ];
+  });
 }
 
 export function paletteGroups(items: readonly PaletteItem[]): PaletteGroup[] {
