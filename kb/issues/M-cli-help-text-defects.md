@@ -35,10 +35,6 @@ Command: `optimize`. The description and possible value descriptions contain `$\
 
 Command: `timetree`. Takes two positional-style values (`--relax 1.0 0.5`). Most CLIs use separate flags or comma-separated values.
 
-### U8: Global flags on non-analysis commands
-
-`--jobs`, `--verbosity`, `--no-progress` appear on `completions`, `schema`, `help-markdown` where they serve no purpose.
-
 ## Style
 
 ### S3: `mugration --weights` grammar error
