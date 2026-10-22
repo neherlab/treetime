@@ -108,12 +108,6 @@ strip = "none"
 openblas-src = { git = "https://github.com/numrs/openblas-src", rev = "bdc5d5f" }
 
 
-# The `#[wasm_bindgen]` exports of async methods call `wasm-bindgen-futures`, which
-# the crate source never names.
-[workspace.metadata.cargo-shear]
-ignored = ["wasm-bindgen-futures"]
-
-
 [workspace.dependencies]
 ndarray = { version = "=0.17.2", features = ["rayon", "approx", "blas"] }
 ndarray-linalg = { version = "=0.18.1", features = ["openblas-system"] }

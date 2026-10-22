@@ -41,8 +41,3 @@ treetime-schema = { workspace = true }
 
 [lints]
 workspace = true
-
-# The `#[wasm_bindgen]` exports of the async methods of `Exchange` call
-# `wasm-bindgen-futures`, which the crate source never names.
-[package.metadata.cargo-shear]
-ignored = ["wasm-bindgen-futures"]
