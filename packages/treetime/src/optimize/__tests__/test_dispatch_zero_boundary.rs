@@ -12,8 +12,8 @@ pub(super) mod tests {
   use crate::optimize::zero_boundary::{ZeroLength, is_zero_branch_optimal};
   use crate::partition::optimize;
   use crate::partition::optimize::contribution::OptimizationContribution;
+  use crate::pretty_assert_abs_diff_eq;
   use crate::test_utils::SingleReconstruction;
-  use crate::{pretty_assert_abs_diff_eq, pretty_assert_ulps_eq};
   use eyre::Report;
   use helpers::{
     make_dinh_matsen_k80_contribution, mixed_decay_rate_contributions, reconcile, setup_identical_reconstruction,
@@ -21,6 +21,7 @@ pub(super) mod tests {
   use ndarray::array;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read;
+  use treetime_utils::pretty_assert_relative_eq;
 
   const IDENTICAL_TREE_NEWICK: &str = "((A:0.1,B:0.1)AB:0.1,(C:0.1,D:0.1)CD:0.1)root:0.1;";
 
@@ -175,11 +176,11 @@ pub(super) mod tests {
       lh_result > lh_zero,
       "the grid point must beat zero: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
     );
-    pretty_assert_ulps_eq!(
+    pretty_assert_relative_eq!(
       0.16152813746142794,
       result,
-      max_ulps = 4,
-      "expected the best of 100 log-spaced points on [0.001, 0.5] (index 81), next to the local maximum t = 0.16657 of the exact fixture coefficients (numpy evaluation); the global maximum t = 6.37 lies outside the grid"
+      max_relative = 1e-15,
+      "expected the best of 100 log-spaced points on [0.001, 0.5] (index 81), next to the local maximum t = 0.16657 of the exact fixture coefficients (numpy evaluation); the global maximum t = 6.37 lies outside the grid; numpy and ndarray round the exponentials of the log-spaced grid differently, so the grid points agree to a relative 1e-15"
     );
   }
 
@@ -351,11 +352,11 @@ pub(super) mod tests {
       lh_result > lh_zero,
       "the grid point must beat zero: log_lh({result})={lh_result} vs log_lh(0)={lh_zero}"
     );
-    pretty_assert_ulps_eq!(
+    pretty_assert_relative_eq!(
       0.16285785765815017,
       result,
-      max_ulps = 4,
-      "expected the best of 100 log-spaced points on [0.001, 0.91] (index 74), next to the local maximum t = 0.16657 of the exact fixture coefficients (numpy evaluation); the global maximum t = 6.37 lies outside the grid"
+      max_relative = 1e-15,
+      "expected the best of 100 log-spaced points on [0.001, 0.91] (index 74), next to the local maximum t = 0.16657 of the exact fixture coefficients (numpy evaluation); the global maximum t = 6.37 lies outside the grid; numpy and ndarray round the exponentials of the log-spaced grid differently, so the grid points agree to a relative 1e-15"
     );
   }
 
