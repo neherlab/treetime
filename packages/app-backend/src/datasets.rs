@@ -158,7 +158,7 @@ impl DataIndex {
     }
     let files: Vec<IndexedFile> = paths
       .into_iter()
-      .filter(|path| path != DATA_INDEX_FILE)
+      .filter(|path| is_example_file(path))
       .sorted()
       .dedup()
       .map(|path| {
@@ -340,6 +340,10 @@ fn is_data_path(path: &str) -> bool {
   !path.is_empty()
     && normalized.as_str() == path
     && !matches!(normalized.components().next(), Some(Component::ParentDir))
+}
+
+fn is_example_file(path: &str) -> bool {
+  path != DATA_INDEX_FILE && !path.split('/').any(|component| component.starts_with('.'))
 }
 
 fn join_data_path(folder: &str, name: &str) -> String {

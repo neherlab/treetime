@@ -621,10 +621,6 @@
       "size": 1933
     },
     {
-      "path": "usher/.gitignore",
-      "size": 14
-    },
-    {
       "path": "usher/global_phylo_opt.pb",
       "size": 26799
     },

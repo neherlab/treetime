@@ -132,6 +132,23 @@ mod tests {
   }
 
   #[test]
+  fn test_datasets_index_leaves_out_hidden_files_and_hidden_folders() {
+    let index = index_of(&["usher/.gitignore", "usher/.cache/tree.nwk", "usher/README.md"], &[]).unwrap();
+    assert_eq!(
+      DataIndex {
+        files: vec![IndexedFile {
+          path: o!("usher/README.md"),
+          size: 15,
+        }],
+        datasets: vec![],
+        configs: vec![],
+        pipelines: vec![],
+      },
+      index
+    );
+  }
+
+  #[test]
   fn test_datasets_index_resolves_config_inputs_from_the_config_folder() {
     let content = config_text(
       "mugration",
