@@ -17,6 +17,11 @@ const COMPRESSIBLE_FILES = /\.(html|css|js|mjs|json|svg|webmanifest|wasm)$/u;
 
 const COMPRESSION_THRESHOLD = 1024;
 
+const CROSS_ORIGIN_ISOLATION = {
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "require-corp",
+};
+
 export default defineConfig({
   plugins: [
     contentSecurityPolicyMeta({ webAssembly: true }),
@@ -42,9 +47,11 @@ export default defineConfig({
     port: devPort,
     strictPort: true,
     allowedHosts: [".localhost"],
+    headers: CROSS_ORIGIN_ISOLATION,
   },
   preview: {
     port: previewPort,
     strictPort: true,
+    headers: CROSS_ORIGIN_ISOLATION,
   },
 });
