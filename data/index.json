@@ -1,0 +1,1463 @@
+{
+  "files": [
+    {
+      "path": "README.md",
+      "size": 8928
+    },
+    {
+      "path": "dengue/100/README.md",
+      "size": 825
+    },
+    {
+      "path": "dengue/100/aln.fasta.xz",
+      "size": 178524
+    },
+    {
+      "path": "dengue/100/clock.yaml",
+      "size": 828
+    },
+    {
+      "path": "dengue/100/metadata.tsv",
+      "size": 54754
+    },
+    {
+      "path": "dengue/100/tree.nwk",
+      "size": 3658
+    },
+    {
+      "path": "dengue/1000/aln.fasta.xz",
+      "size": 292308
+    },
+    {
+      "path": "dengue/1000/metadata.tsv",
+      "size": 524588
+    },
+    {
+      "path": "dengue/1000/tree.nwk",
+      "size": 32019
+    },
+    {
+      "path": "dengue/20/README.md",
+      "size": 821
+    },
+    {
+      "path": "dengue/20/aln.fasta.xz",
+      "size": 40256
+    },
+    {
+      "path": "dengue/20/metadata.tsv",
+      "size": 11383
+    },
+    {
+      "path": "dengue/20/tree.nwk",
+      "size": 698
+    },
+    {
+      "path": "dengue/2000/aln.fasta.xz",
+      "size": 462648
+    },
+    {
+      "path": "dengue/2000/metadata.tsv",
+      "size": 1045874
+    },
+    {
+      "path": "dengue/2000/tree.nwk",
+      "size": 64458
+    },
+    {
+      "path": "dengue/500/aln.fasta.xz",
+      "size": 167436
+    },
+    {
+      "path": "dengue/500/metadata.tsv",
+      "size": 241871
+    },
+    {
+      "path": "dengue/500/tree.nwk",
+      "size": 15057
+    },
+    {
+      "path": "ebola/100/README.md",
+      "size": 808
+    },
+    {
+      "path": "ebola/100/aln.fasta.xz",
+      "size": 108124
+    },
+    {
+      "path": "ebola/100/metadata.tsv",
+      "size": 2400
+    },
+    {
+      "path": "ebola/100/tree.nwk",
+      "size": 4045
+    },
+    {
+      "path": "ebola/20/README.md",
+      "size": 804
+    },
+    {
+      "path": "ebola/20/aln.fasta.xz",
+      "size": 26248
+    },
+    {
+      "path": "ebola/20/ancestral-parsimony.yaml",
+      "size": 855
+    },
+    {
+      "path": "ebola/20/metadata.tsv",
+      "size": 487
+    },
+    {
+      "path": "ebola/20/prune-nodes.txt",
+      "size": 16
+    },
+    {
+      "path": "ebola/20/tree.nwk",
+      "size": 772
+    },
+    {
+      "path": "ebola/362/aln.fasta.xz",
+      "size": 28944
+    },
+    {
+      "path": "ebola/362/metadata.tsv",
+      "size": 8673
+    },
+    {
+      "path": "ebola/362/pipeline.yaml",
+      "size": 1770
+    },
+    {
+      "path": "ebola/362/tree.nwk",
+      "size": 15735
+    },
+    {
+      "path": "flu/h3n2/20/aln.fasta.xz",
+      "size": 1716
+    },
+    {
+      "path": "flu/h3n2/20/aln.phylip",
+      "size": 70223
+    },
+    {
+      "path": "flu/h3n2/20/metadata.tsv",
+      "size": 1449
+    },
+    {
+      "path": "flu/h3n2/20/optimize.yaml",
+      "size": 948
+    },
+    {
+      "path": "flu/h3n2/20/tree.nex",
+      "size": 2818
+    },
+    {
+      "path": "flu/h3n2/20/tree.nwk",
+      "size": 1567
+    },
+    {
+      "path": "flu/h3n2/200/aln.fasta.xz",
+      "size": 7908
+    },
+    {
+      "path": "flu/h3n2/200/metadata.tsv",
+      "size": 15861
+    },
+    {
+      "path": "flu/h3n2/200/pipeline.yaml",
+      "size": 1355
+    },
+    {
+      "path": "flu/h3n2/200/timetree.yaml",
+      "size": 1279
+    },
+    {
+      "path": "flu/h3n2/200/tree.nwk",
+      "size": 16913
+    },
+    {
+      "path": "flu/h3n2/500/aln.fasta.xz",
+      "size": 15648
+    },
+    {
+      "path": "flu/h3n2/500/metadata.tsv",
+      "size": 39477
+    },
+    {
+      "path": "flu/h3n2/500/pipeline.yaml",
+      "size": 1947
+    },
+    {
+      "path": "flu/h3n2/500/tree.nwk",
+      "size": 39599
+    },
+    {
+      "path": "lassa/L/20/README.md",
+      "size": 815
+    },
+    {
+      "path": "lassa/L/20/aln.fasta.xz",
+      "size": 37516
+    },
+    {
+      "path": "lassa/L/20/metadata.tsv",
+      "size": 10060
+    },
+    {
+      "path": "lassa/L/20/tree.nwk",
+      "size": 698
+    },
+    {
+      "path": "lassa/L/200/aln.fasta.xz",
+      "size": 81816
+    },
+    {
+      "path": "lassa/L/200/metadata.tsv",
+      "size": 97878
+    },
+    {
+      "path": "lassa/L/200/tree.nwk",
+      "size": 6047
+    },
+    {
+      "path": "lassa/L/50/aln.fasta.xz",
+      "size": 24632
+    },
+    {
+      "path": "lassa/L/50/metadata.tsv",
+      "size": 20452
+    },
+    {
+      "path": "lassa/L/50/tree.nwk",
+      "size": 1295
+    },
+    {
+      "path": "lassa/L/500/aln.fasta.xz",
+      "size": 152256
+    },
+    {
+      "path": "lassa/L/500/metadata.tsv",
+      "size": 275843
+    },
+    {
+      "path": "lassa/L/500/tree.nwk",
+      "size": 13637
+    },
+    {
+      "path": "mpox/clade-ii/100/README.md",
+      "size": 838
+    },
+    {
+      "path": "mpox/clade-ii/100/aln.fasta.xz",
+      "size": 5428532
+    },
+    {
+      "path": "mpox/clade-ii/100/annotation.gff3",
+      "size": 116892
+    },
+    {
+      "path": "mpox/clade-ii/100/metadata.tsv",
+      "size": 44669
+    },
+    {
+      "path": "mpox/clade-ii/100/tree.nwk",
+      "size": 3658
+    },
+    {
+      "path": "mpox/clade-ii/1000/aln.fasta.xz",
+      "size": 246112
+    },
+    {
+      "path": "mpox/clade-ii/1000/annotation.gff3",
+      "size": 116892
+    },
+    {
+      "path": "mpox/clade-ii/1000/metadata.tsv",
+      "size": 404491
+    },
+    {
+      "path": "mpox/clade-ii/1000/optimize.yaml",
+      "size": 1009
+    },
+    {
+      "path": "mpox/clade-ii/1000/pipeline.yaml",
+      "size": 2767
+    },
+    {
+      "path": "mpox/clade-ii/1000/tree.nwk",
+      "size": 31623
+    },
+    {
+      "path": "mpox/clade-ii/1000/tree_opt.nwk",
+      "size": 30353
+    },
+    {
+      "path": "mpox/clade-ii/20/README.md",
+      "size": 834
+    },
+    {
+      "path": "mpox/clade-ii/20/aln.fasta.xz",
+      "size": 1084592
+    },
+    {
+      "path": "mpox/clade-ii/20/annotation.gff3",
+      "size": 116892
+    },
+    {
+      "path": "mpox/clade-ii/20/metadata.tsv",
+      "size": 9168
+    },
+    {
+      "path": "mpox/clade-ii/20/tree.nwk",
+      "size": 698
+    },
+    {
+      "path": "mpox/clade-ii/2000/aln.fasta.xz",
+      "size": 431188
+    },
+    {
+      "path": "mpox/clade-ii/2000/annotation.gff3",
+      "size": 116892
+    },
+    {
+      "path": "mpox/clade-ii/2000/metadata.tsv",
+      "size": 824934
+    },
+    {
+      "path": "mpox/clade-ii/2000/tree.nwk",
+      "size": 65613
+    },
+    {
+      "path": "mpox/clade-ii/500/aln.fasta.xz",
+      "size": 142824
+    },
+    {
+      "path": "mpox/clade-ii/500/annotation.gff3",
+      "size": 116892
+    },
+    {
+      "path": "mpox/clade-ii/500/metadata.tsv",
+      "size": 202292
+    },
+    {
+      "path": "mpox/clade-ii/500/tree.nwk",
+      "size": 15255
+    },
+    {
+      "path": "phyloxml/README.md",
+      "size": 44
+    },
+    {
+      "path": "phyloxml/amphibian_tree_of_life_Frost_DR_2006.xml",
+      "size": 286488
+    },
+    {
+      "path": "phyloxml/apaf.xml",
+      "size": 40636
+    },
+    {
+      "path": "phyloxml/bcl_2.xml",
+      "size": 113563
+    },
+    {
+      "path": "phyloxml/hg1001.xml",
+      "size": 1027113
+    },
+    {
+      "path": "rsv/a/100/README.md",
+      "size": 814
+    },
+    {
+      "path": "rsv/a/100/aln.fasta.xz",
+      "size": 186968
+    },
+    {
+      "path": "rsv/a/100/annotation.gff3",
+      "size": 2019
+    },
+    {
+      "path": "rsv/a/100/metadata.tsv",
+      "size": 39132
+    },
+    {
+      "path": "rsv/a/100/prune.yaml",
+      "size": 833
+    },
+    {
+      "path": "rsv/a/100/tree.nwk",
+      "size": 3658
+    },
+    {
+      "path": "rsv/a/1000/aln.fasta.xz",
+      "size": 174816
+    },
+    {
+      "path": "rsv/a/1000/annotation.gff3",
+      "size": 2019
+    },
+    {
+      "path": "rsv/a/1000/metadata.tsv",
+      "size": 380804
+    },
+    {
+      "path": "rsv/a/1000/tree.nwk",
+      "size": 31886
+    },
+    {
+      "path": "rsv/a/20/README.md",
+      "size": 1192
+    },
+    {
+      "path": "rsv/a/20/aln.fasta.xz",
+      "size": 46688
+    },
+    {
+      "path": "rsv/a/20/annotation.gff3",
+      "size": 2019
+    },
+    {
+      "path": "rsv/a/20/metadata.tsv",
+      "size": 8187
+    },
+    {
+      "path": "rsv/a/20/translations/F.fasta.xz",
+      "size": 764
+    },
+    {
+      "path": "rsv/a/20/translations/G.fasta.xz",
+      "size": 932
+    },
+    {
+      "path": "rsv/a/20/translations/L.fasta.xz",
+      "size": 2020
+    },
+    {
+      "path": "rsv/a/20/translations/M.fasta.xz",
+      "size": 420
+    },
+    {
+      "path": "rsv/a/20/translations/M2-1.fasta.xz",
+      "size": 420
+    },
+    {
+      "path": "rsv/a/20/translations/M2-2.fasta.xz",
+      "size": 356
+    },
+    {
+      "path": "rsv/a/20/translations/N.fasta.xz",
+      "size": 556
+    },
+    {
+      "path": "rsv/a/20/translations/NS1.fasta.xz",
+      "size": 352
+    },
+    {
+      "path": "rsv/a/20/translations/NS2.fasta.xz",
+      "size": 352
+    },
+    {
+      "path": "rsv/a/20/translations/P.fasta.xz",
+      "size": 444
+    },
+    {
+      "path": "rsv/a/20/translations/SH.fasta.xz",
+      "size": 284
+    },
+    {
+      "path": "rsv/a/20/tree.nwk",
+      "size": 698
+    },
+    {
+      "path": "rsv/a/2000/aln.fasta.xz",
+      "size": 288612
+    },
+    {
+      "path": "rsv/a/2000/annotation.gff3",
+      "size": 2019
+    },
+    {
+      "path": "rsv/a/2000/metadata.tsv",
+      "size": 774967
+    },
+    {
+      "path": "rsv/a/2000/tree.nwk",
+      "size": 65942
+    },
+    {
+      "path": "rsv/a/500/aln.fasta.xz",
+      "size": 98616
+    },
+    {
+      "path": "rsv/a/500/annotation.gff3",
+      "size": 2019
+    },
+    {
+      "path": "rsv/a/500/metadata.tsv",
+      "size": 182679
+    },
+    {
+      "path": "rsv/a/500/tree.nwk",
+      "size": 15155
+    },
+    {
+      "path": "sc2/2844/aln.fasta.xz",
+      "size": 181488
+    },
+    {
+      "path": "sc2/2844/ancestral.yaml",
+      "size": 884
+    },
+    {
+      "path": "sc2/2844/annotation.gff3",
+      "size": 544
+    },
+    {
+      "path": "sc2/2844/pipeline.yaml",
+      "size": 1431
+    },
+    {
+      "path": "sc2/2844/tree.nwk",
+      "size": 148530
+    },
+    {
+      "path": "sc2/4500/aln.fasta.xz",
+      "size": 486272
+    },
+    {
+      "path": "sc2/4500/annotation.gff3",
+      "size": 544
+    },
+    {
+      "path": "sc2/4500/metadata.tsv.xz",
+      "size": 565792
+    },
+    {
+      "path": "sc2/4500/tree.nwk",
+      "size": 262532
+    },
+    {
+      "path": "smoke/README.md",
+      "size": 1637
+    },
+    {
+      "path": "smoke/clock-keep-root-and-reroot.yaml",
+      "size": 97
+    },
+    {
+      "path": "smoke/flu-h3n2-20-tree-single-child-polytomy.nwk",
+      "size": 1592
+    },
+    {
+      "path": "smoke/zika-20-tree-without-internal-branch-lengths.nwk",
+      "size": 1152
+    },
+    {
+      "path": "subsample",
+      "size": 12554
+    },
+    {
+      "path": "tb/100/README.md",
+      "size": 794
+    },
+    {
+      "path": "tb/100/aln.fasta.xz",
+      "size": 1448
+    },
+    {
+      "path": "tb/100/metadata.tsv",
+      "size": 18765
+    },
+    {
+      "path": "tb/100/tree.nwk",
+      "size": 3073
+    },
+    {
+      "path": "tb/149/aln.fasta.xz",
+      "size": 1328
+    },
+    {
+      "path": "tb/149/informative_sites.fasta",
+      "size": 33972
+    },
+    {
+      "path": "tb/149/lee_2015.vcf.xz",
+      "size": 1470600
+    },
+    {
+      "path": "tb/149/metadata.tsv",
+      "size": 31036
+    },
+    {
+      "path": "tb/149/tb_ref.fasta.xz",
+      "size": 1180556
+    },
+    {
+      "path": "tb/149/tree.nwk",
+      "size": 4594
+    },
+    {
+      "path": "tb/20/README.md",
+      "size": 794
+    },
+    {
+      "path": "tb/20/aln.fasta.xz",
+      "size": 572
+    },
+    {
+      "path": "tb/20/metadata.tsv",
+      "size": 3822
+    },
+    {
+      "path": "tb/20/tree.nwk",
+      "size": 588
+    },
+    {
+      "path": "translate",
+      "size": 4517
+    },
+    {
+      "path": "usher-download-examples",
+      "size": 1933
+    },
+    {
+      "path": "usher/.gitignore",
+      "size": 14
+    },
+    {
+      "path": "usher/global_phylo_opt.pb",
+      "size": 26799
+    },
+    {
+      "path": "zika/20/README.md",
+      "size": 798
+    },
+    {
+      "path": "zika/20/aln.fasta.xz",
+      "size": 14632
+    },
+    {
+      "path": "zika/20/ancestral.yaml",
+      "size": 772
+    },
+    {
+      "path": "zika/20/metadata.tsv",
+      "size": 1284
+    },
+    {
+      "path": "zika/20/mugration.yaml",
+      "size": 1077
+    },
+    {
+      "path": "zika/20/pipeline.yaml",
+      "size": 1604
+    },
+    {
+      "path": "zika/20/tree.nwk",
+      "size": 1373
+    },
+    {
+      "path": "zika/86/aln.fasta.xz",
+      "size": 7312
+    },
+    {
+      "path": "zika/86/metadata.tsv",
+      "size": 5437
+    },
+    {
+      "path": "zika/86/tree.nwk",
+      "size": 4979
+    },
+    {
+      "path": "zika/86/zika.phylip.xz",
+      "size": 10840
+    },
+    {
+      "path": "zika/country_weights.csv",
+      "size": 293
+    }
+  ],
+  "datasets": [
+    {
+      "name": "dengue/100",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "dengue/100/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "dengue/100/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "dengue/100/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "dengue/1000",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "dengue/1000/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "dengue/1000/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "dengue/1000/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "dengue/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "dengue/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "dengue/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "dengue/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "dengue/2000",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "dengue/2000/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "dengue/2000/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "dengue/2000/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "dengue/500",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "dengue/500/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "dengue/500/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "dengue/500/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "ebola/100",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "ebola/100/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "ebola/100/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "ebola/100/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "ebola/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "ebola/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "ebola/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "ebola/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "ebola/362",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "ebola/362/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "ebola/362/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "ebola/362/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "flu/h3n2/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "flu/h3n2/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "flu/h3n2/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "flu/h3n2/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "flu/h3n2/200",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "flu/h3n2/200/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "flu/h3n2/200/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "flu/h3n2/200/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "flu/h3n2/500",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "flu/h3n2/500/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "flu/h3n2/500/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "flu/h3n2/500/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "lassa/L/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "lassa/L/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "lassa/L/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "lassa/L/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "lassa/L/200",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "lassa/L/200/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "lassa/L/200/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "lassa/L/200/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "lassa/L/50",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "lassa/L/50/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "lassa/L/50/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "lassa/L/50/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "lassa/L/500",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "lassa/L/500/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "lassa/L/500/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "lassa/L/500/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "mpox/clade-ii/100",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "mpox/clade-ii/100/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "mpox/clade-ii/100/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "mpox/clade-ii/100/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "mpox/clade-ii/1000",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "mpox/clade-ii/1000/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "mpox/clade-ii/1000/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "mpox/clade-ii/1000/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "mpox/clade-ii/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "mpox/clade-ii/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "mpox/clade-ii/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "mpox/clade-ii/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "mpox/clade-ii/2000",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "mpox/clade-ii/2000/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "mpox/clade-ii/2000/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "mpox/clade-ii/2000/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "mpox/clade-ii/500",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "mpox/clade-ii/500/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "mpox/clade-ii/500/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "mpox/clade-ii/500/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "rsv/a/100",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "rsv/a/100/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "rsv/a/100/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "rsv/a/100/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "rsv/a/1000",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "rsv/a/1000/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "rsv/a/1000/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "rsv/a/1000/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "rsv/a/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "rsv/a/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "rsv/a/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "rsv/a/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "rsv/a/2000",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "rsv/a/2000/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "rsv/a/2000/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "rsv/a/2000/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "rsv/a/500",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "rsv/a/500/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "rsv/a/500/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "rsv/a/500/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "sc2/2844",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "sc2/2844/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "sc2/2844/aln.fasta.xz"
+        }
+      ]
+    },
+    {
+      "name": "sc2/4500",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "sc2/4500/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "sc2/4500/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "sc2/4500/metadata.tsv.xz"
+        }
+      ]
+    },
+    {
+      "name": "tb/100",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "tb/100/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "tb/100/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "tb/100/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "tb/149",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "tb/149/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "tb/149/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "tb/149/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "tb/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "tb/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "tb/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "tb/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "zika/20",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "zika/20/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "zika/20/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "zika/20/metadata.tsv"
+        }
+      ]
+    },
+    {
+      "name": "zika/86",
+      "inputs": [
+        {
+          "kind": "tree",
+          "path": "zika/86/tree.nwk"
+        },
+        {
+          "kind": "alignment",
+          "path": "zika/86/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "zika/86/metadata.tsv"
+        }
+      ]
+    }
+  ],
+  "configs": [
+    {
+      "path": "dengue/100/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip clock regression (dengue/100).",
+      "folder": "dengue/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip clock regression (dengue/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/dengue/100/clock.yaml --output-all tmp/examples/dengue/100/clock\n#\n# `clock` reroots the tree to maximize the temporal signal, then fits the\n# root-to-tip regression and reports the clock rate. The taxon identifier lives\n# in a non-default metadata column here, named once in the config instead of a\n# `--metadata-id-columns genbank_accession` flag repeated on every run.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\n",
+      "inputs": {
+        "metadata": [
+          "dengue/100/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/20/ancestral-parsimony.yaml",
+      "command": "ancestral",
+      "title": "Ancestral reconstruction by Fitch parsimony (ebola/20).",
+      "folder": "ebola/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral reconstruction by Fitch parsimony (ebola/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/ebola/20/ancestral-parsimony.yaml --output-all tmp/examples/ebola/20/ancestral-parsimony\n#\n# A per-command config is the command's own argument object. Every value here\n# has a matching `--flag`; the file is a saved, reviewable, version-controlled\n# invocation. An explicit flag on the command line still overrides the file.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\n# Fitch parsimony: fast, model-free ancestral states and mutations.\nmethod_anc: \"parsimony\"\n",
+      "inputs": {
+        "alignment": [
+          "ebola/20/aln.fasta.xz"
+        ],
+        "tree": [
+          "ebola/20/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/20/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with divergence-based rerooting (flu/h3n2/20).",
+      "folder": "flu/h3n2/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with divergence-based rerooting (flu/h3n2/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/20/optimize.yaml --output-all tmp/examples/flu/h3n2/20/optimize\n#\n# `optimize` re-estimates every branch length under the substitution model and\n# (here) reroots to minimize root-to-tip divergence variance. This is the\n# date-free step that replaces `augur refine` in a Nextstrain build.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\n# Per-edge optimizer: Brent's method in sqrt(t) space (the default, matches v0).\nopt_method: \"brent\"\n\n# Reroot by minimizing root-to-tip divergence variance (a date-free method).\nreroot: \"min-dev\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/20/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/20/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/200/timetree.yaml",
+      "command": "timetree",
+      "title": "Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).",
+      "folder": "flu/h3n2/200",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/200/timetree.yaml --output-all tmp/examples/flu/h3n2/200/timetree\n#\n# `timetree` turns divergence into calendar time. Fixing the clock rate\n# (`clock_rate`) skips rate estimation and is common for well-characterized\n# pathogens like seasonal influenza. `confidence` adds date confidence\n# intervals, which need a rate uncertainty (`clock_std_dev`) when the rate is\n# fixed; `coalescent_opt` fits a constant coalescent time scale analytically.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_rate: 0.003\nclock_std_dev: 0.0006\nconfidence: true\ncoalescent_opt: true\nmax_iter: 3\n\n# The default outputs, plus the date confidence intervals as a TSV.\noutput_selection:\n  - \"nwk\"\n  - \"nexus\"\n  - \"auspice\"\n  - \"augur-node-data\"\n  - \"gtr\"\n  - \"reconstructed-nuc-fasta\"\n  - \"clock-model\"\n  - \"coalescent-tsv\"\n  - \"confidence-tsv\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/200/aln.fasta.xz"
+        ],
+        "metadata": [
+          "flu/h3n2/200/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/200/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/1000/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization for a Nextstrain mpox build (mpox/clade-ii/1000).",
+      "folder": "mpox/clade-ii/1000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization for a Nextstrain mpox build (mpox/clade-ii/1000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/mpox/clade-ii/1000/optimize.yaml --output-all tmp/examples/mpox/clade-ii/1000/optimize\n#\n# This is the date-free step that replaces `augur refine` in the nextstrain/mpox\n# `WIP/new_tt` workflow. It re-estimates every branch length and reroots on the\n# minimum-divergence branch. mpox divergence is counted in absolute mutations\n# (`divergence_units: mutations`), and indels are excluded from the branch-length\n# likelihood (`no_indels`), matching the pipeline's `treetime optimize` rule.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nreroot: \"min-dev\"\ndivergence_units: \"mutations\"\nno_indels: true\n",
+      "inputs": {
+        "alignment": [
+          "mpox/clade-ii/1000/aln.fasta.xz"
+        ],
+        "tree": [
+          "mpox/clade-ii/1000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/100/prune.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).",
+      "folder": "rsv/a/100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/rsv/a/100/prune.yaml --output-all tmp/examples/rsv/a/100/prune\n#\n# `prune` removes tree-builder artifacts before a downstream analysis: branches\n# shorter than a threshold, branches carrying no mutation, and sibling branches\n# in a polytomy that share identical mutations (regrouped under one edge).\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nprune_short: 1.0e-6\nprune_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/100/aln.fasta.xz"
+        ],
+        "tree": [
+          "rsv/a/100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/2844/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Marginal ancestral reconstruction on 2844 SARS-CoV-2 genomes (sc2/2844).",
+      "folder": "sc2/2844",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral reconstruction on 2844 SARS-CoV-2 genomes (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/sc2/2844/ancestral.yaml --output-all tmp/examples/sc2/2844/ancestral\n#\n# A large single-command run: marginal reconstruction treats every site\n# independently, fits a GTR rate matrix from the data (the default\n# `model: infer`), and maps nucleotide mutations onto the tree. The sparse\n# representation (the default) stores only variable sites, which keeps a\n# genome-length SARS-CoV-2 alignment tractable.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nmethod_anc: \"marginal\"\n",
+      "inputs": {
+        "alignment": [
+          "sc2/2844/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/2844/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/20/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Marginal ancestral reconstruction with an inferred GTR model (zika/20).",
+      "folder": "zika/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral reconstruction with an inferred GTR model (zika/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/zika/20/ancestral.yaml --output-all tmp/examples/zika/20/ancestral\n#\n# Marginal reconstruction treats every site independently and reports the\n# maximum-likelihood ancestral state per node. It fits a GTR rate matrix from the\n# data (the default `model: infer`) and writes it alongside the tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nmethod_anc: \"marginal\"\n",
+      "inputs": {
+        "alignment": [
+          "zika/20/aln.fasta.xz"
+        ],
+        "tree": [
+          "zika/20/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/20/mugration.yaml",
+      "command": "mugration",
+      "title": "Discrete ancestral geography (\"mugration\") over sampling country (zika/20).",
+      "folder": "zika/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Discrete ancestral geography (\"mugration\") over sampling country (zika/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/zika/20/mugration.yaml --output-all tmp/examples/zika/20/mugration\n#\n# `mugration` treats a discrete metadata column (here `country`) like a\n# sequence character and reconstructs it on internal nodes, inferring a GTR\n# model of transitions between states. `weights` supplies a prior on state\n# equilibrium frequencies; `pc` is the pseudo-count that flattens the model.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"country\"\n\nweights: \"../country_weights.csv\"\npc: 1.0\n\n# The default outputs, plus the confidence of the reconstructed states as a CSV.\noutput_selection:\n  - \"nwk\"\n  - \"nexus\"\n  - \"augur-node-data\"\n  - \"gtr\"\n  - \"traits-csv\"\n  - \"confidence-csv\"\n",
+      "inputs": {
+        "metadata": [
+          "zika/20/metadata.tsv"
+        ],
+        "tree": [
+          "zika/20/tree.nwk"
+        ],
+        "weights": [
+          "zika/country_weights.csv"
+        ]
+      }
+    }
+  ],
+  "pipelines": [
+    {
+      "path": "ebola/362/pipeline.yaml",
+      "title": "Full three-step build on a real epidemic dataset (ebola/362).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        }
+      ]
+    },
+    {
+      "path": "flu/h3n2/200/pipeline.yaml",
+      "title": "Optimize then date, with a fixed clock rate defined once (flu/h3n2/200).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        }
+      ]
+    },
+    {
+      "path": "flu/h3n2/500/pipeline.yaml",
+      "title": "Seasonal influenza H3N2 build: optimize, reconstruct, date (flu/h3n2/500).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        }
+      ]
+    },
+    {
+      "path": "mpox/clade-ii/1000/pipeline.yaml",
+      "title": "Nextstrain mpox build (clade IIb, hmpxv1), TreeTime part in one file (mpox/clade-ii/1000).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        }
+      ]
+    },
+    {
+      "path": "sc2/2844/pipeline.yaml",
+      "title": "SARS-CoV-2 branch-length optimization and ancestral reconstruction (sc2/2844).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        }
+      ]
+    },
+    {
+      "path": "zika/20/pipeline.yaml",
+      "title": "Phylodynamics + phylogeography in one file: time tree, then ancestral geography (zika/20).",
+      "steps": [
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "mugration",
+          "command": "mugration"
+        }
+      ]
+    }
+  ]
+}
