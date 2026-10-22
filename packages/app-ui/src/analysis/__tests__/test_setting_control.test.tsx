@@ -28,6 +28,27 @@ const COALESCENT: SettingSpec = {
   more: "",
 };
 
+const MODEL: SettingSpec = {
+  key: "model",
+  label: "Substitution model",
+  flag: "--model",
+  group: "Substitution model",
+  role: "setting",
+  kind: "enum",
+  nullable: true,
+  options: [
+    { value: "infer", help: "" },
+    { value: "jc69", help: "" },
+  ],
+  item_kind: "string",
+  documented_default: "infer",
+  examples: [],
+  value_names: ["MODEL"],
+  conflicts: [],
+  help: "Substitution model to use",
+  more: "",
+};
+
 const mounted: Root[] = [];
 
 beforeAll(registerDom);
@@ -71,12 +92,25 @@ describe("coalescent prior control", () => {
   });
 });
 
-function render(value: FormValue | undefined) {
+describe("setting with a documented default", () => {
+  test("an unset setting names its documented default and a pick of that value sets it", async () => {
+    render(undefined, MODEL);
+    const user = userEvent.setup({ document });
+    const select = page().getByRole<HTMLSelectElement>("combobox", { name: "Substitution model" });
+    const unset = [select.selectedOptions[0]?.textContent, settingText()];
+
+    await user.selectOptions(select, "infer");
+
+    expect([unset, settingText()]).toStrictEqual([["Default: infer", "null"], '"infer"']);
+  });
+});
+
+function render(value: FormValue | undefined, spec: SettingSpec = COALESCENT) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   mounted.push(root);
-  inAct(() => root.render(<Form value={value} />));
+  inAct(() => root.render(<Form spec={spec} value={value} />));
 }
 
 function selectedOption(): string | undefined {
@@ -90,26 +124,26 @@ function valueField(): HTMLInputElement | null {
 }
 
 function settingText(): string | null {
-  return page().getByLabelText("Coalescent setting").textContent;
+  return page().getByLabelText("Setting value").textContent;
 }
 
 function page() {
   return within(document.body);
 }
 
-function Form({ value }: { value: FormValue | undefined }) {
-  const form = useForm<FormConfig>({ defaultValues: { coalescent: value } });
+function Form({ spec, value }: { spec: SettingSpec; value: FormValue | undefined }) {
+  const form = useForm<FormConfig>({ defaultValues: { [spec.key]: value } });
 
   return (
     <FormProvider {...form}>
-      <SettingControl command="timetree" spec={COALESCENT} label="Coalescent prior" />
-      <SettingValue />
+      <SettingControl command="timetree" spec={spec} label={spec.label} />
+      <SettingValue name={spec.key} />
     </FormProvider>
   );
 }
 
-function SettingValue() {
-  const value = useWatch<FormConfig>({ name: "coalescent" });
+function SettingValue({ name }: { name: string }) {
+  const value = useWatch<FormConfig>({ name });
 
-  return <output aria-label="Coalescent setting">{JSON.stringify(value ?? null)}</output>;
+  return <output aria-label="Setting value">{JSON.stringify(value ?? null)}</output>;
 }

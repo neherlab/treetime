@@ -12,7 +12,7 @@ import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
 import { commandSettings, groupedSpecs } from "../settings/catalog";
-import { settingValue } from "../settings/config";
+import { documentedDefault, effectiveValue } from "../settings/config";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
@@ -99,10 +99,10 @@ export function SettingsTab({ record }: { record: RunRecord }) {
                         <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
                       </TableCell>
                       <TableCell className="font-mono text-xs break-all whitespace-normal">
-                        {defaultText(settingValue(config, spec))}
+                        {defaultText(effectiveValue(config, spec))}
                       </TableCell>
                       <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">
-                        {spec.role === "setting" ? defaultText(spec.default_value) : ""}
+                        {spec.role === "setting" ? defaultText(documentedDefault(spec)) : ""}
                       </TableCell>
                     </TableRow>
                   );

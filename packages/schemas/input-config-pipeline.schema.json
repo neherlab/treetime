@@ -476,7 +476,7 @@
               "description": "Number of grid points in skyline coalescent model.\n\nApplies only to --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2.",
               "type": "integer",
               "format": "uint",
-              "minimum": 0,
+              "minimum": 2,
               "default": 20,
               "x-unset": true
             },

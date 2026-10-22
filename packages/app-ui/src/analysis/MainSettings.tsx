@@ -19,7 +19,7 @@ import { OptionToggle } from "../components/OptionToggle";
 import { commandSettings } from "../settings/catalog";
 import { choiceRow } from "../settings/choices";
 import type { SettingKey } from "../settings/commands";
-import { isChanged, resetValue, settingValue } from "../settings/config";
+import { documentedDefault, isChanged, resetValue, settingValue } from "../settings/config";
 import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { Badge } from "../ui/badge";
@@ -48,11 +48,7 @@ const CLOCK_FILTER_KEYS = ["clock_filter"] as const satisfies readonly TimetreeK
 
 const RELAX_KEYS = ["relax"] as const satisfies readonly TimetreeKey[];
 
-const COALESCENT_KEYS = [
-  "coalescent",
-  "skyline_n_points",
-  "skyline_stiffness",
-] as const satisfies readonly TimetreeKey[];
+const COALESCENT_KEYS = ["coalescent", "n_skyline", "skyline_stiffness"] as const satisfies readonly TimetreeKey[];
 
 const POLYTOMY_KEYS = ["keep_polytomies"] as const satisfies readonly TimetreeKey[];
 
@@ -280,7 +276,7 @@ function CoalescentRow({ context }: { context: RowContext }) {
       <Inline>
         <Control context={context} settingKey="coalescent" className="w-auto" />
         <Labeled text="Skyline grid points">
-          <Control context={context} settingKey="skyline_n_points" className="w-20" />
+          <Control context={context} settingKey="n_skyline" className="w-20" />
         </Labeled>
         <Labeled text="Skyline stiffness">
           <Control context={context} settingKey="skyline_stiffness" className="w-20" />
@@ -367,9 +363,10 @@ function RelaxRow({ context }: { context: RowContext }) {
 
 function ModelRow({ context }: { context: RowContext }) {
   const { get, set, specs } = context;
-  const model = get("model");
+  const modelSpec = specs.get("model");
+  const model = get("model") ?? (modelSpec === undefined ? undefined : documentedDefault(modelSpec));
   const params = get("model_params");
-  const modelHelp = specs.get("model")?.options.find((option) => option.value === model)?.help ?? "";
+  const modelHelp = modelSpec?.options.find((option) => option.value === model)?.help ?? "";
 
   const onParams = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => set("model_params", parseList(event.target.value, "string")),

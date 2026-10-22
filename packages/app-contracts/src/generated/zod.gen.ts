@@ -1469,7 +1469,7 @@ export const zTimetreeConfig = z.strictObject({
     z.literal('opt'),
     z.literal('skyline')
   ]).optional(),
-  n_skyline: z.int().gte(0).optional(),
+  n_skyline: z.int().gte(2).optional(),
   skyline_stiffness: z.number().optional(),
   coalescent_confidence: z.number().optional(),
   clock_filter: z.number().optional(),

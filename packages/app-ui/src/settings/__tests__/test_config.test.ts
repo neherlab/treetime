@@ -1,7 +1,15 @@
 import type { SettingSpec } from "@neherlab/app-contracts";
 
 import { commandSettings } from "../catalog";
-import { carryOverConfig, changedSpecs, defaultConfig, isChanged, normalizeConfig, resetValue } from "../config";
+import {
+  carryOverConfig,
+  changedSpecs,
+  defaultConfig,
+  effectiveValue,
+  isChanged,
+  normalizeConfig,
+  resetValue,
+} from "../config";
 import { withSetting } from "../json";
 
 const clock = commandSettings("clock").settings;
@@ -30,6 +38,22 @@ describe("form config", () => {
 
   test("a default config has no changed setting", () => {
     expect(changedSpecs(timetree, defaultConfig(timetree))).toStrictEqual([]);
+  });
+
+  test("a fresh config leaves the settings with a documented default unset", () => {
+    const config = defaultConfig(timetree);
+    const keys = ["model", "representation", "partition_rates", "n_skyline"];
+
+    expect([
+      keys.filter((key) => Object.hasOwn(config, key)),
+      keys.map((key) => effectiveValue(config, spec(timetree, key))),
+    ]).toStrictEqual([[], ["infer", "auto", "estimate", 20]]);
+  });
+
+  test("a setting set to its documented default is a change", () => {
+    const config = withSetting(defaultConfig(timetree), "model", "infer");
+
+    expect(changedSpecs(timetree, config).map((found) => found.key)).toStrictEqual(["model"]);
   });
 
   test("a changed value is detected by its key", () => {

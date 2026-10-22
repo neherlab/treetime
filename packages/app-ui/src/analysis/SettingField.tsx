@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
-import { isChanged, resetValue } from "../settings/config";
+import { documentedDefault, isChanged, resetValue } from "../settings/config";
 import { isJsonObject } from "../settings/json";
 import { formatList } from "../settings/lists";
 import { Button } from "../ui/button";
@@ -45,7 +45,7 @@ export function SettingField({
         <Label htmlFor={settingFieldId(spec.key)}>{label}</Label>
         <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
         {spec.role === "setting" && (
-          <span className="text-muted-foreground text-xs">Default: {defaultText(spec.default_value)}</span>
+          <span className="text-muted-foreground text-xs">Default: {defaultText(documentedDefault(spec))}</span>
         )}
       </div>
       <div className="flex items-start gap-1.5 @xl:col-start-2 @xl:row-span-2 @xl:row-start-1">

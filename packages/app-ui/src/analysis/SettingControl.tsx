@@ -129,7 +129,7 @@ function EnumControl({ spec, label, className }: ControlProps) {
       onChange={onChange}
       className={className}
     >
-      {spec.nullable && <NativeSelectOption value="">Not set</NativeSelectOption>}
+      {spec.nullable && <NativeSelectOption value="">{unsetText(spec)}</NativeSelectOption>}
       {spec.options.map((option) => (
         <NativeSelectOption key={option.value} value={option.value} title={option.help}>
           {option.value}
@@ -173,7 +173,7 @@ function EnumOrTextControl({ spec, label, className }: ControlProps) {
         value={selected}
         onChange={onSelect}
       >
-        {spec.nullable && <NativeSelectOption value="">Not set</NativeSelectOption>}
+        {spec.nullable && <NativeSelectOption value="">{unsetText(spec)}</NativeSelectOption>}
         {spec.options.map((option) => (
           <NativeSelectOption key={option.value} value={option.value} title={option.help}>
             {option.value}
@@ -211,7 +211,7 @@ function NumberControl({ spec, label, className }: ControlProps) {
       aria-label={label}
       aria-invalid={invalid}
       value={value}
-      placeholder={spec.nullable ? "Not set" : ""}
+      placeholder={spec.nullable ? unsetText(spec) : ""}
       onValueChange={onValueChange}
       onBlur={onBlur}
       className={cn(CONTROL_HEIGHT, "font-mono", className)}
@@ -235,7 +235,7 @@ function TextControl({ spec, label, className }: ControlProps) {
       aria-label={label}
       aria-invalid={invalid}
       value={value === undefined ? "" : scalarText(value)}
-      placeholder={spec.nullable ? "Not set" : ""}
+      placeholder={spec.nullable ? unsetText(spec) : ""}
       onChange={onChange}
       onBlur={onBlur}
       className={cn(CONTROL_HEIGHT, className)}
@@ -304,6 +304,10 @@ function EnumListOption({ option }: { option: SettingOption }) {
       {option.value}
     </ToggleGroupItem>
   );
+}
+
+function unsetText(spec: SettingSpec): string {
+  return spec.documented_default === undefined ? "Not set" : `Default: ${scalarText(spec.documented_default)}`;
 }
 
 function scalarText(value: JsonValue): string {

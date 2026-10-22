@@ -18,6 +18,14 @@ export function settingValue(config: SparseConfig, spec: SettingSpec): JsonValue
   return config[spec.key] ?? spec.default_value;
 }
 
+export function documentedDefault(spec: SettingSpec): JsonValue | undefined {
+  return spec.default_value ?? spec.documented_default;
+}
+
+export function effectiveValue(config: SparseConfig, spec: SettingSpec): JsonValue | undefined {
+  return config[spec.key] ?? documentedDefault(spec);
+}
+
 export function isChanged(config: SparseConfig, spec: SettingSpec): boolean {
   return spec.role === "setting" && !sameJson(settingValue(config, spec), spec.default_value);
 }
