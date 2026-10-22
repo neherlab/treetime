@@ -8,6 +8,7 @@ pub(crate) mod progress;
 pub(crate) mod rtt_chart;
 pub(crate) mod schema;
 pub(crate) mod treetime_cli;
+pub(crate) mod v0_args;
 pub(crate) mod verbosity;
 
 #[cfg(test)]

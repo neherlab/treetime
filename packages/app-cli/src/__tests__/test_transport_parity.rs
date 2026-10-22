@@ -130,8 +130,8 @@ mod tests {
         "--output-all".to_owned(),
         output_dir.to_string_lossy().into_owned(),
       ];
-      let (args, matches) = treetime_parse_cli_args(argv, ColorChoice::Never).unwrap();
-      let args = resolve_args(args, &matches).unwrap();
+      let parsed = treetime_parse_cli_args(argv, ColorChoice::Never).unwrap();
+      let args = resolve_args(parsed).unwrap();
       run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
     }
 

@@ -15,7 +15,11 @@ use treetime_utils::io::fs::{absolute_path, read_file_to_string};
 use treetime_utils::io::json::to_json_value;
 use treetime_utils::make_report;
 
-pub(crate) fn overlay_config<T: RawConfig>(args: &mut T, matches: &ArgMatches) -> Result<(), Report> {
+pub(crate) fn overlay_config<T: RawConfig>(
+  args: &mut T,
+  matches: &ArgMatches,
+  cleared: &BTreeSet<&str>,
+) -> Result<(), Report> {
   let Some(config_path) = matches.get_one::<PathBuf>("config") else {
     return Ok(());
   };
@@ -30,6 +34,7 @@ pub(crate) fn overlay_config<T: RawConfig>(args: &mut T, matches: &ArgMatches) -
   let source = ConfigSource::new(config_path.display().to_string(), text.clone());
   let base = config_folder(config_path)?;
   let mut merged = load_config_document::<T>(&source, &text, Some(&base))?;
+  clear_settings(&mut merged, cleared);
   let cli = to_json_value(&&*args)?;
   apply_cli_overrides(&mut merged, &cli, &explicit);
 
@@ -71,6 +76,12 @@ fn check_cli_rules<T: RawConfig>(
     })
     .collect();
   render_and_bail(source, "invalid configuration", diags)
+}
+
+fn clear_settings(merged: &mut Value, cleared: &BTreeSet<&str>) {
+  if let Value::Object(settings) = merged {
+    settings.retain(|key, _| !cleared.contains(key.as_str()));
+  }
 }
 
 fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &BTreeSet<String>) {
@@ -131,7 +142,7 @@ mod tests {
 
   mod end_to_end {
     use crate::cli::config::overlay_config;
-    use crate::cli::treetime_cli::{TreetimeArgs, resolve_args, treetime_parse_cli_args};
+    use crate::cli::treetime_cli::{TreetimeArgs, TreetimeCommands, resolve_args, treetime_parse_cli_args};
     use crate::run::run_command;
     use app_commands::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
     use app_commands::commands::clock::args::TreetimeClockArgsRaw;
@@ -140,12 +151,14 @@ mod tests {
     use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
     use app_commands::commands::prune::args::TreetimePruneArgsRaw;
     use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use app_commands::commands::timetree::coalescent::CoalescentArg;
     use app_commands::config::source::InvalidConfig;
     use clap::{ColorChoice, CommandFactory, FromArgMatches};
     use eyre::Report;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
     use rstest::rstest;
+    use std::collections::BTreeSet;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
@@ -157,7 +170,7 @@ mod tests {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("timetree").unwrap();
       let mut args = TreetimeTimetreeArgsRaw::from_arg_matches(sub).unwrap();
-      overlay_config(&mut args, sub).unwrap();
+      overlay_config(&mut args, sub, &BTreeSet::new()).unwrap();
       args
     }
 
@@ -229,7 +242,7 @@ mod tests {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("ancestral").unwrap();
       let mut args = TreetimeAncestralArgsRaw::from_arg_matches(sub).unwrap();
-      overlay_config(&mut args, sub)?;
+      overlay_config(&mut args, sub, &BTreeSet::new())?;
       TreetimeAncestralArgs::try_from(args)
     }
 
@@ -294,7 +307,7 @@ mod tests {
       let config = dir.path().join("ancestral.yaml");
       fs::write(&config, "tree: tree.nwk\nalignment: [aln.fasta.xz]\n").unwrap();
       let out = dir.path().join("out");
-      let (args, matches) = treetime_parse_cli_args(
+      let parsed = treetime_parse_cli_args(
         [
           "treetime",
           "ancestral",
@@ -306,9 +319,35 @@ mod tests {
         ColorChoice::Never,
       )
       .unwrap();
-      let args = resolve_args(args, &matches).unwrap();
+      let args = resolve_args(parsed).unwrap();
       run_command(args.command, &NoopProgress, &NoopProgress).unwrap();
       assert_eq!(true, out.join("ancestral.nwk").is_file());
+    }
+
+    #[rustfmt::skip]
+    #[rstest]
+    #[case::file_value(           &[],                               Some(CoalescentArg::Opt))]
+    #[case::v0_zero_clears_it(    &["--coalescent", "0"],            None)]
+    #[case::v0_negative_zero(     &["--coalescent", "-0.0"],         None)]
+    #[case::v0_negative_zero_joined(&["--coalescent=-0"],            None)]
+    #[case::v0_zero_then_flag(    &["--coalescent=0.0", "--coalescent", "skyline"], Some(CoalescentArg::Skyline))]
+    #[case::flag_overrides_it(    &["--coalescent", "skyline"],      Some(CoalescentArg::Skyline))]
+    #[trace]
+    fn test_config_v0_coalescent_zero_overrides_the_file(
+      #[case] flags: &[&str],
+      #[case] expected: Option<CoalescentArg>,
+    ) {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("timetree.yaml");
+      fs::write(&path, "coalescent: opt\n").unwrap();
+      let argv = ["treetime", "timetree", "--config", path.to_str().unwrap()]
+        .into_iter()
+        .chain(flags.iter().copied());
+      let parsed = treetime_parse_cli_args(argv, ColorChoice::Never).unwrap();
+      let TreetimeCommands::Timetree(args) = resolve_args(parsed).unwrap().command else {
+        panic!("expected the timetree command");
+      };
+      assert_eq!(expected, args.coalescent);
     }
 
     #[test]
@@ -348,7 +387,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "ancestral", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("ancestral").unwrap();
         let mut args = TreetimeAncestralArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -364,7 +403,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "clock", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("clock").unwrap();
         let mut args = TreetimeClockArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -380,7 +419,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "timetree", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("timetree").unwrap();
         let mut args = TreetimeTimetreeArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -396,7 +435,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "optimize", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("optimize").unwrap();
         let mut args = TreetimeOptimizeArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -412,7 +451,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "prune", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("prune").unwrap();
         let mut args = TreetimePruneArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -428,7 +467,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "mugration", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("mugration").unwrap();
         let mut args = TreetimeMugrationArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -444,7 +483,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "homoplasy", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("homoplasy").unwrap();
         let mut args = TreetimeHomoplasyArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(
           result,
           "invalid configuration: unknown field `definitely_not_a_real_field`"
@@ -467,7 +506,7 @@ mod tests {
           TreetimeArgs::command().get_matches_from(["treetime", "ancestral", "--config", path.to_str().unwrap()]);
         let sub = matches.subcommand_matches("ancestral").unwrap();
         let mut args = TreetimeAncestralArgsRaw::from_arg_matches(sub).unwrap();
-        let result = overlay_config(&mut args, sub);
+        let result = overlay_config(&mut args, sub, &BTreeSet::new());
         assert_error!(result, "invalid configuration: unknown field `model_args`");
       }
     }
@@ -491,7 +530,7 @@ mod tests {
       let matches = TreetimeArgs::command().get_matches_from(argv);
       let sub = matches.subcommand_matches("clock").unwrap();
       let mut args = TreetimeClockArgsRaw::from_arg_matches(sub).unwrap();
-      let report = overlay_config(&mut args, sub).err().unwrap();
+      let report = overlay_config(&mut args, sub, &BTreeSet::new()).err().unwrap();
       assert_eq!(
         (
           o!("invalid configuration: `keep_root` cannot be used together with `reroot`"),

@@ -1,4 +1,4 @@
-use crate::cli::color::color_choice_of_args;
+use crate::cli::color::{ColorArgs, color_choice_of_args};
 use crate::cli::pipeline::runner::run_pipeline_command;
 use crate::cli::print_debug_info::print_debug_info;
 use crate::cli::print_help_markdown::print_help_markdown;
@@ -6,7 +6,7 @@ use crate::cli::progress::{BarProgress, TextProgress};
 use crate::cli::rtt_chart::print_clock_regression_chart;
 use crate::cli::schema::generate_schema;
 use crate::cli::treetime_cli::{
-  TreetimeArgs, TreetimeCommands, TreetimeSchemaArgs, TreetimeSchemaCommands, generate_shell_completions,
+  CliParseError, ParsedCli, TreetimeCommands, TreetimeSchemaArgs, TreetimeSchemaCommands, generate_shell_completions,
   resolve_args, treetime_parse_cli_args,
 };
 use crate::cli::verbosity::Verbosity;
@@ -14,10 +14,9 @@ use app_commands::command::{CommandArgs, RawConfig};
 use app_commands::commands::clock::run::run_clock;
 use app_commands::commands::shared::argument_error::ArgumentError;
 use app_commands::config::source::InvalidConfig;
-use clap::ArgMatches;
 use eyre::Report;
 use itertools::Itertools;
-use log::info;
+use log::{debug, info};
 use std::env;
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -35,18 +34,26 @@ const USAGE_ERROR_EXIT_CODE: u8 = 2;
 
 pub fn run_cli() -> ExitCode {
   let argv = env::args_os().collect_vec();
-  let (args, matches) = treetime_parse_cli_args(&argv, color_choice_of_args(&argv)).unwrap_or_else(|err| err.exit());
-  let colors = args.color.stderr_has_colors();
+  let color = color_choice_of_args(&argv);
+  let parsed = match treetime_parse_cli_args(&argv, color) {
+    Ok(parsed) => parsed,
+    Err(CliParseError::Clap(err)) => err.exit(),
+    Err(CliParseError::Argument(report)) => return report_failure(&report, ColorArgs { color }.stderr_has_colors()),
+  };
+  let colors = parsed.args.color.stderr_has_colors();
   install_panic_hook(colors);
-  match install_error_hook(colors).and_then(|()| run_parsed(args, &matches, colors)) {
+  match install_error_hook(colors).and_then(|()| run_parsed(parsed, colors)) {
     Ok(()) => ExitCode::SUCCESS,
     Err(report) => report_failure(&report, colors),
   }
 }
 
-fn run_parsed(args: TreetimeArgs, matches: &ArgMatches, colors: bool) -> Result<(), Report> {
-  setup_logger(args.verbosity.get_filter_level(), colors);
-  let args = resolve_args(args, matches)?;
+fn run_parsed(parsed: ParsedCli, colors: bool) -> Result<(), Report> {
+  setup_logger(parsed.args.verbosity.get_filter_level(), colors);
+  for message in &parsed.v0_messages {
+    debug!("{message}");
+  }
+  let args = resolve_args(parsed)?;
 
   info!("# Command line arguments");
   info!("{}", json_write_str(&args, JsonPretty(true))?);

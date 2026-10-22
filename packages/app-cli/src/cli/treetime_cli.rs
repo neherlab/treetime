@@ -1,8 +1,8 @@
 use crate::cli::color::ColorArgs;
 use crate::cli::config::overlay_config;
 use crate::cli::schema::SchemaTarget;
+use crate::cli::v0_args::{V0Rewrite, rewrite_v0_args};
 use crate::cli::verbosity::Verbosity;
-use app_commands::command::RawConfig;
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -17,6 +17,8 @@ use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use deser::Serialize;
 use eyre::Report;
+use itertools::Itertools;
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fmt::Debug;
 use std::io;
@@ -46,24 +48,53 @@ pub(crate) fn generate_shell_completions(shell: &str) -> Result<(), Report> {
   Ok(())
 }
 
-pub(crate) fn treetime_parse_cli_args<I, T>(
-  argv: I,
-  color: ColorChoice,
-) -> Result<(TreetimeArgs, ArgMatches), clap::Error>
+pub(crate) fn treetime_parse_cli_args<I, T>(argv: I, color: ColorChoice) -> Result<ParsedCli, CliParseError>
 where
   I: IntoIterator<Item = T>,
   T: Into<OsString> + Clone,
 {
-  let matches = TreetimeArgs::command().color(color).try_get_matches_from(argv)?;
-  let args = TreetimeArgs::from_arg_matches(&matches)?;
-  Ok((args, matches))
+  let V0Rewrite {
+    args: argv,
+    messages: v0_messages,
+    cleared,
+  } = rewrite_v0_args(argv.into_iter().map(Into::into).collect_vec()).map_err(CliParseError::Argument)?;
+  let matches = TreetimeArgs::command()
+    .color(color)
+    .try_get_matches_from(argv)
+    .map_err(CliParseError::Clap)?;
+  let args = TreetimeArgs::from_arg_matches(&matches).map_err(CliParseError::Clap)?;
+  Ok(ParsedCli {
+    args,
+    matches,
+    v0_messages,
+    cleared,
+  })
 }
 
-pub(crate) fn resolve_args(mut args: TreetimeArgs, matches: &ArgMatches) -> Result<TreetimeArgs, Report> {
+pub(crate) fn resolve_args(parsed: ParsedCli) -> Result<TreetimeArgs, Report> {
+  let ParsedCli {
+    mut args,
+    matches,
+    cleared,
+    ..
+  } = parsed;
   if let Some((_, sub_matches)) = matches.subcommand() {
-    resolve_command_config(&mut args.command, sub_matches)?;
+    resolve_command_config(&mut args.command, sub_matches, &cleared)?;
   }
   Ok(args)
+}
+
+pub(crate) struct ParsedCli {
+  pub args: TreetimeArgs,
+  pub matches: ArgMatches,
+  pub v0_messages: Vec<String>,
+  pub cleared: BTreeSet<&'static str>,
+}
+
+#[derive(Debug)]
+pub(crate) enum CliParseError {
+  Clap(clap::Error),
+  Argument(Report),
 }
 
 #[derive(Parser, Debug, Serialize)]
@@ -87,15 +118,19 @@ pub(crate) struct TreetimeArgs {
   pub command: TreetimeCommands,
 }
 
-fn resolve_command_config(command: &mut TreetimeCommands, matches: &ArgMatches) -> Result<(), Report> {
+fn resolve_command_config(
+  command: &mut TreetimeCommands,
+  matches: &ArgMatches,
+  cleared: &BTreeSet<&str>,
+) -> Result<(), Report> {
   match command {
-    TreetimeCommands::Timetree(args) => resolve(args.as_mut(), matches),
-    TreetimeCommands::Optimize(args) => resolve(args, matches),
-    TreetimeCommands::Prune(args) => resolve(args, matches),
-    TreetimeCommands::Ancestral(args) => resolve(args, matches),
-    TreetimeCommands::Clock(args) => resolve(args, matches),
-    TreetimeCommands::Homoplasy(args) => resolve(args, matches),
-    TreetimeCommands::Mugration(args) => resolve(args, matches),
+    TreetimeCommands::Timetree(args) => overlay_config(args.as_mut(), matches, cleared),
+    TreetimeCommands::Optimize(args) => overlay_config(args, matches, cleared),
+    TreetimeCommands::Prune(args) => overlay_config(args, matches, cleared),
+    TreetimeCommands::Ancestral(args) => overlay_config(args, matches, cleared),
+    TreetimeCommands::Clock(args) => overlay_config(args, matches, cleared),
+    TreetimeCommands::Homoplasy(args) => overlay_config(args, matches, cleared),
+    TreetimeCommands::Mugration(args) => overlay_config(args, matches, cleared),
     _ => Ok(()),
   }
 }
@@ -226,10 +261,6 @@ pub(crate) struct TreetimeSchemaArgs {
   /// Output file or directory (use "-" for stdout). Directory required when --for=all
   #[clap(short = 'o', long, value_hint = ValueHint::AnyPath)]
   pub output: Option<PathBuf>,
-}
-
-fn resolve<T: RawConfig>(args: &mut T, matches: &ArgMatches) -> Result<(), Report> {
-  overlay_config(args, matches)
 }
 
 #[cfg(test)]

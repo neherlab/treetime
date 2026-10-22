@@ -213,6 +213,7 @@ dependencies = [
  "clap-markdown",
  "clap_complete",
  "clap_complete_fig",
+ "clap_lex",
  "comfy-table",
  "crossterm",
  "ctor",
