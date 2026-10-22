@@ -5,6 +5,7 @@ import Download from "~icons/lucide/download";
 
 import { useApiContext } from "../api/context";
 import { useApi } from "../api/hooks";
+import { useBrowserBackend } from "../browser-backend";
 import { Panel } from "../components/Panel";
 import { formatBytes } from "../format";
 import { useHost } from "../host-context";
@@ -14,7 +15,7 @@ import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { useToastManager } from "../ui/toast";
-import { downloadUrl, saveRunOutput, type RunOutput } from "./saveRunOutput";
+import { downloadUrl, saveRunOutput, setBrowserTimer, type RunOutput } from "./saveRunOutput";
 
 export function OutputFiles({ record, citation }: { record: RunRecord; citation: Citation }) {
   const save = useSaveRunOutput();
@@ -127,12 +128,16 @@ function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; 
 function useSaveRunOutput() {
   const { client } = useApiContext();
   const host = useHost();
+  const browserBackend = useBrowserBackend();
   const toasts = useToastManager();
 
   return useCallback(
     async (output: RunOutput, failureTitle: string) => {
       try {
-        const reply = await saveRunOutput({ host, client, download: downloadUrl }, output);
+        const reply = await saveRunOutput(
+          { host, browserBackend, client, download: downloadUrl, objectUrls: URL, setTimer: setBrowserTimer },
+          output,
+        );
 
         if (reply.kind === "error") {
           toasts.add({ title: failureTitle, description: [reply.error.message, ...reply.error.causes].join(": ") });
@@ -141,6 +146,6 @@ function useSaveRunOutput() {
         toasts.add({ title: failureTitle, description: errorMessage(failure) });
       }
     },
-    [client, host, toasts],
+    [browserBackend, client, host, toasts],
   );
 }
