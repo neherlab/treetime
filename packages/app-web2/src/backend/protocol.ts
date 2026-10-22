@@ -6,6 +6,8 @@ export const workerStartSchema = z.strictObject({
   kind: z.literal("start"),
   module: z.instanceof(WebAssembly.Module),
   port: z.instanceof(MessagePort),
+  jobs: z.number().int().positive(),
+  threadedWasmUrl: z.string().optional(),
 });
 
 export const workerEventSchema = z.discriminatedUnion("kind", [

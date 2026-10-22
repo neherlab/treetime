@@ -7,10 +7,16 @@ const scope: JobScope = self;
 
 serveJob(scope, load);
 
-function load(variant: ModuleVariant): Promise<JobModuleFactory> {
-  if (variant === "threaded") {
-    return Promise.reject(new Error("this build has no threaded WebAssembly module"));
+async function load(variant: ModuleVariant, jobs: number): Promise<JobModuleFactory> {
+  if (variant === "single") {
+    return createModule;
   }
 
-  return Promise.resolve(createModule);
+  const { default: createThreadedModule } = await import("@neherlab/app-wasm/threads");
+
+  return (options) => {
+    Object.assign(globalThis, { treetimeJobs: jobs });
+
+    return createThreadedModule(options);
+  };
 }

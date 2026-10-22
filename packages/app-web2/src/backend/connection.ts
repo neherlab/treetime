@@ -63,7 +63,9 @@ export class WorkerConnection implements FetchConnection {
     }
 
     if (this.#worker === running) {
-      running.worker.postMessage({ kind: "start", module, port }, [port]);
+      const { jobs, threadedWasmUrl } = this.#host.runThreads;
+
+      running.worker.postMessage({ kind: "start", module, port, jobs, threadedWasmUrl }, [port]);
     }
   }
 
@@ -153,6 +155,12 @@ export interface WorkerHost {
   start(): BackendWorker;
   compile(): Promise<WebAssembly.Module>;
   channel(): WorkerChannel;
+  readonly runThreads: WorkerRunThreads;
+}
+
+export interface WorkerRunThreads {
+  jobs: number;
+  threadedWasmUrl: string | undefined;
 }
 
 export interface BackendWorker {

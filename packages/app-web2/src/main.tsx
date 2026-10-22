@@ -16,12 +16,19 @@ import { createRoot } from "react-dom/client";
 
 import { browserWorkerHost } from "./backend/browser-host";
 import { WorkerConnection } from "./backend/connection";
+import { parseJobs } from "./backend/threads";
 
 import "./index.css";
 
 reloadOnChunkError(globalThis.window);
 
-const connection = new WorkerConnection(browserWorkerHost);
+const { jobs, warning } = parseJobs(globalThis.location.search);
+
+if (warning !== undefined) {
+  console.warn(`[TreeTime] ${warning}`);
+}
+
+const connection = new WorkerConnection(browserWorkerHost(jobs));
 
 const client = createApiClient({
   baseUrl: globalThis.location.origin,

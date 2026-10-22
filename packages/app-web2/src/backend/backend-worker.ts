@@ -1,8 +1,8 @@
 import { errorMessage } from "@neherlab/app-contracts";
 
 import { type EmscriptenOptions, ErrorLines, instantiateBackend } from "./instantiate";
-import { type JobBackend, JobHost, type JobWorker } from "./jobs";
-import { type WorkerEvent, workerStartSchema } from "./protocol";
+import { type JobBackend, JobHost, type JobModules, type JobWorker } from "./jobs";
+import { type WorkerEvent, type WorkerStart, workerStartSchema } from "./protocol";
 import { ExchangeServer, messagePortEndpoint, type WasmBackend } from "./serve";
 
 export const NO_ERROR_LINES_MESSAGE = "the back end stopped without an error message";
@@ -11,8 +11,9 @@ export function serveBackend(
   scope: BackendScope,
   create: (options: EmscriptenOptions) => Promise<BackendModule>,
   startJobWorker: () => JobWorker,
+  compile: (url: string) => Promise<WebAssembly.Module>,
 ): void {
-  const backend = new BackendWorker(scope, create, startJobWorker);
+  const backend = new BackendWorker(scope, create, startJobWorker, compile);
 
   scope.addEventListener(
     "message",
@@ -44,6 +45,7 @@ class BackendWorker {
   readonly #scope: BackendScope;
   readonly #create: (options: EmscriptenOptions) => Promise<BackendModule>;
   readonly #startJobWorker: () => JobWorker;
+  readonly #compile: (url: string) => Promise<WebAssembly.Module>;
   readonly #errors = new ErrorLines(() => {
     this.#end();
   });
@@ -54,10 +56,12 @@ class BackendWorker {
     scope: BackendScope,
     create: (options: EmscriptenOptions) => Promise<BackendModule>,
     startJobWorker: () => JobWorker,
+    compile: (url: string) => Promise<WebAssembly.Module>,
   ) {
     this.#scope = scope;
     this.#create = create;
     this.#startJobWorker = startJobWorker;
+    this.#compile = compile;
   }
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the first message of the page arrives untyped; it is parsed with the start schema
@@ -79,7 +83,7 @@ class BackendWorker {
       const jobs = new JobHost({
         backend,
         startWorker: this.#startJobWorker,
-        modules: { single: start.module },
+        modules: this.#jobModules(start),
         onTrap,
       });
 
@@ -103,6 +107,14 @@ class BackendWorker {
   fail(message: string): void {
     this.#errors.error(message);
     this.#end();
+  }
+
+  #jobModules({ module, jobs, threadedWasmUrl }: WorkerStart): JobModules {
+    if (threadedWasmUrl === undefined) {
+      return { single: module };
+    }
+
+    return { single: module, threaded: { module: () => this.#compile(threadedWasmUrl), jobs } };
   }
 
   #end(): void {

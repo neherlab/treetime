@@ -12,7 +12,7 @@ import {
   transferList,
 } from "./protocol";
 
-export function serveJob(scope: JobScope, load: (variant: ModuleVariant) => Promise<JobModuleFactory>): void {
+export function serveJob(scope: JobScope, load: JobModuleLoader): void {
   const server = new JobServer(scope, load);
 
   scope.addEventListener("message", (event) => {
@@ -32,6 +32,8 @@ export interface JobScope {
   ): void;
   postMessage(message: JobMessage, options: { transfer: Transferable[] }): void;
 }
+
+export type JobModuleLoader = (variant: ModuleVariant, jobs: number) => Promise<JobModuleFactory>;
 
 export type JobModuleFactory = (options: EmscriptenOptions) => Promise<JobModule>;
 
@@ -54,7 +56,7 @@ export interface WasmChunkReader {
 
 class JobServer {
   readonly #scope: JobScope;
-  readonly #load: (variant: ModuleVariant) => Promise<JobModuleFactory>;
+  readonly #load: JobModuleLoader;
   readonly #errors = new ErrorLines(() => {
     this.#end();
   });
@@ -64,7 +66,7 @@ class JobServer {
   #started = false;
   #ended = false;
 
-  constructor(scope: JobScope, load: (variant: ModuleVariant) => Promise<JobModuleFactory>) {
+  constructor(scope: JobScope, load: JobModuleLoader) {
     this.#scope = scope;
     this.#load = load;
   }
@@ -108,7 +110,7 @@ class JobServer {
 
   async #start({ variant, module, job, jobs }: Extract<HostMessage, { kind: "start" }>): Promise<void> {
     try {
-      const create = await this.#load(variant);
+      const create = await this.#load(variant, jobs);
       const wasm = await instantiateBackend(module, create, this.#errors);
 
       this.#job = new wasm.Job(job, jobs);

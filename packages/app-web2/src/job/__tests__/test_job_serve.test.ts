@@ -6,6 +6,7 @@ import type { JobMessage, ModuleVariant } from "../protocol";
 import {
   type JobModule,
   type JobModuleFactory,
+  type JobModuleLoader,
   type JobScope,
   serveJob,
   type WasmChunkReader,
@@ -109,6 +110,15 @@ describe("job worker failures", () => {
     ]);
   });
 
+  test("a threaded start loads the threaded module and gives the job the thread count of the start message", async () => {
+    const { scope, runtime } = served();
+
+    scope.receive({ ...START, variant: "threaded", jobs: 8 });
+    await scope.received("started");
+
+    expect([runtime.loaded, runtime.created]).toStrictEqual([[["threaded", 8]], [['{"id":"r1"}', 8]]]);
+  });
+
   test("a crash is reported once although the abort also throws out of the run", async () => {
     const { scope } = served({ abortInRun: "stack overflow" });
 
@@ -136,6 +146,8 @@ interface ServedJob {
 
 interface FakeRuntime {
   inputs: Record<string, string>;
+  loaded: Array<[ModuleVariant, number]>;
+  created: Array<[string, number]>;
   options(): EmscriptenOptions | undefined;
 }
 
@@ -145,11 +157,13 @@ function served({
   abortInRun,
 }: {
   outputs?: Record<string, string[]>;
-  load?: (variant: ModuleVariant) => Promise<JobModuleFactory>;
+  load?: JobModuleLoader;
   abortInRun?: string;
 } = {}): ServedJob {
   const scope = fakeScope();
   const inputs: Record<string, string> = {};
+  const loaded: Array<[ModuleVariant, number]> = [];
+  const created: Array<[string, number]> = [];
   let options: EmscriptenOptions | undefined;
 
   const job: WasmJob = {
@@ -180,6 +194,10 @@ function served({
 
   const module: JobModule = {
     Job: class implements WasmJob {
+      constructor(jobJson: string, jobs: number) {
+        created.push([jobJson, jobs]);
+      }
+
       beginInput(path: string): void {
         job.beginInput(path);
       }
@@ -208,9 +226,15 @@ function served({
     return Promise.resolve(module);
   };
 
-  serveJob(scope, load ?? (() => Promise.resolve(create)));
+  const loadCreate: JobModuleLoader = (variant, jobs) => {
+    loaded.push([variant, jobs]);
 
-  return { scope, runtime: { inputs, options: () => options } };
+    return Promise.resolve(create);
+  };
+
+  serveJob(scope, load ?? loadCreate);
+
+  return { scope, runtime: { inputs, loaded, created, options: () => options } };
 }
 
 function fakeScope(): FakeScope {

@@ -2,10 +2,12 @@ import type { BackendStopped } from "@neherlab/app-ui/host";
 import type { FetchPort } from "@neherlab/app-ui/port-fetch";
 import pWaitFor from "p-wait-for";
 
-import { type BackendWorker, WorkerConnection, type WorkerHost } from "../connection";
+import { type BackendWorker, WorkerConnection, type WorkerHost, type WorkerRunThreads } from "../connection";
 import type { WorkerStart } from "../protocol";
 
 const EMPTY_MODULE = new WebAssembly.Module(new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]));
+
+const THREADED_WASM_URL = "https://treetime.localhost/assets/app_wasm-mt.wasm";
 
 describe("connection start", () => {
   test("the first port listener starts a worker with the compiled module and the worker end of a channel", async () => {
@@ -18,8 +20,26 @@ describe("connection start", () => {
 
     expect([host.workers.length, worker?.posted, worker?.transferred]).toStrictEqual([
       1,
-      [{ kind: "start", module: EMPTY_MODULE, port: host.channels[0]?.port2 }],
+      [{ kind: "start", module: EMPTY_MODULE, port: host.channels[0]?.port2, jobs: 1, threadedWasmUrl: undefined }],
       [[host.channels[0]?.port2]],
+    ]);
+  });
+
+  test("the start message carries the thread count of each run and the URL of the threaded module", async () => {
+    const host = fakeHost({ runThreads: { jobs: 8, threadedWasmUrl: THREADED_WASM_URL } });
+    const connection = new WorkerConnection(host);
+
+    connection.onPort(() => undefined);
+    await host.workers[0]?.started();
+
+    expect(host.workers[0]?.posted).toStrictEqual([
+      {
+        kind: "start",
+        module: EMPTY_MODULE,
+        port: host.channels[0]?.port2,
+        jobs: 8,
+        threadedWasmUrl: THREADED_WASM_URL,
+      },
     ]);
   });
 
@@ -193,7 +213,13 @@ interface FakeWorker extends BackendWorker {
   fail(message: string): void;
 }
 
-function fakeHost({ compile }: { compile?: () => Promise<WebAssembly.Module> } = {}): FakeHost {
+function fakeHost({
+  compile,
+  runThreads = { jobs: 1, threadedWasmUrl: undefined },
+}: {
+  compile?: () => Promise<WebAssembly.Module>;
+  runThreads?: WorkerRunThreads;
+} = {}): FakeHost {
   let compiled = 0;
 
   const host: FakeHost = {
@@ -221,6 +247,7 @@ function fakeHost({ compile }: { compile?: () => Promise<WebAssembly.Module> } =
 
       return channel;
     },
+    runThreads,
   };
 
   return host;
