@@ -131,7 +131,7 @@ function YamlImport({ command, close }: { command: AppCommand; close: () => void
     setBusy(true);
 
     try {
-      const result = await loadConfig(text, command, true);
+      const result = await loadConfig(text, command, { keepInputs: true });
 
       if (result.loaded) {
         const note = commandSwitchNote(command, result.command);

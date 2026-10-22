@@ -1,11 +1,11 @@
 import {
   errorMessage,
   type AppCommand,
-  type Dataset,
-  type ExampleConfig,
+  type IndexedConfig,
+  type IndexedDataset,
   type RunRecord,
 } from "@neherlab/app-contracts";
-import { datasets, runsGet, runsList } from "@neherlab/app-contracts/client";
+import { runsGet, runsList } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo, useState } from "react";
 import Database from "~icons/lucide/database";
 import FileCog from "~icons/lucide/file-cog";
@@ -13,15 +13,16 @@ import FileCog from "~icons/lucide/file-cog";
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
 import { commandSettings } from "../settings/catalog";
-import { datasetInputs, runInputAssignments, type InputAssignment } from "../settings/inputs";
+import { runInputAssignments, type InputAssignment } from "../settings/inputs";
 import { Alert, AlertDescription } from "../ui/alert";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Spinner } from "../ui/spinner";
 import { Table, TableBody, TableCell, TableRow } from "../ui/table";
 import { useToastManager } from "../ui/toast";
+import { indexedDatasetInputs, type ExampleIndex } from "./exampleData";
 import { ExamplesDownload } from "./ExamplesDownload";
-import { useConfigLoader } from "./useConfigLoader";
+import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "./useExampleData";
 import { useInputActions } from "./useInputActions";
 
 const EARLIER_RUNS_SHOWN = 8;
@@ -29,10 +30,10 @@ const EARLIER_RUNS_SHOWN = 8;
 export const EXAMPLES_PANELS = {
   datasets: {
     title: "Example datasets",
-    hint: "Datasets of the examples folder: tree, alignment and metadata",
+    hint: "Tree, alignment and metadata of example datasets",
     icon: Database,
   },
-  configs: { title: "Example configs", hint: "Ready-made settings and inputs of the examples folder", icon: FileCog },
+  configs: { title: "Example configs", hint: "Ready-made settings and inputs of the example data", icon: FileCog },
 } as const;
 
 export type ExamplesPanelKind = keyof typeof EXAMPLES_PANELS;
@@ -48,7 +49,7 @@ export function ExamplesPanel({
   command: AppCommand;
   close: () => void;
 }) {
-  const { data: catalog, error } = useApi((context) => datasets(context), { staleTime: Infinity });
+  const { data: examples, error } = useExampleIndex();
 
   return (
     <Card size="sm" className="gap-0 py-0">
@@ -68,9 +69,16 @@ export function ExamplesPanel({
           <div className="max-h-72 overflow-auto overscroll-contain">
             <Table>
               <TableBody>
-                {(catalog?.datasets ?? []).map((dataset) => (
-                  <DatasetRow key={dataset.name} command={command} dataset={dataset} close={close} />
-                ))}
+                {examples !== undefined &&
+                  (examples.index?.datasets ?? []).map((dataset) => (
+                    <DatasetRow
+                      key={dataset.name}
+                      command={command}
+                      examples={examples}
+                      dataset={dataset}
+                      close={close}
+                    />
+                  ))}
               </TableBody>
             </Table>
           </div>
@@ -80,9 +88,10 @@ export function ExamplesPanel({
         <div className="max-h-72 overflow-auto overscroll-contain">
           <Table>
             <TableBody>
-              {(catalog?.examples ?? []).map((example) => (
-                <ExampleRow key={example.path} example={example} />
-              ))}
+              {examples !== undefined &&
+                (examples.index?.configs ?? []).map((config) => (
+                  <ConfigRow key={config.path} examples={examples} config={config} />
+                ))}
             </TableBody>
           </Table>
         </div>
@@ -91,14 +100,36 @@ export function ExamplesPanel({
   );
 }
 
-function DatasetRow({ command, dataset, close }: { command: AppCommand; dataset: Dataset; close: () => void }) {
-  const actions = useInputActions(command);
-  const inputs = useMemo(() => datasetInputs(dataset, command), [command, dataset]);
+function DatasetRow({
+  command,
+  examples,
+  dataset,
+  close,
+}: {
+  command: AppCommand;
+  examples: ExampleIndex;
+  dataset: IndexedDataset;
+  close: () => void;
+}) {
+  const loadDataset = useDatasetLoader(command);
+  const toasts = useToastManager();
+  const [loading, setLoading] = useState(false);
+  const inputs = useMemo(() => indexedDatasetInputs(dataset, command), [command, dataset]);
 
-  const load = useCallback(() => {
-    actions.assignAll(inputs, { origin: "dataset" });
-    close();
-  }, [actions, close, inputs]);
+  const load = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      await loadDataset(examples, dataset);
+      close();
+    } catch (error: unknown) {
+      toasts.add({ title: `${dataset.name} cannot be loaded`, description: errorMessage(error) });
+    } finally {
+      setLoading(false);
+    }
+  }, [close, dataset, examples, loadDataset, toasts]);
+
+  const onLoad = useCallback(() => void load(), [load]);
 
   return (
     <TableRow>
@@ -107,7 +138,8 @@ function DatasetRow({ command, dataset, close }: { command: AppCommand; dataset:
         {inputs.map((input) => input.key).join(", ")}
       </TableCell>
       <TableCell className="text-right">
-        <Button type="button" variant="outline" size="sm" disabled={inputs.length === 0} onClick={load}>
+        <Button type="button" variant="outline" size="sm" disabled={inputs.length === 0 || loading} onClick={onLoad}>
+          {loading && <Spinner />}
           Load
         </Button>
       </TableCell>
@@ -115,8 +147,8 @@ function DatasetRow({ command, dataset, close }: { command: AppCommand; dataset:
   );
 }
 
-function ExampleRow({ example }: { example: ExampleConfig }) {
-  const loadConfig = useConfigLoader();
+function ConfigRow({ examples, config }: { examples: ExampleIndex; config: IndexedConfig }) {
+  const loadExample = useExampleConfigLoader();
   const toasts = useToastManager();
   const [loading, setLoading] = useState(false);
 
@@ -124,27 +156,24 @@ function ExampleRow({ example }: { example: ExampleConfig }) {
     setLoading(true);
 
     try {
-      const result = await loadConfig(example.content, example.command, false, example.folder);
+      const result = await loadExample(examples, config);
 
       if (!result.loaded) {
-        toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });
+        toasts.add({ title: `${config.path} cannot be loaded`, description: result.messages.join("; ") });
       }
     } catch (error: unknown) {
-      toasts.add({
-        title: `${example.path} cannot be loaded`,
-        description: errorMessage(error),
-      });
+      toasts.add({ title: `${config.path} cannot be loaded`, description: errorMessage(error) });
     } finally {
       setLoading(false);
     }
-  }, [example, loadConfig, toasts]);
+  }, [config, examples, loadExample, toasts]);
 
   const onLoad = useCallback(() => void load(), [load]);
 
   return (
     <TableRow>
-      <TableCell className="whitespace-normal">{example.title}</TableCell>
-      <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">{example.command}</TableCell>
+      <TableCell className="whitespace-normal">{config.title}</TableCell>
+      <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">{config.command}</TableCell>
       <TableCell className="text-right">
         <Button type="button" variant="outline" size="sm" disabled={loading} onClick={onLoad}>
           {loading && <Spinner />}

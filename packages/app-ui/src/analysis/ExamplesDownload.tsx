@@ -1,5 +1,5 @@
 import type { ExamplesDownloadStatus } from "@neherlab/app-contracts";
-import { datasets, examplesDownload, examplesDownloadStart } from "@neherlab/app-contracts/client";
+import { examplesDownload, examplesDownloadStart } from "@neherlab/app-contracts/client";
 import { useCallback } from "react";
 import Download from "~icons/lucide/download";
 
@@ -12,12 +12,13 @@ import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { Spinner } from "../ui/spinner";
 import { examplesDownloadView } from "./examplesDownloadView";
+import { useExampleIndex } from "./useExampleData";
 
 export function ExamplesDownload() {
   const host = useHost();
-  const { data: catalog } = useApi((context) => datasets(context), { staleTime: Infinity });
+  const { data: examples } = useExampleIndex();
   const status = useExamplesDownloadStatus(host !== null);
-  const view = examplesDownloadView(host !== null, catalog, status);
+  const view = examplesDownloadView(examples, status);
   const { mutate: start, isPending, error } = useStartExamplesDownload();
   const onStart = useCallback(() => start(undefined), [start]);
 
@@ -37,7 +38,7 @@ export function ExamplesDownload() {
   return (
     <div className="grid gap-2 px-3.5 py-3 text-sm">
       <p className="text-muted-foreground">
-        The examples folder is empty. Download the example datasets and configs of this TreeTime release.
+        The examples folder holds no example data. Download the example datasets and configs of this TreeTime release.
       </p>
       {view.kind === "failed" && (
         <Alert variant="destructive">

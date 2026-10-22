@@ -1,4 +1,6 @@
-import type { DatasetCatalog, ExamplesDownloadStatus } from "@neherlab/app-contracts";
+import type { ExamplesDownloadStatus } from "@neherlab/app-contracts";
+
+import type { ExampleIndex } from "./exampleData";
 
 export type ExamplesDownloadView =
   | { kind: "hidden" }
@@ -7,8 +9,7 @@ export type ExamplesDownloadView =
   | { kind: "failed"; message: string };
 
 export function examplesDownloadView(
-  local: boolean,
-  catalog: DatasetCatalog | undefined,
+  examples: ExampleIndex | undefined,
   status: ExamplesDownloadStatus | undefined,
 ): ExamplesDownloadView {
   const download = status?.download;
@@ -23,7 +24,7 @@ export function examplesDownloadView(
     };
   }
 
-  if (!local || catalog === undefined || catalog.datasets.length > 0 || catalog.examples.length > 0) {
+  if (examples?.origin !== "local" || examples.index !== undefined) {
     return { kind: "hidden" };
   }
 

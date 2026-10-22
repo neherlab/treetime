@@ -1,42 +1,9 @@
 import { commandSettings } from "../catalog";
 import { defaultConfig } from "../config";
-import {
-  datasetInputs,
-  folderName,
-  inputFactsRequest,
-  pathList,
-  runInputAssignments,
-  slotFactsText,
-  slotProblems,
-} from "../inputs";
+import { folderName, inputFactsRequest, pathList, runInputAssignments, slotFactsText, slotProblems } from "../inputs";
 import { withSetting } from "../json";
 
-const ZIKA_86 = {
-  name: "zika/86",
-  files: ["aln.fasta.xz", "metadata.tsv", "tree.nwk"],
-  inputs: [
-    { kind: "tree" as const, file: "zika/86/tree.nwk", path: "data/zika/86/tree.nwk" },
-    { kind: "alignment" as const, file: "zika/86/aln.fasta.xz", path: "data/zika/86/aln.fasta.xz" },
-    { kind: "metadata" as const, file: "zika/86/metadata.tsv", path: "data/zika/86/metadata.tsv" },
-  ],
-};
-
 describe("inputs", () => {
-  test("a dataset fills the slots of the command in slot order, lists as lists", () => {
-    expect(datasetInputs(ZIKA_86, "timetree")).toStrictEqual([
-      { key: "tree", value: "data/zika/86/tree.nwk", label: "zika/86/tree.nwk" },
-      { key: "metadata", value: "data/zika/86/metadata.tsv", label: "zika/86/metadata.tsv" },
-      { key: "alignment", value: ["data/zika/86/aln.fasta.xz"], label: "zika/86/aln.fasta.xz" },
-    ]);
-  });
-
-  test("a dataset fills only the slots the command has", () => {
-    expect(datasetInputs(ZIKA_86, "mugration").map((input) => input.value)).toStrictEqual([
-      "data/zika/86/tree.nwk",
-      "data/zika/86/metadata.tsv",
-    ]);
-  });
-
   test("the inputs of an earlier run become settings with their recorded paths", () => {
     const inputs = [
       { setting: "tree", path: "/runs/a/inputs/tree.nwk", size: 1, sha256: "x" },

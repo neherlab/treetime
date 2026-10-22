@@ -21,7 +21,8 @@ export function useYamlDrop() {
       try {
         const requested = useDraftStore.getState().draft.command;
         const folder = host === null ? undefined : folderName(host.pathForFile(file));
-        const result = await loadConfig(await file.text(), requested, true, folder);
+
+        const result = await loadConfig(await file.text(), requested, { keepInputs: true, folder });
 
         toasts.add(
           result.loaded

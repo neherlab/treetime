@@ -1,12 +1,12 @@
-import { errorMessage, type ExampleConfig } from "@neherlab/app-contracts";
-import { datasets, runsList } from "@neherlab/app-contracts/client";
+import { errorMessage, type IndexedConfig } from "@neherlab/app-contracts";
+import { runsList } from "@neherlab/app-contracts/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useExamplesDownloadStatus, useStartExamplesDownload } from "../analysis/ExamplesDownload";
 import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
-import { useConfigLoader } from "../analysis/useConfigLoader";
+import { useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
@@ -131,30 +131,34 @@ function itemTitle(item: PaletteItem): string {
 function usePaletteItems(): PaletteItem[] {
   const navigate = useNavigate();
   const { data: runList } = useApi((context) => runsList(context));
-  const { data: catalog } = useApi((context) => datasets(context), { staleTime: Infinity });
+  const { data: examples } = useExampleIndex();
   const command = useDraftStore((state) => state.draft.command);
   const compareIds = useShellStore((state) => state.compareIds);
   const setWorkspaceOpen = useShellStore((state) => state.setWorkspaceOpen);
   const host = useHost();
   const { theme, chooseTheme } = useThemeChoice();
-  const loadConfig = useConfigLoader();
+  const loadExampleConfig = useExampleConfigLoader();
   const toasts = useToastManager();
   const downloadStatus = useExamplesDownloadStatus(host !== null);
   const { mutate: startDownload } = useStartExamplesDownload();
 
   const loadExample = useCallback(
-    async (example: ExampleConfig) => {
+    async (config: IndexedConfig) => {
+      if (examples === undefined) {
+        return;
+      }
+
       try {
-        const result = await loadConfig(example.content, example.command, false, example.folder);
+        const result = await loadExampleConfig(examples, config);
 
         if (!result.loaded) {
-          toasts.add({ title: `${example.path} cannot be loaded`, description: result.messages.join("; ") });
+          toasts.add({ title: `${config.path} cannot be loaded`, description: result.messages.join("; ") });
         }
       } catch (error: unknown) {
-        toasts.add({ title: `${example.path} cannot be loaded`, description: errorMessage(error) });
+        toasts.add({ title: `${config.path} cannot be loaded`, description: errorMessage(error) });
       }
     },
-    [loadConfig, toasts],
+    [examples, loadExampleConfig, toasts],
   );
 
   return useMemo(() => {
@@ -214,13 +218,13 @@ function usePaletteItems(): PaletteItem[] {
       }
     }
 
-    for (const example of catalog?.examples ?? []) {
+    for (const config of examples?.index?.configs ?? []) {
       items.push(
-        paletteItem("Example", `example-${example.path}`, example.title, example.path, () => loadExample(example)),
+        paletteItem("Example", `example-${config.path}`, config.title, config.path, () => loadExample(config)),
       );
     }
 
-    if (examplesDownloadView(host !== null, catalog, downloadStatus).kind !== "hidden") {
+    if (examplesDownloadView(examples, downloadStatus).kind !== "hidden") {
       items.push(
         paletteItem(
           "Example",
@@ -244,11 +248,11 @@ function usePaletteItems(): PaletteItem[] {
 
     return items;
   }, [
-    catalog,
     chooseTheme,
     command,
     compareIds,
     downloadStatus,
+    examples,
     host,
     loadExample,
     navigate,

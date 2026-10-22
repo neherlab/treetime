@@ -2,7 +2,6 @@ import type {
   AlignmentFacts,
   AppCommand,
   CheckInputsRequest,
-  Dataset,
   InputFacts,
   InputKind,
   JsonValue,
@@ -20,16 +19,6 @@ export interface InputAssignment {
 }
 
 const zPath = z.string().min(1);
-
-export function datasetInputs(dataset: Dataset, command: AppCommand): InputAssignment[] {
-  return commandSettings(command).inputs.flatMap((slot) => {
-    const input = dataset.inputs.find((candidate) => candidate.kind === slot.kind);
-
-    return input === undefined
-      ? []
-      : [{ key: slot.kind, value: slot.list ? [input.path] : input.path, label: input.file }];
-  });
-}
 
 export function runInputAssignments(command: AppCommand, inputs: readonly RunInput[]): InputAssignment[] {
   const bySetting = new Map<string, RunInput[]>();
