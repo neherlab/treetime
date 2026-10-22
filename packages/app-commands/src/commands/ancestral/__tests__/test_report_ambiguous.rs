@@ -162,10 +162,12 @@ mod tests {
         },
         tree: TreeArgs { tree: Some(tree_path) },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model: Some(GtrModelNameCli::JC69),
           ..ModelArgs::default()
         },
-        representation: RepresentationArgs { representation },
+        representation: RepresentationArgs {
+          representation: Some(representation),
+        },
         impute_missing_data: ImputeMissingDataArgs { impute_missing_data },
         tip_sequences: TipSequenceArgs {
           report_ambiguous,

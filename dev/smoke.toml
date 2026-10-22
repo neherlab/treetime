@@ -586,7 +586,7 @@ args = "--representation=sparse --no-collapse-short-branches --no-merge-siblings
 [[optimize]]
 variant = "no-topology-ops-dense"
 datasets = ["flu/h3n2/20"]
-args = "--representation=dense --no-collapse-short-branches --no-merge-siblings --no-flip-parent-child"
+args = "--representation=dense --no-collapse-short-branches"
 
 [[optimize]]
 variant = "gap-fill-all"
@@ -742,12 +742,12 @@ args = "--coalescent=opt --max-iter=3"
 [[timetree]]
 variant = "skyline"
 datasets = ["flu/h3n2/20", "ebola/20"]
-args = "--coalescent=skyline --skyline-n-points=5"
+args = "--coalescent=skyline --n-skyline=5"
 
 [[timetree]]
 variant = "skyline"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent=skyline --skyline-n-points=5 --max-iter=3"
+args = "--coalescent=skyline --n-skyline=5 --max-iter=3"
 
 [[timetree]]
 variant = "skyline"
@@ -839,7 +839,7 @@ args = "--clock-filter=0 --keep-root"
 [[timetree]]
 variant = "skyline-conf"
 datasets = ["flu/h3n2/200"]
-args = "--coalescent=skyline --skyline-n-points=5 --confidence --max-iter=3"
+args = "--coalescent=skyline --n-skyline=5 --confidence --max-iter=3"
 
 [[timetree]]
 variant = "fast"
@@ -865,12 +865,12 @@ args = "--confidence --clock-std-dev=0.001 --max-iter=3"
 [[timetree]]
 variant = "fixed-clock-tree-opt"
 datasets = ["mpox/clade-ii/1000"]
-args = "--tree={dataset}/tree_opt.nwk --clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+args = "--tree={dataset}/tree_opt.nwk --clock-rate=5.7e-05 --divergence-units=mutations --seed=34234"
 
 [[timetree]]
 variant = "fixed-clock"
 datasets = ["mpox/clade-ii/1000"]
-args = "--clock-rate=5.7e-05 --clock-std-dev=2e-5 --divergence-units=mutations --seed=34234"
+args = "--clock-rate=5.7e-05 --divergence-units=mutations --seed=34234"
 
 # A fixed clock rate thousands of times the rate of the data makes branch-time distributions so narrow that time
 # inference needs grids above the grid point limit; the run stops with an error instead of exhausting memory

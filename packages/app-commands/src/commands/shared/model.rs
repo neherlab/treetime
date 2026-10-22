@@ -1,6 +1,9 @@
 use crate::commands::shared::argument_error::ArgumentError;
+use crate::commands::shared::dependent_settings::check_applies;
+use crate::commands::shared::documented_default::documented_default;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
 use deser::{Deserialize, Serialize};
+use eyre::Report;
 use itertools::Itertools;
 use ndarray::Array1;
 use schemars::JsonSchema;
@@ -11,8 +14,13 @@ use treetime::gtr::get_gtr::{
   F81Params, GtrModel, GtrModelName, HKY85Params, JC69Params, Jtt92Params, K80Params, T92Params, TN93Params,
 };
 use treetime::optimize::partition_rates::PartitionRates;
-use treetime_schema::schema_defaults;
+use treetime_schema::{schema_defaults, skip_serializing_optionals};
+use treetime_utils::fmt::string::counted;
 use treetime_utils::o;
+
+pub const MODEL_DEFAULT: GtrModelNameCli = GtrModelNameCli::Infer;
+
+pub const PARTITION_RATES_DEFAULT: PartitionRatesCli = PartitionRatesCli::Estimate;
 
 pub fn parse_model_params(model: GtrModelNameCli, items: &[String]) -> Result<GtrModel, ArgumentError> {
   if let (GtrModelNameCli::Infer, Some(item)) = (model, items.first()) {
@@ -54,22 +62,31 @@ pub fn parse_model_params(model: GtrModelNameCli, items: &[String]) -> Result<Gt
 /// One flag name (`--model`, short `-g`, alias `--gtr`) serves every command; the value set includes
 /// non-GTR models (for example `jtt92`). `--model-params` (alias `--gtr-params`) carries
 /// model-specific `key=value` parameters.
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
+#[cfg_attr(feature = "clap", command(mut_arg("model", |arg| documented_default(&MODEL_DEFAULT).help(arg))))]
 pub struct ModelArgs {
   /// Substitution model to use
   ///
   /// `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,
   /// name the model type. If the named model takes parameters, use `--model-params` to set them.
-  #[default(GtrModelNameCli::Infer)]
   #[cfg_attr(
     feature = "clap",
-    clap(long = "model", short = 'g', visible_alias = "gtr", value_enum, default_value_t = GtrModelNameCli::Infer, help_heading = "Substitution model")
+    clap(
+      long = "model",
+      short = 'g',
+      visible_alias = "gtr",
+      value_enum,
+      help_heading = "Substitution model"
+    )
   )]
-  pub model: GtrModelNameCli,
+  #[schemars(transform = documented_default(&MODEL_DEFAULT))]
+  pub model: Option<GtrModelNameCli>,
 
   /// Parameters for the model selected by `--model`, given as space-separated `key=value` items
   ///
@@ -94,7 +111,12 @@ pub struct ModelArgs {
 
 impl ModelArgs {
   pub fn model(&self) -> Result<GtrModel, ArgumentError> {
-    parse_model_params(self.model, &self.model_params)
+    parse_model_params(self.model.unwrap_or(MODEL_DEFAULT), &self.model_params)
+  }
+
+  pub fn check_applies(&self, other: &str, applies: bool, rule: impl Fn() -> String) -> Result<(), Report> {
+    check_applies("model", self.model.is_some(), other, applies, &rule)?;
+    check_applies("model_params", !self.model_params.is_empty(), other, applies, &rule)
   }
 }
 
@@ -141,11 +163,17 @@ pub enum GtrModelNameCli {
 impl_from_mirror!(GtrModelNameCli => GtrModelName { Infer, JC69, K80, F81, HKY85, T92, TN93, Jtt92 });
 
 /// Relative rates of the partitions, shared by the commands that optimize branch lengths.
-#[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
+#[deser(skip_serializing_optionals)]
+#[schemars(transform = skip_serializing_optionals)]
 #[schemars(default, deny_unknown_fields)]
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
+#[cfg_attr(
+  feature = "clap",
+  command(mut_arg("partition_rates", |arg| documented_default(&PARTITION_RATES_DEFAULT).help(arg)))
+)]
 pub struct PartitionRatesArgs {
   /// Relative substitution rates of the partitions
   ///
@@ -156,18 +184,34 @@ pub struct PartitionRatesArgs {
   /// this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
   /// partitions. `equal` fixes the rate of every partition at 1.
   ///
-  /// With one partition, this setting has no effect: the run estimates no relative rate.
-  #[default(PartitionRatesCli::Estimate)]
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_enum, default_value_t = PartitionRatesCli::Estimate, help_heading = "Substitution model")
-  )]
-  pub partition_rates: PartitionRatesCli,
+  /// The setting applies only with two or more partitions.
+  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Substitution model"))]
+  #[schemars(transform = documented_default(&PARTITION_RATES_DEFAULT))]
+  pub partition_rates: Option<PartitionRatesCli>,
 }
 
 impl PartitionRatesArgs {
   pub fn partition_rates(&self) -> PartitionRates {
-    self.partition_rates.into()
+    self.partition_rates.unwrap_or(PARTITION_RATES_DEFAULT).into()
+  }
+
+  pub fn is_given(&self) -> bool {
+    self.partition_rates.is_some()
+  }
+
+  pub fn check_partitions(&self, alignment_files: usize) -> Result<(), Report> {
+    check_applies(
+      "partition_rates",
+      self.is_given(),
+      "alignment",
+      alignment_files >= 2,
+      || {
+        format!(
+          "applies only with two or more partitions, but the run has {}: each --alignment file is one partition",
+          counted(alignment_files, "partition")
+        )
+      },
+    )
   }
 }
 

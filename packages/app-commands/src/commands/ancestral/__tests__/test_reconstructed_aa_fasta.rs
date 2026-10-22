@@ -69,7 +69,7 @@ mod tests {
         },
         tree: TreeArgs { tree: Some(tree_path) },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model: Some(GtrModelNameCli::JC69),
           ..ModelArgs::default()
         },
         translations: Some(format!("{}/%GENE.fasta", dir.display())),

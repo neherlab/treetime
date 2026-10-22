@@ -83,7 +83,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     resolve_polytomies: false,
     relax: vec![],
     coalescent: CoalescentMode::Disabled,
-    skyline_n_points: 0,
+    n_skyline: 0,
     skyline_stiffness: 0.0,
     coalescent_confidence: 0.0,
     gen_per_year: 0.0,

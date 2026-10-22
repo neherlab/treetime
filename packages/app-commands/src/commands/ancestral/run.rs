@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::aa::{AaNodeData, AaParams, CdsInput, reconstruct_aa};
 use treetime::ancestral::attach::sanitize_to_alphabet;
-use treetime::ancestral::params::MethodAncestral;
 use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
@@ -88,13 +87,6 @@ pub fn run_ancestral_reconstruction(
   let resolved = args.resolve_outputs()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
-  if args.method_anc == MethodAncestral::Parsimony && ambiguity.is_requested() {
-    progress_warn!(
-      log,
-      "--ambiguity-threshold has no effect with --method-anc=parsimony: Fitch parsimony computes no posterior to \
-       report ambiguous states from."
-    );
-  }
   let aa_plan = plan_aa_reconstructions(args, &resolved, log)?;
   let mut seq_sink = AncestralSeqSink::new(&resolved, descs, ambiguity)?;
 

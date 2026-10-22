@@ -65,7 +65,7 @@ mod tests {
           tree: Some(dir.join("tree.nwk")),
         },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model: Some(GtrModelNameCli::JC69),
           ..ModelArgs::default()
         },
         tip_sequences: TipSequenceArgs {

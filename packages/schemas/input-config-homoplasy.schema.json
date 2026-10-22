@@ -49,8 +49,9 @@
     },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
-      "$ref": "#/$defs/GtrModelName",
       "default": "infer",
+      "$ref": "#/$defs/GtrModelName",
+      "x-unset": true,
       "x-cli-flag": "--model"
     },
     "model_params": {
@@ -70,8 +71,9 @@
     },
     "representation": {
       "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
-      "$ref": "#/$defs/Representation",
       "default": "auto",
+      "$ref": "#/$defs/Representation",
+      "x-unset": true,
       "x-cli-flag": "--representation"
     },
     "gap_fill": {

@@ -48,10 +48,10 @@ alignment: AlignmentArgs {
       },
 tree: TreeArgs { tree: Some(tree_path) },
 model_args: ModelArgs {
-        model: GtrModelNameCli::JC69,
+        model: Some(GtrModelNameCli::JC69),
         ..ModelArgs::default()
       },
-representation: RepresentationArgs { representation },
+representation: RepresentationArgs { representation: Some(representation) },
 translations: Some(format!("{}/%GENE.fasta", dir.path().display())),
 cdses: vec_of_owned!["S"],
 output: OutputCoreArgs {

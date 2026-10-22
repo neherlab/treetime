@@ -41,7 +41,7 @@ alignment: AlignmentArgs {
       },
 tree: TreeArgs { tree: Some(dir.join("tree.nwk")) },
 metadata: Some(dir.join("metadata.tsv")),
-representation: RepresentationArgs { representation: helpers::representation(dense) },
+representation: RepresentationArgs { representation: Some(helpers::representation(dense)) },
 max_iter: 1,
 output: OutputCoreArgs {
         output_all: Some(output.path().to_path_buf()),
@@ -136,11 +136,11 @@ seed_args: SeedArgs { seed: Some(7) },
         tree: TreeArgs { tree: Some(tree) },
         metadata: Some(metadata),
         model_args: ModelArgs {
-          model,
+          model: Some(model),
           ..ModelArgs::default()
         },
         representation: RepresentationArgs {
-          representation: representation(dense),
+          representation: Some(representation(dense)),
         },
         rooting: RootingArgs {
           keep_root: true,

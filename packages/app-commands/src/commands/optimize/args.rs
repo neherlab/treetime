@@ -2,6 +2,7 @@ use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::branch_lengths::BranchLengthArgs;
 use crate::commands::shared::config::ConfigArgs;
+use crate::commands::shared::dependent_settings::check_applies;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
@@ -29,6 +30,7 @@ use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps}
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+use treetime_utils::o;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeOptimizeArgs {
@@ -78,6 +80,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
+    check_dependent_settings(&raw)?;
     Ok(Self {
       tree,
       branch_length_initial_guess: raw.branch_length_initial_guess.into(),
@@ -92,6 +95,22 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       raw,
     })
   }
+}
+
+fn check_dependent_settings(raw: &TreetimeOptimizeArgsRaw) -> Result<(), Report> {
+  raw
+    .partition_rates_args
+    .check_partitions(raw.alignment.alignment.len())?;
+  let dense = raw.representation.dense() == Some(true);
+  for (setting, given) in [
+    ("no_merge_siblings", raw.no_merge_siblings),
+    ("no_flip_parent_child", raw.no_flip_parent_child),
+  ] {
+    check_applies(setting, given, "representation", !dense, || {
+      o!("applies only to the sparse representation, but --representation is dense")
+    })?;
+  }
+  Ok(())
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
@@ -246,8 +265,7 @@ pub struct TreetimeOptimizeArgsRaw {
   /// Disable merging of polytomy siblings that share substitutions.
   ///
   /// By default, sibling branches in a polytomy that carry identical substitutions are grouped
-  /// under a new internal node. Requires the sparse sequence representation, so this step has no
-  /// effect under `--representation dense` and the flag is then a no-op.
+  /// under a new internal node. The step and the flag apply only to the sparse representation.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_merge_siblings: bool,
 
@@ -255,9 +273,8 @@ pub struct TreetimeOptimizeArgsRaw {
   ///
   /// By default, when a child branch carries the exact reversion of a substitution on the node's
   /// parent branch, a new node is inserted that groups the node with that child, removing one
-  /// mutation per reverted position. When set, those reversions are left in place. Requires the
-  /// sparse sequence representation, so this step has no effect under `--representation dense` and the flag is
-  /// then a no-op.
+  /// mutation per reverted position. When set, those reversions are left in place. The step and the flag apply
+  /// only to the sparse representation.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Branch lengths"))]
   pub no_flip_parent_child: bool,
 

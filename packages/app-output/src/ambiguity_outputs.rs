@@ -30,10 +30,6 @@ impl AmbiguityOutputs {
     self.carriers.get(&output).copied()
   }
 
-  pub fn is_requested(&self) -> bool {
-    !self.carriers.is_empty()
-  }
-
   pub fn warn_unwritten(&self, resolved: &ResolvedOutputs, log: &dyn LogSink) {
     let written = resolved.paths_by_selection();
     for output in self.selected.iter().filter(|output| !written.contains_key(output)) {

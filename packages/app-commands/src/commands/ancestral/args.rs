@@ -6,7 +6,7 @@ use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::method_anc::{MethodAncArgs, SampleFromProfileArgs};
+use crate::commands::shared::method_anc::{MarginalReconstruction, MethodAncArgs, SampleFromProfileArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{AncestralOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::reconstructed_fasta::ReconstructedFastaOutputArgs;
@@ -75,6 +75,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       .tree
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeAncestralArgsRaw>(&["tree"]))?;
+    check_dependent_settings(&raw)?;
     Ok(Self {
       tree,
       method_anc: raw.method_anc.method_anc.into(),
@@ -85,6 +86,22 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       model: raw.model_args.model()?,
       raw,
     })
+  }
+}
+
+fn check_dependent_settings(raw: &TreetimeAncestralArgsRaw) -> Result<(), Report> {
+  raw.method_anc.check_model(&raw.model_args)?;
+  let marginal = raw.marginal_reconstruction();
+  marginal.check("representation", raw.representation.is_given())?;
+  marginal.check("ambiguity_threshold", raw.ambiguity.ambiguity_threshold.is_some())
+}
+
+impl TreetimeAncestralArgsRaw {
+  pub fn marginal_reconstruction(&self) -> MarginalReconstruction {
+    MarginalReconstruction {
+      runs: self.method_anc.is_marginal() || self.translations.is_some(),
+      condition: "--method-anc marginal, or the amino-acid reconstruction of --translations",
+    }
   }
 }
 

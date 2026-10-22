@@ -166,7 +166,7 @@ mod tests {
       fs::write(
         &path,
         indoc! {r"
-          skyline_n_points: 4
+          n_skyline: 4
           coalescent_confidence: 3.5
         "},
       )
@@ -179,9 +179,10 @@ mod tests {
       let dir = tempdir().unwrap();
       let path = write_config(dir.path());
       let args = parse_timetree(&["treetime", "timetree", "--config", path.to_str().unwrap()]);
-      assert_eq!(4, args.skyline_n_points);
-      pretty_assert_ulps_eq!(3.5, args.coalescent_confidence);
-      pretty_assert_ulps_eq!(50.0, args.gen_per_year);
+      assert_eq!(
+        (Some(4), Some(3.5), None),
+        (args.n_skyline, args.coalescent_confidence, args.gen_per_year)
+      );
     }
 
     #[test]
@@ -193,11 +194,10 @@ mod tests {
         "timetree",
         "--config",
         path.to_str().unwrap(),
-        "--skyline-n-points",
+        "--n-skyline",
         "8",
       ]);
-      assert_eq!(8, args.skyline_n_points);
-      pretty_assert_ulps_eq!(3.5, args.coalescent_confidence);
+      assert_eq!((Some(8), Some(3.5)), (args.n_skyline, args.coalescent_confidence));
     }
 
     #[test]
@@ -214,16 +214,15 @@ mod tests {
         "3",
       ]);
       assert_eq!(
-        (true, 3, 4),
-        (args.config_args.dry_run, args.jobs_args.jobs, args.skyline_n_points)
+        (true, 3, Some(4)),
+        (args.config_args.dry_run, args.jobs_args.jobs, args.n_skyline)
       );
     }
 
     #[test]
     fn test_config_timetree_absent_keeps_defaults() {
       let args = parse_timetree(&["treetime", "timetree"]);
-      assert_eq!(20, args.skyline_n_points);
-      pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
+      assert_eq!((None, None), (args.n_skyline, args.coalescent_confidence));
     }
 
     fn resolve_ancestral(argv: &[&str]) -> Result<TreetimeAncestralArgs, Report> {
@@ -512,9 +511,9 @@ mod tests {
     fn test_config_timetree_reads_json_document() {
       let dir = tempdir().unwrap();
       let path = dir.path().join("config.json");
-      fs::write(&path, r#"{ "skyline_n_points": 4 }"#).unwrap();
+      fs::write(&path, r#"{ "n_skyline": 4 }"#).unwrap();
       let args = parse_timetree(&["treetime", "timetree", "--config", path.to_str().unwrap()]);
-      assert_eq!(4, args.skyline_n_points);
+      assert_eq!(Some(4), args.n_skyline);
     }
 
     #[test]

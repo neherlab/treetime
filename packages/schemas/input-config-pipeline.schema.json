@@ -290,7 +290,7 @@
         "sequence_length": {
           "anyOf": [
             {
-              "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
+              "description": "Length of the sequences, used to calculate the expected variation of the branch lengths\n\nRequired without `--alignment`, and applies only then: with an alignment, the run takes the length from the\nalignment.",
               "type": "integer",
               "format": "uint",
               "minimum": 0,
@@ -322,7 +322,7 @@
         "clock_std_dev": {
           "anyOf": [
             {
-              "description": "Standard deviation of the provided clock rate estimate",
+              "description": "Standard deviation of the provided clock rate estimate\n\nApplies only with `--confidence`, whose date intervals include the clock rate uncertainty.",
               "type": "number",
               "format": "double",
               "x-unset": true
@@ -470,14 +470,15 @@
           ],
           "x-unset": true
         },
-        "skyline_n_points": {
+        "n_skyline": {
           "anyOf": [
             {
-              "description": "Number of grid points in skyline coalescent model.\n\nOnly used with --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.",
+              "description": "Number of grid points in skyline coalescent model.\n\nApplies only to --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2.",
               "type": "integer",
               "format": "uint",
               "minimum": 0,
-              "default": 20
+              "default": 20,
+              "x-unset": true
             },
             {
               "type": "string",
@@ -488,10 +489,11 @@
         "skyline_stiffness": {
           "anyOf": [
             {
-              "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Only used with --coalescent skyline.",
+              "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Applies only to --coalescent skyline.",
               "type": "number",
               "format": "double",
-              "default": 2.0
+              "default": 2.0,
+              "x-unset": true
             },
             {
               "type": "string",
@@ -502,10 +504,11 @@
         "coalescent_confidence": {
           "anyOf": [
             {
-              "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
+              "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
               "type": "number",
               "format": "double",
-              "default": 2.0
+              "default": 2.0,
+              "x-unset": true
             },
             {
               "type": "string",
@@ -581,8 +584,9 @@
         },
         "model": {
           "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
+          "default": "infer",
           "$ref": "#/$defs/GtrModelName",
-          "default": "infer"
+          "x-unset": true
         },
         "model_params": {
           "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the\noverall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and\n`t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and\n`tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T\nfor nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0\nand 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2\npis=0.25,0.25,0.25,0.25`.",
@@ -601,9 +605,10 @@
           "default": []
         },
         "partition_rates": {
-          "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate.",
+          "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
+          "default": "estimate",
           "$ref": "#/$defs/PartitionRates",
-          "default": "estimate"
+          "x-unset": true
         },
         "alphabet": {
           "description": "Sequence alphabet\n\nWhen omitted, the alphabet is auto-detected from sequence content and falls back to `nuc` when\ndetection is ambiguous.",
@@ -612,8 +617,9 @@
         },
         "representation": {
           "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "default": "auto",
           "$ref": "#/$defs/Representation",
-          "default": "auto"
+          "x-unset": true
         },
         "gap_fill": {
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -1041,10 +1047,11 @@
         "gen_per_year": {
           "anyOf": [
             {
-              "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.",
+              "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with\n`--coalescent`.",
               "type": "number",
               "format": "double",
-              "default": 50.0
+              "default": 50.0,
+              "x-unset": true
             },
             {
               "type": "string",
@@ -1909,8 +1916,9 @@
         },
         "model": {
           "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
+          "default": "infer",
           "$ref": "#/$defs/GtrModelName",
-          "default": "infer"
+          "x-unset": true
         },
         "model_params": {
           "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the\noverall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and\n`t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and\n`tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T\nfor nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0\nand 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2\npis=0.25,0.25,0.25,0.25`.",
@@ -1935,8 +1943,9 @@
         },
         "representation": {
           "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "default": "auto",
           "$ref": "#/$defs/Representation",
-          "default": "auto"
+          "x-unset": true
         },
         "sample_from_profile": {
           "description": "How to pick ancestral states from the marginal posterior profile.\n\n'argmax': most likely state at every node (deterministic, default).\n'root': sample from the posterior at the root only, argmax elsewhere (as augur's `sample_from_profile='root'`).\n'all': sample from the posterior at every node.\n\nOnly affects marginal reconstruction (`--method-anc=marginal`). Use `--seed` for reproducible draws.",
@@ -2276,7 +2285,7 @@
         "ambiguity_threshold": {
           "anyOf": [
             {
-              "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior.",
+              "description": "Report every state whose posterior probability is at most this far below the probability of the most likely\nstate.\n\nThe value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with\nthe most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.\nThe report is off when the value is not set.\n\nA sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report. The setting applies only when a marginal reconstruction runs (`--method-anc marginal`, or the amino-acid reconstruction of `--translations`), because Fitch parsimony computes no posterior.",
               "type": "number",
               "minimum": 0.0,
               "maximum": 1.0,
@@ -2542,8 +2551,9 @@
         },
         "model": {
           "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
+          "default": "infer",
           "$ref": "#/$defs/GtrModelName",
-          "default": "infer"
+          "x-unset": true
         },
         "model_params": {
           "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the\noverall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and\n`t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and\n`tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T\nfor nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0\nand 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2\npis=0.25,0.25,0.25,0.25`.",
@@ -2568,8 +2578,9 @@
         },
         "representation": {
           "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "default": "auto",
           "$ref": "#/$defs/Representation",
-          "default": "auto"
+          "x-unset": true
         },
         "gap_fill": {
           "description": "How to handle gap characters in input sequences\n\n'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0).\n'all': replace all gap characters with the ambiguous character.\n'none': leave all gap characters unchanged.",
@@ -3530,8 +3541,9 @@
         },
         "model": {
           "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
+          "default": "infer",
           "$ref": "#/$defs/GtrModelName",
-          "default": "infer"
+          "x-unset": true
         },
         "model_params": {
           "description": "Parameters for the model selected by `--model`, given as space-separated `key=value` items\n\nThe parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the\noverall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and\n`t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and\n`tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T\nfor nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0\nand 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2\npis=0.25,0.25,0.25,0.25`.",
@@ -3550,14 +3562,16 @@
           "default": []
         },
         "partition_rates": {
-          "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate.",
+          "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
+          "default": "estimate",
           "$ref": "#/$defs/PartitionRates",
-          "default": "estimate"
+          "x-unset": true
         },
         "representation": {
           "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
+          "default": "auto",
           "$ref": "#/$defs/Representation",
-          "default": "auto"
+          "x-unset": true
         },
         "output_all": {
           "anyOf": [
@@ -3870,7 +3884,7 @@
         "no_merge_siblings": {
           "anyOf": [
             {
-              "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--representation dense` and the flag is then a no-op.",
+              "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
               "type": "boolean",
               "default": false
             },
@@ -3883,7 +3897,7 @@
         "no_flip_parent_child": {
           "anyOf": [
             {
-              "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--representation dense` and the flag is\nthen a no-op.",
+              "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
               "type": "boolean",
               "default": false
             },

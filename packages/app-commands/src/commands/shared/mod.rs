@@ -7,6 +7,8 @@ pub mod branch_lengths;
 pub mod clock_filter;
 pub mod config;
 pub mod dates_input;
+pub mod dependent_settings;
+pub mod documented_default;
 pub mod gap_fill;
 pub mod gtr_output;
 pub mod input_warnings;

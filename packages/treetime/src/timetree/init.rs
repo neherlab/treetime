@@ -57,7 +57,7 @@ pub(crate) fn initialize(
   };
   let mode = params.coalescent;
   let skyline_params = SkylineParams {
-    n_points: params.skyline_n_points,
+    n_points: params.n_skyline,
     stiffness: params.skyline_stiffness,
     n_std: params.coalescent_confidence,
     ..SkylineParams::default()

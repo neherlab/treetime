@@ -2,14 +2,13 @@ use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::sequence_inputs::{AlignmentSource, SourceSettings, read_sequence_sources};
 use crate::commands::shared::tree_input::read_input_tree;
-use crate::commands::timetree::args::TreetimeTimetreeArgs;
-use crate::commands::timetree::branch_length_mode::resolve_branch_length_mode;
+use crate::commands::timetree::args::{TreetimeTimetreeArgs, check_branch_length_settings};
+use crate::commands::timetree::branch_length_mode::{ResolvedBranchLengthMode, resolve_branch_length_mode};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::ancestral::attach::MissingLeafLimit;
 use treetime::progress::LogSink;
-use treetime::timetree::params::BranchLengthMode;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -25,6 +24,7 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
   let input_leaf_order = leaf_order(&graph);
   let has_alignment = !args.alignment.alignment.is_empty();
   let branch_length_mode = resolve_branch_length_mode(args.branch_length_mode, has_alignment, &branch_lengths, log);
+  check_branch_length_settings(args, &branch_length_mode)?;
 
   let alphabet = Alphabet::new(args.alphabet_args.alphabet_name().unwrap_or_default())?;
 
@@ -70,7 +70,7 @@ pub(crate) struct InputData {
   pub graph: Graph,
   pub names: NodeNames,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub branch_length_mode: BranchLengthMode,
+  pub branch_length_mode: ResolvedBranchLengthMode,
   pub input_leaf_order: Vec<GraphNodeKey>,
   pub sequences: Vec<AlignmentSource>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,

@@ -22,7 +22,7 @@ mod tests {
 
   #[test]
   fn test_reconstructed_fasta_descriptions_parsimony() -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(MethodAncestralCli::Parsimony, RepresentationCli::Auto, true)?;
+    let descriptions = reconstructed_descriptions(MethodAncestralCli::Parsimony, None, None, true)?;
     assert_eq!(Some(&Some("sample description".to_owned())), descriptions.get("A"));
     assert_eq!(Some(&None), descriptions.get("B"));
     assert_eq!(Some(&None), descriptions.get("root"));
@@ -31,7 +31,12 @@ mod tests {
 
   #[test]
   fn test_reconstructed_fasta_descriptions_marginal() -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(MethodAncestralCli::Marginal, RepresentationCli::Sparse, true)?;
+    let descriptions = reconstructed_descriptions(
+      MethodAncestralCli::Marginal,
+      Some(RepresentationCli::Sparse),
+      Some(GtrModelNameCli::JC69),
+      true,
+    )?;
     assert_eq!(Some(&Some("sample description".to_owned())), descriptions.get("A"));
     assert_eq!(Some(&None), descriptions.get("B"));
     assert_eq!(Some(&None), descriptions.get("root"));
@@ -40,15 +45,14 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::parsimony(      MethodAncestralCli::Parsimony, RepresentationCli::Auto)]
-  #[case::marginal_sparse(MethodAncestralCli::Marginal,  RepresentationCli::Sparse)]
-  #[case::marginal_dense( MethodAncestralCli::Marginal,  RepresentationCli::Dense)]
+  #[case::parsimony(      (MethodAncestralCli::Parsimony, None,                            None))]
+  #[case::marginal_sparse((MethodAncestralCli::Marginal,  Some(RepresentationCli::Sparse), Some(GtrModelNameCli::JC69)))]
+  #[case::marginal_dense( (MethodAncestralCli::Marginal,  Some(RepresentationCli::Dense),  Some(GtrModelNameCli::JC69)))]
   #[trace]
   fn test_reconstructed_fasta_without_leaves_holds_only_internal_nodes(
-    #[case] method: MethodAncestralCli,
-    #[case] representation: RepresentationCli,
+    #[case] (method, representation, model): (MethodAncestralCli, Option<RepresentationCli>, Option<GtrModelNameCli>),
   ) -> Result<(), Report> {
-    let descriptions = reconstructed_descriptions(method, representation, false)?;
+    let descriptions = reconstructed_descriptions(method, representation, model, false)?;
     let expected = btreemap! { o!("root") => None };
     assert_eq!(expected, descriptions);
     Ok(())
@@ -64,7 +68,8 @@ mod tests {
 
     pub(super) fn reconstructed_descriptions(
       method: MethodAncestralCli,
-      representation: RepresentationCli,
+      representation: Option<RepresentationCli>,
+      model: Option<GtrModelNameCli>,
       include_leaves: bool,
     ) -> Result<BTreeMap<String, Option<String>>, Report> {
       let dir = tempdir().wrap_err("When creating a temporary directory")?;
@@ -83,7 +88,7 @@ mod tests {
         method_anc: MethodAncArgs { method_anc: method },
         representation: RepresentationArgs { representation },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model,
           ..ModelArgs::default()
         },
         tip_sequences: TipSequenceArgs {

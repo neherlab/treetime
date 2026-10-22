@@ -55,8 +55,9 @@
     },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
-      "$ref": "#/$defs/GtrModelName",
       "default": "infer",
+      "$ref": "#/$defs/GtrModelName",
+      "x-unset": true,
       "x-cli-flag": "--model"
     },
     "model_params": {
@@ -69,15 +70,17 @@
       "x-cli-flag": "--model-params"
     },
     "partition_rates": {
-      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate.",
-      "$ref": "#/$defs/PartitionRates",
+      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
       "default": "estimate",
+      "$ref": "#/$defs/PartitionRates",
+      "x-unset": true,
       "x-cli-flag": "--partition-rates"
     },
     "representation": {
       "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
-      "$ref": "#/$defs/Representation",
       "default": "auto",
+      "$ref": "#/$defs/Representation",
+      "x-unset": true,
       "x-cli-flag": "--representation"
     },
     "output_all": {
@@ -272,13 +275,13 @@
       "x-cli-flag": "--no-collapse-short-branches"
     },
     "no_merge_siblings": {
-      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. Requires the sparse sequence representation, so this step has no\neffect under `--representation dense` and the flag is then a no-op.",
+      "description": "Disable merging of polytomy siblings that share substitutions.\n\nBy default, sibling branches in a polytomy that carry identical substitutions are grouped\nunder a new internal node. The step and the flag apply only to the sparse representation.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--no-merge-siblings"
     },
     "no_flip_parent_child": {
-      "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. Requires the\nsparse sequence representation, so this step has no effect under `--representation dense` and the flag is\nthen a no-op.",
+      "description": "Disable the flip-parent-child step (reversion hoist) in polytomies.\n\nBy default, when a child branch carries the exact reversion of a substitution on the node's\nparent branch, a new node is inserted that groups the node with that child, removing one\nmutation per reverted position. When set, those reversions are left in place. The step and the flag apply\nonly to the sparse representation.",
       "type": "boolean",
       "default": false,
       "x-cli-flag": "--no-flip-parent-child"

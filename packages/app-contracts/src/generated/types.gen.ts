@@ -2642,6 +2642,11 @@ export type SettingSpec = {
    */
   default_value?: JsonValue;
   /**
+   * Value the run uses when the configuration does not set the setting, for a setting without `default_value` that
+   * applies only together with another setting: the run checks it only when a configuration sets it.
+   */
+  documented_default?: JsonValue;
+  /**
    * Smallest allowed value of a number, when there is one.
    */
   minimum?: number;
@@ -2797,7 +2802,10 @@ export type TimetreeConfig = {
    */
   date_format?: string;
   /**
-   * Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
+   * Length of the sequences, used to calculate the expected variation of the branch lengths
+   *
+   * Required without `--alignment`, and applies only then: with an alignment, the run takes the length from the
+   * alignment.
    */
   sequence_length?: number;
   /**
@@ -2806,6 +2814,8 @@ export type TimetreeConfig = {
   clock_rate?: number;
   /**
    * Standard deviation of the provided clock rate estimate
+   *
+   * Applies only with `--confidence`, whose date intervals include the clock rate uncertainty.
    */
   clock_std_dev?: number;
   /**
@@ -2865,10 +2875,10 @@ export type TimetreeConfig = {
   /**
    * Number of grid points in skyline coalescent model.
    *
-   * Only used with --coalescent skyline. Defines how many piecewise linear segments
-   * are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
+   * Applies only to --coalescent skyline. Defines how many piecewise linear segments
+   * are used to model Tc(t) over time. Must be at least 2.
    */
-  skyline_n_points?: number;
+  n_skyline?: number;
   /**
    * Smoothing stiffness for the skyline coalescent.
    *
@@ -2876,13 +2886,13 @@ export type TimetreeConfig = {
    * skyline segments: with z = ln Tc, the objective adds
    * `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
    * stiffness is dimensionless and scale-independent. Larger values enforce a
-   * smoother Tc(t). Only used with --coalescent skyline.
+   * smoother Tc(t). Applies only to --coalescent skyline.
    */
   skyline_stiffness?: number;
   /**
    * Confidence level for coalescent time scale (Tc) bands, in standard deviations.
    *
-   * Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).
+   * Applies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline).
    * The band spans `Tc * exp(±confidence * σ)`, where `σ` is
    * the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
    * time scale is not inferred and therefore has no band.
@@ -2948,7 +2958,7 @@ export type TimetreeConfig = {
    * this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
    * partitions. `equal` fixes the rate of every partition at 1.
    *
-   * With one partition, this setting has no effect: the run estimates no relative rate.
+   * The setting applies only with two or more partitions.
    */
   partition_rates?: PartitionRates;
   /**
@@ -3287,7 +3297,8 @@ export type TimetreeConfig = {
    *
    * The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is
    * already in calendar years, so this factor rescales it into generation units, the standard
-   * axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
+   * axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with
+   * `--coalescent`.
    */
   gen_per_year?: number;
 };
@@ -3924,7 +3935,7 @@ export type AncestralConfig = {
    * the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides.
    * The report is off when the value is not set.
    *
-   * A sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior.
+   * A sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report. The setting applies only when a marginal reconstruction runs (`--method-anc marginal`, or the amino-acid reconstruction of `--translations`), because Fitch parsimony computes no posterior.
    */
   ambiguity_threshold?: number;
   /**
@@ -4676,7 +4687,7 @@ export type OptimizeConfig = {
    * this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
    * partitions. `equal` fixes the rate of every partition at 1.
    *
-   * With one partition, this setting has no effect: the run estimates no relative rate.
+   * The setting applies only with two or more partitions.
    */
   partition_rates?: PartitionRates;
   /**
@@ -4939,8 +4950,7 @@ export type OptimizeConfig = {
    * Disable merging of polytomy siblings that share substitutions.
    *
    * By default, sibling branches in a polytomy that carry identical substitutions are grouped
-   * under a new internal node. Requires the sparse sequence representation, so this step has no
-   * effect under `--representation dense` and the flag is then a no-op.
+   * under a new internal node. The step and the flag apply only to the sparse representation.
    */
   no_merge_siblings?: boolean;
   /**
@@ -4948,9 +4958,8 @@ export type OptimizeConfig = {
    *
    * By default, when a child branch carries the exact reversion of a substitution on the node's
    * parent branch, a new node is inserted that groups the node with that child, removing one
-   * mutation per reverted position. When set, those reversions are left in place. Requires the
-   * sparse sequence representation, so this step has no effect under `--representation dense` and the flag is
-   * then a no-op.
+   * mutation per reverted position. When set, those reversions are left in place. The step and the flag apply
+   * only to the sparse representation.
    */
   no_flip_parent_child?: boolean;
   /**

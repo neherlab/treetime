@@ -80,7 +80,8 @@ mod tests {
     });
     assert_error!(
       result,
-      "--divergence-units=mutations requires ancestral reconstruction; incompatible with --branch-length-mode=input"
+      "--divergence-units mutations requires re-estimated branch lengths (--branch-length-mode marginal), but \
+       --branch-length-mode is input"
     );
   }
 

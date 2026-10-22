@@ -187,6 +187,7 @@ fn setting_spec(
     options,
     item_kind,
     default_value: defaults.get(&key).cloned().map(JsonValue),
+    documented_default: documented_default(property, defaults.get(&key)),
     minimum: base.get("minimum").and_then(Value::as_f64),
     examples: property
       .get("examples")
@@ -204,6 +205,13 @@ fn setting_spec(
     more: description.more,
     key,
   })
+}
+
+fn documented_default(property: &Value, default_value: Option<&Value>) -> Option<JsonValue> {
+  match default_value {
+    Some(_) => None,
+    None => property.get("default").cloned().map(JsonValue),
+  }
 }
 
 /// One setting of a command.
@@ -231,6 +239,9 @@ pub struct SettingSpec {
   pub item_kind: ListItemKind,
   /// Value of the setting when the configuration does not set it; absent when the setting has no default.
   pub default_value: Option<JsonValue>,
+  /// Value the run uses when the configuration does not set the setting, for a setting without `default_value` that
+  /// applies only together with another setting: the run checks it only when a configuration sets it.
+  pub documented_default: Option<JsonValue>,
   /// Smallest allowed value of a number, when there is one.
   pub minimum: Option<f64>,
   /// Typical values of the setting, as the configuration spells them; the first one is the value the form fills in

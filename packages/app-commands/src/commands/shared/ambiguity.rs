@@ -73,8 +73,9 @@ ambiguity_args!(AncestralAmbiguityArgs, AncestralAmbiguityOutput,
   "A sequence output writes a position with more than one reported state as the ambiguity code of these states: an \
    IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report \
    at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence \
-   `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch \
-   parsimony computes no posterior." {
+   `--sample-from-profile` draws have no report. The setting applies only when a marginal reconstruction runs \
+   (`--method-anc marginal`, or the amino-acid reconstruction of `--translations`), because Fitch parsimony \
+   computes no posterior." {
   /// Reconstructed nucleotide FASTA
   ReconstructedNucFasta,
   /// Reconstructed amino-acid FASTA of each CDS

@@ -43,10 +43,10 @@ alignment: AlignmentArgs {
       },
 tree: TreeArgs { tree: Some(tree_path) },
 model_args: ModelArgs {
-        model: GtrModelNameCli::JC69,
+        model: Some(GtrModelNameCli::JC69),
         ..ModelArgs::default()
       },
-representation: RepresentationArgs { representation },
+representation: RepresentationArgs { representation: Some(representation) },
 output: OutputCoreArgs {
         output_tree_mat_json: Some(mat_json_path.clone()),
         output_tree_mat_pb: Some(mat_pb_path.clone()),

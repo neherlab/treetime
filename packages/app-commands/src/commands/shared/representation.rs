@@ -1,7 +1,10 @@
+use crate::commands::shared::documented_default::documented_default;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+
+pub const REPRESENTATION_DEFAULT: RepresentationCli = RepresentationCli::Auto;
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
@@ -10,22 +13,28 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
+#[cfg_attr(
+  feature = "clap",
+  command(mut_arg("representation", |arg| documented_default(&REPRESENTATION_DEFAULT).help(arg)))
+)]
 pub struct RepresentationArgs {
   /// Representation of the sequences on the tree
   ///
   /// The dense representation stores the probabilities of every state at every alignment position of each node; the
   /// sparse representation stores only the variable positions. Dense is more accurate when branches are long and many
   /// sites change, but uses more memory.
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, value_enum, default_value_t = RepresentationCli::default(), help_heading = "Ancestral reconstruction")
-  )]
-  pub representation: RepresentationCli,
+  #[cfg_attr(feature = "clap", clap(long, value_enum, help_heading = "Ancestral reconstruction"))]
+  #[schemars(transform = documented_default(&REPRESENTATION_DEFAULT))]
+  pub representation: Option<RepresentationCli>,
 }
 
 impl RepresentationArgs {
   pub fn dense(&self) -> Option<bool> {
-    self.representation.dense()
+    self.representation.unwrap_or(REPRESENTATION_DEFAULT).dense()
+  }
+
+  pub fn is_given(&self) -> bool {
+    self.representation.is_some()
   }
 }
 

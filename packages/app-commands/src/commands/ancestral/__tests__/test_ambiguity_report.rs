@@ -80,7 +80,7 @@ mod tests {
         },
         tree: TreeArgs { tree: Some(tree_path) },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model: Some(GtrModelNameCli::JC69),
           ..ModelArgs::default()
         },
         reconstructed_fasta_output: ReconstructedFastaOutputArgs {

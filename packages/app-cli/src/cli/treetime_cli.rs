@@ -233,44 +233,43 @@ mod tests {
   }
 
   #[test]
-  fn test_treetime_cli_coalescent_defaults() -> Result<(), clap::Error> {
+  fn test_treetime_cli_coalescent_settings_are_unset_and_resolve_to_their_documented_defaults()
+  -> Result<(), clap::Error> {
     let args = parse_timetree(&[])?;
-    pretty_assert_ulps_eq!(2.0, args.coalescent_confidence);
-    assert_eq!(20, args.skyline_n_points);
-    pretty_assert_ulps_eq!(50.0, args.gen_per_year);
+    assert_eq!(
+      (None, None, None, None),
+      (
+        args.n_skyline,
+        args.skyline_stiffness,
+        args.coalescent_confidence,
+        args.gen_per_year
+      )
+    );
+    assert_eq!(20, args.n_skyline());
+    pretty_assert_ulps_eq!(2.0, args.skyline_stiffness());
+    pretty_assert_ulps_eq!(2.0, args.coalescent_confidence());
+    pretty_assert_ulps_eq!(50.0, args.gen_per_year());
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::confidence(  &["--coalescent-confidence", "3.5"], 3.5, 20, 50.0)]
-  #[case::n_points(    &["--skyline-n-points",      "4"],   2.0,  4, 50.0)]
-  #[case::gen_per_year(&["--gen-per-year",          "30"],  2.0, 20, 30.0)]
+  #[case::confidence(  &["--coalescent-confidence", "3.5"], (Some(3.5), None,    None))]
+  #[case::n_skyline(   &["--n-skyline",             "4"],   (None,      Some(4), None))]
+  #[case::gen_per_year(&["--gen-per-year",          "30"],  (None,      None,    Some(30.0)))]
   #[trace]
   fn test_treetime_cli_coalescent_args_parse(
     #[case] extra: &[&str],
-    #[case] expected_confidence: f64,
-    #[case] expected_n_points: usize,
-    #[case] expected_gen_per_year: f64,
+    #[case] expected: (Option<f64>, Option<usize>, Option<f64>),
   ) {
     let args = parse_timetree(extra).unwrap();
-    pretty_assert_ulps_eq!(expected_confidence, args.coalescent_confidence);
-    assert_eq!(expected_n_points, args.skyline_n_points);
-    pretty_assert_ulps_eq!(expected_gen_per_year, args.gen_per_year);
+    assert_eq!(expected, (args.coalescent_confidence, args.n_skyline, args.gen_per_year));
   }
 
   #[test]
-  fn test_treetime_cli_skyline_n_points_rejects_below_two() {
-    match parse_timetree(&["--skyline-n-points", "1"]) {
-      Ok(_) => panic!("--skyline-n-points=1 must be rejected"),
-      Err(err) => assert_eq!(ErrorKind::ValueValidation, err.kind()),
-    }
-  }
-
-  #[test]
-  fn test_treetime_cli_rejects_renamed_n_skyline_flag() {
-    match parse_timetree(&["--n-skyline", "5"]) {
-      Ok(_) => panic!("removed --n-skyline flag must be rejected"),
+  fn test_treetime_cli_rejects_the_skyline_n_points_flag() {
+    match parse_timetree(&["--skyline-n-points", "5"]) {
+      Ok(_) => panic!("--skyline-n-points must be rejected"),
       Err(err) => assert_eq!(ErrorKind::UnknownArgument, err.kind()),
     }
   }

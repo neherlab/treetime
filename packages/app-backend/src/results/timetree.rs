@@ -211,8 +211,8 @@ pub fn coalescent_prior(config: &TreetimeTimetreeArgsRaw) -> CoalescentPrior {
     },
     Some(CoalescentArg::Opt) => CoalescentPrior::Optimized,
     Some(CoalescentArg::Skyline) => CoalescentPrior::Skyline {
-      points: config.skyline_n_points,
-      stiffness: config.skyline_stiffness,
+      points: config.n_skyline(),
+      stiffness: config.skyline_stiffness(),
     },
   }
 }

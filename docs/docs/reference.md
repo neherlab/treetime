@@ -143,9 +143,13 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--date-format <FORMAT>` — Format used to parse string sampling dates (numeric, ISO, and uncertain dates parse regardless)
 
   Default value: `%Y-%m-%d`
-* `--sequence-length <SEQUENCE_LENGTH>` — Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided
+* `--sequence-length <SEQUENCE_LENGTH>` — Length of the sequences, used to calculate the expected variation of the branch lengths
+
+   Required without `--alignment`, and applies only then: with an alignment, the run takes the length from the alignment.
 * `--clock-rate <CLOCK_RATE>` — If specified, the rate of the molecular clock won't be optimized
 * `--clock-std-dev <CLOCK_STD_DEV>` — Standard deviation of the provided clock rate estimate
+
+   Applies only with `--confidence`, whose date intervals include the clock rate uncertainty.
 * `--branch-length-mode <BRANCH_LENGTH_MODE>` — How the branch lengths of the time inference are obtained
 
    `auto` keeps the input branch lengths without an alignment, and also when the longest input branch is longer than 0.1 substitutions per site, because the re-estimated branch lengths are accurate only at short evolutionary distances; otherwise it re-estimates them as `marginal` does. When no input branch has a length, `auto` chooses `marginal`. The run logs the choice.
@@ -178,21 +182,6 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 * `--coalescent <TC|opt|skyline>` — Coalescent prior: a fixed time scale in substitutions per site (as in TreeTime 0.x and augur, for example 0.01) or as a time (10y, 26w, 90d); opt fits a constant time scale; skyline fits a piecewise-constant one
 
    A time is a positive number directly followed by the unit y (years), w (weeks) or d (days). A time scale in substitutions per site is converted to years with the clock rate of each iteration. Without this setting the node times have no coalescent prior.
-* `--skyline-n-points <SKYLINE_N_POINTS>` — Number of grid points in skyline coalescent model.
-
-   Only used with --coalescent skyline. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
-
-  Default value: `20`
-* `--skyline-stiffness <SKYLINE_STIFFNESS>` — Smoothing stiffness for the skyline coalescent.
-
-   Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Only used with --coalescent skyline.
-
-  Default value: `2`
-* `--coalescent-confidence <COALESCENT_CONFIDENCE>` — Confidence level for coalescent time scale (Tc) bands, in standard deviations.
-
-   Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed time scale is not inferred and therefore has no band.
-
-  Default value: `2`
 * `--clock-filter <CLOCK_FILTER>` — Ignore tips that do not follow a loose clock: the number of interquartile ranges from the root-to-tip regression beyond which a tip is an outlier.
 
    0 switches the filter off.
@@ -211,11 +200,14 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    With one tip, the root is placed on the branch leading to that tip.
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
+* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
-  Default value: `infer`
+   [default: infer]
 
   Possible values:
   - `infer`:
@@ -228,16 +220,13 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
   - `tn93`
   - `jtt92`
 
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
-
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--partition-rates <PARTITION_RATES>` — Relative substitution rates of the partitions
 
    Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.
 
-   With one partition, this setting has no effect: the run estimates no relative rate.
+   The setting applies only with two or more partitions.
 
-  Default value: `estimate`
+   [default: estimate]
 
   Possible values:
   - `estimate`:
@@ -255,7 +244,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Default value: `auto`
+   [default: auto]
 
   Possible values:
   - `auto`:
@@ -445,11 +434,26 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
    Without a seed, a run with a random step draws one and logs it, so the run can be reproduced.
 * `-j`, `--jobs <JOBS>` — Number of threads of the run. Without this flag, the run uses every available CPU thread
+* `--n-skyline <N_SKYLINE>` — Number of grid points in skyline coalescent model.
+
+   Applies only to --coalescent skyline. Defines how many piecewise linear segments are used to model Tc(t) over time. Must be at least 2.
+
+   [default: 20]
+* `--skyline-stiffness <SKYLINE_STIFFNESS>` — Smoothing stiffness for the skyline coalescent.
+
+   Penalizes log-fold-changes of the coalescent time scale Tc between adjacent skyline segments: with z = ln Tc, the objective adds `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the stiffness is dimensionless and scale-independent. Larger values enforce a smoother Tc(t). Applies only to --coalescent skyline.
+
+   [default: 2.0]
+* `--coalescent-confidence <COALESCENT_CONFIDENCE>` — Confidence level for coalescent time scale (Tc) bands, in standard deviations.
+
+   Applies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline). The band spans `Tc * exp(±confidence * σ)`, where `σ` is the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed time scale is not inferred and therefore has no band.
+
+   [default: 2.0]
 * `--gen-per-year <GEN_PER_YEAR>` — Generations per year for converting the coalescent time scale Tc into an effective population size.
 
-   The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
+   The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is already in calendar years, so this factor rescales it into generation units, the standard axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with `--coalescent`.
 
-  Default value: `50`
+   [default: 50.0]
 
 
 
@@ -484,11 +488,14 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 * `--zero-based` — Report sequence positions counted from 0 instead of 1.
 
    Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
+* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
-  Default value: `infer`
+   [default: infer]
 
   Possible values:
   - `infer`:
@@ -501,16 +508,13 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
   - `tn93`
   - `jtt92`
 
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
-
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--partition-rates <PARTITION_RATES>` — Relative substitution rates of the partitions
 
    Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.
 
-   With one partition, this setting has no effect: the run estimates no relative rate.
+   The setting applies only with two or more partitions.
 
-  Default value: `estimate`
+   [default: estimate]
 
   Possible values:
   - `estimate`:
@@ -522,7 +526,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
    The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Default value: `auto`
+   [default: auto]
 
   Possible values:
   - `auto`:
@@ -700,10 +704,10 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
    By default the optimize loop contracts internal edges the per-edge optimizer drove to exactly zero that carry no substitutions or indels, turning the resulting binary nodes into polytomies. When set, such edges are kept in the output tree with length zero.
 * `--no-merge-siblings` — Disable merging of polytomy siblings that share substitutions.
 
-   By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. Requires the sparse sequence representation, so this step has no effect under `--representation dense` and the flag is then a no-op.
+   By default, sibling branches in a polytomy that carry identical substitutions are grouped under a new internal node. The step and the flag apply only to the sparse representation.
 * `--no-flip-parent-child` — Disable the flip-parent-child step (reversion hoist) in polytomies.
 
-   By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. Requires the sparse sequence representation, so this step has no effect under `--representation dense` and the flag is then a no-op.
+   By default, when a child branch carries the exact reversion of a substitution on the node's parent branch, a new node is inserted that groups the node with that child, removing one mutation per reverted position. When set, those reversions are left in place. The step and the flag apply only to the sparse representation.
 * `--gap-fill <GAP_FILL>` — How to handle gap characters in input sequences
 
    'only-terminal': replace leading and trailing gap characters with the ambiguous character (default, matches v0). 'all': replace all gap characters with the ambiguous character. 'none': leave all gap characters unchanged.
@@ -917,11 +921,14 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
+* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
-  Default value: `infer`
+   [default: infer]
 
   Possible values:
   - `infer`:
@@ -934,9 +941,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
   - `tn93`
   - `jtt92`
 
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
-
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
 
   Default value: `marginal`
@@ -947,7 +951,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
    The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Default value: `auto`
+   [default: auto]
 
   Possible values:
   - `auto`:
@@ -1119,7 +1123,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
    The value is a difference of probabilities from 0 to 1. With 0, the report names only the states that tie with the most likely state. RAxML-NG uses 0.5 divided by the number of states, for example 0.125 for nucleotides. The report is off when the value is not set.
 
-   A sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report, and `--method-anc=parsimony` gives no report, because Fitch parsimony computes no posterior.
+   A sequence output writes a position with more than one reported state as the ambiguity code of these states: an IUPAC code for nucleotides, `B`, `Z`, or `J` for amino acids, otherwise `N` or `X`. Internal nodes have a report at every position, leaves only at the positions that `--impute-missing-data` imputes. Nodes whose sequence `--sample-from-profile` draws have no report. The setting applies only when a marginal reconstruction runs (`--method-anc marginal`, or the amino-acid reconstruction of `--translations`), because Fitch parsimony computes no posterior.
 * `--ambiguity-outputs <AMBIGUITY_OUTPUTS>` — List of the outputs that carry the ambiguity report.
 
    Without this list, every output of the run that can carry the report carries it. Requires `--ambiguity-threshold`.
@@ -1354,11 +1358,14 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
   Possible values: `nuc`, `aa`, `aa-no-stop`
 
+* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
+
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
    `infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively, name the model type. If the named model takes parameters, use `--model-params` to set them.
 
-  Default value: `infer`
+   [default: infer]
 
   Possible values:
   - `infer`:
@@ -1371,9 +1378,6 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
   - `tn93`
   - `jtt92`
 
-* `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
-
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
 
   Default value: `marginal`
@@ -1384,7 +1388,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
    The dense representation stores the probabilities of every state at every alignment position of each node; the sparse representation stores only the variable positions. Dense is more accurate when branches are long and many sites change, but uses more memory.
 
-  Default value: `auto`
+   [default: auto]
 
   Possible values:
   - `auto`:

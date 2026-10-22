@@ -22,6 +22,10 @@ pub(crate) mod tests {
   const SEQUENCE_LENGTH_REQUIRED: &str =
     "--sequence-length is required without an alignment: the time inference needs the sequence length";
 
+  const SEQUENCE_LENGTH_WITH_ALIGNMENT: &str = "--sequence-length applies only without --alignment: the run takes \
+                                                the sequence length from the alignment, and an alignment of \
+                                                variable sites with a separate genome length is not supported";
+
   const MARGINAL_NEEDS_ALIGNMENT: &str =
     "--branch-length-mode=marginal requires an alignment: add --alignment or use --branch-length-mode=input";
 
@@ -98,6 +102,58 @@ pub(crate) mod tests {
       panic!("expected a valid config, got {response:?}");
     };
     assert_eq!(json!("parsimony"), config["method_anc"]);
+  }
+
+  #[test]
+  fn test_check_config_a_setting_without_effect_blocks_at_both_settings() {
+    let response = check_config(&CheckConfigRequest {
+      command: AppCommand::Ancestral,
+      text: "tree: t.nwk\nalignment: [a.fasta]\nmethod_anc: parsimony\nmodel: infer\n".to_owned(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+    });
+    let CheckConfigResponse::Invalid { checks, .. } = response else {
+      panic!("expected an invalid config, got {response:?}");
+    };
+    assert_eq!(
+      vec![(
+        o!("config-0"),
+        o!("--model applies only with --method-anc marginal: parsimony reconstruction uses no substitution model"),
+        vec![o!("model"), o!("method_anc")]
+      )],
+      checks
+        .into_iter()
+        .map(|check| (check.id, check.text, check.settings))
+        .collect::<Vec<_>>()
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::ancestral_parsimony( AppCommand::Ancestral, json!({ "method_anc": "parsimony" }))]
+  #[case::homoplasy_parsimony( AppCommand::Homoplasy, json!({ "method_anc": "parsimony" }))]
+  #[case::optimize_dense(      AppCommand::Optimize,  json!({ "representation": "dense" }))]
+  #[case::timetree_opt(        AppCommand::Timetree,  json!({ "coalescent": "opt" }))]
+  #[case::timetree_input_mode( AppCommand::Timetree,  json!({ "branch_length_mode": "input" }))]
+  #[trace]
+  fn test_check_config_the_defaults_of_a_fresh_draft_give_no_setting(
+    #[case] command: AppCommand,
+    #[case] settings: serde_json::Value,
+  ) {
+    let mut draft = fresh_draft(command);
+    draft.extend(settings.as_object().unwrap().clone());
+    let response = check_config(&CheckConfigRequest {
+      command,
+      text: serde_json::Value::Object(draft).to_string(),
+      inputs: SparseConfig::default(),
+      input_facts: None,
+      folder: None,
+    });
+    assert!(
+      matches!(response, CheckConfigResponse::Valid { .. }),
+      "expected a valid config, got {response:?}"
+    );
   }
 
   #[test]
@@ -293,6 +349,7 @@ pub(crate) mod tests {
   #[case::input_neither(               "branch_length_mode: input",                           Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
   #[case::zero_sequence_length(        "branch_length_mode: input\nsequence_length: 0",        Some((["alignment", "sequence_length"],    SEQUENCE_LENGTH_REQUIRED)))]
   #[case::marginal_without_alignment(  "branch_length_mode: marginal\nsequence_length: 1000",  Some((["alignment", "branch_length_mode"], MARGINAL_NEEDS_ALIGNMENT)))]
+  #[case::alignment_and_length(        "alignment: [a.fasta]\nsequence_length: 1000",          Some((["sequence_length", "alignment"],    SEQUENCE_LENGTH_WITH_ALIGNMENT)))]
   #[trace]
   fn test_check_config_timetree_blocks_a_run_without_sequence_length(
     #[case] settings: &str,

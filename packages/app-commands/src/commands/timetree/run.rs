@@ -1,4 +1,3 @@
-use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::output_args::DivergenceUnits;
 use crate::commands::shared::output_args::ResolveOutputs;
@@ -52,19 +51,17 @@ pub fn run_timetree_estimation(
 
   let input_data = load_input_data(args, log)?;
   let input_leaf_order = input_data.input_leaf_order.clone();
-  let branch_length_mode = input_data.branch_length_mode;
+  let branch_length_mode = input_data.branch_length_mode.mode;
 
   let resolved = args.resolve_outputs()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);
   let reconstructed_nuc_fasta = reconstructed_nuc_fasta_paths(&resolved, branch_length_mode, log)?;
   let mutation_units = matches!(args.branch_lengths.divergence_units, DivergenceUnits::Mutations);
-  if mutation_units && branch_length_mode == BranchLengthMode::Input {
-    return Err(argument_error(
-      &["divergence_units", "branch_length_mode"],
-      "--divergence-units=mutations requires ancestral reconstruction; \
-       incompatible with --branch-length-mode=input",
-    ));
+  if mutation_units {
+    input_data
+      .branch_length_mode
+      .require_marginal(&["divergence_units"], "--divergence-units mutations")?;
   }
   let sequence_outputs_requested =
     sequence_outputs_requested(&resolved, mutation_units, !reconstructed_nuc_fasta.is_empty());
@@ -158,10 +155,10 @@ fn timetree_params(
     resolve_polytomies: !args.keep_polytomies,
     relax: args.relax.clone(),
     coalescent: args.coalescent.map_or(CoalescentMode::Disabled, CoalescentArg::mode),
-    skyline_n_points: args.skyline_n_points,
-    skyline_stiffness: args.skyline_stiffness,
-    coalescent_confidence: args.coalescent_confidence,
-    gen_per_year: args.gen_per_year,
+    n_skyline: args.n_skyline(),
+    skyline_stiffness: args.skyline_stiffness(),
+    coalescent_confidence: args.coalescent_confidence(),
+    gen_per_year: args.gen_per_year(),
     confidence: args.confidence,
     include_leaves: args.include_leaves,
     report_ambiguous: args.tip_sequences.report_ambiguous,

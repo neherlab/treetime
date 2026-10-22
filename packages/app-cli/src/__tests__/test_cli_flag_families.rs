@@ -70,8 +70,6 @@ pub(crate) mod tests {
 
   #[rustfmt::skip]
   const FLAG_EXCEPTIONS: &[FlagException] = &[
-    FlagException { flag: "--skyline-n-points",                 change: Change::Extra,   commands: &[TT],                 pending: Pending::SettingsThatApplyOnlyWithAnother },
-    FlagException { flag: "--n-skyline",                        change: Change::Missing, commands: &[TT],                 pending: Pending::SettingsThatApplyOnlyWithAnother },
     FlagException { flag: "--output-nwk-style",                 change: Change::Extra,   commands: ANALYSIS,              pending: Pending::NewickAnnotationsFlag },
     FlagException { flag: "--newick-annotations",               change: Change::Missing, commands: ANALYSIS,              pending: Pending::NewickAnnotationsFlag },
     FlagException { flag: "--confidence",                       change: Change::Missing, commands: &[MU],                 pending: Pending::MugrationConfidenceFlag },

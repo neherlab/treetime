@@ -10,7 +10,6 @@ use treetime_utils::make_report;
 
 pub fn cli_rule_diagnostics(command: AppCommand, config: &Map<String, Value>) -> Result<Vec<RawDiagnostic>, Report> {
   let cli = command.cli_command();
-  let defaults = command.default_config()?;
   let properties = setting_properties(command.config_schema().as_value())?;
   let args: Vec<&Arg> = properties
     .iter()
@@ -19,7 +18,7 @@ pub fn cli_rule_diagnostics(command: AppCommand, config: &Map<String, Value>) ->
   let mut given: Vec<GivenSetting<'_>> = izip!(&properties, &args)
     .filter_map(|(property, arg)| {
       let value = config.get(&property.key)?;
-      is_given(property, arg, value, defaults.get(&property.key)).then_some((property, *arg, value))
+      is_given(property, arg, value).then_some((property, *arg, value))
     })
     .map(|(property, arg, value)| GivenSetting::new(property, arg, value))
     .try_collect()?;
@@ -33,8 +32,8 @@ pub fn cli_rule_diagnostics(command: AppCommand, config: &Map<String, Value>) ->
   Ok(conflicts.chain(counts).collect())
 }
 
-pub fn is_given(property: &SettingProperty, arg: &Arg, value: &Value, default: Option<&Value>) -> bool {
-  if property.path_role == Some(PathRole::Output) || Some(value) == default {
+pub fn is_given(property: &SettingProperty, arg: &Arg, value: &Value) -> bool {
+  if property.path_role == Some(PathRole::Output) {
     return false;
   }
   if !arg.get_action().takes_values() {

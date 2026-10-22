@@ -5,6 +5,8 @@ use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::branch_lengths::BranchLengthArgs;
 use crate::commands::shared::clock_filter::ClockFilterArgs;
 use crate::commands::shared::config::ConfigArgs;
+use crate::commands::shared::dependent_settings::{check_applies, setting_flag};
+use crate::commands::shared::documented_default::documented_default;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::gtr_output::GtrOutputArgs;
 use crate::commands::shared::jobs::JobsArgs;
@@ -20,7 +22,7 @@ use crate::commands::shared::tip_sequences::{ImputeMissingDataArgs, TipSequenceA
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
-use crate::commands::timetree::branch_length_mode::BranchLengthModeCli;
+use crate::commands::timetree::branch_length_mode::{BranchLengthModeCli, ResolvedBranchLengthMode};
 use crate::commands::timetree::coalescent::CoalescentArg;
 #[cfg(feature = "clap")]
 use crate::commands::timetree::coalescent::parse_coalescent;
@@ -37,15 +39,17 @@ use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
 use treetime_grid::MaxGridPoints;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
+use treetime_utils::o;
 
-#[cfg(feature = "clap")]
-fn parse_skyline_n_points(s: &str) -> Result<usize, String> {
-  let n: usize = s.parse().map_err(|err| format!("'{s}' is not a valid number: {err}"))?;
-  if n < 2 {
-    return Err("skyline-n-points must be at least 2".to_owned());
-  }
-  Ok(n)
-}
+pub const N_SKYLINE_DEFAULT: usize = 20;
+
+const N_SKYLINE_MIN: usize = 2;
+
+pub const SKYLINE_STIFFNESS_DEFAULT: f64 = 2.0;
+
+pub const COALESCENT_CONFIDENCE_DEFAULT: f64 = 2.0;
+
+pub const GEN_PER_YEAR_DEFAULT: f64 = 50.0;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct TreetimeTimetreeArgs {
@@ -71,6 +75,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       .clone()
       .ok_or_else(|| missing_required_args::<TreetimeTimetreeArgsRaw>(&["tree"]))?;
     check_sequence_source(&raw)?;
+    check_dependent_settings(&raw)?;
     Ok(Self {
       tree,
       indel_policy: raw.branch_lengths.indel_policy(),
@@ -84,9 +89,36 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   }
 }
 
+pub(crate) fn check_branch_length_settings(
+  raw: &TreetimeTimetreeArgsRaw,
+  resolved: &ResolvedBranchLengthMode,
+) -> Result<(), Report> {
+  for (setting, given) in [
+    ("representation", raw.representation.is_given()),
+    ("partition_rates", raw.partition_rates_args.is_given()),
+    ("ambiguity_threshold", raw.ambiguity.ambiguity_threshold.is_some()),
+  ] {
+    if given {
+      resolved.require_marginal(&[setting], &setting_flag(setting))?;
+    }
+  }
+  Ok(())
+}
+
 fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
   if !raw.alignment.alignment.is_empty() {
-    return Ok(());
+    return check_applies(
+      "sequence_length",
+      raw.sequence_length.is_some(),
+      "alignment",
+      false,
+      || {
+        o!(
+          "applies only without --alignment: the run takes the sequence length from the alignment, and an \
+            alignment of variable sites with a separate genome length is not supported"
+        )
+      },
+    );
   }
   if raw.branch_length_mode == BranchLengthModeCli::Marginal {
     return Err(argument_error(
@@ -103,6 +135,86 @@ fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
   Ok(())
 }
 
+fn check_dependent_settings(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
+  check_coalescent_settings(raw)?;
+  check_applies(
+    "clock_std_dev",
+    raw.clock_std_dev.is_some(),
+    "confidence",
+    raw.confidence,
+    || o!("applies only with --confidence: only the date intervals use the clock rate uncertainty"),
+  )?;
+  raw
+    .partition_rates_args
+    .check_partitions(raw.alignment.alignment.len())?;
+  if raw.branch_length_mode != BranchLengthModeCli::Auto {
+    let has_alignment = !raw.alignment.alignment.is_empty();
+    check_branch_length_settings(
+      raw,
+      &ResolvedBranchLengthMode::new(raw.branch_length_mode, has_alignment, None),
+    )?;
+  }
+  Ok(())
+}
+
+fn check_coalescent_settings(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
+  let coalescent = raw.coalescent;
+  let actual = || coalescent.map_or_else(|| o!("not set"), |coalescent| coalescent.to_string());
+  let skyline = matches!(coalescent, Some(CoalescentArg::Skyline));
+  for (setting, given) in [
+    ("n_skyline", raw.n_skyline.is_some()),
+    ("skyline_stiffness", raw.skyline_stiffness.is_some()),
+  ] {
+    check_applies(setting, given, "coalescent", skyline, || {
+      format!("applies only to --coalescent skyline, but --coalescent is {}", actual())
+    })?;
+  }
+  if let Some(n_skyline) = raw.n_skyline.filter(|&n_skyline| n_skyline < N_SKYLINE_MIN) {
+    return Err(argument_error(
+      &["n_skyline"],
+      format!("--n-skyline is {n_skyline}, but the skyline needs at least {N_SKYLINE_MIN} grid points"),
+    ));
+  }
+  let fitted = matches!(coalescent, Some(CoalescentArg::Opt | CoalescentArg::Skyline));
+  check_applies(
+    "coalescent_confidence",
+    raw.coalescent_confidence.is_some(),
+    "coalescent",
+    fitted,
+    || {
+      format!(
+        "applies only to --coalescent opt and --coalescent skyline, but --coalescent is {}",
+        actual()
+      )
+    },
+  )?;
+  check_applies(
+    "gen_per_year",
+    raw.gen_per_year.is_some(),
+    "coalescent",
+    coalescent.is_some(),
+    || o!("applies only with --coalescent, which is not set"),
+  )
+}
+
+impl TreetimeTimetreeArgsRaw {
+  pub fn n_skyline(&self) -> usize {
+    self.n_skyline.unwrap_or(N_SKYLINE_DEFAULT)
+  }
+
+  pub fn skyline_stiffness(&self) -> f64 {
+    self.skyline_stiffness.unwrap_or(SKYLINE_STIFFNESS_DEFAULT)
+  }
+
+  pub fn coalescent_confidence(&self) -> f64 {
+    self.coalescent_confidence.unwrap_or(COALESCENT_CONFIDENCE_DEFAULT)
+  }
+
+  pub fn gen_per_year(&self) -> f64 {
+    self.gen_per_year.unwrap_or(GEN_PER_YEAR_DEFAULT)
+  }
+}
+
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
@@ -110,6 +222,15 @@ fn check_sequence_source(raw: &TreetimeTimetreeArgsRaw) -> Result<(), Report> {
 #[schemars(transform = schema_defaults::<Self>)]
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
+#[cfg_attr(
+  feature = "clap",
+  command(
+    mut_arg("n_skyline", |arg| documented_default(&N_SKYLINE_DEFAULT).help(arg)),
+    mut_arg("skyline_stiffness", |arg| documented_default(&SKYLINE_STIFFNESS_DEFAULT).help(arg)),
+    mut_arg("coalescent_confidence", |arg| documented_default(&COALESCENT_CONFIDENCE_DEFAULT).help(arg)),
+    mut_arg("gen_per_year", |arg| documented_default(&GEN_PER_YEAR_DEFAULT).help(arg)),
+  )
+)]
 #[schemars(rename = "TimetreeConfig")]
 pub struct TreetimeTimetreeArgsRaw {
   #[cfg_attr(feature = "clap", clap(flatten))]
@@ -155,7 +276,10 @@ pub struct TreetimeTimetreeArgsRaw {
   #[deser(flatten)]
   pub date_column: DateColumnArgs,
 
-  /// Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.
+  /// Length of the sequences, used to calculate the expected variation of the branch lengths
+  ///
+  /// Required without `--alignment`, and applies only then: with an alignment, the run takes the length from the
+  /// alignment.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Input data"))]
   pub sequence_length: Option<usize>,
 
@@ -165,6 +289,8 @@ pub struct TreetimeTimetreeArgsRaw {
   pub clock_rate: Option<f64>,
 
   /// Standard deviation of the provided clock rate estimate
+  ///
+  /// Applies only with `--confidence`, whose date intervals include the clock rate uncertainty.
   #[cfg_attr(feature = "clap", clap(long, help_heading = "Molecular clock"))]
   pub clock_std_dev: Option<f64>,
 
@@ -231,12 +357,11 @@ pub struct TreetimeTimetreeArgsRaw {
 
   /// Number of grid points in skyline coalescent model.
   ///
-  /// Only used with --coalescent skyline. Defines how many piecewise linear segments
-  /// are used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.
-  #[default = 20]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_n_points, help_heading = "Coalescent prior"))]
-  #[cfg_attr(feature = "clap", clap(value_parser = parse_skyline_n_points))]
-  pub skyline_n_points: usize,
+  /// Applies only to --coalescent skyline. Defines how many piecewise linear segments
+  /// are used to model Tc(t) over time. Must be at least 2.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
+  #[schemars(range(min = N_SKYLINE_MIN), transform = documented_default(&N_SKYLINE_DEFAULT))]
+  pub n_skyline: Option<usize>,
 
   /// Smoothing stiffness for the skyline coalescent.
   ///
@@ -244,20 +369,20 @@ pub struct TreetimeTimetreeArgsRaw {
   /// skyline segments: with z = ln Tc, the objective adds
   /// `(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the
   /// stiffness is dimensionless and scale-independent. Larger values enforce a
-  /// smoother Tc(t). Only used with --coalescent skyline.
-  #[default = 2.0]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().skyline_stiffness, help_heading = "Coalescent prior"))]
-  pub skyline_stiffness: f64,
+  /// smoother Tc(t). Applies only to --coalescent skyline.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
+  #[schemars(transform = documented_default(&SKYLINE_STIFFNESS_DEFAULT))]
+  pub skyline_stiffness: Option<f64>,
 
   /// Confidence level for coalescent time scale (Tc) bands, in standard deviations.
   ///
-  /// Applies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).
+  /// Applies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline).
   /// The band spans `Tc * exp(±confidence * σ)`, where `σ` is
   /// the standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed
   /// time scale is not inferred and therefore has no band.
-  #[default = 2.0]
-  #[cfg_attr(feature = "clap", clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().coalescent_confidence, help_heading = "Coalescent prior"))]
-  pub coalescent_confidence: f64,
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
+  #[schemars(transform = documented_default(&COALESCENT_CONFIDENCE_DEFAULT))]
+  pub coalescent_confidence: Option<f64>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]
   #[schemars(flatten)]
@@ -418,11 +543,9 @@ pub struct TreetimeTimetreeArgsRaw {
   ///
   /// The coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is
   /// already in calendar years, so this factor rescales it into generation units, the standard
-  /// axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.
-  #[default = 50.0]
-  #[cfg_attr(
-    feature = "clap",
-    clap(long, default_value_t = TreetimeTimetreeArgsRaw::default().gen_per_year, help_heading = "Coalescent prior")
-  )]
-  pub gen_per_year: f64,
+  /// axis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with
+  /// `--coalescent`.
+  #[cfg_attr(feature = "clap", clap(long, help_heading = "Coalescent prior"))]
+  #[schemars(transform = documented_default(&GEN_PER_YEAR_DEFAULT))]
+  pub gen_per_year: Option<f64>,
 }

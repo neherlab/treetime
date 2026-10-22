@@ -99,6 +99,7 @@ mod tests {
         options: vec![],
         item_kind: ListItemKind::String,
         default_value: None,
+        documented_default: None,
         minimum: None,
         examples: vec![JsonValue(json!(0.001))],
         value_names: vec_of_owned!["CLOCK_RATE"],
@@ -133,6 +134,7 @@ mod tests {
         ],
         item_kind: ListItemKind::String,
         default_value: None,
+        documented_default: None,
         minimum: None,
         examples: vec![JsonValue(json!(0.01))],
         value_names: vec_of_owned!["TC|opt|skyline"],
@@ -189,7 +191,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::switch(         AppCommand::Timetree,  "confidence",          SettingKind::Switch,   false, Some(json!(false)))]
-  #[case::enum_default(   AppCommand::Ancestral, "representation",      SettingKind::Enum,     false, Some(json!("auto")))]
+  #[case::enum_default(   AppCommand::Ancestral, "method_anc",          SettingKind::Enum,     false, Some(json!("marginal")))]
   #[case::integer(        AppCommand::Timetree,  "max_iter",            SettingKind::Integer,  false, Some(json!(2)))]
   #[case::optional_int(   AppCommand::Timetree,  "seed",                SettingKind::Integer,  true,  None)]
   #[case::text(           AppCommand::Mugration, "missing_data",        SettingKind::Text,     false, Some(json!("?")))]
@@ -208,6 +210,31 @@ mod tests {
     assert_eq!(
       (kind, nullable, default_value),
       (spec.kind, spec.nullable, spec.default_value.map(Value::from))
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::model(           AppCommand::Ancestral, "model",           (None,            Some(json!("infer"))))]
+  #[case::representation(  AppCommand::Optimize,  "representation",  (None,            Some(json!("auto"))))]
+  #[case::partition_rates( AppCommand::Timetree,  "partition_rates", (None,            Some(json!("estimate"))))]
+  #[case::n_skyline(       AppCommand::Timetree,  "n_skyline",       (None,            Some(json!(20))))]
+  #[case::gen_per_year(    AppCommand::Timetree,  "gen_per_year",    (None,            Some(json!(50.0))))]
+  #[case::without_default( AppCommand::Timetree,  "seed",            (None,            None))]
+  #[case::with_default(    AppCommand::Timetree,  "max_iter",        (Some(json!(2)),  None))]
+  #[trace]
+  fn test_setting_catalog_documented_default_leaves_the_setting_unset(
+    #[case] command: AppCommand,
+    #[case] key: &str,
+    #[case] expected: (Option<Value>, Option<Value>),
+  ) {
+    let spec = spec(command, key);
+    assert_eq!(
+      expected,
+      (
+        spec.default_value.map(Value::from),
+        spec.documented_default.map(Value::from)
+      )
     );
   }
 

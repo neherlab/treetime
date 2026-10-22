@@ -4,7 +4,7 @@ use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::jobs::JobsArgs;
-use crate::commands::shared::method_anc::{MethodAncArgs, SampleFromProfileArgs};
+use crate::commands::shared::method_anc::{MarginalReconstruction, MethodAncArgs, SampleFromProfileArgs};
 use crate::commands::shared::model::ModelArgs;
 use crate::commands::shared::output_args::{HomoplasyOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::representation::RepresentationArgs;
@@ -77,6 +77,12 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
         ),
       ));
     }
+    raw.method_anc.check_model(&raw.model_args)?;
+    MarginalReconstruction {
+      runs: raw.method_anc.is_marginal(),
+      condition: "--method-anc marginal",
+    }
+    .check("representation", raw.representation.is_given())?;
     Ok(Self {
       tree,
       method_anc: raw.method_anc.method_anc.into(),

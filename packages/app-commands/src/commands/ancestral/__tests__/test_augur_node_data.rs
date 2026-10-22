@@ -124,12 +124,7 @@ mod tests {
   #[test]
   fn test_augur_node_data_ancestral_parsimony_end_to_end() {
     use crate::commands::shared::method_anc::MethodAncestralCli;
-    use crate::commands::shared::model::GtrModelNameCli;
-    let actual = helpers::reconstruct_json(
-      MethodAncestralCli::Parsimony,
-      RepresentationCli::Auto,
-      GtrModelNameCli::Infer,
-    );
+    let actual = helpers::reconstruct_json(MethodAncestralCli::Parsimony, None, None);
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
 
@@ -139,8 +134,8 @@ mod tests {
     use crate::commands::shared::model::GtrModelNameCli;
     let actual = helpers::reconstruct_json(
       MethodAncestralCli::Marginal,
-      RepresentationCli::Sparse,
-      GtrModelNameCli::JC69,
+      Some(RepresentationCli::Sparse),
+      Some(GtrModelNameCli::JC69),
     );
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
@@ -151,8 +146,8 @@ mod tests {
     use crate::commands::shared::model::GtrModelNameCli;
     let actual = helpers::reconstruct_json(
       MethodAncestralCli::Marginal,
-      RepresentationCli::Dense,
-      GtrModelNameCli::JC69,
+      Some(RepresentationCli::Dense),
+      Some(GtrModelNameCli::JC69),
     );
     assert_eq!(helpers::expected_invariant_json(), actual.trim());
   }
@@ -355,8 +350,8 @@ mod tests {
 
     pub(super) fn reconstruct_json(
       method: MethodAncestralCli,
-      representation: RepresentationCli,
-      model: GtrModelNameCli,
+      representation: Option<RepresentationCli>,
+      model: Option<GtrModelNameCli>,
     ) -> String {
       let dir = tempdir().unwrap();
       let tree_path = dir.path().join("tree.nwk");
@@ -407,9 +402,11 @@ mod tests {
         method_anc: MethodAncArgs {
           method_anc: MethodAncestralCli::Marginal,
         },
-        representation: RepresentationArgs { representation },
+        representation: RepresentationArgs {
+          representation: Some(representation),
+        },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model: Some(GtrModelNameCli::JC69),
           ..ModelArgs::default()
         },
         impute_missing_data: ImputeMissingDataArgs {
@@ -451,10 +448,10 @@ mod tests {
           method_anc: MethodAncestralCli::Marginal,
         },
         representation: RepresentationArgs {
-          representation: RepresentationCli::Sparse,
+          representation: Some(RepresentationCli::Sparse),
         },
         model_args: ModelArgs {
-          model: GtrModelNameCli::JC69,
+          model: Some(GtrModelNameCli::JC69),
           ..ModelArgs::default()
         },
         translations: Some(template),

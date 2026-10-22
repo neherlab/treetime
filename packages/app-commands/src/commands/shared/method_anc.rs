@@ -1,10 +1,14 @@
+use crate::commands::shared::dependent_settings::check_applies;
 use crate::commands::shared::mirror_enum::impl_from_mirror;
+use crate::commands::shared::model::ModelArgs;
 use deser::{Deserialize, Serialize};
+use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use treetime::ancestral::params::MethodAncestral;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime_schema::schema_defaults;
+use treetime_utils::o;
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
 #[schemars(default, deny_unknown_fields)]
@@ -15,6 +19,34 @@ pub struct MethodAncArgs {
   /// Method used for reconstructing ancestral sequences, which places the mutations on the branches
   #[cfg_attr(feature = "clap", clap(long, value_enum, default_value_t = MethodAncestralCli::default(), help_heading = "Ancestral reconstruction"))]
   pub method_anc: MethodAncestralCli,
+}
+
+impl MethodAncArgs {
+  pub fn is_marginal(&self) -> bool {
+    self.method_anc == MethodAncestralCli::Marginal
+  }
+
+  pub fn check_model(&self, model: &ModelArgs) -> Result<(), Report> {
+    model.check_applies("method_anc", self.is_marginal(), || {
+      o!("applies only with --method-anc marginal: parsimony reconstruction uses no substitution model")
+    })
+  }
+}
+
+pub struct MarginalReconstruction {
+  pub runs: bool,
+  pub condition: &'static str,
+}
+
+impl MarginalReconstruction {
+  pub fn check(&self, setting: &str, given: bool) -> Result<(), Report> {
+    check_applies(setting, given, "method_anc", self.runs, || {
+      format!(
+        "applies only when a marginal reconstruction runs ({}), but --method-anc is parsimony",
+        self.condition
+      )
+    })
+  }
 }
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]

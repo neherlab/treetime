@@ -27,7 +27,7 @@ pub struct TimetreeParams {
   pub resolve_polytomies: bool,
   pub relax: Vec<f64>,
   pub coalescent: CoalescentMode,
-  pub skyline_n_points: usize,
+  pub n_skyline: usize,
   pub skyline_stiffness: f64,
   pub coalescent_confidence: f64,
   pub gen_per_year: f64,

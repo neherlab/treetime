@@ -127,13 +127,26 @@ mod tests {
   #[case::skyline(      Some("skyline"), CoalescentPrior::Skyline { points: 20, stiffness: 2.0 })]
   #[trace]
   fn test_coalescent_prior_from_config(#[case] coalescent: Option<&str>, #[case] expected: CoalescentPrior) {
-    let config = config(|config| {
-      config.coalescent = coalescent.map(|text| parse_coalescent(text).unwrap());
-      config.skyline_n_points = 20;
-      config.skyline_stiffness = 2.0;
-    });
+    let config = config(|config| config.coalescent = coalescent.map(|text| parse_coalescent(text).unwrap()));
 
     assert_eq!(expected, coalescent_prior(&config));
+  }
+
+  #[test]
+  fn test_coalescent_prior_reports_the_given_skyline_settings() {
+    let config = config(|config| {
+      config.coalescent = Some(parse_coalescent("skyline").unwrap());
+      config.n_skyline = Some(8);
+      config.skyline_stiffness = Some(0.5);
+    });
+
+    assert_eq!(
+      CoalescentPrior::Skyline {
+        points: 8,
+        stiffness: 0.5
+      },
+      coalescent_prior(&config)
+    );
   }
 
   #[rustfmt::skip]

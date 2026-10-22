@@ -105,7 +105,7 @@ impl AppCommandExt for AppCommand {
         "clock_std_dev",
         "confidence",
         "coalescent",
-        "skyline_n_points",
+        "n_skyline",
         "skyline_stiffness",
         "reroot",
         "outgroup",

@@ -89,7 +89,7 @@
       "x-cli-flag": "--date-format"
     },
     "sequence_length": {
-      "description": "Length of the sequence, used to calculate expected variation in branch length. Not required if alignment is provided.",
+      "description": "Length of the sequences, used to calculate the expected variation of the branch lengths\n\nRequired without `--alignment`, and applies only then: with an alignment, the run takes the length from the\nalignment.",
       "type": "integer",
       "format": "uint",
       "minimum": 0,
@@ -107,7 +107,7 @@
       "x-cli-flag": "--clock-rate"
     },
     "clock_std_dev": {
-      "description": "Standard deviation of the provided clock rate estimate",
+      "description": "Standard deviation of the provided clock rate estimate\n\nApplies only with `--confidence`, whose date intervals include the clock rate uncertainty.",
       "type": "number",
       "format": "double",
       "x-unset": true,
@@ -193,26 +193,29 @@
       "x-unset": true,
       "x-cli-flag": "--coalescent"
     },
-    "skyline_n_points": {
-      "description": "Number of grid points in skyline coalescent model.\n\nOnly used with --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2. Matches Python v0's default.",
+    "n_skyline": {
+      "description": "Number of grid points in skyline coalescent model.\n\nApplies only to --coalescent skyline. Defines how many piecewise linear segments\nare used to model Tc(t) over time. Must be at least 2.",
       "type": "integer",
       "format": "uint",
       "minimum": 0,
       "default": 20,
-      "x-cli-flag": "--skyline-n-points"
+      "x-unset": true,
+      "x-cli-flag": "--n-skyline"
     },
     "skyline_stiffness": {
-      "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Only used with --coalescent skyline.",
+      "description": "Smoothing stiffness for the skyline coalescent.\n\nPenalizes log-fold-changes of the coalescent time scale Tc between adjacent\nskyline segments: with z = ln Tc, the objective adds\n`(stiffness/2) * Σ (ln(Tc_{i+1}/Tc_i))^2`. Because it acts on log Tc, the\nstiffness is dimensionless and scale-independent. Larger values enforce a\nsmoother Tc(t). Applies only to --coalescent skyline.",
       "type": "number",
       "format": "double",
       "default": 2.0,
+      "x-unset": true,
       "x-cli-flag": "--skyline-stiffness"
     },
     "coalescent_confidence": {
-      "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies to every inferred coalescent prior (--coalescent opt and --coalescent skyline).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
+      "description": "Confidence level for coalescent time scale (Tc) bands, in standard deviations.\n\nApplies only to the inferred coalescent priors (--coalescent opt and --coalescent skyline).\nThe band spans `Tc * exp(±confidence * σ)`, where `σ` is\nthe standard deviation of `ln Tc` from the coalescent likelihood curvature. A fixed\ntime scale is not inferred and therefore has no band.",
       "type": "number",
       "format": "double",
       "default": 2.0,
+      "x-unset": true,
       "x-cli-flag": "--coalescent-confidence"
     },
     "clock_filter": {
@@ -256,8 +259,9 @@
     },
     "model": {
       "description": "Substitution model to use\n\n`infer` infers a model from the data of each partition; each `--alignment` file is one partition. Alternatively,\nname the model type. If the named model takes parameters, use `--model-params` to set them.",
-      "$ref": "#/$defs/GtrModelName",
       "default": "infer",
+      "$ref": "#/$defs/GtrModelName",
+      "x-unset": true,
       "x-cli-flag": "--model"
     },
     "model_params": {
@@ -270,9 +274,10 @@
       "x-cli-flag": "--model-params"
     },
     "partition_rates": {
-      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nWith one partition, this setting has no effect: the run estimates no relative rate.",
-      "$ref": "#/$defs/PartitionRates",
+      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
       "default": "estimate",
+      "$ref": "#/$defs/PartitionRates",
+      "x-unset": true,
       "x-cli-flag": "--partition-rates"
     },
     "alphabet": {
@@ -283,8 +288,9 @@
     },
     "representation": {
       "description": "Representation of the sequences on the tree\n\nThe dense representation stores the probabilities of every state at every alignment position of each node; the\nsparse representation stores only the variable positions. Dense is more accurate when branches are long and many\nsites change, but uses more memory.",
-      "$ref": "#/$defs/Representation",
       "default": "auto",
+      "$ref": "#/$defs/Representation",
+      "x-unset": true,
       "x-cli-flag": "--representation"
     },
     "gap_fill": {
@@ -530,10 +536,11 @@
       "x-cli-flag": "--seed"
     },
     "gen_per_year": {
-      "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference.",
+      "description": "Generations per year for converting the coalescent time scale Tc into an effective\npopulation size.\n\nThe coalescent output reports an effective population size `N_e = Tc * gen_per_year`. Tc is\nalready in calendar years, so this factor rescales it into generation units, the standard\naxis of a skyline plot. Only affects the reported `N_e`; it does not enter the inference. Applies only with\n`--coalescent`.",
       "type": "number",
       "format": "double",
       "default": 50.0,
+      "x-unset": true,
       "x-cli-flag": "--gen-per-year"
     },
     "$schema": {
