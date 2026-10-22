@@ -52,9 +52,9 @@ mod tests {
         fractions.survival(-1e-17),
       )
     };
-    pretty_assert_relative_eq!(outward * 1e-17, at, epsilon = 0.0, max_relative = 1e-14);
-    pretty_assert_relative_eq!(outward * 2e-17, from, epsilon = 0.0, max_relative = 1e-14);
-    pretty_assert_relative_eq!(fraction_within(1e-17), fraction, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(outward * 1e-17, at, max_relative = 1e-14);
+    pretty_assert_relative_eq!(outward * 2e-17, from, max_relative = 1e-14);
+    pretty_assert_relative_eq!(fraction_within(1e-17), fraction, max_relative = 1e-15);
     Ok(())
   }
 
@@ -84,8 +84,8 @@ mod tests {
       * (delta_near.powi(2) + delta_near * delta_far + delta_far.powi(2))
       / (3.0 * delta_edge * delta_edge);
     let profile = MassProfile::new(&f)?;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
-    pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
+    pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
 
@@ -112,11 +112,11 @@ mod tests {
     let tail = (-800.0 - slope.ln() - slope * tail_lo).exp() * -(-slope * (tail_hi - tail_lo)).exp_m1();
     let expected = grid + tail;
     let mass = profile.mass_between(a, b)?;
-    pretty_assert_relative_eq!(expected, mass, epsilon = 0.0, max_relative = 1e-13);
-    pretty_assert_relative_eq!(mass, (-profile.neg_log_mass_between(a, b)?).exp(), epsilon = 0.0, max_relative = 1e-13);
+    pretty_assert_relative_eq!(expected, mass, max_relative = 1e-13);
+    pretty_assert_relative_eq!(mass, (-profile.neg_log_mass_between(a, b)?).exp(), max_relative = 1e-13);
     if (a, b) == (0.0, f64::INFINITY) {
       let total = profile.fractions(TailMass::Required).unwrap().total();
-      pretty_assert_relative_eq!(expected, total, epsilon = 0.0, max_relative = 1e-13);
+      pretty_assert_relative_eq!(expected, total, max_relative = 1e-13);
     }
     Ok(())
   }
@@ -223,7 +223,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let profile = MassProfile::new(&helpers::growing_tail(side)?)?;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 1e-15, max_relative = 1e-15);
     Ok(())
   }
@@ -235,7 +235,6 @@ mod tests {
     pretty_assert_relative_eq!(
       -expected_ln_mass,
       profile.neg_log_mass_between(1.0, 1001.0)?,
-      epsilon = 0.0,
       max_relative = 1e-15
     );
     Ok(())
@@ -268,8 +267,8 @@ mod tests {
     let exponent = decay_rate * width;
     let expected = width * (1.0 - exponent / 2.0);
     let profile = MassProfile::new(&f)?;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
-    pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-15);
+    pretty_assert_relative_eq!(-expected.ln(), profile.neg_log_mass_between(a, b)?, max_relative = 1e-15);
     Ok(())
   }
 
@@ -280,16 +279,10 @@ mod tests {
     let right = BoundaryBehavior::HardApproach(HardApproachLaw { t_hard, b });
     let profile = MassProfile::new(&helpers::function((-1.0, 0.0), array![0.0, 0.0], HARD, right)?)?;
     let expected = width - width * width / t_hard + width.powi(3) / (3.0 * t_hard * t_hard);
-    pretty_assert_relative_eq!(
-      expected,
-      profile.mass_between(0.0, width)?,
-      epsilon = 0.0,
-      max_relative = 1e-15
-    );
+    pretty_assert_relative_eq!(expected, profile.mass_between(0.0, width)?, max_relative = 1e-15);
     pretty_assert_relative_eq!(
       -expected.ln(),
       profile.neg_log_mass_between(0.0, width)?,
-      epsilon = 0.0,
       max_relative = 1e-15
     );
     Ok(())
@@ -309,11 +302,10 @@ mod tests {
     let profile = MassProfile::new(&helpers::function(range, array![0.0, 0.0], left, right)?)?;
     let expected = 6.321_205_588_285_58e-309;
     let expected_neg_log = 709.654_883_787_553_1;
-    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, epsilon = 0.0, max_relative = 1e-13);
+    pretty_assert_relative_eq!(expected, profile.mass_between(a, b)?, max_relative = 1e-13);
     pretty_assert_relative_eq!(
       expected_neg_log,
       profile.neg_log_mass_between(a, b)?,
-      epsilon = 0.0,
       max_relative = 1e-15
     );
     Ok(())

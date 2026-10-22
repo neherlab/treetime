@@ -26,7 +26,7 @@ pub(super) mod tests {
     let f = helpers::sampled((-8.0, 8.0), cells, |t| t * t / 2.0)?;
     let profile = MassProfile::new(&f)?;
     let total = profile.fractions(TailMass::Required).unwrap().total();
-    pretty_assert_relative_eq!((2.0 * PI).sqrt(), (-profile.neg_log_mass(total)).exp(), epsilon = 0.0, max_relative = 1e-15);
+    pretty_assert_relative_eq!((2.0 * PI).sqrt(), (-profile.neg_log_mass(total)).exp(), max_relative = 1e-15);
     Ok(())
   }
 

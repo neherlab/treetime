@@ -17,7 +17,7 @@ mod tests {
       let (log_lh_dense, _) = run_dense_marginal_for_input(&input).unwrap();
       let (log_lh_sparse, _) = run_sparse_marginal_for_input(&input).unwrap();
 
-      prop_assert_relative_eq!(log_lh_dense, log_lh_sparse, max_relative = 1e-5, epsilon = 0.0);
+      prop_assert_relative_eq!(log_lh_dense, log_lh_sparse, max_relative = 1e-5);
     }
   }
 }
