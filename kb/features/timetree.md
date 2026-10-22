@@ -5,7 +5,7 @@
 - [x] Load tree from `--tree`
 - [x] Optional date table from `--dates`
 - [x] Optional alignment: `--branch-length-mode` `auto` (default) keeps the input branch lengths without an alignment
-- [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
+- [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, only with two or more files and re-estimated branch lengths, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [ ] Gap handling matches v0: v0 timetree with the default `--gtr infer` uses the 5-state `nuc` alphabet, where the gap is a state ([packages/legacy/treetime/treetime/wrappers.py#L56](../../packages/legacy/treetime/treetime/wrappers.py#L56)); the v1 nucleotide alphabet puts the gap in the undetermined set together with the unknown character, so a gap carries no state information ([packages/treetime/src/alphabet/alphabet.rs#L131](../../packages/treetime/src/alphabet/alphabet.rs#L131)). Named models `JC69`, `F81` and `TN93` also use the 5-state alphabet, `K80`, `HKY85` and `T92` the 4-state one ([kb/issues/M-timetree-gap-state-v0-divergence.md](../issues/M-timetree-gap-state-v0-divergence.md))
 - [x] Initial node divergences always initialized
@@ -156,7 +156,7 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 
 ## CLI Options (Parsed but Not Wired)
 
-- [x] `--clock-std-dev` (rate susceptibility)
+- [x] `--clock-std-dev` (rate susceptibility; only with `--confidence`)
 - [x] `--confidence` (final marginal round, rate susceptibility)
 - [ ] `--covariation`, `--tip-slack`: removed in v1 ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--outgroup` / `--keep-root`
@@ -166,5 +166,5 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] `--include-leaves` / `--impute-missing-data` / `--reconstruct-tip-states` (drive the reconstructed FASTA: emit tips, impute ambiguous tip states, alias enabling both; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
-- [x] `--gen-per-year` (generations per year, default 50.0; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes, and to the coalescent output files above)
+- [x] `--gen-per-year` (generations per year, default 50.0, only with `--coalescent`; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes, and to the coalescent output files above)
 - [ ] `--aln` legacy option

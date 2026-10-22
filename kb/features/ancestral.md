@@ -73,7 +73,7 @@
 - [x] `--include-leaves` (emit reconstructed tip sequences)
 - [x] `--impute-missing-data` (resolve ambiguous/unknown tips to the marginal argmax, leaving gaps; no-op under parsimony). See [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md)
 - [x] `--reconstruct-tip-states` (v0-compatible alias enabling both `--include-leaves` and `--impute-missing-data`)
-- [x] `--model` relevant only on marginal paths (parsimony bypasses GTR)
+- [x] `--model` and `--model-params` apply only with `--method-anc marginal`; with parsimony they stop the run with an argument error (parsimony uses no model)
 - [x] `--zero-based` (mutation positions in the comments of Newick and Nexus trees)
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` for reproducibility; a generated seed is logged when sampling runs without one (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
