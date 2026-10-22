@@ -13,7 +13,7 @@
 > [!IMPORTANT]
 > **Decision required.** How web2 handles the experimental status:
 >
-> - keep wasm-bindgen and upgrade wasm-bindgen and Emscripten together, checked by a CI job ([N-web2-production-build-not-in-ci.md](N-web2-production-build-not-in-ci.md))
+> - keep wasm-bindgen and upgrade wasm-bindgen and Emscripten together, checked by a CI job ([N-app-web-production-builds-not-in-ci.md](N-app-web-production-builds-not-in-ci.md))
 > - replace wasm-bindgen with C exports of the module that the worker calls through the Emscripten runtime, with hand-written declarations for the few exported functions
 
 ## Validation
