@@ -556,7 +556,7 @@ fmt-check-other:
     just --fmt --check || status=1
     exit "${status}"
 
-# Regenerate the committed generated files: just gen [schemas|openapi|catalog|ts-client|napi-types|wasm-types|cli-docs]...
+# Regenerate the committed generated files: just gen [schemas|openapi|catalog|ts-client|napi-types|wasm-types|cli-docs|data-index]...
 [group("generated")]
 gen *groups: _js
     dev/generated generate "$@"
@@ -565,6 +565,11 @@ gen *groups: _js
 [group("generated")]
 generated-check: _js
     dev/generated check
+
+# Write the index of the example data, data/index.json, from the files git tracks in data/: just data-reindex [--output <file>]
+[group("generated")]
+data-reindex *args:
+    dev/data-reindex "$@"
 
 # Fail when a reference fixture is missing, stale, or unclaimed in dev/registry/reference-files.toml
 [group("generated")]

@@ -15,6 +15,7 @@
 #   wasm-types  packages/app-wasm/pkg/app_wasm.d.ts, from the #[wasm_bindgen] exports of the
 #               WebAssembly back end
 #   cli-docs    docs/docs/reference.md, from the CLI help tree
+#   data-index  data/index.json, the index of the example data, from the files git tracks in data/
 #
 # Examples:
 #   $0 check
@@ -26,7 +27,7 @@ shopt -s inherit_errexit
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "${root}"
 
-all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs)
+all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs data-index)
 
 # Each produce_<group> writes the files of the group below the given directory,
 # at their repository-relative paths, and prints those paths.
@@ -72,6 +73,12 @@ produce_cli_docs() {
   cargo build --locked --quiet --bin treetime >&2
   docs/generate-reference-docs "${CARGO_TARGET_DIR:-target}/debug/treetime" "${1}/docs/docs/reference.md"
   printf 'docs/docs/reference.md\n'
+}
+
+produce_data_index() {
+  mkdir -p "${1}/data"
+  dev/data-reindex --output "${1}/data/index.json" >&2
+  printf 'data/index.json\n'
 }
 
 main() {

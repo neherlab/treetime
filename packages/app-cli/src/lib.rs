@@ -2,6 +2,7 @@
 mod __tests__;
 
 mod cli;
+pub mod data_index;
 pub mod run;
 
 #[cfg(test)]

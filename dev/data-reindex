@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 [--output <file>]
+#
+# Write the index of the example data: every file that git tracks in data/, the
+# datasets with their input files, the example configurations with the files
+# they read, and the example pipelines. Every app reads the example data through
+# this index. Files that git does not track, such as the downloads of
+# data/usher-download-examples, stay out of it.
+#
+# Options:
+#   -o, --output <file>  Write the index to this file (default: data/index.json)
+#   -h, --help           Show this help
+#
+# Examples:
+#   $0
+#   $0 --output tmp/index.json
+#
+set -euo pipefail
+trap "exit" INT
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+absolute_path() {
+  if [[ "${1}" == /* ]]; then
+    printf '%s\n' "${1}"
+  else
+    printf '%s/%s\n' "${PWD}" "${1}"
+  fi
+}
+
+main() {
+  show_help() {
+    sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
+  }
+
+  local output="${ROOT}/data/index.json"
+
+  while (($# > 0)); do
+    case "${1}" in
+    -h | --help)
+      show_help
+      exit 0
+      ;;
+    -o | --output)
+      output="$(absolute_path "${2:?--output needs a file}")"
+      shift 2
+      ;;
+    *)
+      printf "Unknown argument: %s\n" "${1}" >&2
+      exit 1
+      ;;
+    esac
+  done
+
+  pushd "${ROOT}" >/dev/null
+  git -C data ls-files -z |
+    cargo run --locked --quiet -p app-cli --bin generate-data-index -- data "${output}"
+  popd >/dev/null
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
