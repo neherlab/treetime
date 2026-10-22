@@ -47,7 +47,7 @@ impl TcSchedule {
   pub fn tc(&self, tau: f64) -> f64 {
     match self {
       Self::Piecewise(piecewise) => piecewise.values[piecewise.breaks.partition_point(|&value| value <= tau)],
-      Self::Exponential(exponential) => exponential.tc0 * (-tau / exponential.scale).exp(),
+      Self::Exponential(exponential) => exponential.tc(tau),
     }
   }
 
@@ -112,6 +112,14 @@ pub struct ExponentialTc {
 }
 
 impl ExponentialTc {
+  fn tc(&self, tau: f64) -> f64 {
+    let decay = (-tau / self.scale).exp();
+    if decay.is_normal() {
+      return self.tc0 * decay;
+    }
+    (self.tc0.ln() - tau / self.scale).exp()
+  }
+
   fn hazard_between(&self, from: f64, to: f64) -> f64 {
     let duration = to - from;
     if duration <= 0.0 {

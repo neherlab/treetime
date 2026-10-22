@@ -145,6 +145,14 @@ mod tests {
   }
 
   #[test]
+  fn test_tc_schedule_exponential_tc_is_positive_when_the_decay_underflows() {
+    let schedule = TcSchedule::exponential(1e300, 1.0).unwrap();
+    let expected = 300.0 * LN_10 - 750.0;
+    let actual = schedule.tc(750.0).ln();
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+  }
+
+  #[test]
   fn test_tc_schedule_exponential_hazard_is_infinite_when_the_growth_exponent_overflows() {
     let schedule = TcSchedule::exponential(1.0, 1e-320).unwrap();
     let expected = f64::INFINITY;
