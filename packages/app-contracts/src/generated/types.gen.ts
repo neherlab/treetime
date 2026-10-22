@@ -46,92 +46,6 @@ export type ErrorResponse = {
 export type ErrorCode = 'not_found' | 'upload_too_large' | 'conflict' | 'invalid_request' | 'method_not_allowed' | 'forbidden' | 'timeout' | 'internal_error';
 
 /**
- * Example datasets and example command configurations found in the examples folder.
- */
-export type DatasetCatalog = {
-  /**
-   * Directories that hold a `tree.nwk`, with their files.
-   */
-  datasets: Array<Dataset>;
-  /**
-   * Example configurations of the commands the application runs.
-   */
-  examples: Array<ExampleConfig>;
-};
-
-/**
- * A directory of example input files.
- */
-export type Dataset = {
-  /**
-   * Path of the directory relative to the examples folder, with `/` separators.
-   */
-  name: string;
-  /**
-   * Names of the files in the directory, sorted.
-   */
-  files: Array<string>;
-  /**
-   * The files of the directory that fill command inputs, at most one per kind.
-   */
-  inputs: Array<DatasetInput>;
-};
-
-/**
- * A file of an example dataset that fills a command input.
- */
-export type DatasetInput = {
-  /**
-   * Input the file fills.
-   */
-  kind: InputKind;
-  /**
-   * Path of the file relative to the examples folder, with `/` separators.
-   */
-  file: string;
-  /**
-   * Path of the file as a run configuration names it.
-   */
-  path: string;
-};
-
-/**
- * Kind of input file.
- */
-export type InputKind = 'tree' | 'metadata' | 'alignment';
-
-/**
- * An example configuration file of one command.
- */
-export type ExampleConfig = {
-  /**
-   * Path of the file relative to the examples folder, with `/` separators.
-   */
-  path: string;
-  /**
-   * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
-   */
-  command: AppCommand;
-  /**
-   * Title of the example: the first comment line after the directive.
-   */
-  title: string;
-  /**
-   * Absolute folder of the file, which relative paths in the file resolve from.
-   */
-  folder: string;
-  /**
-   * Text of the file.
-   */
-  content: string;
-};
-
-/**
- * Analysis command that every client can run.
- */
-export type AppCommand = 'timetree' | 'clock' | 'ancestral' | 'homoplasy' | 'mugration' | 'optimize' | 'prune';
-
-/**
  * Request to check a configuration.
  */
 export type CheckConfigRequest = {
@@ -166,6 +80,11 @@ export type CheckConfigRequest = {
    */
   folder?: string;
 };
+
+/**
+ * Analysis command that every client can run.
+ */
+export type AppCommand = 'timetree' | 'clock' | 'ancestral' | 'homoplasy' | 'mugration' | 'optimize' | 'prune';
 
 /**
  * Settings of a command by key, as in a configuration file. Settings that are not listed take their defaults.
@@ -332,6 +251,11 @@ export type InputProblem = {
    */
   message: string;
 };
+
+/**
+ * Kind of input file.
+ */
+export type InputKind = 'tree' | 'metadata' | 'alignment';
 
 /**
  * Outcome of checking a configuration without running it.
@@ -6480,31 +6404,6 @@ export type VersionResponses = {
 };
 
 export type VersionResponse = VersionResponses[keyof VersionResponses];
-
-export type DatasetsData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: '/api/datasets';
-};
-
-export type DatasetsErrors = {
-  /**
-   * The error, with its causes
-   */
-  default: ErrorResponse;
-};
-
-export type DatasetsError = DatasetsErrors[keyof DatasetsErrors];
-
-export type DatasetsResponses = {
-  /**
-   * Example datasets and example command configurations found in the examples folder.
-   */
-  200: DatasetCatalog;
-};
-
-export type DatasetsResponse = DatasetsResponses[keyof DatasetsResponses];
 
 export type ConfigCheckData = {
   /**

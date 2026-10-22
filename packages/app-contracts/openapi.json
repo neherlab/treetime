@@ -95,34 +95,6 @@
         }
       }
     },
-    "/api/datasets": {
-      "get": {
-        "description": "Example datasets and example configurations in the examples folder.",
-        "operationId": "datasets",
-        "responses": {
-          "default": {
-            "description": "The error, with its causes",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Example datasets and example command configurations found in the examples folder.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatasetCatalog"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/check-config": {
       "post": {
         "description": "The configuration with every default filled in, or the problems found in it.",
@@ -1448,137 +1420,6 @@
           }
         ]
       },
-      "DatasetCatalog": {
-        "description": "Example datasets and example command configurations found in the examples folder.",
-        "type": "object",
-        "properties": {
-          "datasets": {
-            "description": "Directories that hold a `tree.nwk`, with their files.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Dataset"
-            }
-          },
-          "examples": {
-            "description": "Example configurations of the commands the application runs.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ExampleConfig"
-            }
-          }
-        },
-        "required": [
-          "datasets",
-          "examples"
-        ]
-      },
-      "Dataset": {
-        "description": "A directory of example input files.",
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "Path of the directory relative to the examples folder, with `/` separators.",
-            "type": "string"
-          },
-          "files": {
-            "description": "Names of the files in the directory, sorted.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "inputs": {
-            "description": "The files of the directory that fill command inputs, at most one per kind.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DatasetInput"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "files",
-          "inputs"
-        ]
-      },
-      "DatasetInput": {
-        "description": "A file of an example dataset that fills a command input.",
-        "type": "object",
-        "properties": {
-          "kind": {
-            "description": "Input the file fills.",
-            "$ref": "#/components/schemas/InputKind"
-          },
-          "file": {
-            "description": "Path of the file relative to the examples folder, with `/` separators.",
-            "type": "string"
-          },
-          "path": {
-            "description": "Path of the file as a run configuration names it.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "kind",
-          "file",
-          "path"
-        ]
-      },
-      "InputKind": {
-        "description": "Kind of input file.",
-        "type": "string",
-        "enum": [
-          "tree",
-          "metadata",
-          "alignment"
-        ]
-      },
-      "ExampleConfig": {
-        "description": "An example configuration file of one command.",
-        "type": "object",
-        "properties": {
-          "path": {
-            "description": "Path of the file relative to the examples folder, with `/` separators.",
-            "type": "string"
-          },
-          "command": {
-            "description": "Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.",
-            "$ref": "#/components/schemas/AppCommand"
-          },
-          "title": {
-            "description": "Title of the example: the first comment line after the directive.",
-            "type": "string"
-          },
-          "folder": {
-            "description": "Absolute folder of the file, which relative paths in the file resolve from.",
-            "type": "string"
-          },
-          "content": {
-            "description": "Text of the file.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "path",
-          "command",
-          "title",
-          "folder",
-          "content"
-        ]
-      },
-      "AppCommand": {
-        "description": "Analysis command that every client can run.",
-        "type": "string",
-        "enum": [
-          "timetree",
-          "clock",
-          "ancestral",
-          "homoplasy",
-          "mugration",
-          "optimize",
-          "prune"
-        ]
-      },
       "CheckConfigRequest": {
         "description": "Request to check a configuration.",
         "type": "object",
@@ -1616,6 +1457,19 @@
         "required": [
           "command",
           "text"
+        ]
+      },
+      "AppCommand": {
+        "description": "Analysis command that every client can run.",
+        "type": "string",
+        "enum": [
+          "timetree",
+          "clock",
+          "ancestral",
+          "homoplasy",
+          "mugration",
+          "optimize",
+          "prune"
         ]
       },
       "SparseConfig": {
@@ -1892,6 +1746,15 @@
         "required": [
           "input",
           "message"
+        ]
+      },
+      "InputKind": {
+        "description": "Kind of input file.",
+        "type": "string",
+        "enum": [
+          "tree",
+          "metadata",
+          "alignment"
         ]
       },
       "CheckConfigResponse": {

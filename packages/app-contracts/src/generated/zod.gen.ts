@@ -38,33 +38,6 @@ export const zErrorResponse = z.object({
 });
 
 /**
- * Kind of input file.
- */
-export const zInputKind = z.enum([
-  'tree',
-  'metadata',
-  'alignment'
-]);
-
-/**
- * A file of an example dataset that fills a command input.
- */
-export const zDatasetInput = z.object({
-  kind: zInputKind,
-  file: z.string(),
-  path: z.string()
-});
-
-/**
- * A directory of example input files.
- */
-export const zDataset = z.object({
-  name: z.string(),
-  files: z.array(z.string()),
-  inputs: z.array(zDatasetInput)
-});
-
-/**
  * Analysis command that every client can run.
  */
 export const zAppCommand = z.enum([
@@ -76,25 +49,6 @@ export const zAppCommand = z.enum([
   'optimize',
   'prune'
 ]);
-
-/**
- * An example configuration file of one command.
- */
-export const zExampleConfig = z.object({
-  path: z.string(),
-  command: zAppCommand,
-  title: z.string(),
-  folder: z.string(),
-  content: z.string()
-});
-
-/**
- * Example datasets and example command configurations found in the examples folder.
- */
-export const zDatasetCatalog = z.object({
-  datasets: z.array(zDataset),
-  examples: z.array(zExampleConfig)
-});
 
 /**
  * A JSON value other than `null`: a boolean, a number, a string, a list, or a mapping of them.
@@ -156,6 +110,15 @@ export const zMetadataFacts = z.object({
   date_column: z.string().optional(),
   dates: zDateFacts.optional()
 });
+
+/**
+ * Kind of input file.
+ */
+export const zInputKind = z.enum([
+  'tree',
+  'metadata',
+  'alignment'
+]);
 
 /**
  * An input that could not be read.
@@ -2733,11 +2696,6 @@ export const zAppEvent = z.discriminatedUnion('kind', [
 export const zHealthResponse = zHealthStatus;
 
 export const zVersionResponse = zVersionInfo;
-
-/**
- * Example datasets and example command configurations found in the examples folder.
- */
-export const zDatasetsResponse = zDatasetCatalog;
 
 /**
  * Request to check a configuration.
