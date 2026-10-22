@@ -382,12 +382,12 @@
       "x-unset": true,
       "x-cli-flag": "--output-rtt"
     },
-    "output_confidence_tsv": {
-      "description": "Path to output date-confidence-interval TSV.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
+    "output_dates": {
+      "description": "Path to output node dates TSV: calendar date and numeric date of every node, with the bounds of the 90% max posterior region with `--confidence`.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
       "type": "string",
       "x-path": "output",
       "x-unset": true,
-      "x-cli-flag": "--output-confidence-tsv"
+      "x-cli-flag": "--output-dates"
     },
     "output_tracelog": {
       "description": "Path to output the convergence values of every iteration as a table.\n\nTakes precedence over paths configured with `--output-all` and `--output-selection`.",
@@ -675,7 +675,7 @@
         "sequences",
         "clock-model",
         "rtt",
-        "confidence-tsv",
+        "dates",
         "tracelog",
         "coalescent",
         "coalescent-json"

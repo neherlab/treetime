@@ -9,7 +9,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::timetree_defaults( AppCommand::Timetree,  json!(null),             json!(["nwk", "nexus", "auspice", "node-data", "model", "sequences", "clock-model", "tracelog", "rtt"]))]
+  #[case::timetree_defaults( AppCommand::Timetree,  json!(null),             json!(["nwk", "nexus", "auspice", "node-data", "model", "sequences", "clock-model", "dates", "tracelog", "rtt"]))]
   #[case::clock_defaults(    AppCommand::Clock,     json!(null),             json!(["nwk", "nexus", "clock-model", "rtt", "rtt-chart", "auspice"]))]
   #[case::ancestral_defaults(AppCommand::Ancestral, json!(null),             json!(["nwk", "nexus", "node-data", "model", "sequences", "auspice"]))]
   #[case::homoplasy_defaults(AppCommand::Homoplasy, json!(null),             json!(["nwk", "nexus", "homoplasy-stats", "homoplasy-report", "auspice"]))]

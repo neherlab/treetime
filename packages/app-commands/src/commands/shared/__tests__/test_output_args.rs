@@ -175,14 +175,11 @@ mod tests {
   }
 
   #[test]
-  fn test_timetree_output_confidence_tsv_parses() {
-    let args = TreetimeTimetreeArgsRaw::try_parse_from([
-      "treetime",
-      "--metadata=/dev/null",
-      "--output-confidence-tsv=/tmp/conf.tsv",
-    ])
-    .unwrap();
-    assert_eq!(args.output_confidence_tsv.as_deref(), Some(Path::new("/tmp/conf.tsv")));
+  fn test_timetree_output_dates_parses() {
+    let args =
+      TreetimeTimetreeArgsRaw::try_parse_from(["treetime", "--metadata=/dev/null", "--output-dates=/tmp/dates.tsv"])
+        .unwrap();
+    assert_eq!(args.output_dates.as_deref(), Some(Path::new("/tmp/dates.tsv")));
   }
 
   #[test]
@@ -204,20 +201,17 @@ mod tests {
   }
 
   #[test]
-  fn test_timetree_selection_confidence_tsv_parses() {
+  fn test_timetree_selection_dates_parses() {
     let args = TreetimeTimetreeArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
       "--output-all=/tmp/out",
-      "--output-selection=confidence-tsv,tracelog",
+      "--output-selection=dates,tracelog",
     ])
     .unwrap();
     assert_eq!(
       args.output_selection.output_selection,
-      vec![
-        TimetreeOutputSelection::ConfidenceTsv,
-        TimetreeOutputSelection::Tracelog
-      ]
+      vec![TimetreeOutputSelection::Dates, TimetreeOutputSelection::Tracelog]
     );
   }
 

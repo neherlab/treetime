@@ -1310,9 +1310,9 @@
           "more": "One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock model predicts from that distance, and whether the clock filter excluded the sample. Takes precedence over paths configured with `--output-all` and `--output-selection`."
         },
         {
-          "key": "output_confidence_tsv",
-          "label": "Output confidence TSV",
-          "flag": "--output-confidence-tsv",
+          "key": "output_dates",
+          "label": "Output dates",
+          "flag": "--output-dates",
           "group": "Output",
           "role": "output",
           "kind": "text",
@@ -1322,10 +1322,10 @@
           "fields": [],
           "examples": [],
           "value_names": [
-            "OUTPUT_CONFIDENCE_TSV"
+            "OUTPUT_DATES"
           ],
           "conflicts": [],
-          "help": "Path to output date-confidence-interval TSV.",
+          "help": "Path to output node dates TSV: calendar date and numeric date of every node, with the bounds of the 90% max posterior region with `--confidence`.",
           "more": "Takes precedence over paths configured with `--output-all` and `--output-selection`."
         },
         {
@@ -1632,7 +1632,7 @@
               "help": ""
             },
             {
-              "value": "confidence-tsv",
+              "value": "dates",
               "help": ""
             },
             {

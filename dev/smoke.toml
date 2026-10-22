@@ -115,7 +115,7 @@ selection = "nwk,nexus,auspice,graph-json,dot,mat-pb,mat-json"
 args = "--tree={dataset}/tree.nwk --metadata={metadata} --alignment={dataset}/aln.fasta.xz --output-all={out} --include-leaves"
 seeded = true
 outputs = ["timetree.nwk"]
-selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,sequences,clock-model,rtt,confidence-tsv,tracelog,coalescent,coalescent-json,mat-pb,mat-json"
+selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,sequences,clock-model,rtt,dates,tracelog,coalescent,coalescent-json,mat-pb,mat-json"
 
 
 # Rows, one `[[<command>]]` table per variant.

@@ -71,7 +71,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::timetree( CommandKind::Timetree,  &["auspice", "clock-model", "model", "nexus", "node-data", "nwk", "sequences"])]
+  #[case::timetree( CommandKind::Timetree,  &["auspice", "clock-model", "dates", "model", "nexus", "node-data", "nwk", "sequences"])]
   #[case::ancestral(CommandKind::Ancestral, &["model", "nexus", "node-data", "nwk", "sequences"])]
   #[case::clock(    CommandKind::Clock,     &["clock-model", "nexus", "nwk", "rtt", "rtt-chart"])]
   #[case::mugration(CommandKind::Mugration, &["model", "nexus", "node-data", "nwk", "traits"])]

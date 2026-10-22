@@ -67,7 +67,7 @@ impl CommandKind {
         (OutputSelection::Sequences, DefaultRule::Default),
         (OutputSelection::ClockModel, DefaultRule::Default),
         (OutputSelection::Rtt, DefaultRule::OnRequest),
-        (OutputSelection::ConfidenceTsv, DefaultRule::OnRequest),
+        (OutputSelection::Dates, DefaultRule::Default),
         (OutputSelection::Tracelog, DefaultRule::OnRequest),
         (OutputSelection::Coalescent, DefaultRule::WithCoalescent),
         (OutputSelection::CoalescentJson, DefaultRule::OnRequest),

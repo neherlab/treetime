@@ -496,12 +496,12 @@ pub struct TreetimeTimetreeArgsRaw {
   #[deser(flatten)]
   pub clock_output: ClockOutputArgs,
 
-  /// Path to output date-confidence-interval TSV.
+  /// Path to output node dates TSV: calendar date and numeric date of every node, with the bounds of the 90% max posterior region with `--confidence`.
   ///
   /// Takes precedence over paths configured with `--output-all` and `--output-selection`.
   #[cfg_attr(feature = "clap", clap(long, value_hint = ValueHint::FilePath, help_heading = "Output"))]
   #[schemars(extend("x-path" = "output"))]
-  pub output_confidence_tsv: Option<PathBuf>,
+  pub output_dates: Option<PathBuf>,
 
   /// Path to output the convergence values of every iteration as a table.
   ///

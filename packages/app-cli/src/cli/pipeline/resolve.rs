@@ -532,7 +532,7 @@ mod tests {
     let result = resolve(config);
     assert_error!(
       result,
-      "step `anc` references `traits` from step `tt`, which does not produce it; it produces: `auspice`, `clock-model`, `model`, `nexus`, `node-data`, `nwk`"
+      "step `anc` references `traits` from step `tt`, which does not produce it; it produces: `auspice`, `clock-model`, `dates`, `model`, `nexus`, `node-data`, `nwk`"
     );
   }
 

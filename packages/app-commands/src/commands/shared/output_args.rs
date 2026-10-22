@@ -137,7 +137,7 @@ command_outputs!(TimetreeOutputSelection, TimetreeOutputSelectionArgs for Treeti
   Sequences: reconstructed_fasta_output.output_sequences,
   ClockModel: clock_output.output_clock_model,
   Rtt: clock_output.output_rtt,
-  ConfidenceTsv: output_confidence_tsv,
+  Dates: output_dates,
   Tracelog: output_tracelog,
   Coalescent: output_coalescent,
   CoalescentJson: output_coalescent_json,

@@ -10,12 +10,13 @@ use crate::commands::timetree::trace::TimetreeTraceSink;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates, TreeSequences};
 use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write_augur_node_data_refine};
 use app_output::command_outputs::CommandKind;
+use app_output::dates_table::write_dates_table_file;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_format::FileFormat;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
-use eyre::{Report, WrapErr};
+use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
@@ -174,21 +175,6 @@ fn timetree_params(
 }
 
 fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log: &dyn LogSink) -> Result<(), Report> {
-  if let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::ConfidenceTsv) {
-    match output.confidence_intervals.as_ref() {
-      Some(intervals) => {
-        table_write_file(&file.path, intervals).wrap_err("Failed to write confidence intervals")?;
-        progress_info!(log, "Wrote confidence intervals to {}", file.path.display());
-      },
-      None => output_unavailable(
-        OutputSelection::ConfidenceTsv,
-        file,
-        "no confidence intervals were computed (use --confidence)",
-        log,
-      )?,
-    }
-  }
-
   for selection in [OutputSelection::Coalescent, OutputSelection::CoalescentJson] {
     let Some(file) = resolved.non_tree_outputs.get(&selection) else {
       continue;
@@ -352,6 +338,10 @@ fn write_timetree_trees(
     traits: None,
   };
   let tree = write_run_tree_outputs(&annotated, resolved, CommandKind::Timetree, log)?;
+  if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::Dates)) {
+    write_dates_table_file(tree, path)?;
+    progress_info!(log, "Wrote node dates to {path}", path = path.display());
+  }
   if let (Some(tree), Some(path)) = (&tree, resolved.path(OutputSelection::NodeData)) {
     write_augur_node_data_refine(tree, run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());

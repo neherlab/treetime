@@ -8,6 +8,7 @@ pub mod augur_node_data_refine;
 pub mod augur_node_data_traits;
 pub(crate) mod auspice;
 pub mod command_outputs;
+pub mod dates_table;
 pub mod mutation_filter;
 pub(crate) mod nwk_comments;
 pub mod output_conditions;

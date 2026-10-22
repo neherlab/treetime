@@ -23,7 +23,7 @@ confidence: true
 coalescent: "opt"
 max_iter: 3
 
-# The default outputs, plus the date confidence intervals as a TSV.
+# The default outputs: with `confidence`, the node dates table holds the 90% intervals.
 output_selection:
   - "nwk"
   - "nexus"
@@ -33,4 +33,4 @@ output_selection:
   - "sequences"
   - "clock-model"
   - "coalescent"
-  - "confidence-tsv"
+  - "dates"

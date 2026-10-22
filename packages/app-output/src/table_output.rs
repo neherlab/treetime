@@ -19,7 +19,7 @@ pub fn table_read_file<T: DeserializeOwned>(filepath: &Path) -> Result<Vec<T>, R
   csv_read_file(filepath, planned_table_format(filepath)?)
 }
 
-fn planned_table_format(filepath: &Path) -> Result<TableFormat, Report> {
+pub(crate) fn planned_table_format(filepath: &Path) -> Result<TableFormat, Report> {
   table_format(filepath)
     .ok_or_else(|| make_internal_report!("No table format for '{}' after output planning", filepath.display()))
 }

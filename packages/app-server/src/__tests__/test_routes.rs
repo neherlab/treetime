@@ -44,6 +44,7 @@ pub(crate) mod tests {
           "model",
           "sequences",
           "clock-model",
+          "dates",
           "tracelog",
           "rtt"
         ])
@@ -63,11 +64,14 @@ pub(crate) mod tests {
       .unwrap()
       .iter()
       .map(|file| (file["path"].as_str().unwrap().to_owned(), file["kind"].clone()))
-      .filter(|(path, _)| path.ends_with(".auspice.json") || path.ends_with(".tracelog.tsv"))
+      .filter(|(path, _)| {
+        path.ends_with(".auspice.json") || path.ends_with(".dates.tsv") || path.ends_with(".tracelog.tsv")
+      })
       .collect();
     assert_eq!(
       vec![
         ("timetree.auspice.json".to_owned(), json!("auspice")),
+        ("timetree.dates.tsv".to_owned(), json!("dates")),
         ("timetree.tracelog.tsv".to_owned(), json!("tracelog")),
       ],
       kinds
