@@ -173,7 +173,7 @@ fn oldest_tip(graph: &Graph, inputs: &ClockInputs) -> Result<GraphNodeKey, Repor
 
 fn tip_group_mrca(graph: &Graph, tips: &[GraphNodeKey]) -> Result<GraphNodeKey, Report> {
   if tips.is_empty() {
-    return Err(input_error("--reroot-tips requires at least one tip name"));
+    return Err(input_error("--outgroup requires at least one tip name"));
   }
   common_ancestor(graph, tips)
 }

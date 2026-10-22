@@ -162,7 +162,7 @@ pub(crate) mod tests {
 
     let result = helpers::reroot(setup_reroot_test_graph()?, &reroot_params);
 
-    assert_error!(result, "--reroot-tips requires at least one tip name");
+    assert_error!(result, "--outgroup requires at least one tip name");
     Ok(())
   }
 

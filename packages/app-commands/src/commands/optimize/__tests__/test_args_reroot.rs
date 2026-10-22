@@ -1,8 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::commands::optimize::args::{OptimizeRerootMethod, TreetimeOptimizeArgs, TreetimeOptimizeArgsRaw};
+  use clap::Parser;
+  use clap::error::ErrorKind;
   use helpers::args_with;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use treetime::o;
   use treetime_io::nwk::nwk_read;
@@ -58,6 +61,20 @@ mod tests {
     assert_eq!(RerootMethod::MinDev, method);
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::reroot_without_value(  &["--reroot"],                             ErrorKind::InvalidValue)]
+  #[case::reroot_and_outgroup(   &["--reroot=min-dev", "--outgroup=A"],     ErrorKind::ArgumentConflict)]
+  #[case::keep_root_and_outgroup(&["--keep-root", "--outgroup=A"],          ErrorKind::ArgumentConflict)]
+  #[trace]
+  fn test_optimize_args_rooting_rejects(#[case] flags: &[&str], #[case] expected: ErrorKind) {
+    let args = ["optimize", "--tree=t.nwk"].into_iter().chain(flags.iter().copied());
+
+    let result = TreetimeOptimizeArgsRaw::try_parse_from(args);
+
+    assert_eq!(Some(expected), result.err().map(|err| err.kind()));
+  }
+
   mod helpers {
     use super::*;
     use crate::commands::shared::reroot::RootingArgs;
@@ -65,7 +82,7 @@ mod tests {
 
     pub(super) fn args_with(
       reroot: Option<OptimizeRerootMethod>,
-      reroot_tips: Vec<String>,
+      outgroup: Vec<String>,
       keep_root: bool,
     ) -> TreetimeOptimizeArgs {
       TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
@@ -73,7 +90,7 @@ mod tests {
           tree: Some("tree.nwk".into()),
         },
         reroot,
-        rooting: RootingArgs { reroot_tips, keep_root },
+        rooting: RootingArgs { outgroup, keep_root },
         ..Default::default()
       })
       .unwrap()

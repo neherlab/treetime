@@ -62,6 +62,10 @@ impl AppCommandExt for AppCommand {
     matches!(self, Self::Timetree | Self::Clock)
   }
 
+  fn reroots_by_default(self) -> bool {
+    matches!(self, Self::Timetree | Self::Clock)
+  }
+
   fn missing_sequences(self) -> MissingSequences {
     match self {
       Self::Ancestral | Self::Homoplasy => MissingSequences::LimitedUnlessIgnored,
@@ -104,6 +108,7 @@ impl AppCommandExt for AppCommand {
         "skyline_n_points",
         "skyline_stiffness",
         "reroot",
+        "outgroup",
         "keep_root",
         "clock_filter",
         "relax",
@@ -114,6 +119,7 @@ impl AppCommandExt for AppCommand {
       ],
       Self::Clock => &[
         "reroot",
+        "outgroup",
         "keep_root",
         "clock_filter",
         "allow_negative_rate",
@@ -128,7 +134,15 @@ impl AppCommandExt for AppCommand {
       ],
       Self::Homoplasy => &["method_anc", "model", "gap_fill", "constant_sites", "drms", "rescale"],
       Self::Mugration => &["attribute", "weights", "pc", "missing_data", "sampling_bias_correction"],
-      Self::Optimize => &["opt_method", "reroot", "divergence_units", "no_indels", "max_iter"],
+      Self::Optimize => &[
+        "opt_method",
+        "reroot",
+        "outgroup",
+        "keep_root",
+        "divergence_units",
+        "no_indels",
+        "max_iter",
+      ],
       Self::Prune => &[
         "prune_short",
         "prune_empty",
@@ -205,6 +219,8 @@ pub trait AppCommandExt {
   fn inputs(self) -> &'static [CommandInput];
 
   fn uses_dates(self) -> bool;
+
+  fn reroots_by_default(self) -> bool;
 
   fn missing_sequences(self) -> MissingSequences;
 

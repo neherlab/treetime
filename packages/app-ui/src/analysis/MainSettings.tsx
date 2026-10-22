@@ -78,12 +78,16 @@ const CHOICE_TEXT: Record<ChoiceName, ChoiceText> = {
     sub: "Where the tree is rooted",
     options: {
       reroot: { label: "Optimize root", note: "Not set uses the command default." },
+      outgroup: {
+        label: "Outgroup",
+        note: "The root is placed on the branch above the most recent common ancestor of the named tips.",
+      },
       keep: {
         label: "Keep input root",
-        note: "The input root is kept; use this when the tree is rooted with an outgroup.",
+        note: "The input root is kept; use this when the input tree is already rooted.",
       },
     },
-    settings: { reroot: "Method" },
+    settings: { reroot: "Method", outgroup: "Tips" },
   },
 };
 

@@ -203,11 +203,13 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
 * `--reroot <REROOT>` — Reroot the tree by temporal-signal optimization.
 
-   Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+   Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
 
   Possible values: `least-squares`, `min-dev`, `oldest`
 
-* `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips
+* `--outgroup <OUTGROUP>` — Root the tree on the branch above the most recent common ancestor of the named tips
+
+   With one tip, the root is placed on the branch leading to that tip.
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
 * `-g`, `--model <MODEL>` [alias: `gtr`] — Substitution model to use
 
@@ -685,11 +687,13 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 * `--reroot <REROOT>` — Reroot the tree by minimizing root-to-tip divergence variance.
 
-   By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands.
+   By default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands.
 
   Possible values: `min-dev`
 
-* `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips
+* `--outgroup <OUTGROUP>` — Root the tree on the branch above the most recent common ancestor of the named tips
+
+   With one tip, the root is placed on the branch leading to that tip.
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
 * `--no-collapse-short-branches` — Disable collapsing of internal branches whose optimized length is zero.
 
@@ -1196,11 +1200,13 @@ Calculates the root-to-tip regression and quantifies the 'clock-i-ness' of the t
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
 * `--reroot <REROOT>` — Reroot the tree by temporal-signal optimization.
 
-   Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+   Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
 
   Possible values: `least-squares`, `min-dev`, `oldest`
 
-* `--reroot-tips <REROOT_TIPS>` — Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips
+* `--outgroup <OUTGROUP>` — Root the tree on the branch above the most recent common ancestor of the named tips
+
+   With one tip, the root is placed on the branch leading to that tip.
 * `--keep-root` — Keep the root of the input tree instead of rerooting it
 * `-O`, `--output-all <OUTPUT_ALL>` — Write all default output files into this directory.
 

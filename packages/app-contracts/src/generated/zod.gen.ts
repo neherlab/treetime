@@ -234,6 +234,7 @@ export const zChoiceOptionName = z.union([
   z.literal('estimate'),
   z.literal('fixed'),
   z.literal('reroot'),
+  z.literal('outgroup'),
   z.literal('keep')
 ]);
 
@@ -1473,7 +1474,7 @@ export const zTimetreeConfig = z.strictObject({
   clock_filter: z.number().optional(),
   allow_negative_rate: z.boolean().optional(),
   reroot: zRerootMethod.optional(),
-  reroot_tips: z.array(z.string()).optional(),
+  outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
@@ -1561,7 +1562,7 @@ export const zClockConfig = z.strictObject({
   clock_filter: z.number().optional(),
   allow_negative_rate: z.boolean().optional(),
   reroot: zRerootMethod.optional(),
-  reroot_tips: z.array(z.string()).optional(),
+  outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   output_all: z.string().optional(),
   output_nwk_style: z.array(zNwkStyleArg).optional(),
@@ -1931,7 +1932,7 @@ export const zOptimizeConfig = z.strictObject({
   branch_length_initial_guess: zInitialGuessMode.optional(),
   opt_method: zBranchOptMethod.optional(),
   reroot: zOptimizeRerootMethod.optional(),
-  reroot_tips: z.array(z.string()).optional(),
+  outgroup: z.array(z.string()).optional(),
   keep_root: z.boolean().optional(),
   no_collapse_short_branches: z.boolean().optional(),
   no_merge_siblings: z.boolean().optional(),

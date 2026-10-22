@@ -153,8 +153,8 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::keep_root(               AppCommand::Clock,    "keep_root",          vec_of_owned!["reroot", "reroot_tips"])]
-  #[case::reroot(                  AppCommand::Clock,    "reroot",             vec_of_owned!["keep_root", "reroot_tips"])]
+  #[case::keep_root(               AppCommand::Clock,    "keep_root",          vec_of_owned!["outgroup", "reroot"])]
+  #[case::reroot(                  AppCommand::Clock,    "reroot",             vec_of_owned!["keep_root", "outgroup"])]
   #[case::none(                    AppCommand::Timetree, "max_iter",           vec![])]
   #[trace]
   fn test_setting_catalog_conflicts_are_symmetric(

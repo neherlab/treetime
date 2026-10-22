@@ -360,9 +360,9 @@ datasets = ["flu/h3n2/20"]
 args = "--reroot=oldest"
 
 [[clock]]
-variant = "reroot-tips"
+variant = "outgroup"
 datasets = ["ebola/20"]
-args = "--reroot-tips=EM_079497"
+args = "--outgroup=EM_079497"
 
 [[clock]]
 variant = "keep-root"
@@ -554,9 +554,9 @@ datasets = ["flu/h3n2/20"]
 args = "--representation=sparse --divergence-units=mutations"
 
 [[optimize]]
-variant = "reroot-tips"
+variant = "outgroup"
 datasets = ["ebola/20"]
-args = "--representation=sparse --reroot-tips=EM_079497"
+args = "--representation=sparse --outgroup=EM_079497"
 
 [[optimize]]
 variant = "keep-root"

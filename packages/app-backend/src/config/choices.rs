@@ -1,5 +1,7 @@
+use crate::command::AppCommandExt;
 use crate::config::catalog::SettingSpec;
 use crate::run_checks::SettingPatch;
+use app_commands::command::AppCommand;
 use app_commands::json_value::JsonValue;
 use deser::Serialize;
 use eyre::Report;
@@ -27,12 +29,17 @@ const CHOICES: &[ChoiceDef] = &[
   },
   ChoiceDef {
     name: ChoiceName::Root,
-    keys: &["reroot", "keep_root"],
+    keys: &["reroot", "outgroup", "keep_root"],
     options: &[
       OptionDef {
         name: ChoiceOptionName::Reroot,
-        set: &[],
+        set: &[("reroot", PickedValue::MethodUnlessDefault)],
         settings: &["reroot"],
+      },
+      OptionDef {
+        name: ChoiceOptionName::Outgroup,
+        set: &[("outgroup", PickedValue::Example)],
+        settings: &["outgroup"],
       },
       OptionDef {
         name: ChoiceOptionName::Keep,
@@ -43,17 +50,22 @@ const CHOICES: &[ChoiceDef] = &[
   },
 ];
 
-pub fn setting_choices(settings: &[SettingSpec]) -> Result<Vec<SettingChoice>, Report> {
+pub fn setting_choices(command: AppCommand, settings: &[SettingSpec]) -> Result<Vec<SettingChoice>, Report> {
   CHOICES
     .iter()
     .filter(|choice| choice.applies(settings))
-    .map(|choice| choice.build(settings))
+    .map(|choice| choice.build(command, settings))
     .try_collect()
 }
 
-pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> Vec<ActiveChoice> {
-  let value = |key: &str| config.get(key);
+pub fn active_choices(command: AppCommand, settings: &[SettingSpec], config: &Map<String, Value>) -> Vec<ActiveChoice> {
+  let value = |key: &str| config.get(key).filter(|value| !value.is_null());
   let flag = |key: &str| value(key).and_then(Value::as_bool).unwrap_or(false);
+  let listed = |key: &str| {
+    value(key)
+      .and_then(Value::as_array)
+      .is_some_and(|items| !items.is_empty())
+  };
   CHOICES
     .iter()
     .filter(|choice| choice.applies(settings))
@@ -70,8 +82,12 @@ pub fn active_choices(settings: &[SettingSpec], config: &Map<String, Value>) -> 
         ChoiceName::Root => {
           if flag("keep_root") {
             ChoiceOptionName::Keep
-          } else {
+          } else if listed("outgroup") {
+            ChoiceOptionName::Outgroup
+          } else if value("reroot").is_some() || command.reroots_by_default() {
             ChoiceOptionName::Reroot
+          } else {
+            ChoiceOptionName::Keep
           }
         },
       },
@@ -97,14 +113,14 @@ impl ChoiceDef {
     self.keys.iter().all(|key| settings.iter().any(|spec| spec.key == *key))
   }
 
-  fn build(&self, settings: &[SettingSpec]) -> Result<SettingChoice, Report> {
+  fn build(&self, command: AppCommand, settings: &[SettingSpec]) -> Result<SettingChoice, Report> {
     Ok(SettingChoice {
       choice: self.name,
       keys: self.keys.iter().map(|key| (*key).to_owned()).collect(),
       options: self
         .options
         .iter()
-        .map(|option| option.build(self.keys, settings))
+        .map(|option| option.build(command, self.keys, settings))
         .try_collect()?,
     })
   }
@@ -127,7 +143,7 @@ pub struct SettingChoice {
 pub enum ChoiceName {
   /// Estimate the clock rate, or fix it.
   ClockRate,
-  /// Reroot the tree, or keep the input root.
+  /// Reroot the tree by a method, root it on an outgroup, or keep the input root.
   Root,
 }
 
@@ -138,7 +154,7 @@ struct OptionDef {
 }
 
 impl OptionDef {
-  fn build(&self, keys: &[&str], settings: &[SettingSpec]) -> Result<ChoiceOption, Report> {
+  fn build(&self, command: AppCommand, keys: &[&str], settings: &[SettingSpec]) -> Result<ChoiceOption, Report> {
     let patch = keys
       .iter()
       .map(|key| {
@@ -146,8 +162,9 @@ impl OptionDef {
           .set
           .iter()
           .find(|(set_key, _)| set_key == key)
-          .map(|(_, value)| value.resolve(key, settings))
-          .transpose()?;
+          .map(|(_, value)| value.resolve(command, key, settings))
+          .transpose()?
+          .flatten();
         Ok(SettingPatch {
           key: (*key).to_owned(),
           value,
@@ -184,6 +201,8 @@ pub enum ChoiceOptionName {
   Fixed,
   /// Find the root that fits the molecular clock best.
   Reroot,
+  /// Root on the branch above the most recent common ancestor of named tips.
+  Outgroup,
   /// Keep the root of the input tree.
   Keep,
 }
@@ -191,17 +210,31 @@ pub enum ChoiceOptionName {
 enum PickedValue {
   True,
   Example,
+  MethodUnlessDefault,
 }
 
 impl PickedValue {
-  fn resolve(&self, key: &str, settings: &[SettingSpec]) -> Result<JsonValue, Report> {
-    match self {
-      Self::True => Ok(JsonValue(Value::Bool(true))),
-      Self::Example => settings
+  fn resolve(&self, command: AppCommand, key: &str, settings: &[SettingSpec]) -> Result<Option<JsonValue>, Report> {
+    let spec = || {
+      settings
         .iter()
         .find(|spec| spec.key == key)
-        .and_then(|spec| spec.examples.first().cloned())
+        .ok_or_else(|| make_report!("setting `{key}` of a choice option is not a setting of {command}"))
+    };
+    match self {
+      Self::True => Ok(Some(JsonValue(Value::Bool(true)))),
+      Self::Example => spec()?
+        .examples
+        .first()
+        .cloned()
+        .map(Some)
         .ok_or_else(|| make_report!("setting `{key}` has no example value for its choice option")),
+      Self::MethodUnlessDefault if command.reroots_by_default() => Ok(None),
+      Self::MethodUnlessDefault => spec()?
+        .options
+        .first()
+        .map(|option| Some(JsonValue(Value::String(option.value.clone()))))
+        .ok_or_else(|| make_report!("setting `{key}` has no allowed value for its choice option")),
     }
   }
 }

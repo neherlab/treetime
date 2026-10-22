@@ -65,7 +65,6 @@ mod tests {
     ("--confidence",    &[Property::ValueType, Property::Action, Property::NumArgs, Property::ValueNames, Property::Defaults,
                           Property::Aliases, Property::Heading, Property::Help, Property::LongHelp],
                                                                                                  Pending::MugrationConfidenceFlag),
-    ("--reroot",        &[Property::NumArgs],                                                    Pending::RepresentationAndRootingGroup),
   ];
 
   #[test]

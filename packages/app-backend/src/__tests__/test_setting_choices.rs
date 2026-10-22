@@ -3,15 +3,19 @@ mod tests {
   use crate::__tests__::test_check_config::tests::helpers::fresh_draft;
   use crate::check_config::CheckConfigResponse;
   use crate::config::catalog::command_settings;
-  use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOptionName};
+  use crate::config::choices::{ActiveChoice, ChoiceName, ChoiceOption, ChoiceOptionName, SettingChoice};
+  use crate::run_checks::SettingPatch;
   use app_commands::command::AppCommand;
   use app_commands::config::properties::setting_properties;
+  use app_commands::json_value::JsonValue;
   use helpers::{active_choices_of, check};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde_json::{Value, json};
   use std::collections::BTreeSet;
   use strum::IntoEnumIterator;
+  use treetime_utils::{o, vec_of_owned};
 
   #[test]
   fn test_choices_name_only_settings_of_their_command() {
@@ -75,6 +79,91 @@ mod tests {
         (AppCommand::Prune, vec![]),
       ],
       choices
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::timetree(AppCommand::Timetree, None)]
+  #[case::clock(   AppCommand::Clock,    None)]
+  #[case::optimize(AppCommand::Optimize, Some(json!("min-dev")))]
+  #[trace]
+  fn test_choices_root_picks_a_method_an_outgroup_or_the_input_root(
+    #[case] command: AppCommand,
+    #[case] reroot_method: Option<Value>,
+  ) {
+    let patch = |reroot: Option<Value>, outgroup: Option<Value>, keep_root: Option<Value>| {
+      vec![
+        SettingPatch {
+          key: o!("reroot"),
+          value: reroot.map(JsonValue),
+        },
+        SettingPatch {
+          key: o!("outgroup"),
+          value: outgroup.map(JsonValue),
+        },
+        SettingPatch {
+          key: o!("keep_root"),
+          value: keep_root.map(JsonValue),
+        },
+      ]
+    };
+    let root = command_settings(command)
+      .unwrap()
+      .choices
+      .into_iter()
+      .find(|choice| choice.choice == ChoiceName::Root);
+    assert_eq!(
+      Some(SettingChoice {
+        choice: ChoiceName::Root,
+        keys: vec_of_owned!["reroot", "outgroup", "keep_root"],
+        options: vec![
+          ChoiceOption {
+            option: ChoiceOptionName::Reroot,
+            patch: patch(reroot_method, None, None),
+            settings: vec_of_owned!["reroot"],
+          },
+          ChoiceOption {
+            option: ChoiceOptionName::Outgroup,
+            patch: patch(None, Some(json!(["outgroup_tip"])), None),
+            settings: vec_of_owned!["outgroup"],
+          },
+          ChoiceOption {
+            option: ChoiceOptionName::Keep,
+            patch: patch(None, None, Some(json!(true))),
+            settings: vec![],
+          },
+        ],
+      }),
+      root
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::timetree(       AppCommand::Timetree, json!({}),                     ChoiceOptionName::Reroot)]
+  #[case::clock(          AppCommand::Clock,    json!({}),                     ChoiceOptionName::Reroot)]
+  #[case::optimize(       AppCommand::Optimize, json!({}),                     ChoiceOptionName::Keep)]
+  #[case::optimize_method(AppCommand::Optimize, json!({ "reroot": "min-dev" }), ChoiceOptionName::Reroot)]
+  #[trace]
+  fn test_choices_root_without_rooting_settings_reports_what_the_command_does(
+    #[case] command: AppCommand,
+    #[case] rooting: Value,
+    #[case] expected: ChoiceOptionName,
+  ) {
+    let mut draft = fresh_draft(command);
+    draft.extend(rooting.as_object().unwrap().clone());
+
+    let root = active_choices_of(command, &Value::Object(draft))
+      .into_iter()
+      .find(|active| active.choice == ChoiceName::Root);
+
+    assert_eq!(
+      Some(ActiveChoice {
+        choice: ChoiceName::Root,
+        option: expected,
+      }),
+      root
     );
   }
 

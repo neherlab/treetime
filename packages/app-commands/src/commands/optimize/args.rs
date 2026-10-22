@@ -10,7 +10,7 @@ use crate::commands::shared::model::{ModelArgs, PartitionRatesArgs};
 use crate::commands::shared::output_args::{OptimizeOutputSelectionArgs, OutputCoreArgs};
 use crate::commands::shared::representation::RepresentationArgs;
 use crate::commands::shared::required::missing_required_args;
-use crate::commands::shared::reroot::{RootingArgs, resolve_reroot_tips};
+use crate::commands::shared::reroot::{RootingArgs, resolve_outgroup};
 use crate::commands::shared::topology_order_args::TopologyOrderArgs;
 use crate::commands::shared::tree_input::{TreeArgs, TreeDialectArgs};
 use crate::commands::shared::zero_based::ZeroBasedArgs;
@@ -57,9 +57,9 @@ impl TreetimeOptimizeArgs {
       return Ok(Some(RerootSpec::Method(RerootMethod::from(method))));
     }
 
-    if !self.rooting.reroot_tips.is_empty() {
-      return Ok(Some(RerootSpec::Tips(resolve_reroot_tips(
-        &self.rooting.reroot_tips,
+    if !self.rooting.outgroup.is_empty() {
+      return Ok(Some(RerootSpec::Tips(resolve_outgroup(
+        &self.rooting.outgroup,
         graph,
         names,
       )?)));
@@ -222,17 +222,12 @@ pub struct TreetimeOptimizeArgsRaw {
 
   /// Reroot the tree by minimizing root-to-tip divergence variance.
   ///
-  /// By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
-  /// to enable divergence-based rerooting. Date-dependent methods (least-squares,
-  /// oldest) are available in the timetree and clock commands.
-  #[cfg_attr(feature = "clap", clap(
-    long,
-    value_enum,
-    num_args = 0..=1,
-    default_missing_value = "min-dev",
-    conflicts_with = "reroot_tips",
-    help_heading = "Rooting",
-  ))]
+  /// By default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting.
+  /// Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
+  )]
   pub reroot: Option<OptimizeRerootMethod>,
 
   #[cfg_attr(feature = "clap", clap(flatten))]

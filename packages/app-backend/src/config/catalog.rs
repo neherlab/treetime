@@ -85,7 +85,7 @@ pub fn command_settings(command: AppCommand) -> Result<CommandSettings, Report> 
     uses_dates: command.uses_dates(),
     groups,
     main_settings: command.main_settings().iter().map(|key| (*key).to_owned()).collect(),
-    choices: setting_choices(&settings)?,
+    choices: setting_choices(command, &settings)?,
     settings,
   })
 }

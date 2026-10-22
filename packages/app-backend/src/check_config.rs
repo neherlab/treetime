@@ -59,7 +59,7 @@ pub fn check_config(request: &CheckConfigRequest) -> CheckConfigResponse {
   match resolved {
     Ok((code, config)) => CheckConfigResponse::Valid {
       command,
-      choices: active_choices(&settings, &config),
+      choices: active_choices(command, &settings, &config),
       checks: run_checks(&CheckContext {
         command,
         config: Some(&config),
@@ -137,7 +137,7 @@ fn invalid(
   CheckConfigResponse::Invalid {
     command,
     choices: config
-      .map(|config| active_choices(settings, config))
+      .map(|config| active_choices(command, settings, config))
       .unwrap_or_default(),
     rendered: invalid.map(|invalid| invalid.rendered.clone()),
     messages,

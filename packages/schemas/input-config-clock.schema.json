@@ -92,19 +92,24 @@
       "x-cli-flag": "--allow-negative-rate"
     },
     "reroot": {
-      "description": "Reroot the tree by temporal-signal optimization.\n\nDefaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.",
+      "description": "Reroot the tree by temporal-signal optimization.\n\nWithout a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or\n--keep-root to keep the input root.",
       "$ref": "#/$defs/RerootMethod",
       "x-unset": true,
       "x-cli-flag": "--reroot"
     },
-    "reroot_tips": {
-      "description": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
+    "outgroup": {
+      "description": "Root the tree on the branch above the most recent common ancestor of the named tips\n\nWith one tip, the root is placed on the branch leading to that tip.",
       "type": "array",
       "items": {
         "type": "string"
       },
+      "examples": [
+        [
+          "outgroup_tip"
+        ]
+      ],
       "default": [],
-      "x-cli-flag": "--reroot-tips"
+      "x-cli-flag": "--outgroup"
     },
     "keep_root": {
       "description": "Keep the root of the input tree instead of rerooting it.",

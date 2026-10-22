@@ -81,6 +81,7 @@
         "skyline_n_points",
         "skyline_stiffness",
         "reroot",
+        "outgroup",
         "keep_root",
         "clock_filter",
         "relax",
@@ -131,6 +132,7 @@
           "choice": "root",
           "keys": [
             "reroot",
+            "outgroup",
             "keep_root"
           ],
           "options": [
@@ -141,6 +143,9 @@
                   "key": "reroot"
                 },
                 {
+                  "key": "outgroup"
+                },
+                {
                   "key": "keep_root"
                 }
               ],
@@ -149,10 +154,33 @@
               ]
             },
             {
+              "option": "outgroup",
+              "patch": [
+                {
+                  "key": "reroot"
+                },
+                {
+                  "key": "outgroup",
+                  "value": [
+                    "outgroup_tip"
+                  ]
+                },
+                {
+                  "key": "keep_root"
+                }
+              ],
+              "settings": [
+                "outgroup"
+              ]
+            },
+            {
               "option": "keep",
               "patch": [
                 {
                   "key": "reroot"
+                },
+                {
+                  "key": "outgroup"
                 },
                 {
                   "key": "keep_root",
@@ -806,15 +834,15 @@
           ],
           "conflicts": [
             "keep_root",
-            "reroot_tips"
+            "outgroup"
           ],
           "help": "Reroot the tree by temporal-signal optimization.",
-          "more": "Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root."
+          "more": "Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root."
         },
         {
-          "key": "reroot_tips",
-          "label": "Reroot tips",
-          "flag": "--reroot-tips",
+          "key": "outgroup",
+          "label": "Outgroup",
+          "flag": "--outgroup",
           "group": "Rooting",
           "role": "setting",
           "kind": "list",
@@ -822,16 +850,20 @@
           "options": [],
           "item_kind": "string",
           "default_value": [],
-          "examples": [],
+          "examples": [
+            [
+              "outgroup_tip"
+            ]
+          ],
           "value_names": [
-            "REROOT_TIPS"
+            "OUTGROUP"
           ],
           "conflicts": [
             "keep_root",
             "reroot"
           ],
-          "help": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
-          "more": ""
+          "help": "Root the tree on the branch above the most recent common ancestor of the named tips",
+          "more": "With one tip, the root is placed on the branch leading to that tip."
         },
         {
           "key": "keep_root",
@@ -849,8 +881,8 @@
             "KEEP_ROOT"
           ],
           "conflicts": [
-            "reroot",
-            "reroot_tips"
+            "outgroup",
+            "reroot"
           ],
           "help": "Keep the root of the input tree instead of rerooting it.",
           "more": ""
@@ -1825,6 +1857,7 @@
       ],
       "main_settings": [
         "reroot",
+        "outgroup",
         "keep_root",
         "clock_filter",
         "allow_negative_rate",
@@ -1835,6 +1868,7 @@
           "choice": "root",
           "keys": [
             "reroot",
+            "outgroup",
             "keep_root"
           ],
           "options": [
@@ -1845,6 +1879,9 @@
                   "key": "reroot"
                 },
                 {
+                  "key": "outgroup"
+                },
+                {
                   "key": "keep_root"
                 }
               ],
@@ -1853,10 +1890,33 @@
               ]
             },
             {
+              "option": "outgroup",
+              "patch": [
+                {
+                  "key": "reroot"
+                },
+                {
+                  "key": "outgroup",
+                  "value": [
+                    "outgroup_tip"
+                  ]
+                },
+                {
+                  "key": "keep_root"
+                }
+              ],
+              "settings": [
+                "outgroup"
+              ]
+            },
+            {
               "option": "keep",
               "patch": [
                 {
                   "key": "reroot"
+                },
+                {
+                  "key": "outgroup"
                 },
                 {
                   "key": "keep_root",
@@ -2123,15 +2183,15 @@
           ],
           "conflicts": [
             "keep_root",
-            "reroot_tips"
+            "outgroup"
           ],
           "help": "Reroot the tree by temporal-signal optimization.",
-          "more": "Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root."
+          "more": "Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root."
         },
         {
-          "key": "reroot_tips",
-          "label": "Reroot tips",
-          "flag": "--reroot-tips",
+          "key": "outgroup",
+          "label": "Outgroup",
+          "flag": "--outgroup",
           "group": "Rooting",
           "role": "setting",
           "kind": "list",
@@ -2139,16 +2199,20 @@
           "options": [],
           "item_kind": "string",
           "default_value": [],
-          "examples": [],
+          "examples": [
+            [
+              "outgroup_tip"
+            ]
+          ],
           "value_names": [
-            "REROOT_TIPS"
+            "OUTGROUP"
           ],
           "conflicts": [
             "keep_root",
             "reroot"
           ],
-          "help": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
-          "more": ""
+          "help": "Root the tree on the branch above the most recent common ancestor of the named tips",
+          "more": "With one tip, the root is placed on the branch leading to that tip."
         },
         {
           "key": "keep_root",
@@ -2166,8 +2230,8 @@
             "KEEP_ROOT"
           ],
           "conflicts": [
-            "reroot",
-            "reroot_tips"
+            "outgroup",
+            "reroot"
           ],
           "help": "Keep the root of the input tree instead of rerooting it.",
           "more": ""
@@ -5705,6 +5769,8 @@
       "main_settings": [
         "opt_method",
         "reroot",
+        "outgroup",
+        "keep_root",
         "divergence_units",
         "no_indels",
         "max_iter"
@@ -5714,6 +5780,7 @@
           "choice": "root",
           "keys": [
             "reroot",
+            "outgroup",
             "keep_root"
           ],
           "options": [
@@ -5721,7 +5788,11 @@
               "option": "reroot",
               "patch": [
                 {
-                  "key": "reroot"
+                  "key": "reroot",
+                  "value": "min-dev"
+                },
+                {
+                  "key": "outgroup"
                 },
                 {
                   "key": "keep_root"
@@ -5732,10 +5803,33 @@
               ]
             },
             {
+              "option": "outgroup",
+              "patch": [
+                {
+                  "key": "reroot"
+                },
+                {
+                  "key": "outgroup",
+                  "value": [
+                    "outgroup_tip"
+                  ]
+                },
+                {
+                  "key": "keep_root"
+                }
+              ],
+              "settings": [
+                "outgroup"
+              ]
+            },
+            {
               "option": "keep",
               "patch": [
                 {
                   "key": "reroot"
+                },
+                {
+                  "key": "outgroup"
                 },
                 {
                   "key": "keep_root",
@@ -6721,15 +6815,15 @@
           ],
           "conflicts": [
             "keep_root",
-            "reroot_tips"
+            "outgroup"
           ],
           "help": "Reroot the tree by minimizing root-to-tip divergence variance.",
-          "more": "By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands."
+          "more": "By default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting. Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands."
         },
         {
-          "key": "reroot_tips",
-          "label": "Reroot tips",
-          "flag": "--reroot-tips",
+          "key": "outgroup",
+          "label": "Outgroup",
+          "flag": "--outgroup",
           "group": "Rooting",
           "role": "setting",
           "kind": "list",
@@ -6737,16 +6831,20 @@
           "options": [],
           "item_kind": "string",
           "default_value": [],
-          "examples": [],
+          "examples": [
+            [
+              "outgroup_tip"
+            ]
+          ],
           "value_names": [
-            "REROOT_TIPS"
+            "OUTGROUP"
           ],
           "conflicts": [
             "keep_root",
             "reroot"
           ],
-          "help": "Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.",
-          "more": ""
+          "help": "Root the tree on the branch above the most recent common ancestor of the named tips",
+          "more": "With one tip, the root is placed on the branch leading to that tip."
         },
         {
           "key": "keep_root",
@@ -6764,8 +6862,8 @@
             "KEEP_ROOT"
           ],
           "conflicts": [
-            "reroot",
-            "reroot_tips"
+            "outgroup",
+            "reroot"
           ],
           "help": "Keep the root of the input tree instead of rerooting it.",
           "more": ""

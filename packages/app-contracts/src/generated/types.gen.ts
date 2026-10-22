@@ -390,7 +390,7 @@ export type ChoiceName = 'clock-rate' | 'root';
 /**
  * An option of a choice.
  */
-export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'keep';
+export type ChoiceOptionName = 'estimate' | 'fixed' | 'reroot' | 'outgroup' | 'keep';
 
 /**
  * One problem found in a configuration.
@@ -2905,13 +2905,16 @@ export type TimetreeConfig = {
   /**
    * Reroot the tree by temporal-signal optimization.
    *
-   * Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+   * Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or
+   * --keep-root to keep the input root.
    */
   reroot?: RerootMethod;
   /**
-   * Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
+   * Root the tree on the branch above the most recent common ancestor of the named tips
+   *
+   * With one tip, the root is placed on the branch leading to that tip.
    */
-  reroot_tips?: Array<string>;
+  outgroup?: Array<string>;
   /**
    * Keep the root of the input tree instead of rerooting it.
    */
@@ -3353,13 +3356,16 @@ export type ClockConfig = {
   /**
    * Reroot the tree by temporal-signal optimization.
    *
-   * Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+   * Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or
+   * --keep-root to keep the input root.
    */
   reroot?: RerootMethod;
   /**
-   * Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
+   * Root the tree on the branch above the most recent common ancestor of the named tips
+   *
+   * With one tip, the root is placed on the branch leading to that tip.
    */
-  reroot_tips?: Array<string>;
+  outgroup?: Array<string>;
   /**
    * Keep the root of the input tree instead of rerooting it.
    */
@@ -4907,15 +4913,16 @@ export type OptimizeConfig = {
   /**
    * Reroot the tree by minimizing root-to-tip divergence variance.
    *
-   * By default, optimize keeps the input root. Pass --reroot or --reroot=min-dev
-   * to enable divergence-based rerooting. Date-dependent methods (least-squares,
-   * oldest) are available in the timetree and clock commands.
+   * By default, optimize keeps the input root. Pass --reroot=min-dev to enable divergence-based rerooting.
+   * Date-dependent methods (least-squares, oldest) are available in the timetree and clock commands.
    */
   reroot?: OptimizeRerootMethod;
   /**
-   * Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
+   * Root the tree on the branch above the most recent common ancestor of the named tips
+   *
+   * With one tip, the root is placed on the branch leading to that tip.
    */
-  reroot_tips?: Array<string>;
+  outgroup?: Array<string>;
   /**
    * Keep the root of the input tree instead of rerooting it.
    */

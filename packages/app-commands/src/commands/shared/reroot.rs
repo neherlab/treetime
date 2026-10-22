@@ -21,29 +21,21 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 pub struct RerootArgs {
   /// Reroot the tree by temporal-signal optimization.
   ///
-  /// Defaults to least-squares when rerooting is enabled. Use --keep-root to keep the input root.
+  /// Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or
+  /// --keep-root to keep the input root.
   #[cfg_attr(
     feature = "clap",
-    clap(
-      long = "reroot",
-      value_enum,
-      conflicts_with = "reroot_tips",
-      help_heading = "Rooting"
-    )
+    clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
   )]
   reroot: Option<RerootMethodCli>,
 }
 
 impl RerootArgs {
   pub fn spec(&self, rooting: &RootingArgs, graph: &Graph, names: &NodeNames) -> Result<RerootSpec, Report> {
-    if rooting.reroot_tips.is_empty() {
+    if rooting.outgroup.is_empty() {
       Ok(RerootSpec::Method(self.reroot.map(Into::into).unwrap_or_default()))
     } else {
-      Ok(RerootSpec::Tips(resolve_reroot_tips(
-        &rooting.reroot_tips,
-        graph,
-        names,
-      )?))
+      Ok(RerootSpec::Tips(resolve_outgroup(&rooting.outgroup, graph, names)?))
     }
   }
 }
@@ -54,19 +46,22 @@ impl RerootArgs {
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct RootingArgs {
-  /// Reroot on the branch leading to a tip, or to the most recent common ancestor of several tips.
+  /// Root the tree on the branch above the most recent common ancestor of the named tips
+  ///
+  /// With one tip, the root is placed on the branch leading to that tip.
+  #[schemars(example = ["outgroup_tip"])]
   #[cfg_attr(
     feature = "clap",
     clap(long, num_args = 1.., value_delimiter = ',', conflicts_with = "reroot", help_heading = "Rooting")
   )]
-  pub reroot_tips: Vec<String>,
+  pub outgroup: Vec<String>,
 
   /// Keep the root of the input tree instead of rerooting it.
-  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"], help_heading = "Rooting"))]
+  #[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "outgroup"], help_heading = "Rooting"))]
   pub keep_root: bool,
 }
 
-pub fn resolve_reroot_tips(tips: &[String], graph: &Graph, names: &NodeNames) -> Result<Vec<GraphNodeKey>, Report> {
+pub fn resolve_outgroup(tips: &[String], graph: &Graph, names: &NodeNames) -> Result<Vec<GraphNodeKey>, Report> {
   let leaf_of = key_by_name(graph.get_leaves().map(|leaf| leaf.key()), names);
   tips
     .iter()
@@ -74,7 +69,7 @@ pub fn resolve_reroot_tips(tips: &[String], graph: &Graph, names: &NodeNames) ->
       leaf_of
         .get(tip.as_str())
         .copied()
-        .ok_or_else(|| argument_error(&["reroot_tips"], format!("Reroot tip not found: {tip}")))
+        .ok_or_else(|| argument_error(&["outgroup"], format!("Outgroup tip not found: {tip}")))
     })
     .collect()
 }
@@ -96,7 +91,7 @@ impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest
 
 #[cfg(test)]
 mod tests {
-  use crate::commands::shared::reroot::{RerootArgs, RerootMethodCli, RootingArgs, resolve_reroot_tips};
+  use crate::commands::shared::reroot::{RerootArgs, RerootMethodCli, RootingArgs, resolve_outgroup};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
@@ -130,10 +125,10 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_args_tips_spec_resolves_leaf_keys() {
+  fn test_reroot_args_outgroup_spec_resolves_leaf_keys() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let rooting = RootingArgs {
-      reroot_tips: vec![o!("B"), o!("C")],
+      outgroup: vec![o!("B"), o!("C")],
       ..RootingArgs::default()
     };
 
@@ -144,34 +139,34 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_resolve_tips_takes_the_leaf_of_a_repeated_name_in_input_order() {
+  fn test_reroot_resolve_outgroup_takes_the_leaf_of_a_repeated_name_in_input_order() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
     let leaves_named_a = helpers::leaf_keys(&tree, "A");
 
-    let actual = resolve_reroot_tips(&[o!("C"), o!("A")], &tree.graph, &tree.names).unwrap();
+    let actual = resolve_outgroup(&[o!("C"), o!("A")], &tree.graph, &tree.names).unwrap();
 
     assert_eq!(2, leaves_named_a.len());
     assert_eq!(vec![helpers::leaf_keys(&tree, "C")[0], leaves_named_a[0]], actual);
   }
 
   #[test]
-  fn test_reroot_resolve_tips_of_an_empty_list_is_empty() {
+  fn test_reroot_resolve_outgroup_of_an_empty_list_is_empty() {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
 
-    let actual = resolve_reroot_tips(&[], &tree.graph, &tree.names).unwrap();
+    let actual = resolve_outgroup(&[], &tree.graph, &tree.names).unwrap();
 
     assert_eq!(Vec::<GraphNodeKey>::new(), actual);
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::missing_tip(        "Z",  "Reroot tip not found: Z")]
-  #[case::internal_node_name( "AB", "Reroot tip not found: AB")]
+  #[case::missing_tip(        "Z",  "Outgroup tip not found: Z")]
+  #[case::internal_node_name( "AB", "Outgroup tip not found: AB")]
   #[trace]
-  fn test_reroot_resolve_tips_rejects_names_of_no_leaf(#[case] tip: &str, #[case] expected: &str) {
+  fn test_reroot_resolve_outgroup_rejects_names_of_no_leaf(#[case] tip: &str, #[case] expected: &str) {
     let tree = nwk_read(TREE.as_bytes()).unwrap();
 
-    let result = resolve_reroot_tips(&[tip.to_owned()], &tree.graph, &tree.names);
+    let result = resolve_outgroup(&[tip.to_owned()], &tree.graph, &tree.names);
 
     assert_error!(result, expected);
   }
