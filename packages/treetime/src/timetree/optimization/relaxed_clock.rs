@@ -4,9 +4,12 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_graph::reroot::EdgeMergeInfo;
 use treetime_graph::schedule::GraphSchedule;
 
 const DEFAULT_RELAX: f64 = 1.0;
+
+const UNIT_GAMMA: f64 = 1.0;
 
 pub(crate) fn apply_relaxed_clock(
   graph: &Graph,
@@ -116,5 +119,23 @@ struct RelaxedClockCoeffs {
 
 #[must_use]
 pub(crate) fn unit_gammas(graph: &Graph) -> BTreeMap<GraphEdgeKey, f64> {
-  graph.get_edges().map(|edge| (edge.key(), 1.0)).collect()
+  graph.get_edges().map(|edge| (edge.key(), UNIT_GAMMA)).collect()
+}
+
+#[must_use]
+pub(crate) fn reconcile_gammas(
+  graph: &Graph,
+  mut gammas: BTreeMap<GraphEdgeKey, f64>,
+  merges: &[EdgeMergeInfo],
+) -> BTreeMap<GraphEdgeKey, f64> {
+  for merge in merges {
+    gammas.remove(&merge.parent_edge_key);
+    if let Some(child_gamma) = gammas.remove(&merge.child_edge_key) {
+      gammas.insert(merge.merged_edge_key, child_gamma);
+    }
+  }
+  graph
+    .get_edges()
+    .map(|edge| (edge.key(), gammas.get(&edge.key()).copied().unwrap_or(UNIT_GAMMA)))
+    .collect()
 }

@@ -217,16 +217,65 @@ mod tests {
   }
 
   #[test]
-  fn test_round_topology_change_resets_relaxed_gammas_known_issue_m_timetree_relaxed_clock_rates_reset_after_polytomy_resolution()
-  -> Result<(), Report> {
+  fn test_round_single_child_removal_gives_the_merged_edge_the_fitted_gamma_of_the_child_edge() -> Result<(), Report> {
     let (state, context) = helpers::create_unary_state()?;
     let state = helpers::without_room_above_the_polytomy(state);
+    let fitted = helpers::fitted_gammas(&context, &state)?;
+    let d_key = find_node_key_by_name(&state.graph, &state.names, "D").expect("leaf D must exist");
+    let child_edge_gamma = fitted[&parent_edge_key(&state.graph, d_key)];
 
     let (state, outcome) = helpers::refine_with(&context, state, None, &helpers::round_params(true, RELAX.to_vec()))?;
 
     assert!(outcome.topology.resolved_nodes() == 0 && outcome.topology.changed());
-    let expected: BTreeMap<GraphEdgeKey, f64> = state.graph.get_edges().map(|edge| (edge.key(), 1.0)).collect();
+    let merged_edge = parent_edge_key(&state.graph, d_key);
+    let expected: BTreeMap<GraphEdgeKey, f64> = state
+      .graph
+      .get_edges()
+      .map(|edge| {
+        let gamma = if edge.key() == merged_edge {
+          child_edge_gamma
+        } else {
+          fitted[&edge.key()]
+        };
+        (edge.key(), gamma)
+      })
+      .collect();
     assert_eq!(expected, state.gammas);
+    assert!(
+      expected.values().any(|gamma| (gamma - 1.0).abs() > 1e-3),
+      "the relaxed clock must move at least one kept rate away from 1: {expected:?}"
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_round_polytomy_resolution_keeps_fitted_gammas_and_starts_new_edges_at_one() -> Result<(), Report> {
+    let (state, context) = helpers::create_wide_polytomy_state()?;
+    let fitted = helpers::fitted_gammas(&context, &state)?;
+
+    let (state, outcome) = helpers::refine_with(&context, state, None, &helpers::round_params(true, RELAX.to_vec()))?;
+
+    let TopologyOutcome::Changed { merger_times } = &outcome.topology else {
+      panic!("the round must resolve the polytomy");
+    };
+    assert!(!merger_times.is_empty());
+    let expected: BTreeMap<GraphEdgeKey, f64> = state
+      .graph
+      .get_edges()
+      .map(|edge| {
+        let gamma = if merger_times.contains_key(&edge.target()) {
+          1.0
+        } else {
+          fitted[&edge.key()]
+        };
+        (edge.key(), gamma)
+      })
+      .collect();
+    assert_eq!(expected, state.gammas);
+    assert!(
+      expected.values().any(|gamma| (gamma - 1.0).abs() > 1e-3),
+      "the relaxed clock must move at least one kept rate away from 1: {expected:?}"
+    );
     Ok(())
   }
 
@@ -297,14 +346,7 @@ mod tests {
   #[test]
   fn test_round_unchanged_topology_keeps_the_relaxed_gammas() -> Result<(), Report> {
     let (state, context) = helpers::create_unary_state()?;
-    let expected = apply_relaxed_clock(
-      &state.graph,
-      &state.branch_lengths,
-      &RELAX,
-      one_mutation(context.sequence_length),
-      state.clock_model.clock_rate(),
-      &state.time_inference.branches,
-    )?;
+    let expected = helpers::fitted_gammas(&context, &state)?;
 
     let (state, outcome) = helpers::refine_with(&context, state, None, &helpers::round_params(false, RELAX.to_vec()))?;
 
@@ -428,6 +470,48 @@ mod tests {
           "C".to_owned() => Some(DateConstraint::exact(2014.0)),
           "D".to_owned() => Some(DateConstraint::exact(2016.0)),
         },
+      )
+    }
+
+    pub(super) fn create_wide_polytomy_state() -> Result<(RoundState, TimetreeContext), Report> {
+      create_state(
+        "((A:0.01,B:0.08,C:0.06,D:0.005)P:0.02,(E:0.03,F:0.01)Y:0.01)root;",
+        indoc! {r#"
+          >A
+          ACGTACGTACGTACGTACGTACGT
+          >B
+          ACGTACGAACGTACGTACGTACGT
+          >C
+          ACGTACGTACGTACCTACGTACGT
+          >D
+          ACGTTCGTACGTACGTACGTACGA
+          >E
+          TCGTACGTACGTACGTACGTACGT
+          >F
+          ACGTACGTACGAACGTACGTACGT
+        "#},
+        &btreemap! {
+          "A".to_owned() => Some(DateConstraint::exact(2010.0)),
+          "B".to_owned() => Some(DateConstraint::exact(2012.0)),
+          "C".to_owned() => Some(DateConstraint::exact(2014.0)),
+          "D".to_owned() => Some(DateConstraint::exact(2016.0)),
+          "E".to_owned() => Some(DateConstraint::exact(2011.0)),
+          "F".to_owned() => Some(DateConstraint::exact(2015.0)),
+        },
+      )
+    }
+
+    pub(super) fn fitted_gammas(
+      context: &TimetreeContext,
+      state: &RoundState,
+    ) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+      apply_relaxed_clock(
+        &state.graph,
+        &state.branch_lengths,
+        &RELAX,
+        one_mutation(context.sequence_length),
+        state.clock_model.clock_rate(),
+        &state.time_inference.branches,
       )
     }
 

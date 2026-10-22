@@ -23,7 +23,7 @@ use crate::timetree::optimization::marginal_clock_rate::{
 use crate::timetree::optimization::polytomy::resolve::{
   PolytomyResolution, require_internal_node_times, resolve_polytomies,
 };
-use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock, unit_gammas};
+use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_relaxed_clock, reconcile_gammas};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use eyre::{Report, WrapErr};
 use rand::Rng;
@@ -177,7 +177,7 @@ fn refine_topology(
   node_times.extend(merger_times.iter().map(|(&key, &time)| (key, Some(time))));
   require_internal_node_times(&graph, &node_times)
     .wrap_err("Polytomy resolution left an internal node without an inferred time")?;
-  let gammas = unit_gammas(&graph);
+  let gammas = reconcile_gammas(&graph, state.gammas, &merges);
   let branch_model = state.branch_model.reconcile_topology(&graph, &merges)?;
   let clock_branch_lengths = blended_clock_branch_lengths(
     &graph,
