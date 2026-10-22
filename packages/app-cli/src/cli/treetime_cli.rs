@@ -2,6 +2,7 @@ use crate::cli::config::overlay_config;
 use crate::cli::jobs::Jobs;
 use crate::cli::schema::SchemaTarget;
 use crate::cli::verbosity::Verbosity;
+use app_commands::command::RawConfig;
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -14,9 +15,7 @@ use clap::{ArgMatches, CommandFactory, FromArgMatches, Parser, Subcommand, Value
 use clap_complete::{Shell, generate};
 use clap_complete_fig::Fig;
 use deser::Serialize;
-use deser::de::DeserializeOwned;
 use eyre::Report;
-use schemars::JsonSchema;
 use std::ffi::OsString;
 use std::fmt::Debug;
 use std::io;
@@ -197,10 +196,7 @@ pub(crate) struct TreetimeSchemaArgs {
 #[derive(Parser, Debug, Serialize)]
 pub(crate) struct TreetimeAncestralReassortmentGraphArgs;
 
-fn resolve<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
-where
-  T: Serialize + DeserializeOwned + Default + JsonSchema,
-{
+fn resolve<T: RawConfig>(args: &mut T, matches: &ArgMatches) -> Result<(), Report> {
   overlay_config(args, matches)
 }
 

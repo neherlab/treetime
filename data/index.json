@@ -538,11 +538,7 @@
     },
     {
       "path": "smoke/README.md",
-      "size": 1637
-    },
-    {
-      "path": "smoke/clock-keep-root-and-reroot.yaml",
-      "size": 97
+      "size": 1363
     },
     {
       "path": "smoke/flu-h3n2-20-tree-single-child-polytomy.nwk",

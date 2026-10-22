@@ -984,10 +984,3 @@ args = "pipeline --config={data}/zika/20/pipeline.yaml --check --output-all=tmp/
 variant = "pipeline-steps-timetree"
 args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree --output-all={out}"
 sandbox = true
-
-# A config file with settings that conflict on the command line
-[[cli]]
-variant = "config-keep-root-and-reroot"
-args = "clock --config={data}/smoke/clock-keep-root-and-reroot.yaml --output-all={out}"
-sandbox = true
-fail = "kb/issues/M-config-file-values-skip-cli-conflict-rules.md"

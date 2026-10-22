@@ -22,9 +22,9 @@ pub(crate) fn run_pipeline_command(
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let output_all = args.output_all.as_deref().map(absolute_path).transpose()?;
-  let pipeline = load_pipeline(&args.config, output_all.as_deref())?;
+  let LoadedPipeline { source, pipeline } = load_pipeline(&args.config, output_all.as_deref())?;
   let selected = (!args.steps.is_empty()).then(|| args.steps.iter().cloned().collect::<BTreeSet<String>>());
-  validate_plan(&pipeline, selected.as_ref())?;
+  validate_plan(&pipeline, &source, selected.as_ref())?;
   if args.check {
     print_pipeline_plan(&pipeline, selected.as_ref())
   } else {
@@ -32,7 +32,7 @@ pub(crate) fn run_pipeline_command(
   }
 }
 
-pub(crate) fn load_pipeline(config: &Path, output_all: Option<&Path>) -> Result<ResolvedPipeline, Report> {
+pub(crate) fn load_pipeline(config: &Path, output_all: Option<&Path>) -> Result<LoadedPipeline, Report> {
   let text = read_file_to_string(config)?;
   let source = ConfigSource::new(config.display().to_string(), text.clone());
 
@@ -40,7 +40,13 @@ pub(crate) fn load_pipeline(config: &Path, output_all: Option<&Path>) -> Result<
 
   check_pipeline(&source, &value)?;
   let doc = PipelineDoc::from_value(value)?;
-  resolve_pipeline(&doc, &process_env(), &config_folder(config)?, output_all)
+  let pipeline = resolve_pipeline(&doc, &process_env(), &config_folder(config)?, output_all)?;
+  Ok(LoadedPipeline { source, pipeline })
+}
+
+pub(crate) struct LoadedPipeline {
+  pub source: ConfigSource,
+  pub pipeline: ResolvedPipeline,
 }
 
 fn process_env() -> Value {
@@ -201,7 +207,7 @@ mod tests {
     let relative_out = relative_from(&cwd, &dir.path().join("out"));
     let output_all = absolute_path(&relative_out).unwrap();
 
-    let pipeline = load_pipeline(&relative_config, Some(&output_all)).unwrap();
+    let pipeline = load_pipeline(&relative_config, Some(&output_all)).unwrap().pipeline;
 
     let anc = pipeline.steps.iter().find(|step| step.name == "anc").unwrap();
     let args = Value::Object(anc.command.settings().unwrap());

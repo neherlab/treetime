@@ -1,4 +1,0 @@
-tree: "../zika/20/tree.nwk"
-metadata: "../zika/20/metadata.tsv"
-keep_root: true
-reroot: "oldest"

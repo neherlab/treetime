@@ -1,12 +1,11 @@
+use app_commands::command::RawConfig;
+use app_commands::config::cli_rules::cli_rule_diagnostics;
 use app_commands::config::load::{check_command_config, load_config_document};
 use app_commands::config::schema::command_schema;
-use app_commands::config::source::ConfigSource;
+use app_commands::config::source::{ConfigSource, escape_pointer, render_and_bail};
 use clap::ArgMatches;
 use clap::parser::ValueSource;
-use deser::Serialize;
-use deser::de::DeserializeOwned;
 use eyre::{Report, WrapErr};
-use schemars::JsonSchema;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::env;
@@ -15,11 +14,9 @@ use treetime_utils::io::file::is_path_stdin;
 use treetime_utils::io::fs::{absolute_path, read_file_to_string};
 use treetime_utils::io::json::from_json_value;
 use treetime_utils::io::json::to_json_value;
+use treetime_utils::make_report;
 
-pub(crate) fn overlay_config<T>(args: &mut T, matches: &ArgMatches) -> Result<(), Report>
-where
-  T: Serialize + DeserializeOwned + Default + JsonSchema,
-{
+pub(crate) fn overlay_config<T: RawConfig>(args: &mut T, matches: &ArgMatches) -> Result<(), Report> {
   let Some(config_path) = matches.get_one::<PathBuf>("config") else {
     return Ok(());
   };
@@ -38,6 +35,7 @@ where
   apply_cli_overrides(&mut merged, &cli, &explicit);
 
   check_command_config(&source, &merged, &command_schema::<T>())?;
+  check_cli_rules::<T>(&source, &merged, &explicit)?;
 
   *args = from_json_value(&merged)?;
   Ok(())
@@ -53,6 +51,25 @@ pub(crate) fn config_folder(config_path: &Path) -> Result<PathBuf, Report> {
       .parent()
       .map_or_else(|| config_path.clone(), Path::to_path_buf),
   )
+}
+
+fn check_cli_rules<T: RawConfig>(
+  source: &ConfigSource,
+  merged: &Value,
+  explicit: &BTreeSet<String>,
+) -> Result<(), Report> {
+  let settings = merged
+    .as_object()
+    .ok_or_else(|| make_report!("a command configuration must be a mapping of settings"))?;
+  let from_command_line: BTreeSet<String> = explicit.iter().map(|id| format!("/{}", escape_pointer(id))).collect();
+  let diags = cli_rule_diagnostics(T::COMMAND, settings)?
+    .into_iter()
+    .map(|mut diag| {
+      diag.pointer = diag.pointer.filter(|pointer| !from_command_line.contains(pointer));
+      diag
+    })
+    .collect();
+  render_and_bail(source, "invalid configuration", diags)
 }
 
 fn apply_cli_overrides(merged: &mut Value, cli: &Value, explicit: &BTreeSet<String>) {
@@ -122,15 +139,18 @@ mod tests {
     use app_commands::commands::optimize::args::TreetimeOptimizeArgsRaw;
     use app_commands::commands::prune::args::TreetimePruneArgsRaw;
     use app_commands::commands::timetree::args::TreetimeTimetreeArgsRaw;
+    use app_commands::config::source::InvalidConfig;
     use clap::{CommandFactory, FromArgMatches};
     use eyre::Report;
     use indoc::indoc;
     use pretty_assertions::assert_eq;
+    use rstest::rstest;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tempfile::tempdir;
     use treetime::progress::NoopProgress;
-    use treetime_utils::{assert_error, pretty_assert_ulps_eq};
+    use treetime_utils::error::report_to_string;
+    use treetime_utils::{assert_error, o, pretty_assert_ulps_eq};
 
     fn parse_timetree(argv: &[&str]) -> TreetimeTimetreeArgsRaw {
       let matches = TreetimeArgs::command().get_matches_from(argv);
@@ -427,6 +447,41 @@ mod tests {
         let result = overlay_config(&mut args, sub);
         assert_error!(result, "invalid configuration: unknown field `model_args`");
       }
+    }
+
+    #[rustfmt::skip]
+    #[rstest]
+    #[case::both_in_the_file(    (None,                "keep_root: true\nreroot: oldest\n"),  Some(0))]
+    #[case::one_on_command_line( (Some("--keep-root"), "reroot: oldest\n"),                   None)]
+    #[case::overrides_file_value((Some("--keep-root"), "keep_root: false\nreroot: oldest\n"), None)]
+    #[trace]
+    fn test_config_clock_rejects_keep_root_with_reroot(
+      #[case] (flag, text): (Option<&str>, &str),
+      #[case] keep_root_offset: Option<usize>,
+    ) {
+      let dir = tempdir().unwrap();
+      let path = dir.path().join("clock.yaml");
+      fs::write(&path, text).unwrap();
+      let argv = ["treetime", "clock", "--config", path.to_str().unwrap()]
+        .into_iter()
+        .chain(flag);
+      let matches = TreetimeArgs::command().get_matches_from(argv);
+      let sub = matches.subcommand_matches("clock").unwrap();
+      let mut args = TreetimeClockArgsRaw::from_arg_matches(sub).unwrap();
+      let report = overlay_config(&mut args, sub).err().unwrap();
+      assert_eq!(
+        (
+          o!("invalid configuration: `keep_root` cannot be used together with `reroot`"),
+          vec![keep_root_offset]
+        ),
+        (
+          report_to_string(&report),
+          InvalidConfig::problems_of(&report)
+            .iter()
+            .map(|problem| problem.span.map(|span| span.offset))
+            .collect::<Vec<_>>()
+        )
+      );
     }
 
     #[test]
