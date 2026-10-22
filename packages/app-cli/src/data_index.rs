@@ -1,6 +1,6 @@
 use crate::cli::diagnostics::entry::check_pipeline;
 use crate::cli::pipeline::resolve::PipelineDoc;
-use app_backend::datasets::{DataIndex, IndexedFile, IndexedStep};
+use app_backend::datasets::{DataIndex, IndexedStep};
 use app_commands::command::AppCommand;
 use app_commands::config::source::{ConfigSource, parse_config_document};
 use eyre::{Report, WrapErr};
@@ -14,12 +14,17 @@ use treetime_utils::make_report;
 const PIPELINE_SOURCE: &str = "pipeline.yaml";
 
 pub fn generate_data_index(data_dir: &Path, file_list: &str) -> Result<DataIndex, Report> {
-  let files = file_list
+  let paths = file_list
     .split('\0')
     .filter(|path| !path.is_empty())
-    .map(|path| indexed_file(data_dir, path))
-    .try_collect()?;
-  DataIndex::new(files, |path| read_file_to_string(data_dir.join(path)), pipeline_steps)
+    .map(str::to_owned)
+    .collect_vec();
+  DataIndex::new(
+    paths,
+    |path| file_size(&data_dir.join(path)),
+    |path| read_file_to_string(data_dir.join(path)),
+    pipeline_steps,
+  )
 }
 
 pub fn pipeline_steps(text: &str) -> Result<Vec<IndexedStep>, Report> {
@@ -40,13 +45,8 @@ pub fn pipeline_steps(text: &str) -> Result<Vec<IndexedStep>, Report> {
     .try_collect()
 }
 
-fn indexed_file(data_dir: &Path, path: &str) -> Result<IndexedFile, Report> {
-  let file = data_dir.join(path);
-  let size = fs::metadata(&file)
-    .wrap_err_with(|| format!("When reading the size of '{}'", file.display()))?
-    .len();
-  Ok(IndexedFile {
-    path: path.to_owned(),
-    size,
-  })
+fn file_size(file: &Path) -> Result<u64, Report> {
+  fs::metadata(file)
+    .map(|metadata| metadata.len())
+    .wrap_err_with(|| format!("When reading the size of '{}'", file.display()))
 }

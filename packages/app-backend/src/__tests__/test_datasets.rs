@@ -280,10 +280,8 @@ mod tests {
   fn test_datasets_index_lists_pipelines_with_their_steps() {
     let content = config_text("pipeline", "steps: []\n");
     let index = DataIndex::new(
-      vec![IndexedFile {
-        path: o!("a/pipeline.yaml"),
-        size: 1,
-      }],
+      vec_of_owned!["a/pipeline.yaml"],
+      |_| Ok(1),
       |_| Ok(content.clone()),
       |text| {
         assert_eq!(content, text);
@@ -311,21 +309,15 @@ mod tests {
   }
 
   mod helpers {
-    use crate::datasets::{DataIndex, IndexedFile};
+    use crate::datasets::DataIndex;
     use app_datasets::schema_directive;
     use eyre::Report;
     use treetime_utils::{make_error, make_internal_report};
 
     pub(super) fn index_of(paths: &[&str], contents: &[(&str, &str)]) -> Result<DataIndex, Report> {
-      let files = paths
-        .iter()
-        .map(|path| IndexedFile {
-          path: (*path).to_owned(),
-          size: u64::try_from(path.len()).unwrap(),
-        })
-        .collect();
       DataIndex::new(
-        files,
+        paths.iter().map(|path| (*path).to_owned()).collect(),
+        |path| Ok(u64::try_from(path.len()).unwrap()),
         |path| {
           contents
             .iter()

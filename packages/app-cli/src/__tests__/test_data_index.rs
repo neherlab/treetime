@@ -1,11 +1,40 @@
 #[cfg(test)]
 mod tests {
-  use crate::data_index::pipeline_steps;
-  use app_backend::datasets::IndexedStep;
+  use crate::data_index::{generate_data_index, pipeline_steps};
+  use app_backend::check_inputs::InputKind;
+  use app_backend::datasets::{DataIndex, IndexedDataset, IndexedFile, IndexedInput, IndexedStep};
   use app_commands::command::AppCommand;
   use indoc::indoc;
   use pretty_assertions::assert_eq;
+  use std::fs;
+  use tempfile::tempdir;
   use treetime_utils::{assert_error, o};
+
+  #[test]
+  fn test_data_index_regenerates_a_tracked_index_missing_on_disk() {
+    let data_dir = tempdir().unwrap();
+    fs::create_dir_all(data_dir.path().join("a")).unwrap();
+    fs::write(data_dir.path().join("a/tree.nwk"), "(A,B);\n").unwrap();
+    let index = generate_data_index(data_dir.path(), "a/tree.nwk\0index.json\0").unwrap();
+    assert_eq!(
+      DataIndex {
+        files: vec![IndexedFile {
+          path: o!("a/tree.nwk"),
+          size: 7,
+        }],
+        datasets: vec![IndexedDataset {
+          name: o!("a"),
+          inputs: vec![IndexedInput {
+            kind: InputKind::Tree,
+            path: o!("a/tree.nwk"),
+          }],
+        }],
+        configs: vec![],
+        pipelines: vec![],
+      },
+      index
+    );
+  }
 
   #[test]
   fn test_data_index_pipeline_steps_name_the_command_of_each_step() {

@@ -148,22 +148,24 @@ pub struct DataIndex {
 
 impl DataIndex {
   pub fn new(
-    files: Vec<IndexedFile>,
+    paths: Vec<String>,
+    mut size: impl FnMut(&str) -> Result<u64, Report>,
     read: impl FnMut(&str) -> Result<String, Report>,
     pipeline_steps: impl Fn(&str) -> Result<Vec<IndexedStep>, Report>,
   ) -> Result<Self, Report> {
-    if let Some(file) = files.iter().find(|file| !is_data_path(&file.path)) {
-      return make_error!(
-        "the file list names '{}', which is not a normalized path relative to the data folder",
-        file.path
-      );
+    if let Some(path) = paths.iter().find(|path| !is_data_path(path)) {
+      return make_error!("the file list names '{path}', which is not a normalized path relative to the data folder");
     }
-    let files = files
+    let files: Vec<IndexedFile> = paths
       .into_iter()
-      .filter(|file| file.path != DATA_INDEX_FILE)
-      .sorted_by(|a, b| a.path.cmp(&b.path))
+      .filter(|path| path != DATA_INDEX_FILE)
+      .sorted()
       .dedup()
-      .collect_vec();
+      .map(|path| {
+        let size = size(&path)?;
+        Ok::<_, Report>(IndexedFile { path, size })
+      })
+      .try_collect()?;
     let tracked: BTreeSet<&str> = files.iter().map(|file| file.path.as_str()).collect();
     let datasets = group_datasets(tracked.iter().copied())
       .iter()
