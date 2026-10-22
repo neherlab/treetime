@@ -1,14 +1,13 @@
-import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import type { RunRecord, UploadedInput } from "@neherlab/app-contracts";
 import { createApiClient } from "@neherlab/app-contracts/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { configure, fireEvent, within } from "@testing-library/dom";
+import { fireEvent, within } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
 import pWaitFor from "p-wait-for";
-import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
 
+import { inAct, registerDom } from "../../__tests__/dom";
 import { ApiContext, type ApiContextValue } from "../../api/context";
 import { type BrowserBackend, BrowserBackendContext, TAB_BACKEND } from "../../browser-backend";
 import { useDraftStore } from "../../store/draft";
@@ -36,13 +35,10 @@ const UPLOAD_RUN: RunRecord = {
 
 const mounted: Root[] = [];
 
-/* HACK: the DOM stays registered for the rest of this file's worker (`bun test --parallel`), because React's
-   scheduler runs a task queued before the last unmount that reads `window`, after an `unregister()` would remove it. */
 beforeAll(() => {
-  GlobalRegistrator.register();
+  registerDom();
   Object.assign(globalThis, NATIVE_FETCH);
   process.env["BASE_URL"] = "/";
-  configure({ eventWrapper: inAct });
 });
 
 beforeEach(() => {
@@ -407,16 +403,6 @@ async function render(fetch: typeof globalThis.fetch, browserBackend: BrowserBac
 
 function apiContext(fetch: typeof globalThis.fetch): ApiContextValue {
   return { client: createApiClient({ baseUrl: "http://localhost", fetch }) };
-}
-
-function inAct(callback: () => void) {
-  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-
-  try {
-    act(callback);
-  } finally {
-    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: false });
-  }
 }
 
 async function settingShowing(paths: string[]): Promise<HTMLElement> {
