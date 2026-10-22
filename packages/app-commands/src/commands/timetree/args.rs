@@ -34,6 +34,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
+use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::params::BranchLengthMode;
 use treetime::timetree::params::TimeMarginalMode;
@@ -62,6 +63,7 @@ pub struct TreetimeTimetreeArgs {
   pub(crate) include_leaves: bool,
   pub(crate) impute_missing_data: bool,
   pub(crate) ambiguity_outputs: AmbiguityOutputs,
+  pub(crate) model: GtrModel,
 }
 
 impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
@@ -83,6 +85,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       include_leaves: raw.tip_sequences.include_leaves || raw.tip_sequences.reconstruct_tip_states,
       impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
       ambiguity_outputs: raw.ambiguity.resolve()?,
+      model: raw.model_args.model()?,
       raw,
     })
   }

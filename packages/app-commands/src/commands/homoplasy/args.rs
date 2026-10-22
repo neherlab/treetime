@@ -24,13 +24,14 @@ use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::PathBuf;
 use treetime::ancestral::params::{AncestralParams, MethodAncestral};
+use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
-    model: args.model_args.model_name(),
+    model: args.model.clone(),
     dense: args.representation.dense,
     include_leaves: false,
     report_ambiguous: true,
@@ -48,6 +49,7 @@ pub struct TreetimeHomoplasyArgs {
   pub(crate) tree: PathBuf,
   pub(crate) method_anc: MethodAncestral,
   pub(crate) sample_from_profile: SampleMode,
+  pub(crate) model: GtrModel,
 }
 
 impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
@@ -79,6 +81,7 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
       tree,
       method_anc: raw.method_anc.method_anc.into(),
       sample_from_profile: raw.sample_from_profile.sample_from_profile.into(),
+      model: raw.model_args.model()?,
       raw,
     })
   }

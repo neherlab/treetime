@@ -116,7 +116,7 @@ mod tests {
   fn test_augur_node_data_optimize_end_to_end() {
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::cancel::NoopCancel;
-    use treetime::gtr::get_gtr::GtrModelName;
+    use treetime::gtr::get_gtr::GtrModel;
     use treetime::optimize::indel::IndelPolicy;
     use treetime::optimize::params::OptimizeLoopSettings;
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
@@ -139,7 +139,7 @@ mod tests {
       .collect();
 
     let params = OptimizeParams {
-      model: GtrModelName::default(),
+      model: GtrModel::default(),
       dense: None,
       initial_guess: InitialGuessMode::default(),
       reroot_spec: None,

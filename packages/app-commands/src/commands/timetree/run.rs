@@ -140,7 +140,7 @@ fn timetree_params(
   seed: u64,
 ) -> TimetreeParams {
   TimetreeParams {
-    model: args.model_args.model_name(),
+    model: args.model.clone(),
     dense: args.representation.dense,
     branch_length_mode: args.branch_length_mode,
     indel_policy: args.indel_policy,

@@ -1,18 +1,27 @@
 #[cfg(test)]
 pub(crate) mod tests {
+  use deser::Deserialize;
   use eyre::Report;
   use itertools::izip;
+  use ndarray::{Array1, Array2, array};
   use parking_lot::Mutex;
+  use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
-  use treetime::alphabet::alphabet::Alphabet;
+  use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
+  use treetime::gtr::get_gtr::{GtrModel, GtrModelName, HKY85Params};
+  use treetime::gtr::gtr::GTR;
   use treetime::progress::{LogLevel, LogSink, RunWarning};
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::{FastaWriter, fasta_read_file};
   use treetime_primitives::{AsciiChar, Seq};
+  use treetime_utils::adapters::{Array2Rows, ArrayVec};
+  use treetime_utils::pretty_assert_ulps_eq;
+
+  pub(crate) const HKY85_PARAMS: [&str; 2] = ["kappa=0.2", "pis=0.1,0.2,0.3,0.4"];
 
   pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -71,6 +80,36 @@ pub(crate) mod tests {
         (edge.key(), subs.chain(deletions).collect())
       })
       .collect()
+  }
+
+  pub(crate) fn hky85_model() -> GtrModel {
+    GtrModel::HKY85(HKY85Params {
+      kappa: 0.2,
+      pi: Some(array![0.1, 0.2, 0.3, 0.4]),
+      ..HKY85Params::default()
+    })
+  }
+
+  pub(crate) fn assert_written_gtr(expected: &GtrModel, actual: &WrittenGtr) -> Result<(), Report> {
+    let gtr: GTR = expected.build(AlphabetName::Nuc)?;
+    assert_eq!(expected.name(), actual.model_name);
+    pretty_assert_ulps_eq!(gtr.pi().clone(), actual.pi.clone(), max_ulps = 4);
+    pretty_assert_ulps_eq!(gtr.W().clone(), actual.w.clone(), max_ulps = 4);
+    Ok(())
+  }
+
+  #[derive(Debug, Deserialize)]
+  pub(crate) struct WrittenModels {
+    pub(crate) models: Vec<WrittenGtr>,
+  }
+
+  #[derive(Debug, Deserialize)]
+  pub(crate) struct WrittenGtr {
+    pub(crate) model_name: GtrModelName,
+    #[deser(deserialize_as = ArrayVec)]
+    pub(crate) pi: Array1<f64>,
+    #[deser(rename = "W", deserialize_as = Array2Rows)]
+    pub(crate) w: Array2<f64>,
   }
 
   #[derive(Default)]

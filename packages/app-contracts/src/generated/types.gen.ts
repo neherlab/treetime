@@ -2934,8 +2934,13 @@ export type TimetreeConfig = {
   /**
    * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
-   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the
+   * overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and
+   * `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and
+   * `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T
+   * for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0
+   * and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2
+   * pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
@@ -3621,8 +3626,13 @@ export type AncestralConfig = {
   /**
    * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
-   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the
+   * overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and
+   * `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and
+   * `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T
+   * for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0
+   * and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2
+   * pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
@@ -3997,8 +4007,13 @@ export type HomoplasyConfig = {
   /**
    * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
-   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the
+   * overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and
+   * `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and
+   * `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T
+   * for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0
+   * and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2
+   * pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**
@@ -4644,8 +4659,13 @@ export type OptimizeConfig = {
   /**
    * Parameters for the model selected by `--model`, given as space-separated `key=value` items
    *
-   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model
-   * k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   * The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the
+   * overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and
+   * `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and
+   * `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T
+   * for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0
+   * and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2
+   * pis=0.25,0.25,0.25,0.25`.
    */
   model_params?: Array<string>;
   /**

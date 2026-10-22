@@ -271,6 +271,7 @@ dependencies = [
  "jsonschema",
  "maplit",
  "miette",
+ "ndarray",
  "parking_lot",
  "plotters",
  "pretty_assertions",

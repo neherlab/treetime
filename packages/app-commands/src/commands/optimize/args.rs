@@ -23,6 +23,7 @@ use schemars::JsonSchema;
 use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use treetime::gtr::get_gtr::GtrModel;
 use treetime::optimize::indel::IndelPolicy;
 use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
 use treetime_graph::graph::Graph;
@@ -39,6 +40,7 @@ pub struct TreetimeOptimizeArgs {
   pub(crate) opt_method: BranchOptMethod,
   pub(crate) indel_policy: IndelPolicy,
   pub(crate) topology_ops: TopologyOps,
+  pub(crate) model: GtrModel,
 }
 
 impl TreetimeOptimizeArgs {
@@ -86,6 +88,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
         merge_siblings: !raw.no_merge_siblings,
         flip_parent_child: !raw.no_flip_parent_child,
       },
+      model: raw.model_args.model()?,
       raw,
     })
   }

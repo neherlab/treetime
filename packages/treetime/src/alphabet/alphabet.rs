@@ -296,6 +296,7 @@ impl AlphabetLike for Alphabet {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display)]
+#[strum(serialize_all = "kebab-case")]
 pub enum AlphabetName {
   #[default]
   Nuc,

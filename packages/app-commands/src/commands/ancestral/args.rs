@@ -29,13 +29,14 @@ use smart_default::SmartDefault;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::AncestralParams;
 use treetime::ancestral::params::MethodAncestral;
+use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::marginal::sample::SampleMode;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 
 pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
-    model: args.model_args.model_name(),
+    model: args.model.clone(),
     dense: args.representation.dense,
     include_leaves: args.include_leaves,
     report_ambiguous: args.tip_sequences.report_ambiguous,
@@ -56,6 +57,7 @@ pub struct TreetimeAncestralArgs {
   pub(crate) impute_missing_data: bool,
   pub(crate) sample_from_profile: SampleMode,
   pub(crate) ambiguity_outputs: AmbiguityOutputs,
+  pub(crate) model: GtrModel,
 }
 
 impl TreetimeAncestralArgs {
@@ -80,6 +82,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       impute_missing_data: raw.impute_missing_data.impute_missing_data || raw.tip_sequences.reconstruct_tip_states,
       sample_from_profile: raw.sample_from_profile.sample_from_profile.into(),
       ambiguity_outputs: raw.ambiguity.resolve()?,
+      model: raw.model_args.model()?,
       raw,
     })
   }

@@ -1,6 +1,7 @@
 mod test_alignment_input;
 mod test_clock_csv;
 mod test_coalescent_arg;
+mod test_model_params;
 mod test_model_rate;
 mod test_mutation_outputs;
 mod test_node_names;

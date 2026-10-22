@@ -165,6 +165,9 @@ impl GtrModel {
   }
 
   pub fn build(&self, alphabet: AlphabetName) -> Result<GTR, Report> {
+    if let Some(pi) = self.frequencies() {
+      check_frequency_count(pi, alphabet)?;
+    }
     match self.clone() {
       Self::Infer => {
         make_internal_error!("The model 'infer' is fitted from the data and has no parameters to build from")
@@ -176,6 +179,15 @@ impl GtrModel {
       Self::T92(params) => t92(T92Params { alphabet, ..params }),
       Self::TN93(params) => tn93(TN93Params { alphabet, ..params }),
       Self::Jtt92(params) => jtt92(Jtt92Params { alphabet, ..params }),
+    }
+  }
+
+  fn frequencies(&self) -> Option<&Array1<f64>> {
+    match self {
+      Self::F81(F81Params { pi, .. }) | Self::HKY85(HKY85Params { pi, .. }) | Self::TN93(TN93Params { pi, .. }) => {
+        pi.as_ref()
+      },
+      Self::Infer | Self::JC69(_) | Self::K80(_) | Self::T92(_) | Self::Jtt92(_) => None,
     }
   }
 }
@@ -217,6 +229,19 @@ pub enum GtrModelName {
   #[deser(rename = "tn93")]
   TN93,
   Jtt92,
+}
+
+fn check_frequency_count(pi: &Array1<f64>, alphabet: AlphabetName) -> Result<(), Report> {
+  let n_states = Alphabet::new(alphabet)?.n_canonical();
+  if pi.len() == n_states {
+    Ok(())
+  } else {
+    make_error!(
+      "--model-params item pi: the alphabet {alphabet} has {n_states} states, so pi needs {n_states} comma-separated \
+       frequencies, one per state, but got {}",
+      pi.len()
+    )
+  }
 }
 
 pub fn jc69(JC69Params { mu, alphabet }: JC69Params) -> Result<GTR, Report> {

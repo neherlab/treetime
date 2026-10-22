@@ -229,7 +229,7 @@ Estimates time trees from an initial tree topology, a set of date constraints (e
 
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--partition-rates <PARTITION_RATES>` — Relative substitution rates of the partitions
 
    Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.
@@ -494,7 +494,7 @@ Optimizes the branch lengths and likelihood of a phylogenetic tree given aligned
 
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--partition-rates <PARTITION_RATES>` — Relative substitution rates of the partitions
 
    Each `--alignment` file is one partition. With two or more partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.
@@ -917,7 +917,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The `--output-*
 
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
 
   Default value: `marginal`
@@ -1344,7 +1344,7 @@ Reconstructs ancestral sequences and maps mutations to the tree. The tree is the
 
 * `--model-params <MODEL_PARAMS>` [alias: `gtr-params`] — Parameters for the model selected by `--model`, given as space-separated `key=value` items
 
-   The parameters apply to the model of every partition; each `--alignment` file is one partition. Example: `--model k80 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
+   The parameters apply to the model of every partition; each `--alignment` file is one partition. Keys: `mu` (the overall substitution rate, every named model), `kappa` (the transition to transversion ratio of `k80`, `hky85` and `t92`), `kappa1` and `kappa2` (the rate ratios of `tn93`), `pi` (the equilibrium frequencies of `f81`, `hky85` and `tn93`: comma-separated numbers, one frequency per state of the alphabet in its order, for example A, C, G and T for nucleotides, normalized to sum 1; also `pis`, `Pi`, `Pis`) and `pi_GC` (the GC content of `t92`, between 0 and 1). A key left out keeps its default. Example: `--model hky85 --model-params kappa=0.2 pis=0.25,0.25,0.25,0.25`.
 * `--method-anc <METHOD_ANC>` — Method used for reconstructing ancestral sequences, which places the mutations on the branches
 
   Default value: `marginal`

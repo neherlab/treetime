@@ -42,6 +42,7 @@ itertools = { workspace = true }
 jsonschema = { workspace = true }
 maplit = { workspace = true }
 miette = { workspace = true }
+ndarray = { workspace = true }
 rand = { workspace = true }
 saphyr = { workspace = true }
 schemars = { workspace = true }
