@@ -87,6 +87,25 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::below_a_unit_grid_within_rounding(   (0.0,    1.0),    -4e-16,         2.0)]
+  #[case::below_a_unit_grid_beyond_rounding(   (0.0,    1.0),    -2e-15,         0.0)]
+  #[case::below_a_small_grid_beyond_rounding(  (0.0,    1e-6),   -1e-17,         0.0)]
+  #[case::above_a_date_grid_within_rounding(   (2000.0, 2010.0), 2010.0 + 1e-12, 10.0)]
+  #[case::above_a_date_grid_beyond_rounding(   (2000.0, 2010.0), 2010.0 + 1e-11, 0.0)]
+  #[trace]
+  fn test_gridfn_interp_just_outside_the_grid_is_the_boundary_value_within_rounding_of_the_grid_magnitude(
+    #[case] x_range: (f64, f64),
+    #[case] query: f64,
+    #[case] expected: f64,
+  ) -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values(x_range, array![2.0, 10.0])?;
+    let actual = grid_fn.interp_with_extrap(query, BoundaryBehavior::Hard, BoundaryBehavior::Hard)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::left(-1.0, "GridFn evaluated at -1.0, below the support boundary 0.0, but no extrapolation policy is set for that side")]
   #[case::right(2.0, "GridFn evaluated at 2.0, above the support boundary 1.0, but no extrapolation policy is set for that side")]
   #[trace]

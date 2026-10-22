@@ -1,7 +1,6 @@
 use crate::InterpElem;
 use crate::grid_iter::GridIter;
 use crate::max_grid_points::MaxGridPoints;
-use approx::UlpsEq;
 use eyre::Report;
 use ndarray::Array1;
 use num_traits::Float;
@@ -9,6 +8,12 @@ use std::cmp::min;
 use treetime_utils::array::ndarray::has_uniform_spacing;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
+
+const MAX_COINCIDENCE_ULPS: f64 = 4.0;
+
+pub fn coordinates_coincide(a: f64, b: f64, scale: f64) -> bool {
+  a == b || (a.is_finite() && b.is_finite() && (a - b).abs() <= MAX_COINCIDENCE_ULPS * f64::EPSILON * scale)
+}
 
 impl<T: InterpElem> IntoIterator for &Grid<T>
 where
@@ -77,7 +82,7 @@ impl<T: InterpElem> Grid<T> {
 
   pub(crate) fn from_array(x: &Array1<T>) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     if x.len() < 2 {
       return make_error!("Grid must have at least 2 points, got {}", x.len());
@@ -106,6 +111,15 @@ impl<T: InterpElem> Grid<T> {
 
   pub(crate) fn dx(&self) -> T {
     self.dx
+  }
+
+  pub fn coincides(&self, a: f64, b: f64) -> bool
+  where
+    T: Float,
+  {
+    let x_min: f64 = self.x_min.into();
+    let x_max: f64 = self.x_max().into();
+    coordinates_coincide(a, b, x_min.abs().max(x_max.abs()))
   }
 
   pub fn n_points(&self) -> usize {

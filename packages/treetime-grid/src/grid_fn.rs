@@ -6,7 +6,6 @@ use crate::grid_edge::GridEdge;
 use crate::hard_approach_law::{HardApproachLaw, Side};
 use crate::hard_cell::HardCell;
 use crate::max_grid_points::MaxGridPoints;
-use approx::{UlpsEq, ulps_eq};
 use eyre::Report;
 use ndarray::Array1;
 use num::Float;
@@ -34,7 +33,7 @@ impl<T: InterpElem> GridFn<T> {
 
   pub fn from_arrays(x: &Array1<T>, y: Array1<T>) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     if x.len() != y.len() {
       return make_error!(
@@ -106,6 +105,13 @@ impl<T: InterpElem> GridFn<T> {
     self.grid.dx()
   }
 
+  pub fn coincides(&self, a: f64, b: f64) -> bool
+  where
+    T: Float,
+  {
+    self.grid.coincides(a, b)
+  }
+
   pub fn y_min(&self) -> T {
     self
       .y
@@ -117,7 +123,7 @@ impl<T: InterpElem> GridFn<T> {
 
   pub fn interp(&self, xi: T) -> Result<T, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     self.interp_with_extrap(xi, BoundaryBehavior::Error, BoundaryBehavior::Error)
   }
@@ -129,13 +135,13 @@ impl<T: InterpElem> GridFn<T> {
     right_extrap: BoundaryBehavior,
   ) -> Result<T, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
 
     if xi < x_min {
-      if ulps_eq!(xi, x_min, max_ulps = 4) {
+      if self.grid.coincides(xi.into(), x_min.into()) {
         return Ok(self.y[0]);
       }
       return self.extrapolate(left_extrap, xi, Side::Left);
@@ -143,7 +149,7 @@ impl<T: InterpElem> GridFn<T> {
 
     if xi > x_max {
       let n = self.grid.n_points();
-      if ulps_eq!(xi, x_max, max_ulps = 4) {
+      if self.grid.coincides(xi.into(), x_max.into()) {
         return Ok(self.y[n - 1]);
       }
       return self.extrapolate(right_extrap, xi, Side::Right);
@@ -172,7 +178,7 @@ impl<T: InterpElem> GridFn<T> {
     };
     let t_boundary: f64 = self.grid.x_at(boundary).into();
     let law = match stored {
-      Some(BoundaryBehavior::HardApproach(law)) if ulps_eq!(law.t_hard, t_boundary, max_ulps = 4) => Ok(law),
+      Some(BoundaryBehavior::HardApproach(law)) if self.grid.coincides(law.t_hard, t_boundary) => Ok(law),
       _ => self.fit_hard_cell_law(t_boundary, side, anchor),
     }?;
     let anchor = GridEdge {
@@ -392,7 +398,7 @@ impl<T: InterpElem> GridFn<T> {
     right_extrap: BoundaryBehavior,
   ) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let n_points = grid.n_points();
     let y_new = (0..n_points)
@@ -403,7 +409,7 @@ impl<T: InterpElem> GridFn<T> {
 
   pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
   where
-    T: Float + UlpsEq,
+    T: Float,
   {
     let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
     let x_min = self.grid.x_min();

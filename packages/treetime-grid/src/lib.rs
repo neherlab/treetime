@@ -18,7 +18,7 @@ pub trait InterpElem: Num + NumCast + Debug + Send + PartialOrd + Copy + From<f6
 impl InterpElem for f64 {}
 
 pub use boundary_behavior::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS};
-pub use grid::Grid;
+pub use grid::{Grid, coordinates_coincide};
 pub use grid_edge::GridEdge;
 pub use grid_fn::GridFn;
 pub use hard_approach_law::{HardApproachLaw, Side};

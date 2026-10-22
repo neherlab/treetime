@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::Grid;
+  use crate::{Grid, coordinates_coincide};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -29,5 +29,22 @@ mod tests {
     let actual = grid.find_interval_index(query);
     assert_eq!(expected, actual);
     Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::equal(                          ( 2.0,           2.0,            1.0),           true)]
+  #[case::within_rounding_of_the_scale(   ( 0.0,           8e-16,          1.0),           true)]
+  #[case::beyond_rounding_of_the_scale(   ( 0.0,           1e-15,          1.0),           false)]
+  #[case::opposite_signs_within_rounding( (-4e-16,         4e-16,          1.0),           true)]
+  #[case::tiny_values_at_a_tiny_scale(    ( 0.0,           1e-17,          1e-6),          false)]
+  #[case::date_scale(                     ( 2010.0,        2010.0 + 1e-12, 2010.0),        true)]
+  #[case::equal_infinities(               ( f64::INFINITY, f64::INFINITY,  1.0),           true)]
+  #[case::infinity_and_finite(            ( f64::INFINITY, 1.0,            f64::INFINITY), false)]
+  #[case::nan(                            ( f64::NAN,      f64::NAN,       1.0),           false)]
+  #[trace]
+  fn test_coordinates_coincide(#[case] (a, b, scale): (f64, f64, f64), #[case] expected: bool) {
+    let actual = coordinates_coincide(a, b, scale);
+    assert_eq!(expected, actual);
   }
 }
