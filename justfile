@@ -305,8 +305,18 @@ test-wasm-mt: _js (build-wasm "dev") (build-wasm-mt "dev")
     # Bun does not start the pthread workers of Emscripten, so Node runs a bundle of the smoke test
     smoke={{ quote(build_dir / "wasm-smoke" / "smoke.mjs") }}
     bun build packages/app-wasm/smoke.ts --target=node --format=esm --outfile="${smoke}" >/dev/null
-    node "${smoke}" --jobs=2
-    node "${smoke}" --jobs=8
+    # A pthread that fails to start or a deadlocked run never settles, so each invocation has a deadline
+    deadline=10m
+    for jobs in 2 8; do
+      status=0
+      timeout --kill-after=30s "${deadline}" node "${smoke}" --jobs="${jobs}" || status=$?
+      if [ "${status}" -eq 124 ] || [ "${status}" -eq 137 ]; then
+        echo "test-wasm-mt: the smoke test with --jobs=${jobs} did not finish within ${deadline}: a pthread did not start or a run deadlocked" >&2
+      fi
+      if [ "${status}" -ne 0 ]; then
+        exit "${status}"
+      fi
+    done
 
 # TypeScript tests (bun test, one isolated worker per file)
 [group("test")]
