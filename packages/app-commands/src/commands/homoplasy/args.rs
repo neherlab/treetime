@@ -224,6 +224,9 @@ fn check_rescale(rescale: f64) -> Result<(), Report> {
 
 fn check_one_alignment(alignment: &[PathBuf]) -> Result<(), Report> {
   let n_alignments = alignment.len();
+  if n_alignments == 0 {
+    return Err(missing_required_args::<TreetimeHomoplasyArgsRaw>(&["alignment"]));
+  }
   if n_alignments > 1 {
     return Err(argument_error(
       &["alignment"],

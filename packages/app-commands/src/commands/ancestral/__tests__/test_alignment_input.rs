@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::command::CommandArgs;
   use crate::commands::ancestral::args::{TreetimeAncestralArgs, TreetimeAncestralArgsRaw};
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
@@ -38,7 +39,7 @@ mod tests {
   fn test_alignment_input_reads_standard_input_once() -> Result<(), Report> {
     let dir = tempdir()?;
     fs::write(dir.path().join("tree.nwk"), "(A:0.1,B:0.2)root;\n")?;
-    let args = TreetimeAncestralArgs::try_from(TreetimeAncestralArgsRaw {
+    let raw = TreetimeAncestralArgsRaw {
       tree: TreeArgs {
         tree: Some(dir.path().join("tree.nwk")),
       },
@@ -49,11 +50,11 @@ mod tests {
         output_sequences: Some(dir.path().join("out.{alignment}.fasta")),
       },
       ..TreetimeAncestralArgsRaw::default()
-    })?;
+    };
 
     assert_error!(
-      run_ancestral_reconstruction(&args, &NoopCancel, &NoopProgress, &NoopProgress),
-      "Standard input ('-') can be read only once, but --alignment lists it 2 times"
+      CommandArgs::try_from(raw),
+      "Standard input can be read only once, but --alignment lists it 2 times"
     );
     Ok(())
   }

@@ -10,8 +10,7 @@ use crate::cli::treetime_cli::{
   resolve_args, treetime_parse_cli_args,
 };
 use crate::cli::verbosity::Verbosity;
-use app_commands::command::CommandArgs;
-use app_commands::commands::clock::args::TreetimeClockArgs;
+use app_commands::command::{CommandArgs, RawConfig};
 use app_commands::commands::clock::run::run_clock;
 use app_commands::commands::shared::argument_error::ArgumentError;
 use app_commands::config::source::InvalidConfig;
@@ -101,7 +100,7 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
     TreetimeCommands::Prune(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Ancestral(args) => CommandArgs::try_from(args)?.execute(&NoopCancel, stages, log)?,
     TreetimeCommands::Clock(clock_args) => {
-      let clock_args = TreetimeClockArgs::try_from(clock_args)?;
+      let clock_args = clock_args.into_args()?;
       let result = run_clock(&clock_args, &NoopCancel, stages, log)?;
       if is_tty() {
         print_clock_regression_chart(&result.regression_results, &result.clock_model)?;

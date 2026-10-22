@@ -11,6 +11,7 @@ use crate::commands::optimize::args::{TreetimeOptimizeArgs, TreetimeOptimizeArgs
 use crate::commands::optimize::run::run_optimize;
 use crate::commands::prune::args::{TreetimePruneArgs, TreetimePruneArgsRaw};
 use crate::commands::prune::run::run_prune;
+use crate::commands::shared::run_paths::check_command_paths;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgsRaw};
 use crate::commands::timetree::run::run_timetree_estimation;
 use crate::config::load::read_settings;
@@ -171,6 +172,8 @@ pub trait RawConfig: Serialize + DeserializeOwned + Default + JsonSchema + Clone
 
   type Args: TryFrom<Self, Error = Report>;
 
+  fn into_args(self) -> Result<Self::Args, Report>;
+
   fn wrap(args: Self::Args) -> CommandArgs;
 
   fn into_config(self) -> CommandConfig;
@@ -270,6 +273,13 @@ macro_rules! impl_raw_config {
 
       type Args = $args;
 
+      fn into_args(self) -> Result<$args, Report> {
+        let settings = settings_map(&self)?;
+        let args = <$args>::try_from(self)?;
+        check_command_paths(Self::COMMAND, &settings, &args.outputs.resolve()?)?;
+        Ok(args)
+      }
+
       fn wrap(args: Self::Args) -> CommandArgs {
         CommandArgs::$variant(Box::new(args))
       }
@@ -291,7 +301,7 @@ macro_rules! impl_raw_config {
       type Error = Report;
 
       fn try_from(raw: $raw) -> Result<Self, Report> {
-        Ok(<$raw as RawConfig>::wrap(<$args>::try_from(raw)?))
+        Ok(<$raw as RawConfig>::wrap(raw.into_args()?))
       }
     }
   };

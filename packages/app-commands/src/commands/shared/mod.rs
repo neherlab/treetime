@@ -23,6 +23,7 @@ pub mod reconstructed_fasta;
 pub mod representation;
 pub mod required;
 pub mod reroot;
+pub mod run_paths;
 pub mod seed;
 pub mod sequence_inputs;
 pub mod tip_sequences;

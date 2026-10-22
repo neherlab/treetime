@@ -17,7 +17,6 @@ use treetime_io::fasta::FastaRecord;
 use treetime_primitives::Seq;
 #[cfg(feature = "clap")]
 use treetime_schema::schema_defaults;
-use treetime_utils::io::file::is_path_stdin;
 
 /// Sequence alignment input shared by all commands that accept an alignment.
 ///
@@ -48,17 +47,6 @@ pub struct AlignmentArgs {
   pub alignment: Vec<PathBuf>,
 }
 
-pub fn check_alignment_paths(paths: &[PathBuf]) -> Result<(), Report> {
-  let n_stdin = paths.iter().filter(|path| is_path_stdin(path)).count();
-  if n_stdin > 1 {
-    return Err(argument_error(
-      &["alignment"],
-      format!("Standard input ('-') can be read only once, but --alignment lists it {n_stdin} times"),
-    ));
-  }
-  Ok(())
-}
-
 pub fn check_required_alignment_paths(paths: &[PathBuf]) -> Result<(), Report> {
   if paths.is_empty() {
     return Err(argument_error(
@@ -66,7 +54,7 @@ pub fn check_required_alignment_paths(paths: &[PathBuf]) -> Result<(), Report> {
       "--alignment is required: pass one or more FASTA files, or '-' to read standard input",
     ));
   }
-  check_alignment_paths(paths)
+  Ok(())
 }
 
 pub(crate) fn pair_alignment(

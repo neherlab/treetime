@@ -1,6 +1,4 @@
-use crate::commands::shared::alignment::{
-  PairedAlignment, check_alignment_paths, check_required_alignment_paths, pair_alignment,
-};
+use crate::commands::shared::alignment::{PairedAlignment, check_required_alignment_paths, pair_alignment};
 use crate::commands::shared::tree_input::read_input_tree;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
@@ -44,7 +42,6 @@ pub(crate) fn read_sequence_sources(
   names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<Vec<AlignmentSource>, Report> {
-  check_alignment_paths(alignments)?;
   alignments
     .iter()
     .map(|path| read_sequence_source(path, settings, graph, names, log))

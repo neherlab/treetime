@@ -6,9 +6,8 @@ use app_output::output_plan::PathPlaceholder;
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::make_error;
-
-const STDIO_PATH: &str = "-";
 
 pub(crate) fn validate_plan(
   pipeline: &ResolvedPipeline,
@@ -48,7 +47,7 @@ fn reject_stdio_paths(pipeline: &ResolvedPipeline) -> Result<(), Report> {
         step.name
       );
     }
-    if output_paths(step).iter().any(|path| path == STDIO_PATH) {
+    if output_paths(step).iter().any(is_path_stdout) {
       return make_error!(
         "step `{}` uses `-` (stdout) for an output; a pipeline runs many steps in one process, so steps need real file paths",
         step.name

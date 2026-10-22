@@ -13,6 +13,7 @@ mod tests {
     let raw = TreetimeHomoplasyArgsRaw::try_parse_from([
       "homoplasy",
       "--tree=tree.nwk",
+      "--alignment=a.fasta",
       "--const=100",
       "--rescale=0.5",
       "--detailed",
@@ -39,7 +40,7 @@ mod tests {
 
   #[test]
   fn test_args_homoplasy_defaults() -> Result<(), Report> {
-    let raw = TreetimeHomoplasyArgsRaw::try_parse_from(["homoplasy", "--tree=tree.nwk"])?;
+    let raw = TreetimeHomoplasyArgsRaw::try_parse_from(["homoplasy", "--tree=tree.nwk", "--alignment=a.fasta"])?;
     let args = TreetimeHomoplasyArgs::try_from(raw)?;
 
     assert_eq!(
@@ -72,6 +73,16 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_args_homoplasy_requires_an_alignment() -> Result<(), Report> {
+    let raw = TreetimeHomoplasyArgsRaw::try_parse_from(["homoplasy", "--tree=tree.nwk"])?;
+    assert_error!(
+      TreetimeHomoplasyArgs::try_from(raw),
+      "the following required arguments were not provided:\n  --alignment <FILEPATH>"
+    );
+    Ok(())
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::zero(    "0",    "--rescale must be a positive finite number, but got 0")]
@@ -80,7 +91,12 @@ mod tests {
   #[case::nan(     "NaN",  "--rescale must be a positive finite number, but got NaN")]
   #[trace]
   fn test_args_homoplasy_rejects_invalid_rescale(#[case] value: &str, #[case] expected: &str) -> Result<(), Report> {
-    let raw = TreetimeHomoplasyArgsRaw::try_parse_from(["homoplasy", "--tree=tree.nwk", &format!("--rescale={value}")])?;
+    let raw = TreetimeHomoplasyArgsRaw::try_parse_from([
+      "homoplasy",
+      "--tree=tree.nwk",
+      "--alignment=a.fasta",
+      &format!("--rescale={value}"),
+    ])?;
     assert_error!(TreetimeHomoplasyArgs::try_from(raw), expected);
     Ok(())
   }

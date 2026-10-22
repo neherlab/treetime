@@ -1,5 +1,4 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::shared::alignment::check_alignment_paths;
 use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::tree_input::read_input_tree;
@@ -161,7 +160,6 @@ struct PruneOutputMaps {
 
 fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
   let alignments = &args.sequences.alignments;
-  check_alignment_paths(alignments)?;
 
   if args.collapse_empty && alignments.is_empty() {
     return Err(argument_error(

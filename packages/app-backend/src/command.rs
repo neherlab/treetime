@@ -261,7 +261,10 @@ fn prepare<R: RunConfig>(
   let config = settings_map(&raw)?;
   render_and_bail(source, "invalid configuration", cli_rule_diagnostics(command, &config)?)?;
   let changed_settings = changed_settings(&config, &settings_map(&defaults)?, schema.as_value())?;
-  let args = R::Args::try_from(raw)?;
+  let args = match run_out {
+    Some(_) => raw.into_args()?,
+    None => R::Args::try_from(raw)?,
+  };
   Ok(PreparedCommand {
     config,
     changed_settings,

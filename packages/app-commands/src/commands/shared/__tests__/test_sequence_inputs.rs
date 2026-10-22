@@ -92,17 +92,6 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_sequence_sources_reject_standard_input_given_twice() {
-    assert_error!(
-      read_sources(
-        &[PathBuf::from("-"), PathBuf::from("-")],
-        MissingLeafLimit { ignored: false }
-      ),
-      "Standard input ('-') can be read only once, but --alignment lists it 2 times"
-    );
-  }
-
   mod helpers {
     use super::*;
     use crate::commands::shared::sequence_inputs::AlignmentSource;

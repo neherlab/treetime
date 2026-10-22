@@ -6,6 +6,7 @@ mod tests {
   use rstest::rstest;
   use serde_json::{Value, json};
   use std::path::Path;
+  use treetime_utils::assert_error;
 
   #[rustfmt::skip]
   #[rstest]
@@ -31,9 +32,8 @@ mod tests {
       AppCommand::Timetree => json!({ "tree": "t.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"] }),
       AppCommand::Clock => json!({ "tree": "t.nwk", "metadata": "m.tsv" }),
       AppCommand::Mugration => json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" }),
-      AppCommand::Ancestral | AppCommand::Homoplasy | AppCommand::Optimize | AppCommand::Prune => {
-        json!({ "tree": "t.nwk" })
-      },
+      AppCommand::Homoplasy => json!({ "tree": "t.nwk", "alignment": ["a.fasta"] }),
+      AppCommand::Ancestral | AppCommand::Optimize | AppCommand::Prune => json!({ "tree": "t.nwk" }),
     };
     if !chosen.is_null() {
       config["output_selection"] = chosen;
@@ -84,5 +84,21 @@ mod tests {
     let mut changed = prepared.changed_settings;
     changed.sort();
     assert_eq!(vec!["allow_negative_rate", "clock_filter", "keep_root"], changed);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::output_overwrites_input(
+    json!({ "tree": "/runs/r/out/prune.nwk" }),
+    "--tree '/runs/r/out/prune.nwk' names the same file as the output --output-all '/runs/r/out/prune.nwk': the run \
+     would overwrite its own input"
+  )]
+  #[case::standard_input_twice(
+    json!({ "tree": "-", "remove_file": "/dev/stdin" }),
+    "Standard input can be read only once, but --tree and --remove-file read it"
+  )]
+  #[trace]
+  fn test_prepare_run_rejects_paths_that_the_run_cannot_read_safely(#[case] config: Value, #[case] expected: &str) {
+    assert_error!(AppCommand::Prune.prepare_run(&config, Path::new("/runs/r/out")), expected);
   }
 }

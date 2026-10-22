@@ -2,7 +2,7 @@ use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve
 use crate::cli::pipeline::types::{RawStep, step_config};
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
-use app_commands::commands::shared::argument_error::ArgumentError;
+use app_commands::commands::shared::argument_error::{ArgumentError, argument_error};
 use app_commands::config::load::InvalidSetting;
 use app_commands::config::resolve_paths::resolve_config_paths;
 use app_commands::config::source::escape_pointer;
@@ -20,6 +20,8 @@ use treetime_utils::make_internal_report;
 use treetime_utils::{make_error, make_report};
 
 pub(crate) const TOP_LEVEL_KEYS: [&str; 4] = ["$schema", "vars", "output_all", "steps"];
+
+const OUTPUT_FOLDER_SETTINGS: [&str; 2] = ["output_all", "output_selection"];
 
 pub(crate) fn resolve_pipeline(
   doc: &PipelineDoc,
@@ -318,16 +320,21 @@ fn set_output_all_if_absent(payload: &mut Value, dir: &Path) {
 }
 
 fn missing_outputs_error(err: Report) -> Report {
-  let names_output_folder = err
-    .downcast_ref::<ArgumentError>()
-    .is_some_and(|error| error.settings.iter().any(|setting| setting == "output_all"));
-  if names_output_folder {
-    make_report!(
-      "the step writes no outputs; set the top-level `output_all` key of the pipeline, pass `treetime pipeline \
-       --output-all <dir>`, or name output files in the step"
-    )
-  } else {
-    err
+  match err.downcast_ref::<ArgumentError>() {
+    Some(error)
+      if error
+        .settings
+        .iter()
+        .all(|setting| OUTPUT_FOLDER_SETTINGS.contains(&setting.as_str())) =>
+    {
+      let settings = error.settings.iter().map(String::as_str).collect_vec();
+      argument_error(
+        &settings,
+        "the step writes no outputs; set the top-level `output_all` key of the pipeline, pass `treetime pipeline \
+         --output-all <dir>`, or name output files in the step",
+      )
+    },
+    _ => err,
   }
 }
 
@@ -355,6 +362,7 @@ mod tests {
 
   use super::*;
   use pretty_assertions::assert_eq;
+  use rstest::rstest;
   use serde_json::json;
   use treetime_utils::assert_error;
 
@@ -607,6 +615,38 @@ mod tests {
       result,
       "in pipeline step `anc`: the step writes no outputs; set the top-level `output_all` key of the pipeline, pass \
        `treetime pipeline --output-all <dir>`, or name output files in the step"
+    );
+  }
+
+  #[test]
+  fn test_resolve_step_input_that_a_generated_output_overwrites_keeps_the_overwrite_error() {
+    let result = resolve(json!({
+      "output_all": "out",
+      "steps": [{ "name": "anc", "ancestral": { "tree": "out/anc/ancestral.nwk" } }]
+    }));
+    assert_error!(
+      result,
+      "in pipeline step `anc`: --tree '/pipeline/out/anc/ancestral.nwk' names the same file as the output \
+       --output-all '/pipeline/out/anc/ancestral.nwk': the run would overwrite its own input"
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::no_outputs(        &["output_all"],                      vec!["output_all"])]
+  #[case::selection_only(    &["output_selection", "output_all"],  vec!["output_selection", "output_all"])]
+  #[case::overwritten_input( &["tree", "output_all"],              vec!["tree", "output_all"])]
+  #[trace]
+  fn test_resolve_missing_outputs_error_stays_an_argument_error(
+    #[case] settings: &[&str],
+    #[case] expected: Vec<&str>,
+  ) {
+    let error = missing_outputs_error(argument_error(settings, "message"));
+    assert_eq!(
+      Some(expected),
+      error
+        .downcast_ref::<ArgumentError>()
+        .map(|error| error.settings.iter().map(String::as_str).collect_vec())
     );
   }
 

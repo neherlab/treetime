@@ -3,7 +3,10 @@ mod tests {
   use helpers::{ESC, Run, data_path, treetime, write_file};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use std::fs;
+  use std::path::Path;
   use tempfile::tempdir;
+  use treetime_utils::o;
 
   #[test]
   fn test_cli_missing_input_is_a_plain_usage_error() {
@@ -155,6 +158,169 @@ mod tests {
         run.stderr.lines().next().unwrap_or_default(),
         run.stderr.contains("Location:")
       )
+    );
+  }
+
+  #[test]
+  fn test_cli_run_without_outputs_fails_before_reading_a_malformed_input() {
+    let dir = tempdir().unwrap();
+    let tree = write_file(dir.path(), "tree.nwk", "this is not a Newick tree");
+    let run = treetime(&["prune", "--tree", &tree], &[]);
+    assert_eq!(
+      Run {
+        code: Some(2),
+        stdout: String::new(),
+        stderr: "error: No outputs selected: add -O <DIR> to write the default outputs into a folder, or a per-file \
+                 --output-* flag\n"
+          .to_owned(),
+      },
+      run
+    );
+  }
+
+  #[test]
+  fn test_cli_run_that_would_overwrite_its_input_fails_before_writing() {
+    let dir = tempdir().unwrap();
+    let tree = write_file(dir.path(), "tree.nwk", "(A:0.1,B:0.2)root;\n");
+    let run = treetime(&["prune", "--tree", &tree, "--output-tree-nwk", &tree], &[]);
+    assert_eq!(
+      (
+        Run {
+          code: Some(2),
+          stdout: String::new(),
+          stderr: format!(
+            "error: --tree '{tree}' names the same file as the output --output-tree-nwk '{tree}': the run would \
+             overwrite its own input\n"
+          ),
+        },
+        o!("(A:0.1,B:0.2)root;\n")
+      ),
+      (run, fs::read_to_string(&tree).unwrap())
+    );
+  }
+
+  #[test]
+  fn test_cli_translation_template_that_matches_an_output_fails_before_writing() {
+    let dir = tempdir().unwrap();
+    let tree = write_file(dir.path(), "tree.nwk", "(A:0.1,B:0.2)root;\n");
+    let alignment = write_file(dir.path(), "aln.fasta", ">A\nACGT\n>B\nACGA\n");
+    let template = dir.path().join("aa/{cds}.fasta").to_str().unwrap().to_owned();
+    let output = dir.path().join("aa/S.fasta").to_str().unwrap().to_owned();
+    let run = treetime(
+      &[
+        "ancestral",
+        "--tree",
+        &tree,
+        "--alignment",
+        &alignment,
+        "--translations",
+        &template,
+        "--cds-selection",
+        "S",
+        "--output-sequences",
+        &output,
+      ],
+      &[],
+    );
+    assert_eq!(
+      (
+        Run {
+          code: Some(2),
+          stdout: String::new(),
+          stderr: format!(
+            "error: --translations '{template}' can name the same file as the output --output-sequences '{output}': \
+             the run would overwrite its own input\n"
+          ),
+        },
+        false
+      ),
+      (run, Path::new(&output).exists())
+    );
+  }
+
+  #[test]
+  fn test_cli_homoplasy_without_alignment_fails_before_reading_the_drms() {
+    let dir = tempdir().unwrap();
+    let tree = write_file(dir.path(), "tree.nwk", "(A:0.1,B:0.2)root;\n");
+    let drms = dir.path().join("missing.tsv");
+    let out = dir.path().join("out");
+    let run = treetime(
+      &[
+        "homoplasy",
+        "--tree",
+        &tree,
+        "--drms",
+        drms.to_str().unwrap(),
+        "-O",
+        out.to_str().unwrap(),
+      ],
+      &[],
+    );
+    assert_eq!(
+      Run {
+        code: Some(2),
+        stdout: String::new(),
+        stderr: "error: the following required arguments were not provided:\n  --alignment <FILEPATH>\n".to_owned(),
+      },
+      run
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::generated_output_overwrites_input(
+    "output_all: out\nsteps:\n  - name: anc\n    ancestral:\n      tree: out/anc/ancestral.nwk\n",
+    "error: in pipeline step `anc`: --tree 'DIR/out/anc/ancestral.nwk' names the same file as the output --output-all \
+     'DIR/out/anc/ancestral.nwk': the run would overwrite its own input\n"
+  )]
+  #[case::step_without_outputs(
+    "steps:\n  - name: anc\n    ancestral:\n      tree: out/anc/ancestral.nwk\n",
+    "error: in pipeline step `anc`: the step writes no outputs; set the top-level `output_all` key of the pipeline, \
+     pass `treetime pipeline --output-all <dir>`, or name output files in the step\n"
+  )]
+  #[trace]
+  fn test_cli_pipeline_step_output_error_is_a_usage_error(#[case] pipeline: &str, #[case] expected_stderr: &str) {
+    let dir = tempdir().unwrap();
+    fs::create_dir_all(dir.path().join("out/anc")).unwrap();
+    let tree = write_file(&dir.path().join("out/anc"), "ancestral.nwk", "(A:0.1,B:0.2)root;\n");
+    let config = write_file(dir.path(), "pipeline.yaml", pipeline);
+    let run = treetime(&["pipeline", "--config", &config], &[]);
+    assert_eq!(
+      (
+        Run {
+          code: Some(2),
+          stdout: String::new(),
+          stderr: expected_stderr.replace("DIR", dir.path().to_str().unwrap()),
+        },
+        o!("(A:0.1,B:0.2)root;\n")
+      ),
+      (run, fs::read_to_string(&tree).unwrap())
+    );
+  }
+
+  #[test]
+  fn test_cli_standard_input_for_two_inputs_is_a_usage_error() {
+    let dir = tempdir().unwrap();
+    let output = dir.path().join("out.nwk");
+    let run = treetime(
+      &[
+        "prune",
+        "--tree",
+        "-",
+        "--remove-file",
+        "-",
+        "--output-tree-nwk",
+        output.to_str().unwrap(),
+      ],
+      &[],
+    );
+    assert_eq!(
+      Run {
+        code: Some(2),
+        stdout: String::new(),
+        stderr: "error: Standard input can be read only once, but --tree and --remove-file read it\n".to_owned(),
+      },
+      run
     );
   }
 
