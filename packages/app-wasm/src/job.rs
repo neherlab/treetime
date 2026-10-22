@@ -8,7 +8,6 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use js_sys::{Function, Promise};
 use log::error;
-use std::cell::RefCell;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -17,6 +16,27 @@ use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::{JsError, wasm_bindgen};
 
+#[cfg(not(target_feature = "atomics"))]
+use std::cell::RefCell;
+
+#[cfg(target_feature = "atomics")]
+use std::thread;
+#[cfg(target_feature = "atomics")]
+use tokio::sync::mpsc::{Sender, channel};
+#[cfg(target_feature = "atomics")]
+use treetime_utils::cast::u32_to_usize;
+#[cfg(target_feature = "atomics")]
+use treetime_utils::init::thread_pool::init_thread_pool;
+#[cfg(target_feature = "atomics")]
+use wasm_bindgen_futures::future_to_promise;
+
+#[cfg(target_feature = "atomics")]
+const RUN_THREAD_NAME: &str = "treetime-run";
+
+#[cfg(target_feature = "atomics")]
+const RUN_MESSAGE_CAPACITY: usize = 256;
+
+#[cfg(not(target_feature = "atomics"))]
 thread_local! {
   static EVENT_SINK: RefCell<Option<Function>> = const { RefCell::new(None) };
 }
@@ -24,6 +44,8 @@ thread_local! {
 #[wasm_bindgen]
 pub struct Job {
   job: RunJob,
+  #[cfg(target_feature = "atomics")]
+  jobs: usize,
 }
 
 #[wasm_bindgen]
@@ -31,7 +53,11 @@ impl Job {
   #[wasm_bindgen(constructor)]
   pub fn new(#[wasm_bindgen(js_name = jobJson)] job_json: &str, jobs: u32) -> Result<Self, JsError> {
     open_job(job_json, jobs)
-      .map(|job| Self { job })
+      .map(|job| Self {
+        job,
+        #[cfg(target_feature = "atomics")]
+        jobs: u32_to_usize(jobs),
+      })
       .map_err(|report| js_error(&report))
   }
 
@@ -60,17 +86,56 @@ impl Job {
       .map_err(|report| js_error(&report))
   }
 
+  #[cfg(not(target_feature = "atomics"))]
   #[wasm_bindgen(unchecked_return_type = "Promise<string>")]
   pub fn run(
     &self,
     #[wasm_bindgen(js_name = onEvent, unchecked_param_type = "(event: string) => void")] on_event: Function,
   ) -> Result<Promise, JsError> {
     EVENT_SINK.with_borrow_mut(|sink| *sink = Some(on_event));
-    let outcome = self.compute();
+    let outcome = compute(
+      &self.job,
+      || Ok(()),
+      |event| {
+        EVENT_SINK.with_borrow(|sink| match sink {
+          Some(sink) => deliver_event(sink, &event),
+          None => error!("An event of the run worker has no receiver on this thread"),
+        });
+      },
+    );
     EVENT_SINK.with_borrow_mut(|sink| *sink = None);
-    json_write_str(&outcome, JsonPretty(false))
+    outcome_text(&outcome)
       .map(|text| Promise::resolve(&JsValue::from(text)))
       .map_err(|report| js_error(&report))
+  }
+
+  #[cfg(target_feature = "atomics")]
+  #[wasm_bindgen(unchecked_return_type = "Promise<string>")]
+  pub fn run(
+    &self,
+    #[wasm_bindgen(js_name = onEvent, unchecked_param_type = "(event: string) => void")] on_event: Function,
+  ) -> Result<Promise, JsError> {
+    let (sender, mut receiver) = channel(RUN_MESSAGE_CAPACITY);
+    let job = self.job.clone();
+    let jobs = self.jobs;
+    thread::Builder::new()
+      .name(RUN_THREAD_NAME.to_owned())
+      .spawn(move || compute_on_run_thread(&job, jobs, &sender))
+      .wrap_err("When starting the run thread")
+      .map_err(|report| js_error(&report))?;
+    Ok(future_to_promise(async move {
+      while let Some(message) = receiver.recv().await {
+        match message {
+          RunMessage::Event(event) => deliver_event(&on_event, &event),
+          RunMessage::Done(outcome) => {
+            return outcome_text(&outcome)
+              .map(JsValue::from)
+              .map_err(|report| js_error(&report).into());
+          },
+        }
+      }
+      Err(JsError::new("the run thread ended without an outcome").into())
+    }))
   }
 
   #[wasm_bindgen(js_name = outputFiles)]
@@ -98,17 +163,12 @@ impl Job {
       ))
     })
   }
+}
 
-  fn compute(&self) -> RunOutcome {
-    let cancel = CancelToken::default();
-    match run_job_step(&self.job.id, &cancel, || check_inputs(&self.job)) {
-      Ok(()) => compute_run(&self.job, &cancel, |event| deliver_event(&event)),
-      Err(terminal) => RunOutcome {
-        terminal,
-        warnings: vec![],
-      },
-    }
-  }
+#[cfg(target_feature = "atomics")]
+enum RunMessage {
+  Event(JobEvent),
+  Done(RunOutcome),
 }
 
 fn open_job(job_json: &str, jobs: u32) -> Result<RunJob, Report> {
@@ -128,6 +188,41 @@ fn open_job(job_json: &str, jobs: u32) -> Result<RunJob, Report> {
   Ok(job)
 }
 
+#[cfg(target_feature = "atomics")]
+fn compute_on_run_thread(job: &RunJob, jobs: usize, sender: &Sender<RunMessage>) {
+  let outcome = compute(
+    job,
+    || init_thread_pool(jobs).wrap_err_with(|| format!("When starting {jobs} threads for the run")),
+    |event| send_run_message(sender, RunMessage::Event(event)),
+  );
+  send_run_message(sender, RunMessage::Done(outcome));
+}
+
+#[cfg(target_feature = "atomics")]
+fn send_run_message(sender: &Sender<RunMessage>, message: RunMessage) {
+  if sender.blocking_send(message).is_err() {
+    error!("The run thread lost the receiver of its events");
+  }
+}
+
+fn compute(
+  job: &RunJob,
+  start: impl FnOnce() -> Result<(), Report>,
+  emit: impl Fn(JobEvent) + Send + Sync,
+) -> RunOutcome {
+  let cancel = CancelToken::default();
+  match run_job_step(&job.id, &cancel, || {
+    start()?;
+    check_inputs(job)
+  }) {
+    Ok(()) => compute_run(job, &cancel, emit),
+    Err(terminal) => RunOutcome {
+      terminal,
+      warnings: vec![],
+    },
+  }
+}
+
 fn check_inputs(job: &RunJob) -> Result<(), Report> {
   for input in &job.inputs {
     let (size, sha256) = file_sha256(&input.path)?;
@@ -143,7 +238,7 @@ fn check_inputs(job: &RunJob) -> Result<(), Report> {
   Ok(())
 }
 
-fn deliver_event(event: &JobEvent) {
+fn deliver_event(sink: &Function, event: &JobEvent) {
   let text = match json_write_str(event, JsonPretty(false)) {
     Ok(text) => JsValue::from(text),
     Err(err) => {
@@ -151,14 +246,13 @@ fn deliver_event(event: &JobEvent) {
       return;
     },
   };
-  EVENT_SINK.with_borrow(|sink| match sink {
-    Some(sink) => {
-      if let Err(err) = sink.call1(&JsValue::UNDEFINED, &text) {
-        error!("The event receiver of the run worker failed: {err:?}");
-      }
-    },
-    None => error!("An event of the run worker has no receiver on this thread"),
-  });
+  if let Err(err) = sink.call1(&JsValue::UNDEFINED, &text) {
+    error!("The event receiver of the run worker failed: {err:?}");
+  }
+}
+
+fn outcome_text(outcome: &RunOutcome) -> Result<String, Report> {
+  json_write_str(outcome, JsonPretty(false))
 }
 
 fn js_error(report: &Report) -> JsError {

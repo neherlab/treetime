@@ -23,6 +23,7 @@ itertools = { workspace = true }
 js-sys = { workspace = true }
 log = { workspace = true }
 parking_lot = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 tower = { workspace = true }
