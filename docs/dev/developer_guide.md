@@ -324,7 +324,7 @@ Other options:
 
 - `--rerun`: run the selected cases again even when their stored results are reusable
 - `--no-build`: use the existing `.out/treetime` for the current snapshot
-- `--check-determinism`: run each case a second time with `treetime --jobs=1` and mark the case nondeterministic when the outputs differ
+- `--check-determinism`: run each case a second time with `--jobs=1` and mark the case nondeterministic when the outputs differ. Only the analysis commands and `pipeline` take `--jobs`; the cases of other commands run a second time unchanged
 - `--jobs N`, `--timeout-scale X`: parallel cases, and a factor on every case timeout
 - `--memory-budget GIB`: memory the running cases may use together, 75% of the available memory by default. Every treetime process is capped at the budget, so a case that needs more fails with an allocation error instead of exhausting the machine
 - `--min-free GIB`, `--max-file-size GIB`: the disk limits (see [Disk limits](#disk-limits))

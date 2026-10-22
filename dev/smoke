@@ -53,8 +53,9 @@ Options:
     --rerun                 run the selected cases again even when stored results are reusable
     --no-build              use the existing .out/treetime for the current snapshot instead of the stored
                             binary or a new build
-    --check-determinism     run each selected case a second time with `treetime --jobs=1` and mark
-                            the case nondeterministic when the outputs differ
+    --check-determinism     run each selected case a second time with `--jobs=1` and mark the case
+                            nondeterministic when the outputs differ; cases of commands without `--jobs`
+                            run twice unchanged
     --prune                 delete the dirty snapshots of this checkout other than the current one, and
                             the snapshots of committed trees older than 7 days whose tree is not the tip
                             of a local branch, then exit. Snapshots in use by another run are kept. Every
@@ -235,6 +236,7 @@ VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
 ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "standalone", "outputs", "tier", "timeout",
                       "fail", "hang"})
 CLI_ROW_KEYS = frozenset({"variant", "args", "sandbox", "fail"})
+JOBS_COMMANDS = frozenset({"timetree", "ancestral", "clock", "mugration", "homoplasy", "optimize", "prune", "pipeline"})
 RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
 MAX_DIFF_ITEMS = 20
 NUMBER_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
@@ -1074,7 +1076,7 @@ def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinis
         "expect": case.expect.value, "determinism": None,
       }
     if check_determinism:
-      rerun_extra = extra + ([] if case.is_help else ["--jobs=1"])
+      rerun_extra = extra + (["--jobs=1"] if case.takes_jobs else [])
       rerun_outcome, rerun_missing = run_one(case, binary, case_dir / "rerun", rerun_extra, limits, disk)
       rerun_status, _ = classify(case, rerun_outcome, rerun_missing)
       same = rerun_status.value == result["status"] and not diff_run_dirs(case, case_dir, case_dir / "rerun")
@@ -1686,6 +1688,10 @@ class Case:
   @property
   def is_help(self) -> bool:
     return self.command == "help"
+
+  @property
+  def takes_jobs(self) -> bool:
+    return not self.is_help and len(self.argv) > 1 and self.argv[1] in JOBS_COMMANDS
 
   @property
   def writes_output_dir(self) -> bool:
