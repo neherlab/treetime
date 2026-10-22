@@ -1,10 +1,12 @@
-import type { AppCommand, IndexedConfig, IndexedDataset } from "@neherlab/app-contracts";
+import type { AppCommand, IndexedConfig, IndexedDataset, JsonValue, UiDraftSource } from "@neherlab/app-contracts";
 import { examples } from "@neherlab/app-contracts/client";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { useApi } from "../api/hooks";
 import { useHost } from "../host-context";
+import { inputSettingKeys } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import {
   type ConfigInput,
@@ -21,15 +23,10 @@ import {
   uploadedConfigInputs,
   webExampleIndex,
 } from "./exampleData";
-import type { StoredFile } from "./fileSelection";
-import { type ConfigLoadResult, useConfigLoader } from "./useConfigLoader";
-import { useInputActions } from "./useInputActions";
+import { draftUploadPaths, releasedUploads, type StoredFile, storedSource, storedValue } from "./fileSelection";
+import { claimInputs } from "./inputClaims";
+import { type ConfigLoadResult, SUPERSEDED, useConfigLoader } from "./useConfigLoader";
 import { useRunUploads } from "./useRunUploads";
-
-const DISCARDED: ConfigLoadResult = {
-  loaded: false,
-  messages: ["The form was reset while the example files were uploaded"],
-};
 
 export function useExampleIndex(): ExampleIndexQuery {
   const host = useHost();
@@ -63,6 +60,8 @@ export function useExampleConfigLoader() {
         return loadConfig(config.content, config.command, { folder: localExamplePath(examples.folder, config.folder) });
       }
 
+      const { command } = useDraftStore.getState().draft;
+      const isCurrent = claimInputs([...new Set([...inputSettingKeys(command), ...inputSettingKeys(config.command)])]);
       const runId = await uploadRun(config.command);
       const uploaded: UploadedConfigInput[] = [];
 
@@ -72,11 +71,17 @@ export function useExampleConfigLoader() {
           uploaded.flatMap(({ stored }) => stored.map((file) => file.path)),
         );
 
-      const loading = uploadConfigInputs(config, async (files) => uploadFiles(runId, files, []), uploaded).then(
-        async () =>
-          useDraftStore.getState().draft.upload_run_id === runId
-            ? loadConfig(config.content, config.command, { uploaded: uploadedConfigInputs(uploaded, runId) })
-            : DISCARDED,
+      const loading = uploadConfigInputs(
+        config,
+        async (files) => (isCurrent(runId) ? uploadFiles(runId, files, []) : undefined),
+        uploaded,
+      ).then(async (complete) =>
+        complete
+          ? loadConfig(config.content, config.command, {
+              uploaded: uploadedConfigInputs(uploaded, runId),
+              isCurrent: () => isCurrent(runId),
+            })
+          : SUPERSEDED,
       );
 
       void loading.catch(releaseUploaded);
@@ -93,29 +98,67 @@ export function useExampleConfigLoader() {
   );
 }
 
-export function useDatasetLoader(command: AppCommand) {
-  const { addFiles, assignAll } = useInputActions(command);
+export function useDatasetLoader() {
+  const navigate = useNavigate();
+  const { uploadRun, uploadFiles, release, releaseFromPendingRun } = useRunUploads();
 
   return useCallback(
-    async (examples: ExampleIndex, dataset: IndexedDataset) => {
+    async (examples: ExampleIndex, dataset: IndexedDataset, command: AppCommand) => {
       const inputs = indexedDatasetInputs(dataset, command);
 
       if (examples.origin === "local") {
-        assignAll(
-          inputs.map((input) => localInputAssignment(examples.folder, input)),
-          { origin: "dataset" },
+        applyDatasetInputs(
+          inputs.map((input) => {
+            const { key, value, label } = localInputAssignment(examples.folder, input);
+
+            return { key, value, source: { label, origin: "dataset" } };
+          }),
+          release,
+        );
+        await navigate({ to: "/new" });
+
+        return;
+      }
+
+      const isCurrent = claimInputs(inputs.map((input) => input.key));
+      const files = await Promise.all(inputs.map(async (input) => fetchExampleFile(exampleDataBase(), input.path)));
+
+      if (!isCurrent()) {
+        return;
+      }
+
+      const runId = await uploadRun(command);
+
+      if (!isCurrent(runId)) {
+        return;
+      }
+
+      const replaced = new Set(inputs.map((input) => input.key));
+      const stored = await uploadFiles(runId, files, draftUploadPaths(useDraftStore.getState().draft, replaced));
+
+      if (!isCurrent(runId)) {
+        releaseFromPendingRun(
+          runId,
+          stored.map((file) => file.path),
         );
 
         return;
       }
 
-      const fetched = await Promise.all(
-        inputs.map(async (input) => ({ input, file: await fetchExampleFile(exampleDataBase(), input.path) })),
-      );
+      applyDatasetInputs(
+        inputs.flatMap((input, index) => {
+          const file = stored.slice(index, index + 1);
+          const value = storedValue(file, input.list);
 
-      await Promise.all(fetched.map(async ({ input, file }) => addFiles(input.key, [file], input.list)));
+          return value === undefined
+            ? []
+            : [{ key: input.key, value, source: { ...storedSource(file), origin: "upload", run_id: runId } }];
+        }),
+        release,
+      );
+      await navigate({ to: "/new" });
     },
-    [addFiles, assignAll, command],
+    [navigate, release, releaseFromPendingRun, uploadFiles, uploadRun],
   );
 }
 
@@ -128,16 +171,42 @@ export interface ExampleIndexQuery {
   error: Error | null;
 }
 
+function applyDatasetInputs(
+  assignments: ReadonlyArray<{ key: string; value: JsonValue; source: UiDraftSource }>,
+  release: (runId: string, paths: readonly string[]) => void,
+) {
+  const { draft, load } = useDraftStore.getState();
+
+  const next = {
+    ...draft,
+    config: { ...draft.config, ...Object.fromEntries(assignments.map(({ key, value }) => [key, value])) },
+    sources: { ...draft.sources, ...Object.fromEntries(assignments.map(({ key, source }) => [key, source])) },
+  };
+
+  load(next);
+
+  if (draft.upload_run_id !== undefined) {
+    release(draft.upload_run_id, releasedUploads(draft, next));
+  }
+}
+
 async function uploadConfigInputs(
   config: IndexedConfig,
-  upload: (files: readonly File[]) => Promise<StoredFile[]>,
+  upload: (files: readonly File[]) => Promise<StoredFile[] | undefined>,
   uploaded: UploadedConfigInput[],
-): Promise<void> {
+): Promise<boolean> {
   for (const input of configInputs(config)) {
     const files = await Promise.all(input.paths.map(async (path) => fetchExampleFile(exampleDataBase(), path)));
+    const stored = await upload(files);
 
-    uploaded.push({ input, stored: await upload(files) });
+    if (stored === undefined) {
+      return false;
+    }
+
+    uploaded.push({ input, stored });
   }
+
+  return true;
 }
 
 interface UploadedConfigInput {

@@ -111,7 +111,7 @@ function DatasetRow({
   dataset: IndexedDataset;
   close: () => void;
 }) {
-  const loadDataset = useDatasetLoader(command);
+  const loadDataset = useDatasetLoader();
   const toasts = useToastManager();
   const [loading, setLoading] = useState(false);
   const inputs = useMemo(() => indexedDatasetInputs(dataset, command), [command, dataset]);
@@ -120,14 +120,14 @@ function DatasetRow({
     setLoading(true);
 
     try {
-      await loadDataset(examples, dataset);
+      await loadDataset(examples, dataset, command);
       close();
     } catch (error: unknown) {
       toasts.add({ title: `${dataset.name} cannot be loaded`, description: errorMessage(error) });
     } finally {
       setLoading(false);
     }
-  }, [close, dataset, examples, loadDataset, toasts]);
+  }, [close, command, dataset, examples, loadDataset, toasts]);
 
   const onLoad = useCallback(() => void load(), [load]);
 

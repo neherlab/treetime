@@ -36,8 +36,11 @@ const ORIGIN = "http://treetime.test";
 
 const BASE = "/treetime/";
 
+const MUGRATION_CONFIG = "Mugration of the zika dataset";
+
 const INDEX: DataIndex = {
   files: [
+    { path: "zika/20/ancestral.yaml", size: 32 },
     { path: "zika/20/aln.fasta.xz", size: 4 },
     { path: "zika/20/metadata.tsv", size: 8 },
     { path: "zika/20/mugration.yaml", size: 16 },
@@ -65,6 +68,17 @@ const INDEX: DataIndex = {
         metadata: ["zika/20/metadata.tsv"],
         tree: ["zika/20/tree.nwk"],
         weights: ["zika/country_weights.csv"],
+      },
+    },
+    {
+      path: "zika/20/ancestral.yaml",
+      command: "ancestral",
+      title: "Ancestral sequences of the zika dataset",
+      folder: "zika/20",
+      content: "tree: tree.nwk\nalignment: aln.fasta.xz\n",
+      inputs: {
+        alignment: ["zika/20/aln.fasta.xz"],
+        tree: ["zika/20/tree.nwk"],
       },
     },
   ],
@@ -206,13 +220,57 @@ describe("example data of the web apps", () => {
     ]);
   });
 
+  test("a file chosen while a dataset is fetched stays chosen and the dataset is dropped", async () => {
+    const alignment = Promise.withResolvers<void>();
+    const server = fakeServer({ held: new Map([["zika/20/aln.fasta.xz", alignment.promise]]) });
+    await render(server, "timetree");
+    await chooseExampleDataset();
+    await pWaitFor(() => server.static.includes("/treetime/data/zika/20/aln.fasta.xz"));
+
+    await userEvent
+      .setup({ document })
+      .upload(page().getByLabelText("Tree file to upload"), new File(["(C:1,D:1);\n"], "mine.nwk"));
+    await page().findByText(JSON.stringify("/runs/r1/inputs/mine.nwk"));
+    alignment.resolve();
+    await pWaitFor(() => page().queryByRole("cell", { name: "zika/20" }) === null);
+
+    expect([settingText("Tree setting"), settingText("Alignment setting"), server.uploads]).toStrictEqual([
+      JSON.stringify("/runs/r1/inputs/mine.nwk"),
+      "[]",
+      ["mine.nwk:11"],
+    ]);
+  });
+
+  test("a dataset chosen while an example config is fetched replaces the config and releases its uploads", async () => {
+    const weights = Promise.withResolvers<void>();
+    const server = fakeServer({ held: new Map([["zika/country_weights.csv", weights.promise]]) });
+    await render(server, "timetree");
+    await chooseExampleConfig(MUGRATION_CONFIG);
+    await pWaitFor(() => server.static.includes("/treetime/data/zika/country_weights.csv"));
+
+    await chooseExampleDataset();
+    await pWaitFor(() => Object.keys(useDraftStore.getState().draft.sources).length === 3);
+    weights.resolve();
+    await pWaitFor(() => server.released.length === 2);
+
+    expect([
+      useDraftStore.getState().draft.command,
+      server.released.toSorted(),
+      settingText("Tree setting"),
+    ]).toStrictEqual([
+      "timetree",
+      ["/runs/r1/inputs/metadata.tsv", "/runs/r1/inputs/tree.nwk"],
+      JSON.stringify("/runs/r1/inputs/again/tree.nwk"),
+    ]);
+  });
+
   test("a config the check rejects releases its uploads and keeps the form", async () => {
     const server = fakeServer({ rejected: true });
     await render(server, "timetree");
     const user = userEvent.setup({ document });
 
     await user.click(page().getByRole("button", { name: "Example configs" }));
-    await user.click(await page().findByRole("button", { name: "Load" }));
+    await user.click(await loadButton(MUGRATION_CONFIG));
     await pWaitFor(() => server.released.length === 3);
 
     expect([server.released.toSorted(), useDraftStore.getState().draft]).toStrictEqual([
@@ -222,18 +280,46 @@ describe("example data of the web apps", () => {
   });
 });
 
-async function loadExampleConfig() {
-  const user = userEvent.setup({ document });
-  await user.click(page().getByRole("button", { name: "Example configs" }));
-  await user.click(await page().findByRole("button", { name: "Load" }));
-  await pWaitFor(() => useDraftStore.getState().draft.command === "mugration");
+async function loadExampleConfig(title = MUGRATION_CONFIG, command: AppCommand = "mugration") {
+  await chooseExampleConfig(title);
+  await pWaitFor(() => useDraftStore.getState().draft.command === command);
 }
 
-function fakeServer({ missing, rejected = false }: { missing?: string; rejected?: boolean } = {}) {
+async function chooseExampleConfig(title: string) {
+  const user = userEvent.setup({ document });
+
+  if (page().queryByRole("button", { name: "Example configs" }) !== null) {
+    await user.click(page().getByRole("button", { name: "Example configs" }));
+  }
+
+  await user.click(await loadButton(title));
+}
+
+async function chooseExampleDataset() {
+  const user = userEvent.setup({ document });
+  await user.click(page().getByRole("button", { name: "Example datasets" }));
+  await user.click(await page().findByRole("button", { name: "Load" }));
+}
+
+async function loadButton(title: string): Promise<HTMLElement> {
+  return within(await page().findByRole("row", { name: new RegExp(title, "u") })).getByRole("button", { name: "Load" });
+}
+
+function fakeServer({
+  missing,
+  rejected = false,
+  held = new Map(),
+}: {
+  missing?: string;
+  rejected?: boolean;
+  held?: ReadonlyMap<string, Promise<void>>;
+} = {}) {
   const requested: string[] = [];
   const uploads: string[] = [];
   const released: string[] = [];
   const replaced: SparseConfig[] = [];
+  const replaces: string[][] = [];
+  const stored = new Set<string>();
 
   const fetch = async (input: Request | URL | string, init?: RequestInit): Promise<Response> => {
     const request = new Request(input instanceof Request ? input : new URL(input, ORIGIN), init);
@@ -248,6 +334,8 @@ function fakeServer({ missing, rejected = false }: { missing?: string; rejected?
       if (file === "index.json") {
         return Response.json(INDEX);
       }
+
+      await held.get(file);
 
       return text === undefined || file === missing ? new Response("not found", { status: 404 }) : new Response(text);
     }
@@ -275,7 +363,10 @@ function fakeServer({ missing, rejected = false }: { missing?: string; rejected?
     if (request.method === "PUT" && name !== undefined) {
       const size = (await request.arrayBuffer()).byteLength;
       uploads.push(`${name}:${size}`);
-      const uploaded: UploadedInput = { name, path: `/runs/r1/inputs/${name}`, size, sha256: "0" };
+      replaces.push(url.searchParams.getAll("replaces"));
+      const path = stored.has(name) ? `/runs/r1/inputs/again/${name}` : `/runs/r1/inputs/${name}`;
+      stored.add(name);
+      const uploaded: UploadedInput = { name, path, size, sha256: "0" };
 
       return Response.json(uploaded);
     }
@@ -284,18 +375,16 @@ function fakeServer({ missing, rejected = false }: { missing?: string; rejected?
       const body = zCheckConfigRequest.parse(await request.json());
       replaced.push(body.replace_inputs ?? {});
 
-      return Response.json(checkAnswer(body.replace_inputs ?? {}, rejected));
+      return Response.json(checkAnswer(body.command, body.replace_inputs ?? {}, rejected));
     }
 
     return Response.json({ message: `unexpected ${request.method} ${pathname}` }, { status: 500 });
   };
 
-  return { fetch, static: requested, uploads, released, replaced };
+  return { fetch, static: requested, uploads, released, replaced, replaces };
 }
 
-function checkAnswer(replaceInputs: SparseConfig, rejected: boolean): CheckConfigResponse {
-  const command: AppCommand = "mugration";
-
+function checkAnswer(command: AppCommand, replaceInputs: SparseConfig, rejected: boolean): CheckConfigResponse {
   if (rejected) {
     return {
       status: "invalid",
@@ -312,7 +401,7 @@ function checkAnswer(replaceInputs: SparseConfig, rejected: boolean): CheckConfi
   return {
     status: "valid",
     command,
-    config: { ...replaceInputs, attribute: "country" },
+    config: command === "mugration" ? { ...replaceInputs, attribute: "country" } : replaceInputs,
     code: CODE,
     checks: [],
     choices: [],

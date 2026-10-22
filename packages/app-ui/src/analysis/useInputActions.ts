@@ -7,6 +7,7 @@ import { baseName, type InputAssignment, pathList } from "../settings/inputs";
 import { useDraftStore } from "../store/draft";
 import { filesForSetting, releasedPaths, type StoredFile, storedSource, storedValue } from "./fileSelection";
 import { toFormValue, type FormConfig } from "./formValues";
+import { claimInputs } from "./inputClaims";
 import { useRunUploads } from "./useRunUploads";
 
 interface InputActions {
@@ -15,16 +16,11 @@ interface InputActions {
   assignAll: (assignments: readonly InputAssignment[], from: InputOrigin) => void;
   clear: (key: string, emptyValue: JsonValue | undefined) => void;
   addFiles: (key: string, files: readonly File[], list: boolean) => Promise<void>;
+  addPendingFiles: (key: string, pending: Promise<readonly File[]>, list: boolean) => Promise<void>;
   pick: (key: string, title: string, extensions: string[], list: boolean) => Promise<void>;
 }
 
 type InputOrigin = Omit<UiDraftSource, "label" | "size">;
-
-function isCurrentSelection(key: string, selection: symbol, runId: string): boolean {
-  const { draft, selections } = useDraftStore.getState();
-
-  return selections[key] === selection && draft.upload_run_id === runId;
-}
 
 export function useInputActions(command: AppCommand): InputActions {
   const host = useHost();
@@ -94,34 +90,34 @@ export function useInputActions(command: AppCommand): InputActions {
     [assign],
   );
 
-  const addFiles = useCallback(
-    async (key: string, files: readonly File[], list: boolean) => {
-      const selected = filesForSetting(files, list);
-
-      if (selected.length === 0) {
-        return;
-      }
+  const addPendingFiles = useCallback(
+    async (key: string, pending: Promise<readonly File[]>, list: boolean) => {
+      const isCurrent = claimInputs([key]);
+      const selected = filesForSetting(await pending, list);
 
       if (host !== null) {
         const stored = selected.map((file) => ({ name: file.name, path: host.pathForFile(file), size: file.size }));
-        assignStored(key, stored, list, { origin: "local" });
+
+        if (isCurrent()) {
+          assignStored(key, stored, list, { origin: "local" });
+        }
 
         return;
       }
 
-      const selection = Symbol(key);
-      useDraftStore.getState().claimSelection(key, selection);
+      if (selected.length === 0 || !isCurrent()) {
+        return;
+      }
+
       const runId = await uploadRun(command);
 
-      if (!isCurrentSelection(key, selection, runId)) {
+      if (!isCurrent(runId)) {
         return;
       }
 
-      const replaces = pendingUploadPaths(key, runId);
+      const stored = await uploadFiles(runId, selected, pendingUploadPaths(key, runId));
 
-      const stored = await uploadFiles(runId, selected, replaces);
-
-      if (!isCurrentSelection(key, selection, runId)) {
+      if (!isCurrent(runId)) {
         releaseFromPendingRun(
           runId,
           stored.map((file) => file.path),
@@ -133,6 +129,15 @@ export function useInputActions(command: AppCommand): InputActions {
       assignStored(key, stored, list, { origin: "upload", run_id: runId });
     },
     [assignStored, command, host, pendingUploadPaths, releaseFromPendingRun, uploadFiles, uploadRun],
+  );
+
+  const addFiles = useCallback(
+    async (key: string, files: readonly File[], list: boolean) => {
+      if (filesForSetting(files, list).length > 0) {
+        await addPendingFiles(key, Promise.resolve(files), list);
+      }
+    },
+    [addPendingFiles],
   );
 
   const pick = useCallback(
@@ -152,7 +157,7 @@ export function useInputActions(command: AppCommand): InputActions {
   );
 
   return useMemo(
-    () => ({ canPick: host !== null, assign, assignAll, clear, addFiles, pick }),
-    [addFiles, assign, assignAll, clear, host, pick],
+    () => ({ canPick: host !== null, assign, assignAll, clear, addFiles, addPendingFiles, pick }),
+    [addFiles, addPendingFiles, assign, assignAll, clear, host, pick],
   );
 }

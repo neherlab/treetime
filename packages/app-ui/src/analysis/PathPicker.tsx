@@ -86,7 +86,11 @@ export function PathPicker({ command, settingKey, title, extensions, list, fille
       setBusy(true);
 
       try {
-        await actions.addFiles(settingKey, [await fetchExampleFile(exampleDataBase(), file.path)], list);
+        await actions.addPendingFiles(
+          settingKey,
+          fetchExampleFile(exampleDataBase(), file.path).then((fetched) => [fetched]),
+          list,
+        );
       } catch (error: unknown) {
         toasts.add({ title: `${file.path} cannot be added`, description: errorMessage(error) });
       } finally {

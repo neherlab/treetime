@@ -42,6 +42,10 @@ export function runInputAssignments(command: AppCommand, inputs: readonly RunInp
   });
 }
 
+export function inputSettingKeys(command: AppCommand): string[] {
+  return commandSettings(command).settings.flatMap((spec) => (spec.role === "input" ? [spec.key] : []));
+}
+
 export function inputFactsRequest(command: AppCommand, config: SparseConfig): CheckInputsRequest | null {
   const given = commandSettings(command).inputs.some((slot) => pathList(config[slot.kind]).length > 0);
 

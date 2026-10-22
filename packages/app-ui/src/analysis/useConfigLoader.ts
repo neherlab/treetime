@@ -15,10 +15,16 @@ import { useRunUploads } from "./useRunUploads";
 
 export type ConfigLoadResult = { loaded: true; command: AppCommand } | { loaded: false; messages: string[] };
 
+export const SUPERSEDED: ConfigLoadResult = {
+  loaded: false,
+  messages: ["A later choice of inputs replaced this config"],
+};
+
 export interface ConfigLoadOptions {
   keepInputs?: boolean;
   folder?: string | undefined;
   uploaded?: UploadedInputs;
+  isCurrent?: () => boolean;
 }
 
 export function useConfigLoader() {
@@ -30,7 +36,7 @@ export function useConfigLoader() {
     async (
       text: string,
       fallbackCommand: AppCommand,
-      { keepInputs = false, folder, uploaded }: ConfigLoadOptions = {},
+      { keepInputs = false, folder, uploaded, isCurrent }: ConfigLoadOptions = {},
     ): Promise<ConfigLoadResult> => {
       const { draft, load } = useDraftStore.getState();
       const inputs = keepInputs ? inputSettings(draft.command, draft.config) : {};
@@ -49,6 +55,10 @@ export function useConfigLoader() {
 
       if (result.status === "invalid") {
         return { loaded: false, messages: result.messages };
+      }
+
+      if (isCurrent?.() === false) {
+        return SUPERSEDED;
       }
 
       const command = result.command;
