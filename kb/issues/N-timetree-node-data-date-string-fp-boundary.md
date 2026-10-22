@@ -1,6 +1,6 @@
 # Node data `date` string can differ by one day at year-fraction boundaries
 
-The per-node `date` field in timetree node data JSON is the `"YYYY-MM-DD"` string produced from each node's `numdate` by `year_fraction_to_datestring()` [packages/app-output/src/augur_node_data_refine.rs#L129](../../packages/app-output/src/augur_node_data_refine.rs#L129). At year-fraction values just below a day boundary $k/365$ (or $k/366$), the conversion gives the day before the one that v0, and therefore augur, reports from the same `numdate`.
+The per-node `date` field in timetree node data JSON is the `"YYYY-MM-DD"` string produced from each node's `numdate` by `year_fraction_to_datestring()` [packages/app-output/src/augur_node_data_refine.rs#L128](../../packages/app-output/src/augur_node_data_refine.rs#L128). At year-fraction values just below a day boundary $k/365$ (or $k/366$), the conversion gives the day before the one that v0, and therefore augur, reports from the same `numdate`.
 
 ## Cause
 
@@ -11,3 +11,8 @@ v1 `fn year_fraction_to_date()` multiplies the fraction by the seconds in the ye
 ## Impact
 
 The discrepancy is at most one day. `augur export v2` reads `numdate` for the time tree, not the `date` string, so no downstream Auspice output is affected. The mismatch only shows when comparing the `date` field directly against augur's node data JSON.
+
+The same conversion writes the other date strings of v1, which have the same one-day difference at these boundaries:
+
+- The `date` column of the dates table (`--output-dates`): `fn date_fields()` [packages/app-output/src/dates_table.rs#L56](../../packages/app-output/src/dates_table.rs#L56) and [packages/app-output/src/dates_table.rs#L61](../../packages/app-output/src/dates_table.rs#L61)
+- The calendar day of the dates in the app results: `fn YearDate::new()` [packages/app-backend/src/results/year_date.rs#L18](../../packages/app-backend/src/results/year_date.rs#L18)

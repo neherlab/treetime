@@ -268,7 +268,7 @@ loop and gives `rate_std` for `--confidence` unless `--clock-std-dev` is set; it
 `--sequence-length`. Its node marginals are computed but not yet consumed (phase 1); the node RMSE and lineage-curve
 evidence of section 1 comes from the Python reference, which the Rust passes match exactly on the analytic tests.
 
-Gate, 240 validation sets, `--coalescent-opt`, estimated rate, `--keep-root`, reported 90% interval with and
+Gate, 240 validation sets, `--coalescent opt`, estimated rate, `--keep-root`, reported 90% interval with and
 without `--confidence`: coverage 0.887 against 0.885 overall, 0.866 against 0.854 for nodes older than 10 years;
 widths grow by under 1% because most nodes lie within months of their tips. Rate calibration,
 $z = (\hat\mu - \mu)/\sigma_\mu$:
@@ -310,7 +310,7 @@ maximizes the Gaussian likelihood with the root free, $\eta = (B + \sqrt{B^2 + 4
 that stopped on a non-positive regression rate complete with rate errors 0.46, 0.03, 0.03, 0.76 and node RMSEs of
 0.18-0.66 years, in line with their sets.
 
-Gate, 240 validation sets, `--coalescent-opt`, estimated rate, `--keep-root`, against the prior-free seed:
+Gate, 240 validation sets, `--coalescent opt`, estimated rate, `--keep-root`, against the prior-free seed:
 
 | | prior-free seed, 2 rounds | init phase, 2 rounds |
 | --- | --- | --- |

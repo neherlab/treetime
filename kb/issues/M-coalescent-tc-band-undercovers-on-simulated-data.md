@@ -10,7 +10,7 @@
 
 ## Problem
 
-With `--coalescent-opt` and the default width of 2 standard deviations of $\ln T_c$ [packages/app-commands/src/commands/timetree/args.rs#L283-L291](../../packages/app-commands/src/commands/timetree/args.rs#L283-L291), about 95% under the Gaussian approximation, the band covers the simulated coalescent time scale $T_c$ in 63% of the runs at alignment length $L = 1000$. The numbers come from the timetree suite of [validation/README.md](../../validation/README.md), with the root kept and the true clock rate (column `tc_coverage`).
+With `--coalescent opt` and the default width of 2 standard deviations of $\ln T_c$ [packages/app-commands/src/commands/timetree/args.rs#L283-L291](../../packages/app-commands/src/commands/timetree/args.rs#L283-L291), about 95% under the Gaussian approximation, the band covers the simulated coalescent time scale $T_c$ in 63% of the runs at alignment length $L = 1000$. The numbers come from the timetree suite of [validation/README.md](../../validation/README.md), with the root kept and the true clock rate (column `tc_coverage`).
 
 The band is computed from the curvature of the coalescent likelihood in $\ln T_c$ with the node times held fixed (`fn skyline_confidence_band()` [packages/treetime/src/coalescent/skyline.rs#L254-L265](../../packages/treetime/src/coalescent/skyline.rs#L254-L265)). The `--help` text of `--coalescent-confidence` describes this curvature band, but it does not state that the uncertainty of the node times is left out.
 

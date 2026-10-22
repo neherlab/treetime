@@ -29,7 +29,7 @@ The offending value is the negative `numdate` of the root.
 ## Causal chain
 
 1. The clock model places the root before 1 CE, so its `numdate` is negative
-2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node ([packages/app-output/src/augur_node_data_refine.rs#L129](../../packages/app-output/src/augur_node_data_refine.rs#L129))
+2. Augur-node-data output writer calls `year_fraction_to_datestring(numdate)` for every node ([packages/app-output/src/augur_node_data_refine.rs#L128](../../packages/app-output/src/augur_node_data_refine.rs#L128))
 3. `year_fraction_to_datestring` delegates to `year_fraction_to_date` ([packages/treetime-utils/src/datetime/year_fraction.rs#L24-L26](../../packages/treetime-utils/src/datetime/year_fraction.rs#L24-L26))
 4. `year_fraction.fract()` returns `-0.59` (sign-preserving for negative inputs)
 5. `seconds_in_year.to_f64_exact() * fraction` produces a negative number of seconds
@@ -38,7 +38,7 @@ The offending value is the negative `numdate` of the root.
 ## Affected locations
 
 - [packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47](../../packages/treetime-utils/src/datetime/year_fraction.rs#L35-L47): `fn year_fraction_to_date`, the partial function. Its lint suppression of `Duration::from_secs_f64` names this panic
-- [packages/app-output/src/augur_node_data_refine.rs#L129](../../packages/app-output/src/augur_node_data_refine.rs#L129): the node-data writer, which converts every node date
+- [packages/app-output/src/augur_node_data_refine.rs#L128](../../packages/app-output/src/augur_node_data_refine.rs#L128): the node-data writer, which converts every node date
 - [packages/app-output/src/dates_table.rs](../../packages/app-output/src/dates_table.rs): `fn date_fields()`, the writer of the node dates table `timetree.dates.tsv` (in the default set of `timetree`), which converts every node date for its `date` column
 - [packages/app-backend/src/results/year_date.rs#L18](../../packages/app-backend/src/results/year_date.rs#L18): the run results of the app, which convert dates the same way
 - [packages/treetime-utils/src/datetime/year_fraction.rs#L28-L33](../../packages/treetime-utils/src/datetime/year_fraction.rs#L28-L33): `fn year_fraction_days_between()`, which the run results of the app use for date differences
@@ -46,7 +46,7 @@ The offending value is the negative `numdate` of the root.
 
 ## v0 reference behavior
 
-v0 does not crash. `datestring_from_numeric()` (`packages/legacy/treetime/treetime/utils.py:196-214`) catches the exception from `datetime_from_numeric` and falls back to `floor(numdate)` for the year and Python's euclidean `numdate % 1` (always non-negative) for the day-of-year, producing strings like `-1909-05-30`.
+v0 does not crash. `datestring_from_numeric()` (`packages/legacy/treetime/treetime/utils.py:196-214`) catches the exception from `datetime_from_numeric` and falls back to `floor(numdate)` for the year and Python's euclidean `numdate % 1` (always non-negative) for the day-of-year, producing strings like `-1910-05-30` for the numdate $-1909.59$ (year $\lfloor -1909.59 \rfloor = -1910$, day of year from the fraction $0.41$).
 
 ## Possible solutions
 
@@ -57,7 +57,7 @@ v0 does not crash. `datestring_from_numeric()` (`packages/legacy/treetime/treeti
 
 ### B -- semantics for negative numdates
 
-- **B1 (v0 parity):** replicate v0's fallback: `floor(numdate)` for year, euclidean remainder for day-of-year. Produces the same strings as v0 (e.g. `-1909-05-30`). Matches the porting default of exact parity.
+- **B1 (v0 parity):** replicate v0's fallback: `floor(numdate)` for year, euclidean remainder for day-of-year. Produces the same strings as v0 (e.g. `-1910-05-30` for $-1909.59$). Matches the porting default of exact parity.
 - **B2 (principled):** total signed arithmetic producing a genuine proleptic Gregorian date. Cleaner than v0's quirky `1900 + frac` reconstruction, but diverges from v0 output -- requires an intentional-change decision.
 - **B3 (omit):** emit `None`/omit the `date` field for non-representable numdates. Simplest; diverges from v0 which always emits a string.
 

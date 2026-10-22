@@ -6,7 +6,7 @@ When a coalescent model is set, v1's init phase infers the node times once under
 
 ## Impact
 
-With `--coalescent`, `--coalescent-opt` or `--coalescent-skyline`, the dates entering the first refinement round already include the prior, unlike v0.
+With any `--coalescent` prior (a fixed time scale, `opt` or `skyline`), the dates entering the first refinement round already include the prior, unlike v0.
 
 The init phase is decided (phase 1 of
 [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md));

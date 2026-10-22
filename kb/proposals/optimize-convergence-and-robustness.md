@@ -50,14 +50,14 @@ Per-edge Poisson term $\ell_{\text{indel}}(t) = k \ln(\mu t) - \mu t - \ln(k!)$ 
 
 ### Per-edge optimizers
 
-Two methods via `--opt-method`: Brent and Newton in $\sqrt{t}$ space. Default `brent` (matches v0). The Newton method keeps a slope bracket and bisects when a Newton step leaves it; the grid search serves the zero-boundary reconciliation. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
+Two methods via `--optimizer`: Brent and Newton in $\sqrt{t}$ space. Default `brent` (matches v0). The Newton method keeps a slope bracket and bisects when a Newton step leaves it; the grid search serves the zero-boundary reconciliation. See [optimize-newton-raphson-per-edge](../decisions/optimize-newton-raphson-per-edge.md).
 
 ## Implemented features
 
 | ID  | Feature                                               | Reference                                                                                                                                                                        |
 | --- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | I1  | Exponential damping (`--damping`, default 0.75)       | `apply_damping()` [optimize/iteration.rs#L7](../../packages/treetime/src/optimize/iteration.rs#L7)                                                                              |
-| I2  | Two per-edge methods (`--opt-method`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
+| I2  | Two per-edge methods (`--optimizer`)                 | [optimize/method_newton.rs](../../packages/treetime/src/optimize/method_newton.rs), [optimize/method_brent.rs](../../packages/treetime/src/optimize/method_brent.rs)             |
 | I3  | Grid search fallback (100-point, non-concave regions) | [optimize/dispatch.rs](../../packages/treetime/src/optimize/dispatch.rs)                                                                                                         |
 | I4  | `--model` wired to GTR dispatch                       | [optimize/pipeline.rs](../../packages/treetime/src/optimize/pipeline.rs)                                                                                                          |
 | I5  | Gap-aware initial guess (`edge_effective_length`)     | [partition/optimization_contribution.rs](../../packages/treetime/src/partition/optimization_contribution.rs)                                                                     |
@@ -179,7 +179,7 @@ v0 code: [packages/legacy/treetime/treetime/treeanc.py#L1307-L1309](../../packag
 
 ## Validation
 
-- Dense/sparse equivalence: compare optimized branch lengths between `--dense true` and `--dense false` on flu/h3n2/20 and sc2/2844. After P2 or P3, results should agree within floating-point tolerance.
+- Dense/sparse equivalence: compare optimized branch lengths between `--representation dense` and `--representation sparse` on flu/h3n2/20 and sc2/2844. After P2 or P3, results should agree within floating-point tolerance.
 - Convergence on sc2/2844: after P1 or P3, the variable position count should be non-decreasing across iterations and the likelihood should be approximately monotone.
 - v0 parity: compare v1 output with v0 on sc2/2844 (golden master). See [M-optimize-gm-per-branch-divergence](../issues/M-optimize-gm-per-branch-divergence.md).
 - No regression: flu/h3n2/20 should converge identically before and after changes.

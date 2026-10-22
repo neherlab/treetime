@@ -397,7 +397,7 @@ Each item states what goes wrong, shows it, and names the way to prevent it.
 Verbosity today controls `env_logger` only. `StageSink::report` is not filtered, so the bar appears whatever the verbosity. After unification a filter sits in front of every layer.
 
 ```
-treetime ancestral --quiet --tree=... --aln=...
+treetime ancestral --quiet --tree=... --alignment=...
 ```
 
 Today the bar still appears and diagnostics are suppressed. With a single filter, the progress event is dropped before the bar layer sees it, and the user loses the display by asking for fewer messages.

@@ -27,7 +27,7 @@ Root-finding without date information for optimize. Prerequisite for optimize re
 
 ### 2. Optimize reroot support
 
-Wire `--reroot`, `--reroot-tips`, and `--keep-root` into optimize. Two-phase BL optimization pattern (optimize -> reroot -> re-optimize). MinDev and tip-based methods only (date-dependent methods rejected at CLI).
+Wire `--reroot`, `--outgroup`, and `--keep-root` into optimize. Two-phase BL optimization pattern (optimize -> reroot -> re-optimize). MinDev and tip-based methods only (date-dependent methods rejected at CLI).
 
 - Proposal: [optimize-reroot-support.md](optimize-reroot-support.md)
 - Status: implemented. `--reroot`, `--outgroup`, and `--keep-root` are wired into optimize with the two-phase branch-length optimization pattern.

@@ -19,7 +19,7 @@ For datasets where the skyline shape deviates from a constant $T_c$, the interme
 
 ## Investigation needed
 
-- Run v0 and v1 on a dataset with population size variation (e.g. `flu/h3n2/200` with `--coalescent-skyline`)
+- Run v0 and v1 on a dataset with population size variation (e.g. `flu/h3n2/200` with `--coalescent skyline`)
 - Compare node times, the fitted skyline, and the iteration count to determine whether the differences are measurable
 - If measurable, decide whether v1's schedule is an intentional change or should match v0
 

@@ -117,7 +117,7 @@ Support is stored per edge: the Newick parse keys each value by the edge above i
 ### Support in Newick and Nexus outputs
 
 > [!IMPORTANT]
-> **Decision required.** v0 writes no support in its tree files (except the defective `clock` output), and v1 names every internal node. Options: keep writing none; write support as a comment in the annotated styles (`[&support=0.95]` with `--output-nwk-style beast`); or write the value as the label of internal nodes that had no name in the input, which conflicts with the `NODE_` names that the other outputs use to join on internal nodes.
+> **Decision required.** v0 writes no support in its tree files (except the defective `clock` output), and v1 names every internal node. Options: keep writing none; write support as a comment in the annotated styles (`[&support=0.95]` with `--newick-annotations beast`); or write the value as the label of internal nodes that had no name in the input, which conflicts with the `NODE_` names that the other outputs use to join on internal nodes.
 
 ### Label parsing
 

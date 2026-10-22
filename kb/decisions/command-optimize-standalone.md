@@ -21,12 +21,12 @@ v1 adds a dedicated `treetime optimize` subcommand (`fn run_optimize()` in [pack
 | `--tree`                   | (required)                                  | Input tree in Newick/Nexus/Phylip                          |
 | `--alignment`              | (required)                                  | FASTA alignment (supports compression)                     |
 | `--model`                  | `infer`                                     | GTR model (JC69, K80, F81, HKY85, T92, TN93, JTT92, infer) |
-| `--alphabet`               | auto                                        | Nucleotide or amino acid alphabet                          |
+| `--alphabet`               | `nuc`                                       | Nucleotide or amino acid alphabet                          |
 | `--representation`         | `auto`                                      | Dense or sparse sequence representation                    |
 | `--max-iter`               | 10                                          | Maximum outer iterations                                   |
 | `--tolerance`              | 0.1                                         | Convergence tolerance (log-likelihood delta)               |
 | `--output-all` (`-O`)      | (optional)                                  | Output directory for default outputs                       |
-| `--output-node-data` | `<dir>/annotated_tree.node-data.json` | Path for the augur-compatible node data JSON               |
+| `--output-node-data`       | `<dir>/optimize.node-data.json`             | Path for the augur-compatible node data JSON               |
 
 ### Algorithm
 

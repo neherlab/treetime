@@ -108,7 +108,7 @@ see
 The frozen counts mean the sampler is not chasing a rate that drifts with the trees its own edits
 produce, while $T_c$ still adapts. When the run carries no coalescent prior of its own the model
 still exists, built from a constant $T_c$ estimated by the same one-segment analytic solve
-`--coalescent-opt` uses.
+`--coalescent opt` uses.
 
 v0 instead falls back to a dummy rate $\kappa = \tfrac12 \lvert R\rvert c$ with
 $c = 2/(t_{\text{start}} - t_{\text{stop}})$ fixed at sweep start

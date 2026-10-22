@@ -87,7 +87,7 @@ Tests of `packages/treetime/src/timetree/__tests__/test_posterior_statistics.rs`
 
 ## Effect
 
-Measured with `timetree --time-marginal always` against the grid-only statistics, before the forward-posterior trim: root dates change by at most $1.5 \cdot 10^{-7}$ years and 90% bounds by at most $7 \cdot 10^{-5}$ years on `data/flu/h3n2/20`, `data/ebola/20`, and `data/flu/h3n2/20` with `--coalescent-opt`. On these runs the tails hold little mass. The difference grows where a posterior holds noticeable mass in a tail law, for example after a mass window cut near the peak or at a soft side close to the peak.
+Measured with `timetree --time-marginal always` against the grid-only statistics, before the forward-posterior trim: root dates change by at most $1.5 \cdot 10^{-7}$ years and 90% bounds by at most $7 \cdot 10^{-5}$ years on `data/flu/h3n2/20`, `data/ebola/20`, and `data/flu/h3n2/20` with `--coalescent opt`. On these runs the tails hold little mass. The difference grows where a posterior holds noticeable mass in a tail law, for example after a mass window cut near the peak or at a soft side close to the peak.
 
 The region now holds 90% of the mass on every posterior. Before, a posterior whose cells next to a zero-density point held more than 10% of its mass fell back to the bounds of its finite support, with less than 90% inside (grid $t = [0, 1, 2, 3, 4, 5]$, neg-logs $[1, 0, 5, 0.5, 0.5, \infty]$: $[0, 4]$ holding 0.874).
 

@@ -20,7 +20,7 @@ Only the `refresh_times()` site applies the flat factor. `fn refinement_round()`
 
 ## Evidence
 
-`data/ebola/20` converges in 3 rounds with no coalescent and 5 with `--coalescent-opt`, well inside the default `--max-iter`.
+`data/ebola/20` converges in 3 rounds with no coalescent and 5 with `--coalescent opt`, well inside the default `--max-iter`.
 
 > [!IMPORTANT]
 > **Investigation required.** No dataset has been shown to need more rounds because of the flat factor. Evidence to collect: the per-round `max_time_change` of the tracelog (`--output-tracelog`) on slowly converging datasets, for example `data/mpox/clade-ii/1000` and `data/sc2/4500`. A round count limited by the damping shows as a `max_time_change` that decays by a constant ratio near 0.5 per round.

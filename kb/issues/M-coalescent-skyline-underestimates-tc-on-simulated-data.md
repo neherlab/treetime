@@ -5,7 +5,7 @@
 
 ## Problem
 
-The timetree suite of [validation/README.md](../../validation/README.md) (variant `keep-skyline-fixed`: keep root, true clock rate, `--coalescent-skyline`) estimates $T_c$ about 30% below the simulated value at $L = 10^4$. The error has a systematic dip near the root.
+The timetree suite of [validation/README.md](../../validation/README.md) (variant `keep-skyline-fixed`: keep root, true clock rate, `--coalescent skyline`) estimates $T_c$ about 30% below the simulated value at $L = 10^4$. The error has a systematic dip near the root.
 
 ## Differences between v0 and v1
 

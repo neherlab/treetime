@@ -1,6 +1,6 @@
 # Reroot support for optimize command
 
-Add `--reroot`, `--reroot-tips`, and `--keep-root` to the `optimize` command. Uses the clock root search at a fixed rate of zero, with every tip at the same date (divergence-only, no dates required; [kb/algo/reroot.md](../algo/reroot.md)). Implements a two-phase branch-length optimization pattern around the reroot step, matching timetree's pipeline structure.
+Add `--reroot`, `--outgroup`, and `--keep-root` to the `optimize` command. Uses the clock root search at a fixed rate of zero, with every tip at the same date (divergence-only, no dates required; [kb/algo/reroot.md](../algo/reroot.md)). Implements a two-phase branch-length optimization pattern around the reroot step, matching timetree's pipeline structure.
 
 ## Available methods
 
@@ -9,7 +9,7 @@ The optimize command has no date information. Only divergence-based rooting meth
 | Method              | Valid                | Scoring                                                  |
 | ------------------- | -------------------- | -------------------------------------------------------- |
 | `MinDev`            | yes                  | rate-zero least squares -- minimize variance of root-to-tip distances |
-| `--reroot-tips=A,B` | yes                  | topology-only -- root at MRCA of named tips              |
+| `--outgroup=A,B` | yes                  | topology-only -- root at MRCA of named tips              |
 | `LeastSquares`      | no -- requires dates | --                                                       |
 | `Oldest`            | no -- requires dates | --                                                       |
 
@@ -23,7 +23,7 @@ Add to `TreetimeOptimizeArgs` (`commands/optimize/args.rs`):
 #[cfg_attr(feature = "clap", clap(flatten))]
 pub reroot: RerootArgs,
 
-#[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "reroot_tips"]))]
+#[cfg_attr(feature = "clap", clap(long, conflicts_with_all = ["reroot", "outgroup"]))]
 pub keep_root: bool,
 ```
 
@@ -61,7 +61,7 @@ When no reroot flags are given, steps 5-9 are skipped and behavior is identical 
 ## Validation
 
 - `optimize --reroot=min-dev` on flu/h3n2/20: root position changes, branch lengths re-optimized
-- `optimize --reroot-tips=A,B` on flu/h3n2/20: root at MRCA of named tips
+- `optimize --outgroup=A,B` on flu/h3n2/20: root at MRCA of named tips
 - `optimize --keep-root`: identical to current behavior
 - Default (no flags): identical to current behavior
 - `optimize --reroot=least-squares`: CLI error

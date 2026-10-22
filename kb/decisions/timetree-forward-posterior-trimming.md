@@ -82,7 +82,7 @@ where:
 
 A value passes a run when (1) the run succeeds, dates every node that the untrimmed 300-point run dates, and violates no parent-child edge that the untrimmed run does not violate, and (2) the 99th percentile of $e$ is at most that of the untrimmed run plus 0.01 and the largest $e$ at most the untrimmed largest plus 0.05.
 
-Runs: `data/ebola/362`, `data/mpox/clade-ii/500`, `data/sc2/4500` and `data/flu/h3n2/200` at the fixed rate that a default run estimates, with `--keep-root --time-marginal always --seed=1`; the simulated sets `const/rep00/L1000_mu0.0003` at its true rate (val-lo) and with `--coalescent-opt` and an estimated rate (val-lo-est). val-lo-est is judged by its fixed-rate twin, because its rate changes with the setting.
+Runs: `data/ebola/362`, `data/mpox/clade-ii/500`, `data/sc2/4500` and `data/flu/h3n2/200` at the fixed rate that a default run estimates, with `--keep-root --time-marginal always --seed=1`; the simulated sets `const/rep00/L1000_mu0.0003` at its true rate (val-lo) and with `--coalescent opt` and an estimated rate (val-lo-est). val-lo-est is judged by its fixed-rate twin, because its rate changes with the setting.
 
 ### Outcome at $\epsilon_\text{trim} = 10^{-9}$
 
@@ -100,7 +100,7 @@ Every run meets rule (1): it succeeds, dates every node that the untrimmed run d
 
 Flu passes because the posterior check of the spacing cap gives under-resolved posteriors a finer message (see above); its largest forward grid is 67 449 points (FFT of 147 456) against 7 876 points untrimmed, and the run still takes 1.2 s of CPU. With the cap off and the trim kept, flu fails (p99 0.504); with the trim off and the cap kept, flu (p99 0.554) and val-lo-est fail.
 
-Cost on one host, CPU time and peak memory: `data/sc2/4500` untrimmed 73.3 s and 953 MB, at $10^{-9}$ 21.7 s and 885 MB, at $10^{-7}$ 21.4 s and 868 MB; with `--coalescent-opt` 78.3 s and 1004 MB untrimmed, 26.2 s and 995 MB at $10^{-9}$; the simulated set `const/rep00/L10000_mu0.01` 56.2 s and 188 MB untrimmed, 9.0 s and 171 MB at $10^{-9}$.
+Cost on one host, CPU time and peak memory: `data/sc2/4500` untrimmed 73.3 s and 953 MB, at $10^{-9}$ 21.7 s and 885 MB, at $10^{-7}$ 21.4 s and 868 MB; with `--coalescent opt` 78.3 s and 1004 MB untrimmed, 26.2 s and 995 MB at $10^{-9}$; the simulated set `const/rep00/L10000_mu0.01` 56.2 s and 188 MB untrimmed, 9.0 s and 171 MB at $10^{-9}$.
 
 ## Results
 

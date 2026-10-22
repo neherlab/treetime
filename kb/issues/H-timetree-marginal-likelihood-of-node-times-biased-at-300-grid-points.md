@@ -4,7 +4,7 @@ The clock rate step reads the rate from the log marginal likelihood of node time
 
 ## Evidence
 
-Three sets of the simulated validation subset (`const` coalescent), log marginal likelihood against the number of message grid points and the mass window `EPS`, once at the reference rate without a prior, and once as the first evaluation of the command with `--coalescent-opt` and an estimated rate:
+Three sets of the simulated validation subset (`const` coalescent), log marginal likelihood against the number of message grid points and the mass window `EPS`, once at the reference rate without a prior, and once as the first evaluation of the command with `--coalescent opt` and an estimated rate:
 
 | Set, evaluation | 300 / $5 \cdot 10^{-4}$ | 600 | 1200 | 2400 | 4800 / $5 \cdot 10^{-4}$ | 4800 / $10^{-6}$ | Gap 300 to 4800 / $10^{-6}$ |
 | --- | --- | --- | --- | --- | --- | --- | --- |

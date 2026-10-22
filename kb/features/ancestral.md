@@ -83,8 +83,8 @@
 - [x] `--annotation` GFF3 annotation (CDS coordinates for node data; GenBank: [kb/issues/M-ancestral-genbank-annotation-unsupported.md](../issues/M-ancestral-genbank-annotation-unsupported.md))
 - [x] `--aa-model` AA substitution model (infer default, jtt92 opt-in)
 - [x] `--aa-root-sequence` per-CDS root/reference override
-- [x] `--output-aa-sequences` per-CDS reconstructed AA FASTA output
+- [x] `--output-translations` per-CDS reconstructed AA FASTA output
 - [x] Optional ambiguity report as IUPAC codes in the reconstructed FASTA outputs and the node sequences of augur node data (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))
 - [ ] VCF input with `--vcf-reference` ([kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))
-- [ ] `--aln` legacy option (parsed but not wired)
+- [x] Alignment input `--alignment` (v0 `--aln`)
 - [ ] Tree inference from alignment (help text mentions it, not implemented)

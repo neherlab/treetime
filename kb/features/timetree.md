@@ -166,4 +166,4 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] `--report-ambiguous` (keep mutations from or to `N`/`X` in written mutation lists; omitted by default, as in v0; see [kb/decisions/ancestral-marginal-tip-reconstruction-and-imputation.md](../decisions/ancestral-marginal-tip-reconstruction-and-imputation.md))
 - [x] `--seed` (see [kb/decisions/cli-seed-on-commands-with-random-steps.md](../decisions/cli-seed-on-commands-with-random-steps.md))
 - [x] `--gen-per-year` (generations per year, default 50.0, only with `--coalescent`; reports effective population size `N_e = Tc * gen_per_year` to the log for the constant, opt, and skyline modes, and to the coalescent output files above)
-- [ ] `--aln` legacy option
+- [x] Alignment input `--alignment` (v0 `--aln`)

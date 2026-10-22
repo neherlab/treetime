@@ -15,7 +15,7 @@ v0 behaves the same way: a leaf without date constraint and without child messag
 ## Model consequence
 
 > [!IMPORTANT]
-> **Investigation required.** The size of the effect. The parent's merger term counts one more merging lineage than the lineage counts hold, and the date of the undated leaf ignores the survival of its branch. Measure on a dataset with a coalescent prior (`--coalescent-opt`) and a few dates removed: the dates and 90% intervals of the undated leaves and their parents, and the fitted $T_c$, with the parent counting only children that are not bad branches, against the current output.
+> **Investigation required.** The size of the effect. The parent's merger term counts one more merging lineage than the lineage counts hold, and the date of the undated leaf ignores the survival of its branch. Measure on a dataset with a coalescent prior (`--coalescent opt`) and a few dates removed: the dates and 90% intervals of the undated leaves and their parents, and the fitted $T_c$, with the parent counting only children that are not bad branches, against the current output.
 
 ## Fix direction
 
