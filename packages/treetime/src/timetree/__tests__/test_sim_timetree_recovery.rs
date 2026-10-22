@@ -129,12 +129,17 @@ mod tests {
         .collect::<BTreeMap<_, _>>();
       let covered = matched
         .iter()
-        .map(|(&true_node, node)| {
+        .map(|(&true_node, node)| -> Result<bool, Report> {
+          let name = &output.names[*node];
           let interval = intervals
             .get(node)
-            .ok_or_else(|| make_report!("Node {} has no confidence interval", &output.names[*node]))?;
+            .ok_or_else(|| make_report!("Node {name} has no confidence interval"))?;
+          let (lower, upper) = (interval.lower, interval.upper);
+          if !(lower.is_finite() && upper.is_finite() && lower <= upper) {
+            return make_error!("Node {name} has the invalid confidence interval [{lower}, {upper}]");
+          }
           let date = case.tree.date(true_node);
-          Ok::<_, Report>(interval.lower <= date && date <= interval.upper)
+          Ok(lower <= date && date <= upper)
         })
         .process_results(|covered| covered.filter(|&covered| covered).count())?;
       Ok(covered.to_f64_exact() / matched.len().to_f64_exact() - CI_FRACTION)
