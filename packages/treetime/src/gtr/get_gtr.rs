@@ -195,7 +195,7 @@ impl GtrModel {
     }
   }
 
-  fn frequencies(&self) -> Option<&Array1<f64>> {
+  pub(crate) fn frequencies(&self) -> Option<&Array1<f64>> {
     match self {
       Self::F81(F81Params { pi, .. }) | Self::HKY85(HKY85Params { pi, .. }) | Self::TN93(TN93Params { pi, .. }) => {
         pi.as_ref()
@@ -242,6 +242,28 @@ pub enum GtrModelName {
   #[deser(rename = "tn93")]
   TN93,
   Jtt92,
+}
+
+impl GtrModelName {
+  pub const fn alphabet_requirement(self) -> Option<AlphabetRequirement> {
+    match self {
+      Self::K80 | Self::HKY85 | Self::T92 | Self::TN93 => Some(AlphabetRequirement {
+        alphabet: AlphabetName::Nuc,
+        reason: "it sets rates between nucleotides",
+      }),
+      Self::Jtt92 => Some(AlphabetRequirement {
+        alphabet: AlphabetName::AaNoStop,
+        reason: "its matrix holds the 20 amino acids without the stop '*'",
+      }),
+      Self::Infer | Self::JC69 | Self::F81 => None,
+    }
+  }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AlphabetRequirement {
+  pub alphabet: AlphabetName,
+  pub reason: &'static str,
 }
 
 fn check_frequency_count(pi: &Array1<f64>, alphabet: AlphabetName) -> Result<(), Report> {
