@@ -283,12 +283,6 @@ fn convolution_function_function_fine(
     return guarded_empty_result("convolution", a_domain, b_domain);
   }
 
-  if a.len() == 1 && b.len() == 1 {
-    return Ok(Distribution::point(
-      a.x_min() + b.x_min(),
-      a.values()[0] + b.values()[0],
-    ));
-  }
   let amplitude = a.amplitude() + b.amplitude();
 
   let (pa, peak_a) = to_peak_normalized_plain(a.y());
