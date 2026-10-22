@@ -58,6 +58,17 @@ mod tests {
 
   const UNARY_TREE: &str = "((A:0.01,B:0.01,C:0.01)P:0.01,(D:0.01)S:0.01)root;";
 
+  const UNARY_FASTA: &str = indoc! {r#"
+    >A
+    ACGTACGTACGTACGTACGTACGT
+    >B
+    ACGTACGAACGTACGTACGTACGT
+    >C
+    ACGTACGTACGTACCTACGTACGT
+    >D
+    ACGTTCGTACGTACGTACGTACGA
+  "#};
+
   const TIME_AFTER_EVERY_SAMPLE: f64 = 2100.0;
 
   const RELAX: [f64; 2] = [1.0, 1.0];
@@ -216,6 +227,34 @@ mod tests {
     assert!(outcome.topology.resolved_nodes() == 0 && outcome.topology.changed());
     let expected: BTreeMap<GraphEdgeKey, f64> = state.graph.get_edges().map(|edge| (edge.key(), 1.0)).collect();
     assert_eq!(expected, state.gammas);
+    Ok(())
+  }
+
+  #[test]
+  fn test_round_polytomy_resolution_keeps_a_dated_single_child_node_at_its_date() -> Result<(), Report> {
+    let (state, context) = helpers::create_state(
+      UNARY_TREE,
+      UNARY_FASTA,
+      &btreemap! {
+        "A".to_owned() => Some(DateConstraint::exact(2010.0)),
+        "B".to_owned() => Some(DateConstraint::exact(2012.0)),
+        "C".to_owned() => Some(DateConstraint::exact(2014.0)),
+        "D".to_owned() => Some(DateConstraint::exact(2016.0)),
+        "S".to_owned() => Some(DateConstraint::exact(2008.0)),
+      },
+    )?;
+    let state = helpers::without_room_above_the_polytomy(state);
+
+    let (state, _) = helpers::refine(&context, state, None)?;
+
+    let s_key = find_node_key_by_name(&state.graph, &state.names, "S").expect("dated node S must remain");
+    assert_eq!(
+      1,
+      state.graph.get_node(s_key).expect("Node must exist").outbound().len()
+    );
+    helpers::assert_state_matches_graph(&state);
+    let time = state.time_inference.posterior[&s_key].time.expect("S must have a time");
+    pretty_assert_abs_diff_eq!(2008.0, time, epsilon = 1e-9);
     Ok(())
   }
 
@@ -382,16 +421,7 @@ mod tests {
     pub(super) fn create_unary_state() -> Result<(RoundState, TimetreeContext), Report> {
       create_state(
         UNARY_TREE,
-        indoc! {r#"
-          >A
-          ACGTACGTACGTACGTACGTACGT
-          >B
-          ACGTACGAACGTACGTACGTACGT
-          >C
-          ACGTACGTACGTACCTACGTACGT
-          >D
-          ACGTTCGTACGTACGTACGTACGA
-        "#},
+        UNARY_FASTA,
         &btreemap! {
           "A".to_owned() => Some(DateConstraint::exact(2010.0)),
           "B".to_owned() => Some(DateConstraint::exact(2012.0)),

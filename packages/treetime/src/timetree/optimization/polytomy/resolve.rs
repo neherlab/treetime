@@ -1,3 +1,4 @@
+use crate::clock::date_constraints::DateConstraints;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::NodeTimes;
@@ -30,6 +31,7 @@ pub(crate) fn resolve_polytomies(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::Rng,
   node_times: &NodeTimes,
+  date_constraints: &DateConstraints,
 ) -> Result<PolytomyResolution, Report> {
   let polytomy_keys = find_polytomy_nodes(&graph);
   if polytomy_keys.is_empty() {
@@ -62,9 +64,9 @@ pub(crate) fn resolve_polytomies(
     merger_times.extend(created);
   }
 
-  let merges = remove_single_child_nodes(&mut graph, &mut branch_lengths)?;
+  let merges = remove_undated_single_child_nodes(&mut graph, &mut branch_lengths, date_constraints)?;
   if !merges.is_empty() {
-    debug!("Removed {} obsolete single-child nodes", merges.len());
+    debug!("Removed {} undated single-child nodes", merges.len());
   }
 
   graph.build()?;
@@ -229,16 +231,18 @@ fn inferred_time(node_times: &NodeTimes, node_key: GraphNodeKey) -> Result<f64, 
   Ok(time)
 }
 
-fn remove_single_child_nodes(
+fn remove_undated_single_child_nodes(
   graph: &mut Graph,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  date_constraints: &DateConstraints,
 ) -> Result<Vec<EdgeMergeInfo>, Report> {
   let mut merges = vec![];
 
   loop {
     let obsolete_key = graph.get_nodes().into_iter().find_map(|node| {
       let is_trivial = node.inbound().len() == 1 && node.outbound().len() == 1;
-      is_trivial.then_some(node.key())
+      let is_dated = date_constraints.date_constraint(node.key()).is_some();
+      (is_trivial && !is_dated).then_some(node.key())
     });
 
     let Some(node_key) = obsolete_key else {

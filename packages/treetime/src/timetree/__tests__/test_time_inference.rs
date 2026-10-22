@@ -162,6 +162,7 @@ mod tests {
       &PiecewiseConstantFn::new(array![], array![POLYTOMY_MERGER_RATE]),
       &mut get_random_number_generator(POLYTOMY_SEED),
       &times,
+      &constraints,
     )?;
     let merger = *merger_times.keys().exactly_one().expect("the seed resolves one merger");
     let mut inference = empty_time_inference(&graph);

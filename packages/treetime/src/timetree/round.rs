@@ -157,6 +157,7 @@ fn refine_topology(
     merger_rate,
     rng,
     &node_times,
+    &inputs.context.date_constraints,
   )
   .wrap_err("Polytomy resolution failed")?;
   if merger_times.is_empty() && merges.is_empty() {

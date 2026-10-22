@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::date_constraints::DateConstraints;
   use crate::test_utils::jc69_input_branch_model;
-  use crate::test_utils::{find_node_key_by_name, point_date_constraints};
+  use crate::test_utils::{find_node_key_by_name, parent_edge_key, point_date_constraints};
   use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
   use crate::timetree::inference::result::NodeTimes;
   use crate::timetree::optimization::polytomy::resolve::{
@@ -211,6 +212,47 @@ mod tests {
   }
 
   #[test]
+  fn test_resolve_polytomies_keeps_a_dated_single_child_node_and_removes_an_undated_one() -> Result<(), Report> {
+    let nwk_parsed = nwk_read(b"(((A:0.1,B:0.1,C:0.1)P:0.05,(D:0.1)U:0.05)X:0.05,(E:0.1)S:0.05)root;".as_slice())?;
+    let mut names = nwk_parsed.names.clone();
+    let graph = nwk_parsed.graph;
+    let branch_lengths = graph.get_edges().map(|edge| (edge.key(), Some(0.0))).collect();
+    let mut node_times = undated(&graph);
+    for (name, time) in [
+      ("A", 2020.0),
+      ("B", 2019.0),
+      ("C", 2018.0),
+      ("D", 2017.0),
+      ("E", 2016.0),
+      ("P", 1990.0),
+      ("U", 2000.0),
+      ("X", 1980.0),
+      ("S", 1990.0),
+      ("root", 1970.0),
+    ] {
+      set_time(&graph, &names, &mut node_times, name, time)?;
+    }
+    let dates = point_date_constraints(&graph, &names, &[("U", 2000.0)]);
+    let mut rng = get_random_number_generator(1);
+
+    let (graph, _) = resolve_with_dates(graph, &mut names, branch_lengths, &mut node_times, &dates, &mut rng)?;
+
+    let single_child_nodes: BTreeSet<String> = graph
+      .get_nodes()
+      .filter(|node| node.inbound().len() == 1 && node.outbound().len() == 1)
+      .map(|node| names[node.key()].to_owned())
+      .collect();
+    assert_eq!(btreeset! { "U".to_owned() }, single_child_nodes);
+    let key = |name: &str| find_node_key_by_name(&graph, &names, name).ok_or_else(|| make_report!("{name} not found"));
+    assert_eq!(
+      btreeset! { "D".to_owned() },
+      leaf_names_under(&graph, &names, key("U")?)
+    );
+    assert_eq!(key("root")?, graph[parent_edge_key(&graph, key("E")?)].source());
+    Ok(())
+  }
+
+  #[test]
   fn test_require_internal_node_times_accepts_a_fully_dated_tree() -> Result<(), Report> {
     let (graph, _names, node_times, _branch_lengths) = polytomy_tree()?;
     require_internal_node_times(&graph, &node_times)
@@ -364,6 +406,17 @@ mod tests {
       times: &mut NodeTimes,
       rng: &mut dyn Rng,
     ) -> Result<(Graph, usize), Report> {
+      resolve_with_dates(graph, names, branch_lengths, times, &DateConstraints::default(), rng)
+    }
+
+    pub(super) fn resolve_with_dates(
+      graph: Graph,
+      names: &mut NodeNames,
+      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      times: &mut NodeTimes,
+      dates: &DateConstraints,
+      rng: &mut dyn Rng,
+    ) -> Result<(Graph, usize), Report> {
       let merger_rate = PiecewiseConstantFn::new(array![], array![TEST_MERGER_RATE]);
       let PolytomyResolution {
         graph, merger_times, ..
@@ -377,6 +430,7 @@ mod tests {
         &merger_rate,
         rng,
         times,
+        dates,
       )?;
       let created = merger_times.len();
       times.extend(merger_times.into_iter().map(|(key, time)| (key, Some(time))));
