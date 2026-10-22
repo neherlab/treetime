@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { parseArgs } from "node:util";
 
 import { zRunList, zRunRecord, zRunsFilesResponse, zUploadedInput, zVersionInfo } from "@neherlab/app-contracts";
-import createBackendModule from "@neherlab/app-wasm";
-import type * as z from "zod";
+import * as z from "zod";
 
-const DATASET = join(import.meta.dirname, "../../data/flu/h3n2/20");
+import type createModule from "./pkg/app_wasm.js";
+
+const PACKAGE = resolve("packages/app-wasm/pkg");
+
+const DATASET = resolve("data/flu/h3n2/20");
 
 const JSON_HEADERS: Header[] = [["content-type", "application/json"]];
 
@@ -14,9 +18,24 @@ const BYTES_HEADERS: Header[] = [["content-type", "application/octet-stream"]];
 
 const ZIP_SIGNATURE = "PK";
 
-const wasm = await createBackendModule();
+const KEEP_ALIVE_INTERVAL_MS = 1000;
 
-const jobWasm = await createBackendModule();
+const moduleSchema = z.object({
+  // oxlint-disable-next-line unicorn/no-instanceof-builtins -- the imported module belongs to this realm, so instanceof Function is reliable
+  default: z.custom<ModuleFactory>((value) => value instanceof Function),
+});
+
+const { jobs } = parseArgs({ options: { jobs: { type: "string" } } }).values;
+
+const threads = jobs === undefined ? undefined : Number(jobs);
+
+assert.ok(threads === undefined || (Number.isSafeInteger(threads) && threads > 0), `--jobs ${String(jobs)}`);
+
+const createSingleModule = await moduleFactory("st");
+
+const wasm = await createSingleModule();
+
+const singleJobWasm = threads === undefined ? await createSingleModule() : undefined;
 
 const backend = new wasm.Backend();
 
@@ -193,7 +212,8 @@ async function driveJob(
   inputPaths: string[],
   change: (path: string, bytes: Uint8Array) => Uint8Array = (_path, bytes) => bytes,
 ): Promise<{ completed: boolean; files: string[] }> {
-  const job = new jobWasm.Job(jobJson, 1);
+  const jobWasm = singleJobWasm ?? (await threadedJobModule());
+  const job = new jobWasm.Job(jobJson, threads ?? 1);
 
   for (const path of inputPaths) {
     const reader = backend.readRunInput(id, path);
@@ -207,9 +227,11 @@ async function driveJob(
     }
   }
 
-  const outcome = await job.run((event) => {
-    backend.appendRunEvent(id, event);
-  });
+  const outcome = await keepingNodeAlive(
+    job.run((event) => {
+      backend.appendRunEvent(id, event);
+    }),
+  );
 
   const files = job.outputFiles();
 
@@ -226,6 +248,28 @@ async function driveJob(
   job.free();
 
   return { completed: backend.completeRun(id, outcome), files };
+}
+
+async function keepingNodeAlive<T>(pending: Promise<T>): Promise<T> {
+  const timer = setInterval(() => undefined, KEEP_ALIVE_INTERVAL_MS);
+
+  try {
+    return await pending;
+  } finally {
+    clearInterval(timer);
+  }
+}
+
+async function threadedJobModule(): Promise<JobModule> {
+  const createThreadedModule = await moduleFactory("mt");
+
+  Object.assign(globalThis, { treetimeJobs: threads });
+
+  return createThreadedModule();
+}
+
+async function moduleFactory(build: "st" | "mt"): Promise<ModuleFactory> {
+  return moduleSchema.parse(await import(join(PACKAGE, build, "app_wasm.js"))).default;
 }
 
 function readAll(reader: { chunk(): Uint8Array | undefined }): Uint8Array[] {
@@ -293,6 +337,10 @@ function encode(value: unknown): Uint8Array {
 function text(reply: Reply): string {
   return new TextDecoder().decode(reply.body);
 }
+
+type ModuleFactory = typeof createModule;
+
+type JobModule = Awaited<ReturnType<ModuleFactory>>;
 
 type Header = [name: string, value: string];
 

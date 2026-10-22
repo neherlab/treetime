@@ -298,6 +298,16 @@ test-list-rs *args:
 test-wasm: _js (build-wasm "dev")
     bun packages/app-wasm/smoke.ts
 
+# Smoke test of the threaded WebAssembly back end in Node: the runs of `test-wasm` computed by the threaded module with 2 and with 8 threads; slow, outside every gate
+[group("test")]
+[script]
+test-wasm-mt: _js (build-wasm "dev") (build-wasm-mt "dev")
+    # Bun does not start the pthread workers of Emscripten, so Node runs a bundle of the smoke test
+    smoke={{ quote(build_dir / "wasm-smoke" / "smoke.mjs") }}
+    bun build packages/app-wasm/smoke.ts --target=node --format=esm --outfile="${smoke}" >/dev/null
+    node "${smoke}" --jobs=2
+    node "${smoke}" --jobs=8
+
 # TypeScript tests (bun test, one isolated worker per file)
 [group("test")]
 test-ts: _js
