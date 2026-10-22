@@ -36,6 +36,19 @@ mod tests {
   }
 
   #[test]
+  fn test_branch_lengths_exact_rejects_a_length_that_overflows() {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(2.0).unwrap();
+    let durations =
+      btreemap! { tree.root_inner => 0.25, tree.root_c => f64::MAX, tree.inner_a => 0.0, tree.inner_b => 3.0 };
+    let result = exact(&durations, &model);
+    assert_error!(
+      result,
+      "Branch length of edge 1 is not finite: substitution rate (mu) 2e0 times duration 1.7976931348623157e308"
+    );
+  }
+
+  #[test]
   fn test_branch_lengths_realized_counts_differing_sites_per_site() {
     let tree = three_tip_tree();
     let sequences = btreemap! {

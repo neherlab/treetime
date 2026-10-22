@@ -61,6 +61,8 @@ impl SubstitutionModel {
     if !pi.iter().all(|value| value.is_finite() && *value > 0.0) {
       return make_error!("Equilibrium frequencies (pi) must be finite and positive, got {pi}");
     }
+    let w_max = max_or(&w.flatten(), 0.0);
+    let w = if w_max > 0.0 { w / w_max } else { w };
     let average_rate = pi.dot(&w.dot(&pi));
     if !(average_rate.is_finite() && average_rate > 0.0) {
       return make_error!("Average rate pi^T w pi of the exchangeabilities (w) must be positive, got {average_rate}");
@@ -130,8 +132,15 @@ pub(crate) struct Jump {
 
 impl Jump {
   fn new(state: usize, pi: &Array1<f64>, w: &Array2<f64>, mu: f64) -> Result<Option<Self>, Report> {
-    let rates = mu * &w.row(state) * pi;
+    let rates = mu * (&w.row(state) * pi);
     let exit_rate = rates.sum();
+    if !exit_rate.is_finite() {
+      return make_error!(
+        "Rate out of state {} is not finite: substitution rate (mu) {mu:e} times the exchangeabilities {} weighted by the equilibrium frequencies (pi) {pi}",
+        NUCLEOTIDES[state],
+        w.row(state)
+      );
+    }
     if exit_rate <= 0.0 {
       return Ok(None);
     }

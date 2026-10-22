@@ -20,7 +20,14 @@ pub fn exact(
     .iter()
     .map(|(&edge, &duration)| {
       validate_edge_duration(edge, duration)?;
-      Ok((edge, model.mu() * duration))
+      let length = model.mu() * duration;
+      if !length.is_finite() {
+        return make_error!(
+          "Branch length of edge {edge} is not finite: substitution rate (mu) {:e} times duration {duration:e}",
+          model.mu()
+        );
+      }
+      Ok((edge, length))
     })
     .collect()
 }

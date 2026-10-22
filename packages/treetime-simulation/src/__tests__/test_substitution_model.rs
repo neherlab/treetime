@@ -45,6 +45,26 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
+  #[case::smallest_subnormal(5e-324)]
+  #[case::largest_finite(    f64::MAX)]
+  #[trace]
+  fn test_substitution_model_scales_exchangeabilities_of_any_magnitude_to_unit_average_rate(#[case] value: f64) {
+    let expected = SubstitutionModel::jc69(1.0).unwrap();
+    let actual = SubstitutionModel::new(uniform_pi(), off_diagonal_ones() * value, 1.0).unwrap();
+    assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_substitution_model_rejects_a_rate_out_of_a_state_that_overflows() {
+    let result = SubstitutionModel::f81(array![0.1, 0.2, 0.3, 0.4], f64::MAX);
+    assert_error!(
+      result,
+      "Rate out of state A is not finite: substitution rate (mu) 1.7976931348623157e308 times the exchangeabilities [0, 1.4285714285714286, 1.4285714285714286, 1.4285714285714286] weighted by the equilibrium frequencies (pi) [0.1, 0.2, 0.29999999999999993, 0.4]"
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
   #[case::pi_wrong_length(     array![0.5, 0.5],                 off_diagonal_ones(),   1.0,           "Equilibrium frequencies (pi) need 4 entries for the states A, C, G, T, got 2")]
   #[case::pi_zero_entry(       array![0.5, 0.0, 0.25, 0.25],     off_diagonal_ones(),   1.0,           "Equilibrium frequencies (pi) must be finite and positive, got [0.5, 0, 0.25, 0.25]")]
   #[case::pi_negative_entry(   array![0.5, -0.1, 0.3, 0.3],      off_diagonal_ones(),   1.0,           "Equilibrium frequencies (pi) must be finite and positive, got [0.5, -0.1, 0.3, 0.3]")]
