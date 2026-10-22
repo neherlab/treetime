@@ -142,8 +142,8 @@ mod tests {
     let result = validate(
       json!({
         "steps": [
-          { "name": "a", "ancestral": { "tree": "in.nwk", "output_tree_nwk": "shared.nwk" } },
-          { "name": "b", "ancestral": { "tree": "in.nwk", "output_tree_nwk": "shared.nwk" } }
+          { "name": "a", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk", "output_tree_nwk": "shared.nwk" } },
+          { "name": "b", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk", "output_tree_nwk": "shared.nwk" } }
         ]
       }),
       None,
@@ -160,7 +160,7 @@ mod tests {
       json!({
         "steps": [
           { "name": "a", "ancestral": { "tree": "in.nwk", "alignment": ["x.fasta", "y.fasta"], "output_sequences": "seq.{alignment}.fasta" } },
-          { "name": "b", "ancestral": { "tree": "in.nwk", "output_sequences": "seq.2.fasta" } }
+          { "name": "b", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk", "output_sequences": "seq.2.fasta" } }
         ]
       }),
       None,
@@ -176,7 +176,7 @@ mod tests {
     let result = validate(
       json!({
         "steps": [
-          { "name": "a", "ancestral": { "tree": "same.nwk", "output_tree_nwk": "same.nwk" } }
+          { "name": "a", "ancestral": { "alignment": ["a.fasta"], "tree": "same.nwk", "output_tree_nwk": "same.nwk" } }
         ]
       }),
       None,
@@ -213,7 +213,7 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::tree(        json!({ "ancestral": { "tree": "-", "output_model": "g.json" } }))]
+  #[case::tree(        json!({ "ancestral": { "alignment": ["a.fasta"], "tree": "-", "output_model": "g.json" } }))]
   #[case::remove_file( json!({ "prune": { "tree": "in.nwk", "remove_file": "-", "output_tree_nwk": "out.nwk" } }))]
   #[trace]
   fn test_safety_stdio_input_rejected(#[case] step: Value) {
@@ -233,7 +233,7 @@ mod tests {
         "output_all": "tmp/pipeline-safety-absent",
         "steps": [
           { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
-          { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
+          { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nwk }}" } }
         ]
       }),
       Some(&btreeset! { "anc".to_owned() }),
@@ -251,7 +251,7 @@ mod tests {
         "output_all": "tmp/pipeline-safety-absent",
         "steps": [
           { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
-          { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
+          { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nwk }}" } }
         ]
       }),
       None,

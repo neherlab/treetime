@@ -81,7 +81,7 @@ mod tests {
   #[case::model_with_parsimony_and_aa(     &["--method-anc", "parsimony", "--model", "jc69", "--translations", "{cds}.fasta"], Some((format!("--model {PARSIMONY_MODEL}"),  ["model", "method_anc"])))]
   #[case::representation_with_parsimony(   &["--method-anc", "parsimony", "--representation", "auto"],        Some((format!("--representation {ANCESTRAL_MARGINAL}"),                  ["representation", "method_anc"])))]
   #[case::threshold_with_parsimony(        &["--method-anc", "parsimony", "--ambiguity-threshold", "0.1"],    Some((format!("--ambiguity-threshold {ANCESTRAL_MARGINAL}"),             ["ambiguity_threshold", "method_anc"])))]
-  #[case::threshold_with_parsimony_and_aa( &["--method-anc", "parsimony", "--ambiguity-threshold", "0.1", "--translations", "{cds}.fasta"], None)]
+  #[case::threshold_with_parsimony_and_aa( &["--method-anc", "parsimony", "--ambiguity-threshold", "0.1", "--translations", "{cds}.fasta", "--cds-selection", "S"], None)]
   #[case::representation_with_marginal(    &["--representation", "sparse", "--ambiguity-threshold", "0.1", "--model", "infer"], None)]
   #[case::model_params_without_model(      &["--model-params", "mu=1"],                                       Some((o!("--model-params needs a named --model: infer fits the model from the data and takes no parameters, but got 'mu=1'"), ["model", "model_params"])))]
   #[case::parsimony_with_defaults(         &["--method-anc", "parsimony"],                                    None)]

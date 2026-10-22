@@ -1,4 +1,4 @@
-use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::branch_lengths::{BranchLengthArgs, indel_policy};
 use crate::commands::shared::config::ConfigArgs;
@@ -105,6 +105,7 @@ impl TryFrom<TreetimeOptimizeArgsRaw> for TreetimeOptimizeArgs {
       jobs_args: _,
     } = raw;
     let tree = tree.ok_or_else(|| missing_required_args::<TreetimeOptimizeArgsRaw>(&["tree"]))?;
+    check_required_alignment_paths(&alignment)?;
     check_partition_rates(partition_rates, alignment.len())?;
     let dense = representation_dense(representation);
     check_sparse_only_settings(dense, no_merge_shared_mutations, no_hoist_reversions)?;

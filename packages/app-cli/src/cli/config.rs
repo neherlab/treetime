@@ -254,6 +254,7 @@ mod tests {
         &path,
         indoc! {r"
         tree: from-config.nwk
+        alignment: [a.fasta]
       "},
       )
       .unwrap();
@@ -359,6 +360,7 @@ mod tests {
         indoc! {r#"
           "$schema": "https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json"
           tree: from-config.nwk
+          alignment: [a.fasta]
         "#},
       )
       .unwrap();
@@ -591,6 +593,9 @@ mod tests {
       let raw = TreetimeAncestralArgsRaw {
         tree: TreeArgs {
           tree: Some("tree.nwk".into()),
+        },
+        alignment: AlignmentArgs {
+          alignment: vec!["a.fasta".into()],
         },
         ..Default::default()
       };

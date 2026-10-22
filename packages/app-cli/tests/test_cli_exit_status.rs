@@ -260,7 +260,8 @@ mod tests {
       Run {
         code: Some(2),
         stdout: String::new(),
-        stderr: "error: the following required arguments were not provided:\n  --alignment <FILEPATH>\n".to_owned(),
+        stderr: "error: --alignment is required: pass one or more FASTA files, or '-' to read standard input\n"
+          .to_owned(),
       },
       run
     );
@@ -269,12 +270,12 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::generated_output_overwrites_input(
-    "output_all: out\nsteps:\n  - name: anc\n    ancestral:\n      tree: out/anc/ancestral.nwk\n",
+    "output_all: out\nsteps:\n  - name: anc\n    ancestral:\n      alignment: [a.fasta]\n      tree: out/anc/ancestral.nwk\n",
     "error: in pipeline step `anc`: --tree 'DIR/out/anc/ancestral.nwk' names the same file as the output --output-all \
      'DIR/out/anc/ancestral.nwk': the run would overwrite its own input\n"
   )]
   #[case::step_without_outputs(
-    "steps:\n  - name: anc\n    ancestral:\n      tree: out/anc/ancestral.nwk\n",
+    "steps:\n  - name: anc\n    ancestral:\n      alignment: [a.fasta]\n      tree: out/anc/ancestral.nwk\n",
     "error: in pipeline step `anc`: the step writes no outputs; set the top-level `output_all` key of the pipeline, \
      pass `treetime pipeline --output-all <dir>`, or name output files in the step\n"
   )]

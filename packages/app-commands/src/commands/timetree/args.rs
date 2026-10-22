@@ -189,7 +189,7 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
       keep_root,
       dating: timetree_dating(max_iter, keep_polytomies, confidence, max_grid_points, coalescent),
       outputs: timetree_outputs(output, output_selection, alignment_count, output_settings, file_paths),
-      sequences: timetree_sequence_inputs(alignment, alphabet_args, gap_fill_args, missing_sequences),
+      sequences: timetree_sequence_inputs(alignment, alphabet_args, gap_fill_args, missing_sequences)?,
       positions: PositionBase::from_zero_based(zero_based),
       tip_sequences: timetree_tip_sequences(tip_sequences, impute_missing_data),
       seed,
@@ -427,13 +427,13 @@ fn timetree_sequence_inputs(
   MissingSequenceArgs {
     allow_missing_sequences,
   }: MissingSequenceArgs,
-) -> SequenceInputs {
-  SequenceInputs {
+) -> Result<SequenceInputs, Report> {
+  Ok(SequenceInputs {
     alignments: alignment,
     alphabet: alphabet.map(Into::into),
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
-  }
+  })
 }
 
 #[deny(unused_variables)]

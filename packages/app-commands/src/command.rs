@@ -16,7 +16,7 @@ use crate::commands::timetree::args::{TreetimeTimetreeArgs, TreetimeTimetreeArgs
 use crate::commands::timetree::run::run_timetree_estimation;
 use crate::config::load::read_settings;
 use crate::config::schema::command_schema;
-use app_output::output_plan::ResolvedOutputs;
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::{Command, CommandFactory};
 use deser::de::DeserializeOwned;
@@ -24,6 +24,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use strum_macros::{Display, EnumIter, EnumString, IntoStaticStr, VariantNames};
 use treetime::cancel::Cancel;
@@ -152,6 +153,18 @@ impl CommandArgs {
       Self::Homoplasy(args) => args.outputs.resolve(),
       Self::Clock(args) => args.outputs.resolve(),
       Self::Mugration(args) => args.outputs.resolve(),
+    }
+  }
+
+  pub fn planned_paths(&self, resolved: &ResolvedOutputs) -> Result<BTreeMap<OutputSelection, Vec<PathBuf>>, Report> {
+    match self {
+      Self::Ancestral(args) => args.planned_paths(resolved),
+      Self::Timetree(_)
+      | Self::Optimize(_)
+      | Self::Prune(_)
+      | Self::Homoplasy(_)
+      | Self::Clock(_)
+      | Self::Mugration(_) => Ok(resolved.paths_by_selection()),
     }
   }
 

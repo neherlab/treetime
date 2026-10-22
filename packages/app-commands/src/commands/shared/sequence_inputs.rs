@@ -1,4 +1,4 @@
-use crate::commands::shared::alignment::{PairedAlignment, check_required_alignment_paths, pair_alignment};
+use crate::commands::shared::alignment::{PairedAlignment, pair_alignment};
 use crate::commands::shared::tree_input::read_input_tree;
 use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
@@ -27,7 +27,6 @@ pub(crate) fn read_tree_and_sources(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<TreeAndSources, Report> {
-  check_required_alignment_paths(&sequences.alignments)?;
   cancel.check()?;
   stages.report("Reading input", 0.0, "");
   let tree = read_input_tree(tree, newick_dialect, log)?;

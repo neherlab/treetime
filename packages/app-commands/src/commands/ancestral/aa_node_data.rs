@@ -10,6 +10,7 @@ use treetime::make_error;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::gff::{GffCdsFeature, gff3_cds_read_file};
 use treetime_primitives::Seq;
+use treetime_utils::error::report_to_string;
 use util_augur_node_data_json::{AugurNodeDataJsonAnnotationEntry, AugurNodeDataJsonAnnotationSegment};
 
 pub(crate) fn validate_aa_args(
@@ -18,7 +19,15 @@ pub(crate) fn validate_aa_args(
   annotation: Option<&Path>,
   aa_root_sequence: Option<&Path>,
   n_alignments: usize,
+  output_translations: Option<&Path>,
 ) -> Result<(), Report> {
+  if translations.is_none() && output_translations.is_some() {
+    return Err(argument_error(
+      &["output_translations", "translations"],
+      "--output-translations requires --translations, which names the amino-acid alignments to reconstruct",
+    ));
+  }
+
   if translations.is_none() && cdses.is_empty() && annotation.is_none() && aa_root_sequence.is_none() {
     return Ok(());
   }
@@ -57,9 +66,6 @@ pub(crate) fn validate_aa_args(
     ));
   }
 
-  validate_file_arg("--annotation", annotation)?;
-  validate_file_arg("--aa-root-sequence", aa_root_sequence)?;
-
   let mut seen = BTreeSet::new();
   for cds in cdses {
     if cds.is_empty() {
@@ -76,7 +82,19 @@ pub(crate) fn validate_aa_args(
     }
   }
 
+  if let Some(template) = output_translations
+    && !cdses.is_empty()
+  {
+    cds_output_paths(template, cdses)
+      .map_err(|report| argument_error(&["output_translations", "cds_selection"], report_to_string(&report)))?;
+  }
+
   Ok(())
+}
+
+pub(crate) fn validate_aa_files(annotation: Option<&Path>, aa_root_sequence: Option<&Path>) -> Result<(), Report> {
+  validate_file_arg("--annotation", annotation)?;
+  validate_file_arg("--aa-root-sequence", aa_root_sequence)
 }
 
 fn validate_file_arg(arg_name: &str, path: Option<&Path>) -> Result<(), Report> {

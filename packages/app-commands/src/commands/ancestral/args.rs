@@ -1,5 +1,6 @@
 use crate::commands::ancestral::aa_model::AaModelName;
-use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::ancestral::aa_node_data::{cds_output_paths, validate_aa_args};
+use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::ambiguity::{AncestralAmbiguityArgs, resolve_ambiguity_outputs};
 use crate::commands::shared::config::ConfigArgs;
@@ -25,13 +26,14 @@ use crate::commands::shared::zero_based::ZeroBasedArgs;
 use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::command_outputs::CommandKind;
 use app_output::output_conditions::OutputSettings;
-use app_output::output_plan::OutputSelection;
+use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 #[cfg(feature = "clap")]
 use clap::ValueHint;
 use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::ancestral::params::AncestralParams;
 use treetime::ancestral::params::MethodAncestral;
@@ -87,6 +89,18 @@ impl TreetimeAncestralArgs {
 
   pub fn alignments(&self) -> &[PathBuf] {
     &self.sequences.alignments
+  }
+
+  pub fn planned_paths(&self, resolved: &ResolvedOutputs) -> Result<BTreeMap<OutputSelection, Vec<PathBuf>>, Report> {
+    let mut paths = resolved.paths_by_selection();
+    if self.translations.is_some()
+      && !self.cds_selection.is_empty()
+      && let Some(file) = resolved.non_tree_outputs.get(&OutputSelection::Translations)
+    {
+      let expanded = cds_output_paths(&file.path, &self.cds_selection)?;
+      paths.insert(OutputSelection::Translations, expanded.into_values().collect());
+    }
+    Ok(paths)
   }
 }
 
@@ -149,6 +163,14 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
       representation,
       ambiguity_threshold,
     })?;
+    validate_aa_args(
+      translations.as_deref(),
+      &cds_selection,
+      annotation.as_deref(),
+      aa_root_sequence.as_deref(),
+      alignment.len(),
+      output_translations.as_deref(),
+    )?;
     Ok(Self {
       tree,
       newick_dialect: newick_dialect.dialect(),
@@ -161,7 +183,7 @@ impl TryFrom<TreetimeAncestralArgsRaw> for TreetimeAncestralArgs {
         reconstructed_fasta_output,
         output_translations,
       ),
-      sequences: ancestral_sequence_inputs(alignment, alphabet_args, gap_fill_args, allow_missing_sequences),
+      sequences: ancestral_sequence_inputs(alignment, alphabet_args, gap_fill_args, allow_missing_sequences)?,
       allow_missing_sequences,
       positions: PositionBase::from_zero_based(zero_based),
       method_anc: method_anc.into(),
@@ -234,13 +256,14 @@ fn ancestral_sequence_inputs(
   AlphabetArgs { alphabet }: AlphabetArgs,
   GapFillArgs { gap_fill }: GapFillArgs,
   allow_missing_sequences: bool,
-) -> SequenceInputs {
-  SequenceInputs {
+) -> Result<SequenceInputs, Report> {
+  check_required_alignment_paths(&alignment)?;
+  Ok(SequenceInputs {
     alignments: alignment,
     alphabet: alphabet.map(Into::into),
     gap_fill: gap_fill.into(),
     missing_leaves: missing_leaf_limit(allow_missing_sequences),
-  }
+  })
 }
 
 #[deny(unused_variables)]

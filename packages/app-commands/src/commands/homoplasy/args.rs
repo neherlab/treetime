@@ -1,4 +1,4 @@
-use crate::commands::shared::alignment::AlignmentArgs;
+use crate::commands::shared::alignment::{AlignmentArgs, check_required_alignment_paths};
 use crate::commands::shared::alphabet::AlphabetArgs;
 use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
@@ -115,6 +115,7 @@ impl TryFrom<TreetimeHomoplasyArgsRaw> for TreetimeHomoplasyArgs {
       topology_order,
     } = raw;
     let tree = tree.ok_or_else(|| missing_required_args::<TreetimeHomoplasyArgsRaw>(&["tree"]))?;
+    check_required_alignment_paths(&alignment)?;
     check_rescale(rescale)?;
     check_one_alignment(&alignment)?;
     check_model_with_method_anc(method_anc, model, &model_params)?;
@@ -224,9 +225,6 @@ fn check_rescale(rescale: f64) -> Result<(), Report> {
 
 fn check_one_alignment(alignment: &[PathBuf]) -> Result<(), Report> {
   let n_alignments = alignment.len();
-  if n_alignments == 0 {
-    return Err(missing_required_args::<TreetimeHomoplasyArgsRaw>(&["alignment"]));
-  }
   if n_alignments > 1 {
     return Err(argument_error(
       &["alignment"],

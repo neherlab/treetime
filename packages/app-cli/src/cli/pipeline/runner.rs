@@ -154,7 +154,7 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nwk }}" } }
       ]
     })
   }

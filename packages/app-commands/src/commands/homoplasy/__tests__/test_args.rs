@@ -78,7 +78,7 @@ mod tests {
     let raw = TreetimeHomoplasyArgsRaw::try_parse_from(["homoplasy", "--tree=tree.nwk"])?;
     assert_error!(
       TreetimeHomoplasyArgs::try_from(raw),
-      "the following required arguments were not provided:\n  --alignment <FILEPATH>"
+      "--alignment is required: pass one or more FASTA files, or '-' to read standard input"
     );
     Ok(())
   }

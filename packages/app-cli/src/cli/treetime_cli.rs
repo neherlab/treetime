@@ -3,6 +3,8 @@ use crate::cli::config::overlay_config;
 use crate::cli::schema::SchemaTarget;
 use crate::cli::v0_args::{V0Rewrite, rewrite_v0_args};
 use crate::cli::verbosity::Verbosity;
+use app_commands::command::RawConfig;
+use app_commands::command_config::CommandConfig;
 use app_commands::commands::ancestral::args::TreetimeAncestralArgsRaw;
 use app_commands::commands::clock::args::TreetimeClockArgsRaw;
 use app_commands::commands::homoplasy::args::TreetimeHomoplasyArgsRaw;
@@ -239,6 +241,27 @@ impl TreetimeCommands {
       Self::Completions { .. } | Self::Schema { .. } | Self::HelpMarkdown | Self::Debug => None,
     }
   }
+
+  pub(crate) fn dry_run_config(&self) -> Option<CommandConfig> {
+    match self {
+      Self::Timetree(args) => dry_run_config_of(args.as_ref(), args.config_args.dry_run),
+      Self::Optimize(args) => dry_run_config_of(args, args.config_args.dry_run),
+      Self::Prune(args) => dry_run_config_of(args, args.config_args.dry_run),
+      Self::Ancestral(args) => dry_run_config_of(args, args.config_args.dry_run),
+      Self::Clock(args) => dry_run_config_of(args, args.config_args.dry_run),
+      Self::Homoplasy(args) => dry_run_config_of(args, args.config_args.dry_run),
+      Self::Mugration(args) => dry_run_config_of(args, args.config_args.dry_run),
+      Self::Pipeline(_)
+      | Self::Completions { .. }
+      | Self::Schema { .. }
+      | Self::HelpMarkdown
+      | Self::Debug => None,
+    }
+  }
+}
+
+fn dry_run_config_of<T: RawConfig>(args: &T, dry_run: bool) -> Option<CommandConfig> {
+  dry_run.then(|| args.clone().into_config())
 }
 
 #[derive(Subcommand, Debug, Serialize)]
@@ -261,6 +284,10 @@ pub(crate) struct TreetimeSchemaArgs {
   /// Output file or directory (use "-" for stdout). Directory required when --for=all
   #[clap(short = 'o', long, value_hint = ValueHint::AnyPath)]
   pub output: Option<PathBuf>,
+
+  /// Print the files that the command would write, then stop without writing them
+  #[clap(long)]
+  pub dry_run: bool,
 }
 
 #[cfg(test)]

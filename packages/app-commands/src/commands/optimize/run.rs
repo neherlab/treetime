@@ -1,5 +1,4 @@
 use crate::commands::optimize::args::TreetimeOptimizeArgs;
-use crate::commands::shared::alignment::check_required_alignment_paths;
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
@@ -28,7 +27,6 @@ pub fn run_optimize(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  check_required_alignment_paths(&args.sequences.alignments)?;
   let resolved = args.outputs.resolve()?;
   cancel.check()?;
   stages.report("Reading input", 0.0, "");

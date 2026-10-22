@@ -1,5 +1,5 @@
 use crate::commands::ancestral::aa_node_data::{
-  cds_output_paths, read_aa_root_sequences, read_gff3_annotations, selected_cdses, translation_path, validate_aa_args,
+  cds_output_paths, read_aa_root_sequences, read_gff3_annotations, selected_cdses, translation_path, validate_aa_files,
 };
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::pair_alignment;
@@ -49,13 +49,7 @@ pub fn run_ancestral_reconstruction(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  validate_aa_args(
-    args.translations.as_deref(),
-    &args.cds_selection,
-    args.annotation.as_deref(),
-    args.aa_root_sequence.as_deref(),
-    args.sequences.alignments.len(),
-  )?;
+  validate_aa_files(args.annotation.as_deref(), args.aa_root_sequence.as_deref())?;
   let resolved = args.outputs.resolve()?;
   let ambiguity = &args.ambiguity_outputs;
   ambiguity.warn_unwritten(&resolved, log);

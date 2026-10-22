@@ -1,5 +1,4 @@
 use crate::commands::prune::args::TreetimePruneArgs;
-use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::tree_input::read_input_tree;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
@@ -29,7 +28,6 @@ pub fn run_prune(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  validate_args(args)?;
   let resolved = args.outputs.resolve()?;
 
   cancel.check()?;
@@ -156,26 +154,6 @@ fn prune_output_maps(
 struct PruneOutputMaps {
   root_sequence: Seq,
   edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-}
-
-fn validate_args(args: &TreetimePruneArgs) -> Result<(), Report> {
-  let alignments = &args.sequences.alignments;
-
-  if args.collapse_empty && alignments.is_empty() {
-    return Err(argument_error(
-      &["collapse_empty", "alignment"],
-      "The --collapse-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations.",
-    ));
-  }
-
-  if args.merge_shared_mutations && alignments.is_empty() {
-    return Err(argument_error(
-      &["merge_shared_mutations", "alignment"],
-      "The --merge-shared-mutations requires --alignment. Without sequence data, it's not possible to determine which branches share mutations.",
-    ));
-  }
-
-  Ok(())
 }
 
 fn node_names_to_remove(remove: &[String], remove_file: Option<&Path>) -> Result<BTreeSet<String>, Report> {

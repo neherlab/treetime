@@ -398,7 +398,7 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}", "method_anc": "marginal" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nwk }}", "method_anc": "marginal" } }
       ]
     });
     let resolved = resolve(config).unwrap();
@@ -410,7 +410,7 @@ mod tests {
     let config = json!({
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000, "output_all": "out/tt" } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}", "output_all": "out/anc" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nwk }}", "output_all": "out/anc" } }
       ]
     });
     let resolved = resolve(config).unwrap();
@@ -474,7 +474,7 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "alignment": ["a.fasta", "b.fasta"] } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nexus }}" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nexus }}" } }
       ]
     });
     let result = resolve(config);
@@ -489,8 +489,8 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "anc", "ancestral": { "tree": "in.nwk", "output_translations": "out/{cds}.fasta" } },
-        { "name": "anc2", "ancestral": { "tree": "{{ steps.anc.outputs.translations }}" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk", "translations": "tr/{cds}.fasta", "annotation": "genes.gff", "output_translations": "out/{cds}.fasta" } },
+        { "name": "anc2", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.anc.outputs.translations }}" } }
       ]
     });
     let result = resolve(config);
@@ -505,7 +505,7 @@ mod tests {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.nwk }}" } },
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.nwk }}" } },
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } }
       ]
     });
@@ -522,7 +522,7 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tta.outputs.nwk }}" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tta.outputs.nwk }}" } }
       ]
     });
     let result = resolve(config);
@@ -538,7 +538,7 @@ mod tests {
       "output_all": "tmp/run",
       "steps": [
         { "name": "tt", "timetree": { "tree": "in.nwk", "metadata": "m.tsv", "sequence_length": 1000 } },
-        { "name": "anc", "ancestral": { "tree": "{{ steps.tt.outputs.traits }}" } }
+        { "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "{{ steps.tt.outputs.traits }}" } }
       ]
     });
     let result = resolve(config);
@@ -551,7 +551,7 @@ mod tests {
   #[test]
   fn test_resolve_output_flag_alone_sets_the_folder_of_every_step() {
     let doc = PipelineDoc::from_value(json!({
-      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+      "steps": [{ "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk" } }]
     }))
     .unwrap();
     let resolved = resolve_pipeline(
@@ -574,7 +574,7 @@ mod tests {
   fn test_resolve_output_flag_takes_precedence_over_the_file() {
     let doc = PipelineDoc::from_value(json!({
       "output_all": "from-file",
-      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+      "steps": [{ "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk" } }]
     }))
     .unwrap();
     let resolved = resolve_pipeline(
@@ -591,7 +591,7 @@ mod tests {
   fn test_resolve_top_level_output_of_the_file_resolves_from_its_folder() {
     let resolved = resolve(json!({
       "output_all": "out",
-      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+      "steps": [{ "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk" } }]
     }))
     .unwrap();
     assert_eq!(Some(PathBuf::from("/pipeline/out")), resolved.workdir);
@@ -609,7 +609,7 @@ mod tests {
   #[test]
   fn test_resolve_step_without_an_output_folder_names_the_pipeline_options() {
     let result = resolve(json!({
-      "steps": [{ "name": "anc", "ancestral": { "tree": "in.nwk" } }]
+      "steps": [{ "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "in.nwk" } }]
     }));
     assert_error!(
       result,
@@ -622,7 +622,7 @@ mod tests {
   fn test_resolve_step_input_that_a_generated_output_overwrites_keeps_the_overwrite_error() {
     let result = resolve(json!({
       "output_all": "out",
-      "steps": [{ "name": "anc", "ancestral": { "tree": "out/anc/ancestral.nwk" } }]
+      "steps": [{ "name": "anc", "ancestral": { "alignment": ["a.fasta"], "tree": "out/anc/ancestral.nwk" } }]
     }));
     assert_error!(
       result,

@@ -32,8 +32,9 @@ mod tests {
       AppCommand::Timetree => json!({ "tree": "t.nwk", "metadata": "m.tsv", "alignment": ["a.fasta"] }),
       AppCommand::Clock => json!({ "tree": "t.nwk", "metadata": "m.tsv" }),
       AppCommand::Mugration => json!({ "tree": "t.nwk", "metadata": "m.tsv", "attribute": "country" }),
-      AppCommand::Homoplasy => json!({ "tree": "t.nwk", "alignment": ["a.fasta"] }),
-      AppCommand::Ancestral | AppCommand::Optimize | AppCommand::Prune => json!({ "tree": "t.nwk" }),
+      AppCommand::Ancestral | AppCommand::Homoplasy | AppCommand::Optimize | AppCommand::Prune => {
+        json!({ "tree": "t.nwk", "alignment": ["a.fasta"] })
+      },
     };
     if !chosen.is_null() {
       config["output_selection"] = chosen;

@@ -68,7 +68,7 @@ mod tests {
   #[case::keep_root_and_outgroup(&["--keep-root", "--outgroup=A"],          ErrorKind::ArgumentConflict)]
   #[trace]
   fn test_optimize_args_rooting_rejects(#[case] flags: &[&str], #[case] expected: ErrorKind) {
-    let args = ["optimize", "--tree=t.nwk"].into_iter().chain(flags.iter().copied());
+    let args = ["optimize", "--tree=t.nwk", "--alignment=a.fasta"].into_iter().chain(flags.iter().copied());
 
     let result = TreetimeOptimizeArgsRaw::try_parse_from(args);
 
@@ -77,6 +77,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::commands::shared::alignment::AlignmentArgs;
     use crate::commands::shared::reroot::RootingArgs;
     use crate::commands::shared::tree_input::TreeArgs;
     use treetime_io::nwk::NwkParse;
@@ -98,6 +99,9 @@ mod tests {
       TreetimeOptimizeArgs::try_from(TreetimeOptimizeArgsRaw {
         tree: TreeArgs {
           tree: Some("tree.nwk".into()),
+        },
+        alignment: AlignmentArgs {
+          alignment: vec!["a.fasta".into()],
         },
         reroot,
         rooting: RootingArgs { outgroup, keep_root },

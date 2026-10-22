@@ -1,10 +1,11 @@
 use crate::cli::color::{ColorArgs, color_choice_of_args};
+use crate::cli::dry_run::print_dry_run;
 use crate::cli::pipeline::runner::run_pipeline_command;
 use crate::cli::print_debug_info::print_debug_info;
 use crate::cli::print_help_markdown::print_help_markdown;
 use crate::cli::progress::{BarProgress, TextProgress};
 use crate::cli::rtt_chart::print_clock_regression_chart;
-use crate::cli::schema::generate_schema;
+use crate::cli::schema::{generate_schema, print_schema_files};
 use crate::cli::treetime_cli::{
   CliParseError, ParsedCli, TreetimeCommands, TreetimeSchemaArgs, TreetimeSchemaCommands, generate_shell_completions,
   resolve_args, treetime_parse_cli_args,
@@ -60,6 +61,10 @@ fn run_parsed(parsed: ParsedCli, colors: bool) -> Result<(), Report> {
 
   if let Some(jobs) = args.command.jobs() {
     init_thread_pool(jobs)?;
+  }
+
+  if let Some(config) = args.command.dry_run_config() {
+    return print_dry_run(&config);
   }
 
   let (stages, log) = make_progress(&args.verbosity, colors)?;
@@ -119,9 +124,18 @@ pub(crate) fn run_command(command: TreetimeCommands, stages: &dyn StageSink, log
       run_pipeline_command(&pipeline_args, stages, log)?;
     },
     TreetimeCommands::Schema {
-      command: TreetimeSchemaCommands::Write(TreetimeSchemaArgs { target, output }),
+      command:
+        TreetimeSchemaCommands::Write(TreetimeSchemaArgs {
+          target,
+          output,
+          dry_run,
+        }),
     } => {
-      generate_schema(target, output.as_ref())?;
+      if dry_run {
+        print_schema_files(target, output.as_ref())?;
+      } else {
+        generate_schema(target, output.as_ref())?;
+      }
     },
     TreetimeCommands::HelpMarkdown => {
       print_help_markdown()?;

@@ -1,6 +1,7 @@
 pub(crate) mod color;
 pub(crate) mod config;
 pub(crate) mod diagnostics;
+pub(crate) mod dry_run;
 pub(crate) mod pipeline;
 pub(crate) mod print_debug_info;
 pub(crate) mod print_help_markdown;

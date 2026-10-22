@@ -39,7 +39,6 @@ pub(crate) mod tests {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub(crate) enum Pending {
       ShortHelp,
-      DryRun,
     }
 
     pub(crate) fn treetime_command() -> Command {

@@ -94,7 +94,7 @@ pub(crate) mod tests {
   fn test_check_config_accepts_json_text() {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
-      text: r#"{ "tree": "t.nwk", "method_anc": "parsimony" }"#.to_owned(),
+      text: r#"{ "tree": "t.nwk", "alignment": ["a.fasta"], "method_anc": "parsimony" }"#.to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
@@ -256,7 +256,7 @@ pub(crate) mod tests {
   fn test_check_config_without_folder_keeps_relative_paths() {
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Ancestral,
-      text: "tree: tree.nwk\n".to_owned(),
+      text: "tree: tree.nwk\nalignment: [a.fasta]\n".to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
@@ -434,7 +434,10 @@ pub(crate) mod tests {
 
   #[test]
   fn test_check_config_schema_directive_selects_the_command() {
-    let text = format!("{}\ntree: t.nwk\ncollapse_empty: true\n", schema_directive("prune"));
+    let text = format!(
+      "{}\ntree: t.nwk\nalignment: [a.fasta]\ncollapse_empty: true\n",
+      schema_directive("prune")
+    );
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Timetree,
       text,

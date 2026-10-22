@@ -1,5 +1,6 @@
 use crate::commands::shared::alignment::AlignmentArgs;
 use crate::commands::shared::alphabet::AlphabetArgs;
+use crate::commands::shared::argument_error::argument_error;
 use crate::commands::shared::config::ConfigArgs;
 use crate::commands::shared::gap_fill::GapFillArgs;
 use crate::commands::shared::jobs::JobsArgs;
@@ -93,6 +94,7 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
       jobs_args: _,
     } = raw;
     let tree = tree.ok_or_else(|| missing_required_args::<TreetimePruneArgsRaw>(&["tree"]))?;
+    check_sequence_settings(&alignment, collapse_empty, merge_shared_mutations)?;
     Ok(Self {
       tree,
       newick_dialect: newick_dialect.dialect(),
@@ -134,6 +136,28 @@ impl TryFrom<TreetimePruneArgsRaw> for TreetimePruneArgs {
       )?,
     })
   }
+}
+
+fn check_sequence_settings(
+  alignments: &[PathBuf],
+  collapse_empty: bool,
+  merge_shared_mutations: bool,
+) -> Result<(), Report> {
+  if collapse_empty && alignments.is_empty() {
+    return Err(argument_error(
+      &["collapse_empty", "alignment"],
+      "The --collapse-empty requires --alignment. Without sequence data, it's not possible to determine which branches lack mutations.",
+    ));
+  }
+
+  if merge_shared_mutations && alignments.is_empty() {
+    return Err(argument_error(
+      &["merge_shared_mutations", "alignment"],
+      "The --merge-shared-mutations requires --alignment. Without sequence data, it's not possible to determine which branches share mutations.",
+    ));
+  }
+
+  Ok(())
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

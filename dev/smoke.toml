@@ -970,6 +970,22 @@ variant = "pipeline-dry-run"
 args = "pipeline --config={data}/zika/20/pipeline.yaml --dry-run --output-all=tmp/pipeline-dry-run"
 
 [[cli]]
+variant = "timetree-dry-run"
+args = "timetree --tree={data}/zika/20/tree.nwk --metadata={data}/zika/20/metadata.tsv --alignment={data}/zika/20/aln.fasta.xz --dry-run --output-all=tmp/timetree-dry-run"
+
+[[cli]]
+variant = "ancestral-dry-run"
+args = "ancestral --tree={data}/zika/20/tree.nwk --alignment={data}/zika/20/aln.fasta.xz --dry-run --output-all=tmp/ancestral-dry-run"
+
+[[cli]]
+variant = "examples-get-dry-run"
+args = "examples get --output-dir=tmp/examples-dry-run --url=https://example.org/examples.zip --dry-run"
+
+[[cli]]
+variant = "schema-all-dry-run"
+args = "schema write --for=all --output=tmp/schemas-dry-run --dry-run"
+
+[[cli]]
 variant = "pipeline-steps-timetree"
 args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree --output-all={out}"
 sandbox = true
