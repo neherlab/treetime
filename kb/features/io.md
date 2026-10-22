@@ -23,7 +23,7 @@
 - [x] JSON (model document, clock model, graph)
 - [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, annotated Newick and Nexus, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{partition}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] CSV (clock regression, confidence intervals)
-- [x] SVG/PNG charts (clock regression)
+- [x] SVG/PNG/PDF charts (clock regression)
 - [x] Graphviz DOT
 - [x] Output topology ordering
 - [ ] VCF output (v0 writes .vcf for VCF inputs: [kb/issues/M-io-vcf-input-output-unimplemented.md](../issues/M-io-vcf-input-output-unimplemented.md))

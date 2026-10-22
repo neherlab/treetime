@@ -55,7 +55,7 @@
 - [x] Graph JSON and Graphviz DOT
 - [x] Clock model JSON
 - [x] Regression CSV (populated for all nodes, includes predicted date, clock deviation, outlier state)
-- [x] SVG and PNG RTT charts
+- [x] SVG, PNG, and PDF RTT charts
 - [x] Terminal chart printing on TTY
 
 ## CLI Options
