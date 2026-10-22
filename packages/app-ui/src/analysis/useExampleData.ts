@@ -63,6 +63,7 @@ export function useExampleConfigLoader() {
       const { command } = useDraftStore.getState().draft;
       const isCurrent = claimInputs([...new Set([...inputSettingKeys(command), ...inputSettingKeys(config.command)])]);
       const runId = await uploadRun(config.command);
+      const replaces = draftUploadPaths(useDraftStore.getState().draft);
       const uploaded: UploadedConfigInput[] = [];
 
       const releaseUploaded = () =>
@@ -73,7 +74,7 @@ export function useExampleConfigLoader() {
 
       const loading = uploadConfigInputs(
         config,
-        async (files) => (isCurrent(runId) ? uploadFiles(runId, files, []) : undefined),
+        async (files) => (isCurrent(runId) ? uploadFiles(runId, files, replaces) : undefined),
         uploaded,
       ).then(async (complete) =>
         complete

@@ -281,6 +281,22 @@ describe("example data of the web apps", () => {
     ]);
   });
 
+  test("a config uploads its inputs as replacements of the uploads of the draft it replaces", async () => {
+    const server = fakeServer();
+    await render(server, "timetree");
+    await loadExampleConfig();
+
+    await loadExampleConfig(ANCESTRAL_CONFIG, "ancestral");
+
+    expect(server.replaces.slice(3).map((paths) => paths.toSorted())).toStrictEqual(
+      Array.from({ length: 2 }, () => [
+        "/runs/r1/inputs/country_weights.csv",
+        "/runs/r1/inputs/metadata.tsv",
+        "/runs/r1/inputs/tree.nwk",
+      ]),
+    );
+  });
+
   test("a config the check rejects releases its uploads and keeps the form", async () => {
     const server = fakeServer({ rejected: true });
     await render(server, "timetree");
