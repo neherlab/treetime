@@ -2356,6 +2356,152 @@ export type AnalysisSettings = {
 };
 
 /**
+ * The examples folder of a local app, with the index of the example data it holds.
+ */
+export type ExamplesFolder = {
+  /**
+   * Absolute path of the examples folder; the paths of the index are relative to it.
+   */
+  folder: string;
+  /**
+   * Index of the example data in the folder, read from its `index.json`. Unset when the folder holds no index, for
+   * example before the example datasets are downloaded.
+   */
+  index?: DataIndex;
+};
+
+/**
+ * Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
+ * configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
+ * separators. The apps read the example data only through this index.
+ */
+export type DataIndex = {
+  /**
+   * Every tracked file of the data folder except the index itself, sorted by path.
+   */
+  files: Array<IndexedFile>;
+  /**
+   * Folders that hold a `tree.nwk`, with the files that fill command inputs, sorted by name.
+   */
+  datasets: Array<IndexedDataset>;
+  /**
+   * Example configurations of the commands the application runs, sorted by path.
+   */
+  configs: Array<IndexedConfig>;
+  /**
+   * Example pipeline configurations, sorted by path.
+   */
+  pipelines: Array<IndexedPipeline>;
+};
+
+/**
+ * A tracked file of the data folder.
+ */
+export type IndexedFile = {
+  /**
+   * Path relative to the data folder.
+   */
+  path: string;
+  /**
+   * Size in bytes.
+   */
+  size: number;
+};
+
+/**
+ * A folder of the data folder that holds a `tree.nwk`.
+ */
+export type IndexedDataset = {
+  /**
+   * Path of the folder relative to the data folder.
+   */
+  name: string;
+  /**
+   * The files of the folder that fill command inputs, at most one per kind. A compressed file fills the input of its
+   * uncompressed name.
+   */
+  inputs: Array<IndexedInput>;
+};
+
+/**
+ * A file of a dataset that fills a command input.
+ */
+export type IndexedInput = {
+  /**
+   * Input the file fills.
+   */
+  kind: InputKind;
+  /**
+   * Path of the file relative to the data folder.
+   */
+  path: string;
+};
+
+/**
+ * An example configuration of one command.
+ */
+export type IndexedConfig = {
+  /**
+   * Path of the file relative to the data folder.
+   */
+  path: string;
+  /**
+   * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
+   */
+  command: AppCommand;
+  /**
+   * Title of the example: the first comment line after the directive.
+   */
+  title: string;
+  /**
+   * Folder of the file relative to the data folder, which relative paths in the file resolve from.
+   */
+  folder: string;
+  /**
+   * Text of the file.
+   */
+  content: string;
+  /**
+   * The files that each input setting of the configuration reads, relative to the data folder, by setting key.
+   */
+  inputs: {
+    [key: string]: Array<string>;
+  };
+};
+
+/**
+ * An example pipeline configuration.
+ */
+export type IndexedPipeline = {
+  /**
+   * Path of the file relative to the data folder.
+   */
+  path: string;
+  /**
+   * Title of the example: the first comment line after the directive.
+   */
+  title: string;
+  /**
+   * Steps of the pipeline, in the order they run.
+   */
+  steps: Array<IndexedStep>;
+};
+
+/**
+ * One step of an example pipeline.
+ */
+export type IndexedStep = {
+  /**
+   * Name of the step.
+   */
+  name: string;
+  /**
+   * Command the step runs.
+   */
+  command: AppCommand;
+};
+
+/**
  * The download of the example datasets, with the app event that reported it last.
  */
 export type ExamplesDownloadStatus = {
@@ -2629,137 +2775,6 @@ export type SettingCatalog = {
    * Settings of each command.
    */
   commands: Array<CommandSettings>;
-};
-
-/**
- * A tracked file of the data folder.
- */
-export type IndexedFile = {
-  /**
-   * Path relative to the data folder.
-   */
-  path: string;
-  /**
-   * Size in bytes.
-   */
-  size: number;
-};
-
-/**
- * A folder of the data folder that holds a `tree.nwk`.
- */
-export type IndexedDataset = {
-  /**
-   * Path of the folder relative to the data folder.
-   */
-  name: string;
-  /**
-   * The files of the folder that fill command inputs, at most one per kind. A compressed file fills the input of its
-   * uncompressed name.
-   */
-  inputs: Array<IndexedInput>;
-};
-
-/**
- * A file of a dataset that fills a command input.
- */
-export type IndexedInput = {
-  /**
-   * Input the file fills.
-   */
-  kind: InputKind;
-  /**
-   * Path of the file relative to the data folder.
-   */
-  path: string;
-};
-
-/**
- * An example configuration of one command.
- */
-export type IndexedConfig = {
-  /**
-   * Path of the file relative to the data folder.
-   */
-  path: string;
-  /**
-   * Command the configuration is for, taken from the `$schema` URL of its `yaml-language-server` directive.
-   */
-  command: AppCommand;
-  /**
-   * Title of the example: the first comment line after the directive.
-   */
-  title: string;
-  /**
-   * Folder of the file relative to the data folder, which relative paths in the file resolve from.
-   */
-  folder: string;
-  /**
-   * Text of the file.
-   */
-  content: string;
-  /**
-   * The files that each input setting of the configuration reads, relative to the data folder, by setting key.
-   */
-  inputs: {
-    [key: string]: Array<string>;
-  };
-};
-
-/**
- * An example pipeline configuration.
- */
-export type IndexedPipeline = {
-  /**
-   * Path of the file relative to the data folder.
-   */
-  path: string;
-  /**
-   * Title of the example: the first comment line after the directive.
-   */
-  title: string;
-  /**
-   * Steps of the pipeline, in the order they run.
-   */
-  steps: Array<IndexedStep>;
-};
-
-/**
- * One step of an example pipeline.
- */
-export type IndexedStep = {
-  /**
-   * Name of the step.
-   */
-  name: string;
-  /**
-   * Command the step runs.
-   */
-  command: AppCommand;
-};
-
-/**
- * Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
- * configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
- * separators. The apps read the example data only through this index.
- */
-export type DataIndex = {
-  /**
-   * Every tracked file of the data folder except the index itself, sorted by path.
-   */
-  files: Array<IndexedFile>;
-  /**
-   * Folders that hold a `tree.nwk`, with the files that fill command inputs, sorted by name.
-   */
-  datasets: Array<IndexedDataset>;
-  /**
-   * Example configurations of the commands the application runs, sorted by path.
-   */
-  configs: Array<IndexedConfig>;
-  /**
-   * Example pipeline configurations, sorted by path.
-   */
-  pipelines: Array<IndexedPipeline>;
 };
 
 export type BranchLengthMode = 'input' | 'marginal';
@@ -7193,6 +7208,31 @@ export type AppSettingsAnalysisResponses = {
 };
 
 export type AppSettingsAnalysisResponse = AppSettingsAnalysisResponses[keyof AppSettingsAnalysisResponses];
+
+export type ExamplesData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: '/api/examples';
+};
+
+export type ExamplesErrors = {
+  /**
+   * The error, with its causes
+   */
+  default: ErrorResponse;
+};
+
+export type ExamplesError = ExamplesErrors[keyof ExamplesErrors];
+
+export type ExamplesResponses = {
+  /**
+   * The examples folder of a local app, with the index of the example data it holds.
+   */
+  200: ExamplesFolder;
+};
+
+export type ExamplesResponse = ExamplesResponses[keyof ExamplesResponses];
 
 export type ExamplesDownloadData = {
   body?: never;

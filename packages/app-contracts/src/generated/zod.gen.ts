@@ -1130,6 +1130,79 @@ export const zAppSettings = z.strictObject({
 });
 
 /**
+ * A tracked file of the data folder.
+ */
+export const zIndexedFile = z.strictObject({
+  path: z.string(),
+  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' })
+});
+
+/**
+ * A file of a dataset that fills a command input.
+ */
+export const zIndexedInput = z.strictObject({
+  kind: zInputKind,
+  path: z.string()
+});
+
+/**
+ * A folder of the data folder that holds a `tree.nwk`.
+ */
+export const zIndexedDataset = z.strictObject({
+  name: z.string(),
+  inputs: z.array(zIndexedInput)
+});
+
+/**
+ * An example configuration of one command.
+ */
+export const zIndexedConfig = z.strictObject({
+  path: z.string(),
+  command: zAppCommand,
+  title: z.string(),
+  folder: z.string(),
+  content: z.string(),
+  inputs: z.record(z.string(), z.array(z.string()))
+});
+
+/**
+ * One step of an example pipeline.
+ */
+export const zIndexedStep = z.strictObject({
+  name: z.string(),
+  command: zAppCommand
+});
+
+/**
+ * An example pipeline configuration.
+ */
+export const zIndexedPipeline = z.strictObject({
+  path: z.string(),
+  title: z.string(),
+  steps: z.array(zIndexedStep)
+});
+
+/**
+ * Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
+ * configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
+ * separators. The apps read the example data only through this index.
+ */
+export const zDataIndex = z.strictObject({
+  files: z.array(zIndexedFile),
+  datasets: z.array(zIndexedDataset),
+  configs: z.array(zIndexedConfig),
+  pipelines: z.array(zIndexedPipeline)
+});
+
+/**
+ * The examples folder of a local app, with the index of the example data it holds.
+ */
+export const zExamplesFolder = z.object({
+  folder: z.string(),
+  index: zDataIndex.optional()
+});
+
+/**
  * The runs folder of the running back end, and the folder used when the settings name none.
  */
 export const zWorkspace = z.object({
@@ -1276,71 +1349,6 @@ export const zCommandSettings = z.object({
  */
 export const zSettingCatalog = z.object({
   commands: z.array(zCommandSettings)
-});
-
-/**
- * A tracked file of the data folder.
- */
-export const zIndexedFile = z.strictObject({
-  path: z.string(),
-  size: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' })
-});
-
-/**
- * A file of a dataset that fills a command input.
- */
-export const zIndexedInput = z.strictObject({
-  kind: zInputKind,
-  path: z.string()
-});
-
-/**
- * A folder of the data folder that holds a `tree.nwk`.
- */
-export const zIndexedDataset = z.strictObject({
-  name: z.string(),
-  inputs: z.array(zIndexedInput)
-});
-
-/**
- * An example configuration of one command.
- */
-export const zIndexedConfig = z.strictObject({
-  path: z.string(),
-  command: zAppCommand,
-  title: z.string(),
-  folder: z.string(),
-  content: z.string(),
-  inputs: z.record(z.string(), z.array(z.string()))
-});
-
-/**
- * One step of an example pipeline.
- */
-export const zIndexedStep = z.strictObject({
-  name: z.string(),
-  command: zAppCommand
-});
-
-/**
- * An example pipeline configuration.
- */
-export const zIndexedPipeline = z.strictObject({
-  path: z.string(),
-  title: z.string(),
-  steps: z.array(zIndexedStep)
-});
-
-/**
- * Index of the example data in the `data/` folder of the repository: every tracked file, the datasets, the example
- * configurations of the commands, and the example pipelines. Every path is relative to `data/` and uses `/`
- * separators. The apps read the example data only through this index.
- */
-export const zDataIndex = z.strictObject({
-  files: z.array(zIndexedFile),
-  datasets: z.array(zIndexedDataset),
-  configs: z.array(zIndexedConfig),
-  pipelines: z.array(zIndexedPipeline)
 });
 
 export const zBranchLengthMode = z.enum(['input', 'marginal']);
@@ -2961,6 +2969,11 @@ export const zAppSettingsAnalysisBody = zAnalysisSettings;
  * it.
  */
 export const zAppSettingsAnalysisResponse = zAnalysisSettings;
+
+/**
+ * The examples folder of a local app, with the index of the example data it holds.
+ */
+export const zExamplesResponse = zExamplesFolder;
 
 /**
  * The download of the example datasets, with the app event that reported it last.
