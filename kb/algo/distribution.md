@@ -81,6 +81,19 @@ Polymorphic pointwise multiplication dispatches across all `Distribution` varian
 
 v1: `distribution_multiplication()` (`#distribution_multiplication`) in [`packages/treetime-distribution/src/distribution_ops/multiply.rs#L16`](../../packages/treetime-distribution/src/distribution_ops/multiply.rs#L16).
 
+## Edge Cell with an Offset Power Law
+
+A grid edge with `BoundaryBehavior::HardEdgeCell` has zero density beyond the edge, and its outermost cell follows a power law whose origin lies at the offset $c$ beyond the edge $t_e$. With $d = |t - t_e| + c$ the distance from the origin, $d_a$ that of the inner cell end (the anchor) and $y_a$ the negative log density there, the cell holds $y(d) = y_a - b \ln(d/d_a) + s\,(d - d_a)$. The slope $s$ follows from the two stored cell ends, so the law reproduces both ends. The law stores the offset, not the origin, so a shift of the cell to absolute times keeps the distance exact near the edge. The input-mode Poisson branch likelihood uses it for its first cell ([kb/decisions/timetree-input-branch-likelihood-first-cell-and-bounds.md](../decisions/timetree-input-branch-likelihood-first-cell-and-bounds.md)).
+
+The log density $b \ln d - s\,d$ is concave in $d$ for $b \ge 0$. It peaks at $d_m = b/s$ when $s > 0$ and this point lies inside the cell, which is then the mode of the cell; otherwise at a cell end. The mass of a part of the cell is integrated from the densest point $d_m$ of the part outward, in the variable $z = \ln(d/d_m)$, where the integrand $\exp\big((b+1)z - s\,d_m(e^z - 1)\big)$ is entire. Each panel is at most 0.5 wide, its log integrand changes by at most 1 across it, and its curvature times the squared width is at most 1; 12-point Gauss-Legendre quadrature then errs by about $10^{-14}$ of the panel mass. The integral stops where the density falls 40 nats below its peak: by concavity the part beyond holds less than $e^{-40}$ of the rest. The integrand is positive, so no sums cancel, and steep cells (slopes of $\pm 2 \cdot 10^6$ per unit distance) keep their relative precision. The inverse of the mass inside the cell uses Newton steps inside a bisection bracket; the inverse of the value bisects one monotone branch, between the mode and a cell end.
+
+Products and quotients compose the laws of one side:
+
+- **Same edge**: the exponents add (subtract for a quotient), and the offset is the exponent-weighted geometric mean, $\ln c^* = \sum_j b_j \ln c_j / \sum_j b_j$. With $a_j = \ln(c_j/c^*)$ and $\tau = c^*/(|t - t_e| + c^*)$, the true sum of log terms differs from the composed law by $\sum_j b_j \big[\ln(1 + (e^{a_j} - 1)\tau) - a_j \tau\big]$, because $\sum_j b_j a_j = 0$. Each bracket is the cumulant generating function of a Bernoulli variable minus its mean, at most $a_j^2/8$ by Hoeffding's lemma (<a id="cite-6"></a>Hoeffding 1963 [[6](#ref-6)]), so the error is at most $\sum_j b_j a_j^2 / 8$ nats, and 0 when the offsets agree. A quotient inverts a product exactly; a negative exponent is an internal error
+- **Different edges**: the law at the edge of the result stays. The factor whose edge lies outside the result is linear between grid points in the result's first cell, with the interpolation error $b\,h^2 / (8 (\delta + c)^2)$ at a distance $\delta$ between the edges
+
+v1: `struct EdgeCell` (`#EdgeCell`) in [`packages/treetime-grid/src/edge_cell.rs`](../../packages/treetime-grid/src/edge_cell.rs), `struct EdgeCellLaw` in [`packages/treetime-grid/src/edge_cell_law.rs`](../../packages/treetime-grid/src/edge_cell_law.rs), read by `struct MassProfile` in [`packages/treetime-distribution/src/distribution_ops/mass_profile.rs`](../../packages/treetime-distribution/src/distribution_ops/mass_profile.rs).
+
 ---
 
 ## Additional Algorithms
@@ -110,6 +123,7 @@ See [unimplemented](unimplemented.md) for full details:
 - <a id="ref-3"></a>Ross, Sheldon M. 2014. _Introduction to Probability Models._ 11th ed. Academic Press. ISBN 978-0-12-407948-9. [↩](#cite-3)
 - <a id="ref-4"></a>Sagulenko, Pavel, Vadim Puller, and Richard A. Neher. 2018. "TreeTime: Maximum-Likelihood Phylodynamic Analysis." _Virus Evolution_ 4(1):vex042. https://doi.org/10.1093/ve/vex042 [↩](#cite-4)
 - <a id="ref-5"></a>Petersen, Kaare Brandt, and Michael Syskind Pedersen. 2012. _The Matrix Cookbook._ Technical report. https://www.math.uwaterloo.ca/~hwolkowi/matrixcookbook.pdf [↩](#cite-5)
+- <a id="ref-6"></a>Hoeffding W. Probability inequalities for sums of bounded random variables. Journal of the American Statistical Association. 1963;58(301):13-30. doi:10.1080/01621459.1963.10500830 [↩](#cite-6)
 
 ---
 
@@ -119,6 +133,7 @@ See [unimplemented](unimplemented.md) for full details:
 | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | [`packages/treetime-ops/src/convolution.rs`](../../packages/treetime-ops/src/convolution.rs)                           | Direct, ndarray-conv, FFT trapezoid convolution |
 | [`packages/treetime-ops/src/multiplication.rs`](../../packages/treetime-ops/src/multiplication.rs)                     | Naive, aggressive, lazy multiplication          |
+| [`packages/treetime-grid/src/edge_cell.rs`](../../packages/treetime-grid/src/edge_cell.rs) | Edge cell law: value, mode, mass by panel quadrature, inverses |
 | [`packages/treetime-analytical/src/`](../../packages/treetime-analytical/src/)                                         | Gaussian, exponential analytical ops            |
 | [`packages/treetime-distribution/src/distribution_core/`](../../packages/treetime-distribution/src/distribution_core/) | Distribution type                               |
 | [`packages/treetime-distribution/src/distribution_ops/`](../../packages/treetime-distribution/src/distribution_ops/)   | Convolution, multiplication, division, negation |
