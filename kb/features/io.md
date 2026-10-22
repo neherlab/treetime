@@ -5,7 +5,7 @@
 - [x] FASTA (plain text)
 - [x] Compressed FASTA (gzip, xz, bzip2, zstd)
 - [x] Several FASTA files, one partition per file in the order of the `--alignment` list ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); homoplasy, `--translations` and `--annotation` accept one file
-- [/] Stdin input (`-` at most once in the `--alignment` list; `--tree -` together with `--alignment -` reads standard input twice: [kb/issues/M-io-stdin-tree-and-alignment-read-twice.md](../issues/M-io-stdin-tree-and-alignment-read-twice.md))
+- [/] Stdin input (`-` for at most one input of a run; `--config -` together with an input `-` reads standard input twice: [kb/issues/M-io-stdin-config-and-input-read-twice.md](../issues/M-io-stdin-config-and-input-read-twice.md))
 - [x] Newick tree
 - [x] Nexus tree
 - [ ] PHYLIP alignment ([kb/issues/M-io-phylip-alignment-input-unsupported.md](../issues/M-io-phylip-alignment-input-unsupported.md))

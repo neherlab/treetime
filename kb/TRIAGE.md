@@ -177,7 +177,7 @@ These issues give wrong results or failures under specific settings, or block ca
 - **[kb/issues/M-dates-date-column-requires-exact-header-match.md](issues/M-dates-date-column-requires-exact-header-match.md)**: detect the date column as v0 does (leftmost header that contains `date`)
 - **[kb/issues/M-optimize-mutations-not-derived-from-emitted-sequences.md](issues/M-optimize-mutations-not-derived-from-emitted-sequences.md)**: derive the optimize mutations from the emitted sequences, as ancestral and timetree do
 - **[kb/issues/M-timetree-date-header-hash.md](issues/M-timetree-date-header-hash.md)**: strip `#` from requested column names as from the headers, then re-enable the `zika_20` runner cases
-- **[kb/issues/M-io-stdin-tree-and-alignment-read-twice.md](issues/M-io-stdin-tree-and-alignment-read-twice.md)**: reject `-` on more than one input path of a command
+- **[kb/issues/M-io-stdin-config-and-input-read-twice.md](issues/M-io-stdin-config-and-input-read-twice.md)**: reject `--config -` together with an input `-`
 
 ## Planned
 
