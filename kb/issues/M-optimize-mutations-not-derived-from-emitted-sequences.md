@@ -11,6 +11,10 @@ A parent `C` and a tip that observes `Y` (`C` or `T`) whose posterior favors `T`
 | `ancestral`, `timetree` | `C1Y`            | 0 (`C` and `Y` share `C`)            |
 | `optimize`              | `C1T`            | 1                                    |
 
+## Impact
+
+The engine substitutions reach every `optimize` output that carries mutations: the Nexus tree, which `optimize` writes by default and which always carries the mutations in BEAST comments, the Newick tree with `--newick-annotations beast` or `nhx`, Auspice JSON, UShER MAT, and the augur node data.
+
 ## Mechanism
 
 - `fn optimize_result()` builds the partition result of each partition from `ReconstructionRef::edge_mutations()` for every edge ([packages/treetime/src/optimize/pipeline.rs#L199-L233](../../packages/treetime/src/optimize/pipeline.rs#L199-L233))
