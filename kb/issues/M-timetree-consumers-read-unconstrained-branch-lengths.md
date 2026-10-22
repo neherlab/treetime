@@ -47,8 +47,7 @@ if GTR re-estimation moves into the loop.
 - Relaxed clock (`--relax`) fits $\gamma$ against a contrast that is near-degenerate, so the
   feature does substantially less than intended. Not quantified.
 - Polytomy resolution mis-weights branches in the fallback path, which input branch-length mode
-  takes on every edge. Input mode fails earlier for an unrelated reason, see
-  [H-timetree-input-branch-lengths-abort-on-point-division.md](H-timetree-input-branch-lengths-abort-on-point-division.md).
+  takes on every edge.
 
 ## Validation
 

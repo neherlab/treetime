@@ -100,7 +100,6 @@ See [unimplemented](unimplemented.md) for full details:
 - FFT Convolution with Delta Approximation
 - Adaptive Simpson's Rule Convolution
 - FWHM Computation
-- Branch Length Interpolator (Input Mode)
 
 ---
 

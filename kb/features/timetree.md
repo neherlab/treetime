@@ -24,12 +24,12 @@
 - [x] Backward pass lifts the fixed input date constraint back into the time distribution each round
 - [x] Bad branch exclusion (outliers, dateless leaves)
 - [x] Build branch distributions from partitions when present
-- [x] Build point branch distributions from input lengths when partitions absent
+- [x] Build branch distributions from input lengths when partitions absent: Poisson for short branches, saturation-corrected Gaussian for long ones (v0 `BranchLenInterpolator` input mode)
 - [x] Optional coalescent contribution calculation
 
 ## Branch-Length Modes
 
-- [x] `input` (use tree branch lengths, no sequence partitions, point distributions)
+- [x] `input` (use tree branch lengths, no sequence partitions)
 - [x] `marginal` (optimize via marginal reconstruction)
   - [x] Dense marginal partition branch
   - [x] Sparse marginal partition branch (compresses sequences first)

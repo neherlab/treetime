@@ -9,7 +9,7 @@ With `--branch-length-mode=input`, the branch-length likelihood of an edge comes
 
 ## Reachability
 
-Both cases are latent. Input mode aborts on ordinary trees before any refinement round with `Cannot divide point by point` ([H-timetree-input-branch-lengths-abort-on-point-division.md](H-timetree-input-branch-lengths-abort-on-point-division.md)), so no input-mode run reaches them today. They become reachable when that issue is fixed.
+Both cases occur in every input-mode run whose input tree omits the length of a branch.
 
 ## Open question
 

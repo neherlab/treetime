@@ -22,7 +22,7 @@ The property test `test_prop_timetree_weak_signal_succeeds_or_rejects_the_input`
 - `Gaussian clock needs substitutions on the dated part of the tree`: the fallback start rate on data without substitutions on the dated part of the tree, classified as an internal error (see Reproduction)
 
 - `Cannot divide by empty distribution`: division by an empty distribution
-- `Cannot divide point by point: operation not well-defined`: division of two point distributions. Every run with `--branch-length-mode=input` fails with it, see [H-timetree-input-branch-lengths-abort-on-point-division.md](H-timetree-input-branch-lengths-abort-on-point-division.md)
+- `Cannot divide point by point: operation not well-defined`: division of two point distributions
 - a `NaN` time distribution, raised with and without round and node context
 - an undated node, reported as a stale coalescent model by the point-time lineage counts, which phase 2 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md) removed; the expected lineage counts count an undated node as surviving at all times
 

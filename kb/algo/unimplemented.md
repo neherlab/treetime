@@ -174,23 +174,6 @@ Used to determine appropriate grid resolution for FFT convolution and adaptive g
 
 ---
 
-## Branch Length Interpolator (Input Mode)
-
-Constructs per-branch likelihood distributions over evolutionary distance from an input branch length, using a Poisson approximation for short branches and a saturation-aware Gaussian approximation for longer branches. This is v0's `branch_length_mode=input` path, which avoids sequence-based marginal likelihoods.
-
-v0: `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) input mode in [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102).
-v1: input mode currently converts each input branch length to a point distribution in [`packages/treetime/src/timetree/inference/runner.rs#L177-L201`](../../packages/treetime/src/timetree/inference/runner.rs#L177-L201); it does not implement either v0 approximation.
-
-### Algorithm
-
-**Short branches** (Poisson regime, lines 78-86): for candidate branch length $x$, observed mutation length $\ell$, and sequence length $L$, the negative log-likelihood up to an additive constant is $L[x-\ell\ln(x+\varepsilon)]$. The implementation uses $\varepsilon=0.01/L$ to keep the logarithm finite.
-
-**Long branches** (Gaussian regime, lines 87-102): let $p_0=1-\sum_i\pi_i^2$, $\ell'=\ell+1/L$, and $z=\exp(\ell'/p_0)$. The branch-length variance is $\sigma^2=p_0(z-1)[z-p_0(z-1)]/L$. The implementation uses a quadratic cost near $\ell$ and a linear tail beyond a fixed cost cap to limit extreme penalties.
-
-Transition: switches from Poisson to Gaussian at `mutation_length > 0.05`.
-
----
-
 ## Random GTR Generation
 
 Testing utility that generates random GTR models from prior distributions. Useful for verifying GTR algorithms work for arbitrary (not just named) models.

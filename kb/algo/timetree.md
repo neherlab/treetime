@@ -46,6 +46,18 @@ v1: [`packages/treetime/src/timetree/inference/branch_length_likelihood.rs`](../
 
 - `compute_branch_length_distribution()` (`#compute_branch_length_distribution`) [packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L17-L65](../../packages/treetime/src/timetree/inference/branch_length_likelihood.rs#L17-L65): evaluates the Poisson indel log-likelihood alongside the substitution log-likelihood on the grid (matching `optimize_edge_lengths()`), then converts the branch-length grid to a time grid using the argument `branch_rate` (the clock rate times `gamma`), where `gamma > 1` means faster evolution (shorter time for same substitutions)
 
+### Input branch lengths
+
+With `--branch-length-mode=input`, the branch-length likelihood of an edge comes from its input branch length alone, as in v0's `BranchLenInterpolator` input mode.
+
+v0: `BranchLenInterpolator.__init__()` (`#BranchLenInterpolator`) in [`packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102`](../../packages/legacy/treetime/treetime/branch_len_interpolator.py#L64-L102).
+v1: `InputBranchModel` and `InputBranchLikelihood` in [`packages/treetime/src/timetree/inference/input_branch_length.rs`](../../packages/treetime/src/timetree/inference/input_branch_length.rs), used by `create_branch_distributions_input_mode()` in [`packages/treetime/src/timetree/inference/runner.rs`](../../packages/treetime/src/timetree/inference/runner.rs).
+
+- **Short branches** (Poisson regime, input length $\ell < 0.05$): for candidate branch length $x$ and sequence length $L$, the negative log-likelihood up to an additive constant is $L[x-\ell\ln(x+\varepsilon)]$, with $\varepsilon=10^{-3}/L$ (v0 `MIN_BRANCH_LENGTH` times one mutation) to keep the logarithm finite
+- **Long branches** (Gaussian regime, $\ell \ge 0.05$): let $p_0=1-\sum_i\pi_i^2$, $\ell'=\ell+1/L$, and $z=\exp(\ell'/p_0)$. The variance is $\sigma^2=p_0(z-1)[z-p_0(z-1)]/L$. The cost is $\min\left(\tfrac{(\ell-x)^2}{2\sigma^2},\ 100+\tfrac{|\ell-x|}{\sigma_t}\right)$ with $\sigma_t=\sqrt{\sigma^2+10^{-3}/L}$: quadratic near $\ell$, linear beyond about $15\sigma$, which limits the penalty of a branch that conflicts with the clock
+- **Model**: $\pi$ is the equilibrium frequency vector of the run's model: JC69 for nucleotides without an alignment, as v0; with an alignment, the `--model` GTR, fitted from Fitch counts for `infer`. Several alignments give the site-weighted mean of $p_0$
+- **Grid**: v0 samples a nonuniform grid of 125 points up to 4 substitutions per site. v1 samples a uniform time grid from 0 to the mode plus 20 widths ($\sigma$, or $\sqrt{\max(\ell,1/L)/L}$ for Poisson) with at least 10 points per width, a hard boundary at time 0 and a soft linear right tail, then trims it to the mass window as in marginal mode
+
 ---
 
 ## Kingman Coalescent
