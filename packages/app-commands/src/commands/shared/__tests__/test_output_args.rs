@@ -142,7 +142,7 @@ mod tests {
   }
 
   #[test]
-  fn test_ancestral_output_augur_node_data_parses() {
+  fn test_ancestral_output_node_data_parses() {
     let args =
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-node-data=/tmp/node.json"])
         .unwrap();
@@ -150,7 +150,7 @@ mod tests {
   }
 
   #[test]
-  fn test_ancestral_output_gtr_parses() {
+  fn test_ancestral_output_model_parses() {
     let args =
       TreetimeAncestralArgsRaw::try_parse_from(["treetime", "--tree=/dev/null", "--output-model=/tmp/gtr.json"])
         .unwrap();
@@ -223,7 +223,7 @@ mod tests {
   }
 
   #[test]
-  fn test_clock_rejects_augur_node_data_selection() {
+  fn test_clock_rejects_node_data_selection() {
     let result = TreetimeClockArgsRaw::try_parse_from([
       "treetime",
       "--metadata=/dev/null",
