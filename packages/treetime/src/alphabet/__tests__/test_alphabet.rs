@@ -399,8 +399,8 @@ mod tests {
   }
 
   #[rstest]
-  #[case::nuc(AlphabetName::Nuc, "Nuc")]
-  #[case::aa(AlphabetName::Aa, "Aa")]
+  #[case::nuc(AlphabetName::Nuc, "nuc")]
+  #[case::aa(AlphabetName::Aa, "aa")]
   #[trace]
   fn test_alphabet_name_display(#[case] name: AlphabetName, #[case] expected: &str) {
     let actual = name.to_string();
