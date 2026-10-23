@@ -23,6 +23,9 @@ confidence: true
 coalescent: "opt"
 max_iter: 3
 
+# A fixed seed makes the random steps of the run, such as polytomy resolution, repeat exactly.
+seed: 42
+
 # The default outputs: with `confidence`, the node dates table holds the 90% intervals.
 output_selection:
   - "nwk"

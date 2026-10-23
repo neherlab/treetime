@@ -41,3 +41,4 @@ steps:
         - "aln.fasta.xz"
       coalescent: "opt"
       max_iter: 3
+      seed: 42

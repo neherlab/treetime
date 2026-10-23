@@ -134,7 +134,7 @@
     },
     {
       "path": "ebola/362/pipeline.yaml",
-      "size": 1770
+      "size": 1785
     },
     {
       "path": "ebola/362/timetree-dense.yaml",
@@ -178,11 +178,11 @@
     },
     {
       "path": "flu/h3n2/200/pipeline.yaml",
-      "size": 1355
+      "size": 1370
     },
     {
       "path": "flu/h3n2/200/timetree.yaml",
-      "size": 1266
+      "size": 1371
     },
     {
       "path": "flu/h3n2/200/tree.nwk",
@@ -198,7 +198,7 @@
     },
     {
       "path": "flu/h3n2/500/pipeline.yaml",
-      "size": 1949
+      "size": 1964
     },
     {
       "path": "flu/h3n2/500/timetree.yaml",
@@ -686,7 +686,7 @@
     },
     {
       "path": "zika/20/pipeline.yaml",
-      "size": 1606
+      "size": 1621
     },
     {
       "path": "zika/20/tree.nwk",
@@ -1343,7 +1343,7 @@
       "command": "timetree",
       "title": "Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).",
       "folder": "flu/h3n2/200",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/200/timetree.yaml --output-all tmp/examples/flu/h3n2/200/timetree\n#\n# `timetree` turns divergence into calendar time. Fixing the clock rate\n# (`clock_rate`) skips rate estimation and is common for well-characterized\n# pathogens like seasonal influenza. `confidence` adds date confidence\n# intervals, which need a rate uncertainty (`clock_std_dev`) when the rate is\n# fixed; `coalescent: opt` fits a constant coalescent time scale analytically.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_rate: 0.003\nclock_std_dev: 0.0006\nconfidence: true\ncoalescent: \"opt\"\nmax_iter: 3\n\n# The default outputs: with `confidence`, the node dates table holds the 90% intervals.\noutput_selection:\n  - \"nwk\"\n  - \"nexus\"\n  - \"auspice\"\n  - \"node-data\"\n  - \"model\"\n  - \"sequences\"\n  - \"clock-model\"\n  - \"coalescent\"\n  - \"dates\"\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/200/timetree.yaml --output-all tmp/examples/flu/h3n2/200/timetree\n#\n# `timetree` turns divergence into calendar time. Fixing the clock rate\n# (`clock_rate`) skips rate estimation and is common for well-characterized\n# pathogens like seasonal influenza. `confidence` adds date confidence\n# intervals, which need a rate uncertainty (`clock_std_dev`) when the rate is\n# fixed; `coalescent: opt` fits a constant coalescent time scale analytically.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_rate: 0.003\nclock_std_dev: 0.0006\nconfidence: true\ncoalescent: \"opt\"\nmax_iter: 3\n\n# A fixed seed makes the random steps of the run, such as polytomy resolution, repeat exactly.\nseed: 42\n\n# The default outputs: with `confidence`, the node dates table holds the 90% intervals.\noutput_selection:\n  - \"nwk\"\n  - \"nexus\"\n  - \"auspice\"\n  - \"node-data\"\n  - \"model\"\n  - \"sequences\"\n  - \"clock-model\"\n  - \"coalescent\"\n  - \"dates\"\n",
       "inputs": {
         "alignment": [
           "flu/h3n2/200/aln.fasta.xz"

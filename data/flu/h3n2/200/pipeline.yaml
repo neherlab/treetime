@@ -34,3 +34,4 @@ steps:
       clock_std_dev: "{{ vars.clock_std_dev }}"
       confidence: true
       max_iter: 3
+      seed: 42

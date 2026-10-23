@@ -24,6 +24,7 @@ steps:
       metadata: "metadata.tsv"
       alignment:
         - "aln.fasta.xz"
+      seed: 42
 
   # Reconstruct ancestral sampling country on the dated tree from step 1.
   - name: "mugration"
