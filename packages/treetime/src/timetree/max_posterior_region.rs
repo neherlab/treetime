@@ -2,7 +2,7 @@ use argmin::core::{CostFunction, Error, Executor, TerminationReason, Termination
 use argmin::solver::brent::BrentRoot;
 use bon::bon;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, chain};
 use ndarray::{Array1, ArrayView1, s};
 use ordered_float::OrderedFloat;
 use std::iter::once;
