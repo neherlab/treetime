@@ -48,7 +48,6 @@ The golden masters and the property and consistency tests are the independent or
 - `fn clock_regression_forward`: no direct unit test
 - `fn load_date_constraints()`: validation failure paths untested
 - Clock model JSON output, clock CSV output: untested at serialized-output level
-- SVG and PNG root-to-tip chart writers [packages/app-commands/src/rtt_chart.rs#L21-L52](../../packages/app-commands/src/rtt_chart.rs#L21-L52): no tests of the written files; only `fn gather_points()` has tests
 
 ### Timetree optimization and output
 
