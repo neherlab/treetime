@@ -12,10 +12,10 @@ reps=${1:-10}
 jobs=${2:-$cpus}
 read -r -a tips <<<"${3:-10 30 100}"
 # largest trees first, so the longest jobs do not start last
+# shellcheck disable=SC2016
 for n in $(printf '%s\n' "${tips[@]}" | sort -rn); do
   out=data
   [[ $n == 10 ]] || out=data_n$n
   for coal in const exp piecewise; do for rep in $(seq 0 $((reps - 1))); do echo "$coal $rep $n $out"; done; done
 done |
-  # shellcheck disable=SC2016
   xargs -P "$jobs" -L 1 bash -c 'python simulate.py --coal $0 --rep $1 --tips-per-sample $2 --out $3 && python degrade.py --coal $0 --rep $1 --data $3'
