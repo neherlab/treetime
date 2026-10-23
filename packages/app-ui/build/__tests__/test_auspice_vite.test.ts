@@ -1,4 +1,4 @@
-import { transformAuspiceSource } from "../auspice-vite";
+import { auspiceEntries, transformAuspiceSource } from "../auspice-vite";
 
 const AUSPICE_ROOT = "/repo/node_modules/.bun/auspice@3.1.0+ee1ed944166f6889/node_modules/auspice";
 
@@ -59,6 +59,30 @@ describe("auspice source transform", () => {
 
     expect(code).toContain("react/jsx-runtime");
     expect(code).not.toContain("<span>");
+  });
+});
+
+describe("auspice module entries", () => {
+  test("each declaration names the Auspice module it declares", () => {
+    expect(
+      auspiceEntries([
+        "reducers/controls.d.ts",
+        "components/tree/index.d.ts",
+        "components\\download\\helperFunctions.d.ts",
+        "actions/types.d.ts",
+      ]),
+    ).toEqual([
+      "auspice/src/actions/types",
+      "auspice/src/components/download/helperFunctions",
+      "auspice/src/components/tree",
+      "auspice/src/reducers/controls",
+    ]);
+  });
+
+  test("folders and files other than declarations name no module", () => {
+    expect(auspiceEntries(["components", "components/tree", "README.md", "reducers/tree/index.d.ts"])).toEqual([
+      "auspice/src/reducers/tree",
+    ]);
   });
 });
 

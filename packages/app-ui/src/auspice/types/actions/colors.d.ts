@@ -1,3 +1,3 @@
-import type { AuspiceThunk } from "auspice/src/state";
+import type { AuspiceThunk } from "../../state";
 
 export declare function changeColorBy(colorBy?: string): AuspiceThunk;

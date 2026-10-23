@@ -1,4 +1,4 @@
-import type { AuspiceControlsState } from "auspice/src/state";
+import type { AuspiceControlsState } from "../../state";
 import type { Reducer } from "redux";
 
 declare const reducer: Reducer<AuspiceControlsState>;

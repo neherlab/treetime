@@ -1,4 +1,4 @@
-import type { AuspiceThunk } from "auspice/src/state";
+import type { AuspiceThunk } from "../../state";
 
 export declare function updateVisibleTipsAndBranchThicknesses(options: {
   root: [number | undefined, number | undefined];

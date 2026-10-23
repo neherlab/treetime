@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { Plugin } from "vite";
@@ -5,45 +6,17 @@ import type { Plugin } from "vite";
 export const AUSPICE_SOURCE =
   /[\\/]node_modules[\\/](?:\.bun[\\/][^\\/]+[\\/]node_modules[\\/])?auspice[\\/]src[\\/][^?]+\.js(?:\?.*)?$/u;
 
-const AUSPICE_ENTRIES = [
-  "auspice/src/actions/colors",
-  "auspice/src/actions/recomputeReduxState",
-  "auspice/src/actions/tree",
-  "auspice/src/actions/types",
-  "auspice/src/components/controls/choose-branch-labelling",
-  "auspice/src/components/controls/choose-layout",
-  "auspice/src/components/controls/choose-metric",
-  "auspice/src/components/controls/choose-tip-label",
-  "auspice/src/components/controls/color-by",
-  "auspice/src/components/controls/controlHeader",
-  "auspice/src/components/controls/filter",
-  "auspice/src/components/controls/miscInfoText",
-  "auspice/src/components/controls/styles",
-  "auspice/src/components/controls/toggle-focus",
-  "auspice/src/components/download/downloadButtons",
-  "auspice/src/components/download/downloadModal",
-  "auspice/src/components/info/filtersSummary",
-  "auspice/src/components/tree",
-  "auspice/src/middleware/performanceFlags",
-  "auspice/src/middleware/scatterplot",
-  "auspice/src/reducers/browserDimensions",
-  "auspice/src/reducers/controls",
-  "auspice/src/reducers/entropy",
-  "auspice/src/reducers/frequencies",
-  "auspice/src/reducers/measurements",
-  "auspice/src/reducers/metadata",
-  "auspice/src/reducers/narrative",
-  "auspice/src/reducers/notifications",
-  "auspice/src/reducers/tree",
-  "auspice/src/reducers/tree/treeToo",
-  "auspice/src/util/computeResponsive",
-];
-
 const APP_UI_PACKAGE = "@neherlab/app-ui";
 
 export const AUSPICE_EXTENSIONS = "@extensions";
 
 const AUSPICE_EXTENSIONS_MODULE = fileURLToPath(new URL("../src/auspice/extensions.ts", import.meta.url));
+
+const AUSPICE_DECLARATIONS = fileURLToPath(new URL("../src/auspice/types", import.meta.url));
+
+const DECLARATION = /\.d\.ts$/u;
+
+const INDEX_MODULE = /\/index$/u;
 
 const SHARED_PACKAGES = ["react", "react-dom"];
 
@@ -86,11 +59,21 @@ export function auspice(): Plugin {
         resolve: { alias: { [AUSPICE_EXTENSIONS]: AUSPICE_EXTENSIONS_MODULE }, dedupe: SHARED_PACKAGES },
         optimizeDeps: {
           extensions: [".tsx"],
-          include: AUSPICE_ENTRIES.map((entry) => `${APP_UI_PACKAGE} > ${entry}`),
+          include: auspiceEntries(readdirSync(AUSPICE_DECLARATIONS, { recursive: true, encoding: "utf8" })).map(
+            (entry) => `${APP_UI_PACKAGE} > ${entry}`,
+          ),
           rolldownOptions: { plugins: [{ name: "treetime-auspice-source", transform: AUSPICE_TRANSFORM }] },
         },
       };
     },
     transform: AUSPICE_TRANSFORM,
   };
+}
+
+export function auspiceEntries(declarations: readonly string[]): string[] {
+  return declarations
+    .map((path) => path.replaceAll("\\", "/"))
+    .filter((path) => DECLARATION.test(path))
+    .map((path) => `auspice/src/${path.replace(DECLARATION, "").replace(INDEX_MODULE, "")}`)
+    .toSorted();
 }
