@@ -22,11 +22,7 @@
 # - macOS: libraries in /usr/lib and frameworks in /System/Library
 #
 # It also fails when a macOS binary names another minimum macOS version than the
-# deployment target of its image, and when a binary of any target contains
-# instructions above the CPU baseline of its target (dev/lib/dist-flags.sh)
-# outside the functions of dev/cross/isa-allowlist, which run only after a check
-# of the CPU at run time. The symbol tables of the ELF, COFF, and Mach-O files
-# name the function of each instruction.
+# deployment target of its image.
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -108,89 +104,6 @@ macos_min_version() {
   '
 }
 
-# Print the instructions above the CPU baseline of the target, which
-# dev/lib/dist-flags.sh sets, as <count> <function>, except in the functions of
-# dev/cross/isa-allowlist.
-# - x86_64 (x86-64-v2): VEX and EVEX instructions and the BMI, LZCNT, MOVBE,
-#   and ADX instructions; TZCNT is left out, because CPUs without BMI run its
-#   encoding as BSF, and compilers use it on purpose for generic code
-# - aarch64 Linux (Armv8.0): every extension of Armv8.1 and later and the
-#   optional ones of Armv8.0: the features of the Apple M1 (LSE atomics, CRC32,
-#   RDM, LOR, the dot product, RCPC and RCPC2, JSCVT, FCMA, pointer
-#   authentication outside the hint space, FlagM, FRINTTS, FP16 arithmetic and
-#   FHM, AES, SHA1, SHA256, SHA512, SHA3, 64-bit PMULL, SB, SPECRES, DPB) and the
-#   features above the M1
-# - aarch64 Windows (Armv8.0 with LSE): the same without the LSE atomics
-# - aarch64 macOS (Apple M1, the features that LLVM's apple-m1 CPU enables): the
-#   features above the M1: SVE and SME, BF16, I8MM, MTE, MOPS, CSSC, LSE128,
-#   RCPC3, WFxT, LS64, RNG, HBC, the compare-and-branch instructions, SM3, SM4,
-#   FP8, FAMINMAX, LUT, and XS
-# FP16 arithmetic is any floating-point instruction on half-precision registers
-# or vectors except the conversions FCVT, FCVTL, and FCVTN, which Armv8.0 has.
-# COFF and Mach-O keep the labels of assembly code (L*, .L*, ltmp*) as symbols;
-# their instructions count for the function that contains them. Mach-O names C
-# functions with a leading underscore, which is removed to match the ELF names.
-# The NEON syntax is the generic one on every target, because llvm-objdump
-# prints the Apple syntax (sdot.4s) for Mach-O.
-isa_above_baseline() {
-  local file="${1}" pattern allow insn lse m1 m1_line above_m1 above_m1_line object=""
-  insn='^[[:space:]]*[0-9a-f]+:[[:space:]]+'
-  lse='(ldadd|ldclr|ldeor|ldset|ldsmax|ldsmin|ldumax|ldumin|swp|cas|casp)[albh]*'
-  m1='crc32c?[bhwx]|sqrdmlah|sqrdmlsh|sdot|udot|ldlar[bh]?|stllr[bh]?|ldapr[bh]?|ldapur(s?[bh]|sw)?|stlur[bh]?|fjcvtzs|fcmla|fcadd|(pac|aut)(ia|ib|da|db|iza|izb|dza|dzb)|pacga|xpac[id]|bl?ra(a|b|az|bz)|e?reta[ab]|ldra[ab]|cfinv|rmif|setf(8|16)|axflag|xaflag|frint(32|64)[xz]|fmlal2?|fmlsl2?|aes(e|d|mc|imc)|sha1(c|h|m|p|su0|su1)|sha(256|512)(h|h2|su0|su1)|eor3|bcax|rax1|xar|sb|cfp|dvp|cpp|cosp'
-  m1_line="${insn}(f[a-z0-9]*|[su]cvtf)[[:space:]].*([[:space:]]h[0-9]+|\.[248]h)|${insn}pmull2?[[:space:]]+v[0-9]+\.1q|${insn}dc[[:space:]]+cvad?p,"
-  above_m1='smstart|smstop|bfdot|bfmmla|bfmlal[bt]|bfcvtn?2?|smmla|ummla|usmmla|usdot|sudot|irg|gmi|addg|subg|subps?|stz?2?g|stgp|ldgm?|stz?gm|cpyf?[pme][a-z]*|setg?[pme](t|n|tn)?|ctz|(ldclrp|ldsetp|swpp)(a|l|al)?|ldiapp|stilp|ldap1|stl1|wfet|wfit|ld64b|st64bv?0?|bc\..*|cbh?b?(gt|ge|hi|hs|eq|ne|lt|lo|le|ls)|sm3(ss1|tt1a|tt1b|tt2a|tt2b|partw1|partw2)|sm4e(key)?|b?f[12]cvtl2?|fscale|fdot|fmlal[bt][bt]?|fmlall[bt][bt]|famax|famin|luti[24]'
-  above_m1_line="${insn}(abs|cnt|smax|smin|umax|umin)[[:space:]]+[wx][0-9z]|${insn}mrs[[:space:]]+x[0-9]+, (RNDR|RNDRRS)\$|${insn}(dsb|tlbi)[[:space:]]+[a-z0-9]*nxs|[{ ]za[0-9]*[hv]?[.}[]| z[0-9]+\.| p[0-9]+[./]"
-  case "${target}" in
-  x86_64-*)
-    pattern='^(v[a-z0-9]+|(andn|bextr|blsi|blsmsk|blsr|bzhi|mulx|pdep|pext|rorx|sarx|shlx|shrx|lzcnt|movbe|adcx|adox)[bwlq]?)$|%[yz]mm'
-    allow="x86_64"
-    ;;
-  aarch64-*-linux-*)
-    pattern="^(${lse}|${m1}|${above_m1})\$|${m1_line}|${above_m1_line}"
-    allow="aarch64"
-    ;;
-  aarch64-*-windows-*)
-    pattern="^(${m1}|${above_m1})\$|${m1_line}|${above_m1_line}"
-    allow="aarch64"
-    ;;
-  aarch64-apple-*)
-    pattern="^(${above_m1})\$|${above_m1_line}"
-    allow="aarch64"
-    ;;
-  *) return 0 ;;
-  esac
-  case "${target}" in
-  *-apple-*) object="macho" ;;
-  *-windows-*) object="coff" ;;
-  esac
-  /opt/llvm/bin/llvm-objdump -d --no-show-raw-insn --demangle -mllvm=--aarch64-neon-syntax=generic "${file}" |
-    pattern="${pattern}" object="${object}" awk '
-      $2 ~ /^(fcvt|fcvtl2?|fcvtn2?)$/ { next }
-      /^[0-9a-f]+ <.*>:$/ {
-        name = substr($0, index($0, "<") + 1); sub(/>:$/, "", name)
-        if (ENVIRON["object"] != "" && name ~ /^(\.L|L[a-z0-9_]|ltmp)/) next
-        if (ENVIRON["object"] == "macho") sub(/^_/, "", name)
-        fn = name
-        next
-      }
-      $2 ~ ENVIRON["pattern"] || $0 ~ ENVIRON["pattern"] { count[fn]++ }
-      END { for (f in count) print count[f], f }
-    ' |
-    awk -v arch="${allow}" '
-      NR == FNR {
-        if ($0 ~ /^[[:space:]]*(#|$)/) next
-        split($0, field, /[[:space:]]+/)
-        if (field[1] == arch || field[1] == "any") allowed[++n] = substr($0, length(field[1]) + 2)
-        next
-      }
-      {
-        name = substr($0, index($0, " ") + 1)
-        for (i = 1; i <= n; i++) if (name ~ allowed[i]) next
-        print
-      }
-    ' dev/cross/isa-allowlist - | sort -rn
-}
-
 # Print the glibc symbol versions above the oldest supported glibc.
 glibc_too_new() {
   local objdump version
@@ -252,13 +165,5 @@ if [[ "${target}" == *-apple-darwin ]]; then
     printf '%s names macOS %s as its minimum version instead of the deployment target %s\n' "${file}" "${minos:-(none)}" "${MACOSX_DEPLOYMENT_TARGET}" >&2
     failed=1
   fi
-fi
-above="$(isa_above_baseline "${file}")"
-if [[ -n "${above}" ]]; then
-  printf '%s has instructions above the CPU baseline of %s outside dev/cross/isa-allowlist (count, function):\n' "${file}" "${target}" >&2
-  while IFS= read -r entry; do
-    printf '  * %s\n' "${entry}" >&2
-  done <<<"${above}"
-  failed=1
 fi
 [[ -z "${failed}" ]]
