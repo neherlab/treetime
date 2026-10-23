@@ -533,7 +533,8 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 
 1. `.github/workflows/schedule-nightly.yml` on `master` runs daily at 04:00 UTC and calls `.github/workflows/nightly.yml` on `rust`, which skips when `rust` has no new commits
 2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`, and the desktop apps with `.github/workflows/desktop-build.yml`: the addon of each target in its cross image, the bundles, and the packages. A failed target does not block the others
-3. `dev/publish-nightly` creates the prerelease with the built binaries, the desktop packages, and `examples.zip`, which holds the files that `data/index.json` lists and the index itself. Its notes list the changelog since the previous nightly, followed by a downloads table that links every asset, one row per platform
+3. `nightly.yml` writes `SHA256SUMS` over every asset of the release and attests these checksums with `actions/attest`, which signs with the identity of the workflow run. The attestation needs the `id-token: write` and `attestations: write` permissions. A called workflow can only lower the permissions of its caller, so the `nightly` job of `schedule-nightly.yml` grants them too
+4. `dev/publish-nightly` creates the prerelease with the built binaries, the desktop packages, `examples.zip`, which holds the files that `data/index.json` lists and the index itself, and `SHA256SUMS`. Its notes list the changelog since the previous nightly, followed by a downloads table that links every asset, one row per platform, and the command that verifies a download: `gh attestation verify <file> --repo neherlab/treetime`
 
 `./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 

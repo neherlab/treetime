@@ -99,6 +99,13 @@ jobs:
     needs: [prepare, build, build-desktop]
     if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' }}
     runs-on: ubuntu-24.04
+    # The attest action signs with the identity of this workflow. A called workflow can only lower the
+    # permissions of its caller, so the nightly job of schedule-nightly.yml on master grants the same ones.
+    # The release upload uses NEHERLAB_BOT_GITHUB_TOKEN, not this token.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: "Checkout rust revision"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -120,6 +127,19 @@ jobs:
         working-directory: data
         run: |
           { jq -r '.files[].path' index.json; echo index.json; } | zip -X -D -q -Z deflate -@ ../.out/examples.zip
+
+      # Covers every file that the publish step uploads from .out. The glob expands before the redirection
+      # creates SHA256SUMS, so the file does not list itself.
+      - name: "Generate checksums"
+        working-directory: ".out"
+        run: |
+          sha256sum -- * > SHA256SUMS
+          sha256sum -c SHA256SUMS
+
+      - name: "Generate build provenance attestations"
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: ".out/SHA256SUMS"
 
       - name: "Publish nightly release"
         env:
