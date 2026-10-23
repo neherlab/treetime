@@ -26,6 +26,12 @@ permissions:
 
 jobs:
   nightly:
+    # The publish job of nightly.yml attests the release checksums, which signs with the identity of the
+    # workflow. A called workflow can only lower the permissions that its caller grants.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     uses: neherlab/treetime/.github/workflows/nightly.yml@rust
     with:
       force: ${{ inputs.force || false }}
