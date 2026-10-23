@@ -122,7 +122,7 @@ COPY dev/docker/files/hawk-toolchain dev/docker/files/wasm-threads-toolchain /tm
 # hadolint ignore=DL3003
 RUN set -euxo pipefail >/dev/null \
 && /install-rust "/tmp/rust" \
-&& for dir in /tmp/lints/*; do (cd "${dir}" && rustup toolchain install); done \
+&& for dir in /tmp/lints/*; do (cd "${dir}" && rustup toolchain install) || exit 1; done \
 && rustup toolchain install "$(cat /tmp/hawk-toolchain)" --profile minimal --component rustc-dev,llvm-tools-preview,rust-src \
 && rustup toolchain install "$(cat /tmp/wasm-threads-toolchain)" --profile minimal --component rust-src,clippy \
 && chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" \
@@ -136,8 +136,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
   set -euxo pipefail >/dev/null \
 && export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
 && mise -C "/tmp/mise/project" install \
-&& for dir in $(mise -C "/tmp/mise/project" bin-paths); do \
-  find -L "${dir}" -mindepth 1 -maxdepth 1 -type f -executable -exec ln -sf -t "/usr/local/bin" {} + ; \
+&& bin_paths="$(mise -C "/tmp/mise/project" bin-paths)" \
+&& printf '%s\n' "${bin_paths}" | while IFS= read -r dir; do \
+  find -L "${dir}" -mindepth 1 -maxdepth 1 -type f -executable -exec ln -sf -t "/usr/local/bin" {} + || exit 1; \
 done \
 && chmod -R a+rX "${MISE_DATA_DIR}" \
 && rm -rf "/tmp/mise" \
