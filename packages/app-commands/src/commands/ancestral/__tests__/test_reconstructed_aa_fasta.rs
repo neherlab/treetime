@@ -4,8 +4,10 @@ mod tests {
   use crate::commands::ancestral::run::run_ancestral_reconstruction;
   use crate::commands::shared::alignment::AlignmentArgs;
   use crate::commands::shared::model::{GtrModelNameCli, ModelArgs};
+  use clap::Parser;
   use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
+  use std::collections::BTreeMap;
   use std::fs;
   use std::path::{Path, PathBuf};
   use tempfile::tempdir;
@@ -53,10 +55,101 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_reconstructed_aa_fasta_of_an_alignment_split_into_partitions_equals_the_unsplit_run() -> Result<(), Report> {
+    let dir = tempdir().wrap_err("When creating a temporary directory")?;
+    helpers::write_fixtures(dir.path())?;
+    let whole = dir.path().join("whole");
+    let split = dir.path().join("split");
+
+    helpers::run_with_output_all(dir.path(), &whole, &["--model", "jc69"])?;
+    helpers::run_with_output_all(
+      dir.path(),
+      &split,
+      &[
+        "--partition",
+        "{name: cp1, sites: ['1-6\\3'], model: jc69}",
+        "--partition",
+        "{name: cp2, sites: ['2-6\\3'], model: jc69}",
+        "--partition",
+        "{name: cp3, sites: ['3-6\\3'], model: jc69}",
+      ],
+    )?;
+
+    let whole_files = helpers::output_files(&whole)?;
+    assert_eq!(
+      (true, whole_files.keys().collect::<Vec<_>>()),
+      (
+        whole_files.contains_key("translations.S.fasta"),
+        helpers::output_files(&split)?.keys().collect::<Vec<_>>()
+      )
+    );
+    let split_files = helpers::output_files(&split)?;
+    for (name, content) in whole_files.iter().filter(|(name, _)| !name.ends_with(".model.json")) {
+      assert_eq!(content, &split_files[name], "output file {name}");
+    }
+    Ok(())
+  }
+
   mod helpers {
     use super::*;
     use crate::commands::shared::gtr_output::GtrOutputArgs;
     use crate::commands::shared::tree_input::TreeArgs;
+
+    pub(super) fn write_fixtures(dir: &Path) -> Result<(), Report> {
+      fs::write(dir.join("tree.nwk"), TREE).wrap_err("When writing the tree fixture")?;
+      fs::write(dir.join("aln.fasta"), ALIGNMENT).wrap_err("When writing the alignment fixture")?;
+      fs::write(dir.join("S.fasta"), TRANSLATION).wrap_err("When writing the translation fixture")
+    }
+
+    pub(super) fn run_with_output_all(dir: &Path, out: &Path, extra: &[&str]) -> Result<(), Report> {
+      let path = |name: &str| dir.join(name).display().to_string();
+      let output_all = out.display().to_string();
+      let translations = format!("{}/%GENE.fasta", dir.display());
+      let output_translations = out.join("translations.%GENE.fasta").display().to_string();
+      let raw = TreetimeAncestralArgsRaw::try_parse_from(
+        [
+          &[
+            "ancestral",
+            "--tree",
+            &path("tree.nwk"),
+            "--alignment",
+            &path("aln.fasta"),
+            "--translations",
+            &translations,
+            "--cds-selection",
+            "S",
+            "--output-all",
+            &output_all,
+            "--output-translations",
+            &output_translations,
+          ][..],
+          extra,
+        ]
+        .concat(),
+      )?;
+      run_ancestral_reconstruction(
+        &TreetimeAncestralArgs::try_from(raw)?,
+        &NoopCancel,
+        &NoopProgress,
+        &NoopProgress,
+      )
+    }
+
+    pub(super) fn output_files(out: &Path) -> Result<BTreeMap<String, String>, Report> {
+      fs::read_dir(out)
+        .wrap_err_with(|| format!("When listing '{}'", out.display()))?
+        .map(|entry| {
+          let path = entry?.path();
+          let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+          let content = fs::read_to_string(&path).wrap_err_with(|| format!("When reading '{}'", path.display()))?;
+          Ok((name, content))
+        })
+        .collect()
+    }
 
     pub(super) fn args(dir: &Path, aa_fasta: PathBuf, gtr: Option<PathBuf>) -> Result<TreetimeAncestralArgs, Report> {
       TreetimeAncestralArgs::try_from(raw(dir, aa_fasta, gtr)?)
