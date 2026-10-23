@@ -27,7 +27,7 @@ export type SearchPages = (query: string) => Promise<SearchResult[]>;
 
 export async function loadPagefind(): Promise<SearchPages> {
   const pagefindUrl = assetUrl("pagefind/pagefind.js");
-  const { search } = pagefindModuleSchema.parse(await import(pagefindUrl));
+  const { search } = pagefindModuleSchema.parse(await import(/* @vite-ignore */ pagefindUrl));
 
   return async (query) => {
     const { results } = await search(query);

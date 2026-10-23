@@ -170,6 +170,7 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
           allow: [
             "oxlint-",
             "@ts-expect-error",
+            "@vite-ignore",
             "\\* @internal",
             "/ <reference",
             "/usr/bin/env",
