@@ -82,7 +82,7 @@ def command(suite, binary, tree, set_dir, flags, out):
         outputs = ['--output-tree-nwk', out / 'tree.nwk', '--output-model', out / 'gtr.json']
         return [binary, 'optimize', *aln, *flags, *COMMON, *map(str, outputs)]
     dates = ['-m', str(observed(set_dir.parent, 'tip_dates.tsv')), '--date-column', 'date', '--clock-filter', '0']
-    outputs = ['--output-augur-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
+    outputs = ['--output-node-data', out / 'node_data.json', '--output-tree-nwk', out / 'timetree.nwk',
                '--output-clock-model', out / 'clock.json']  # fmt: skip
     if any(f.startswith('--coalescent') for f in flags):  # requesting it without a model is an error
         outputs += ['--output-coalescent', out / 'coalescent.tsv']
