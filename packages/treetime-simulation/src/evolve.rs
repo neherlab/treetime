@@ -94,14 +94,18 @@ pub struct SimulatedSequences {
 
 impl SimulatedSequences {
   pub fn leaf_records(&self, graph: &Graph, names: &NodeNames) -> Vec<AlignmentRecord> {
-    graph
-      .get_leaves()
-      .map(|leaf| AlignmentRecord {
-        name: names[leaf.key()].to_owned(),
-        seq: self.sequences[&leaf.key()].clone(),
-      })
-      .collect()
+    leaf_records(graph, names, &self.sequences)
   }
+}
+
+pub fn leaf_records(graph: &Graph, names: &NodeNames, sequences: &BTreeMap<GraphNodeKey, Seq>) -> Vec<AlignmentRecord> {
+  graph
+    .get_leaves()
+    .map(|leaf| AlignmentRecord {
+      name: names[leaf.key()].to_owned(),
+      seq: sequences[&leaf.key()].clone(),
+    })
+    .collect()
 }
 
 pub(crate) fn validate_edge_duration(edge: GraphEdgeKey, duration: f64) -> Result<(), Report> {
