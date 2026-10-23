@@ -66,3 +66,13 @@ pub const fn u32_to_usize(value: u32) -> usize {
 pub fn f64_to_usize_saturating(value: f64) -> usize {
   value.to_usize().unwrap_or(if value > 0.0 { usize::MAX } else { 0 })
 }
+
+pub fn f64_to_i32_saturating(value: f64) -> i32 {
+  value.to_i32().unwrap_or(if value > 0.0 {
+    i32::MAX
+  } else if value < 0.0 {
+    i32::MIN
+  } else {
+    0
+  })
+}

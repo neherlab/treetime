@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::cast::{F64_EXACT_INTEGER_LIMIT, ToF64Exact, f64_to_usize_saturating, u32_to_usize, usize_to_u64};
+  use crate::cast::{
+    F64_EXACT_INTEGER_LIMIT, ToF64Exact, f64_to_i32_saturating, f64_to_usize_saturating, u32_to_usize, usize_to_u64,
+  };
   use proptest::prelude::*;
   use rstest::rstest;
 
@@ -61,6 +63,20 @@ mod tests {
   #[trace]
   fn test_cast_f64_to_usize_saturating_matches_as_semantics(#[case] value: f64, #[case] expected: usize) {
     assert_eq!(expected, f64_to_usize_saturating(value));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::fraction_truncates(         2.7,               2)]
+  #[case::negative_fraction_truncates(-2.7,              -2)]
+  #[case::nan(                        f64::NAN,          0)]
+  #[case::too_large(                  1e30,              i32::MAX)]
+  #[case::too_small(                  -1e30,             i32::MIN)]
+  #[case::infinity(                   f64::INFINITY,     i32::MAX)]
+  #[case::negative_infinity(          f64::NEG_INFINITY, i32::MIN)]
+  #[trace]
+  fn test_cast_f64_to_i32_saturating_matches_as_semantics(#[case] value: f64, #[case] expected: i32) {
+    assert_eq!(expected, f64_to_i32_saturating(value));
   }
 
   proptest! {
