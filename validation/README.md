@@ -34,7 +34,8 @@ multiplies `mu` by the raw average rate.
 ## Messy data (`degrade.py`)
 
 `generate_all.sh` and `slurm.sh` also write a messy copy of every replicate: `data_messy/`, `data_n30_messy/`,
-`data_n100_messy/`. One replicate: `python degrade.py --coal exp --rep 0 [--data data_n30]`. Each sequence set gets
+`data_n100_messy/`. One replicate: `pixi run python degrade.py --coal exp --rep 0 [--data data_n30]`. Each sequence
+set gets
 
 - gaps: 3 per 1000 sites, 3 bases long, each on a branch drawn in proportion to its length in time and inherited by all
   nodes below it (in `tips.fasta.xz` and `internal.fasta.xz`; events in `gaps.tsv`). Legacy SeqGen has no indels.
