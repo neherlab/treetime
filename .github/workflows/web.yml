@@ -1,6 +1,7 @@
 name: "Web app"
 
-# Builds the web app on the WebAssembly back end (packages/app-web2) and uploads
+# Builds the web app on the WebAssembly back end (packages/app-web2) in the
+# image of the WebAssembly target (dev/docker/cross-wasm.dockerfile) and uploads
 # it with dev/publish-web to one site per commit, per branch, and per open pull
 # request of the branch, at <site>.previews.neherlab.click. Pushes to rust also
 # update https://treetime.neherlab.click. A push run publishes the sites of the
@@ -53,11 +54,14 @@ jobs:
       - name: "Prepare the build container"
         uses: ./.github/actions/prepare
         with:
+          image: "wasm32-unknown-emscripten"
           cache: "web2"
           dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
           dockerhub-token: ${{ github.event_name == 'push' && github.ref == 'refs/heads/rust' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
 
       - name: "Build"
+        env:
+          CROSS_COMPILE: "wasm32-unknown-emscripten"
         run: dev/docker/run just build-web2
 
       - name: "Upload"

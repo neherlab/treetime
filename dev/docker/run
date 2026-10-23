@@ -14,7 +14,9 @@
 # Environment:
 #   CROSS_COMPILE           Target of the image: `native` (default, development
 #                           image), one of the release targets in dev/cross/targets,
-#                           or the Windows 7 target x86_64-win7-windows-gnu
+#                           the Windows 7 target x86_64-win7-windows-gnu, or
+#                           wasm32-unknown-emscripten, the image of `just build-web2`
+#                           in the web deploy
 #   TREETIME_DOCKER_IMAGE   `jupyter` selects the v0 Python image instead
 #   TREETIME_DOCKER_X11=1   Share the host X11 display (desktop app development)
 #   TREETIME_DOCKER_PUSH=1  Push the built image and its layer cache to the
@@ -87,8 +89,9 @@ aarch64-pc-windows-gnullvm) cross_image cross-windows CROSS_MINGW_TRIPLET=aarch6
 x86_64-win7-windows-gnu) cross_image cross-windows7 CROSS_MINGW_TRIPLET=x86_64-w64-mingw32 CROSS_RUNNER=/usr/lib/wine/wine64 ;;
 x86_64-apple-darwin) cross_image cross-darwin CROSS_APPLE_TRIPLET=x86_64-apple-darwin20.2 CROSS_MACOS_DEPLOYMENT_TARGET=10.12 ;;
 aarch64-apple-darwin) cross_image cross-darwin CROSS_APPLE_TRIPLET=arm64-apple-darwin20.2 CROSS_MACOS_DEPLOYMENT_TARGET=11.0 ;;
+wasm32-unknown-emscripten) dockerfile="dev/docker/cross-wasm.dockerfile" ;;
 *)
-  printf 'Unsupported image: %s. Supported: native, jupyter, the targets in dev/cross/targets, and x86_64-win7-windows-gnu\n' "${kind}" >&2
+  printf 'Unsupported image: %s. Supported: native, jupyter, the targets in dev/cross/targets, x86_64-win7-windows-gnu, and wasm32-unknown-emscripten\n' "${kind}" >&2
   exit 1
   ;;
 esac
