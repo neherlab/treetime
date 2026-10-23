@@ -4,7 +4,19 @@ export interface ContentSecurityPolicyOptions {
   webAssembly?: boolean;
 }
 
-export type ContentSecurityPolicyDirective = readonly [name: string, sources: readonly string[]];
+export type ContentSecurityPolicyDirective = readonly [name: DirectiveName, sources: readonly string[]];
+
+type DirectiveName =
+  | "default-src"
+  | "script-src"
+  | "style-src"
+  | "img-src"
+  | "font-src"
+  | "connect-src"
+  | "worker-src"
+  | "object-src"
+  | "base-uri"
+  | "form-action";
 
 export function contentSecurityPolicyDirectives(
   devServer: boolean,
