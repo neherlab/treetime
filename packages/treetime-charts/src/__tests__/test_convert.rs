@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
-  use crate::convert::{ChartFormat, svg_to_pdf, svg_to_png};
+  use crate::convert::{svg_to_pdf, svg_to_png};
+  use eyre::Report;
   use helpers::{SVG, non_white_pixel_count, pdf_text};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -35,22 +36,19 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::svg(ChartFormat::Svg)]
-  #[case::png(ChartFormat::Png)]
-  #[case::pdf(ChartFormat::Pdf)]
-  #[trace]
-  fn test_conversion_gives_the_same_bytes_every_time(#[case] format: ChartFormat) {
-    assert_eq!(format.encode(SVG).unwrap(), format.encode(SVG).unwrap());
+  #[case::png(svg_to_png)]
+  #[case::pdf(svg_to_pdf)]
+  fn test_conversion_gives_the_same_bytes_every_time(#[case] convert: fn(&str) -> Result<Vec<u8>, Report>) {
+    assert_eq!(convert(SVG).unwrap(), convert(SVG).unwrap());
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::png(ChartFormat::Png)]
-  #[case::pdf(ChartFormat::Pdf)]
-  #[trace]
-  fn test_conversion_of_invalid_svg_is_an_error(#[case] format: ChartFormat) {
+  #[case::png(svg_to_png)]
+  #[case::pdf(svg_to_pdf)]
+  fn test_conversion_of_invalid_svg_is_an_error(#[case] convert: fn(&str) -> Result<Vec<u8>, Report>) {
     assert_error!(
-      format.encode("<svg"),
+      convert("<svg"),
       "When reading the SVG chart: SVG data parsing failed cause the document does not have a root node"
     );
   }

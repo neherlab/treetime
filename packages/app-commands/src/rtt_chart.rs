@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::Path;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::rtt::ClockRegressionResult;
-use treetime_charts::convert;
+use treetime_charts::convert::{svg_to_pdf, svg_to_png};
 use treetime_charts::font::register_chart_fonts;
 use treetime_utils::io::file::write_file_with;
 use treetime_utils::{make_error, make_internal_report};
@@ -19,33 +19,22 @@ pub fn write_rtt_chart(
   clock_model: &ClockModel,
   filepath: &Path,
 ) -> Result<(), Report> {
-  let format = match ChartFormat::from_path(filepath)
-    .ok_or_else(|| make_internal_report!("No chart format for '{}' after output planning", filepath.display()))?
-  {
-    ChartFormat::Svg => convert::ChartFormat::Svg,
-    ChartFormat::Png => convert::ChartFormat::Png,
-    ChartFormat::Pdf => convert::ChartFormat::Pdf,
-  };
-  write_clock_regression_charts(results, clock_model, &[(format, filepath)])
+  let format = ChartFormat::from_path(filepath)
+    .ok_or_else(|| make_internal_report!("No chart format for '{}' after output planning", filepath.display()))?;
+  let bytes = encode_chart(format, &clock_regression_chart_svg(results, clock_model)?)?;
+  write_file_with(filepath, |writer| {
+    writer
+      .write_all(&bytes)
+      .wrap_err_with(|| format!("When writing the {format:?} chart"))
+  })
 }
 
-pub fn write_clock_regression_charts(
-  results: &[ClockRegressionResult],
-  clock_model: &ClockModel,
-  outputs: &[(convert::ChartFormat, &Path)],
-) -> Result<(), Report> {
-  if outputs.is_empty() {
-    return Ok(());
+pub fn encode_chart(format: ChartFormat, svg: &str) -> Result<Vec<u8>, Report> {
+  match format {
+    ChartFormat::Svg => Ok(svg.as_bytes().to_vec()),
+    ChartFormat::Png => svg_to_png(svg),
+    ChartFormat::Pdf => svg_to_pdf(svg),
   }
-  let svg = clock_regression_chart_svg(results, clock_model)?;
-  outputs.iter().try_for_each(|&(format, filepath)| {
-    let bytes = format.encode(&svg)?;
-    write_file_with(filepath, |writer| {
-      writer
-        .write_all(&bytes)
-        .wrap_err_with(|| format!("When writing the {format:?} chart"))
-    })
-  })
 }
 
 pub(crate) fn clock_regression_chart_svg(

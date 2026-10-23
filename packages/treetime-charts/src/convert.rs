@@ -11,23 +11,6 @@ use usvg::{Options, Tree};
 
 const PDF_POINTS_PER_PIXEL: f32 = 0.75;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ChartFormat {
-  Svg,
-  Png,
-  Pdf,
-}
-
-impl ChartFormat {
-  pub fn encode(self, svg: &str) -> Result<Vec<u8>, Report> {
-    match self {
-      Self::Svg => Ok(svg.as_bytes().to_vec()),
-      Self::Png => svg_to_png(svg),
-      Self::Pdf => svg_to_pdf(svg),
-    }
-  }
-}
-
 pub fn svg_to_png(svg: &str) -> Result<Vec<u8>, Report> {
   let tree = parse_svg(svg)?;
   let size = tree.size().to_int_size();

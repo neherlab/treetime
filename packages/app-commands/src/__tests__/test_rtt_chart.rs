@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
-  use crate::rtt_chart::{clock_regression_chart_svg, gather_points, write_clock_regression_charts};
+  use crate::rtt_chart::{clock_regression_chart_svg, encode_chart, gather_points, write_rtt_chart};
   use ab_glyph::{Font, FontRef};
+  use app_output::output_format::ChartFormat;
   use helpers::{chart_svg, clock_model, non_white_pixel_count, row, svg_attribute_values, svg_texts};
   use itertools::Itertools;
   use maplit::btreeset;
@@ -11,7 +12,6 @@ mod tests {
   use std::fs;
   use tempfile::TempDir;
   use tiny_skia::Pixmap;
-  use treetime_charts::convert::ChartFormat;
   use treetime_charts::font::{LATO_BOLD, LATO_REGULAR};
   use treetime_utils::assert_error;
   use treetime_utils::fmt::float::float_to_significant_digits;
@@ -75,14 +75,14 @@ mod tests {
 
   #[test]
   fn test_rtt_chart_png_is_1200_by_800_with_drawn_pixels() {
-    let png = Pixmap::decode_png(&ChartFormat::Png.encode(&chart_svg()).unwrap()).unwrap();
+    let png = Pixmap::decode_png(&encode_chart(ChartFormat::Png, &chart_svg()).unwrap()).unwrap();
     assert_eq!((1200, 800), (png.width(), png.height()));
     assert!(non_white_pixel_count(&png) > 1000);
   }
 
   #[test]
   fn test_rtt_chart_pdf_is_a_900_by_600_page_with_a_lato_subset() {
-    let pdf = ChartFormat::Pdf.encode(&chart_svg()).unwrap();
+    let pdf = encode_chart(ChartFormat::Pdf, &chart_svg()).unwrap();
     let pdf = String::from_utf8_lossy(&pdf);
     assert!(pdf.starts_with("%PDF-"));
     assert!(pdf.contains("/MediaBox[0 0 900 600]"), "{pdf}");
@@ -98,41 +98,31 @@ mod tests {
   #[trace]
   fn test_rtt_chart_renders_the_same_bytes_twice(#[case] format: ChartFormat) {
     assert_eq!(
-      format.encode(&chart_svg()).unwrap(),
-      format.encode(&chart_svg()).unwrap()
+      encode_chart(format, &chart_svg()).unwrap(),
+      encode_chart(format, &chart_svg()).unwrap()
     );
   }
 
-  #[test]
-  fn test_rtt_chart_writes_only_the_requested_formats() {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::svg("chart.svg",    ChartFormat::Svg)]
+  #[case::png("chart.PNG",    ChartFormat::Png)]
+  #[case::pdf("chart.pdf",    ChartFormat::Pdf)]
+  #[case::gz( "chart.svg.gz", ChartFormat::Svg)]
+  #[trace]
+  fn test_rtt_chart_writes_the_format_of_the_file_extension(#[case] name: &str, #[case] format: ChartFormat) {
     let dir = TempDir::new().unwrap();
-    let svg_path = dir.path().join("chart.svg");
-    let pdf_path = dir.path().join("chart.pdf");
-    let results = helpers::results();
+    let path = dir.path().join(name);
 
-    write_clock_regression_charts(
-      &results,
-      &clock_model(),
-      &[
-        (ChartFormat::Svg, svg_path.as_path()),
-        (ChartFormat::Pdf, pdf_path.as_path()),
-      ],
-    )
-    .unwrap();
+    write_rtt_chart(&helpers::results(), &clock_model(), &path).unwrap();
 
-    let svg = chart_svg();
     let files = fs::read_dir(dir.path())
       .unwrap()
       .map(|entry| entry.unwrap().file_name().into_string().unwrap())
-      .sorted()
       .collect_vec();
     assert_eq!(
-      (
-        vec!["chart.pdf".to_owned(), "chart.svg".to_owned()],
-        svg.clone().into_bytes(),
-        ChartFormat::Pdf.encode(&svg).unwrap()
-      ),
-      (files, fs::read(&svg_path).unwrap(), fs::read(&pdf_path).unwrap())
+      (vec![name.to_owned()], encode_chart(format, &chart_svg()).unwrap()),
+      (files, helpers::read_decompressed(&path))
     );
   }
 
@@ -182,9 +172,21 @@ mod tests {
   mod helpers {
     use super::*;
     use indoc::indoc;
+    use std::io::Read;
+    use std::path::Path;
     use treetime::clock::clock_model::ClockModel;
     use treetime::clock::rtt::ClockRegressionResult;
+    use treetime_utils::io::file::read_file_with;
     use treetime_utils::io::json::json_read_str;
+
+    pub(super) fn read_decompressed(path: &Path) -> Vec<u8> {
+      read_file_with(path, |mut reader| {
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes)?;
+        Ok(bytes)
+      })
+      .unwrap()
+    }
 
     pub(super) fn row(date: Option<f64>, is_outlier: bool) -> ClockRegressionResult {
       ClockRegressionResult {
