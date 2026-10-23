@@ -158,7 +158,7 @@ async function checkChangedInput(): Promise<void> {
 async function checkEmptyInput(): Promise<void> {
   const id = await startedRun("prune", async (runId) => ({
     tree: await upload(runId, "tree.nwk"),
-    prune_nodes_list_file: await uploadBytes(runId, "empty.txt", new Uint8Array()),
+    remove_file: await uploadBytes(runId, "empty.txt", new Uint8Array()),
   }));
 
   const [order] = backend.takeJobOrders();
