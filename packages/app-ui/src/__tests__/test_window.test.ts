@@ -1,7 +1,7 @@
 import { MAIN_PANEL_MIN_WIDTH, SIDEBAR_WIDTH_MIN } from "../ui/sidebar-width";
 import { WINDOW_BACKGROUND, WINDOW_MIN_SIZE, windowBackground } from "../window";
 
-import themeCss from "../theme.css?raw";
+import tokensCss from "../tokens.css?raw";
 
 describe("window background", () => {
   test("the window colors equal the page backgrounds of the light and the dark theme", () => {
@@ -30,7 +30,7 @@ describe("window minimum size", () => {
 });
 
 function themeBackground(selector: string): string | undefined {
-  const block = themeCss.slice(themeCss.indexOf(selector));
+  const block = tokensCss.slice(tokensCss.indexOf(selector));
 
   return /--background:\s*(#[0-9a-f]{6});/u.exec(block)?.[1];
 }
