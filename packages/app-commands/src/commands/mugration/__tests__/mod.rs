@@ -1,5 +1,6 @@
 mod test_ambiguity_report;
 mod test_augur_node_data;
 mod test_comment_output;
+mod test_lat_longs;
 mod test_pair_traits;
 mod test_validate_weights;

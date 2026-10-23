@@ -428,7 +428,8 @@ export const zRunWarningKind = z.union([
   z.literal('duplicate-metadata-names'),
   z.literal('duplicate-partition-names'),
   z.literal('branch-lengths-not-converged'),
-  z.literal('dates-outside-input-dates')
+  z.literal('dates-outside-input-dates'),
+  z.literal('locations-without-coordinates')
 ]);
 
 /**
@@ -1816,6 +1817,7 @@ export const zMugrationConfig = z.strictObject({
   metadata_delimiters: z.array(z.string().length(1)).optional(),
   attribute: z.string().optional(),
   weights: z.string().optional(),
+  lat_longs: z.string().optional(),
   missing_data: z.string().optional(),
   pc: z.number().optional(),
   missing_weights_threshold: z.number().optional(),

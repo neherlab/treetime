@@ -15,8 +15,9 @@ use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBa
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
-  AuspiceGenomeAnnotations, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs, AuspiceTreeBranchAttrsLabels,
-  AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr, AuspiceTreeNodeAttrs, StartEnd,
+  AuspiceGenomeAnnotations, AuspiceGeoResolution, AuspiceNumDate, AuspiceTree, AuspiceTreeBranchAttrs,
+  AuspiceTreeBranchAttrsLabels, AuspiceTreeData, AuspiceTreeMeta, AuspiceTreeNode, AuspiceTreeNodeAttr,
+  AuspiceTreeNodeAttrs, StartEnd,
 };
 use treetime_utils::cast::f64_to_usize_saturating;
 use treetime_utils::{make_error, make_internal_report, make_report};
@@ -100,7 +101,11 @@ fn auspice_data(
     .transpose()?
     .unwrap_or_default();
   let genome_annotations = genome_annotations(&root_sequences, cdses)?;
+  let geo_resolutions = graph.traits.as_ref().map(geo_resolutions).unwrap_or_default();
   let mut panels = vec!["tree".to_owned()];
+  if !geo_resolutions.is_empty() {
+    panels.push("map".to_owned());
+  }
   if genome_annotations.is_some() {
     panels.push("entropy".to_owned());
   }
@@ -114,6 +119,7 @@ fn auspice_data(
       genome_annotations,
       colorings,
       filters,
+      geo_resolutions,
       display_defaults: AuspiceDisplayDefaults {
         color_by,
         ..AuspiceDisplayDefaults::default()
@@ -123,6 +129,19 @@ fn auspice_data(
     root_sequence: (!root_sequences.is_empty()).then_some(root_sequences),
     other: Map::new(),
   })
+}
+
+fn geo_resolutions(traits: &TreeTraits<'_>) -> Vec<AuspiceGeoResolution> {
+  traits
+    .demes
+    .filter(|demes| !demes.is_empty())
+    .map(|demes| AuspiceGeoResolution {
+      key: traits.attribute.to_owned(),
+      title: None,
+      demes: demes.clone(),
+    })
+    .into_iter()
+    .collect()
 }
 
 fn genotype_color_by(sequences: &TreeSequences<'_>) -> Option<String> {

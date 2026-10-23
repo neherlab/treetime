@@ -64,6 +64,7 @@ mod tests {
         states: &output.states,
         posteriors: &output.posteriors,
         ambiguity: None,
+        demes: None,
       }),
     };
     let dir = TempDir::new()?;

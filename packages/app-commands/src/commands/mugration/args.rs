@@ -37,6 +37,7 @@ pub struct TreetimeMugrationArgs {
   pub(crate) metadata: MetadataInput,
   pub(crate) attribute: String,
   pub(crate) weights: Option<PathBuf>,
+  pub(crate) lat_longs: Option<PathBuf>,
   pub(crate) pc: f64,
   pub(crate) missing_data: String,
   pub(crate) missing_weights_threshold: f64,
@@ -65,6 +66,7 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
       attribute,
       metadata: MetadataArgs { metadata },
       weights,
+      lat_longs,
       metadata_id: MetadataIdArgs {
         metadata_id_columns,
         metadata_delimiters,
@@ -114,6 +116,7 @@ impl TryFrom<TreetimeMugrationArgsRaw> for TreetimeMugrationArgs {
       },
       attribute,
       weights,
+      lat_longs,
       pc,
       missing_data,
       missing_weights_threshold,
@@ -253,6 +256,19 @@ pub struct TreetimeMugrationArgsRaw {
   #[cfg_attr(feature = "clap", clap(value_hint = ValueHint::FilePath))]
   #[schemars(extend("x-path" = "input"))]
   pub weights: Option<PathBuf>,
+  /// Table with the coordinates of the trait values, which give the Auspice tree a map
+  ///
+  /// The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with
+  /// the fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute`
+  /// name, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces
+  /// an earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in
+  /// -180 to 180 degrees.
+  #[cfg_attr(
+    feature = "clap",
+    clap(long, hide_short_help = true, value_hint = ValueHint::FilePath, help_heading = "Input data")
+  )]
+  #[schemars(extend("x-path" = "input"))]
+  pub lat_longs: Option<PathBuf>,
 
   /// Value of the trait column that marks missing data
   #[cfg_attr(feature = "clap", clap(long, default_value = "?", help_heading = "Input data"))]

@@ -817,6 +817,9 @@ treetime mugration -t tree.nwk -m metadata.tsv --attribute country --weights wei
 * `--weights <FILE>` — Table (CSV or TSV) with the equilibrium probability of each state
 
    The weight of a state is the probability that a randomly sampled sequence at equilibrium has the state, for example the population of each country. The first column holds the state and the second its weight, such as the row `micronesia,0.1` under the header `country,weight`.
+* `--lat-longs <FILE>` — Table with the coordinates of the trait values, which give the Auspice tree a map
+
+   The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with the fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute` name, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces an earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in -180 to 180 degrees.
 * `--missing-data <MISSING_DATA>` — Value of the trait column that marks missing data
 
   Default value: `?`

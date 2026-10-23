@@ -2543,6 +2543,11 @@
             "description": "Some final dates lie outside the input dates: a tip outside its own input date range, or an internal node after the latest input date. The clock alone dates these nodes, as it does for the tips that the clock filter flagged.",
             "type": "string",
             "const": "dates-outside-input-dates"
+          },
+          {
+            "description": "The coordinates file of a mugration run has no coordinates for some values of the trait; the map of the Auspice tree leaves these locations out.",
+            "type": "string",
+            "const": "locations-without-coordinates"
           }
         ]
       },
@@ -7542,6 +7547,13 @@
             "x-path": "input",
             "x-unset": true,
             "x-cli-flag": "--weights"
+          },
+          "lat_longs": {
+            "description": "Table with the coordinates of the trait values, which give the Auspice tree a map\n\nThe format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with\nthe fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute`\nname, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces\nan earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in\n-180 to 180 degrees.",
+            "type": "string",
+            "x-path": "input",
+            "x-unset": true,
+            "x-cli-flag": "--lat-longs"
           },
           "missing_data": {
             "description": "Value of the trait column that marks missing data",

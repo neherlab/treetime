@@ -48,7 +48,7 @@ pub(crate) mod tests {
                       "--coalescent-confidence", "--gen-per-year"]),
     (AN,            &["--translations", "--cds-selection", "--annotation", "--aa-root-sequence", "--aa-model"]),
     (CL,            &[]),
-    (MU,            &["--attribute", "--weights", "--missing-data", "--pc", "--missing-weights-threshold",
+    (MU,            &["--attribute", "--weights", "--lat-longs", "--missing-data", "--pc", "--missing-weights-threshold",
                       "--model-iterations", "--sampling-bias-correction", "--smooth-initial-pi",
                       "--filter-uninformative-root"]),
     (HO,            &["--const", "--rescale", "--detailed", "--drms", "--num-mut"]),

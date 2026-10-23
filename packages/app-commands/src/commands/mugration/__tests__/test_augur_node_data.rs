@@ -184,6 +184,7 @@ mod tests {
           states: &output.states,
           posteriors: &output.posteriors,
           ambiguity: None,
+          demes: None,
         }),
       };
       let data = build_augur_node_data_traits(&AnnotatedTreeView::new(&annotated).unwrap(), &output.gtr).unwrap();

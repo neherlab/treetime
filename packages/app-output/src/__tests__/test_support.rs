@@ -265,6 +265,7 @@ pub(crate) mod tests {
         states: &setup.states,
         posteriors: &setup.posteriors,
         ambiguity: None,
+        demes: None,
       }),
       ..annotated(&setup.topology)
     }

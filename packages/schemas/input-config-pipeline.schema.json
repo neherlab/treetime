@@ -3163,6 +3163,20 @@
             }
           ]
         },
+        "lat_longs": {
+          "anyOf": [
+            {
+              "description": "Table with the coordinates of the trait values, which give the Auspice tree a map\n\nThe format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with\nthe fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute`\nname, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces\nan earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in\n-180 to 180 degrees.",
+              "type": "string",
+              "x-path": "input",
+              "x-unset": true
+            },
+            {
+              "type": "string",
+              "pattern": "\\{\\{.*\\}\\}"
+            }
+          ]
+        },
         "missing_data": {
           "anyOf": [
             {

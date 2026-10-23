@@ -2,7 +2,6 @@ use crate::commands::mugration::args::TreetimeMugrationArgs;
 use crate::commands::shared::gtr_output::{trait_model, write_gtr_output};
 use crate::commands::shared::input_warnings::warn_duplicate_names;
 use crate::commands::shared::tree_input::read_input_tree;
-use app_output::ambiguity_outputs::AmbiguityOutputs;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeTraits};
 use app_output::augur_node_data_traits::write_augur_node_data_traits;
 use app_output::command_outputs::CommandKind;
@@ -11,20 +10,21 @@ use app_output::trait_tables::{write_trait_confidence_csv, write_traits_csv};
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime::cancel::Cancel;
 use treetime::mugration::pipeline::{self, MugrationInput, MugrationOutput, MugrationParams};
 use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
-use treetime::progress::RunWarningKind;
-use treetime::progress::{LogSink, StageSink};
+use treetime::progress::{LogSink, RunWarning, RunWarningKind, StageSink};
 use treetime::{progress_info, progress_warn};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
+use treetime_io::lat_longs_tsv::{Coordinates, LatLongs, lat_longs_read_file};
 use treetime_io::state_weights_csv::state_weights_read_file;
-use treetime_utils::make_error;
+use treetime_utils::fmt::string::name_list;
+use treetime_utils::{make_error, make_internal_report};
 
 const UNMATCHED_NAMES_SHOWN: usize = 10;
 
@@ -70,6 +70,11 @@ pub fn run_mugration(
   } else {
     None
   };
+  let lat_longs = mugration_args
+    .lat_longs
+    .as_deref()
+    .map(|path| lat_longs_read_file(path).map(|lat_longs| (path, lat_longs)))
+    .transpose()?;
 
   cancel.check()?;
   stages.report("Mugration inference", 0.3, "");
@@ -110,15 +115,19 @@ pub fn run_mugration(
     log,
   )?;
 
-  write_mugration_trees(
-    &output,
-    &names,
-    &branch_lengths,
-    &mugration_args.attribute,
-    &resolved,
-    ambiguity,
-    log,
-  )?;
+  let demes = lat_longs
+    .as_ref()
+    .map(|(path, lat_longs)| trait_demes(&output, &mugration_args.attribute, lat_longs, path, log))
+    .transpose()?;
+
+  let traits = TreeTraits {
+    attribute: &mugration_args.attribute,
+    states: &output.states,
+    posteriors: &output.posteriors,
+    ambiguity: Some(ambiguity),
+    demes: demes.as_ref(),
+  };
+  write_mugration_trees(&output, &names, &branch_lengths, traits, &resolved, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -173,13 +182,57 @@ pub(crate) fn pair_traits(
   pairing
 }
 
+fn trait_demes(
+  output: &MugrationOutput,
+  attribute: &str,
+  lat_longs: &LatLongs,
+  path: &Path,
+  log: &dyn LogSink,
+) -> Result<BTreeMap<String, Coordinates>, Report> {
+  let values = output
+    .posteriors
+    .values()
+    .map(|posterior| {
+      output
+        .states
+        .name(posterior.state())
+        .ok_or_else(|| make_internal_report!("Most likely state {} is not a trait state", posterior.state()))
+    })
+    .collect::<Result<BTreeSet<_>, Report>>()?;
+  let (located, missing): (Vec<_>, Vec<_>) = values
+    .into_iter()
+    .map(|value| (value, lat_longs.get(attribute, value)))
+    .partition(|(_, coordinates)| coordinates.is_some());
+  let demes = located
+    .into_iter()
+    .filter_map(|(value, coordinates)| coordinates.map(|coordinates| (value.to_owned(), coordinates)))
+    .collect::<BTreeMap<_, _>>();
+  let missing = missing.into_iter().map(|(value, _)| value.to_owned()).collect_vec();
+  if !missing.is_empty() {
+    let consequence = if demes.is_empty() {
+      "The Auspice tree has no map.".to_owned()
+    } else {
+      "The map of the Auspice tree leaves them out.".to_owned()
+    };
+    log.warning(&RunWarning {
+      kind: RunWarningKind::LocationsWithoutCoordinates,
+      message: format!(
+        "The coordinates file '{}' has no coordinates for the {attribute} values {}. {consequence}",
+        path.display(),
+        name_list(&missing)
+      ),
+      names: missing,
+    });
+  }
+  Ok(demes)
+}
+
 fn write_mugration_trees(
   output: &MugrationOutput,
   names: &NodeNames,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  attribute: &str,
+  traits: TreeTraits<'_>,
   resolved: &ResolvedOutputs,
-  ambiguity: &AmbiguityOutputs,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
   let annotated = AnnotatedGraph {
@@ -190,12 +243,7 @@ fn write_mugration_trees(
     divergence: Divergence::CumulativeBranchLength,
     sequences: None,
     dates: None,
-    traits: Some(TreeTraits {
-      attribute,
-      states: &output.states,
-      posteriors: &output.posteriors,
-      ambiguity: Some(ambiguity),
-    }),
+    traits: Some(traits),
   };
   write_graph_outputs(&annotated, &resolved.tree_outputs)?;
   let Some(tree) = tree_view_for_outputs(&annotated, resolved)? else {

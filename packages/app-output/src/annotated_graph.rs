@@ -13,6 +13,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::{GraphSchedule, TreeSchedule};
+use treetime_io::lat_longs_tsv::Coordinates;
 use treetime_primitives::Seq;
 use treetime_primitives::date::DateConstraint;
 use treetime_utils::make_internal_report;
@@ -93,6 +94,7 @@ pub struct TreeTraits<'a> {
   pub states: &'a StateAlphabet,
   pub posteriors: &'a BTreeMap<GraphNodeKey, StatePosterior>,
   pub ambiguity: Option<&'a AmbiguityOutputs>,
+  pub demes: Option<&'a BTreeMap<String, Coordinates>>,
 }
 
 impl<'a> TreeTraits<'a> {

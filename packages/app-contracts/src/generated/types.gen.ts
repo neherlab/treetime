@@ -700,7 +700,7 @@ export type RunWarning = {
 /**
  * Kind of a run warning.
  */
-export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'duplicate-partition-names' | 'branch-lengths-not-converged' | 'dates-outside-input-dates';
+export type RunWarningKind = 'duplicate-node-names' | 'duplicate-sequence-names' | 'duplicate-metadata-names' | 'duplicate-partition-names' | 'branch-lengths-not-converged' | 'dates-outside-input-dates' | 'locations-without-coordinates';
 
 /**
  * Error of a failed run.
@@ -4243,6 +4243,16 @@ export type MugrationConfig = {
    * the row `micronesia,0.1` under the header `country,weight`.
    */
   weights?: string;
+  /**
+   * Table with the coordinates of the trait values, which give the Auspice tree a map
+   *
+   * The format of augur's `--lat-longs`: one location per line, `<resolution> <name> <latitude> <longitude>`, with
+   * the fields separated by tabs, or by white space in a line without a tab. `<resolution>` is the `--attribute`
+   * name, and `<name>` a value of the trait; both match in lower case. A later line for the same location replaces
+   * an earlier one, and lines that start with `#` are skipped. Latitudes are in -90 to 90 degrees, longitudes in
+   * -180 to 180 degrees.
+   */
+  lat_longs?: string;
   /**
    * Value of the trait column that marks missing data
    */

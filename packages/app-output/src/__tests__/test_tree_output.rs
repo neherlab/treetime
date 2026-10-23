@@ -153,6 +153,7 @@ pub(super) mod tests {
         states: &mugration.states,
         posteriors: &mugration.posteriors,
         ambiguity: None,
+        demes: None,
       }),
       ..dated_graph(&dated, None)
     };
@@ -204,6 +205,7 @@ pub(super) mod tests {
         states: &mugration.states,
         posteriors: &mugration.posteriors,
         ambiguity: None,
+        demes: None,
       }),
       ..annotated(&dated.topology)
     };
