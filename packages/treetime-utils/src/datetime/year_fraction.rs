@@ -1,7 +1,9 @@
 use crate::cast::ToF64Exact;
 use crate::datetime::date_range::DateRange;
+use crate::make_report;
 use chrono::{DateTime, Datelike, NaiveDate, TimeZone, Utc};
 use chronoutil::RelativeDuration;
+use eyre::Report;
 use std::time::Duration;
 
 const SECONDS_PER_DAY: u64 = 24 * 60 * 60;
@@ -19,6 +21,12 @@ pub fn date_to_year_fraction(date: &DateTime<Utc>) -> f64 {
   assert!(year >= 1);
   let frac = (date.ordinal().to_f64_exact() - 0.5) / days_in_year(year).to_f64_exact();
   year.to_f64_exact() + frac
+}
+
+pub fn year_fraction_at_month_start(year: i32, month: u32) -> Result<f64, Report> {
+  let first_day = NaiveDate::from_ymd_opt(year, month, 1)
+    .ok_or_else(|| make_report!("Month {month} of year {year} is not a calendar month"))?;
+  Ok(year.to_f64_exact() + first_day.ordinal0().to_f64_exact() / days_in_year(year).to_f64_exact())
 }
 
 pub fn year_fraction_to_datestring(year_fraction: f64) -> String {
@@ -60,7 +68,7 @@ fn days_in_year(year: i32) -> u32 {
 mod tests {
   use super::*;
   use crate::datetime::datetime::iso;
-  use crate::pretty_assert_ulps_eq;
+  use crate::{assert_error, pretty_assert_ulps_eq};
   use chrono::{SubsecRound, Utc};
   use pretty_assertions::assert_eq;
   use rstest::*;
@@ -145,5 +153,33 @@ mod tests {
   #[trace]
   fn test_days_in_year_calendar_primitive(#[case] year: i32, #[case] expected: u32) {
     assert_eq!(expected, days_in_year(year));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::january_is_the_year(     (2016,  1), 2016.0)]
+  #[case::march_after_a_leap_day(  (2024,  3), 2024.0 + 60.0 / 366.0)]
+  #[case::march_without_a_leap_day((2023,  3), 2023.0 + 59.0 / 365.0)]
+  #[case::december(                (2023, 12), 2023.0 + 334.0 / 365.0)]
+  #[case::year_before_the_era(     (-4,    7), -4.0 + 182.0 / 366.0)]
+  #[trace]
+  fn test_year_fraction_at_month_start(#[case] (year, month): (i32, u32), #[case] expected: f64) {
+    pretty_assert_ulps_eq!(expected, year_fraction_at_month_start(year, month).unwrap(), max_ulps = 4);
+  }
+
+  #[test]
+  fn test_year_fraction_at_month_start_is_the_first_instant_of_the_month() {
+    assert_eq!(
+      iso("2016-09-01T00:00:00.000Z"),
+      year_fraction_to_date(year_fraction_at_month_start(2016, 9).unwrap()).round_subsecs(0)
+    );
+  }
+
+  #[test]
+  fn test_year_fraction_at_month_start_rejects_month_thirteen() {
+    assert_error!(
+      year_fraction_at_month_start(2016, 13),
+      "Month 13 of year 2016 is not a calendar month"
+    );
   }
 }
