@@ -51,5 +51,9 @@ for link in "${links[@]+"${links[@]}"}"; do
   ln -sfn "$(mise -C "${config}" where "${link%%=*}")" "${path}"
 done
 
-chmod -R a+rX "${MISE_DATA_DIR}"
+# Only the installs of this call, so a later call does not walk the large
+# installs of earlier ones (LLVM, Emscripten) again.
+for tool in "${tools[@]}"; do
+  chmod -R a+rX "$(mise -C "${config}" where "${tool}")"
+done
 rm -rf "${MISE_CACHE_DIR}" "${MISE_STATE_DIR}"
