@@ -1,10 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::__tests__::test_routes::tests::helpers::{app, create_deferred, request};
+  use crate::__tests__::test_routes::tests::helpers::{app, create_deferred, request, wait_for_status};
   use helpers::{archive_entries, finished_run, get, header_of};
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use serde_json::json;
+  use std::fs;
+  use treetime_charts::convert::{svg_to_pdf, svg_to_png};
   use zip::CompressionMethod;
 
   #[rustfmt::skip]
@@ -103,6 +106,36 @@ mod tests {
     assert_eq!(
       (Some("application/zip".to_owned()), expected),
       (content_type, archive_entries(body.to_vec()))
+    );
+  }
+
+  #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+  async fn test_downloads_run_file_charts_have_their_media_types() {
+    let test = app();
+    let (_, record) = test
+      .run_with_data(
+        "clock",
+        json!({ "tree": "zika/20/tree.nwk", "metadata": "zika/20/metadata.tsv" }),
+      )
+      .await;
+    let id = record["id"].as_str().unwrap().to_owned();
+    wait_for_status(&test, &id, "ok").await;
+    let out_dir = test.runs_dir.path().join(&id).join("out");
+    let svg = fs::read_to_string(out_dir.join("clock.rtt.svg")).unwrap();
+    fs::write(out_dir.join("clock.rtt.png"), svg_to_png(&svg).unwrap()).unwrap();
+    fs::write(out_dir.join("clock.rtt.pdf"), svg_to_pdf(&svg).unwrap()).unwrap();
+    let mut content_types = vec![];
+    for path in ["clock.rtt.svg", "clock.rtt.png", "clock.rtt.pdf"] {
+      let response = get(&test, &format!("/api/runs/{id}/file?path={path}"), &[]).await;
+      content_types.push((response.status().as_u16(), header_of(&response, "content-type")));
+    }
+    assert_eq!(
+      vec![
+        (200, Some("image/svg+xml".to_owned())),
+        (200, Some("image/png".to_owned())),
+        (200, Some("application/pdf".to_owned())),
+      ],
+      content_types
     );
   }
 

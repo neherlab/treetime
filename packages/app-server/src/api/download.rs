@@ -33,6 +33,7 @@ const CONTENT_TYPES: &[(&str, &str)] = &[
   ("json", "application/json"),
   ("svg", "image/svg+xml"),
   ("png", "image/png"),
+  ("pdf", "application/pdf"),
   ("zip", "application/zip"),
   ("xz", "application/x-xz"),
   ("gz", "application/gzip"),

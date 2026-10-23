@@ -417,6 +417,7 @@ dependencies = [
  "tokio-util",
  "tower",
  "tower-http 0.7.1",
+ "treetime-charts",
  "treetime-grid",
  "treetime-schema",
  "treetime-utils",
