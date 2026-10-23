@@ -17,7 +17,7 @@ mod tests {
   // #[case::mpox_clade_ii_20("mpox_clade_ii_20")] // exceeds the 300 s test timeout
   // #[case::rsv_a_20("rsv_a_20")]                 // 1.8, 1.7 years at NODE_0000017
   // #[case::tb_20("tb_20")]                       // v1 dates 6 internal nodes that v0 leaves out; 33.9 years at NODE_0000016
-  // #[case::zika_20("zika_20")]                   // the metadata has no column '#name': kb/issues/M-timetree-date-header-hash.md
+  // #[case::zika_20("zika_20")]                   // v1 dates 3 internal nodes that v0 leaves out; 0.077 years at NODE_0000012
   #[trace]
   fn test_gm_runner_marginal_dense(
     #[case] dataset: &str,

@@ -19,6 +19,7 @@ mod tests {
   #[rustfmt::skip]
   #[rstest]
   #[case::flu_h3n2_20("flu_h3n2_20")]
+  #[case::zika_20("zika_20")]
   #[trace]
   fn test_gm_runner_pre_optimize_changes_branch_lengths_and_dates_every_node(
     #[case] dataset: &str,
