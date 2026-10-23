@@ -433,7 +433,7 @@ mod tests {
     };
 
     let changes = RerootResult {
-      inverted_edge_keys: vec![edge_root_ab, edge_ab_a],
+      inverted_edge_keys: vec![edge_ab_a, edge_root_ab],
       ..RerootResult::unchanged(a_key)
     };
 

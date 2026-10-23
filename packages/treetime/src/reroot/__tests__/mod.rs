@@ -1,2 +1,3 @@
 mod test_placement;
 mod test_reroot_dense_reconstruction;
+mod test_reroot_sparse_reconstruction;

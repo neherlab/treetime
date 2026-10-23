@@ -9,7 +9,7 @@ mod tests {
   use crate::seq::indel::InDel;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
-  use helpers::{MergedPair, SplitCase, alignment_indels, del, ins, inverted};
+  use helpers::{SplitCase, alignment_indels, del, ins, inverted};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial};
@@ -96,20 +96,29 @@ mod tests {
   fn test_reroot_of_a_codon_split_alignment_inverts_and_merges_the_events_of_the_unsplit_alignment()
   -> Result<(), Report> {
     let records = [
-      ("A", "-CG-ACGTA"),
-      ("B", "-CG-ACGTA"),
-      ("C", "ACGTACGTA"),
+      ("A", "-CG--CGTA"),
+      ("B", "-CG--CGTA"),
+      ("C", "ACGT-CGTA"),
       ("D", "ACGTACG--"),
       ("E", "ACGTACG--"),
     ];
     let mut case = SplitCase::new("(((A:0.1,B:0.1)X:0.1,C:0.1)Z:0.1,(D:0.1,E:0.1)Y:0.1)root;", &records)?;
     let deletions_on_x = vec![del(0, 1, "A"), del(3, 4, "T")];
-    let deletion_on_y = vec![del(7, 9, "TA")];
+    let deletion_on_z = del(4, 5, "A");
+    let deletion_on_y = del(7, 9, "TA");
     assert_eq!(
-      (vec![del(0, 2, "AT")], deletions_on_x.clone(), deletion_on_y.clone()),
+      (
+        vec![del(0, 2, "AT")],
+        deletions_on_x.clone(),
+        vec![del(1, 2, "A")],
+        vec![deletion_on_z.clone()],
+        vec![deletion_on_y.clone()]
+      ),
       (
         case.split.pieces("Z", "X", 0),
         alignment_indels(&case.split, "Z", "X")?,
+        case.split.pieces("root", "Z", 1),
+        alignment_indels(&case.split, "root", "Z")?,
         alignment_indels(&case.split, "root", "Y")?
       )
     );
@@ -132,7 +141,7 @@ mod tests {
     assert_eq!(case.whole.snapshot()?, case.split.snapshot()?);
     let insertions_on_z = deletions_on_x.into_iter().map(inverted).collect::<Vec<_>>();
     assert_eq!(
-      (insertions_on_z, deletion_on_y),
+      (insertions_on_z, vec![inverted(deletion_on_z), deletion_on_y]),
       (
         alignment_indels(&case.whole, "X", "Z")?,
         alignment_indels(&case.whole, "Z", "Y")?
@@ -144,12 +153,31 @@ mod tests {
   #[test]
   fn test_trivial_root_merge_of_a_codon_split_alignment_composes_the_events_of_the_unsplit_alignment()
   -> Result<(), Report> {
-    let mut case = SplitCase::new(
-      "((A:0.1,B:0.1)X:0.1,(C:0.1,D:0.1)Y:0.1)root;",
-      &MergedPair::records(&["A", "B", "C", "D"]),
-    )?;
-    let pair = MergedPair::new();
-    pair.set(&mut case, ("root", "X"), ("root", "Y"));
+    let records = [
+      ("A", "-CGTA-GTA"),
+      ("B", "-CGTA-GTA"),
+      ("C", "ACG-ACGTA"),
+      ("D", "ACG-ACGTA"),
+    ];
+    let mut case = SplitCase::new("((A:0.1,B:0.1)X:0.1,(C:0.1,D:0.1)Y:0.1)root;", &records)?;
+    let deletion_on_y = del(3, 4, "T");
+    assert_eq!(
+      (
+        vec![del(0, 1, "A"), del(5, 6, "C")],
+        vec![deletion_on_y.clone()],
+        vec![del(0, 1, "A")],
+        vec![del(1, 2, "C")],
+        vec![del(1, 2, "T")]
+      ),
+      (
+        alignment_indels(&case.split, "root", "X")?,
+        alignment_indels(&case.split, "root", "Y")?,
+        case.split.pieces("root", "X", 0),
+        case.split.pieces("root", "X", 2),
+        case.split.pieces("root", "Y", 0)
+      )
+    );
+    let before = [case.whole.parsimony_sequences()?, case.split.parsimony_sequences()?];
     for side in case.sides_mut() {
       let edge_key = find_edge_key(&side.graph, &side.names, "root", "X").expect("the tree has the edge");
       let changes = apply_root_at_edge(
@@ -162,23 +190,38 @@ mod tests {
         |_| true,
         &mut side.names,
       )?;
-      assert!(changes.edge_merge.is_some() && changes.inverted_edge_keys.is_empty());
+      assert!(changes.edge_merge.is_some() && changes.inverted_edge_keys.len() == 1);
       side.apply(|_, partitions| partitions.apply_reroot(&changes))?;
     }
 
     assert_eq!(case.whole.snapshot()?, case.split.snapshot()?);
-    assert_eq!(pair.composed, alignment_indels(&case.whole, "X", "Y")?);
+    let [mut whole_before, mut split_before] = before;
+    whole_before.remove("root");
+    split_before.remove("root");
+    assert_eq!(
+      (whole_before, split_before),
+      (case.whole.parsimony_sequences()?, case.split.parsimony_sequences()?)
+    );
+    let inverted_x_then_y = vec![inverted(del(0, 1, "A")), deletion_on_y, inverted(del(5, 6, "C"))];
+    assert_eq!(inverted_x_then_y, alignment_indels(&case.whole, "X", "Y")?);
     Ok(())
   }
 
   #[test]
   fn test_edge_merge_of_a_codon_split_alignment_composes_the_events_of_the_unsplit_alignment() -> Result<(), Report> {
-    let mut case = SplitCase::new(
-      "((A:0.1)U:0.1,B:0.1,C:0.1)root;",
-      &MergedPair::records(&["A", "B", "C"]),
-    )?;
-    let pair = MergedPair::new();
-    pair.set(&mut case, ("root", "U"), ("U", "A"));
+    let records = [("A", "-CG-A-GTA"), ("B", "ACGTACGTA"), ("C", "ACGTACGTA")];
+    let mut case = SplitCase::new("((A:0.1)U:0.1,B:0.1,C:0.1)root;", &records)?;
+    let deletions_on_a = vec![del(0, 1, "A"), del(3, 4, "T"), del(5, 6, "C")];
+    assert_eq!(deletions_on_a, alignment_indels(&case.split, "root", "U")?);
+    case
+      .whole
+      .set_pieces("root", "U", &[(0, vec![del(0, 1, "A"), del(5, 6, "C")])]);
+    case.whole.set_pieces("U", "A", &[(0, vec![del(3, 4, "T")])]);
+    case
+      .split
+      .set_pieces("root", "U", &[(0, vec![del(0, 1, "A")]), (2, vec![del(1, 2, "C")])]);
+    case.split.set_pieces("U", "A", &[(0, vec![del(1, 2, "T")])]);
+    let before = [case.whole.observe("U")?, case.split.observe("U")?];
     for side in case.sides_mut() {
       let node_key = find_node_key_by_name(&side.graph, &side.names, "U").expect("the tree has the node");
       let merge = remove_node_if_trivial(&mut side.graph, node_key, Some(0.1), Some(0.1))?.expect("U has one child");
@@ -187,7 +230,14 @@ mod tests {
     }
 
     assert_eq!(case.whole.snapshot()?, case.split.snapshot()?);
-    assert_eq!(pair.composed, alignment_indels(&case.whole, "root", "A")?);
+    let [mut whole_before, mut split_before] = before;
+    whole_before.remove("U");
+    split_before.remove("U");
+    assert_eq!(
+      (whole_before, split_before),
+      (case.whole.parsimony_sequences()?, case.split.parsimony_sequences()?)
+    );
+    assert_eq!(deletions_on_a, alignment_indels(&case.whole, "root", "A")?);
     Ok(())
   }
 
@@ -259,7 +309,10 @@ mod tests {
     use crate::partition::create::Representation;
     use crate::partition::marginal::reconstruction::SparseReconstruction;
     use crate::partition::marginal::sparse::alignment_indels::{assembled_edge_indels, sparse_alignment_groups};
+    use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
+    use crate::partition::marginal::sparse::reconstruct::parsimony_seq;
     use crate::partition::set::PartitionSet;
+    use crate::partition::storage::sparse::SparseNodeObs;
     use crate::seq::alignment::SequenceSource;
     use crate::seq::indel::InDel;
     use crate::seq::mutation::Sub;
@@ -273,7 +326,9 @@ mod tests {
     use std::mem;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
+    use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, Seq};
 
@@ -359,6 +414,44 @@ mod tests {
         self.sparse_ref()[partition].partition.obs_edges[&edge_key]
           .indels
           .clone()
+      }
+
+      pub(super) fn parsimony_sequences(&self) -> Result<BTreeMap<String, Seq>, Report> {
+        let partitions = self.sparse_ref();
+        let group = only_group(partitions)?;
+        let members = group.members(partitions);
+        let per_partition: Vec<_> = members
+          .iter()
+          .map(|member| partition_parsimony_sequences(&self.graph, &member.partition))
+          .try_collect()?;
+        self
+          .graph
+          .get_nodes()
+          .map(|node| {
+            let sequences = per_partition
+              .iter()
+              .map(|sequences| sequences[&node.key()].clone())
+              .collect_vec();
+            Ok((
+              self.names[node.key()].to_owned(),
+              group.layout.assemble_sequence(&sequences)?,
+            ))
+          })
+          .collect()
+      }
+
+      pub(super) fn observe(&mut self, name: &str) -> Result<BTreeMap<String, Seq>, Report> {
+        let key = find_node_key_by_name(&self.graph, &self.names, name).expect("the tree has the node");
+        for reconstruction in self.partitions.sparse_mut() {
+          let partition = &mut reconstruction.partition;
+          let sequence = partition_parsimony_sequences(&self.graph, partition)?
+            .remove(&key)
+            .expect("the node exists");
+          partition
+            .obs_nodes
+            .insert(key, SparseNodeObs::new(&sequence, &partition.alphabet));
+        }
+        self.parsimony_sequences()
       }
 
       pub(super) fn parent_name(&self, name: &str) -> String {
@@ -480,43 +573,6 @@ mod tests {
       indel_count: usize,
     }
 
-    pub(super) struct MergedPair {
-      parent: (Vec<InDel>, Vec<(usize, Vec<InDel>)>),
-      child: (Vec<InDel>, Vec<(usize, Vec<InDel>)>),
-      pub(super) composed: Vec<InDel>,
-    }
-
-    impl MergedPair {
-      pub(super) fn records<'a>(names: &[&'a str]) -> Vec<(&'a str, &'static str)> {
-        names.iter().map(|&name| (name, "ACGTACGTA")).collect()
-      }
-
-      pub(super) fn new() -> Self {
-        let parent_deletion = del(0, 1, "A");
-        let parent_insertion = ins(5, 6, "C");
-        let child_deletion = del(3, 4, "T");
-        let child_insertion = ins(6, 7, "G");
-        Self {
-          parent: (
-            vec![parent_deletion.clone(), parent_insertion.clone()],
-            vec![(0, vec![del(0, 1, "A")]), (2, vec![ins(1, 2, "C")])],
-          ),
-          child: (
-            vec![child_deletion.clone(), child_insertion.clone()],
-            vec![(0, vec![del(1, 2, "T"), ins(2, 3, "G")])],
-          ),
-          composed: vec![parent_deletion, child_deletion, parent_insertion, child_insertion],
-        }
-      }
-
-      pub(super) fn set(&self, case: &mut SplitCase, parent: (&str, &str), child: (&str, &str)) {
-        case.whole.set_pieces(parent.0, parent.1, &[(0, self.parent.0.clone())]);
-        case.whole.set_pieces(child.0, child.1, &[(0, self.child.0.clone())]);
-        case.split.set_pieces(parent.0, parent.1, &self.parent.1);
-        case.split.set_pieces(child.0, child.1, &self.child.1);
-      }
-    }
-
     pub(super) fn alignment_indels(side: &Side, source: &str, target: &str) -> Result<Vec<InDel>, Report> {
       let partitions = side.sparse_ref();
       let group = only_group(partitions)?;
@@ -535,6 +591,28 @@ mod tests {
     pub(super) fn inverted(mut indel: InDel) -> InDel {
       indel.invert();
       indel
+    }
+
+    fn partition_parsimony_sequences(
+      graph: &Graph,
+      partition: &PartitionMarginalSparse,
+    ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+      let schedule = GraphSchedule::new(graph)?;
+      let mut sequences = BTreeMap::new();
+      for &key in schedule.preorder() {
+        let sequence = match schedule.parents(key) {
+          [] => partition.root_sequence.clone(),
+          [(parent_key, edge_key)] => parsimony_seq(
+            &sequences[parent_key],
+            &partition.obs_edges[edge_key],
+            &partition.obs_nodes[&key],
+            &partition.alphabet,
+          ),
+          _ => panic!("the case is a tree"),
+        };
+        sequences.insert(key, sequence);
+      }
+      Ok(sequences)
     }
 
     fn only_group(partitions: &[SparseReconstruction]) -> Result<AlignmentGroup, Report> {

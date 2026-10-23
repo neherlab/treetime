@@ -53,7 +53,7 @@ pub(crate) fn apply_root_at_edge(
     },
   };
 
-  let mut inverted_edge_keys = apply_reroot_topology(graph, old_root_key, new_root_key)?;
+  let inverted_edge_keys = apply_reroot_topology(graph, old_root_key, new_root_key)?;
   let edge_merge = if topo.remove_trivial_root {
     let (parent_branch, child_branch) = trivial_node_branch_lengths(graph, old_root_key, branch_lengths);
     remove_node_if_trivial(graph, old_root_key, parent_branch, child_branch)?
@@ -61,7 +61,6 @@ pub(crate) fn apply_root_at_edge(
     None
   };
   if let Some(merge) = &edge_merge {
-    inverted_edge_keys.retain(|k| *k != merge.parent_edge_key && *k != merge.child_edge_key);
     record_merge(branch_lengths, merge);
   }
 

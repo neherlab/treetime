@@ -143,19 +143,12 @@ fn remove_trivial_root(
 }
 
 fn derive_root_sequence(partition: &mut PartitionMarginalSparse, changes: &RerootResult) {
-  if !changes.inverted_edge_keys.is_empty() {
-    let mut new_root_seq = partition.root_sequence.clone();
-    for edge_key in &changes.inverted_edge_keys {
-      if let Some(edge_data) = partition.obs_edges.get(edge_key) {
-        apply_edge_to_sequence(&mut new_root_seq, edge_data, &partition.alphabet);
-      }
-    }
-    partition.root_sequence = new_root_seq;
-  } else if let Some(info) = &changes.edge_merge {
-    if let Some(parent_edge) = partition.obs_edges.get(&info.parent_edge_key) {
-      let parent_edge = parent_edge.clone();
-      apply_edge_to_sequence(&mut partition.root_sequence, &parent_edge, &partition.alphabet);
-    }
+  for edge_key in changes.inverted_edge_keys.iter().rev() {
+    apply_edge_to_sequence(
+      &mut partition.root_sequence,
+      &partition.obs_edges[edge_key],
+      &partition.alphabet,
+    );
   }
 }
 
