@@ -5,7 +5,7 @@ export type Docs_Search_UnavailableInputs = {};
 /**
 * | output |
 * | --- |
-* | "Search works on the built site. Run `just build-docs` and `just serve-docs` to use it." |
+* | "Search works on the built site. Run `just docs-prod` to use it." |
 *
 * @param {Docs_Search_UnavailableInputs} inputs
 * @param {{ locale?: "en" | "de" }} options

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <up|serve|health|status|up-web2|serve-web2|up-docs|serve-docs>
+# Usage: $0 <up|serve|health|status|up-web2|serve-web2|docs|docs-prod>
 #
 # Servers of the web app: the API server (treetime-server), and in development
 # the Vite dev server, which proxies /api to it. The web2 app needs no API
@@ -19,10 +19,12 @@
 #   serve-web2  Build the web2 app for production and serve it in the foreground
 #               until Ctrl-C; both WebAssembly modules must be built (just
 #               build-wasm prod, just build-wasm-mt prod)
-#   up-docs     Start the docs site development server in the foreground until Ctrl-C;
-#               it runs no post-build step, so search and the version list work only
-#               in serve-docs
-#   serve-docs  Build the docs site and serve the build in the foreground until Ctrl-C
+#   docs        Start the docs site development server, which reloads pages and styles
+#               as they change, in the foreground until Ctrl-C; it runs no post-build
+#               step, so search and the version list work only in docs-prod
+#   docs-prod   Build the docs site as published and serve the build with the file
+#               layout of the docs host (the site root files at /, the build at
+#               /<version>, pages without their extension) in the foreground until Ctrl-C
 #
 # Each checkout resolves its own ports from its path, so worktrees run side by
 # side. TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT,
@@ -241,22 +243,21 @@ serve_web2() {
   exec bun run --cwd packages/app-web2 preview
 }
 
-up_docs() {
+docs() {
   resolve
   printf 'Starting the docs server on http://127.0.0.1:%s/dev (Ctrl-C to stop)\n' "${TREETIME_DOCS_PORT}" >&2
   exec bun run --cwd packages/app-docs dev
 }
 
-serve_docs() {
+docs_prod() {
   resolve
   bun run --silent build:docs
-  printf 'Serving the docs build on http://127.0.0.1:%s/dev (Ctrl-C to stop)\n' "${TREETIME_DOCS_SERVE_PORT}" >&2
-  exec bun run --cwd packages/app-docs preview
+  exec bun run --cwd packages/app-docs serve
 }
 
 case "${1:-}" in
 up | serve | health | status) "${1}" ;;
-up-web2 | serve-web2 | up-docs | serve-docs) "${1//-/_}" ;;
+up-web2 | serve-web2 | docs | docs-prod) "${1//-/_}" ;;
 *)
   sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
   exit 1

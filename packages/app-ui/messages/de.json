@@ -43,7 +43,7 @@
   "docs_search_placeholder": "Seiten und Überschriften durchsuchen",
   "docs_search_empty": "Keine Seite passt zur Suche.",
   "docs_search_loading": "Suchindex wird geladen",
-  "docs_search_unavailable": "Die Suche funktioniert auf der gebauten Seite. Führen Sie `just build-docs` und `just serve-docs` aus, um sie zu nutzen.",
+  "docs_search_unavailable": "Die Suche funktioniert auf der gebauten Seite. Führen Sie `just docs-prod` aus, um sie zu nutzen.",
   "docs_search_results": "Suchergebnisse",
   "docs_toc": "Auf dieser Seite",
   "docs_previous": "Zurück",

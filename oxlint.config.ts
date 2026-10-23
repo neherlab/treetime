@@ -179,7 +179,7 @@ export default projectConfig({
       },
     },
     {
-      files: ["packages/app-docs/src/integrations/**"],
+      files: ["packages/app-docs/src/integrations/**", "packages/app-docs/src/preview/**"],
       rules: {
         "import/no-nodejs-modules": "off",
       },

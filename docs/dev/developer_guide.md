@@ -253,13 +253,13 @@ The back end has the routes of `treetime-server`, without the routes of a local 
 
 The docs site (`packages/app-docs`) is a prerendered multi-page site in the look of the app. It is its own [Astro](https://astro.build) site: the headless library [`fumadocs-core`](https://www.fumadocs.dev) supplies the page tree, the language fallback, the neighbour links, and the tracking of the visible heading, and `@neherlab/app-ui` renders every visible part. The docs are a separate build, not a route of the app, because they change once per release while the app deploys on every commit.
 
-| Task                                                              | Command                       |
-| ----------------------------------------------------------------- | ----------------------------- |
-| Start the docs dev server (no search, no version list)            | `just up-docs`                |
-| Build the docs and serve the build                                | `just serve-docs`             |
-| Build into `packages/app-docs/dist/` and `packages/app-docs/dist-root/` | `just build-docs`       |
+| Task                                                                       | Command           |
+| -------------------------------------------------------------------------- | ----------------- |
+| Start the dev server for writing pages, with live reload                   | `just docs`       |
+| Build the docs as published and serve the build like the docs host         | `just docs-prod`  |
+| Build into `packages/app-docs/dist/` and `packages/app-docs/dist-root/`    | `just build-docs` |
 
-The dev server runs in the `sess` session `tt-dev-docs`. Its port is 6100 plus the offset of the checkout, and the port of the served build 6700 plus the offset; `TREETIME_DOCS_PORT` and `TREETIME_DOCS_SERVE_PORT` override them, and `just status` prints them. Both serve the version folder, `http://127.0.0.1:<port>/dev`.
+`just docs` runs in the `sess` session `tt-dev-docs` and `just docs-prod` in `tt-dev-docs-prod`. The dev server serves `http://127.0.0.1:<port>/dev` on port 6100 plus the offset of the checkout and reloads pages and styles as they change; it runs no post-build step, so search and the version list are missing there. `just docs-prod` builds the site and serves it on port 6700 plus the offset with the file layout of the docs host: the site root files (`versions.json`, the page that leads to the preferred version) at `/`, the build at `/dev`, pages without their `.html` extension, and the not-found page of the locale for a missing page (`packages/app-docs/src/preview/serve-site.ts`). `TREETIME_DOCS_PORT` and `TREETIME_DOCS_SERVE_PORT` override the ports, and `just status` prints them.
 
 The app and the docs share three layers, and each surface wires the rest itself:
 

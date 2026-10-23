@@ -7,7 +7,7 @@
   "scripts": {
     "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
     "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
-    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "serve": "bun src/preview/serve-site.ts",
     "sync": "ASTRO_TELEMETRY_DISABLED=1 astro sync"
   },
   "devDependencies": {

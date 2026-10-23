@@ -634,15 +634,15 @@ up-web2: _js (build-wasm "dev") (build-wasm-mt "dev")
 serve-web2: _js (build-wasm "prod") (build-wasm-mt "prod")
     dev/app serve-web2
 
-# Start the docs site dev server in the foreground until Ctrl-C; search and the version list work only in `just serve-docs`
+# Start the docs site dev server for writing pages, which reloads them as they change, in the foreground until Ctrl-C; search and the version list work only in `just docs-prod`
 [group("app")]
-up-docs: _js
-    dev/app up-docs
+docs: _js
+    dev/app docs
 
-# Build the docs site and serve the build until Ctrl-C
+# Build the docs site as published and serve the build like the docs host (site root at /, the build at /dev), in the foreground until Ctrl-C
 [group("app")]
-serve-docs: _js
-    dev/app serve-docs
+docs-prod: _js
+    dev/app docs-prod
 
 # Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
