@@ -208,8 +208,8 @@ async function checkClockRunWithoutCharts(): Promise<void> {
     [
       outputs.completed,
       record.status,
-      ["clock.clock-model.json", "clock.clock.csv", "clock.nwk"].filter((path) => !paths.has(path)),
-      ["clock.svg", "clock.png", "clock.pdf"].filter((path) => paths.has(path)),
+      ["clock.clock-model.json", "clock.rtt.tsv", "clock.nwk"].filter((path) => !paths.has(path)),
+      ["clock.rtt.svg"].filter((path) => paths.has(path)),
     ],
     [true, "ok", [], []],
     JSON.stringify(record.error),
