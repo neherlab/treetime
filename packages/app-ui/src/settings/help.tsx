@@ -31,8 +31,7 @@ export function SettingSummary({ spec, label }: { spec: SettingSpec; label: Reac
 
   return (
     <div className="flex flex-wrap items-baseline gap-2">
-      {label}
-      <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
+      {label} <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>{" "}
       {spec.role === "setting" && (
         <span className="text-muted-foreground text-xs">
           {m.settings_default({ value: defaultText(documentedDefault(spec), locale) }, { locale })}

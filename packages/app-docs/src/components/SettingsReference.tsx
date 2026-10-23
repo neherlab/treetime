@@ -5,7 +5,7 @@ import { groupedSpecs } from "@neherlab/app-ui/settings/groups";
 import { SettingHelp, SettingSummary } from "@neherlab/app-ui/settings/help";
 import { Input } from "@neherlab/app-ui/ui/input";
 import { Label } from "@neherlab/app-ui/ui/label";
-import { type ChangeEvent, useCallback, useId, useMemo, useState } from "react";
+import { type ChangeEvent, Fragment, useCallback, useId, useMemo, useState } from "react";
 
 export function SettingsReference({ settings, locale }: { settings: CommandSettings; locale: Locale }) {
   const filterId = useId();
@@ -100,7 +100,7 @@ function SettingEntry({ spec, flags }: { spec: SettingSpec; flags: ReadonlyMap<s
         }
       />
       <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-        {spec.value_names.length > 0 && (
+        {spec.kind !== "switch" && spec.value_names.length > 0 && (
           <Term label={m.settings_value({}, { locale })}>
             <code className="font-mono text-xs">{spec.value_names.join(" ")}</code>
           </Term>
@@ -123,9 +123,11 @@ function SettingEntry({ spec, flags }: { spec: SettingSpec; flags: ReadonlyMap<s
         {spec.conflicts.length > 0 && (
           <Term label={m.settings_conflicts({}, { locale })}>
             {spec.conflicts.map((key) => (
-              <a key={key} href={`#${key}`} className="mr-2 font-mono text-xs underline-offset-3 hover:underline">
-                {flags.get(key) ?? key}
-              </a>
+              <Fragment key={key}>
+                <a href={`#${key}`} className="mr-2 font-mono text-xs underline-offset-3 hover:underline">
+                  {flags.get(key) ?? key}
+                </a>{" "}
+              </Fragment>
             ))}
           </Term>
         )}
@@ -149,8 +151,7 @@ function SettingEntry({ spec, flags }: { spec: SettingSpec; flags: ReadonlyMap<s
 function Term({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0">{children}</dd>
+      <dt className="text-muted-foreground">{label}</dt> <dd className="min-w-0">{children}</dd>{" "}
     </>
   );
 }
