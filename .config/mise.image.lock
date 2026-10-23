@@ -84,6 +84,266 @@ strip_components = "1"
 checksum = "sha256:a51dd2829bdf725d268974728e032533b106ea01cb482a62288ec12627a7abbe"
 url = "https://storage.googleapis.com/webassembly/emscripten-releases-builds/linux/666337b525e673e769121856d175f6f52b8ead64/wasm-binaries.tar.xz"
 
+[[tools.liblzma-aarch64-apple-darwin]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-aarch64-apple-darwin.options]
+asset_pattern = "lzma-[0-9]*-static-aarch64-apple-darwin-*.tar.xz"
+
+[tools.liblzma-aarch64-apple-darwin."platforms.linux-x64"]
+checksum = "sha256:7fcaf578a9bac5e96b66fd596bddf679a92bfa9cc1001d84fbf36519a55614ba"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-aarch64-apple-darwin-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462707"
+
+[[tools.liblzma-aarch64-pc-windows-gnullvm]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-aarch64-pc-windows-gnullvm.options]
+asset_pattern = "lzma-[0-9]*-static-aarch64-pc-windows-gnullvm-*.tar.xz"
+
+[tools.liblzma-aarch64-pc-windows-gnullvm."platforms.linux-x64"]
+checksum = "sha256:81122e0cd20306e9d73d44a35569bead7ccbc79a6be2e42105e28b75f7405948"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-aarch64-pc-windows-gnullvm-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462714"
+
+[[tools.liblzma-aarch64-unknown-linux-gnu]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-aarch64-unknown-linux-gnu.options]
+asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz"
+
+[tools.liblzma-aarch64-unknown-linux-gnu."platforms.linux-x64"]
+checksum = "sha256:0e4f2705596c9cbbdd20bed0ac68076651d476a10d62ca9542ead9137a5e85d8"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-aarch64-unknown-linux-gnu-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462731"
+
+[[tools.liblzma-aarch64-unknown-linux-musl]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-aarch64-unknown-linux-musl.options]
+asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-musl-*.tar.xz"
+
+[tools.liblzma-aarch64-unknown-linux-musl."platforms.linux-x64"]
+checksum = "sha256:4294b75856f4495c197fef14b9e130cdf19c86cbe67d15131544853edb7b9a70"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-aarch64-unknown-linux-musl-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462750"
+
+[[tools.liblzma-wasm32-unknown-emscripten]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-wasm32-unknown-emscripten.options]
+asset_pattern = "lzma-[0-9]*-static-wasm32-unknown-emscripten.*.tar.xz"
+
+[tools.liblzma-wasm32-unknown-emscripten."platforms.linux-x64"]
+checksum = "sha256:e4fe466028d2382776b71f6dc8eaaaa2993f7c31485e504e02198bfc984007a4"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-wasm32-unknown-emscripten.6.0.10-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462754"
+
+[[tools.liblzma-x86_64-apple-darwin]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-x86_64-apple-darwin.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-apple-darwin-*.tar.xz"
+
+[tools.liblzma-x86_64-apple-darwin."platforms.linux-x64"]
+checksum = "sha256:855cc9d9ae6f5a3ae0d68f59eb948a056a66f77c4dc055db1c39900961149112"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-apple-darwin-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462778"
+
+[[tools.liblzma-x86_64-pc-windows-gnullvm]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-x86_64-pc-windows-gnullvm.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-pc-windows-gnullvm-*.tar.xz"
+
+[tools.liblzma-x86_64-pc-windows-gnullvm."platforms.linux-x64"]
+checksum = "sha256:c1075005a3abe5a00541f48f965013029063dff47f4c7448234cc7fe82b5e621"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-pc-windows-gnullvm-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462793"
+
+[[tools.liblzma-x86_64-unknown-linux-gnu]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-x86_64-unknown-linux-gnu.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz"
+
+[tools.liblzma-x86_64-unknown-linux-gnu."platforms.linux-x64"]
+checksum = "sha256:859b41561a0be0aca1e591e5c9fcafc68260c781438727d8f91a31d51758580d"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-unknown-linux-gnu-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462809"
+
+[[tools.liblzma-x86_64-unknown-linux-musl]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-x86_64-unknown-linux-musl.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-musl-*.tar.xz"
+
+[tools.liblzma-x86_64-unknown-linux-musl."platforms.linux-x64"]
+checksum = "sha256:b2a2345a7d8e83342054b1ced474c590a50a1013648d3fdff2bdf198f02ce259"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-unknown-linux-musl-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462821"
+
+[[tools.liblzma-x86_64-win7-windows-gnu]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.liblzma-x86_64-win7-windows-gnu.options]
+asset_pattern = "lzma-[0-9]*-static-x86_64-pc-windows-gnu-*.tar.xz"
+
+[tools.liblzma-x86_64-win7-windows-gnu."platforms.linux-x64"]
+checksum = "sha256:b4c55d7dcd44989448b8f3b4a956ae0a7a5334ce7c54d1454a30ecae6da78fc7"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/lzma-5.8.4-static-x86_64-pc-windows-gnu-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667462789"
+
+[[tools.libzstd-aarch64-apple-darwin]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-aarch64-apple-darwin.options]
+asset_pattern = "zstd-[0-9]*-static-aarch64-apple-darwin-*.tar.xz"
+
+[tools.libzstd-aarch64-apple-darwin."platforms.linux-x64"]
+checksum = "sha256:cf01f0d44aea78c7f69eecca34164b51e6501745d8b2ba764a67365ac8f71127"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-aarch64-apple-darwin-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463134"
+
+[[tools.libzstd-aarch64-pc-windows-gnullvm]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-aarch64-pc-windows-gnullvm.options]
+asset_pattern = "zstd-[0-9]*-static-aarch64-pc-windows-gnullvm-*.tar.xz"
+
+[tools.libzstd-aarch64-pc-windows-gnullvm."platforms.linux-x64"]
+checksum = "sha256:83b93035a2d7b348a7f0d9ec53257c5c87ed8ffe7178c535d1cc42c9e9a614fe"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-aarch64-pc-windows-gnullvm-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463155"
+
+[[tools.libzstd-aarch64-unknown-linux-gnu]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-aarch64-unknown-linux-gnu.options]
+asset_pattern = "zstd-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz"
+
+[tools.libzstd-aarch64-unknown-linux-gnu."platforms.linux-x64"]
+checksum = "sha256:cf465e2d0fb8b060d88051282edf4c3eba3eb80da1ac8c0fe84f0e536d572f8a"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-aarch64-unknown-linux-gnu-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463161"
+
+[[tools.libzstd-aarch64-unknown-linux-musl]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-aarch64-unknown-linux-musl.options]
+asset_pattern = "zstd-[0-9]*-static-aarch64-unknown-linux-musl-*.tar.xz"
+
+[tools.libzstd-aarch64-unknown-linux-musl."platforms.linux-x64"]
+checksum = "sha256:3f4f425109e4574572e6dc4666fb2b3a18e8eafa575829aee1c4e4cae0ea513c"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-aarch64-unknown-linux-musl-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463182"
+
+[[tools.libzstd-wasm32-unknown-emscripten]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-wasm32-unknown-emscripten.options]
+asset_pattern = "zstd-[0-9]*-static-wasm32-unknown-emscripten.*.tar.xz"
+
+[tools.libzstd-wasm32-unknown-emscripten."platforms.linux-x64"]
+checksum = "sha256:743f517cf8c742d0133788dbb9677dcd792e4dfa7972b10b76c6ce4e28a848eb"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-wasm32-unknown-emscripten.6.0.10-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463188"
+
+[[tools.libzstd-x86_64-apple-darwin]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-x86_64-apple-darwin.options]
+asset_pattern = "zstd-[0-9]*-static-x86_64-apple-darwin-*.tar.xz"
+
+[tools.libzstd-x86_64-apple-darwin."platforms.linux-x64"]
+checksum = "sha256:83eb486e61d12128ffda353b968e793e7c5ecd5a0151282609590b7b49a04d6f"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-x86_64-apple-darwin-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463192"
+
+[[tools.libzstd-x86_64-pc-windows-gnullvm]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-x86_64-pc-windows-gnullvm.options]
+asset_pattern = "zstd-[0-9]*-static-x86_64-pc-windows-gnullvm-*.tar.xz"
+
+[tools.libzstd-x86_64-pc-windows-gnullvm."platforms.linux-x64"]
+checksum = "sha256:cd24c7d446acc43dcae32f3dd9fa7288c97d5cf2c629a231fea794702e348fff"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-x86_64-pc-windows-gnullvm-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463240"
+
+[[tools.libzstd-x86_64-unknown-linux-gnu]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-x86_64-unknown-linux-gnu.options]
+asset_pattern = "zstd-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz"
+
+[tools.libzstd-x86_64-unknown-linux-gnu."platforms.linux-x64"]
+checksum = "sha256:ba135ecc237800079bc6153371e09829b2c8495d2335007fdaf53b2e30277642"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-x86_64-unknown-linux-gnu-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463258"
+
+[[tools.libzstd-x86_64-unknown-linux-musl]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-x86_64-unknown-linux-musl.options]
+asset_pattern = "zstd-[0-9]*-static-x86_64-unknown-linux-musl-*.tar.xz"
+
+[tools.libzstd-x86_64-unknown-linux-musl."platforms.linux-x64"]
+checksum = "sha256:05b7ee2aa81d02072de390467f69002f54f6f083a27238e853b1651cdbd018bf"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-x86_64-unknown-linux-musl-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463284"
+
+[[tools.libzstd-x86_64-win7-windows-gnu]]
+version = "2026-10-22_23-12-40"
+backend = "github:binarylandia/staticbourg"
+specifiers = ["2026-10-22_23-12-40"]
+
+[tools.libzstd-x86_64-win7-windows-gnu.options]
+asset_pattern = "zstd-[0-9]*-static-x86_64-pc-windows-gnu-*.tar.xz"
+
+[tools.libzstd-x86_64-win7-windows-gnu."platforms.linux-x64"]
+checksum = "sha256:cae3301dd076d9f4c6854d4073ea07085a700b27e27809a6bf9239081682b5b6"
+url = "https://github.com/binarylandia/staticbourg/releases/download/2026-10-22_23-12-40/zstd-1.5.7-static-x86_64-pc-windows-gnu-2026-10-22_23-12-40.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/staticbourg/releases/assets/667463226"
+
 [[tools.llvm]]
 version = "22.1.8-2026-10-18_10-26-24"
 backend = "github:binarylandia/build_llvm"
@@ -111,6 +371,160 @@ version_prefix = "llvm-"
 checksum = "sha256:4cd60450e4dc43766e1302cd4c2beb345ace65f36d7204b0aac068d744778e85"
 url = "https://github.com/binarylandia/build_llvm/releases/download/llvm-22.1.8-2026-10-18_10-26-24/llvm-mingw-22.1.8-2026-10-18_10-26-24.tar.zst"
 url_api = "https://api.github.com/repos/binarylandia/build_llvm/releases/assets/653231616"
+
+[[tools.openblas-aarch64-apple-darwin]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-aarch64-apple-darwin.options]
+asset_pattern = "openblas-static-[0-9]*-aarch64-apple-darwin-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-aarch64-apple-darwin."platforms.linux-x64"]
+checksum = "sha256:ef9c8045e143f3f01533451d4189a1649099b91b4823c7214f809e7bacf2145c"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-aarch64-apple-darwin-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172533"
+
+[[tools.openblas-aarch64-pc-windows-gnullvm]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-aarch64-pc-windows-gnullvm.options]
+asset_pattern = "openblas-static-[0-9]*-aarch64-pc-windows-gnullvm-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-aarch64-pc-windows-gnullvm."platforms.linux-x64"]
+checksum = "sha256:a9e2486e0da2964cb402a4db7a80e8220065242a6c78a6b10340440560107e5e"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-aarch64-pc-windows-gnullvm-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172532"
+
+[[tools.openblas-aarch64-unknown-linux-gnu]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-aarch64-unknown-linux-gnu.options]
+asset_pattern = "openblas-static-[0-9]*-aarch64-unknown-linux-gnu-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-aarch64-unknown-linux-gnu."platforms.linux-x64"]
+checksum = "sha256:0c685c6bc149e0c8556cb4df5bfdaa82180475fe93d5addb5e3194da85421748"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-aarch64-unknown-linux-gnu-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172526"
+
+[[tools.openblas-aarch64-unknown-linux-musl]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-aarch64-unknown-linux-musl.options]
+asset_pattern = "openblas-static-[0-9]*-aarch64-unknown-linux-musl-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-aarch64-unknown-linux-musl."platforms.linux-x64"]
+checksum = "sha256:d3e23aa9d736cd90bbb13078bb40e8884f510f51b6aeb946a2c681fac76bad02"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-aarch64-unknown-linux-musl-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172527"
+
+[[tools.openblas-mt-wasm32-unknown-emscripten]]
+version = "0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45"]
+
+[tools.openblas-mt-wasm32-unknown-emscripten.options]
+asset_pattern = "openblas-static-mt-[0-9]*-wasm32-unknown-emscripten.*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-mt-wasm32-unknown-emscripten."platforms.linux-x64"]
+checksum = "sha256:c79643ef3b3e7b712b9b13f11899ea45b34dfbf7d39fb294c40294847ee4aa8c"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45/openblas-static-mt-0.3.34-432-gde5d4914-wasm32-unknown-emscripten.6.0.10-2026-10-23_06-09-45.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172930"
+
+[[tools.openblas-wasm32-unknown-emscripten]]
+version = "0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45"]
+
+[tools.openblas-wasm32-unknown-emscripten.options]
+asset_pattern = "openblas-static-[0-9]*-wasm32-unknown-emscripten.*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-wasm32-unknown-emscripten."platforms.linux-x64"]
+checksum = "sha256:bcbe848179a50c5a018c625c028ad7b94015c2f92378b3a79aa1743abf7047fe"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-emscripten-6.0.10-2026-10-23_06-09-45/openblas-static-0.3.34-432-gde5d4914-wasm32-unknown-emscripten.6.0.10-2026-10-23_06-09-45.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172927"
+
+[[tools.openblas-x86_64-apple-darwin]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-x86_64-apple-darwin.options]
+asset_pattern = "openblas-static-[0-9]*-x86_64-apple-darwin-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-x86_64-apple-darwin."platforms.linux-x64"]
+checksum = "sha256:14b76de9fa888ae508391da544e4924aca6fec42f242aa1c53396345bd91f6a6"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-apple-darwin-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172531"
+
+[[tools.openblas-x86_64-pc-windows-gnullvm]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-x86_64-pc-windows-gnullvm.options]
+asset_pattern = "openblas-static-[0-9]*-x86_64-pc-windows-gnullvm-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-x86_64-pc-windows-gnullvm."platforms.linux-x64"]
+checksum = "sha256:afa0749437b006d2db2ee0fff90d60943e5c789b0282333940d003c3dcf59a68"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-pc-windows-gnullvm-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172561"
+
+[[tools.openblas-x86_64-unknown-linux-gnu]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-x86_64-unknown-linux-gnu.options]
+asset_pattern = "openblas-static-[0-9]*-x86_64-unknown-linux-gnu-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-x86_64-unknown-linux-gnu."platforms.linux-x64"]
+checksum = "sha256:ab3b36c7303aad36be0dcd0bd5990b00313d6eb2f4e0168d0181d27e95ee13e5"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-unknown-linux-gnu-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172569"
+
+[[tools.openblas-x86_64-unknown-linux-musl]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-x86_64-unknown-linux-musl.options]
+asset_pattern = "openblas-static-[0-9]*-x86_64-unknown-linux-musl-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-x86_64-unknown-linux-musl."platforms.linux-x64"]
+checksum = "sha256:e4e059dfdf77c744489eef49cccd21506362caa140a422125b1beaa2356e05a0"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-unknown-linux-musl-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172571"
+
+[[tools.openblas-x86_64-win7-windows-gnu]]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+backend = "github:binarylandia/build_openblas"
+specifiers = ["0.3.34-432-gde5d4914-2026-10-22_23-18-58"]
+
+[tools.openblas-x86_64-win7-windows-gnu.options]
+asset_pattern = "openblas-static-[0-9]*-x86_64-win7-windows-gnu-*.tar.xz"
+version_prefix = "openblas-"
+
+[tools.openblas-x86_64-win7-windows-gnu."platforms.linux-x64"]
+checksum = "sha256:71e42998c15ae375f33f7f6766e96e70b5372cbb4900738fec611ff38799735b"
+url = "https://github.com/binarylandia/build_openblas/releases/download/openblas-0.3.34-432-gde5d4914-2026-10-22_23-18-58/openblas-static-0.3.34-432-gde5d4914-x86_64-win7-windows-gnu-2026-10-22_23-18-58.tar.xz"
+url_api = "https://api.github.com/repos/binarylandia/build_openblas/releases/assets/668172573"
 
 [[tools.osxcross]]
 version = "27d21e4-sdk11.1-2026-10-18_09-15-29"

@@ -10,13 +10,17 @@ minimum_release_age_excludes = [
   "github:binarylandia/appville",
   "github:binarylandia/build_crosstool-ng",
   "github:binarylandia/build_llvm",
+  "github:binarylandia/build_openblas",
   "github:binarylandia/build_osxcross",
+  "github:binarylandia/staticbourg",
   "github:binarylandia/wine_bcryptprimitives_dll_mock",
 ]
 
 [tool_alias]
 cargo-dylint = "github:trailofbits/dylint"
 dylint-link = "github:trailofbits/dylint"
+liblzma = "github:binarylandia/staticbourg"
+openblas = "github:binarylandia/build_openblas"
 wasm-bindgen = "github:binarylandia/appville"
 
 [tools]
@@ -71,3 +75,40 @@ linux-arm64 = { asset_pattern = "wasm-bindgen-*-static-aarch64-unknown-linux-mus
 linux-x64 = { asset_pattern = "wasm-bindgen-*-static-x86_64-unknown-linux-musl-*.tar.gz" }
 macos-arm64 = { asset_pattern = "wasm-bindgen-*-static-aarch64-apple-darwin-*.tar.gz" }
 macos-x64 = { asset_pattern = "wasm-bindgen-*-static-x86_64-apple-darwin-*.tar.gz" }
+
+# The static OpenBLAS (with the static Fortran runtime of flang that its LAPACK
+# calls) and liblzma of binarylandia, the archives that the shipped builds link,
+# for native builds on hosts. HOST_PKG_CONFIG_PATH puts their pkg-config files
+# before the user's PKG_CONFIG_PATH for native builds only, so the build scripts
+# of treetime-openblas and liblzma-sys link them; without them, the build links
+# the OpenBLAS and liblzma of the system. libzstd keeps the bundled sources of
+# zstd-sys on hosts: zstd-sys asks pkg-config whenever ZSTD_SYS_USE_PKG_CONFIG
+# exists, even empty, and fails without a libzstd.pc. The images set their
+# pkg-config paths in /.cargo/config.toml (dev/docker/files/install-image-libraries)
+# and disable these two tools.
+[tools.openblas]
+version = "0.3.34-432-gde5d4914-2026-10-22_23-18-58"
+version_prefix = "openblas-"
+
+[tools.openblas.platforms]
+linux-arm64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-unknown-linux-gnu-*.tar.xz" }
+linux-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-unknown-linux-gnu-*.tar.xz" }
+macos-arm64 = { asset_pattern = "openblas-static-[0-9]*-aarch64-apple-darwin-*.tar.xz" }
+macos-x64 = { asset_pattern = "openblas-static-[0-9]*-x86_64-apple-darwin-*.tar.xz" }
+
+[tools.liblzma]
+version = "2026-10-22_23-12-40"
+
+[tools.liblzma.platforms]
+linux-arm64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-unknown-linux-gnu-*.tar.xz" }
+linux-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-unknown-linux-gnu-*.tar.xz" }
+macos-arm64 = { asset_pattern = "lzma-[0-9]*-static-aarch64-apple-darwin-*.tar.xz" }
+macos-x64 = { asset_pattern = "lzma-[0-9]*-static-x86_64-apple-darwin-*.tar.xz" }
+
+[env]
+HOST_PKG_CONFIG_PATH = { value = """\
+{%- set sep = "" -%}
+{%- if tools.openblas %}{{ tools.openblas.path }}/lib/pkgconfig{% set sep = ":" %}{% endif -%}
+{%- if tools.liblzma %}{{ sep }}{{ tools.liblzma.path }}/lib/pkgconfig{% set sep = ":" %}{% endif -%}
+{%- set user = get_env(name="PKG_CONFIG_PATH", default="") -%}
+{%- if user %}{{ sep }}{{ user }}{% endif -%}""", tools = true }

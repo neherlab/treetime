@@ -741,7 +741,11 @@ tools-lock-image *tools:
       readarray -t tools <<<"${names}"
       set -- "${tools[@]}"
     fi
-    MISE_ENV=image mise lock --platform linux-x64 "$@"
+    # One tool per call: given many tools at once, mise 2026.10 leaves some new
+    # entries unlocked without an error.
+    for tool in "$@"; do
+      MISE_ENV=image mise lock --platform linux-x64 "${tool}"
+    done
 
 # Install the JavaScript dependencies from bun.lock
 _js:
