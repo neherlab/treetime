@@ -81,7 +81,7 @@
     "@inlang/paraglide-js": "2.29.0",
     "@inlang/plugin-m-function-matcher": "2.3.4",
     "@inlang/plugin-message-format": "4.5.4",
-    "@oxc-project/runtime": "0.150.0",
+    "@oxc-project/runtime": "0.154.0",
     "@svgr/core": "8.1.0",
     "@svgr/plugin-jsx": "8.1.0",
     "@testing-library/dom": "10.4.2",
