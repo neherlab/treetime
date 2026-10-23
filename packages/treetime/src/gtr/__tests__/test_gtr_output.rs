@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::gtr::get_gtr::{
-    GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel, TraitModel, jc69,
+    AlignmentModel, GtrModelName, GtrOutput, JC69Params, ModelEntry, ModelOutput, SequenceModel, TraitModel, jc69,
   };
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -33,13 +33,20 @@ mod tests {
     let gtr = jc69(JC69Params::default())?;
     let model = GtrOutput::builder().gtr(&gtr).model_name(GtrModelName::Infer).build();
     let original = ModelOutput {
+      alignments: vec![AlignmentModel {
+        alignment: 1,
+        path: PathBuf::from("na/aligned.fasta"),
+        sites: 1410,
+        indel_rate: Some(0.5),
+      }],
       models: vec![
         ModelEntry::Sequence(SequenceModel {
           partition: 2,
-          alignment: PathBuf::from("na/aligned.fasta"),
-          sites: 1410,
-          indel_rate: Some(0.5),
+          name: Some("cp3".to_owned()),
+          alignment: 1,
+          sites: 470,
           clock_rate: None,
+          states: vec_of_owned!["A", "C", "G", "T"],
           model: model.clone(),
         }),
         ModelEntry::Trait(TraitModel {

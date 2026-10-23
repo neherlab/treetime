@@ -87,7 +87,7 @@ pub fn run_optimize(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  write_gtr_output(&resolved, models, "no GTR model was fitted", log)?;
+  write_gtr_output(&resolved, &models, "no GTR model was fitted", log)?;
 
   let mutation_counts = args
     .mutation_units

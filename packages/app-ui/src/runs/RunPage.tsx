@@ -208,7 +208,7 @@ function FinishedResults({ record }: { record: RunRecord }) {
         </Alert>
       )}
       <CommandResults record={record} results={results} tree={tree} />
-      {results.models.length > 0 && <SubstitutionModels models={results.models} />}
+      {results.models.models.length > 0 && <SubstitutionModels models={results.models} />}
       <OutputFiles record={record} citation={results.citation} />
     </div>
   );

@@ -2662,11 +2662,8 @@
             "x-unset": true
           },
           "models": {
-            "description": "Substitution models of the run's model document, in its order; empty when the run wrote none.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RunModel"
-            }
+            "description": "Substitution models and alignment files of the run's model document; empty when the run wrote none.",
+            "$ref": "#/components/schemas/RunModels"
           },
           "results": {
             "description": "Results specific to the command of the run.",
@@ -2873,6 +2870,63 @@
           "color"
         ]
       },
+      "RunModels": {
+        "description": "The substitution models of a run, from its model document.",
+        "type": "object",
+        "properties": {
+          "alignments": {
+            "description": "Alignment files of the run, in the order of the `--alignment` list; empty for runs without alignments.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlignmentSummary"
+            }
+          },
+          "models": {
+            "description": "Models in the order of the model document: one per partition, or one per trait.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunModel"
+            }
+          }
+        },
+        "required": [
+          "alignments",
+          "models"
+        ]
+      },
+      "AlignmentSummary": {
+        "description": "One alignment file of a run.",
+        "type": "object",
+        "properties": {
+          "alignment": {
+            "description": "Alignment number: the position of the file in the `--alignment` list, starting at 1.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "path": {
+            "description": "Path of the alignment file.",
+            "type": "string"
+          },
+          "sites": {
+            "description": "Number of sites of the alignment file.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "indel_rate": {
+            "description": "Rate of insertion and deletion events per unit of branch length in this file; absent when the run has no indel term.",
+            "type": "number",
+            "format": "double",
+            "x-unset": true
+          }
+        },
+        "required": [
+          "alignment",
+          "path",
+          "sites"
+        ]
+      },
       "RunModel": {
         "description": "A substitution model of a run, from its model document.",
         "oneOf": [
@@ -2892,20 +2946,38 @@
         }
       },
       "SequenceModelSummary": {
-        "description": "The substitution model fitted to one alignment file.",
+        "description": "The substitution model fitted to one partition.",
         "type": "object",
         "properties": {
           "partition": {
-            "description": "Partition number: the position of the file in the `--alignment` list, starting at 1.",
+            "description": "Partition number, starting at 1, in the order of the model document.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
           },
-          "alignment": {
-            "description": "Path of the alignment file.",
-            "type": "string"
-          },
           "name": {
+            "description": "Name of the partition entry; absent for partitions without a name.",
+            "type": "string",
+            "x-unset": true
+          },
+          "alignment": {
+            "description": "Number of the alignment file of the partition.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "path": {
+            "description": "Path of the alignment file of the partition; absent when the model document does not list the file.",
+            "type": "string",
+            "x-unset": true
+          },
+          "sites": {
+            "description": "Number of sites of the partition.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "model": {
             "description": "Name of the model.",
             "type": "string"
           },
@@ -2913,13 +2985,22 @@
             "description": "Overall substitution rate.",
             "type": "number",
             "format": "double"
+          },
+          "states": {
+            "description": "Characters of the states in the order of the rows and columns of `W` and the entries of `pi` in the model document.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "partition",
           "alignment",
-          "name",
-          "mu"
+          "sites",
+          "model",
+          "mu",
+          "states"
         ]
       },
       "TraitModelSummary": {
@@ -2930,7 +3011,7 @@
             "description": "Metadata column of the trait.",
             "type": "string"
           },
-          "name": {
+          "model": {
             "description": "Name of the model.",
             "type": "string"
           },
@@ -2949,7 +3030,7 @@
         },
         "required": [
           "attribute",
-          "name",
+          "model",
           "mu",
           "states"
         ]
@@ -9078,7 +9159,7 @@
         ]
       },
       "RunModelSequence": {
-        "description": "Model of the sites of one alignment file.",
+        "description": "Model of one partition: a set of sites of one alignment file.",
         "type": "object",
         "properties": {
           "kind": {

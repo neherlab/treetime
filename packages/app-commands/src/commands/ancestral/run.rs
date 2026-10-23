@@ -148,7 +148,7 @@ pub fn run_ancestral_reconstruction(
   topology_order.apply(&mut graph, &names, &branch_lengths)?;
   stages.report("Writing output", 0.9, "");
 
-  write_gtr_output(&resolved, models, "no GTR model was fitted (use --model=infer)", log)?;
+  write_gtr_output(&resolved, &models, "no GTR model was fitted (use --model=infer)", log)?;
 
   let trees = AncestralTrees {
     graph: &graph,

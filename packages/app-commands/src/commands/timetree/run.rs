@@ -208,7 +208,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
 
   write_gtr_output(
     resolved,
-    partition_models(
+    &partition_models(
       &output.partitions,
       &output.alignments,
       Some(output.clock_model.clock_rate()),

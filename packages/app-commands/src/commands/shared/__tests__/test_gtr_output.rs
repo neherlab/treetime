@@ -3,7 +3,9 @@ mod tests {
   use crate::commands::shared::gtr_output::{trait_model, write_gtr_output};
   use app_output::output_plan::Requested;
   use eyre::Report;
-  use helpers::{gtr_output, gtr_with_mu, jc69_gtr, jc69_w, models, partition, read_document, split_partitions};
+  use helpers::{
+    amino_acid_partition, gtr_output, gtr_with_mu, jc69_gtr, jc69_w, models, partition, read_document, split_partitions,
+  };
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use tempfile::TempDir;
@@ -16,14 +18,16 @@ mod tests {
     let resolved = gtr_output(&dir, Requested::Named);
     let results = vec![partition(1, "aln.fasta", Some(jc69_gtr()?), None)];
 
-    write_gtr_output(&resolved, models(results, None)?, "no model", &NoopProgress)?;
+    write_gtr_output(&resolved, &models(results, None)?, "no model", &NoopProgress)?;
 
     let expected = json!({
+      "alignments": [{ "alignment": 1, "path": "aln.fasta", "sites": 12 }],
       "models": [{
         "kind": "sequence",
         "partition": 1,
-        "alignment": "aln.fasta",
+        "alignment": 1,
         "sites": 12,
+        "states": ["A", "C", "G", "T"],
         "model_type": "named",
         "model_name": "jc69",
         "mu": 1.0,
@@ -37,7 +41,8 @@ mod tests {
   }
 
   #[test]
-  fn test_gtr_output_two_partitions_write_entries_in_partition_order_with_file_clock_rates() -> Result<(), Report> {
+  fn test_gtr_output_two_alignments_write_entries_in_partition_order_with_partition_clock_rates() -> Result<(), Report>
+  {
     let dir = TempDir::new()?;
     let resolved = gtr_output(&dir, Requested::Named);
     let results = vec![
@@ -45,56 +50,70 @@ mod tests {
       partition(2, "na/aligned.fasta", Some(gtr_with_mu(2.0)?), Some(0.125)),
     ];
 
-    write_gtr_output(&resolved, models(results, Some(0.004))?, "no model", &NoopProgress)?;
+    write_gtr_output(&resolved, &models(results, Some(0.004))?, "no model", &NoopProgress)?;
 
     let document = read_document(&resolved)?;
     let summary = document["models"]
       .as_array()
       .expect("models is an array")
       .iter()
-      .map(|entry| {
-        json!([
-          entry["partition"],
-          entry["alignment"],
-          entry["mu"],
-          entry["indel_rate"],
-          entry["clock_rate"]
-        ])
-      })
+      .map(|entry| json!([entry["partition"], entry["alignment"], entry["mu"], entry["clock_rate"]]))
       .collect::<Vec<_>>();
+    assert_eq!(vec![json!([1, 1, 0.5, 0.002]), json!([2, 2, 2.0, 0.008])], summary);
     assert_eq!(
-      vec![
-        json!([1, "ha/aligned.fasta", 0.5, 0.25, 0.002]),
-        json!([2, "na/aligned.fasta", 2.0, 0.125, 0.008]),
-      ],
-      summary
+      json!([
+        { "alignment": 1, "path": "ha/aligned.fasta", "sites": 12, "indel_rate": 0.25 },
+        { "alignment": 2, "path": "na/aligned.fasta", "sites": 12, "indel_rate": 0.125 },
+      ]),
+      document["alignments"]
     );
     Ok(())
   }
 
   #[test]
-  fn test_gtr_output_partitions_of_one_alignment_take_its_path_and_indel_rate() -> Result<(), Report> {
+  fn test_gtr_output_partitions_of_one_alignment_share_its_entry_and_keep_their_names() -> Result<(), Report> {
     let dir = TempDir::new()?;
     let resolved = gtr_output(&dir, Requested::Named);
 
-    write_gtr_output(&resolved, split_partitions()?, "no model", &NoopProgress)?;
+    write_gtr_output(&resolved, &split_partitions()?, "no model", &NoopProgress)?;
 
-    let summary = read_document(&resolved)?["models"]
-      .as_array()
-      .expect("models is an array")
-      .iter()
-      .map(|entry| {
-        json!([
-          entry["partition"],
-          entry["alignment"],
-          entry["sites"],
-          entry["indel_rate"]
-        ])
+    let model = |partition: usize, name: &str, sites: usize| {
+      json!({
+        "kind": "sequence",
+        "partition": partition,
+        "name": name,
+        "alignment": 1,
+        "sites": sites,
+        "states": ["A", "C", "G", "T"],
+        "model_type": "named",
+        "model_name": "jc69",
+        "mu": 1.0,
+        "pi": [0.25, 0.25, 0.25, 0.25],
+        "W": jc69_w(),
+        "n_states": 4,
       })
-      .collect::<Vec<_>>();
+    };
+    let expected = json!({
+      "alignments": [{ "alignment": 1, "path": "genome.fasta", "sites": 12, "indel_rate": 0.5 }],
+      "models": [model(1, "cp12", 7), model(2, "cp3", 5)],
+    });
+    assert_eq!(expected, read_document(&resolved)?);
+    Ok(())
+  }
+
+  #[test]
+  fn test_gtr_output_amino_acid_model_lists_the_amino_acid_states() -> Result<(), Report> {
+    let dir = TempDir::new()?;
+    let resolved = gtr_output(&dir, Requested::Named);
+
+    write_gtr_output(&resolved, &amino_acid_partition()?, "no model", &NoopProgress)?;
+
+    let document = read_document(&resolved)?;
     assert_eq!(
-      vec![json!([1, "genome.fasta", 7, 0.5]), json!([2, "genome.fasta", 5, 0.5])],
-      summary
+      json!([
+        "A", "C", "D", "E", "F", "G", "H", "I", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "V", "W", "Y", "*"
+      ]),
+      document["models"][0]["states"]
     );
     Ok(())
   }
@@ -108,7 +127,7 @@ mod tests {
       partition(2, "b.fasta", Some(jc69_gtr()?), None),
     ];
 
-    write_gtr_output(&resolved, models(results, None)?, "no model", &NoopProgress)?;
+    write_gtr_output(&resolved, &models(results, None)?, "no model", &NoopProgress)?;
 
     let partitions = read_document(&resolved)?["models"]
       .as_array()
@@ -129,7 +148,7 @@ mod tests {
     assert_error!(
       write_gtr_output(
         &resolved,
-        models(results, None)?,
+        &models(results, None)?,
         "no GTR model was fitted",
         &NoopProgress
       ),
@@ -144,7 +163,7 @@ mod tests {
     let resolved = gtr_output(&dir, Requested::All);
     let results = vec![partition(1, "a.fasta", None, None)];
 
-    write_gtr_output(&resolved, models(results, None)?, "no model", &NoopProgress)?;
+    write_gtr_output(&resolved, &models(results, None)?, "no model", &NoopProgress)?;
 
     assert!(!dir.path().join("model.json").exists());
     Ok(())
@@ -158,7 +177,7 @@ mod tests {
 
     write_gtr_output(
       &resolved,
-      vec![trait_model(&gtr, "country", vec_of_owned!["germany", "usa"])],
+      &trait_model(&gtr, "country", vec_of_owned!["germany", "usa"]),
       "no model",
       &NoopProgress,
     )?;
@@ -190,7 +209,7 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
     use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
-    use treetime::gtr::get_gtr::{GtrModelName, JC69Params, ModelEntry, jc69};
+    use treetime::gtr::get_gtr::{GtrModelName, JC69Params, ModelOutput, jc69};
     use treetime::gtr::gtr::{GTR, Mu};
     use treetime::partition::result::{AlignmentResult, PartitionResult};
     use treetime_utils::io::json::json_value_read_file;
@@ -259,16 +278,16 @@ mod tests {
     pub(super) fn models(
       results: Vec<(PartitionResult, AlignmentResult)>,
       clock_rate: Option<f64>,
-    ) -> Result<Vec<ModelEntry>, Report> {
+    ) -> Result<ModelOutput, Report> {
       let (partitions, alignments): (Vec<_>, Vec<_>) = results.into_iter().unzip();
       partition_models(&partitions, &alignments, clock_rate)
     }
 
-    pub(super) fn split_partitions() -> Result<Vec<ModelEntry>, Report> {
-      let partition = |number, sites| -> Result<PartitionResult, Report> {
+    pub(super) fn split_partitions() -> Result<ModelOutput, Report> {
+      let partition = |number, name: &str, sites| -> Result<PartitionResult, Report> {
         Ok(PartitionResult {
           number,
-          name: None,
+          name: Some(name.to_owned()),
           alignment: 1,
           sites,
           model_name: GtrModelName::JC69,
@@ -277,10 +296,30 @@ mod tests {
         })
       };
       partition_models(
-        &[partition(1, 7)?, partition(2, 5)?],
+        &[partition(1, "cp12", 7)?, partition(2, "cp3", 5)?],
         &[alignment(1, "genome.fasta", Some(0.5))],
         None,
       )
+    }
+
+    pub(super) fn amino_acid_partition() -> Result<ModelOutput, Report> {
+      let partition = PartitionResult {
+        number: 1,
+        name: None,
+        alignment: 1,
+        sites: 12,
+        model_name: GtrModelName::JC69,
+        gtr: Some(jc69(JC69Params {
+          alphabet: AlphabetName::Aa,
+          ..JC69Params::default()
+        })?),
+        log_lh: None,
+      };
+      let alignment = AlignmentResult {
+        alphabet: Alphabet::new(AlphabetName::Aa)?,
+        ..alignment(1, "protein.fasta", None)
+      };
+      partition_models(&[partition], &[alignment], None)
     }
 
     fn alignment(number: usize, path: &str, indel_rate: Option<f64>) -> AlignmentResult {

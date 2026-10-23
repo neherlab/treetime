@@ -22,39 +22,71 @@ pub(crate) fn log_gtr(gtr: &GTR, model_name: GtrModelName, log: &dyn LogSink) ->
   Ok(())
 }
 
-/// Substitution models of a run: one entry per partition that has a model, in partition order.
+pub fn model_states(alphabet: &Alphabet, gtr: &GTR) -> Result<Vec<String>, Report> {
+  let n_states = gtr.pi().len();
+  if n_states != alphabet.n_canonical() {
+    return make_internal_error!(
+      "A model with {n_states} states does not fit the {} alphabet with {} states",
+      alphabet.name(),
+      alphabet.n_canonical()
+    );
+  }
+  Ok((0..n_states).map(|index| alphabet.char(index).to_string()).collect())
+}
+
+/// Substitution models of a run: the alignment files of the run, and one entry per partition that has a model, in partition order.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ModelOutput {
+  /// Alignment files of the run, in the order of the `--alignment` list; absent for runs without alignments.
+  #[deser(default, skip_serializing_if = Vec::is_empty)]
+  #[schemars(default)]
+  pub alignments: Vec<AlignmentModel>,
   /// Model entries in partition order.
   pub models: Vec<ModelEntry>,
 }
 
-/// Substitution model of one partition.
+/// One alignment file of a run.
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+pub struct AlignmentModel {
+  /// Alignment number: the position of the file in the `--alignment` list, starting at 1.
+  pub alignment: usize,
+  /// Path of the alignment file.
+  pub path: PathBuf,
+  /// Number of sites of the alignment file.
+  pub sites: usize,
+  /// Rate of insertion and deletion events per unit of branch length in this file; absent when the run has no indel term.
+  #[deser(skip_serializing_if = Option::is_none)]
+  pub indel_rate: Option<f64>,
+}
+
+/// Substitution model of one entry of the model document.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[deser(tag = "kind", rename_all = "kebab-case")]
 #[schemars(tag = "kind", rename_all = "kebab-case")]
 pub enum ModelEntry {
-  /// Model of the sites of one alignment file.
+  /// Model of one partition: a set of sites of one alignment file.
   Sequence(SequenceModel),
   /// Model of the states of one discrete trait.
   Trait(TraitModel),
 }
 
-/// Substitution model of the sites of one alignment file.
+/// Substitution model of one partition: a set of sites of one alignment file.
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 pub struct SequenceModel {
-  /// Partition number: the position of the file in the `--alignment` list, starting at 1.
+  /// Partition number, starting at 1: the position of the entry in the `--partition` list, or of the file in the `--alignment` list when the run has no partition entries.
   pub partition: usize,
-  /// Path of the alignment file.
-  pub alignment: PathBuf,
-  /// Number of sites of the alignment file.
-  pub sites: usize,
-  /// Rate of insertion and deletion events per unit of branch length; absent when the run has no indel term.
+  /// Name of the partition entry; absent for partitions without a name.
   #[deser(skip_serializing_if = Option::is_none)]
-  pub indel_rate: Option<f64>,
-  /// Substitutions per site per year in this file: the clock rate of the run multiplied by `mu`; timetree only.
+  pub name: Option<String>,
+  /// Number of the alignment file of the partition, as in `alignments`.
+  pub alignment: usize,
+  /// Number of sites of the partition.
+  pub sites: usize,
+  /// Substitutions per site per year in this partition: the clock rate of the run multiplied by `mu`; timetree only.
   #[deser(skip_serializing_if = Option::is_none)]
   pub clock_rate: Option<f64>,
+  /// Characters of the states in the order of the rows and columns of `W` and the entries of `pi`.
+  pub states: Vec<String>,
   /// Model parameters.
   #[deser(flatten)]
   #[schemars(flatten)]

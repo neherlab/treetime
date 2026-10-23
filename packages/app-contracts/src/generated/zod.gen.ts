@@ -538,13 +538,27 @@ export const zResultTree = z.object({
 });
 
 /**
- * The substitution model fitted to one alignment file.
+ * One alignment file of a run.
+ */
+export const zAlignmentSummary = z.object({
+  alignment: z.int().gte(0),
+  path: z.string(),
+  sites: z.int().gte(0),
+  indel_rate: z.number().optional()
+});
+
+/**
+ * The substitution model fitted to one partition.
  */
 export const zSequenceModelSummary = z.object({
   partition: z.int().gte(0),
-  alignment: z.string(),
-  name: z.string(),
-  mu: z.number()
+  name: z.string().optional(),
+  alignment: z.int().gte(0),
+  path: z.string().optional(),
+  sites: z.int().gte(0),
+  model: z.string(),
+  mu: z.number(),
+  states: z.array(z.string())
 });
 
 /**
@@ -552,7 +566,7 @@ export const zSequenceModelSummary = z.object({
  */
 export const zTraitModelSummary = z.object({
   attribute: z.string(),
-  name: z.string(),
+  model: z.string(),
   mu: z.number(),
   states: z.array(z.string())
 });
@@ -2238,7 +2252,7 @@ export const zRunRecord = z.discriminatedUnion('command', [
 ]);
 
 /**
- * Model of the sites of one alignment file.
+ * Model of one partition: a set of sites of one alignment file.
  */
 export const zRunModelSequence = zSequenceModelSummary;
 
@@ -2254,6 +2268,14 @@ export const zRunModel = z.discriminatedUnion('kind', [
   zRunModelSequence.extend({ kind: z.literal('sequence') }),
   zRunModelTrait.extend({ kind: z.literal('trait') })
 ]);
+
+/**
+ * The substitution models of a run, from its model document.
+ */
+export const zRunModels = z.object({
+  alignments: z.array(zAlignmentSummary),
+  models: z.array(zRunModel)
+});
 
 export const zCommandResultsClock = z.object({
   command: z.literal('clock'),
@@ -2394,7 +2416,7 @@ export const zCommandResults = z.discriminatedUnion('command', [
 export const zRunResults = z.object({
   tree: zResultTree.optional(),
   tree_alignment: zOutputAlignment.optional(),
-  models: z.array(zRunModel),
+  models: zRunModels,
   results: zCommandResults,
   citation: zCitation,
   problems: z.array(zOutputProblem)

@@ -794,9 +794,9 @@ export type RunResults = {
    */
   tree_alignment?: OutputAlignment;
   /**
-   * Substitution models of the run's model document, in its order; empty when the run wrote none.
+   * Substitution models and alignment files of the run's model document; empty when the run wrote none.
    */
-  models: Array<RunModel>;
+  models: RunModels;
   /**
    * Results specific to the command of the run.
    */
@@ -934,6 +934,42 @@ export type StateColor = {
 };
 
 /**
+ * The substitution models of a run, from its model document.
+ */
+export type RunModels = {
+  /**
+   * Alignment files of the run, in the order of the `--alignment` list; empty for runs without alignments.
+   */
+  alignments: Array<AlignmentSummary>;
+  /**
+   * Models in the order of the model document: one per partition, or one per trait.
+   */
+  models: Array<RunModel>;
+};
+
+/**
+ * One alignment file of a run.
+ */
+export type AlignmentSummary = {
+  /**
+   * Alignment number: the position of the file in the `--alignment` list, starting at 1.
+   */
+  alignment: number;
+  /**
+   * Path of the alignment file.
+   */
+  path: string;
+  /**
+   * Number of sites of the alignment file.
+   */
+  sites: number;
+  /**
+   * Rate of insertion and deletion events per unit of branch length in this file; absent when the run has no indel term.
+   */
+  indel_rate?: number;
+};
+
+/**
  * A substitution model of a run, from its model document.
  */
 export type RunModel = ({
@@ -943,25 +979,41 @@ export type RunModel = ({
 } & RunModelTrait);
 
 /**
- * The substitution model fitted to one alignment file.
+ * The substitution model fitted to one partition.
  */
 export type SequenceModelSummary = {
   /**
-   * Partition number: the position of the file in the `--alignment` list, starting at 1.
+   * Partition number, starting at 1, in the order of the model document.
    */
   partition: number;
   /**
-   * Path of the alignment file.
+   * Name of the partition entry; absent for partitions without a name.
    */
-  alignment: string;
+  name?: string;
+  /**
+   * Number of the alignment file of the partition.
+   */
+  alignment: number;
+  /**
+   * Path of the alignment file of the partition; absent when the model document does not list the file.
+   */
+  path?: string;
+  /**
+   * Number of sites of the partition.
+   */
+  sites: number;
   /**
    * Name of the model.
    */
-  name: string;
+  model: string;
   /**
    * Overall substitution rate.
    */
   mu: number;
+  /**
+   * Characters of the states in the order of the rows and columns of `W` and the entries of `pi` in the model document.
+   */
+  states: Array<string>;
 };
 
 /**
@@ -975,7 +1027,7 @@ export type TraitModelSummary = {
   /**
    * Name of the model.
    */
-  name: string;
+  model: string;
   /**
    * Overall substitution rate.
    */
@@ -5951,7 +6003,7 @@ export type RunRecordMugration = {
 };
 
 /**
- * Model of the sites of one alignment file.
+ * Model of one partition: a set of sites of one alignment file.
  */
 export type RunModelSequence = SequenceModelSummary;
 

@@ -196,7 +196,6 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md](issues/N-timetree-reconstructs-sequences-for-plain-tree-outputs.md)**: reconstruct sequences only for outputs that read mutations or sequences
 - **[kb/issues/N-cli-root-help-mixes-tool-and-analysis-commands.md](issues/N-cli-root-help-mixes-tool-and-analysis-commands.md)**: show the analysis commands and the tool commands as two groups in the root help
 - **[kb/issues/N-output-vocabulary-spelled-out-in-six-places.md](issues/N-output-vocabulary-spelled-out-in-six-places.md)**: derive every output list from one table of outputs
-- **[kb/issues/N-io-gtr-json-omits-state-alphabet.md](issues/N-io-gtr-json-omits-state-alphabet.md)**: write the alphabet states into each sequence model of the GTR JSON
 - **[kb/issues/N-array-owned-signatures-force-projection-copies.md](issues/N-array-owned-signatures-force-projection-copies.md)**: pass transposed views to `propagate_raw()` instead of copied matrices
 - **[kb/issues/N-optimize-sparse-contribution-coefficients-allocate-per-site.md](issues/N-optimize-sparse-contribution-coefficients-allocate-per-site.md)**: compute sparse site coefficients without two heap arrays per site
 - **[kb/issues/N-timetree-branch-grid-evaluated-one-length-at-a-time.md](issues/N-timetree-branch-grid-evaluated-one-length-at-a-time.md)**: evaluate the 300 branch lengths of an edge in one batch, so that each site coefficient row is read once

@@ -7,7 +7,7 @@ mod tests {
   use crate::results::clades::{CladeRequest, clade_in_runs};
   use crate::results::clock::{ClockLine, RootToTip};
   use crate::results::compare::compare_runs;
-  use crate::results::models::RunModel;
+  use crate::results::models::{RunModel, RunModels};
   use crate::results::run_results::{CommandResults, RunResults, run_results};
   use crate::results::tree::ResultTree;
   use crate::runs::headline::RunHeadline;
@@ -29,8 +29,8 @@ mod tests {
   use tempfile::tempdir;
   use treetime::clock::rtt::ClockDateSource;
   use treetime::o;
-  use treetime_utils::assert_error;
   use treetime_utils::io::json::{json_read_file, to_json_value};
+  use treetime_utils::{assert_error, vec_of_owned};
 
   #[test]
   fn test_run_results_show_the_tree_of_the_first_alignment_file() -> Result<(), Report> {
@@ -344,7 +344,8 @@ mod tests {
   }
 
   #[test]
-  fn test_run_results_of_an_optimize_run_list_one_substitution_model_per_alignment_file() -> Result<(), Report> {
+  fn test_run_results_of_an_optimize_run_list_one_substitution_model_per_partition_and_the_indel_rate_per_alignment()
+  -> Result<(), Report> {
     let root = tempdir()?;
     let runs = RunManager::open(root.path())?;
     let id = finished_run(
@@ -362,8 +363,15 @@ mod tests {
         "n_states": 2,
       })
     };
-    let entry = |partition: usize, alignment: &str, mu: f64| {
-      let mut entry = json!({ "kind": "sequence", "partition": partition, "alignment": alignment, "sites": 100 });
+    let entry = |partition: usize, name: &str, alignment: usize, mu: f64| {
+      let mut entry = json!({
+        "kind": "sequence",
+        "partition": partition,
+        "name": name,
+        "alignment": alignment,
+        "sites": 50,
+        "states": ["A", "T"],
+      });
       entry
         .as_object_mut()
         .expect("entry is an object")
@@ -372,16 +380,43 @@ mod tests {
     };
     fs::write(
       output_path(&runs, &id, OutputSelection::Model),
-      json!({ "models": [entry(1, "ha/aligned.fasta", 0.75), entry(2, "na/aligned.fasta", 1.25)] }).to_string(),
+      json!({
+        "alignments": [
+          { "alignment": 1, "path": "ha/aligned.fasta", "sites": 100, "indel_rate": 0.5 },
+          { "alignment": 2, "path": "na/aligned.fasta", "sites": 50 },
+        ],
+        "models": [entry(1, "cp12", 1, 0.75), entry(2, "cp3", 1, 1.25), entry(3, "na", 2, 1.0)],
+      })
+      .to_string(),
     )?;
 
     let results = run_results(&runs, &id)?;
 
+    let summary = |partition: usize, name: &str, alignment: usize, path: &str, mu: f64| {
+      json!({
+        "kind": "sequence",
+        "partition": partition,
+        "name": name,
+        "alignment": alignment,
+        "path": path,
+        "sites": 50,
+        "model": "Infer",
+        "mu": mu,
+        "states": ["A", "T"],
+      })
+    };
     assert_eq!(
-      json!([
-        { "kind": "sequence", "partition": 1, "alignment": "ha/aligned.fasta", "name": "Infer", "mu": 0.75 },
-        { "kind": "sequence", "partition": 2, "alignment": "na/aligned.fasta", "name": "Infer", "mu": 1.25 },
-      ]),
+      json!({
+        "alignments": [
+          { "alignment": 1, "path": "ha/aligned.fasta", "sites": 100, "indel_rate": 0.5 },
+          { "alignment": 2, "path": "na/aligned.fasta", "sites": 50 },
+        ],
+        "models": [
+          summary(1, "cp12", 1, "ha/aligned.fasta", 0.75),
+          summary(2, "cp3", 1, "ha/aligned.fasta", 1.25),
+          summary(3, "na", 2, "na/aligned.fasta", 1.0),
+        ],
+      }),
       to_json_value(&results.models)?
     );
     Ok(())
@@ -397,14 +432,26 @@ mod tests {
     let runs = RunManager::open(root.path())?;
     let id = finished_run(&runs, command, config);
 
-    let models = run_results(&runs, &id)?.models;
+    let models = run_results(&runs, &id)?.models.models;
 
     let [RunModel::Sequence(model)] = models.as_slice() else {
       panic!("the run lists one sequence model, got {models:?}");
     };
     assert_eq!(
-      (1, zika("aln.fasta.xz"), true),
-      (model.partition, model.alignment.clone(), model.mu > 0.0)
+      (
+        1,
+        1,
+        Some(zika("aln.fasta.xz")),
+        vec_of_owned!["A", "C", "G", "T"],
+        true
+      ),
+      (
+        model.partition,
+        model.alignment,
+        model.path.clone(),
+        model.states.clone(),
+        model.mu > 0.0
+      )
     );
     Ok(())
   }
@@ -424,8 +471,8 @@ mod tests {
     let CommandResults::Mugration(mugration) = &results.results else {
       panic!("a mugration run has mugration results");
     };
-    let [RunModel::Trait(model)] = results.models.as_slice() else {
-      panic!("a mugration run lists one trait model, got {:?}", results.models);
+    let [RunModel::Trait(model)] = results.models.models.as_slice() else {
+      panic!("a mugration run lists one trait model, got {:?}", results.models.models);
     };
     assert_eq!(
       ("country", true, true),
@@ -450,7 +497,7 @@ mod tests {
 
     let results = run_results(&runs, &id)?;
 
-    assert_eq!((vec![], vec![]), (results.models, results.problems));
+    assert_eq!((RunModels::default(), vec![]), (results.models, results.problems));
     Ok(())
   }
 

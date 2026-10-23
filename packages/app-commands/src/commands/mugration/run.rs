@@ -101,11 +101,11 @@ pub fn run_mugration(
 
   write_gtr_output(
     &resolved,
-    vec![trait_model(
+    &trait_model(
       &output.gtr,
       &mugration_args.attribute,
       output.states.iter().map(ToOwned::to_owned).collect(),
-    )],
+    ),
     "no trait model was fitted",
     log,
   )?;

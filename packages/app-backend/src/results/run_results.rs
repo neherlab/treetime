@@ -3,7 +3,7 @@ use crate::job::JobId;
 use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
 use crate::results::homoplasy::{HomoplasyResults, homoplasy_results};
-use crate::results::models::{RunModel, run_models};
+use crate::results::models::{RunModels, run_models};
 use crate::results::mugration::{MugrationResults, mugration_results};
 use crate::results::mutations::{AncestralResults, ancestral_results};
 use crate::results::outputs::{OutputProblem, RunOutputs, shown_auspice};
@@ -103,8 +103,8 @@ pub struct RunResults {
   pub tree: Option<ResultTree>,
   /// Alignment file whose Auspice file gives the tree, when the run has several alignment files.
   pub tree_alignment: Option<OutputAlignment>,
-  /// Substitution models of the run's model document, in its order; empty when the run wrote none.
-  pub models: Vec<RunModel>,
+  /// Substitution models and alignment files of the run's model document; empty when the run wrote none.
+  pub models: RunModels,
   /// Results specific to the command of the run.
   pub results: CommandResults,
   /// The publication to cite.
