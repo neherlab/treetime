@@ -1,3 +1,4 @@
+/// <reference types="@neherlab/app-ui/env" />
 /// <reference types="@neherlab/app-ui/icons" />
 
 /// <reference types="vite/client" />

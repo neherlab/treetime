@@ -8,6 +8,7 @@ import { examplesDownloadView } from "../analysis/examplesDownloadView";
 import { settingFieldId } from "../analysis/fieldIds";
 import { useDatasetLoader, useExampleConfigLoader, useExampleIndex } from "../analysis/useExampleData";
 import { useApi } from "../api/hooks";
+import { nextTheme } from "../chrome/ThemeCycleButton";
 import { useHost } from "../host-context";
 import { useThemeChoice } from "../preferences/useThemeChoice";
 import { commandSettings } from "../settings/catalog";
@@ -34,7 +35,6 @@ import {
   paletteItem,
 } from "./paletteItems";
 import { changedFlags, listedRuns } from "./runList";
-import { nextTheme } from "./SiteHeader";
 
 export function CommandPalette() {
   const open = useShellStore((state) => state.paletteOpen);
