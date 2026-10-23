@@ -34,11 +34,11 @@ export function SyncedTabs({ syncKey, labels, ...slots }: SyncedTabsProps) {
       </TabsList>
       {labels.map((label, index) => (
         <TabsContent key={label} value={label} className="prose pt-2">
-          {slots[`tab${index}`]}
+          {slots[`tab-${index}`]}
         </TabsContent>
       ))}
     </Tabs>
   );
 }
 
-type SyncedTabsProps = { syncKey: string; labels: string[] } & Partial<Record<`tab${number}`, ReactNode>>;
+type SyncedTabsProps = { syncKey: string; labels: string[] } & Partial<Record<`tab-${number}`, ReactNode>>;

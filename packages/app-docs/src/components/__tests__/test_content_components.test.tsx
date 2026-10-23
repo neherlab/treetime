@@ -91,8 +91,8 @@ describe("synced tabs", () => {
   test("a choice in one group switches every group with the same key", async () => {
     render(
       <>
-        <SyncedTabs syncKey="surface" labels={TAB_LABELS} tab0="first cli" tab1="first web" />
-        <SyncedTabs syncKey="surface" labels={TAB_LABELS} tab0="second cli" tab1="second web" />
+        <SyncedTabs syncKey="surface" labels={TAB_LABELS} tab-0="first cli" tab-1="first web" />
+        <SyncedTabs syncKey="surface" labels={TAB_LABELS} tab-0="second cli" tab-1="second web" />
       </>,
     );
     const user = userEvent.setup({ document });
