@@ -310,10 +310,7 @@ fn hard_end(conv: &Distribution<NegLog>, side: Side) -> BoundaryBehavior {
   let Distribution::Function(f) = conv else {
     return BoundaryBehavior::Hard;
   };
-  let law = match side {
-    Side::Left => f.left_extrap(),
-    Side::Right => f.right_extrap(),
-  };
+  let law = f.extrap(side);
   match law {
     BoundaryBehavior::HardEdgeCell(_) => law,
     _ => BoundaryBehavior::Hard,
@@ -324,10 +321,7 @@ fn has_no_soft_law(conv: &Distribution<NegLog>, soft: Side) -> bool {
   let Distribution::Function(f) = conv else {
     return false;
   };
-  let law = match soft {
-    Side::Left => f.left_extrap(),
-    Side::Right => f.right_extrap(),
-  };
+  let law = f.extrap(soft);
   law == BoundaryBehavior::Error
 }
 

@@ -9,7 +9,7 @@ use treetime_utils::io::file::is_path_stdout;
 pub enum FileFormat {
   Table,
   Chart,
-  Fixed,
+  Single,
 }
 
 impl FileFormat {
@@ -17,7 +17,7 @@ impl FileFormat {
     let known = match self {
       Self::Table => table_format(path).is_some(),
       Self::Chart => ChartFormat::from_path(path).is_some(),
-      Self::Fixed => true,
+      Self::Single => true,
     };
     if known {
       return Ok(());
@@ -33,7 +33,7 @@ impl FileFormat {
     match self {
       Self::Table => ".tsv (tab-separated) or .csv (comma-separated)",
       Self::Chart => ".svg, .png or .pdf",
-      Self::Fixed => "",
+      Self::Single => "",
     }
   }
 }

@@ -27,6 +27,13 @@ impl SiteRange {
   }
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    handwritten_fmt_impl,
+    reason = "a site range renders in its input syntax a, a-b or a-b\\k, which is also its serialized and schema form; no derive expresses the three forms"
+  )
+)]
 impl fmt::Display for SiteRange {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let Self { first, last, step } = *self;

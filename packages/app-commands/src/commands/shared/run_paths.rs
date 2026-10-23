@@ -104,6 +104,30 @@ pub fn run_outputs(
     .collect()
 }
 
+fn reject_repeated_standard_input(inputs: &[RunPath]) -> Result<(), Report> {
+  let readers = inputs
+    .iter()
+    .filter(|input| input.is_stdio())
+    .map(|input| input.setting.as_str())
+    .collect_vec();
+  if readers.len() < 2 {
+    return Ok(());
+  }
+  let settings = readers.iter().copied().unique().collect_vec();
+  let message = match settings.as_slice() {
+    [setting] => format!(
+      "Standard input can be read only once, but {} lists it {} times",
+      setting_flag(setting),
+      readers.len()
+    ),
+    _ => format!(
+      "Standard input can be read only once, but {} read it",
+      and_list(&settings.iter().map(|setting| setting_flag(setting)).collect_vec())
+    ),
+  };
+  Err(argument_error(&settings, message))
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RunPath {
   pub setting: String,
@@ -129,42 +153,13 @@ impl RunPath {
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum PatternChar {
-  Literal(char),
-  AnyInName,
-}
-
-impl PatternChar {
-  fn is_separator(self) -> bool {
-    matches!(self, Self::Literal(c) if is_separator(c))
-  }
-}
-
-fn reject_repeated_standard_input(inputs: &[RunPath]) -> Result<(), Report> {
-  let readers = inputs
-    .iter()
-    .filter(|input| input.is_stdio())
-    .map(|input| input.setting.as_str())
-    .collect_vec();
-  if readers.len() < 2 {
-    return Ok(());
-  }
-  let settings = readers.iter().copied().unique().collect_vec();
-  let message = match settings.as_slice() {
-    [setting] => format!(
-      "Standard input can be read only once, but {} lists it {} times",
-      setting_flag(setting),
-      readers.len()
-    ),
-    _ => format!(
-      "Standard input can be read only once, but {} read it",
-      and_list(&settings.iter().map(|setting| setting_flag(setting)).collect_vec())
-    ),
-  };
-  Err(argument_error(&settings, message))
-}
-
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    error_dropped_by_pattern,
+    reason = "a prefix that does not resolve only ends the search at a shorter prefix, and the rest of the path is compared as written"
+  )
+)]
 fn opened_path(path: &Path) -> PathBuf {
   let components = path.components().collect_vec();
   let (existing, rest) = (0..=components.len())
@@ -244,6 +239,18 @@ fn patterns_intersect(left: &[PatternChar], right: &[PatternChar]) -> bool {
     }
   }
   matches[[0, 0]]
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PatternChar {
+  Literal(char),
+  AnyInName,
+}
+
+impl PatternChar {
+  fn is_separator(self) -> bool {
+    matches!(self, Self::Literal(c) if is_separator(c))
+  }
 }
 
 fn and_list(items: &[String]) -> String {

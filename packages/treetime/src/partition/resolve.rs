@@ -286,7 +286,7 @@ fn model_alphabet_problem(model: &GtrModel, alphabet: AlphabetName, n_states: us
   if let Some(requirement) = model
     .name()
     .alphabet_requirement()
-    .filter(|requirement| requirement.alphabet != alphabet)
+    .filter(|requirement| requirement.alphabet() != alphabet)
   {
     return Some(ModelAlphabetProblem::Alphabet(requirement));
   }
@@ -299,6 +299,10 @@ fn model_alphabet_problem(model: &GtrModel, alphabet: AlphabetName, n_states: us
     })
 }
 
+#[expect(
+  variant_size_differences,
+  reason = "a problem lives only until its message is written, so the size of the larger variant costs nothing"
+)]
 enum ModelAlphabetProblem {
   Alphabet(AlphabetRequirement),
   Frequencies { given: usize, n_states: usize },
@@ -308,15 +312,16 @@ impl ModelAlphabetProblem {
   fn message(&self, partition: Option<&str>, model: &GtrModel, alphabet: AlphabetName) -> String {
     let model_name = model.name().to_string().to_lowercase();
     match self {
-      Self::Alphabet(AlphabetRequirement {
-        alphabet: required,
-        reason,
-      }) => {
+      Self::Alphabet(requirement) => {
         let subject = partition.map_or_else(
           || format!("the model {model_name} needs"),
           |label| format!("{label} has the model {model_name}, which needs"),
         );
-        format!("{subject} the alphabet {required} because {reason}, but the alphabet is {alphabet}")
+        format!(
+          "{subject} the alphabet {} because {}, but the alphabet is {alphabet}",
+          requirement.alphabet(),
+          requirement.reason()
+        )
       },
       Self::Frequencies { given, n_states } => {
         let values = counted(*given, "value");

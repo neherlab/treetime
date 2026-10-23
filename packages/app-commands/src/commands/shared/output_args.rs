@@ -64,14 +64,14 @@ macro_rules! command_outputs {
     #[deser(default, deny_unknown_fields)]
     #[cfg_attr(feature = "clap", derive(clap::Args))]
     pub struct $args {
-      /// List of outputs to produce with `--output-all`.
-      ///
-      /// Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this
-      /// command. Requires `--output-all`. Per-file flags are always honored regardless of this selection.
-      ///
-      /// A selected output that the run has no data for is skipped without a message, for example the substitution
-      /// model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule
-      /// out fails in both forms, for example the sequences of `timetree --branch-length-mode input`.
+      #[doc = " List of outputs to produce with `--output-all`."]
+      #[doc = ""]
+      #[doc = " Restricts which outputs `--output-all` writes. Special value `all` expands to every output available for this"]
+      #[doc = " command. Requires `--output-all`. Per-file flags are always honored regardless of this selection."]
+      #[doc = ""]
+      #[doc = " A selected output that the run has no data for is skipped without a message, for example the substitution"]
+      #[doc = " model of a run that fits none. A per-file flag for such an output fails. An output that the settings rule"]
+      #[doc = " out fails in both forms, for example the sequences of `timetree --branch-length-mode input`."]
       #[cfg_attr(
         feature = "clap",
         clap(long, short = 's', num_args = 1.., value_delimiter = ',', requires = "output_all", help_heading = "Output")

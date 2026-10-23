@@ -215,9 +215,7 @@ fn non_negative_number(
   value: &str,
   source: ModelSource<'_>,
 ) -> Result<f64, ArgumentError> {
-  value
-    .parse::<f64>()
-    .ok()
+  parse_number(value)
     .filter(|number| number.is_finite() && *number >= 0.0)
     .ok_or_else(|| {
       source.params_error(format!(
@@ -228,9 +226,7 @@ fn non_negative_number(
 }
 
 fn gc_content(item: &str, value: &str, source: ModelSource<'_>) -> Result<f64, ArgumentError> {
-  value
-    .parse::<f64>()
-    .ok()
+  parse_number(value)
     .filter(|number| *number > 0.0 && *number < 1.0)
     .ok_or_else(|| {
       source.params_error(format!(
@@ -245,9 +241,7 @@ fn frequencies(item: &str, value: &str, source: ModelSource<'_>) -> Result<Array
   value
     .split(',')
     .map(|number| {
-      number
-        .parse::<f64>()
-        .ok()
+      parse_number(number)
         .filter(|number| number.is_finite() && *number > 0.0)
         .ok_or_else(|| {
           source.params_error(format!(
@@ -258,6 +252,17 @@ fn frequencies(item: &str, value: &str, source: ModelSource<'_>) -> Result<Array
         })
     })
     .collect()
+}
+
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "the parse error of a number says only that the text is not a number, which the message of every caller states"
+  )
+)]
+fn parse_number(text: &str) -> Option<f64> {
+  text.parse::<f64>().ok()
 }
 
 #[derive(Clone, Copy, Debug)]

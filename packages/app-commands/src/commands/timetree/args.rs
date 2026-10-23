@@ -521,15 +521,6 @@ pub(crate) fn timetree_output_settings(
   }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct CoalescentSettings {
-  pub(crate) mode: CoalescentMode,
-  pub(crate) n_skyline: usize,
-  pub(crate) skyline_stiffness: f64,
-  pub(crate) confidence: f64,
-  pub(crate) gen_per_year: f64,
-}
-
 fn check_sequence_source(
   has_alignment: bool,
   sequence_length: Option<usize>,
@@ -610,22 +601,13 @@ fn coalescent_settings(
   })
 }
 
-impl TreetimeTimetreeArgsRaw {
-  pub fn n_skyline(&self) -> usize {
-    self.n_skyline.unwrap_or(N_SKYLINE_DEFAULT)
-  }
-
-  pub fn skyline_stiffness(&self) -> f64 {
-    self.skyline_stiffness.unwrap_or(SKYLINE_STIFFNESS_DEFAULT)
-  }
-
-  pub fn coalescent_confidence(&self) -> f64 {
-    self.coalescent_confidence.unwrap_or(COALESCENT_CONFIDENCE_DEFAULT)
-  }
-
-  pub fn gen_per_year(&self) -> f64 {
-    self.gen_per_year.unwrap_or(GEN_PER_YEAR_DEFAULT)
-  }
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CoalescentSettings {
+  pub(crate) mode: CoalescentMode,
+  pub(crate) n_skyline: usize,
+  pub(crate) skyline_stiffness: f64,
+  pub(crate) confidence: f64,
+  pub(crate) gen_per_year: f64,
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]
@@ -964,4 +946,22 @@ pub struct TreetimeTimetreeArgsRaw {
   #[schemars(skip)]
   #[deser(skip)]
   pub jobs_args: JobsArgs,
+}
+
+impl TreetimeTimetreeArgsRaw {
+  pub fn n_skyline(&self) -> usize {
+    self.n_skyline.unwrap_or(N_SKYLINE_DEFAULT)
+  }
+
+  pub fn skyline_stiffness(&self) -> f64 {
+    self.skyline_stiffness.unwrap_or(SKYLINE_STIFFNESS_DEFAULT)
+  }
+
+  pub fn coalescent_confidence(&self) -> f64 {
+    self.coalescent_confidence.unwrap_or(COALESCENT_CONFIDENCE_DEFAULT)
+  }
+
+  pub fn gen_per_year(&self) -> f64 {
+    self.gen_per_year.unwrap_or(GEN_PER_YEAR_DEFAULT)
+  }
 }

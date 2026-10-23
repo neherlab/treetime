@@ -199,6 +199,13 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.right_extrap
   }
 
+  pub fn extrap(&self, side: Side) -> BoundaryBehavior {
+    match side {
+      Side::Left => self.left_extrap,
+      Side::Right => self.right_extrap,
+    }
+  }
+
   pub fn hard_cell(&self, cell: usize) -> Result<Option<HardCell>, Report>
   where
     T: Float,

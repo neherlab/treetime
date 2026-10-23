@@ -118,7 +118,7 @@ impl From<CoalescentArg> for CoalescentValue {
         value,
         unit: TimescaleUnit::SubstitutionsPerSite,
       }) => Self::Number(value),
-      arg => Self::Text(arg.to_string()),
+      CoalescentArg::Fixed(_) | CoalescentArg::Opt | CoalescentArg::Skyline => Self::Text(arg.to_string()),
     }
   }
 }
@@ -134,6 +134,13 @@ pub struct InvalidCoalescent {
   pub text: String,
 }
 
+#[cfg_attr(
+  dylint_lib = "custom",
+  expect(
+    result_defaulted,
+    reason = "the caller turns `None` into `InvalidCoalescent`, whose message lists every accepted form; the parse error of the number adds nothing to it"
+  )
+)]
 fn parse_fixed_timescale(text: &str) -> Option<FixedTimescaleArg> {
   let suffix = text.chars().last()?;
   let (number, unit) = TimescaleUnit::from_suffix(suffix).map_or((text, TimescaleUnit::SubstitutionsPerSite), |unit| {

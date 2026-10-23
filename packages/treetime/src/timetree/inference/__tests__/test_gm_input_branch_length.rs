@@ -327,6 +327,13 @@ mod tests {
   }
 
   #[test]
+  #[cfg_attr(
+    dylint_lib = "custom",
+    expect(
+      versioned_name,
+      reason = "`v0` names TreeTime 0.x, the reference implementation of this golden master, not a revision"
+    )
+  )]
   fn test_gm_input_branch_length_zero_length_distribution_matches_v0() -> Result<(), Report> {
     let expected = &OUTPUTS["zero_length"];
     let production = helpers::production("zero_length")?;
@@ -349,6 +356,13 @@ mod tests {
 
     pub(super) const BRANCH_RATE: f64 = 0.002;
 
+    #[cfg_attr(
+      dylint_lib = "custom",
+      expect(
+        versioned_name,
+        reason = "`v0` names TreeTime 0.x, the reference implementation of this golden master, not a revision"
+      )
+    )]
     pub(super) fn differences_from_v0(name: &str, production: &Production) -> Result<Vec<(f64, f64)>, Report> {
       let expected = &OUTPUTS[name];
       let at_zero = production.distribution.eval(0.0)?;

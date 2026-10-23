@@ -1,5 +1,6 @@
 use argmin::core::{CostFunction, Error, Executor, TerminationReason, TerminationStatus};
 use argmin::solver::brent::BrentRoot;
+use bon::bon;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, ArrayView1, s};
@@ -347,22 +348,22 @@ fn grid_peak_sides(
       .map(|cell| (n_points - 1 - peak, cell)),
     cells.left.filter(|_| peak == 0).map(|cell| (1, cell)),
   );
-  let earlier = LevelSide::new(
-    t.slice(s![..=peak;-1]),
-    y.slice(s![..=peak;-1]),
-    Side::Left,
-    carries_mass.left.then_some(function.left_extrap()),
-    first_hard_cell(function, (0..peak).rev(), |cell| cell)?,
-    earlier_segments.collect(),
-  );
-  let later = LevelSide::new(
-    t.slice(s![peak..]),
-    y.slice(s![peak..]),
-    Side::Right,
-    carries_mass.right.then_some(function.right_extrap()),
-    first_hard_cell(function, peak..n_points - 1, |cell| cell + 1)?,
-    later_segments.collect(),
-  );
+  let earlier = LevelSide::builder()
+    .t(t.slice(s![..=peak;-1]))
+    .y(y.slice(s![..=peak;-1]))
+    .side(Side::Left)
+    .maybe_tail(carries_mass.left.then_some(function.left_extrap()))
+    .maybe_hard_cell(first_hard_cell(function, (0..peak).rev(), |cell| cell)?)
+    .edge_segments(earlier_segments.collect())
+    .build();
+  let later = LevelSide::builder()
+    .t(t.slice(s![peak..]))
+    .y(y.slice(s![peak..]))
+    .side(Side::Right)
+    .maybe_tail(carries_mass.right.then_some(function.right_extrap()))
+    .maybe_hard_cell(first_hard_cell(function, peak..n_points - 1, |cell| cell + 1)?)
+    .edge_segments(later_segments.collect())
+    .build();
   Ok((earlier, later))
 }
 
@@ -389,14 +390,12 @@ fn cell_peak_sides(
     Side::Left => cells.right,
     Side::Right => cells.left,
   };
-  let outward = LevelSide::new(
-    with_mode(t.slice(s![edge_index..=edge_index]), mode.t).view(),
-    with_mode(y.slice(s![edge_index..=edge_index]), mode.y).view(),
-    side,
-    None,
-    None,
-    vec![(1, cell)],
-  );
+  let outward = LevelSide::builder()
+    .t(with_mode(t.slice(s![edge_index..=edge_index]), mode.t).view())
+    .y(with_mode(y.slice(s![edge_index..=edge_index]), mode.y).view())
+    .side(side)
+    .edge_segments(vec![(1, cell)])
+    .build();
   let inward_side = match side {
     Side::Left => Side::Right,
     Side::Right => Side::Left,
@@ -405,18 +404,20 @@ fn cell_peak_sides(
     Side::Left => carries_mass.right.then_some(function.right_extrap()),
     Side::Right => carries_mass.left.then_some(function.left_extrap()),
   };
-  let inward = LevelSide::new(
-    with_mode(t.slice(inward), mode.t).view(),
-    with_mode(y.slice(inward), mode.y).view(),
-    inward_side,
-    inward_tail,
-    inward_hard,
-    chain(
-      once((1, cell)),
-      other.filter(|_| n_points > 2).map(|other| (n_points - 1, other)),
+  let inward = LevelSide::builder()
+    .t(with_mode(t.slice(inward), mode.t).view())
+    .y(with_mode(y.slice(inward), mode.y).view())
+    .side(inward_side)
+    .maybe_tail(inward_tail)
+    .maybe_hard_cell(inward_hard)
+    .edge_segments(
+      chain(
+        once((1, cell)),
+        other.filter(|_| n_points > 2).map(|other| (n_points - 1, other)),
+      )
+      .collect(),
     )
-    .collect(),
-  );
+    .build();
   Ok(match side {
     Side::Left => (outward, inward),
     Side::Right => (inward, outward),
@@ -645,14 +646,16 @@ struct LevelSide {
   edge_segments: Vec<(usize, EdgeCell)>,
 }
 
+#[bon]
 impl LevelSide {
+  #[builder]
   #[expect(
     clippy::needless_pass_by_value,
     reason = "array views are Copy; clippy misses the Copy impl of ndarray 0.17 views"
   )]
-  fn new(
-    t: ArrayView1<f64>,
-    y: ArrayView1<f64>,
+  fn new<'a>(
+    t: ArrayView1<'a, f64>,
+    y: ArrayView1<'a, f64>,
     side: Side,
     tail: Option<BoundaryBehavior>,
     hard_cell: Option<HardCell>,

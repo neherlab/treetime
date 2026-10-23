@@ -221,7 +221,7 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
 fn write_coalescent(selection: OutputSelection, coalescent: &CoalescentOutput, path: &Path) -> Result<(), Report> {
   match selection.file_format() {
     FileFormat::Table => table_write_file(path, coalescent.rows()),
-    FileFormat::Chart | FileFormat::Fixed => json_write_file(path, coalescent, JsonPretty(true)),
+    FileFormat::Chart | FileFormat::Single => json_write_file(path, coalescent, JsonPretty(true)),
   }
 }
 

@@ -26,6 +26,13 @@ mod tests {
   }
 
   #[test]
+  #[cfg_attr(
+    dylint_lib = "mordant",
+    expect(
+      stale_panic_message,
+      reason = "the message is the serde error, which lists every config value of `GtrModelNameCli`, the value of its default variant included"
+    )
+  )]
   fn test_model_args_config_takes_the_exact_value() {
     assert_error!(
       from_json_value::<ModelArgs>(&json!({ "model": "JC69" })),
