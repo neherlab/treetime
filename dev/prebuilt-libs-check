@@ -14,12 +14,21 @@
 #   every OpenBLAS entry the same OpenBLAS version, across the native, Windows 7,
 #   and Emscripten releases of binarylandia/build_openblas
 #
+# and that the development builds of x86_64-unknown-linux-gnu use the CPU level
+# of the shipped builds: the target-cpu and target-feature rustflags and the C
+# and C++ flags of .cargo/config.toml equal those that export_dist_flags
+# (dev/lib/dist-flags.sh) exports, because that file owns the CPU flags that
+# the archives are built with.
+#
 # Exits 1 on a mismatch.
 #
 set -euo pipefail
 shopt -s inherit_errexit
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# shellcheck source=lib/dist-flags.sh
+source dev/lib/dist-flags.sh
 
 configs=(.config/mise.toml .config/mise.image.toml)
 locks=(.config/mise.lock .config/mise.image.lock)
@@ -79,6 +88,55 @@ check_bundled() {
   fi
 }
 
+# The target-cpu and target-feature codegen options among flags, one per line
+# in the form -C<option>, sorted.
+cpu_options() {
+  local normalized options status=0
+  normalized="$(sed -E 's/-C +/-C/g' <<<"$1")"
+  options="$(grep -oE -- '-Ctarget-(cpu|feature)=[^ ]+' <<<"${normalized}")" || status=$?
+  # grep exits 1 when no option matches, which is an empty result.
+  if ((status > 1)); then
+    return "${status}"
+  fi
+  if [[ -n "${options}" ]]; then
+    sort <<<"${options}"
+  fi
+}
+
+# Fail unless .cargo/config.toml compiles a target at the CPU level of its
+# shipped builds.
+check_cpu_level() {
+  local target="$1" config=".cargo/config.toml" dist_flags config_flags var dist_value config_value
+  dist_flags="$(
+    unset RUSTFLAGS
+    export_dist_flags binary "${target}"
+    cpu_options "${RUSTFLAGS}"
+  )"
+  config_flags="$(TARGET="${target}" yq -p toml -o yaml '.target[strenv(TARGET)].rustflags[]' "${config}")"
+  config_flags="$(cpu_options "${config_flags}")"
+  if [[ "${config_flags}" != "${dist_flags}" ]]; then
+    config_flags="${config_flags//$'\n'/ }"
+    dist_flags="${dist_flags//$'\n'/ }"
+    printf 'The rustflags of [target.%s] in %s set %s, but export_dist_flags sets %s\n' \
+      "${target}" "${config}" "${config_flags:-no CPU option}" "${dist_flags:-no CPU option}" >&2
+    rc=1
+  fi
+  for var in CFLAGS CXXFLAGS; do
+    dist_value="$(
+      unset "${var}"
+      export_dist_flags binary "${target}"
+      name="${var}_${target//-/_}"
+      printf '%s' "${!name# }"
+    )"
+    config_value="$(NAME="${var}_${target//-/_}" yq -p toml -o yaml '.env[strenv(NAME)]' "${config}")"
+    if [[ "${config_value}" != "${dist_value}" ]]; then
+      printf '%s_%s in the [env] table of %s is "%s", but export_dist_flags sets "%s"\n' \
+        "${var}" "${target//-/_}" "${config}" "${config_value}" "${dist_value}" >&2
+      rc=1
+    fi
+  done
+}
+
 # Fail unless the entries of the configs agree on one version, given the
 # entries as "<config>: <name> <version>" lines and the version of each entry,
 # one per line in the same order.
@@ -119,5 +177,7 @@ check_same "liblzma and libzstd (binarylandia/staticbourg release)" \
 # An OpenBLAS release version is <OpenBLAS version>[-emscripten-<version>]-<build time>.
 openblas_versions="$(sed -E 's/.* //; s/-[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}$//; s/-emscripten-[0-9.]+$//' <<<"${openblas_entries}")"
 check_same "OpenBLAS (binarylandia/build_openblas)" "${openblas_entries}" "${openblas_versions}"
+
+check_cpu_level x86_64-unknown-linux-gnu
 
 exit "${rc}"

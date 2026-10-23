@@ -17,17 +17,25 @@ KACHE_BASE_DIR = { value = ".", relative = true, force = true }
 KACHE_EXPLAIN_MISS = { value = "0", force = true }
 KACHE_HEARTBEAT_SECS = { value = "0", force = true }
 KACHE_PROGRESS = { value = "off", force = true }
+# The CPU level of the shipped x86_64 builds (dev/lib/dist-flags.sh) for the C
+# code of the development builds; without `force`, the flags that
+# export_dist_flags exports win. dev/prebuilt-libs-check keeps both equal.
+CFLAGS_x86_64_unknown_linux_gnu = "-march=x86-64-v2"
+CXXFLAGS_x86_64_unknown_linux_gnu = "-march=x86-64-v2"
 
 # The same flags for every native build, test, lint, and addon build, so these
 # never invalidate each other's artifacts:
 # - mold links fast; the link runs on every edit and is never cached
+# - the CPU level of the shipped builds (dev/lib/dist-flags.sh), so tests run
+#   the code that ships; dev/prebuilt-libs-check keeps both equal
 # - frame pointers and v0 symbol mangling give profilers and backtraces full
 #   stacks and generic paths
 # The dist, profiling, and bench builds and the cross builds replace these
-# flags with the CPU flags of the shipped builds (dev/lib/dist-flags.sh).
+# flags with the flags of the shipped builds (dev/lib/dist-flags.sh).
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
   "-Clink-arg=-fuse-ld=mold",
+  "-Ctarget-cpu=x86-64-v2",
   "-Cforce-frame-pointers=yes",
   "-Csymbol-mangling-version=v0",
 ]
