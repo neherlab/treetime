@@ -18,61 +18,71 @@
   }
 }
 
-@layer components {
-  .prose {
-    --tw-prose-body: var(--foreground);
-    --tw-prose-headings: var(--foreground);
-    --tw-prose-lead: var(--muted-foreground);
-    --tw-prose-links: var(--primary);
-    --tw-prose-bold: var(--foreground);
-    --tw-prose-counters: var(--muted-foreground);
-    --tw-prose-bullets: var(--muted-foreground);
-    --tw-prose-hr: var(--border);
-    --tw-prose-quotes: var(--foreground);
-    --tw-prose-quote-borders: var(--border);
-    --tw-prose-captions: var(--muted-foreground);
-    --tw-prose-kbd: var(--foreground);
-    --tw-prose-kbd-shadows: var(--border);
-    --tw-prose-code: var(--foreground);
-    --tw-prose-pre-code: var(--foreground);
-    --tw-prose-pre-bg: var(--muted);
-    --tw-prose-th-borders: var(--border);
-    --tw-prose-td-borders: var(--border);
+/* The typography plugin writes its default prose colors into the utilities layer, so these overrides stay outside every layer to win over them */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-lead: var(--muted-foreground);
+  --tw-prose-links: var(--primary);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-counters: var(--muted-foreground);
+  --tw-prose-bullets: var(--muted-foreground);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-quote-borders: var(--border);
+  --tw-prose-captions: var(--muted-foreground);
+  --tw-prose-kbd: var(--foreground);
+  --tw-prose-kbd-shadows: var(--border);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-pre-code: var(--foreground);
+  --tw-prose-pre-bg: var(--muted);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
 
-    max-width: 72ch;
-    font-variant-numeric: proportional-nums;
+  max-width: 72ch;
+  font-variant-numeric: proportional-nums;
 
-    :where(p, li) {
-      text-wrap: pretty;
-    }
-
-    :where(h1, h2, h3, h4) {
-      text-wrap: balance;
-      font-weight: 600;
-    }
-
-    :where(table, code, pre) {
-      font-variant-numeric: tabular-nums;
-    }
-
-    :where(code):not(:where(pre code)) {
-      @apply bg-muted rounded-sm px-1 py-px font-normal;
-    }
-
-    :where(code):not(:where(pre code))::before,
-    :where(code):not(:where(pre code))::after {
-      content: none;
-    }
-
-    :where(a) {
-      @apply underline-offset-3;
-    }
-
-    :where(h2, h3, h4) > a {
-      @apply text-inherit no-underline;
-    }
+  :where(p, li) {
+    text-wrap: pretty;
   }
 
+  :where(h1, h2, h3, h4) {
+    text-wrap: balance;
+    font-weight: 600;
+  }
+
+  :where(table, code, pre) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :where(code):not(:where(pre code)) {
+    @apply bg-muted rounded-sm px-1 py-px font-normal;
+  }
+
+  :where(code):not(:where(pre code))::before,
+  :where(code):not(:where(pre code))::after {
+    content: none;
+  }
+
+  :where(a) {
+    @apply underline-offset-3;
+  }
+
+  :where(h2, h3, h4) > a {
+    @apply text-inherit no-underline;
+  }
+
+  :where(blockquote p:first-of-type)::before,
+  :where(blockquote p:last-of-type)::after {
+    content: none;
+  }
+
+  :where(.expressive-code) {
+    margin-block: 1.5em;
+  }
+}
+
+@layer components {
   .katex {
     font-size: 1.1em;
   }

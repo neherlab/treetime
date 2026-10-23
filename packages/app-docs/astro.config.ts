@@ -75,15 +75,23 @@ export default defineConfig({
   },
   integrations: [
     expressiveCode({
-      themes: ["everforest-light", "everforest-dark"],
+      themes: ["github-light", "github-dark"],
       useDarkModeMediaQuery: false,
       themeCssSelector: (theme) => (theme.type === "dark" ? ".dark" : false),
       styleOverrides: {
         borderRadius: "var(--radius)",
         borderColor: "var(--border)",
+        codeBackground: "var(--muted)",
         codeFontFamily: '"IBM Plex Mono", ui-monospace, monospace',
         uiFontFamily: '"Lato", ui-sans-serif, sans-serif',
-        frames: { frameBoxShadowCssValue: "none" },
+        frames: {
+          frameBoxShadowCssValue: "none",
+          editorActiveTabIndicatorTopColor: "var(--primary)",
+          editorActiveTabBackground: "var(--muted)",
+          editorTabBarBackground: "var(--card)",
+          terminalTitlebarBackground: "var(--card)",
+          terminalBackground: "var(--muted)",
+        },
       },
     }),
     mdx({ extendMarkdownConfig: true }),
