@@ -7,11 +7,16 @@ import { isFallbackPage } from "./docs-source";
 import { navNodes, type NavNode } from "./nav";
 import { docsPath } from "./urls";
 
+const FOOTNOTE_LABEL = "footnote-label";
+
 const EDIT_ROOT = "https://github.com/neherlab/treetime/edit/rust/packages/app-docs/";
 
 export function pageView({ page, locale, tree, headings, base }: PageViewInput): PageView {
   const neighbours = findNeighbour(tree, page.url);
-  const tocHeadings = headings.filter((heading) => heading.depth === 2 || heading.depth === 3);
+
+  const tocHeadings = headings.filter(
+    (heading) => (heading.depth === 2 || heading.depth === 3) && heading.slug !== FOOTNOTE_LABEL,
+  );
 
   return {
     nodes: navNodes(tree.children),
