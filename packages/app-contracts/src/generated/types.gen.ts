@@ -3558,7 +3558,7 @@ export type ClockConfig = {
   /**
    * Path to output the root-to-tip regression chart.
    *
-   * The extension chooses the image format: `.svg`, `.png` or `.pdf`.
+   * The chart plots the root-to-tip divergence of each dated sample against its date, with the least-squares fit, its extrapolation to the root, and the samples that the clock filter excluded. It states the clock rate, the root date and R² of the fit. The extension chooses the image format: `.svg`, `.png` or `.pdf`.
    */
   output_rtt_chart?: string;
   /**

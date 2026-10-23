@@ -3,7 +3,7 @@ use crate::commands::shared::dates_input::read_input_dates;
 use crate::commands::shared::leaf_order::leaf_order;
 use crate::commands::shared::tree_input::read_input_tree;
 #[cfg(not(target_family = "wasm"))]
-use crate::rtt_chart::write_rtt_chart;
+use crate::rtt_chart::write::write_rtt_chart;
 use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeDates};
 use app_output::command_outputs::CommandKind;
 #[cfg(target_family = "wasm")]

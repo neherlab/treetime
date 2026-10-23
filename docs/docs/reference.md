@@ -750,7 +750,7 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
    One row per sample: the date the regression used, the root-to-tip distance it regressed on, the date the clock model predicts from that distance, and whether the clock filter excluded the sample.
 * `--output-rtt-chart <FILE>` — Path to output the root-to-tip regression chart.
 
-   The extension chooses the image format: `.svg`, `.png` or `.pdf`.
+   The chart plots the root-to-tip divergence of each dated sample against its date, with the least-squares fit, its extrapolation to the root, and the samples that the clock filter excluded. It states the clock rate, the root date and R² of the fit. The extension chooses the image format: `.svg`, `.png` or `.pdf`.
 * `--topology-order <TOPOLOGY_ORDER>` — Canonical topology ordering preset
 
   Possible values: `keep`, `descendant-count`, `descendant-count-reverse`, `height`, `height-reverse`, `divergence`, `divergence-reverse`, `label`, `label-reverse`, `target-order`, `target-order-reverse`
