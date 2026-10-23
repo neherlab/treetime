@@ -1,4 +1,5 @@
 use crate::evolve::validate_edge_duration;
+use crate::gaps::GAP;
 use crate::substitution_model::SubstitutionModel;
 use eyre::Report;
 use itertools::izip;
@@ -51,7 +52,7 @@ pub fn realized(graph: &Graph, sequences: &BTreeMap<GraphNodeKey, Seq>) -> Resul
         return make_error!("Sequence of node {} is empty", edge.source());
       }
       let differences = izip!(parent.iter(), child.iter())
-        .filter(|(left, right)| left != right)
+        .filter(|&(left, right)| left != right && *left != GAP && *right != GAP)
         .count();
       Ok((edge.key(), differences.to_f64_exact() / parent.len().to_f64_exact()))
     })

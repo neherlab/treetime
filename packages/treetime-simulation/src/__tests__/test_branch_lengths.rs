@@ -63,6 +63,22 @@ mod tests {
     assert_eq!(expected, actual);
   }
 
+  #[test]
+  fn test_branch_lengths_realized_does_not_count_sites_with_a_gap() {
+    let tree = three_tip_tree();
+    let sequences = btreemap! {
+      tree.root  => Seq::try_from_str("ACGT").unwrap(),
+      tree.inner => Seq::try_from_str("A--A").unwrap(),
+      tree.tip_c => Seq::try_from_str("TCGT").unwrap(),
+      tree.tip_a => Seq::try_from_str("A---").unwrap(),
+      tree.tip_b => Seq::try_from_str("G--A").unwrap(),
+    };
+    let expected =
+      btreemap! { tree.root_inner => 0.25, tree.root_c => 0.25, tree.inner_a => 0.0, tree.inner_b => 0.25 };
+    let actual = realized(&tree.graph, &sequences).unwrap();
+    assert_eq!(expected, actual);
+  }
+
   #[rustfmt::skip]
   #[rstest]
   #[case::different_lengths("ACGT", "ACG", "Sequences of nodes 0 and 1 have different lengths: 4 and 3")]
