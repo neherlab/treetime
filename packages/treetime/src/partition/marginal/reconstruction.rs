@@ -9,7 +9,6 @@ use crate::partition::marginal::shared::reconcile::{live_node_keys, reconcile_no
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
 use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
-use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::resolve::PartitionLayout;
 use crate::partition::storage::dense::DenseNodeState;
@@ -27,7 +26,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
+use treetime_graph::reroot::EdgeMergeInfo;
 use treetime_primitives::{LogLh, Seq};
 
 #[derive(Clone, Debug)]
@@ -433,10 +432,6 @@ impl SparseReconstruction {
     Ok(Self::seeded(self.partition, gtr, self.node_states).keeping_layout(self.layout))
   }
 
-  pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
-    Ok(reroot_sparse(self.partition, self.gtr, self.node_states, changes)?.keeping_layout(self.layout))
-  }
-
   pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
     let live_nodes = live_node_keys(graph);
     let mut partition = self.partition;
@@ -461,7 +456,8 @@ impl SparseReconstruction {
     .keeping_layout(self.layout)
   }
 
-  fn keeping_layout(self, layout: Option<PartitionLayout>) -> Self {
+  #[must_use]
+  pub(crate) fn keeping_layout(self, layout: Option<PartitionLayout>) -> Self {
     Self { layout, ..self }
   }
 }

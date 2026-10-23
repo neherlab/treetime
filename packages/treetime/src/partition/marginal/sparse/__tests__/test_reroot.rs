@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::gtr::get_gtr::{JC69Params, jc69};
+  use crate::partition::marginal::reconstruction::SparseReconstruction;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::marginal::sparse::reroot::reroot_sparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
@@ -60,7 +61,15 @@ mod tests {
       ..RerootResult::unchanged(r_key)
     };
 
-    let recon = reroot_sparse(partition, jc69(JC69Params::default())?, node_states, &changes)?;
+    let recon = reroot_sparse(
+      vec![SparseReconstruction::seeded(
+        partition,
+        jc69(JC69Params::default())?,
+        node_states,
+      )],
+      &changes,
+    )?
+    .remove(0);
 
     assert_eq!(r_seq, recon.partition.root_sequence);
     assert_eq!(

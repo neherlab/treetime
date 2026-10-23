@@ -4,6 +4,7 @@ mod tests {
   use crate::o;
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
+  use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::SparseEdgeObs;
   use crate::pretty_assert_ulps_eq;
@@ -37,7 +38,15 @@ mod tests {
     let a_inbound_edge =
       find_edge_key(&graph, &names, "internal2", "A").ok_or_else(|| make_report!("Edge internal2->A not found"))?;
 
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&partitions)?;
+
+    collapse_sparse_edges_from_leaf_recursive(
+      &mut graph,
+      &mut partitions,
+      &groups,
+      a_inbound_edge,
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(graph.get_nodes().count(), 3);
     assert_eq!(graph.get_edges().count(), 2);
@@ -66,7 +75,15 @@ mod tests {
     let a_inbound_edge =
       find_edge_key(&graph, &names, "internal1", "A").ok_or_else(|| make_report!("Edge internal1->A not found"))?;
 
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&partitions)?;
+
+    collapse_sparse_edges_from_leaf_recursive(
+      &mut graph,
+      &mut partitions,
+      &groups,
+      a_inbound_edge,
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(graph.get_nodes().count(), 2);
     assert_eq!(graph.get_edges().count(), 1);
@@ -90,7 +107,14 @@ mod tests {
     let mut partitions = vec![];
 
     let a_inbound_edge = find_edge_key(&graph, &names, "root", "A").unwrap();
-    collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, a_inbound_edge, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&partitions)?;
+    collapse_sparse_edges_from_leaf_recursive(
+      &mut graph,
+      &mut partitions,
+      &groups,
+      a_inbound_edge,
+      &mut branch_lengths,
+    )?;
 
     assert_eq!(graph.get_nodes().count(), 1);
     assert!(find_node_key_by_name(&graph, &names, "root").is_some());
@@ -114,7 +138,9 @@ mod tests {
 
     let bogus = GraphEdgeKey(usize::MAX);
     let mut branch_lengths = btreemap! { e_root_a => Some(0.1) };
-    let res = collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, bogus, &mut branch_lengths);
+    let groups = sparse_alignment_groups(&partitions)?;
+    let res =
+      collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, &groups, bogus, &mut branch_lengths);
     assert!(res.is_err());
 
     Ok(())

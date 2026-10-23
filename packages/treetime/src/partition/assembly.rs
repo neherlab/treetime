@@ -1,4 +1,4 @@
-use crate::partition::resolve::PartitionLayout;
+use crate::partition::resolve::{PartitionLayout, partition_label};
 use crate::seq::indel::{InDel, InDelKind, SplitFrom, compose_indels, sort_indels};
 use crate::seq::mutation::{Mutation, MutationTrack, Sub, combine_edge_mutations};
 use crate::seq::sink::AmbiguousSites;
@@ -8,11 +8,57 @@ use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
 use treetime_primitives::{AsciiChar, Seq};
 
+pub(crate) fn alignment_groups<'a>(
+  partitions: impl IntoIterator<Item = (Option<&'a PartitionLayout>, usize)>,
+) -> Result<Vec<AlignmentGroup>, Report> {
+  izip!(0.., 1.., partitions)
+    .into_group_map_by(|&(_, number, (layout, _))| layout.map_or(number, |layout| layout.alignment))
+    .into_iter()
+    .sorted_by_key(|&(alignment, _)| alignment)
+    .map(|(alignment, members)| {
+      let layouts: Option<Vec<&PartitionLayout>> = members.iter().map(|&(_, _, (layout, _))| layout).collect();
+      let layout = match (layouts, members.as_slice()) {
+        (Some(layouts), _) => {
+          let length = layouts.iter().map(|layout| layout.columns.len()).sum();
+          AlignmentLayout::new(length, layouts)?
+        },
+        (None, &[(_, number, (None, length))]) => {
+          AlignmentLayout::whole(alignment, partition_label(number, None), length)
+        },
+        (None, _) => {
+          return make_internal_error!(
+            "Alignment {alignment} has a partition without a layout next to other partitions"
+          );
+        },
+      };
+      Ok(AlignmentGroup {
+        layout,
+        partitions: members.iter().map(|&(index, ..)| index).collect(),
+      })
+    })
+    .collect()
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct AlignmentGroup {
+  pub(crate) layout: AlignmentLayout,
+  pub(crate) partitions: Vec<usize>,
+}
+
+impl AlignmentGroup {
+  pub(crate) fn alignment(&self) -> usize {
+    self.layout.alignment
+  }
+
+  pub(crate) fn members<'a, T>(&self, items: &'a [T]) -> Vec<&'a T> {
+    self.partitions.iter().map(|&index| &items[index]).collect()
+  }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AlignmentLayout {
   alignment: usize,
-  partitions: Vec<PartitionColumns>,
-  sites: Vec<Site>,
+  columns: AlignmentColumns,
 }
 
 impl AlignmentLayout {
@@ -21,6 +67,11 @@ impl AlignmentLayout {
     let Some(alignment) = layouts.first().map(|layout| layout.alignment) else {
       return make_internal_error!("An alignment layout needs at least one partition");
     };
+    if let [layout] = layouts.as_slice()
+      && layout.covers(length)
+    {
+      return Ok(Self::whole(alignment, layout.label(), length));
+    }
     let mut owners: Vec<Option<Site>> = vec![None; length];
     for (partition, layout) in layouts.iter().enumerate() {
       if layout.alignment != alignment {
@@ -64,54 +115,60 @@ impl AlignmentLayout {
       .collect();
     Ok(Self {
       alignment,
-      partitions,
-      sites,
+      columns: AlignmentColumns::Split(SplitColumns { partitions, sites }),
     })
   }
 
+  pub(crate) fn whole(alignment: usize, label: String, length: usize) -> Self {
+    Self {
+      alignment,
+      columns: AlignmentColumns::Whole(WholeColumns { label, length }),
+    }
+  }
+
   pub fn is_whole(&self) -> bool {
-    self.partitions.len() == 1
+    matches!(self.columns, AlignmentColumns::Whole(_))
   }
 
   pub fn assemble_sequence(&self, sequences: &[Seq]) -> Result<Seq, Report> {
     self.check_count(sequences.len(), "sequences")?;
-    for (partition, seq) in izip!(&self.partitions, sequences) {
-      if seq.len() != partition.columns.len() {
+    for (partition, seq) in sequences.iter().enumerate() {
+      let (label, length) = self.partition_span(partition);
+      if seq.len() != length {
         return make_internal_error!(
-          "The sequence of {} has length {}, but the partition has {} columns",
-          partition.label,
+          "The sequence of {label} has length {}, but the partition has {length} columns",
           seq.len(),
-          partition.columns.len()
         );
       }
     }
-    Ok(
-      self
+    Ok(match &self.columns {
+      AlignmentColumns::Whole(_) => sequences[0].clone(),
+      AlignmentColumns::Split(split) => split
         .sites
         .iter()
         .map(|site| sequences[site.partition][site.local])
         .collect(),
-    )
+    })
   }
 
   pub fn assemble_ambiguity(&self, ambiguous_sites: &[AmbiguousSites]) -> Result<AmbiguousSites, Report> {
     self.check_count(ambiguous_sites.len(), "ambiguity reports")?;
-    izip!(&self.partitions, ambiguous_sites)
+    izip!(0.., ambiguous_sites)
       .flat_map(|(partition, sites)| {
         sites
           .iter()
-          .map(move |(&local, &code)| Ok((partition.column(local)?, code)))
+          .map(move |(&local, &code)| Ok((self.column(partition, local)?, code)))
       })
       .collect()
   }
 
   pub fn assemble_substitutions(&self, substitutions: &[Vec<Sub>]) -> Result<Vec<Sub>, Report> {
     self.check_count(substitutions.len(), "substitution lists")?;
-    let mut assembled: Vec<Sub> = izip!(&self.partitions, substitutions)
+    let mut assembled: Vec<Sub> = izip!(0.., substitutions)
       .flat_map(|(partition, subs)| {
         subs
           .iter()
-          .map(move |sub| Sub::new(sub.reff(), partition.column(sub.pos())?, sub.qry()))
+          .map(move |sub| Sub::new(sub.reff(), self.column(partition, sub.pos())?, sub.qry()))
       })
       .try_collect()?;
     assembled.sort();
@@ -120,14 +177,15 @@ impl AlignmentLayout {
 
   pub fn assemble_indels(&self, indels: &[Vec<InDel>]) -> Result<Vec<InDel>, Report> {
     self.check_count(indels.len(), "indel lists")?;
-    for (columns, pieces) in izip!(&self.partitions, indels) {
+    for (partition, pieces) in indels.iter().enumerate() {
       for piece in pieces {
-        columns.check_piece(piece)?;
+        self.check_piece(partition, piece)?;
       }
     }
-    if self.is_whole() {
-      return Ok(indels[0].clone());
-    }
+    let split = match &self.columns {
+      AlignmentColumns::Whole(_) => return Ok(indels[0].clone()),
+      AlignmentColumns::Split(split) => split,
+    };
     let pieces = izip!(0.., indels)
       .flat_map(|(partition, pieces)| pieces.iter().map(move |piece| (partition, piece)))
       .collect_vec();
@@ -136,11 +194,11 @@ impl AlignmentLayout {
       .map(|(_, piece)| piece.split_from.is_some())
       .all_equal_value()
     {
-      Ok(true) => self.join_split_pieces(&pieces),
+      Ok(true) => split.join_split_pieces(self.alignment, &pieces),
       Ok(false) => Ok(join_runs(
         pieces
           .iter()
-          .flat_map(|&(partition, piece)| self.partitions[partition].runs(partition, piece))
+          .flat_map(|&(partition, piece)| split.partitions[partition].runs(partition, piece))
           .collect(),
       )),
       Err(None) => Ok(vec![]),
@@ -176,17 +234,18 @@ impl AlignmentLayout {
     for indel in indels {
       self.check_alignment_indel(indel)?;
     }
-    if self.is_whole() {
-      return Ok(vec![indels.to_vec()]);
-    }
-    let mut pieces = vec![vec![]; self.partitions.len()];
+    let split = match &self.columns {
+      AlignmentColumns::Whole(_) => return Ok(vec![indels.to_vec()]),
+      AlignmentColumns::Split(split) => split,
+    };
+    let mut pieces = vec![vec![]; split.partitions.len()];
     for (index, indel) in indels.iter().enumerate() {
       let split_from = Some(SplitFrom {
         index,
         range: indel.range,
       });
       let mut indel_pieces: BTreeMap<usize, InDel> = BTreeMap::new();
-      for (site, &state) in izip!(&self.sites[indel.range.0..indel.range.1], indel.seq.as_slice()) {
+      for (site, &state) in izip!(&split.sites[indel.range.0..indel.range.1], indel.seq.as_slice()) {
         let piece = indel_pieces.entry(site.partition).or_insert_with(|| InDel {
           range: (site.local, site.local),
           seq: Seq::new(),
@@ -203,14 +262,59 @@ impl AlignmentLayout {
     Ok(pieces)
   }
 
+  fn partition_count(&self) -> usize {
+    match &self.columns {
+      AlignmentColumns::Whole(_) => 1,
+      AlignmentColumns::Split(split) => split.partitions.len(),
+    }
+  }
+
+  fn length(&self) -> usize {
+    match &self.columns {
+      AlignmentColumns::Whole(whole) => whole.length,
+      AlignmentColumns::Split(split) => split.sites.len(),
+    }
+  }
+
+  fn partition_span(&self, partition: usize) -> (&str, usize) {
+    match &self.columns {
+      AlignmentColumns::Whole(whole) => (&whole.label, whole.length),
+      AlignmentColumns::Split(split) => {
+        let columns = &split.partitions[partition];
+        (&columns.label, columns.columns.len())
+      },
+    }
+  }
+
+  fn column(&self, partition: usize, local: usize) -> Result<usize, Report> {
+    match &self.columns {
+      AlignmentColumns::Whole(whole) if local < whole.length => Ok(local),
+      AlignmentColumns::Whole(whole) => Err(make_internal_report!(
+        "Position {local} of {} is outside its {} columns",
+        whole.label,
+        whole.length
+      )),
+      AlignmentColumns::Split(split) => split.partitions[partition].column(local),
+    }
+  }
+
+  fn check_piece(&self, partition: usize, piece: &InDel) -> Result<(), Report> {
+    let (label, length) = self.partition_span(partition);
+    let (lo, hi) = piece.range;
+    if lo >= hi || hi > length || piece.seq.len() != hi - lo {
+      return make_internal_error!("Indel {piece} does not fit {label}, which has {length} columns");
+    }
+    Ok(())
+  }
+
   fn check_count(&self, count: usize, values: &str) -> Result<(), Report> {
-    if count == self.partitions.len() {
+    if count == self.partition_count() {
       Ok(())
     } else {
       make_internal_error!(
         "Alignment {} has {} partitions, but assembly received {count} {values}",
         self.alignment,
-        self.partitions.len()
+        self.partition_count()
       )
     }
   }
@@ -225,17 +329,37 @@ impl AlignmentLayout {
         split_from.range.1
       );
     }
-    if lo >= hi || hi > self.sites.len() || indel.seq.len() != hi - lo {
+    if lo >= hi || hi > self.length() || indel.seq.len() != hi - lo {
       return make_internal_error!(
         "Indel {indel} does not fit alignment {}, which has {} columns",
         self.alignment,
-        self.sites.len()
+        self.length()
       );
     }
     Ok(())
   }
+}
 
-  fn join_split_pieces(&self, pieces: &[(usize, &InDel)]) -> Result<Vec<InDel>, Report> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum AlignmentColumns {
+  Whole(WholeColumns),
+  Split(SplitColumns),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct WholeColumns {
+  label: String,
+  length: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct SplitColumns {
+  partitions: Vec<PartitionColumns>,
+  sites: Vec<Site>,
+}
+
+impl SplitColumns {
+  fn join_split_pieces(&self, alignment: usize, pieces: &[(usize, &InDel)]) -> Result<Vec<InDel>, Report> {
     let mut groups: BTreeMap<usize, (SplitFrom, InDelKind, Vec<(usize, AsciiChar)>)> = BTreeMap::new();
     for &(partition, piece) in pieces {
       let split_from = piece
@@ -246,8 +370,7 @@ impl AlignmentLayout {
         .or_insert_with(|| (split_from, piece.kind, vec![]));
       if (*group_split_from, *group_kind) != (split_from, piece.kind) {
         return make_internal_error!(
-          "Indel pieces of alignment {} disagree on indel {} of the split list: {:?} and {:?}",
-          self.alignment,
+          "Indel pieces of alignment {alignment} disagree on indel {} of the split list: {:?} and {:?}",
           split_from.index,
           (*group_split_from, *group_kind),
           (split_from, piece.kind)
@@ -257,31 +380,8 @@ impl AlignmentLayout {
     }
     groups
       .into_values()
-      .map(|(split_from, kind, positions)| self.join_split_piece(split_from.range, kind, positions))
+      .map(|(split_from, kind, positions)| join_split_piece(alignment, split_from.range, kind, positions))
       .collect()
-  }
-
-  fn join_split_piece(
-    &self,
-    range: (usize, usize),
-    kind: InDelKind,
-    mut positions: Vec<(usize, AsciiChar)>,
-  ) -> Result<InDel, Report> {
-    positions.sort_by_key(|&(position, _)| position);
-    let (lo, hi) = range;
-    if !positions.iter().map(|&(position, _)| position).eq(lo..hi) {
-      return make_internal_error!(
-        "The pieces of indel {lo}--{hi} ({kind:?}) of alignment {} cover the positions {}",
-        self.alignment,
-        positions.iter().map(|&(position, _)| position).join(", ")
-      );
-    }
-    Ok(InDel {
-      range,
-      seq: positions.into_iter().map(|(_, state)| state).collect(),
-      kind,
-      split_from: None,
-    })
   }
 }
 
@@ -300,18 +400,6 @@ impl PartitionColumns {
         self.columns.len()
       )
     })
-  }
-
-  fn check_piece(&self, piece: &InDel) -> Result<(), Report> {
-    let (lo, hi) = piece.range;
-    if lo >= hi || hi > self.columns.len() || piece.seq.len() != hi - lo {
-      return make_internal_error!(
-        "Indel {piece} does not fit {}, which has {} columns",
-        self.label,
-        self.columns.len()
-      );
-    }
-    Ok(())
   }
 
   fn positions<'a>(&'a self, piece: &'a InDel) -> impl Iterator<Item = (usize, AsciiChar)> + 'a {
@@ -339,6 +427,28 @@ impl PartitionColumns {
 struct Site {
   partition: usize,
   local: usize,
+}
+
+fn join_split_piece(
+  alignment: usize,
+  range: (usize, usize),
+  kind: InDelKind,
+  mut positions: Vec<(usize, AsciiChar)>,
+) -> Result<InDel, Report> {
+  positions.sort_by_key(|&(position, _)| position);
+  let (lo, hi) = range;
+  if !positions.iter().map(|&(position, _)| position).eq(lo..hi) {
+    return make_internal_error!(
+      "The pieces of indel {lo}--{hi} ({kind:?}) of alignment {alignment} cover the positions {}",
+      positions.iter().map(|&(position, _)| position).join(", ")
+    );
+  }
+  Ok(InDel {
+    range,
+    seq: positions.into_iter().map(|(_, state)| state).collect(),
+    kind,
+    split_from: None,
+  })
 }
 
 fn join_runs(runs: Vec<Run>) -> Vec<InDel> {

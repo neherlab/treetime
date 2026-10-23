@@ -10,6 +10,7 @@ use crate::optimize::partition_rates::update_partition_rates;
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::optimize::topology::collapse::collapse_edge;
 use crate::optimize::topology::resolve_polytomy::resolve_polytomies;
+use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
 use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
@@ -368,12 +369,13 @@ pub(crate) fn prune_and_merge_in_loop(
       }
     }
 
+    let groups = sparse_alignment_groups(sparse)?;
     let mut collapsed = 0_usize;
     for &edge_key in zero_optimal_edges {
       if graph.get_edge(edge_key).is_none() {
         continue;
       }
-      collapse_edge(graph, sparse, edge_key, branch_lengths)?;
+      collapse_edge(graph, sparse, &groups, edge_key, branch_lengths)?;
       collapsed += 1;
     }
 

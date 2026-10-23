@@ -5,6 +5,7 @@ mod gtr_generators;
 mod indel;
 mod kingman;
 mod marginal;
+mod partitions;
 mod poisson_cherry;
 mod progress;
 mod rate_profile;
@@ -33,6 +34,7 @@ pub(crate) use marginal::{
   run_sparse_marginal_with_newick, sequence_source, sparse_reconstruction, sparse_reconstruction_mut,
   sparse_topology_partition, sparse_topology_partitions, whole_alignment_set,
 };
+pub(crate) use partitions::{codon_partition_set, codon_positions_input};
 pub(crate) use poisson_cherry::PoissonCherry;
 pub(crate) use progress::RecordingLog;
 pub(crate) use rate_profile::FrozenRateState;

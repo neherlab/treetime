@@ -126,7 +126,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
+    let recon = reroot_sparse(vec![recon], &changes)?.remove(0);
 
     let expected_root_seq = "ACATCCCTGTA--G--";
     let actual_root_seq = recon.partition.root_sequence.as_str();
@@ -322,7 +322,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
+    let recon = reroot_sparse(vec![recon], &changes)?.remove(0);
 
     assert_eq!(
       "ACATCCCTGTA--G--",
@@ -427,7 +427,7 @@ mod tests {
       inverted_edge_keys,
     };
 
-    let recon = reroot_sparse(recon.partition, recon.gtr, recon.node_states, &changes)?;
+    let recon = reroot_sparse(vec![recon], &changes)?.remove(0);
 
     let (recon, _) = recon.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 

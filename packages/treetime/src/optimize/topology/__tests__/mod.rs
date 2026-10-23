@@ -5,3 +5,4 @@ mod test_prop_merge_shared_mutations;
 mod test_prop_resolve_polytomy;
 mod test_reroot;
 mod test_resolve_polytomy;
+mod test_split_alignment_topology;

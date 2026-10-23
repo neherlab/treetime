@@ -1,8 +1,11 @@
+use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
+use crate::partition::marginal::sparse::alignment_indels::{assembled_edge_indels, store_edge_indels};
 use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::{InDel, compose_indels, sort_indels};
 use crate::seq::mutation::Sub;
 use eyre::Report;
+use itertools::izip;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -132,6 +135,7 @@ pub(crate) fn hoist_reverting_child(
   graph: &mut Graph,
   names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
+  alignments: &[AlignmentGroup],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -149,22 +153,23 @@ pub(crate) fn hoist_reverting_child(
     let child_subs = obs_edges
       .get(&child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
-    let parent_indels = obs_edges.get(&parent_edge_key).map_or(Vec::new(), |e| e.indels.clone());
-    let child_indels = obs_edges.get(&child_edge_key).map_or(Vec::new(), |e| e.indels.clone());
 
     let sub_split = split_subs(&parent_subs, &child_subs)?;
-    let indel_split = split_indels(&parent_indels, &child_indels);
 
     total_parent_subs += parent_subs.len();
     total_hoisted_subs += sub_split.hoisted.len();
 
-    splits.push(EdgeSplit {
-      hoisted: sub_split.hoisted,
-      kept: sub_split.kept,
-      composed: sub_split.composed,
-      indels: indel_split,
-    });
+    splits.push(sub_split);
   }
+  let indel_splits: Vec<IndelSplit> = alignments
+    .iter()
+    .map(|alignment| {
+      Ok(split_indels(
+        &assembled_edge_indels(alignment, sparse, parent_edge_key)?,
+        &assembled_edge_indels(alignment, sparse, child_edge_key)?,
+      ))
+    })
+    .collect::<Result<_, Report>>()?;
 
   let bl_uv = branch_lengths[&parent_edge_key].unwrap_or(0.0);
   let bl_vc = branch_lengths[&child_edge_key].unwrap_or(0.0);
@@ -192,15 +197,17 @@ pub(crate) fn hoist_reverting_child(
 
     let un_edge = partition.obs_edges.entry(un_edge_key).or_default();
     un_edge.set_fitch_subs(split.hoisted);
-    un_edge.indels = split.indels.hoisted;
 
     let nv_edge = partition.obs_edges.entry(parent_edge_key).or_default();
     nv_edge.set_fitch_subs(split.kept);
-    nv_edge.indels = split.indels.kept;
 
     let nc_edge = partition.obs_edges.entry(child_edge_key).or_default();
     nc_edge.set_fitch_subs(split.composed);
-    nc_edge.indels = split.indels.composed;
+  }
+  for (alignment, split) in izip!(alignments, indel_splits) {
+    store_edge_indels(alignment, sparse, un_edge_key, &split.hoisted)?;
+    store_edge_indels(alignment, sparse, parent_edge_key, &split.kept)?;
+    store_edge_indels(alignment, sparse, child_edge_key, &split.composed)?;
   }
 
   Ok(n_key)
@@ -331,13 +338,6 @@ fn indels_interact(parent_indels: &[InDel], child_indels: &[InDel]) -> bool {
 
 fn ranges_overlap_or_adjacent((a_lo, a_hi): (usize, usize), (b_lo, b_hi): (usize, usize)) -> bool {
   a_lo <= b_hi && b_lo <= a_hi
-}
-
-struct EdgeSplit {
-  hoisted: Vec<Sub>,
-  kept: Vec<Sub>,
-  composed: Vec<Sub>,
-  indels: IndelSplit,
 }
 
 struct IndelSplit {

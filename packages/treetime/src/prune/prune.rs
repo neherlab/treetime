@@ -1,5 +1,7 @@
 use crate::optimize::topology::collapse::collapse_edge;
+use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
+use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
@@ -16,9 +18,18 @@ pub(crate) fn prune_nodes(
   node_keys: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
-  prune_internal_nodes(graph, partitions, prune_short, prune_empty, node_keys, branch_lengths)?;
+  let groups = sparse_alignment_groups(partitions)?;
+  prune_internal_nodes(
+    graph,
+    partitions,
+    &groups,
+    prune_short,
+    prune_empty,
+    node_keys,
+    branch_lengths,
+  )?;
   graph.build()?;
-  prune_leaves(graph, partitions, node_keys, branch_lengths)?;
+  prune_leaves(graph, partitions, &groups, node_keys, branch_lengths)?;
   graph.build()?;
   Ok(())
 }
@@ -26,6 +37,7 @@ pub(crate) fn prune_nodes(
 fn prune_internal_nodes(
   graph: &mut Graph,
   partitions: &mut [SparseReconstruction],
+  groups: &[AlignmentGroup],
   prune_short: Option<f64>,
   prune_empty: bool,
   node_keys: &BTreeSet<GraphNodeKey>,
@@ -61,7 +73,7 @@ fn prune_internal_nodes(
 
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing internal edge: {edge_key}");
-    collapse_edge(graph, partitions, edge_key, branch_lengths)
+    collapse_edge(graph, partitions, groups, edge_key, branch_lengths)
   })
 }
 
@@ -85,6 +97,7 @@ pub(crate) fn get_edge_num_muts(
 fn prune_leaves(
   graph: &mut Graph,
   partitions: &mut [SparseReconstruction],
+  groups: &[AlignmentGroup],
   node_keys: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -103,13 +116,14 @@ fn prune_leaves(
 
   edges_to_collapse.into_iter().try_for_each(|edge_key| {
     debug!("Collapsing leaf edge: {edge_key}");
-    collapse_sparse_edges_from_leaf_recursive(graph, partitions, edge_key, branch_lengths)
+    collapse_sparse_edges_from_leaf_recursive(graph, partitions, groups, edge_key, branch_lengths)
   })
 }
 
 pub(crate) fn collapse_sparse_edges_from_leaf_recursive(
   graph: &mut Graph,
   partitions: &mut [SparseReconstruction],
+  groups: &[AlignmentGroup],
   edge_key: GraphEdgeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<(), Report> {
@@ -118,7 +132,7 @@ pub(crate) fn collapse_sparse_edges_from_leaf_recursive(
   loop {
     let parent_node_key = graph.get_source_node_key(current_edge_key)?;
 
-    collapse_edge(graph, partitions, current_edge_key, branch_lengths)?;
+    collapse_edge(graph, partitions, groups, current_edge_key, branch_lengths)?;
 
     let next_edge_key = if should_collapse_parent(graph, parent_node_key) {
       graph.node_parent(parent_node_key)?.map(|(_, edge_key)| edge_key)

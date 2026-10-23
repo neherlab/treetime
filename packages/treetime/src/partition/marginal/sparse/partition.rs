@@ -132,15 +132,6 @@ impl PartitionMarginalSparse {
       self.obs_nodes.insert(key, obs);
     }
 
-    for merge in merges {
-      let parent_edge = self.obs_edges.remove(&merge.parent_edge_key).unwrap_or_default();
-      let child_edge = self.obs_edges.remove(&merge.child_edge_key).unwrap_or_default();
-      let mut merged_edge = SparseEdgeObs::default();
-      merged_edge.set_fitch_subs(parent_edge.chain_fitch_subs(child_edge.fitch_subs())?);
-      merged_edge.indels = parent_edge.chain_fitch_indels(&child_edge.indels);
-      self.obs_edges.insert(merge.merged_edge_key, merged_edge);
-    }
-
     let graph_node_keys: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|n| n.key()).collect();
     let graph_edge_keys: BTreeSet<GraphEdgeKey> = graph.get_edges().map(|e| e.key()).collect();
     for &key in &graph_edge_keys {

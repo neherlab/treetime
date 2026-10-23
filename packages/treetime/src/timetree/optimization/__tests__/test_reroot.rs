@@ -219,7 +219,11 @@ mod tests {
       ..RerootResult::unchanged(a_key)
     };
 
-    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
+    let recon = reroot_sparse(
+      vec![SparseReconstruction::seeded(partition, gtr, node_states)],
+      &changes,
+    )?
+    .remove(0);
 
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
     let sub_after = &edge_data.fitch_subs()[0];
@@ -286,7 +290,11 @@ mod tests {
       ..RerootResult::unchanged(a_key)
     };
 
-    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
+    let recon = reroot_sparse(
+      vec![SparseReconstruction::seeded(partition, gtr, node_states)],
+      &changes,
+    )?
+    .remove(0);
 
     let edge_data = &recon.partition.obs_edges[&edge_to_a_key];
     assert_eq!(edge_data.fitch_subs().len(), 1);
@@ -358,7 +366,11 @@ mod tests {
       ..RerootResult::unchanged(a_key)
     };
 
-    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
+    let recon = reroot_sparse(
+      vec![SparseReconstruction::seeded(partition, gtr, node_states)],
+      &changes,
+    )?
+    .remove(0);
 
     let mut expected = root_seq;
     expected[2] = alphabet.gap();
@@ -425,7 +437,11 @@ mod tests {
       ..RerootResult::unchanged(a_key)
     };
 
-    let recon = reroot_sparse(partition, gtr, node_states, &changes)?;
+    let recon = reroot_sparse(
+      vec![SparseReconstruction::seeded(partition, gtr, node_states)],
+      &changes,
+    )?
+    .remove(0);
 
     let mut expected = root_seq;
     expected[0] = c(b'T');

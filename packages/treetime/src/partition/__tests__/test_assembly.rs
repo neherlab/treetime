@@ -186,7 +186,7 @@ mod tests {
   #[case::shared(       3, vec![vec![0, 1], vec![1, 2]],    "partition 1 and partition 2 both take column 1 of alignment 1. This is an internal error. Please report it to developers.")]
   #[case::uncovered(    3, vec![vec![0], vec![2]],          "No partition takes column 1 of alignment 1. This is an internal error. Please report it to developers.")]
   #[case::outside(      2, vec![vec![0, 1, 2]],             "partition 1 takes column 2, but alignment 1 has 2 columns. This is an internal error. Please report it to developers.")]
-  #[case::descending(   2, vec![vec![1, 0]],                "Columns of partition 1 are not ascending: 1 before 0. This is an internal error. Please report it to developers.")]
+  #[case::descending(   3, vec![vec![2, 0], vec![1]],       "Columns of partition 1 are not ascending: 2 before 0. This is an internal error. Please report it to developers.")]
   #[trace]
   fn test_assembly_layout_rejects_columns_that_do_not_cover_alignment_once(
     #[case] length: usize,

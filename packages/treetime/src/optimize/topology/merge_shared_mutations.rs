@@ -1,11 +1,15 @@
 use crate::gtr::jc_distance::jukes_cantor_distance;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
+use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
+use crate::partition::marginal::sparse::alignment_indels::{
+  assembled_edge_indels, sparse_alignment_groups, store_edge_indels,
+};
 use crate::partition::storage::sparse::SparseNodeObs;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{Itertools, izip};
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
@@ -21,12 +25,13 @@ pub(crate) fn merge_shared_mutation_branches(
   partitions: &mut [SparseReconstruction],
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
+  let alignments = sparse_alignment_groups(partitions)?;
   let mut total_merged = 0;
 
   let polytomy_keys = find_polytomy_nodes(graph);
 
   for node_key in polytomy_keys {
-    let merged = merge_single_polytomy(graph, names, partitions, node_key, branch_lengths)?;
+    let merged = merge_single_polytomy(graph, names, partitions, &alignments, node_key, branch_lengths)?;
     total_merged += merged;
   }
 
@@ -43,6 +48,7 @@ pub(crate) fn merge_single_polytomy(
   graph: &mut Graph,
   names: &mut NodeNames,
   partitions: &mut [SparseReconstruction],
+  alignments: &[AlignmentGroup],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<usize, Report> {
@@ -54,8 +60,8 @@ pub(crate) fn merge_single_polytomy(
       break;
     }
 
-    let index = build_mutation_index(partitions, &child_edges);
-    let candidates = find_merge_groups(&index, partitions.len());
+    let index = build_mutation_index(partitions, alignments, &child_edges)?;
+    let candidates = find_merge_groups(&index, partitions.len(), alignments.len());
     let selected = greedy_disjoint_group_matching(candidates);
 
     if selected.is_empty() {
@@ -71,7 +77,7 @@ pub(crate) fn merge_single_polytomy(
         group.edges.len(),
         group.total_shared,
       );
-      merge_sibling_group(graph, names, partitions, node_key, &group, branch_lengths)?;
+      merge_sibling_group(graph, names, partitions, alignments, node_key, &group, branch_lengths)?;
       nodes_created += 1;
     }
   }
@@ -84,7 +90,11 @@ fn collect_child_edge_keys(graph: &Graph, node_key: GraphNodeKey) -> Vec<GraphEd
   node.outbound().to_vec()
 }
 
-fn build_mutation_index(partitions: &[SparseReconstruction], child_edges: &[GraphEdgeKey]) -> MutationIndex {
+fn build_mutation_index(
+  partitions: &[SparseReconstruction],
+  alignments: &[AlignmentGroup],
+  child_edges: &[GraphEdgeKey],
+) -> Result<MutationIndex, Report> {
   let mut index: MutationIndex = BTreeMap::new();
   for &edge_key in child_edges {
     for (pi, SparseReconstruction { partition, .. }) in partitions.iter().enumerate() {
@@ -92,23 +102,21 @@ fn build_mutation_index(partitions: &[SparseReconstruction], child_edges: &[Grap
       let edge = partition.obs_edges.get(&edge_key);
       for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
         index
-          .entry((pi, MutationKey::Sub(sub.clone())))
-          .or_default()
-          .push(edge_key);
-      }
-      let empty_indels: &[InDel] = &[];
-      for indel in edge.map_or(empty_indels, |e| e.indels.as_slice()) {
-        index
-          .entry((pi, MutationKey::InDel(indel.clone())))
+          .entry(MutationKey::Sub(pi, sub.clone()))
           .or_default()
           .push(edge_key);
       }
     }
+    for (ai, alignment) in alignments.iter().enumerate() {
+      for indel in assembled_edge_indels(alignment, partitions, edge_key)? {
+        index.entry(MutationKey::InDel(ai, indel)).or_default().push(edge_key);
+      }
+    }
   }
-  index
+  Ok(index)
 }
 
-fn find_merge_groups(index: &MutationIndex, n_partitions: usize) -> Vec<MergeGroup> {
+fn find_merge_groups(index: &MutationIndex, n_partitions: usize, n_alignments: usize) -> Vec<MergeGroup> {
   let mut seen: BTreeSet<Vec<GraphEdgeKey>> = BTreeSet::new();
   let mut groups = Vec::new();
 
@@ -122,7 +130,7 @@ fn find_merge_groups(index: &MutationIndex, n_partitions: usize) -> Vec<MergeGro
     if !seen.insert(group_edges.clone()) {
       continue;
     }
-    let (shared_subs, shared_indels) = shared_mutations_for_group(index, n_partitions, &group_edges);
+    let (shared_subs, shared_indels) = shared_mutations_for_group(index, n_partitions, n_alignments, &group_edges);
     let total_shared: usize =
       shared_subs.iter().map(|v| v.len()).sum::<usize>() + shared_indels.iter().map(|v| v.len()).sum::<usize>();
     if total_shared > 0 {
@@ -140,27 +148,28 @@ fn find_merge_groups(index: &MutationIndex, n_partitions: usize) -> Vec<MergeGro
 fn shared_mutations_for_group(
   index: &MutationIndex,
   n_partitions: usize,
+  n_alignments: usize,
   group: &[GraphEdgeKey],
 ) -> (Vec<Vec<Sub>>, Vec<Vec<InDel>>) {
   let mut shared_subs: Vec<Vec<Sub>> = vec![Vec::new(); n_partitions];
-  let mut shared_indels: Vec<Vec<InDel>> = vec![Vec::new(); n_partitions];
-  for ((pi, key), edges) in index {
+  let mut shared_indels: Vec<Vec<InDel>> = vec![Vec::new(); n_alignments];
+  for (key, edges) in index {
     if group.iter().all(|e| edges.contains(e)) {
       match key {
-        MutationKey::Sub(sub) => shared_subs[*pi].push(sub.clone()),
-        MutationKey::InDel(indel) => shared_indels[*pi].push(indel.clone()),
+        MutationKey::Sub(pi, sub) => shared_subs[*pi].push(sub.clone()),
+        MutationKey::InDel(ai, indel) => shared_indels[*ai].push(indel.clone()),
       }
     }
   }
   (shared_subs, shared_indels)
 }
 
-type MutationIndex = BTreeMap<(usize, MutationKey), Vec<GraphEdgeKey>>;
+type MutationIndex = BTreeMap<MutationKey, Vec<GraphEdgeKey>>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum MutationKey {
-  Sub(Sub),
-  InDel(InDel),
+  Sub(usize, Sub),
+  InDel(usize, InDel),
 }
 
 fn greedy_disjoint_group_matching(mut groups: Vec<MergeGroup>) -> Vec<MergeGroup> {
@@ -186,6 +195,7 @@ fn merge_sibling_group(
   graph: &mut Graph,
   names: &mut NodeNames,
   partitions: &mut [SparseReconstruction],
+  alignments: &[AlignmentGroup],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -196,33 +206,10 @@ fn merge_sibling_group(
     .map(|&ek| graph.get_target_node_key(ek))
     .collect::<Result<Vec<_>, _>>()?;
 
-  let per_edge_data: Vec<Vec<ChildEdgeData>> = partitions
-    .iter()
-    .enumerate()
-    .map(|(pi, SparseReconstruction { partition, .. })| {
-      let empty_subs: &[Sub] = &[];
-      let empty_indels: &[InDel] = &[];
-      group
-        .edges
-        .iter()
-        .map(|&ek| {
-          let edge = partition.obs_edges.get(&ek);
-          let all_subs = edge.map_or(empty_subs, |e| e.fitch_subs());
-          let all_indels = edge.map_or(empty_indels, |e| e.indels.as_slice());
-          let shared_subs = &group.shared_subs[pi];
-          let shared_indels = &group.shared_indels[pi];
-          let remaining_subs = iterator_difference(all_subs, shared_subs).cloned().collect_vec();
-          let remaining_indels = iterator_difference(all_indels, shared_indels.as_slice())
-            .cloned()
-            .collect_vec();
-          ChildEdgeData {
-            remaining_subs,
-            remaining_indels,
-          }
-        })
-        .collect()
-    })
-    .collect();
+  let Remaining {
+    subs: remaining_subs,
+    indels: remaining_indels,
+  } = remaining_mutations(partitions, alignments, group)?;
 
   let total_alignment_length: usize = partitions.iter().map(|p| p.partition.length).sum();
   let n_states = partitions[0].partition.alphabet.n_canonical();
@@ -237,10 +224,8 @@ fn merge_sibling_group(
   let new_edge_bl = jc_bl(group.total_shared);
   let child_bls: Vec<f64> = (0..group.edges.len())
     .map(|i| {
-      let remaining: usize = per_edge_data
-        .iter()
-        .map(|pi_data| pi_data[i].remaining_subs.len() + pi_data[i].remaining_indels.len())
-        .sum();
+      let remaining = remaining_subs.iter().map(|subs| subs[i].len()).sum::<usize>()
+        + remaining_indels.iter().map(|indels| indels[i].len()).sum::<usize>();
       jc_bl(remaining)
     })
     .collect();
@@ -274,16 +259,60 @@ fn merge_sibling_group(
 
     let parent_edge = partition.obs_edges.entry(new_parent_edge_key).or_default();
     parent_edge.set_fitch_subs(group.shared_subs[pi].clone());
-    parent_edge.indels = group.shared_indels[pi].clone();
 
     for (i, &new_ek) in new_child_edge_keys.iter().enumerate() {
       let child_edge = partition.obs_edges.entry(new_ek).or_default();
-      child_edge.set_fitch_subs(per_edge_data[pi][i].remaining_subs.clone());
-      child_edge.indels = per_edge_data[pi][i].remaining_indels.clone();
+      child_edge.set_fitch_subs(remaining_subs[pi][i].clone());
+    }
+  }
+  for (alignment, shared_indels, remaining_indels) in izip!(alignments, &group.shared_indels, &remaining_indels) {
+    store_edge_indels(alignment, partitions, new_parent_edge_key, shared_indels)?;
+    for (&new_ek, remaining_indels) in izip!(&new_child_edge_keys, remaining_indels) {
+      store_edge_indels(alignment, partitions, new_ek, remaining_indels)?;
     }
   }
 
   Ok(())
+}
+
+fn remaining_mutations(
+  partitions: &[SparseReconstruction],
+  alignments: &[AlignmentGroup],
+  group: &MergeGroup,
+) -> Result<Remaining, Report> {
+  let remaining_subs: Vec<Vec<Vec<Sub>>> = partitions
+    .iter()
+    .enumerate()
+    .map(|(pi, SparseReconstruction { partition, .. })| {
+      let empty_subs: &[Sub] = &[];
+      group
+        .edges
+        .iter()
+        .map(|&ek| {
+          let all_subs = partition.obs_edges.get(&ek).map_or(empty_subs, |e| e.fitch_subs());
+          iterator_difference(all_subs, &group.shared_subs[pi])
+            .cloned()
+            .collect_vec()
+        })
+        .collect()
+    })
+    .collect();
+  let remaining_indels: Vec<Vec<Vec<InDel>>> = izip!(alignments, &group.shared_indels)
+    .map(|(alignment, shared_indels)| {
+      group
+        .edges
+        .iter()
+        .map(|&ek| {
+          let all_indels = assembled_edge_indels(alignment, partitions, ek)?;
+          Ok(iterator_difference(all_indels, shared_indels.iter().cloned()).collect_vec())
+        })
+        .collect::<Result<Vec<_>, Report>>()
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+  Ok(Remaining {
+    subs: remaining_subs,
+    indels: remaining_indels,
+  })
 }
 
 struct MergeGroup {
@@ -293,7 +322,7 @@ struct MergeGroup {
   total_shared: usize,
 }
 
-struct ChildEdgeData {
-  remaining_subs: Vec<Sub>,
-  remaining_indels: Vec<InDel>,
+struct Remaining {
+  subs: Vec<Vec<Vec<Sub>>>,
+  indels: Vec<Vec<Vec<InDel>>>,
 }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 
+pub(crate) mod alignment_indels;
 pub(crate) mod backward;
 pub(crate) mod candidate_sites;
 pub(crate) mod forward;

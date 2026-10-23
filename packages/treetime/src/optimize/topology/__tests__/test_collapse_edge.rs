@@ -3,6 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::optimize::topology::collapse::collapse_edge;
   use crate::partition::marginal::reconstruction::SparseReconstruction;
+  use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs};
   use crate::seq::mutation::Sub;
@@ -75,7 +76,8 @@ mod tests {
     let i_node_key = find_node_key_by_name(&graph, &names, "I").unwrap();
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     assert_eq!(graph.get_nodes().count(), 3);
@@ -116,7 +118,8 @@ mod tests {
     let mut sparse: Vec<SparseReconstruction> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     assert!(
@@ -143,7 +146,8 @@ mod tests {
     let mut sparse: Vec<SparseReconstruction> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -173,7 +177,8 @@ mod tests {
     let mut sparse: Vec<SparseReconstruction> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -204,7 +209,8 @@ mod tests {
 
     let mut branch_lengths = branch_lengths;
     branch_lengths.insert(ia_key, None);
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -232,7 +238,8 @@ mod tests {
 
     let mut branch_lengths = branch_lengths;
     branch_lengths.insert(ri_key, None);
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     for edge in graph.get_edges() {
@@ -276,7 +283,8 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![recon]);
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     let p = &sparse[0].partition;
@@ -317,7 +325,8 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![recon]);
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     let p = &sparse[0].partition;
@@ -348,7 +357,8 @@ mod tests {
     let mut sparse: Vec<SparseReconstruction> = vec![];
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     assert!(graph.get_node(i_node_key).is_none());
@@ -388,7 +398,8 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![recon_a, recon_b]);
 
     let mut branch_lengths = branch_lengths;
-    collapse_edge(&mut graph, &mut sparse, ri_key, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    collapse_edge(&mut graph, &mut sparse, &groups, ri_key, &mut branch_lengths)?;
     graph.build()?;
 
     let p0 = &sparse[0].partition;

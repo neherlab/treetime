@@ -6,7 +6,9 @@ use crate::optimize::topology::hoist_reversions::{
 };
 use crate::optimize::topology::merge_shared_mutations::merge_single_polytomy;
 use crate::optimize::topology::polytomy_nodes::find_polytomy_nodes;
+use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
+use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
 use eyre::Report;
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
@@ -26,12 +28,13 @@ pub(crate) fn resolve_polytomies(
     return Ok(0);
   }
 
+  let groups = sparse_alignment_groups(sparse)?;
   let mut total_changed = 0;
   loop {
     let polytomy_keys = find_polytomy_nodes(graph);
     let mut round_changed = 0;
     for node_key in polytomy_keys {
-      if resolve_one(graph, names, sparse, node_key, topology_ops, branch_lengths)? {
+      if resolve_one(graph, names, sparse, &groups, node_key, topology_ops, branch_lengths)? {
         round_changed += 1;
       }
     }
@@ -52,6 +55,7 @@ fn resolve_one(
   graph: &mut Graph,
   names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
+  groups: &[AlignmentGroup],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -61,10 +65,10 @@ fn resolve_one(
   let mut any_changed = false;
   loop {
     let merged =
-      topology_ops.merge_siblings && merge_single_polytomy(graph, names, sparse, node_key, branch_lengths)? > 0;
-    let hoisted =
-      topology_ops.flip_parent_child && try_hoist_reverting_child(graph, names, sparse, node_key, branch_lengths)?;
-    let retired = retire_created_helpers(graph, sparse, &preexisting, branch_lengths)?;
+      topology_ops.merge_siblings && merge_single_polytomy(graph, names, sparse, groups, node_key, branch_lengths)? > 0;
+    let hoisted = topology_ops.flip_parent_child
+      && try_hoist_reverting_child(graph, names, sparse, groups, node_key, branch_lengths)?;
+    let retired = retire_created_helpers(graph, sparse, groups, &preexisting, branch_lengths)?;
 
     if !(merged || hoisted || retired) {
       break;
@@ -79,6 +83,7 @@ fn try_hoist_reverting_child(
   graph: &mut Graph,
   names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
+  groups: &[AlignmentGroup],
   node_key: GraphNodeKey,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -97,7 +102,15 @@ fn try_hoist_reverting_child(
   if let Some((root_key, sibling_edge_key)) = root_and_sibling {
     slide_bifurcating_root_for_child(sparse, root_key, parent_edge_key, sibling_edge_key, child_edge_key)?;
   }
-  hoist_reverting_child(graph, names, sparse, parent_edge_key, child_edge_key, branch_lengths)?;
+  hoist_reverting_child(
+    graph,
+    names,
+    sparse,
+    groups,
+    parent_edge_key,
+    child_edge_key,
+    branch_lengths,
+  )?;
   Ok(true)
 }
 
@@ -152,6 +165,7 @@ fn best_reverting_child(
 fn retire_created_helpers(
   graph: &mut Graph,
   sparse: &mut [SparseReconstruction],
+  groups: &[AlignmentGroup],
   preexisting: &BTreeSet<GraphNodeKey>,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
 ) -> Result<bool, Report> {
@@ -178,7 +192,7 @@ fn retire_created_helpers(
 
     match candidate {
       Some(edge_key) => {
-        collapse_edge(graph, sparse, edge_key, branch_lengths)?;
+        collapse_edge(graph, sparse, groups, edge_key, branch_lengths)?;
         retired = true;
       },
       None => break,

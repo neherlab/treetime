@@ -1,9 +1,12 @@
 use crate::gtr::gtr::GTR;
+use crate::partition::assembly::{AlignmentGroup, alignment_groups};
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
 };
+use crate::partition::marginal::sparse::alignment_indels::merge_sparse_edges;
+use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::resolve::PartitionLayout;
 use crate::partition::split::{PartitionData, SplitPartition};
 use crate::progress::LogSink;
@@ -110,6 +113,10 @@ impl PartitionSet {
     layouts_or_whole(self.iter().map(|partition| (partition.layout(), partition.length())))
   }
 
+  pub(crate) fn alignment_groups(&self) -> Result<Vec<AlignmentGroup>, Report> {
+    alignment_groups(self.iter().map(|partition| (partition.layout(), partition.length())))
+  }
+
   pub(crate) fn graph_log_lh(&self, graph: &Graph) -> Result<LogLh, Report> {
     self.iter().map(|partition| partition.graph_log_lh(graph)).sum()
   }
@@ -143,24 +150,22 @@ impl PartitionSet {
   pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
     Ok(match self {
       Self::Dense(partitions) => Self::Dense(partitions.into_iter().map(DenseReconstruction::reseeded).collect()),
-      Self::Sparse(partitions) => Self::Sparse(
-        partitions
-          .into_iter()
-          .map(|partition| partition.apply_reroot(changes))
-          .try_collect()?,
-      ),
+      Self::Sparse(partitions) => Self::Sparse(reroot_sparse(partitions, changes)?),
     })
   }
 
   pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
     Ok(match self {
       Self::Dense(partitions) => Self::Dense(partitions.into_iter().map(DenseReconstruction::reseeded).collect()),
-      Self::Sparse(partitions) => Self::Sparse(
-        partitions
-          .into_iter()
-          .map(|partition| partition.reconcile_topology(graph, merges))
-          .try_collect()?,
-      ),
+      Self::Sparse(mut partitions) => {
+        merge_sparse_edges(&mut partitions, merges)?;
+        Self::Sparse(
+          partitions
+            .into_iter()
+            .map(|partition| partition.reconcile_topology(graph, merges))
+            .try_collect()?,
+        )
+      },
     })
   }
 

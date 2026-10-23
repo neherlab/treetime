@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::optimize::topology::hoist_reversions::{hoist_reverting_child, slide_bifurcating_root_for_child};
+  use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
   use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
   use crate::seq::indel::InDel;
   use crate::seq::indel::InDelKind;
@@ -45,7 +46,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -78,7 +88,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -110,7 +129,16 @@ mod tests {
 
     let before = helpers::total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
     let after = helpers::total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 2);
@@ -149,7 +177,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let bl = |ek: GraphEdgeKey| branch_lengths[&ek].unwrap_or(0.0);
@@ -191,7 +228,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![p0, p1]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let g0 = &sparse[0].partition;
@@ -234,7 +280,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -272,7 +327,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -314,7 +378,16 @@ mod tests {
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, uv, va, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      uv,
+      va,
+      &mut branch_lengths,
+    )?;
 
     let h = Hoisted::locate(&graph, &names, "V", "A");
     let p = &sparse[0].partition;
@@ -384,7 +457,16 @@ mod tests {
     slide_bifurcating_root_for_child(&mut sparse, root_key, root_v, root_s, v_c1)?;
     let after_slide = helpers::total_subs(&graph, &sparse[0].partition);
     let mut branch_lengths = branch_lengths;
-    hoist_reverting_child(&mut graph, &mut names, &mut sparse, root_v, v_c1, &mut branch_lengths)?;
+    let groups = sparse_alignment_groups(&sparse)?;
+    hoist_reverting_child(
+      &mut graph,
+      &mut names,
+      &mut sparse,
+      &groups,
+      root_v,
+      v_c1,
+      &mut branch_lengths,
+    )?;
     let after_hoist = helpers::total_subs(&graph, &sparse[0].partition);
 
     assert_eq!(before, 2);
