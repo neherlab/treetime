@@ -46,7 +46,7 @@ Timetree `core` set of the suite, 10 tips per sample time, 240 sets per flavor, 
 >
 > - **Gaussian start below a signal threshold:** use the Gaussian-timetree rate when the regression is weak, for example when the slope is within its standard error of zero or the explained variance is below a bound, and the regression slope otherwise. Keeps the regression start, and its RMSE advantage, where the signal is clear
 > - **Gaussian start always:** as measured in the decision above, at the cost recorded there
-> - **Larger first-round rate window:** keep the start and let the first round move the rate by more than 2-fold when the probes keep rising, so a start too low by orders of magnitude recovers
+> - **Larger first-round rate window:** keep the start and let the first round move the rate by more than 2-fold when the probes keep rising, so a start too low by orders of magnitude recovers. Measured on the reproduction with `keep-opt-est`: a 10-fold cap, the full step and a cube-root parabola end at $4.6 \cdot 10^{-5}$, because $T_c$ fits the stretched tree and $\log Z$ under that prior peaks near the current rate ([kb/reports/timetree-rate-step-coordinate-and-guards.md](../reports/timetree-rate-step-coordinate-and-guards.md#far-off-start))
 > - **Reject the input:** return an input error that names the weak date signal when the start rate is implausible, as `NoPositiveRateRoot` does for the regression ([M-timetree-weak-signal-errors-differ-by-code-path.md](M-timetree-weak-signal-errors-differ-by-code-path.md))
 >
 > Evidence: the table and frequencies above; the RMSE cost of the Gaussian start in the decision above.
