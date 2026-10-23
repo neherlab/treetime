@@ -34,6 +34,7 @@ mod test_partition_plans;
 mod test_pipeline_partitions;
 mod test_pipeline_split_alignment;
 mod test_plan;
+mod test_prop_ancestral_gap_reconstruction;
 mod test_prop_marginal_dense_sparse_simulated;
 mod test_python_parity;
 mod test_root_sequence;
