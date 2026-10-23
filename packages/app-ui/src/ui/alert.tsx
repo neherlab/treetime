@@ -26,7 +26,15 @@ function Alert({
   role = "alert",
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
-  return <div data-slot="alert" role={role} className={cn(alertVariants({ variant }), className)} {...props} />;
+  return (
+    <div
+      data-slot="alert"
+      data-variant={variant ?? "default"}
+      role={role}
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    />
+  );
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {

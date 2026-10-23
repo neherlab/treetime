@@ -23,7 +23,7 @@ These are the rewrites the shadcn CLI applies when it installs a component:
 A component refreshed from the registry needs these changes again.
 
 - **All files**: exports and variants the app does not use are removed; `knip` reports any that become unused
-- **`alert.tsx`**: a `warning` variant with a warning-colored border, background and icon, for notices that let the run go on, and a `success` variant in the success colors. The `role` prop sets the role, `alert` by default; static notes such as docs callouts pass `note`, so screen readers do not announce them as live alerts
+- **`alert.tsx`**: a `warning` variant with a warning-colored border, background and icon, for notices that let the run go on, and a `success` variant in the success colors. The alert names its variant in `data-variant`, and the `role` prop sets the role, `alert` by default; static notes such as docs callouts pass `note`, so screen readers do not announce them as live alerts
 - **`card.tsx`**: the card has the theme corner radius, a border-colored ring and no shadow
 - **`accordion.tsx`**: the trigger text is bold, because Lato has no medium weight. The panel uses a 100 ms height transition instead of the keyframe animation, so a panel that mounts open appears without animation
 - **`chart.tsx`**: no chart config, generated style element or legend; charts take their colors from `runs/palette.ts`. The tooltip frame is exported for custom tooltips, and the tooltip marks each series with an SVG swatch instead of inline styles
