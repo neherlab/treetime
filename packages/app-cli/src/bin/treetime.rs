@@ -10,6 +10,13 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 use app_cli::run::run_cli;
 use ctor::ctor;
 use std::process::ExitCode;
+#[cfg(any(
+  all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
+  all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
+  all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
+  all(target_arch = "aarch64", target_os = "linux", target_env = "musl"),
+))]
+use tikv_jemalloc_sys as _;
 use treetime_utils::init::cpu::require_cpu_features;
 use treetime_utils::init::global::{install_panic_hook, stderr_has_colors};
 

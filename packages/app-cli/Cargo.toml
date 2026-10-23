@@ -56,6 +56,10 @@ strum = { workspace = true }
 textplots = { workspace = true }
 
 [target.'cfg(all(target_os = "linux", any(target_arch = "x86_64", target_arch = "aarch64")))'.dependencies]
+# jemalloc also replaces malloc and free of the C library, so the C code of the
+# binary (OpenBLAS, liblzma, libzstd, the C library itself) allocates through
+# it too, instead of the musl allocator or the glibc allocator
+tikv-jemalloc-sys = { workspace = true, features = ["override_allocator_on_supported_platforms"] }
 tikv-jemallocator = { workspace = true }
 
 [features]

@@ -15,6 +15,13 @@ use eyre::WrapErr;
 use log::{LevelFilter, warn};
 use std::io::{self, Write};
 use std::path::PathBuf;
+#[cfg(any(
+  all(target_arch = "x86_64", target_os = "linux", target_env = "gnu"),
+  all(target_arch = "x86_64", target_os = "linux", target_env = "musl"),
+  all(target_arch = "aarch64", target_os = "linux", target_env = "gnu"),
+  all(target_arch = "aarch64", target_os = "linux", target_env = "musl"),
+))]
+use tikv_jemalloc_sys as _;
 use tokio_util::sync::CancellationToken;
 use treetime_grid::MaxGridPoints;
 use treetime_utils::env::env_var_optional;
