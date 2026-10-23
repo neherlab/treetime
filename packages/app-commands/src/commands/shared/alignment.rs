@@ -30,9 +30,9 @@ use treetime_schema::schema_defaults;
 pub struct AlignmentArgs {
   /// Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.
   ///
-  /// Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries
-  /// can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear
-  /// at most once.
+  /// Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless
+  /// `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed
+  /// FASTA from standard input; `-` may appear at most once.
   #[cfg_attr(
     feature = "clap",
     clap(

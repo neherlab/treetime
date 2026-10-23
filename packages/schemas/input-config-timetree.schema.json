@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "alignment": {
-      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries\ncan split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear\nat most once.",
+      "description": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.\n\nEach `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless\n`--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed\nFASTA from standard input; `-` may appear at most once.",
       "type": "array",
       "items": {
         "type": "string"
@@ -330,7 +330,7 @@
       "x-cli-flag": "--model-params"
     },
     "partition_rates": {
-      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more\npartitions, all partitions share the branch lengths,\nand each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the\nrate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from\nits fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that\nthis mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all\npartitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
+      "description": "Relative substitution rates of the partitions\n\nEach `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more\npartitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for\nthe sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model\nfixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean\nweighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected\nsubstitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.\n\nThe setting applies only with two or more partitions.",
       "default": "estimate",
       "$ref": "#/$defs/PartitionRates",
       "x-unset": true,

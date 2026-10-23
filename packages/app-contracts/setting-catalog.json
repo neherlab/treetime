@@ -211,7 +211,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "partition",
@@ -2984,7 +2984,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "partition",
@@ -4290,7 +4290,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",
@@ -6291,7 +6291,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "partition",
@@ -7564,7 +7564,7 @@
           ],
           "conflicts": [],
           "help": "Aligned FASTA input, plain or compressed (`gz`, `bz2`, `xz`, `zst`); compression is detected by extension.",
-          "more": "Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). `--partition` entries can split a file into several partitions. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
+          "more": "Each `--alignment` file is numbered by its position in the list (1, 2, ...) and is one partition, unless `--partition` entries of `ancestral`, `optimize`, or `timetree` split it into several. Use `-` to read uncompressed FASTA from standard input; `-` may appear at most once."
         },
         {
           "key": "tree",

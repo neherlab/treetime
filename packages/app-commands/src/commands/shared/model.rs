@@ -221,12 +221,11 @@ pub struct PartitionRatesArgs {
   /// Relative substitution rates of the partitions
   ///
   /// Each `--alignment` file is one partition, or each `--partition` entry when there are entries. With two or more
-  /// partitions, all partitions share the branch lengths,
-  /// and each partition has one relative rate that scales them for the sites of that partition. `estimate` fits the
-  /// rate of each partition with the rest of its substitution model fixed (a partition with `--model infer` starts from
-  /// its fitted rate), then divides all rates by their mean weighted by the number of sites of each partition, so that
-  /// this mean is 1. The branch lengths are then expected substitutions per site, averaged over all sites of all
-  /// partitions. `equal` fixes the rate of every partition at 1.
+  /// partitions, all partitions share the branch lengths, and each partition has one relative rate that scales them for
+  /// the sites of that partition. `estimate` fits the rate of each partition with the rest of its substitution model
+  /// fixed (a partition with `--model infer` starts from its fitted rate), then divides all rates by their mean
+  /// weighted by the number of sites of each partition, so that this mean is 1. The branch lengths are then expected
+  /// substitutions per site, averaged over all sites of all partitions. `equal` fixes the rate of every partition at 1.
   ///
   /// The setting applies only with two or more partitions.
   #[cfg_attr(
