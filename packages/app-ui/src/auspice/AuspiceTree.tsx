@@ -19,6 +19,7 @@ import { ThemeProvider } from "styled-components";
 
 import type { FigureRuns } from "./downloads";
 import { AUSPICE_I18N } from "./i18n";
+import { useNotificationToasts } from "./notifications";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
@@ -58,6 +59,8 @@ export function AuspiceTree({
   entropy?: boolean | undefined;
 }) {
   const showEntropy = useAuspiceSelector(store, selectShowEntropy);
+
+  useNotificationToasts(store);
 
   return (
     <I18nextProvider i18n={AUSPICE_I18N}>

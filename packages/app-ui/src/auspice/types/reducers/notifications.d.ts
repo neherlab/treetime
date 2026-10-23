@@ -1,5 +1,7 @@
 import type { Reducer } from "redux";
 
-declare const reducer: Reducer<unknown>;
+import type { AuspiceNotificationsState } from "../../state";
+
+declare const reducer: Reducer<AuspiceNotificationsState>;
 
 export default reducer;
