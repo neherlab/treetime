@@ -61,14 +61,14 @@ mod tests {
     run_zika_prune(blocks.to_vec(), &split_out)?;
 
     let whole = auspice_mutations(&json_read_file(whole_out.join("prune.auspice.json"))?);
-    let [first, second] = [1, 2].map(|partition| {
+    let [first, second] = [1, 2].map(|alignment| {
       let auspice = auspice_mutations(&json_read_file(
-        split_out.join(format!("prune.{partition}.auspice.json")),
+        split_out.join(format!("prune.{alignment}.auspice.json")),
       )?);
-      let mat = mat_mutations(&json_read_file(split_out.join(format!("prune.{partition}.mat.json")))?)?;
+      let mat = mat_mutations(&json_read_file(split_out.join(format!("prune.{alignment}.mat.json")))?)?;
       eyre::ensure!(
         auspice == mat,
-        "Auspice and MAT mutations of partition {partition} differ"
+        "Auspice and MAT mutations of alignment {alignment} differ"
       );
       Ok::<_, Report>(auspice)
     });

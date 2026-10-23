@@ -281,7 +281,7 @@ impl OutputRequest {
   pub(crate) fn resolve(&self) -> Result<ResolvedOutputs, Report> {
     let request = OutputPlanRequest {
       command: self.command,
-      partition_count: NonZeroUsize::new(self.alignment_count).unwrap_or(NonZeroUsize::MIN),
+      alignment_count: NonZeroUsize::new(self.alignment_count).unwrap_or(NonZeroUsize::MIN),
       output_all: self.output_all.clone(),
       newick_annotations: self.newick_annotations.into(),
       selection: self.selection.clone(),

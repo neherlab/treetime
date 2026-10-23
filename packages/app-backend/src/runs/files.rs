@@ -1,4 +1,4 @@
-use crate::command::{OutputFile, OutputPartition};
+use crate::command::{OutputAlignment, OutputFile};
 use crate::runs::errors::{invalid, not_found};
 use app_output::output_plan::OutputSelection;
 use deser::Serialize;
@@ -38,7 +38,7 @@ pub fn list_run_files(out_dir: &Path, output_files: &[OutputFile]) -> Result<Vec
     files.push(RunFile {
       description: kind.map(OutputSelection::description).unwrap_or_default().to_owned(),
       kind,
-      partition: file.and_then(|file| file.partition.clone()),
+      alignment: file.and_then(|file| file.alignment.clone()),
       path: name,
       size,
     });
@@ -60,7 +60,7 @@ pub struct RunFile {
   /// What the file holds; empty for files the output plan does not name.
   pub description: String,
   /// Alignment file the output belongs to, for an output written once per alignment file.
-  pub partition: Option<OutputPartition>,
+  pub alignment: Option<OutputAlignment>,
 }
 
 pub fn resolve_run_file(out_dir: &Path, relative: &str) -> Result<PathBuf, Report> {

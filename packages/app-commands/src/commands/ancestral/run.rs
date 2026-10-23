@@ -4,7 +4,7 @@ use crate::commands::ancestral::aa_node_data::{
 use crate::commands::ancestral::args::{TreetimeAncestralArgs, ancestral_params};
 use crate::commands::shared::alignment::pair_alignment;
 use crate::commands::shared::ancestral_trees::{
-  AncestralOutputMaps, AncestralPartitionTrees, AncestralTrees, write_ancestral_trees,
+  AncestralAlignmentTrees, AncestralOutputMaps, AncestralTrees, write_ancestral_trees,
 };
 use crate::commands::shared::gtr_output::{partition_models, write_gtr_output};
 use crate::commands::shared::partition::log_partitions;
@@ -79,7 +79,7 @@ pub fn run_ancestral_reconstruction(
   let (sources, descs): (Vec<SequenceSource>, BTreeMap<usize, _>) = sources
     .into_iter()
     .zip(1..)
-    .map(|(AlignmentSource { source, descs, .. }, partition)| (source, (partition, descs)))
+    .map(|(AlignmentSource { source, descs, .. }, alignment)| (source, (alignment, descs)))
     .unzip();
   let sequences = SequenceInput {
     alignments: sources,
@@ -157,8 +157,8 @@ pub fn run_ancestral_reconstruction(
     amino_acids: aa_result.as_ref(),
     comment_positions: args.positions,
   };
-  let partitions = izip!(&results, maps)
-    .map(|(result, maps)| AncestralPartitionTrees {
+  let alignments = izip!(&results, maps)
+    .map(|(result, maps)| AncestralAlignmentTrees {
       number: result.number,
       alphabet: &result.alphabet,
       maps,
@@ -172,7 +172,7 @@ pub fn run_ancestral_reconstruction(
         }),
     })
     .collect();
-  write_ancestral_trees(&trees, partitions, &resolved, CommandKind::Ancestral, log)?;
+  write_ancestral_trees(&trees, alignments, &resolved, CommandKind::Ancestral, log)?;
 
   stages.report("Done", 1.0, "");
   Ok(())
@@ -237,14 +237,14 @@ impl AncestralSeqSink {
     descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
     ambiguity: &AmbiguityOutputs,
   ) -> Result<Self, Report> {
-    let fasta_paths = resolved.partition_paths(OutputSelection::Sequences);
+    let fasta_paths = resolved.alignment_paths(OutputSelection::Sequences);
     let fasta = (!fasta_paths.is_empty())
       .then(|| NucFastaWriters::create(fasta_paths, descs))
       .transpose()?;
     let node_sequences: BTreeMap<_, _> = resolved
-      .partition_paths(OutputSelection::NodeData)
+      .alignment_paths(OutputSelection::NodeData)
       .into_keys()
-      .map(|partition| (partition, BTreeMap::new()))
+      .map(|alignment| (alignment, BTreeMap::new()))
       .collect();
     Ok(Self {
       fasta_ambiguity: fasta
@@ -261,16 +261,16 @@ impl AncestralSeqSink {
 
 impl SeqSink for AncestralSeqSink {
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
-    let SeqTrack::Nuc(partition) = item.track else {
+    let SeqTrack::Nuc(alignment) = item.track else {
       return make_internal_error!("Nucleotide reconstructed FASTA sink received an amino-acid track");
     };
     if let (Some(fasta), true) = (self.fasta.as_mut(), item.emitted) {
       match self.fasta_ambiguity {
-        Some(_) => fasta.write(partition, item.key, item.name, &item.seq_with_ambiguity())?,
-        None => fasta.write(partition, item.key, item.name, item.seq)?,
+        Some(_) => fasta.write(alignment, item.key, item.name, &item.seq_with_ambiguity())?,
+        None => fasta.write(alignment, item.key, item.name, item.seq)?,
       }
     }
-    if let Some(node_sequences) = self.node_sequences.get_mut(&partition) {
+    if let Some(node_sequences) = self.node_sequences.get_mut(&alignment) {
       let seq = match self.node_data_ambiguity {
         Some(_) => item.seq_with_ambiguity().into_owned(),
         None => item.seq.clone(),

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::sparse;
-  use crate::command::OutputPartition;
+  use crate::command::OutputAlignment;
   use crate::json_float::JsonFloat;
   use crate::results::auspice::run_auspice;
   use crate::results::clades::{CladeRequest, clade_in_runs};
@@ -56,7 +56,11 @@ mod tests {
         .output_files
         .iter()
         .find(|file| {
-          file.kind == OutputSelection::Auspice && file.partition.as_ref().is_some_and(|p| p.number == number)
+          file.kind == OutputSelection::Auspice
+            && file
+              .alignment
+              .as_ref()
+              .is_some_and(|alignment| alignment.number == number)
         })
         .expect("the run wrote one Auspice file per alignment file");
       ResultTree::from_auspice(&json_read_file(out_dir.join(&file.path))?)
@@ -67,24 +71,21 @@ mod tests {
       .files(&id)?
       .into_iter()
       .filter(|file| file.kind == Some(OutputSelection::Auspice))
-      .map(|file| (file.path, file.partition))
+      .map(|file| (file.path, file.alignment))
       .collect::<Vec<_>>();
 
     assert_eq!(
       vec![
         (
           o!("ancestral.1.auspice.json"),
-          Some(OutputPartition {
+          Some(OutputAlignment {
             number: 1,
-            alignment: second.clone()
+            path: second.clone()
           })
         ),
         (
           o!("ancestral.2.auspice.json"),
-          Some(OutputPartition {
-            number: 2,
-            alignment: first
-          })
+          Some(OutputAlignment { number: 2, path: first })
         ),
       ],
       listed_auspice
@@ -94,16 +95,16 @@ mod tests {
         true,
         Some(auspice_of(1)?),
         auspice_of(1)?,
-        Some(OutputPartition {
+        Some(OutputAlignment {
           number: 1,
-          alignment: second
+          path: second
         }),
       ),
       (
         auspice_of(1)? != auspice_of(2)?,
         results.tree,
         shown,
-        results.tree_partition,
+        results.tree_alignment,
       )
     );
     Ok(())

@@ -1,4 +1,4 @@
-use crate::command::{OutputFile, OutputPartition};
+use crate::command::{OutputAlignment, OutputFile};
 use crate::job::JobId;
 use crate::results::citation::{Citation, citation};
 use crate::results::clock::{ClockResults, clock_results};
@@ -86,7 +86,7 @@ pub fn results_of_record(record: &RunRecord, out_dir: &Path) -> Result<RunResult
   };
   Ok(RunResults {
     tree,
-    tree_partition: tree_partition(&record.output_files),
+    tree_alignment: tree_alignment(&record.output_files),
     models: run_models(gtr.as_ref()),
     results,
     citation: citation(),
@@ -102,7 +102,7 @@ pub struct RunResults {
   /// Tree of the run's Auspice file; absent when the run wrote none.
   pub tree: Option<ResultTree>,
   /// Alignment file whose Auspice file gives the tree, when the run has several alignment files.
-  pub tree_partition: Option<OutputPartition>,
+  pub tree_alignment: Option<OutputAlignment>,
   /// Substitution models of the run's model document, in its order; empty when the run wrote none.
   pub models: Vec<RunModel>,
   /// Results specific to the command of the run.
@@ -127,13 +127,13 @@ pub enum CommandResults {
   Prune(TreeSummary),
 }
 
-fn tree_partition(output_files: &[OutputFile]) -> Option<OutputPartition> {
+fn tree_alignment(output_files: &[OutputFile]) -> Option<OutputAlignment> {
   let several = output_files
     .iter()
-    .any(|file| file.partition.as_ref().is_some_and(|partition| partition.number > 1));
+    .any(|file| file.alignment.as_ref().is_some_and(|alignment| alignment.number > 1));
   shown_auspice(output_files)
     .filter(|_| several)
-    .and_then(|file| file.partition.clone())
+    .and_then(|file| file.alignment.clone())
 }
 
 fn tree_summary(tree: Option<&ResultTree>, node_data: Option<&AugurNodeDataJsonRefine>) -> TreeSummary {

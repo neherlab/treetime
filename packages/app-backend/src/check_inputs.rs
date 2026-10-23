@@ -85,10 +85,10 @@ pub enum InputNeed {
 pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> {
   let request = InputSettings::of(request.command, &request.config)?;
   let mut facts = InputFacts::default();
-  let mut problem = |input: InputKind, partition: Option<usize>, report: &Report| {
+  let mut problem = |input: InputKind, alignment: Option<usize>, report: &Report| {
     facts.problems.push(InputProblem {
       input,
-      partition,
+      alignment,
       message: format!("{report:#}"),
     });
   };
@@ -109,11 +109,11 @@ pub fn check_inputs(request: &CheckInputsRequest) -> Result<InputFacts, Report> 
     .iter()
     .enumerate()
     .filter_map(|(index, path)| {
-      let partition = index + 1;
-      match read_sequence_names(path, partition) {
+      let number = index + 1;
+      match read_sequence_names(path, number) {
         Ok(read) => Some(read),
         Err(report) => {
-          problem(InputKind::Alignment, Some(partition), &report);
+          problem(InputKind::Alignment, Some(number), &report);
           None
         },
       }
@@ -239,8 +239,8 @@ pub struct InputFacts {
 pub struct InputProblem {
   /// Input the problem concerns.
   pub input: InputKind,
-  /// Partition number of the alignment file the problem concerns, for an alignment problem.
-  pub partition: Option<usize>,
+  /// Number of the alignment file the problem concerns, for an alignment problem: its position in the alignment setting, from 1.
+  pub alignment: Option<usize>,
   /// The error, with its causes.
   pub message: String,
 }
@@ -332,7 +332,7 @@ pub struct TreeFacts {
   pub duplicate_node_names: Vec<String>,
 }
 
-fn read_sequence_names(path: &Path, partition: usize) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
+fn read_sequence_names(path: &Path, number: usize) -> Result<(AlignmentFacts, BTreeSet<String>), Report> {
   let records = fasta_read_file(path, &Alphabet::default())?;
   let names = records.iter().map(|record| record.seq_name.clone()).collect_vec();
   let lengths = records
@@ -341,7 +341,7 @@ fn read_sequence_names(path: &Path, partition: usize) -> Result<(AlignmentFacts,
     .map(|record| record.seq.len())
     .collect_vec();
   let facts = AlignmentFacts {
-    partition,
+    number,
     path: path.to_path_buf(),
     sequences: records.len(),
     min_length: lengths.iter().copied().min().unwrap_or(0),
@@ -357,8 +357,8 @@ fn read_sequence_names(path: &Path, partition: usize) -> Result<(AlignmentFacts,
 #[deser(skip_serializing_optionals)]
 #[schemars(transform = skip_serializing_optionals)]
 pub struct AlignmentFacts {
-  /// Partition number of the file: its position in the alignment setting, from 1.
-  pub partition: usize,
+  /// Alignment number of the file: its position in the alignment setting, from 1.
+  pub number: usize,
   /// Path of the file, as the alignment setting gives it.
   pub path: PathBuf,
   /// Number of sequences.

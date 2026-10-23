@@ -31,7 +31,7 @@ mod tests {
   #[case::parent_folder(        (PathRole::InputTemplate, "aa/{cds}.fasta"),  "aa/sub/../S.fasta",    Some("can name"))]
   #[case::parent_in_input(      (PathRole::Input,         "aa/x/../S.fasta"), "aa/S.fasta",           Some("names"))]
   #[case::other_extension(      (PathRole::InputTemplate, "aa/{cds}.fasta"),  "aa/S.fasta.xz",        None)]
-  #[case::partition_output(     (PathRole::Input,         "seq.2.fasta"),     "seq.{alignment}.fasta", Some("can name"))]
+  #[case::alignment_output(     (PathRole::Input,         "seq.2.fasta"),     "seq.{alignment}.fasta", Some("can name"))]
   #[case::literal_braces(       (PathRole::Input,         "aa/{cds}.fasta"),  "aa/S.fasta",           None)]
   #[case::standard_streams(     (PathRole::Input,         "-"),               "-",                    None)]
   #[case::standard_devices(     (PathRole::Input,         "/dev/stdin"),      "/dev/stdout",          None)]

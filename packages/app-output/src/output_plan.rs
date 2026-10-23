@@ -22,7 +22,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   let command = request.command;
   let settings = request.settings;
   let stem = command.stem();
-  let partitioned = request.partition_count.get() > 1;
+  let per_alignment = request.alignment_count.get() > 1;
 
   let mut tree_outputs: BTreeMap<TreeWriteKind, PathBuf> = BTreeMap::new();
   let mut non_tree_outputs: BTreeMap<OutputSelection, PlannedFile> = BTreeMap::new();
@@ -65,13 +65,13 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
           continue;
         }
         if let Some(kind) = variant.to_tree_write_kind(request.newick_annotations) {
-          let stem = default_stem(stem, partitioned && command.is_per_partition_tree(kind));
+          let stem = default_stem(stem, per_alignment && command.is_per_alignment_tree(kind));
           tree_outputs
             .entry(kind)
             .or_insert_with(|| dir.join(format!("{stem}{}", variant.extension())));
         }
       } else {
-        let stem = default_stem(stem, partitioned && command.is_per_partition(variant));
+        let stem = default_stem(stem, per_alignment && command.is_per_alignment(variant));
         non_tree_outputs.entry(variant).or_insert_with(|| {
           PlannedFile::new(
             dir.join(format!("{stem}{}", variant.extension())),
@@ -96,7 +96,7 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
     return Err(Report::new(MissingOutputs::NoOutputs));
   }
 
-  let resolved = expand_partitions(command, request.partition_count, tree_outputs, non_tree_outputs)?;
+  let resolved = expand_alignments(command, request.alignment_count, tree_outputs, non_tree_outputs)?;
   for planned in resolved.planned_paths() {
     planned.selection.file_format().check(planned.selection, planned.path)?;
   }
@@ -109,44 +109,44 @@ pub fn plan(request: &OutputPlanRequest) -> Result<ResolvedOutputs, Report> {
   Ok(resolved)
 }
 
-fn expand_partitions(
+fn expand_alignments(
   command: CommandKind,
-  partition_count: NonZeroUsize,
+  alignment_count: NonZeroUsize,
   tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
   non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
 ) -> Result<ResolvedOutputs, Report> {
-  let partitions = (1..=partition_count.get())
-    .map(|partition| partition.to_string())
+  let alignments = (1..=alignment_count.get())
+    .map(|alignment| alignment.to_string())
     .collect_vec();
   let mut resolved = ResolvedOutputs {
-    partition_count,
+    alignment_count,
     tree_outputs: BTreeMap::new(),
     non_tree_outputs: BTreeMap::new(),
-    tree_outputs_by_partition: BTreeMap::new(),
-    non_tree_outputs_by_partition: BTreeMap::new(),
+    tree_outputs_by_alignment: BTreeMap::new(),
+    non_tree_outputs_by_alignment: BTreeMap::new(),
   };
   for (kind, path) in tree_outputs {
     let label = tree_write_kind_selection(kind).flag_name();
-    if command.is_per_partition_tree(kind)
-      || (command.reads_alignments() && PathPlaceholder::Partition.is_in_file_name(&path))
+    if command.is_per_alignment_tree(kind)
+      || (command.reads_alignments() && PathPlaceholder::Alignment.is_in_file_name(&path))
     {
-      let paths = expand_path_template(label, &path, PathPlaceholder::Partition, &partitions)?;
-      resolved.tree_outputs_by_partition.insert(kind, paths);
+      let paths = expand_path_template(label, &path, PathPlaceholder::Alignment, &alignments)?;
+      resolved.tree_outputs_by_alignment.insert(kind, paths);
     } else {
-      ensure_no_partition_placeholder(label, &path)?;
+      ensure_no_alignment_placeholder(label, &path)?;
       resolved.tree_outputs.insert(kind, path);
     }
   }
   for (selection, file) in non_tree_outputs {
     let label = selection.flag_name();
-    if command.is_per_partition(selection) {
-      let files = expand_path_template(label, &file.path, PathPlaceholder::Partition, &partitions)?
+    if command.is_per_alignment(selection) {
+      let files = expand_path_template(label, &file.path, PathPlaceholder::Alignment, &alignments)?
         .into_iter()
         .map(|path| PlannedFile::new(path, file.requested, file.condition))
         .collect();
-      resolved.non_tree_outputs_by_partition.insert(selection, files);
+      resolved.non_tree_outputs_by_alignment.insert(selection, files);
     } else {
-      ensure_no_partition_placeholder(label, &file.path)?;
+      ensure_no_alignment_placeholder(label, &file.path)?;
       resolved.non_tree_outputs.insert(selection, file);
     }
   }
@@ -185,18 +185,18 @@ pub fn expand_path_template(
     .collect()
 }
 
-fn ensure_no_partition_placeholder(label: &str, path: &Path) -> Result<(), Report> {
-  if PathPlaceholder::Partition.is_in_file_name(path) {
+fn ensure_no_alignment_placeholder(label: &str, path: &Path) -> Result<(), Report> {
+  if PathPlaceholder::Alignment.is_in_file_name(path) {
     return make_error!(
       "{label} is written once per run, so its file name cannot contain {}",
-      PathPlaceholder::Partition.quoted_tokens()
+      PathPlaceholder::Alignment.quoted_tokens()
     );
   }
   Ok(())
 }
 
-fn default_stem(stem: &str, per_partition: bool) -> Cow<'_, str> {
-  match (per_partition, PathPlaceholder::Partition.tokens()) {
+fn default_stem(stem: &str, per_alignment: bool) -> Cow<'_, str> {
+  match (per_alignment, PathPlaceholder::Alignment.tokens()) {
     (true, [token, ..]) => Cow::Owned(format!("{stem}.{token}")),
     _ => Cow::Borrowed(stem),
   }
@@ -204,14 +204,14 @@ fn default_stem(stem: &str, per_partition: bool) -> Cow<'_, str> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PathPlaceholder {
-  Partition,
+  Alignment,
   Cds,
 }
 
 impl PathPlaceholder {
   pub const fn tokens(self) -> &'static [&'static str] {
     match self {
-      Self::Partition => &["{alignment}"],
+      Self::Alignment => &["{alignment}"],
       Self::Cds => &["{cds}", "%GENE"],
     }
   }
@@ -244,14 +244,14 @@ impl PathPlaceholder {
 
   const fn noun(self) -> &'static str {
     match self {
-      Self::Partition => "alignment file",
+      Self::Alignment => "alignment file",
       Self::Cds => "CDS",
     }
   }
 
   const fn several_values_reason(self) -> &'static str {
     match self {
-      Self::Partition => "the run has several alignment files",
+      Self::Alignment => "the run has several alignment files",
       Self::Cds => "reconstructing several CDSes",
     }
   }
@@ -260,7 +260,7 @@ impl PathPlaceholder {
 pub struct OutputPlanRequest {
   pub command: CommandKind,
 
-  pub partition_count: NonZeroUsize,
+  pub alignment_count: NonZeroUsize,
 
   pub output_all: Option<PathBuf>,
 
@@ -286,11 +286,11 @@ pub enum MissingOutputs {
 }
 
 pub struct ResolvedOutputs {
-  pub partition_count: NonZeroUsize,
+  pub alignment_count: NonZeroUsize,
   pub tree_outputs: BTreeMap<TreeWriteKind, PathBuf>,
   pub non_tree_outputs: BTreeMap<OutputSelection, PlannedFile>,
-  pub tree_outputs_by_partition: BTreeMap<TreeWriteKind, Vec<PathBuf>>,
-  pub non_tree_outputs_by_partition: BTreeMap<OutputSelection, Vec<PlannedFile>>,
+  pub tree_outputs_by_alignment: BTreeMap<TreeWriteKind, Vec<PathBuf>>,
+  pub non_tree_outputs_by_alignment: BTreeMap<OutputSelection, Vec<PlannedFile>>,
 }
 
 impl ResolvedOutputs {
@@ -305,7 +305,7 @@ impl ResolvedOutputs {
       .map(|(&selection, file)| (selection, file.condition))
       .chain(
         self
-          .non_tree_outputs_by_partition
+          .non_tree_outputs_by_alignment
           .iter()
           .flat_map(|(&selection, files)| files.iter().map(move |file| (selection, file.condition))),
       )
@@ -320,7 +320,7 @@ impl ResolvedOutputs {
       .map(|(&selection, file)| (selection, file))
       .chain(
         self
-          .non_tree_outputs_by_partition
+          .non_tree_outputs_by_alignment
           .iter_mut()
           .flat_map(|(&selection, files)| files.iter_mut().map(move |file| (selection, file))),
       )
@@ -343,7 +343,7 @@ impl ResolvedOutputs {
     }
     for selection in skipped {
       self.non_tree_outputs.remove(&selection);
-      self.non_tree_outputs_by_partition.remove(&selection);
+      self.non_tree_outputs_by_alignment.remove(&selection);
     }
     Ok(())
   }
@@ -362,44 +362,44 @@ impl ResolvedOutputs {
     by_selection
   }
 
-  pub fn partitions(&self) -> RangeInclusive<usize> {
-    1..=self.partition_count.get()
+  pub fn alignments(&self) -> RangeInclusive<usize> {
+    1..=self.alignment_count.get()
   }
 
   pub fn path(&self, selection: OutputSelection) -> Option<&Path> {
     self.non_tree_outputs.get(&selection).map(|file| file.path.as_path())
   }
 
-  pub fn partition_files(&self, selection: OutputSelection) -> &[PlannedFile] {
+  pub fn alignment_files(&self, selection: OutputSelection) -> &[PlannedFile] {
     self
-      .non_tree_outputs_by_partition
+      .non_tree_outputs_by_alignment
       .get(&selection)
       .map_or(&[], Vec::as_slice)
   }
 
-  pub fn partition_paths(&self, selection: OutputSelection) -> BTreeMap<usize, PathBuf> {
+  pub fn alignment_paths(&self, selection: OutputSelection) -> BTreeMap<usize, PathBuf> {
     self
-      .partition_files(selection)
+      .alignment_files(selection)
       .iter()
       .zip(1..)
-      .map(|(file, partition)| (partition, file.path.clone()))
+      .map(|(file, alignment)| (alignment, file.path.clone()))
       .collect()
   }
 
-  pub fn partition_path(&self, selection: OutputSelection, partition: usize) -> Option<&Path> {
-    partition_entry(self.partition_files(selection), partition).map(|file| file.path.as_path())
+  pub fn alignment_path(&self, selection: OutputSelection, alignment: usize) -> Option<&Path> {
+    alignment_entry(self.alignment_files(selection), alignment).map(|file| file.path.as_path())
   }
 
-  pub fn tree_partition_path(&self, kind: TreeWriteKind, partition: usize) -> Option<&Path> {
-    let paths = self.tree_outputs_by_partition.get(&kind).map_or(&[][..], Vec::as_slice);
-    partition_entry(paths, partition).map(PathBuf::as_path)
+  pub fn tree_alignment_path(&self, kind: TreeWriteKind, alignment: usize) -> Option<&Path> {
+    let paths = self.tree_outputs_by_alignment.get(&kind).map_or(&[][..], Vec::as_slice);
+    alignment_entry(paths, alignment).map(PathBuf::as_path)
   }
 
-  pub fn partition_tree_outputs(&self, partition: usize) -> BTreeMap<TreeWriteKind, PathBuf> {
+  pub fn alignment_tree_outputs(&self, alignment: usize) -> BTreeMap<TreeWriteKind, PathBuf> {
     self
-      .tree_outputs_by_partition
+      .tree_outputs_by_alignment
       .keys()
-      .filter_map(|&kind| Some((kind, self.tree_partition_path(kind, partition)?.to_path_buf())))
+      .filter_map(|&kind| Some((kind, self.tree_alignment_path(kind, alignment)?.to_path_buf())))
       .collect()
   }
 
@@ -407,7 +407,7 @@ impl ResolvedOutputs {
     self
       .tree_outputs
       .keys()
-      .chain(self.tree_outputs_by_partition.keys())
+      .chain(self.tree_outputs_by_alignment.keys())
       .copied()
   }
 
@@ -443,17 +443,19 @@ impl ResolvedOutputs {
       .non_tree_outputs
       .iter()
       .map(|(selection, file)| PlannedPath::run(*selection, &file.path));
-    let partition_trees = self.tree_outputs_by_partition.iter().flat_map(|(kind, paths)| {
-      PlannedPath::partitions(tree_write_kind_selection(*kind), paths.iter().map(PathBuf::as_path))
+    let alignment_trees = self.tree_outputs_by_alignment.iter().flat_map(|(kind, paths)| {
+      PlannedPath::per_alignment(tree_write_kind_selection(*kind), paths.iter().map(PathBuf::as_path))
     });
-    let partition_files = self
-      .non_tree_outputs_by_partition
+    let alignment_files = self
+      .non_tree_outputs_by_alignment
       .iter()
-      .flat_map(|(selection, files)| PlannedPath::partitions(*selection, files.iter().map(|file| file.path.as_path())));
+      .flat_map(|(selection, files)| {
+        PlannedPath::per_alignment(*selection, files.iter().map(|file| file.path.as_path()))
+      });
     run_trees
       .chain(run_files)
-      .chain(partition_trees)
-      .chain(partition_files)
+      .chain(alignment_trees)
+      .chain(alignment_files)
       .collect()
   }
 }
@@ -473,23 +475,23 @@ impl<'a> PlannedPath<'a> {
     }
   }
 
-  fn partitions(selection: OutputSelection, paths: impl ExactSizeIterator<Item = &'a Path>) -> Vec<Self> {
+  fn per_alignment(selection: OutputSelection, paths: impl ExactSizeIterator<Item = &'a Path>) -> Vec<Self> {
     if paths.len() == 1 {
       return paths.map(|path| Self::run(selection, path)).collect();
     }
     paths
       .zip(1..)
-      .map(|(path, partition)| Self {
+      .map(|(path, alignment)| Self {
         selection,
-        label: Cow::Owned(format!("{} for alignment {partition}", selection.flag_name())),
+        label: Cow::Owned(format!("{} for alignment {alignment}", selection.flag_name())),
         path,
       })
       .collect()
   }
 }
 
-fn partition_entry<T>(entries: &[T], partition: usize) -> Option<&T> {
-  entries.get(partition.checked_sub(1)?)
+fn alignment_entry<T>(entries: &[T], alignment: usize) -> Option<&T> {
+  entries.get(alignment.checked_sub(1)?)
 }
 
 pub fn output_unavailable(
@@ -729,7 +731,7 @@ pub enum TreeWriteKind {
 }
 
 impl TreeWriteKind {
-  pub fn is_per_partition(self) -> bool {
+  pub fn is_per_alignment(self) -> bool {
     match self {
       Self::Nwk(annotations) => annotations != NwkStyle::Plain,
       Self::Nexus | Self::Auspice | Self::MatPb | Self::MatJson => true,

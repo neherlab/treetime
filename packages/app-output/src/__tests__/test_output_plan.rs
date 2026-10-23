@@ -190,13 +190,8 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_one_partition_keeps_default_names() -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
-      1,
-      Some("out"),
-      btreemap! {},
-      btreemap! {},
-    ))?;
+  fn test_output_plan_one_alignment_keeps_default_names() -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(1, Some("out"), btreemap! {}, btreemap! {}))?;
 
     let expected = btreemap! {
       OutputSelection::Nwk => vec![PathBuf::from("out/ancestral.nwk")],
@@ -212,13 +207,8 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_two_partitions_number_default_names_after_the_stem() -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
-      2,
-      Some("out"),
-      btreemap! {},
-      btreemap! {},
-    ))?;
+  fn test_output_plan_two_alignments_number_default_names_after_the_stem() -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(2, Some("out"), btreemap! {}, btreemap! {}))?;
 
     let expected = btreemap! {
       OutputSelection::Nwk => vec![PathBuf::from("out/ancestral.nwk")],
@@ -243,19 +233,14 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_partition_lookups_return_the_path_of_each_partition() -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
-      2,
-      Some("out"),
-      btreemap! {},
-      btreemap! {},
-    ))?;
+  fn test_output_plan_alignment_lookups_return_the_path_of_each_alignment() -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(2, Some("out"), btreemap! {}, btreemap! {}))?;
 
     let actual = (
-      [1, 2, 3].map(|partition| resolved.partition_path(OutputSelection::Sequences, partition)),
-      [0, 2].map(|partition| resolved.tree_partition_path(TreeWriteKind::Nexus, partition)),
-      resolved.tree_partition_path(TreeWriteKind::Nwk(NwkStyle::Plain), 1),
-      resolved.partition_path(OutputSelection::Model, 1),
+      [1, 2, 3].map(|alignment| resolved.alignment_path(OutputSelection::Sequences, alignment)),
+      [0, 2].map(|alignment| resolved.tree_alignment_path(TreeWriteKind::Nexus, alignment)),
+      resolved.tree_alignment_path(TreeWriteKind::Nwk(NwkStyle::Plain), 1),
+      resolved.alignment_path(OutputSelection::Model, 1),
     );
 
     let expected = (
@@ -274,12 +259,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::one_partition( 1)]
-  #[case::two_partitions(2)]
+  #[case::one_alignment( 1)]
+  #[case::two_alignments(2)]
   #[trace]
-  fn test_output_plan_per_partition_outputs_have_no_run_path(#[case] partition_count: usize) -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
-      partition_count,
+  fn test_output_plan_per_alignment_outputs_have_no_run_path(#[case] alignment_count: usize) -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(
+      alignment_count,
       Some("out"),
       btreemap! {},
       btreemap! {},
@@ -290,7 +275,7 @@ mod tests {
       resolved.path(OutputSelection::NodeData),
       resolved.path(OutputSelection::Model),
       resolved.tree_outputs.keys().copied().collect_vec(),
-      resolved.partition_tree_outputs(partition_count).into_keys().collect_vec(),
+      resolved.alignment_tree_outputs(alignment_count).into_keys().collect_vec(),
     );
 
     let expected = (
@@ -306,7 +291,7 @@ mod tests {
 
   #[test]
   fn test_output_plan_trees_of_commands_without_alignments_are_written_once() -> Result<(), Report> {
-    let mut request = helpers::partitioned_request(1, Some("out"), btreemap! {}, btreemap! {});
+    let mut request = helpers::alignments_request(1, Some("out"), btreemap! {}, btreemap! {});
     request.command = CommandKind::Mugration;
     request.selection = vec![
       OutputSelection::Nwk,
@@ -329,7 +314,7 @@ mod tests {
     );
     let actual = (
       resolved.tree_outputs.keys().copied().collect_vec(),
-      resolved.tree_outputs_by_partition.is_empty(),
+      resolved.tree_outputs_by_alignment.is_empty(),
     );
     assert_eq!(expected, actual);
     Ok(())
@@ -337,7 +322,7 @@ mod tests {
 
   #[test]
   fn test_output_plan_tree_of_a_command_without_alignments_rejects_the_placeholder() {
-    let mut request = helpers::partitioned_request(
+    let mut request = helpers::alignments_request(
       1,
       None,
       btreemap! { OutputSelection::Auspice => PathBuf::from("tree.{alignment}.json") },
@@ -352,8 +337,8 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_explicit_paths_expand_the_partition_placeholder() -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
+  fn test_output_plan_explicit_paths_expand_the_alignment_placeholder() -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(
       2,
       None,
       btreemap! {
@@ -386,8 +371,8 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_one_partition_expands_the_placeholder_to_one() -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
+  fn test_output_plan_one_alignment_expands_the_placeholder_to_one() -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(
       1,
       None,
       btreemap! {},
@@ -396,7 +381,7 @@ mod tests {
 
     assert_eq!(
       Some(Path::new("seq.1.fasta")),
-      resolved.partition_path(OutputSelection::Sequences, 1)
+      resolved.alignment_path(OutputSelection::Sequences, 1)
     );
     Ok(())
   }
@@ -408,13 +393,13 @@ mod tests {
   #[case::stdout(  OutputSelection::Sequences, "-",            "--output-sequences")]
   #[case::folder(  OutputSelection::Sequences, "{alignment}/seq.fasta", "--output-sequences")]
   #[trace]
-  fn test_output_plan_two_partitions_need_the_placeholder_in_explicit_paths(
+  fn test_output_plan_two_alignments_need_the_placeholder_in_explicit_paths(
     #[case] selection: OutputSelection,
     #[case] path: &str,
     #[case] flag: &str,
   ) {
     assert_error!(
-      plan(&helpers::partitioned_request(2, None, btreemap! {}, btreemap! { selection => PathBuf::from(path) })),
+      plan(&helpers::alignments_request(2, None, btreemap! {}, btreemap! { selection => PathBuf::from(path) })),
       format!(
         "{flag} needs the placeholder '{{alignment}}' in its file name when the run has several \
          alignment files, otherwise the output of each alignment file overwrites the same file"
@@ -428,13 +413,13 @@ mod tests {
   #[case::newick_beast( OutputSelection::Nwk,   "tree.nwk",   NwkStyle::Beast, "--output-tree-nwk")]
   #[case::newick_nhx(   OutputSelection::Nwk,   "tree.nwk",   NwkStyle::Nhx,   "--output-tree-nwk")]
   #[trace]
-  fn test_output_plan_two_partitions_need_the_placeholder_in_tree_paths_with_comments(
+  fn test_output_plan_two_alignments_need_the_placeholder_in_tree_paths_with_comments(
     #[case] selection: OutputSelection,
     #[case] path: &str,
     #[case] newick_annotations: NwkStyle,
     #[case] flag: &str,
   ) {
-    let mut request = helpers::partitioned_request(2, None, btreemap! { selection => PathBuf::from(path) }, btreemap! {});
+    let mut request = helpers::alignments_request(2, None, btreemap! { selection => PathBuf::from(path) }, btreemap! {});
     request.newick_annotations = newick_annotations;
     assert_error!(
       plan(&request),
@@ -446,8 +431,8 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_two_partitions_write_plain_newick_once() -> Result<(), Report> {
-    let resolved = plan(&helpers::partitioned_request(
+  fn test_output_plan_two_alignments_write_plain_newick_once() -> Result<(), Report> {
+    let resolved = plan(&helpers::alignments_request(
       2,
       None,
       btreemap! { OutputSelection::Nwk => PathBuf::from("tree.nwk") },
@@ -464,10 +449,10 @@ mod tests {
   #[case::beast(NwkStyle::Beast)]
   #[case::nhx(  NwkStyle::Nhx)]
   #[trace]
-  fn test_output_plan_two_partitions_write_annotated_newick_once_per_alignment(
+  fn test_output_plan_two_alignments_write_annotated_newick_once_per_alignment(
     #[case] newick_annotations: NwkStyle,
   ) -> Result<(), Report> {
-    let mut request = helpers::partitioned_request(2, Some("out"), btreemap! {}, btreemap! {});
+    let mut request = helpers::alignments_request(2, Some("out"), btreemap! {}, btreemap! {});
     request.selection = vec![OutputSelection::Nwk];
     request.newick_annotations = newick_annotations;
 
@@ -476,19 +461,19 @@ mod tests {
     let expected = btreemap! {
       TreeWriteKind::Nwk(newick_annotations) => vec![PathBuf::from("out/ancestral.1.nwk"), PathBuf::from("out/ancestral.2.nwk")],
     };
-    assert_eq!(expected, resolved.tree_outputs_by_partition);
+    assert_eq!(expected, resolved.tree_outputs_by_alignment);
     Ok(())
   }
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::one_partition( 1)]
-  #[case::two_partitions(2)]
+  #[case::one_alignment( 1)]
+  #[case::two_alignments(2)]
   #[trace]
-  fn test_output_plan_single_file_output_rejects_the_placeholder(#[case] partition_count: usize) {
+  fn test_output_plan_single_file_output_rejects_the_placeholder(#[case] alignment_count: usize) {
     assert_error!(
-      plan(&helpers::partitioned_request(
-        partition_count,
+      plan(&helpers::alignments_request(
+        alignment_count,
         Some("out"),
         btreemap! {},
         btreemap! { OutputSelection::Model => PathBuf::from("gtr.{alignment}.json") },
@@ -498,9 +483,9 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_partition_path_colliding_with_another_output_fails() {
+  fn test_output_plan_alignment_path_colliding_with_another_output_fails() {
     assert_error!(
-      plan(&helpers::partitioned_request(
+      plan(&helpers::alignments_request(
         2,
         None,
         btreemap! {},
@@ -514,8 +499,8 @@ mod tests {
   }
 
   #[test]
-  fn test_output_plan_timetree_node_data_stays_one_file_with_two_partitions() -> Result<(), Report> {
-    let mut request = helpers::partitioned_request(2, Some("out"), btreemap! {}, btreemap! {});
+  fn test_output_plan_timetree_node_data_stays_one_file_with_two_alignments() -> Result<(), Report> {
+    let mut request = helpers::alignments_request(2, Some("out"), btreemap! {}, btreemap! {});
     request.command = CommandKind::Timetree;
     request.selection = vec![OutputSelection::NodeData];
 
@@ -586,7 +571,7 @@ mod tests {
     let resolved = plan(&helpers::timetree_request(settings, selection, btreemap! {}))?;
     assert_eq!(
       vec![PlannedFile::new(PathBuf::from("out/timetree.sequences.fasta"), requested, Some(OutputCondition::BranchLengthsReestimated))],
-      resolved.partition_files(OutputSelection::Sequences)
+      resolved.alignment_files(OutputSelection::Sequences)
     );
     Ok(())
   }
@@ -747,7 +732,7 @@ mod tests {
     ) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Ancestral,
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
         newick_annotations: NwkStyle::Plain,
         selection,
@@ -757,15 +742,15 @@ mod tests {
       }
     }
 
-    pub(super) fn partitioned_request(
-      partition_count: usize,
+    pub(super) fn alignments_request(
+      alignment_count: usize,
       output_all: Option<&str>,
       tree_overrides: BTreeMap<OutputSelection, PathBuf>,
       non_tree_overrides: BTreeMap<OutputSelection, PathBuf>,
     ) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Ancestral,
-        partition_count: NonZeroUsize::new(partition_count).expect("tests plan at least one partition"),
+        alignment_count: NonZeroUsize::new(alignment_count).expect("tests plan at least one alignment"),
         selection: if output_all.is_some() {
           vec![
             OutputSelection::Nwk,
@@ -794,7 +779,7 @@ mod tests {
     ) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Timetree,
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
         newick_annotations: NwkStyle::Plain,
         selection,
@@ -812,7 +797,7 @@ mod tests {
     ) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Mugration,
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         output_all: output_all.map(PathBuf::from),
         newick_annotations: NwkStyle::Plain,
         selection,
@@ -825,7 +810,7 @@ mod tests {
     pub(super) fn clock_request(non_tree_overrides: BTreeMap<OutputSelection, PathBuf>) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Clock,
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         output_all: None,
         newick_annotations: NwkStyle::Plain,
         selection: vec![],
@@ -838,7 +823,7 @@ mod tests {
     pub(super) fn homoplasy_request(non_tree_overrides: BTreeMap<OutputSelection, PathBuf>) -> OutputPlanRequest {
       OutputPlanRequest {
         command: CommandKind::Homoplasy,
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         output_all: Some(PathBuf::from("out")),
         newick_annotations: NwkStyle::Plain,
         selection: vec![],

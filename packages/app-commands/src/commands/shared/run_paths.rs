@@ -13,7 +13,7 @@ use std::path::{Component, Path, PathBuf, is_separator};
 use treetime_utils::io::file::{is_path_stdin, is_path_stdout};
 use treetime_utils::io::fs::absolute_path;
 
-const PLACEHOLDERS: [PathPlaceholder; 2] = [PathPlaceholder::Partition, PathPlaceholder::Cds];
+const PLACEHOLDERS: [PathPlaceholder; 2] = [PathPlaceholder::Alignment, PathPlaceholder::Cds];
 
 const OUTPUT_ALL_KEY: &str = "output_all";
 

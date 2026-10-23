@@ -6,7 +6,7 @@ use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeSequences};
 use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{ResolvedOutputs, TreeWriteKind};
-use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
+use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_alignment};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
@@ -76,7 +76,7 @@ pub fn run_prune(
     branch_lengths: branch_lengths_opt,
     ..
   } = output;
-  let maps = if resolved.tree_write_kinds().any(TreeWriteKind::is_per_partition) {
+  let maps = if resolved.tree_write_kinds().any(TreeWriteKind::is_per_alignment) {
     results
       .iter_mut()
       .filter_map(|result| {
@@ -139,7 +139,7 @@ fn write_prune_trees(
     traits: None,
   };
   write_run_tree_outputs(&annotated, resolved, CommandKind::Prune, log)?;
-  write_tree_outputs_per_partition(&annotated, sequences, resolved, CommandKind::Prune, log)
+  write_tree_outputs_per_alignment(&annotated, sequences, resolved, CommandKind::Prune, log)
 }
 
 fn prune_output_maps(

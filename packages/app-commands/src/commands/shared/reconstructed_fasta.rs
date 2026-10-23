@@ -29,7 +29,7 @@ pub struct ReconstructedFastaOutputArgs {
 }
 
 pub(crate) struct NucFastaWriters {
-  partitions: BTreeMap<usize, NucFasta>,
+  alignments: BTreeMap<usize, NucFasta>,
 }
 
 impl NucFastaWriters {
@@ -37,23 +37,23 @@ impl NucFastaWriters {
     paths: BTreeMap<usize, PathBuf>,
     mut descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
   ) -> Result<Self, Report> {
-    let partitions = paths
+    let alignments = paths
       .into_iter()
-      .map(|(partition, path)| {
+      .map(|(alignment, path)| {
         let fasta = NucFasta {
           writer: FastaWriter::create(&path)?,
-          descs: descs.remove(&partition).unwrap_or_default(),
+          descs: descs.remove(&alignment).unwrap_or_default(),
           path,
         };
-        Ok((partition, fasta))
+        Ok((alignment, fasta))
       })
       .collect::<Result<_, Report>>()?;
-    Ok(Self { partitions })
+    Ok(Self { alignments })
   }
 
-  pub(crate) fn write(&mut self, partition: usize, key: GraphNodeKey, name: &str, seq: &Seq) -> Result<(), Report> {
-    let Some(fasta) = self.partitions.get_mut(&partition) else {
-      return make_internal_error!("No reconstructed nucleotide FASTA was planned for partition {partition}");
+  pub(crate) fn write(&mut self, alignment: usize, key: GraphNodeKey, name: &str, seq: &Seq) -> Result<(), Report> {
+    let Some(fasta) = self.alignments.get_mut(&alignment) else {
+      return make_internal_error!("No reconstructed nucleotide FASTA was planned for alignment {alignment}");
     };
     let desc = fasta.descs.get(&key).and_then(Option::as_deref);
     fasta.writer.write(name, desc, seq)
@@ -61,7 +61,7 @@ impl NucFastaWriters {
 
   pub(crate) fn finish(self) -> Result<Vec<PathBuf>, Report> {
     self
-      .partitions
+      .alignments
       .into_values()
       .map(|fasta| {
         fasta.writer.finish()?;

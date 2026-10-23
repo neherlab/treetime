@@ -155,7 +155,7 @@ mod tests {
   }
 
   #[test]
-  fn test_safety_output_collision_of_a_partition_file_rejected() {
+  fn test_safety_output_collision_of_a_per_alignment_file_rejected() {
     let result = validate(
       json!({
         "steps": [

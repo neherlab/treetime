@@ -65,7 +65,7 @@ mod tests {
           }),
         }),
         vec![AlignmentFacts {
-          partition: 1,
+          number: 1,
           path: data("zika/86/aln.fasta.xz"),
           sequences: 86,
           min_length: alignment.max_length,
@@ -163,7 +163,7 @@ mod tests {
       (
         vec![
           AlignmentFacts {
-            partition: 1,
+            number: 1,
             path: ha,
             sequences: 3,
             min_length: 4,
@@ -172,7 +172,7 @@ mod tests {
             tips_without_sequence: Some(vec!["C".to_owned()]),
           },
           AlignmentFacts {
-            partition: 2,
+            number: 2,
             path: na,
             sequences: 2,
             min_length: 2,
@@ -188,7 +188,7 @@ mod tests {
         facts
           .problems
           .iter()
-          .map(|problem| (problem.input, problem.partition))
+          .map(|problem| (problem.input, problem.alignment))
           .collect::<Vec<_>>()
       )
     );

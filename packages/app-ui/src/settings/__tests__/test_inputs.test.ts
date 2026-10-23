@@ -46,7 +46,7 @@ describe("slot facts", () => {
     tree: { tips: 86, internal_nodes: 61, polytomies: 15, unnamed_tips: 0, duplicate_node_names: [] },
     alignments: [
       {
-        partition: 1,
+        number: 1,
         path: "zika/aln.fasta",
         sequences: 86,
         min_length: 10807,
@@ -75,7 +75,7 @@ describe("slot facts", () => {
   test("an unequal alignment says it is not aligned", () => {
     const uneven = {
       ...facts,
-      alignments: [{ partition: 1, path: "a.fasta", sequences: 2, min_length: 9, max_length: 10, duplicate_names: [] }],
+      alignments: [{ number: 1, path: "a.fasta", sequences: 2, min_length: 9, max_length: 10, duplicate_names: [] }],
     };
 
     expect(slotFactsText("alignment", uneven, false)).toStrictEqual([
@@ -88,7 +88,7 @@ describe("slot facts", () => {
       ...facts,
       alignments: [
         {
-          partition: 1,
+          number: 1,
           path: "/runs/r1/inputs/1/aligned.fasta",
           sequences: 86,
           min_length: 9,
@@ -96,7 +96,7 @@ describe("slot facts", () => {
           duplicate_names: [],
         },
         {
-          partition: 2,
+          number: 2,
           path: "/runs/r1/inputs/2/aligned.fasta",
           sequences: 80,
           min_length: 4,
@@ -104,7 +104,7 @@ describe("slot facts", () => {
           duplicate_names: [],
         },
       ],
-      problems: [{ input: "alignment" as const, partition: 3, message: "When reading file 'mp.fasta': no such file" }],
+      problems: [{ input: "alignment" as const, alignment: 3, message: "When reading file 'mp.fasta': no such file" }],
     };
 
     expect([slotFactsText("alignment", several, false), slotProblems("alignment", several)]).toStrictEqual([

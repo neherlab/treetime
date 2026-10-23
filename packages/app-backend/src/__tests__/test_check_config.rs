@@ -631,7 +631,7 @@ pub(crate) mod tests {
   fn test_check_config_valid_classifies_the_input_facts() {
     let facts = InputFacts {
       alignments: vec![AlignmentFacts {
-        partition: 1,
+        number: 1,
         path: PathBuf::from("a.fasta"),
         sequences: 2,
         min_length: 4,

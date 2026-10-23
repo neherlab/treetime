@@ -14,7 +14,7 @@ use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_format::FileFormat;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs, TreeWriteKind, output_unavailable};
 use app_output::table_output::table_write_file;
-use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
+use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_alignment};
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -79,7 +79,7 @@ pub fn run_timetree_estimation(
     })
   };
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;
-  let reconstructed_nuc_fasta = resolved.partition_paths(OutputSelection::Sequences);
+  let reconstructed_nuc_fasta = resolved.alignment_paths(OutputSelection::Sequences);
   let mutation_units = args.branch_lengths.mutation_units;
   if mutation_units {
     input_data
@@ -359,7 +359,7 @@ fn write_timetree_trees(
     write_augur_node_data_refine(tree, run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
-  write_tree_outputs_per_partition(&annotated, trees.sequences, resolved, CommandKind::Timetree, log)
+  write_tree_outputs_per_alignment(&annotated, trees.sequences, resolved, CommandKind::Timetree, log)
 }
 
 struct TimetreeTrees<'a> {
@@ -399,9 +399,9 @@ impl SeqSink for ReconstructedNucSink {
   fn emit(&mut self, item: SeqItem<'_>) -> Result<(), Report> {
     match item.track {
       SeqTrack::Nuc(_) if !item.emitted => Ok(()),
-      SeqTrack::Nuc(partition) => self
+      SeqTrack::Nuc(alignment) => self
         .writers
-        .write(partition, item.key, item.name, &item.seq_with_ambiguity()),
+        .write(alignment, item.key, item.name, &item.seq_with_ambiguity()),
       SeqTrack::Aa(cds) => {
         make_internal_error!("Timetree reconstructed-nucleotide FASTA sink received an amino-acid track '{cds}'")
       },

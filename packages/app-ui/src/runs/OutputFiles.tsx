@@ -34,7 +34,7 @@ export function OutputFiles({ record, citation }: { record: RunRecord; citation:
 
   const onArchive = useCallback(() => void downloadArchive(), [downloadArchive]);
 
-  const perAlignment = files?.some((file) => (file.partition?.number ?? 0) > 1) ?? false;
+  const perAlignment = files?.some((file) => (file.alignment?.number ?? 0) > 1) ?? false;
 
   return (
     <Panel
@@ -106,10 +106,9 @@ function FileRow({ runId, file, perAlignment }: { runId: string; file: RunFile; 
       </TableCell>
       {perAlignment && (
         <TableCell className="text-xs">
-          {file.partition !== undefined && (
+          {file.alignment !== undefined && (
             <>
-              {file.partition.number}{" "}
-              <code className="text-muted-foreground font-mono">{file.partition.alignment}</code>
+              {file.alignment.number} <code className="text-muted-foreground font-mono">{file.alignment.path}</code>
             </>
           )}
         </TableCell>

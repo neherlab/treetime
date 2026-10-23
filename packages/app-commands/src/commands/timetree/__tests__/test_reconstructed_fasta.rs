@@ -139,7 +139,7 @@ mod tests {
 
     assert_eq!(
       (expected, true),
-      (resolved.partition_paths(OutputSelection::Sequences), resolved.conditional_selections().is_empty())
+      (resolved.alignment_paths(OutputSelection::Sequences), resolved.conditional_selections().is_empty())
     );
     Ok(())
   }
@@ -233,11 +233,11 @@ mod tests {
 
     pub(super) fn conditional_fasta_outputs(requested: Requested) -> ResolvedOutputs {
       ResolvedOutputs {
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         tree_outputs: btreemap! {},
         non_tree_outputs: btreemap! {},
-        tree_outputs_by_partition: btreemap! {},
-        non_tree_outputs_by_partition: btreemap! {
+        tree_outputs_by_alignment: btreemap! {},
+        non_tree_outputs_by_alignment: btreemap! {
           OutputSelection::Sequences => vec![PlannedFile::new(
             PathBuf::from("out.fasta"),
             requested,

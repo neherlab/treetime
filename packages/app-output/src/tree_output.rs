@@ -26,31 +26,31 @@ pub fn write_run_tree_outputs<'a>(
   write_tree_output_set(graph, &resolved.tree_outputs, resolved, command, log)
 }
 
-pub fn write_tree_outputs_per_partition<'a>(
+pub fn write_tree_outputs_per_alignment<'a>(
   run_graph: &AnnotatedGraph<'a>,
   sequences: &BTreeMap<usize, TreeSequences<'a>>,
   resolved: &ResolvedOutputs,
   command: CommandKind,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  for partition in resolved.partitions() {
+  for alignment in resolved.alignments() {
     let graph = AnnotatedGraph {
-      sequences: sequences.get(&partition).copied(),
+      sequences: sequences.get(&alignment).copied(),
       ..*run_graph
     };
-    write_partition_tree_outputs(&graph, partition, resolved, command, log)?;
+    write_alignment_tree_outputs(&graph, alignment, resolved, command, log)?;
   }
   Ok(())
 }
 
-pub fn write_partition_tree_outputs<'a>(
+pub fn write_alignment_tree_outputs<'a>(
   graph: &'a AnnotatedGraph<'a>,
-  partition: usize,
+  alignment: usize,
   resolved: &ResolvedOutputs,
   command: CommandKind,
   log: &dyn LogSink,
 ) -> Result<Option<AnnotatedTreeView<'a>>, Report> {
-  let outputs = resolved.partition_tree_outputs(partition);
+  let outputs = resolved.alignment_tree_outputs(alignment);
   write_tree_output_set(graph, &outputs, resolved, command, log)
 }
 

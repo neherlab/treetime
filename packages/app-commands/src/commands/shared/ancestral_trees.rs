@@ -2,7 +2,7 @@ use app_output::annotated_graph::{AnnotatedGraph, Divergence, TreeAminoAcids, Tr
 use app_output::augur_node_data_ancestral::{AncestralNodeSequences, write_augur_node_data_ancestral};
 use app_output::command_outputs::CommandKind;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs};
-use app_output::tree_output::{write_partition_tree_outputs, write_run_tree_outputs};
+use app_output::tree_output::{write_alignment_tree_outputs, write_run_tree_outputs};
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -20,16 +20,16 @@ use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub(crate) fn write_ancestral_trees(
   trees: &AncestralTrees<'_>,
-  partitions: Vec<AncestralPartitionTrees<'_>>,
+  alignments: Vec<AncestralAlignmentTrees<'_>>,
   resolved: &ResolvedOutputs,
   command: CommandKind,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
-  let numbers = partitions.iter().map(|partition| partition.number).collect_vec();
-  if !numbers.iter().copied().eq(resolved.partitions()) {
+  let numbers = alignments.iter().map(|alignment| alignment.number).collect_vec();
+  if !numbers.iter().copied().eq(resolved.alignments()) {
     return make_internal_error!(
-      "Ancestral outputs are planned for {} partition(s), but the reconstruction returned partitions {numbers:?}",
-      resolved.partition_count
+      "Ancestral outputs are planned for {} alignment(s), but the reconstruction returned alignments {numbers:?}",
+      resolved.alignment_count
     );
   }
   let run_graph = AnnotatedGraph {
@@ -43,25 +43,25 @@ pub(crate) fn write_ancestral_trees(
     traits: None,
   };
   write_run_tree_outputs(&run_graph, resolved, command, log)?;
-  for partition in partitions {
+  for alignment in alignments {
     let annotated = AnnotatedGraph {
       sequences: Some(TreeSequences {
-        alphabet: partition.alphabet,
-        root_sequence: &partition.maps.root_sequence,
-        edge_mutations: &partition.maps.edge_mutations,
+        alphabet: alignment.alphabet,
+        root_sequence: &alignment.maps.root_sequence,
+        edge_mutations: &alignment.maps.edge_mutations,
         amino_acids: trees
           .amino_acids
-          .filter(|_| partition.number == 1)
+          .filter(|_| alignment.number == 1)
           .map(|(node_data, cdses)| TreeAminoAcids { node_data, cdses }),
         comment_positions: trees.comment_positions,
       }),
       ..run_graph
     };
-    let tree = write_partition_tree_outputs(&annotated, partition.number, resolved, command, log)?;
+    let tree = write_alignment_tree_outputs(&annotated, alignment.number, resolved, command, log)?;
     if let (Some(tree), Some(path), Some(node_sequences)) = (
       &tree,
-      resolved.partition_path(OutputSelection::NodeData, partition.number),
-      partition.node_sequences,
+      resolved.alignment_path(OutputSelection::NodeData, alignment.number),
+      alignment.node_sequences,
     ) {
       write_augur_node_data_ancestral(tree, node_sequences, path)?;
       progress_info!(log, "Wrote augur node data JSON to {}", path.display());
@@ -78,7 +78,7 @@ pub(crate) struct AncestralTrees<'a> {
   pub(crate) comment_positions: PositionBase,
 }
 
-pub(crate) struct AncestralPartitionTrees<'a> {
+pub(crate) struct AncestralAlignmentTrees<'a> {
   pub(crate) number: usize,
   pub(crate) alphabet: &'a Alphabet,
   pub(crate) maps: AncestralOutputMaps,

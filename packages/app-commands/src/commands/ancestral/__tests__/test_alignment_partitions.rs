@@ -84,7 +84,7 @@ mod tests {
       .sorted()
       .collect_vec();
     let lengths = [1, 2]
-      .map(|partition| helpers::sequence_output_lengths(&out, partition))
+      .map(|alignment| helpers::sequence_output_lengths(&out, alignment))
       .into_iter()
       .collect::<Result<Vec<_>, Report>>()?;
     let expected_files = [
@@ -138,10 +138,10 @@ mod tests {
       )
     }
 
-    pub(super) fn sequence_output_lengths(out: &Path, partition: usize) -> Result<[usize; 3], Report> {
-      let node_data = json_value_read_file(out.join(format!("ancestral.{partition}.node-data.json")))?;
-      let auspice = json_value_read_file(out.join(format!("ancestral.{partition}.auspice.json")))?;
-      let fasta = read_sequences(&out.join(format!("ancestral.{partition}.sequences.fasta")))?;
+    pub(super) fn sequence_output_lengths(out: &Path, alignment: usize) -> Result<[usize; 3], Report> {
+      let node_data = json_value_read_file(out.join(format!("ancestral.{alignment}.node-data.json")))?;
+      let auspice = json_value_read_file(out.join(format!("ancestral.{alignment}.auspice.json")))?;
+      let fasta = read_sequences(&out.join(format!("ancestral.{alignment}.sequences.fasta")))?;
       let annotated_end = node_data["annotations"]["nuc"]["end"].as_u64().unwrap_or_default();
       let auspice_root = auspice["root_sequence"]["nuc"].as_str().map_or(0, str::len);
       Ok([

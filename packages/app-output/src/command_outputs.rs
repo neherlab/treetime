@@ -150,7 +150,7 @@ impl CommandKind {
     }
   }
 
-  pub(crate) fn is_per_partition(self, selection: OutputSelection) -> bool {
+  pub(crate) fn is_per_alignment(self, selection: OutputSelection) -> bool {
     match selection {
       OutputSelection::Sequences => true,
       OutputSelection::NodeData => self == Self::Ancestral,
@@ -158,8 +158,8 @@ impl CommandKind {
     }
   }
 
-  pub(crate) fn is_per_partition_tree(self, kind: TreeWriteKind) -> bool {
-    self.reads_alignments() && kind.is_per_partition()
+  pub(crate) fn is_per_alignment_tree(self, kind: TreeWriteKind) -> bool {
+    self.reads_alignments() && kind.is_per_alignment()
   }
 }
 

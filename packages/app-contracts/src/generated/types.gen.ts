@@ -157,9 +157,9 @@ export type TreeFacts = {
  */
 export type AlignmentFacts = {
   /**
-   * Partition number of the file: its position in the alignment setting, from 1.
+   * Alignment number of the file: its position in the alignment setting, from 1.
    */
-  partition: number;
+  number: number;
   /**
    * Path of the file, as the alignment setting gives it.
    */
@@ -243,9 +243,9 @@ export type InputProblem = {
    */
   input: InputKind;
   /**
-   * Partition number of the alignment file the problem concerns, for an alignment problem.
+   * Number of the alignment file the problem concerns, for an alignment problem: its position in the alignment setting, from 1.
    */
-  partition?: number;
+  alignment?: number;
   /**
    * The error, with its causes.
    */
@@ -655,7 +655,7 @@ export type OutputFile = {
   /**
    * Alignment file the output belongs to, for an output written once per alignment file.
    */
-  partition?: OutputPartition;
+  alignment?: OutputAlignment;
 };
 
 /**
@@ -668,15 +668,15 @@ export type OutputSelection = 'all' | 'nwk' | 'nexus' | 'auspice' | 'mat-pb' | '
 /**
  * The alignment file of an output written once per alignment file.
  */
-export type OutputPartition = {
+export type OutputAlignment = {
   /**
-   * Partition number: the position of the file in the alignment setting, starting at 1.
+   * Alignment number: the position of the file in the alignment setting, starting at 1.
    */
   number: number;
   /**
    * Path of the alignment file.
    */
-  alignment: string;
+  path: string;
 };
 
 /**
@@ -778,7 +778,7 @@ export type RunFile = {
   /**
    * Alignment file the output belongs to, for an output written once per alignment file.
    */
-  partition?: OutputPartition;
+  alignment?: OutputAlignment;
 };
 
 /**
@@ -792,7 +792,7 @@ export type RunResults = {
   /**
    * Alignment file whose Auspice file gives the tree, when the run has several alignment files.
    */
-  tree_partition?: OutputPartition;
+  tree_alignment?: OutputAlignment;
   /**
    * Substitution models of the run's model document, in its order; empty when the run wrote none.
    */

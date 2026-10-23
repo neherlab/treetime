@@ -676,7 +676,7 @@ mod tests {
     pub(super) fn resolve(
       args: &OutputCoreArgs,
       command: CommandKind,
-      partition_count: NonZeroUsize,
+      alignment_count: NonZeroUsize,
       settings: OutputSettings,
       selection: &[OutputSelection],
       file_paths: &[(OutputSelection, Option<&Path>)],
@@ -684,7 +684,7 @@ mod tests {
       let args = args.clone();
       OutputRequest {
         command,
-        alignment_count: partition_count.get(),
+        alignment_count: alignment_count.get(),
         settings,
         output_all: args.output_all,
         newick_annotations: args.newick_annotations,
@@ -707,7 +707,7 @@ mod tests {
     }
 
     pub(super) fn tree_paths(resolved: &ResolvedOutputs) -> BTreeMap<TreeWriteKind, PathBuf> {
-      let mut paths = resolved.partition_tree_outputs(1);
+      let mut paths = resolved.alignment_tree_outputs(1);
       paths.extend(resolved.tree_outputs.clone());
       paths
     }

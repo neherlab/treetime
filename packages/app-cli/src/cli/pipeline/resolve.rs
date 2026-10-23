@@ -418,7 +418,7 @@ mod tests {
   }
 
   #[test]
-  fn test_resolve_chain_reference_to_a_per_partition_output_is_ambiguous() {
+  fn test_resolve_chain_reference_to_a_per_alignment_output_is_ambiguous() {
     let config = json!({
       "output_all": "tmp/run",
       "steps": [

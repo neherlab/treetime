@@ -107,12 +107,12 @@ export function slotFactsText(slot: InputKind, facts: InputFacts | undefined, us
     }
 
     const several =
-      alignments.length > 1 || facts?.problems.some((problem) => problem.partition !== undefined) === true;
+      alignments.length > 1 || facts?.problems.some((problem) => problem.alignment !== undefined) === true;
 
     return alignments.map((alignment) => {
       const text = alignmentFactsText(alignment);
 
-      return several ? `${alignmentName(alignment.partition, alignment.path)}: ${text}` : text;
+      return several ? `${alignmentName(alignment.number, alignment.path)}: ${text}` : text;
     });
   }
 
@@ -134,7 +134,7 @@ export function slotProblems(slot: InputKind, facts: InputFacts | undefined): st
   return (facts?.problems ?? [])
     .filter((problem) => problem.input === slot)
     .map((problem) =>
-      problem.partition === undefined ? problem.message : `Alignment ${problem.partition}: ${problem.message}`,
+      problem.alignment === undefined ? problem.message : `Alignment ${problem.alignment}: ${problem.message}`,
     );
 }
 
@@ -147,6 +147,6 @@ function alignmentFactsText(alignment: AlignmentFacts): string {
   return `${alignment.sequences} sequences, ${sites}`;
 }
 
-function alignmentName(partition: number, path: string): string {
-  return `Alignment ${partition} (${baseName(path)})`;
+function alignmentName(number: number, path: string): string {
+  return `Alignment ${number} (${baseName(path)})`;
 }

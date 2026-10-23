@@ -4,7 +4,7 @@ use crate::commands::homoplasy::report::render_homoplasy_report;
 use crate::commands::homoplasy::result::HomoplasyResult;
 use crate::commands::homoplasy::summary::{ResultContext, homoplasy_result};
 use crate::commands::shared::ancestral_trees::{
-  AncestralOutputMaps, AncestralPartitionTrees, AncestralTrees, write_ancestral_trees,
+  AncestralAlignmentTrees, AncestralOutputMaps, AncestralTrees, write_ancestral_trees,
 };
 use crate::commands::shared::partition::log_partitions;
 use crate::commands::shared::seed::SeedArgs;
@@ -95,7 +95,7 @@ pub fn run_homoplasy(
     return make_internal_error!("Homoplasy reconstruction returned no reconstructed sequences");
   };
   let alphabet = result.alphabet;
-  let partition_number = result.number;
+  let alignment_number = result.number;
   let raw_mutations = sequences.edge_mutations;
   let bridged_mutations =
     UnknownMutationFilter::hiding_unknown(alphabet.unknown()).reported_edge_mutations(&graph, raw_mutations.clone())?;
@@ -140,13 +140,13 @@ pub fn run_homoplasy(
     amino_acids: None,
     comment_positions: args.positions,
   };
-  let partition = AncestralPartitionTrees {
-    number: partition_number,
+  let alignment = AncestralAlignmentTrees {
+    number: alignment_number,
     alphabet: &alphabet,
     maps,
     node_sequences: None,
   };
-  write_ancestral_trees(&trees, vec![partition], &resolved, CommandKind::Homoplasy, log)?;
+  write_ancestral_trees(&trees, vec![alignment], &resolved, CommandKind::Homoplasy, log)?;
 
   for line in report.lines() {
     progress_info!(log, "{line}");

@@ -46,8 +46,8 @@ fn unreadable_inputs(context: &CheckContext<'_>) -> Vec<RunCheck> {
         .iter()
         .map(|problem| {
           let id = format!("unreadable-{}", problem.input);
-          let id = match problem.partition {
-            Some(partition) if several_alignments(context) => format!("{id}-{partition}"),
+          let id = match problem.alignment {
+            Some(alignment) if several_alignments(context) => format!("{id}-{alignment}"),
             _ => id,
           };
           block(id, format!("The {} cannot be read: {}", problem.input, problem.message))
@@ -206,7 +206,7 @@ fn alignment_lengths(context: &CheckContext<'_>, config: &Map<String, Value>) ->
     .map(|number| {
       alignments
         .iter()
-        .find(|alignment| alignment.partition == number)
+        .find(|alignment| alignment.number == number)
         .filter(|alignment| alignment.min_length == alignment.max_length)
         .map(|alignment| alignment.min_length)
     })
@@ -359,7 +359,7 @@ fn sequence_files<'a>(context: &CheckContext<'a>) -> impl Iterator<Item = &'a Al
 
 fn alignment_id(context: &CheckContext<'_>, id: &str, alignment: &AlignmentFacts) -> String {
   if several_alignments(context) {
-    format!("{id}-{}", alignment.partition)
+    format!("{id}-{}", alignment.number)
   } else {
     id.to_owned()
   }
@@ -367,7 +367,7 @@ fn alignment_id(context: &CheckContext<'_>, id: &str, alignment: &AlignmentFacts
 
 fn alignment_noun(context: &CheckContext<'_>, alignment: &AlignmentFacts) -> String {
   if several_alignments(context) {
-    format!("alignment {} '{}'", alignment.partition, alignment.path.display())
+    format!("alignment {} '{}'", alignment.number, alignment.path.display())
   } else {
     "alignment".to_owned()
   }

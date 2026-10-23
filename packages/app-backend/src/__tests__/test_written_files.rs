@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::command::{AppCommandExt, OutputFile, OutputPartition, written_files};
+  use crate::command::{AppCommandExt, OutputAlignment, OutputFile, written_files};
   use app_commands::command::AppCommand;
   use app_output::output_plan::OutputSelection;
   use eyre::Report;
@@ -11,7 +11,7 @@ mod tests {
   use tempfile::TempDir;
 
   #[test]
-  fn test_written_files_lists_every_partition_file() -> Result<(), Report> {
+  fn test_written_files_lists_every_alignment_file() -> Result<(), Report> {
     let dir = TempDir::new()?;
     let config = json!({
       "tree": "t.nwk",
@@ -35,26 +35,26 @@ mod tests {
       &[PathBuf::from("a.fasta"), PathBuf::from("b.fasta")],
     )?;
 
-    let partition = |number: usize, alignment: &str| {
-      Some(OutputPartition {
+    let alignment = |number: usize, path: &str| {
+      Some(OutputAlignment {
         number,
-        alignment: PathBuf::from(alignment),
+        path: PathBuf::from(path),
       })
     };
     let kinds = [
-      (OutputSelection::Auspice, partition(1, "a.fasta")),
-      (OutputSelection::Sequences, partition(1, "a.fasta")),
-      (OutputSelection::Auspice, partition(2, "b.fasta")),
-      (OutputSelection::Sequences, partition(2, "b.fasta")),
+      (OutputSelection::Auspice, alignment(1, "a.fasta")),
+      (OutputSelection::Sequences, alignment(1, "a.fasta")),
+      (OutputSelection::Auspice, alignment(2, "b.fasta")),
+      (OutputSelection::Sequences, alignment(2, "b.fasta")),
       (OutputSelection::Model, None),
     ];
     let expected = names
       .into_iter()
       .zip(kinds)
-      .map(|(name, (kind, partition))| OutputFile {
+      .map(|(name, (kind, alignment))| OutputFile {
         path: dir.path().join(name),
         kind,
-        partition,
+        alignment,
       })
       .collect::<Vec<_>>();
     assert_eq!(expected, actual);

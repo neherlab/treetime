@@ -198,12 +198,12 @@ function FinishedResults({ record }: { record: RunRecord }) {
           </AlertDescription>
         </Alert>
       )}
-      {results.tree_partition !== undefined && (
+      {results.tree_alignment !== undefined && (
         <Alert>
           <AlertDescription>
-            The tree shows the Auspice file of alignment {results.tree_partition.number} (
-            <code className="font-mono text-xs">{results.tree_partition.alignment}</code>). The output files hold one
-            Auspice file per alignment file.
+            The tree shows the Auspice file of alignment {results.tree_alignment.number} (
+            <code className="font-mono text-xs">{results.tree_alignment.path}</code>). The output files hold one Auspice
+            file per alignment file.
           </AlertDescription>
         </Alert>
       )}

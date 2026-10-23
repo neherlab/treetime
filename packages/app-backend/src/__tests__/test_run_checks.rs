@@ -45,7 +45,7 @@ mod tests {
     let facts = InputFacts {
       problems: vec![InputProblem {
         input: InputKind::Tree,
-        partition: None,
+        alignment: None,
         message: o!("When reading 't.nwk': no such file"),
       }],
       ..InputFacts::default()
@@ -274,7 +274,7 @@ mod tests {
       ],
       problems: vec![InputProblem {
         input: InputKind::Alignment,
-        partition: Some(3),
+        alignment: Some(3),
         message: o!("bad"),
       }],
       ..facts_with_tree(3)
@@ -426,7 +426,7 @@ mod tests {
       metadata: Some(metadata(Some("date"), Some(dates(vec_of_owned!["B"], 4, 4)))),
       problems: vec![InputProblem {
         input: InputKind::Alignment,
-        partition: Some(1),
+        alignment: Some(1),
         message: o!("bad"),
       }],
       ..facts_with_tree(20)
@@ -668,9 +668,9 @@ mod tests {
         ..InputFacts::default()
       }
     }
-    pub(super) fn alignment(partition: usize, path: &str) -> AlignmentFacts {
+    pub(super) fn alignment(number: usize, path: &str) -> AlignmentFacts {
       AlignmentFacts {
-        partition,
+        number,
         path: PathBuf::from(path),
         sequences: 20,
         min_length: 10,

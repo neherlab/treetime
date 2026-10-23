@@ -35,7 +35,7 @@ mod tests {
     assert_eq!(
       (Some(Path::new("out/timetree.sequences.fasta")), btreemap! {}),
       (
-        resolved.partition_path(OutputSelection::Sequences, 1),
+        resolved.alignment_path(OutputSelection::Sequences, 1),
         resolved.conditional_selections()
       )
     );

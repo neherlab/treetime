@@ -315,15 +315,15 @@ pub(super) mod tests {
     let json_path = dir.path().join("graph.json");
     let nwk_path = dir.path().join("tree.nwk");
     let outputs = ResolvedOutputs {
-      partition_count: NonZeroUsize::MIN,
+      alignment_count: NonZeroUsize::MIN,
       tree_outputs: btreemap! {
         TreeWriteKind::Dot => dot_path.clone(),
         TreeWriteKind::GraphJson => json_path.clone(),
         TreeWriteKind::Nwk(NwkStyle::Plain) => nwk_path.clone(),
       },
       non_tree_outputs: btreemap! {},
-      tree_outputs_by_partition: btreemap! {},
-      non_tree_outputs_by_partition: btreemap! {},
+      tree_outputs_by_alignment: btreemap! {},
+      non_tree_outputs_by_alignment: btreemap! {},
     };
     let annotated = annotated(&topology);
 
@@ -347,11 +347,11 @@ pub(super) mod tests {
   fn test_tree_output_tree_view_is_not_built_without_tree_based_outputs() -> Result<(), Report> {
     let topology = topology()?;
     let outputs = ResolvedOutputs {
-      partition_count: NonZeroUsize::MIN,
+      alignment_count: NonZeroUsize::MIN,
       tree_outputs: btreemap! { TreeWriteKind::Dot => PathBuf::from("tree.dot") },
       non_tree_outputs: btreemap! {},
-      tree_outputs_by_partition: btreemap! {},
-      non_tree_outputs_by_partition: btreemap! {},
+      tree_outputs_by_alignment: btreemap! {},
+      non_tree_outputs_by_alignment: btreemap! {},
     };
     let annotated = annotated(&topology);
 

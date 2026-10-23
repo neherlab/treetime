@@ -197,7 +197,7 @@ mod tests {
 
     pub(super) fn gtr_output(dir: &TempDir, requested: Requested) -> ResolvedOutputs {
       ResolvedOutputs {
-        partition_count: NonZeroUsize::MIN,
+        alignment_count: NonZeroUsize::MIN,
         tree_outputs: btreemap! {},
         non_tree_outputs: btreemap! {
           OutputSelection::Model => PlannedFile {
@@ -206,8 +206,8 @@ mod tests {
             condition: None,
           },
         },
-        tree_outputs_by_partition: btreemap! {},
-        non_tree_outputs_by_partition: btreemap! {},
+        tree_outputs_by_alignment: btreemap! {},
+        non_tree_outputs_by_alignment: btreemap! {},
       }
     }
 

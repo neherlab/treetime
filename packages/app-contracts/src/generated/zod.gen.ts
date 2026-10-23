@@ -81,7 +81,7 @@ export const zTreeFacts = z.object({
  * Facts about one alignment file.
  */
 export const zAlignmentFacts = z.object({
-  partition: z.int().gte(0),
+  number: z.int().gte(0),
   path: z.string(),
   sequences: z.int().gte(0),
   min_length: z.int().gte(0),
@@ -125,7 +125,7 @@ export const zInputKind = z.enum([
  */
 export const zInputProblem = z.object({
   input: zInputKind,
-  partition: z.int().gte(0).optional(),
+  alignment: z.int().gte(0).optional(),
   message: z.string()
 });
 
@@ -408,9 +408,9 @@ export const zOutputSelection = z.enum([
 /**
  * The alignment file of an output written once per alignment file.
  */
-export const zOutputPartition = z.object({
+export const zOutputAlignment = z.object({
   number: z.int().gte(0),
-  alignment: z.string()
+  path: z.string()
 });
 
 /**
@@ -419,7 +419,7 @@ export const zOutputPartition = z.object({
 export const zOutputFile = z.object({
   path: z.string(),
   kind: zOutputSelection,
-  partition: zOutputPartition.optional()
+  alignment: zOutputAlignment.optional()
 });
 
 /**
@@ -481,7 +481,7 @@ export const zRunFile = z.object({
   size: z.int().gte(0),
   kind: zOutputSelection.optional(),
   description: z.string(),
-  partition: zOutputPartition.optional()
+  alignment: zOutputAlignment.optional()
 });
 
 /**
@@ -2393,7 +2393,7 @@ export const zCommandResults = z.discriminatedUnion('command', [
  */
 export const zRunResults = z.object({
   tree: zResultTree.optional(),
-  tree_partition: zOutputPartition.optional(),
+  tree_alignment: zOutputAlignment.optional(),
   models: z.array(zRunModel),
   results: zCommandResults,
   citation: zCitation,

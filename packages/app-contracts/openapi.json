@@ -1595,8 +1595,8 @@
         "description": "Facts about one alignment file.",
         "type": "object",
         "properties": {
-          "partition": {
-            "description": "Partition number of the file: its position in the alignment setting, from 1.",
+          "number": {
+            "description": "Alignment number of the file: its position in the alignment setting, from 1.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
@@ -1640,7 +1640,7 @@
           }
         },
         "required": [
-          "partition",
+          "number",
           "path",
           "sequences",
           "min_length",
@@ -1731,8 +1731,8 @@
             "description": "Input the problem concerns.",
             "$ref": "#/components/schemas/InputKind"
           },
-          "partition": {
-            "description": "Partition number of the alignment file the problem concerns, for an alignment problem.",
+          "alignment": {
+            "description": "Number of the alignment file the problem concerns, for an alignment problem: its position in the alignment setting, from 1.",
             "type": "integer",
             "format": "uint",
             "minimum": 0,
@@ -2425,9 +2425,9 @@
             "description": "Output selection that produced the file.",
             "$ref": "#/components/schemas/OutputSelection"
           },
-          "partition": {
+          "alignment": {
             "description": "Alignment file the output belongs to, for an output written once per alignment file.",
-            "$ref": "#/components/schemas/OutputPartition",
+            "$ref": "#/components/schemas/OutputAlignment",
             "x-unset": true
           }
         },
@@ -2468,24 +2468,24 @@
           "homoplasy-report"
         ]
       },
-      "OutputPartition": {
+      "OutputAlignment": {
         "description": "The alignment file of an output written once per alignment file.",
         "type": "object",
         "properties": {
           "number": {
-            "description": "Partition number: the position of the file in the alignment setting, starting at 1.",
+            "description": "Alignment number: the position of the file in the alignment setting, starting at 1.",
             "type": "integer",
             "format": "uint",
             "minimum": 0
           },
-          "alignment": {
+          "path": {
             "description": "Path of the alignment file.",
             "type": "string"
           }
         },
         "required": [
           "number",
-          "alignment"
+          "path"
         ]
       },
       "RunWarning": {
@@ -2635,9 +2635,9 @@
             "description": "What the file holds; empty for files the output plan does not name.",
             "type": "string"
           },
-          "partition": {
+          "alignment": {
             "description": "Alignment file the output belongs to, for an output written once per alignment file.",
-            "$ref": "#/components/schemas/OutputPartition",
+            "$ref": "#/components/schemas/OutputAlignment",
             "x-unset": true
           }
         },
@@ -2656,9 +2656,9 @@
             "$ref": "#/components/schemas/ResultTree",
             "x-unset": true
           },
-          "tree_partition": {
+          "tree_alignment": {
             "description": "Alignment file whose Auspice file gives the tree, when the run has several alignment files.",
-            "$ref": "#/components/schemas/OutputPartition",
+            "$ref": "#/components/schemas/OutputAlignment",
             "x-unset": true
           },
           "models": {

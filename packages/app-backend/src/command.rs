@@ -373,34 +373,34 @@ fn run_output_selection<S: Copy + PartialEq + Into<OutputSelection> + IntoEnumIt
 }
 
 pub(crate) fn written_files(outputs: &ResolvedOutputs, alignments: &[PathBuf]) -> Result<Vec<OutputFile>, Report> {
-  let partitions = partitions_by_path(outputs, alignments);
+  let alignments = alignments_by_path(outputs, alignments);
   let mut files = vec![];
   for (kind, paths) in outputs.paths_by_selection() {
     for planned in paths {
-      let partition = partitions.get(&planned);
+      let alignment = alignments.get(&planned);
       files.extend(existing_files(&planned)?.into_iter().map(|path| OutputFile {
         path,
         kind,
-        partition: partition.cloned(),
+        alignment: alignment.cloned(),
       }));
     }
   }
   Ok(files.into_iter().sorted().dedup_by(|a, b| a.path == b.path).collect())
 }
 
-fn partitions_by_path(outputs: &ResolvedOutputs, alignments: &[PathBuf]) -> BTreeMap<PathBuf, OutputPartition> {
+fn alignments_by_path(outputs: &ResolvedOutputs, alignments: &[PathBuf]) -> BTreeMap<PathBuf, OutputAlignment> {
   alignments
     .iter()
-    .zip(outputs.partitions())
-    .flat_map(|(alignment, number)| {
-      let partition = OutputPartition {
+    .zip(outputs.alignments())
+    .flat_map(|(path, number)| {
+      let alignment = OutputAlignment {
         number,
-        alignment: alignment.clone(),
+        path: path.clone(),
       };
-      let trees = outputs.partition_tree_outputs(number).into_values();
+      let trees = outputs.alignment_tree_outputs(number).into_values();
       let files = OutputSelection::iter()
-        .filter_map(move |selection| outputs.partition_path(selection, number).map(Path::to_path_buf));
-      trees.chain(files).map(move |path| (path, partition.clone()))
+        .filter_map(move |selection| outputs.alignment_path(selection, number).map(Path::to_path_buf));
+      trees.chain(files).map(move |path| (path, alignment.clone()))
     })
     .collect()
 }
@@ -466,14 +466,14 @@ pub struct OutputFile {
   /// Output selection that produced the file.
   pub kind: OutputSelection,
   /// Alignment file the output belongs to, for an output written once per alignment file.
-  pub partition: Option<OutputPartition>,
+  pub alignment: Option<OutputAlignment>,
 }
 
 /// The alignment file of an output written once per alignment file.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, JsonSchema, Serialize, Deserialize)]
-pub struct OutputPartition {
-  /// Partition number: the position of the file in the alignment setting, starting at 1.
+pub struct OutputAlignment {
+  /// Alignment number: the position of the file in the alignment setting, starting at 1.
   pub number: usize,
   /// Path of the alignment file.
-  pub alignment: PathBuf,
+  pub path: PathBuf,
 }

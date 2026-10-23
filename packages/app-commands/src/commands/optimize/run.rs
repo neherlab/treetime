@@ -8,7 +8,7 @@ use app_output::augur_node_data_refine::{RefineRun, total_mutation_counts, write
 use app_output::command_outputs::CommandKind;
 use app_output::mutation_filter::UnknownMutationFilter;
 use app_output::output_plan::{OutputSelection, ResolvedOutputs};
-use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_partition};
+use app_output::tree_output::{write_run_tree_outputs, write_tree_outputs_per_alignment};
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::cancel::Cancel;
@@ -145,7 +145,7 @@ fn write_optimize_trees(
     write_augur_node_data_refine(tree, &trees.run, path)?;
     progress_info!(log, "Wrote augur node data JSON to {path}", path = path.display());
   }
-  write_tree_outputs_per_partition(&annotated, trees.sequences, resolved, CommandKind::Optimize, log)
+  write_tree_outputs_per_alignment(&annotated, trees.sequences, resolved, CommandKind::Optimize, log)
 }
 
 struct OptimizeTrees<'a> {
