@@ -1,4 +1,4 @@
-name: "Nightly CLI, desktop, and web"
+name: "Nightly CLI and desktop"
 
 on:
   schedule:
@@ -12,14 +12,13 @@ on:
         type: boolean
         default: false
       only:
-        description: "What to run: cli (CLI release), desktop (desktop app release), web (web app deploy), or all"
+        description: "What to run: cli (CLI release), desktop (desktop app release), or all"
         required: false
         type: choice
         options:
           - all
           - cli
           - desktop
-          - web
         default: all
 
 permissions:
