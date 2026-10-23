@@ -4,4 +4,5 @@
 !.config/mise.lock
 !.config/mise.toml
 !dev/docker/files/
+!dev/lib/dist-flags.sh
 !rust-toolchain.toml

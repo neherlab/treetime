@@ -82,11 +82,12 @@ done \
 
 # OpenBLAS, liblzma, and libzstd of the target: the prebuilt archives of
 # .config/mise.image.toml, which cargo links through pkg-config with the [env]
-# table that the install writes to /.cargo/config.toml.
-COPY dev/docker/files/install-image-libraries /
+# table that the install writes to /.cargo/config.toml. The install fails when
+# an archive was built with another toolchain or CPU flags than this image uses.
+COPY dev/docker/files/install-image-libraries dev/lib/dist-flags.sh /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-libraries "${CROSS_COMPILE}" \
-&& rm /install-image-libraries
+&& rm /install-image-libraries /dist-flags.sh
 
 ENV PATH="${LLVM_DIR}/bin:${CROSS_GCC_DIR}/bin:${PATH}"
 

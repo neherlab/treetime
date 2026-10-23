@@ -552,3 +552,14 @@ asset_pattern = "bcryptprimitives.dll-*.gz"
 checksum = "blake3:1cf7ab0c6cedac48c4ad0899f562b5bbfac3688719d36b89e7b4e20ba7911945"
 url = "https://github.com/binarylandia/wine_bcryptprimitives_dll_mock/releases/download/2024-11-04_16-27-34/bcryptprimitives.dll-2024-11-04_16-27-34.gz"
 url_api = "https://api.github.com/repos/binarylandia/wine_bcryptprimitives_dll_mock/releases/assets/204045392"
+
+[[tools.yq]]
+version = "4.53.6"
+backend = "aqua:mikefarah/yq"
+specifiers = ["4.53.6"]
+
+[tools.yq."platforms.linux-x64"]
+checksum = "sha256:c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385"
+url = "https://github.com/mikefarah/yq/releases/download/v4.53.6/yq_linux_amd64"
+url_api = "https://api.github.com/repos/mikefarah/yq/releases/assets/522028022"
+provenance = "cosign"

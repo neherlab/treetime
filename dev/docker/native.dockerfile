@@ -172,12 +172,12 @@ RUN set -euxo pipefail >/dev/null \
 # prebuilt archives of .config/mise.image.toml, which cargo links through
 # pkg-config with the [env] table that the install writes to
 # /.cargo/config.toml, and for the threaded WebAssembly module with
-# /.cargo/wasm-mt-env.toml. The install fails when a WebAssembly archive was
-# built with another Emscripten version than this image uses.
-COPY dev/docker/files/install-image-libraries /
+# /.cargo/wasm-mt-env.toml. The install fails when an archive was built with
+# another toolchain, CPU flags, or Emscripten version than this image uses.
+COPY dev/docker/files/install-image-libraries dev/lib/dist-flags.sh /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-libraries "x86_64-unknown-linux-gnu" "wasm32-unknown-emscripten" \
-&& rm -rf /install-image-libraries /install-image-tools /mise-image "/tmp/mise"
+&& rm -rf /install-image-libraries /dist-flags.sh /install-image-tools /mise-image "/tmp/mise"
 
 # dev/docker/run runs as the host user with HOME=/tmp/home.
 RUN set -euxo pipefail >/dev/null \

@@ -2,8 +2,9 @@
 #
 # Usage: $0 <target>...
 #
-# Install the prebuilt libraries of the image targets and point the pkg-config
-# probes of the build scripts (treetime-openblas, liblzma-sys,
+# Install the prebuilt libraries of the image targets, check that each archive
+# was built with the toolchain and the CPU flags of its target, and point the
+# pkg-config probes of the build scripts (treetime-openblas, liblzma-sys,
 # zstd-sys) at the archives through the [env] table of /.cargo/config.toml,
 # which cargo reads for every project below /, so only builds in the container
 # use it.
@@ -26,14 +27,22 @@
 # - The threaded WebAssembly module links its own OpenBLAS: the same variables
 #   with the threaded archive go to /.cargo/wasm-mt-env.toml, which every
 #   threaded cargo call passes with --config after dev/cargo/wasm-mt.toml
-# - Emscripten gives no ABI guarantee between versions, so the install fails
-#   when a WebAssembly archive comes from another Emscripten version than the
-#   installed one; an Emscripten upgrade needs new archives first
+# - The build records of the archives (share/build_openblas/build.json,
+#   share/staticbourg/build.json) must name the llvm release, the target
+#   toolchain (GCC, osxcross, llvm-mingw, or Emscripten) at the URL of the
+#   lockfile, and the C CPU flags of export_dist_flags (dev/lib/dist-flags.sh)
+#   for C, Fortran, and the Fortran runtime. Windows 7 links liblzma and
+#   libzstd built by its MinGW GCC, and an OpenBLAS built by clang and flang on
+#   the sysroot of that GCC. Emscripten gives no ABI guarantee between
+#   versions, so a WebAssembly archive must come from the installed Emscripten.
+#   Any mismatch fails the image build: a toolchain or CPU flag change needs
+#   new archives first
 #
 set -euo pipefail
 
 this_dir="$(dirname "${BASH_SOURCE[0]}")"
 config="${this_dir%/}/mise-image"
+lock="${config}/mise.lock"
 export MISE_TRUSTED_CONFIG_PATHS="${config}"
 export MISE_DATA_DIR="/opt/image-tools"
 cargo_config="/.cargo/config.toml"
@@ -41,6 +50,10 @@ cargo_config_mt="/.cargo/wasm-mt-env.toml"
 emscripten_version_file="/opt/emscripten/emscripten/emscripten-version.txt"
 wasm="wasm32-unknown-emscripten"
 failures=0
+yq_bin=""
+
+# shellcheck source=../../lib/dist-flags.sh
+source "${this_dir%/}/dist-flags.sh"
 
 main() {
   if [[ $# -eq 0 ]]; then
@@ -59,7 +72,8 @@ main() {
       entries+=("openblas-mt-${target}")
     fi
   done
-  "${this_dir%/}/install-image-tools" "${entries[@]}"
+  "${this_dir%/}/install-image-tools" yq "${entries[@]}"
+  yq_bin="$(mise -C "${config}" which yq)"
 
   local env_lines=() mt_lines=()
   for target in "$@"; do
@@ -67,19 +81,19 @@ main() {
     openblas="$(where "openblas-${target}")"
     lzma="$(where "liblzma-${target}")"
     zstd="$(where "libzstd-${target}")"
-    check_openblas "${target}" "${openblas}"
+    check_openblas "${target}" "${openblas}" plain
     check_compression "${target}" "${lzma}" lzma
     check_compression "${target}" "${zstd}" zstd
     env_lines+=("$(pkg_config_env "${target}" "${openblas}" "${lzma}" "${zstd}")")
     if [[ "${target}" == "${wasm}" ]]; then
       local openblas_mt
       openblas_mt="$(where "openblas-mt-${target}")"
-      check_openblas "${target}" "${openblas_mt}"
+      check_openblas "${target}" "${openblas_mt}" mt
       mt_lines+=("$(pkg_config_env "${target}" "${openblas_mt}" "${lzma}" "${zstd}")")
     fi
   done
   if ((failures > 0)); then
-    printf 'The prebuilt libraries do not match the image. Build new releases of binarylandia/build_openblas or binarylandia/staticbourg, or update the entries in .config/mise.image.toml.\n' >&2
+    printf 'The prebuilt libraries do not match the toolchains and CPU flags of the image. Build new releases of binarylandia/build_openblas or binarylandia/staticbourg, or update the entries in .config/mise.image.toml.\n' >&2
     exit 1
   fi
 
@@ -111,43 +125,174 @@ pkg_config_env() {
   fi
 }
 
-# OpenBLAS of build_openblas, with the Fortran runtime of flang except on
-# WebAssembly.
+# OpenBLAS of build_openblas: the plain archive, or for the threaded
+# WebAssembly module the threaded one.
 check_openblas() {
-  local target="$1" dir="$2"
+  local target="$1" dir="$2" variant="$3"
+  local record="${dir}/share/build_openblas/build.json"
   require_file "${dir}/lib/pkgconfig/openblas.pc"
   require_file "${dir}/lib/libopenblas.a"
+  require_file "${record}"
+  expect "${record}" .target "${target}"
+  expect "${record}" .variant "${variant}"
   if [[ "${target}" == "${wasm}" ]]; then
-    check_emscripten "${dir}/share/openblas/emscripten-version.txt"
-  else
-    require_file "${dir}/lib/libflang_rt.runtime.a"
+    check_emscripten "${record}" "${dir}/share/openblas/emscripten-version.txt"
+    expect "${record}" .fortran_cpu_flags "<missing>"
+    return
   fi
+  require_file "${dir}/lib/libflang_rt.runtime.a"
+  check_toolchain "${target}" "${record}"
+  expect_prefix "${record}" .compiler "clang version $(llvm_version) "
+  expect_prefix "${record}" .fortran_compiler "flang version $(llvm_version) "
+  local flags
+  flags="$(cpu_flags "${target}")"
+  expect "${record}" .fortran_cpu_flags "${flags}"
+  expect "${record}" .flang_rt.cpu_flags "${flags}"
 }
 
-# liblzma or libzstd of staticbourg.
+# liblzma or libzstd of staticbourg. Windows 7 uses the x86_64-pc-windows-gnu
+# archives, which the MinGW GCC of its image builds.
 check_compression() {
   local target="$1" dir="$2" library="$3"
+  local record="${dir}/share/staticbourg/build.json" archive_target="${1}"
   require_file "${dir}/lib/pkgconfig/lib${library}.pc"
   require_file "${dir}/lib/lib${library}.a"
+  require_file "${record}"
+  expect "${record}" .library "${library}"
+  if [[ "${target}" == x86_64-win7-windows-gnu ]]; then
+    archive_target="x86_64-pc-windows-gnu"
+  fi
+  expect "${record}" .target "${archive_target}"
   if [[ "${target}" == "${wasm}" ]]; then
-    check_emscripten "${dir}/share/emscripten-version.txt"
+    check_emscripten "${record}" "${dir}/share/emscripten-version.txt"
+    expect "${record}" .target_toolchain.url "$(lock_url "http:emscripten")"
+    return
+  fi
+  check_toolchain "${target}" "${record}"
+  if [[ "${target}" == x86_64-win7-windows-gnu ]]; then
+    local gcc
+    gcc="$(lock_url gcc-x86_64-w64-mingw32)"
+    gcc="${gcc##*/gcc-}"
+    expect_prefix "${record}" .compiler "x86_64-w64-mingw32-gcc "
+    expect_suffix "${record}" .compiler " ${gcc%%-*}"
+  else
+    expect_prefix "${record}" .compiler "clang version $(llvm_version) "
   fi
 }
 
-# A WebAssembly archive was built by the installed Emscripten.
+# The llvm release, the target toolchain, and the C CPU flags of a native
+# target.
+check_toolchain() {
+  local target="$1" record="$2" toolchain
+  case "${target}" in
+  *-linux-*) toolchain="gcc-${target}" ;;
+  *-apple-darwin) toolchain="osxcross" ;;
+  *-pc-windows-gnullvm) toolchain="llvm-mingw" ;;
+  x86_64-win7-windows-gnu) toolchain="gcc-x86_64-w64-mingw32" ;;
+  *)
+    printf 'Unsupported target: %s\n' "${target}" >&2
+    exit 1
+    ;;
+  esac
+  expect "${record}" .llvm "$(release_tag "$(lock_url llvm)")"
+  expect "${record}" .target_toolchain.url "$(lock_url "${toolchain}")"
+  expect "${record}" .cpu_flags "$(cpu_flags "${target}")"
+}
+
+# A WebAssembly archive: the Emscripten that built it is the installed one, and
+# it carries no CPU flags.
 check_emscripten() {
-  local version_file="$1"
+  local record="$1" version_file="$2"
   require_file "${version_file}"
-  if [[ -f "${version_file}" ]] && ! cmp -s "${version_file}" "${emscripten_version_file}"; then
+  if ! cmp -s "${version_file}" "${emscripten_version_file}"; then
     printf '%s: built with Emscripten %s, but the image has Emscripten %s\n' \
-      "${version_file}" "$(<"${version_file}")" "$(<"${emscripten_version_file}")" >&2
+      "${record}" "$(<"${version_file}")" "$(<"${emscripten_version_file}")" >&2
     failures=$((failures + 1))
   fi
+  expect "${record}" .emscripten "$(lock_version "http:emscripten")"
+  expect "${record}" .cpu_flags "<missing>"
+}
+
+# The C CPU flags of the shipped builds of a target, without CFLAGS.
+cpu_flags() {
+  (
+    unset CFLAGS
+    export_dist_flags "$1"
+    local name="CFLAGS_${1//-/_}"
+    printf '%s' "${!name# }"
+  )
+}
+
+llvm_version() {
+  local tag
+  tag="$(release_tag "$(lock_url llvm)")"
+  tag="${tag#llvm-}"
+  printf '%s' "${tag%%-*}"
+}
+
+release_tag() {
+  local url="${1#*/releases/download/}"
+  printf '%s' "${url%%/*}"
+}
+
+# The download URL of a tool in the lockfile.
+lock_url() {
+  lock_value "$1" '."platforms.linux-x64".url'
+}
+
+# The version of a tool in the lockfile.
+lock_version() {
+  lock_value "$1" .version
+}
+
+lock_value() {
+  local value
+  value="$(TOOL="$1" yq -p toml -o yaml ".tools[strenv(TOOL)][0]$2 // \"\"" "${lock}")"
+  if [[ -z "${value}" ]]; then
+    printf 'No %s of %s in %s\n' "$2" "$1" "${lock}" >&2
+    exit 1
+  fi
+  printf '%s' "${value}"
 }
 
 require_file() {
   if [[ ! -f "$1" ]]; then
     printf 'Missing file: %s\n' "$1" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+record_value() {
+  yq -p json -o yaml "$2 // \"<missing>\"" "$1"
+}
+
+yq() {
+  "${yq_bin}" "$@"
+}
+
+expect() {
+  local actual
+  actual="$(record_value "$1" "$2")"
+  if [[ "${actual}" != "$3" ]]; then
+    printf '%s: %s is "%s", expected "%s"\n' "$1" "$2" "${actual}" "$3" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+expect_prefix() {
+  local actual
+  actual="$(record_value "$1" "$2")"
+  if [[ "${actual}" != "$3"* ]]; then
+    printf '%s: %s is "%s", expected to start with "%s"\n' "$1" "$2" "${actual}" "$3" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+expect_suffix() {
+  local actual
+  actual="$(record_value "$1" "$2")"
+  if [[ "${actual}" != *"$3" ]]; then
+    printf '%s: %s is "%s", expected to end with "%s"\n' "$1" "$2" "${actual}" "$3" >&2
     failures=$((failures + 1))
   fi
 }

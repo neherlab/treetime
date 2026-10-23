@@ -7,9 +7,10 @@
 # shipped binary; dev/cross/build adds the static runtime and linker flags of
 # the other targets.
 #
-# The prebuilt archives that the builds link follow the same CPU baselines:
-# OpenBLAS selects its kernels at run time, and binarylandia/staticbourg builds
-# liblzma and libzstd for these baselines (.config/mise.image.toml).
+# The prebuilt OpenBLAS, liblzma, and libzstd archives that the builds link are
+# compiled with these C CPU flags; the images check the build record of every
+# archive against them (dev/docker/files/install-image-libraries). OpenBLAS also
+# selects its kernels at run time.
 
 # Export RUSTFLAGS and the C and C++ flags of the shipped build for a target, by
 # default the host. RUSTFLAGS replaces the target rustflags of .cargo/config.toml
