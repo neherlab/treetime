@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import type { Plugin } from "vite";
 
 export const AUSPICE_SOURCE =
@@ -39,6 +41,10 @@ const AUSPICE_ENTRIES = [
 
 const APP_UI_PACKAGE = "@neherlab/app-ui";
 
+export const AUSPICE_EXTENSIONS = "@extensions";
+
+const AUSPICE_EXTENSIONS_MODULE = fileURLToPath(new URL("../src/auspice/extensions.ts", import.meta.url));
+
 const SHARED_PACKAGES = ["react", "react-dom"];
 
 const AUSPICE_TIMERS = /[\\/]auspice[\\/]src[\\/]util[\\/]perf\.js(?:\?.*)?$/u;
@@ -74,11 +80,10 @@ export function auspice(): Plugin {
     config() {
       return {
         define: {
-          "process.env.EXTENSION_DATA": JSON.stringify(""),
           "process.env.SKIP_REDUX_CHECKS": JSON.stringify(""),
           "process.env.ENABLE_SERVICE_WORKER": "false",
         },
-        resolve: { dedupe: SHARED_PACKAGES },
+        resolve: { alias: { [AUSPICE_EXTENSIONS]: AUSPICE_EXTENSIONS_MODULE }, dedupe: SHARED_PACKAGES },
         optimizeDeps: {
           extensions: [".tsx"],
           include: AUSPICE_ENTRIES.map((entry) => `${APP_UI_PACKAGE} > ${entry}`),

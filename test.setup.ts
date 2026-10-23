@@ -2,7 +2,7 @@ import { Glob, plugin, TOML } from "bun";
 import * as fc from "fast-check";
 import * as z from "zod";
 
-import { AUSPICE_SOURCE, transformAuspiceSource } from "./packages/app-ui/build/auspice-vite.ts";
+import { AUSPICE_EXTENSIONS, AUSPICE_SOURCE, transformAuspiceSource } from "./packages/app-ui/build/auspice-vite.ts";
 
 const ROOT = import.meta.dir;
 
@@ -28,6 +28,8 @@ plugin({
     for (const specifier of iconSpecifiers) {
       build.module(specifier, async () => ({ contents: await loadIcon(specifier), loader: "jsx" }));
     }
+
+    build.module(AUSPICE_EXTENSIONS, () => ({ contents: "export default {};", loader: "js" }));
 
     build.onLoad({ filter: AUSPICE_SOURCE }, async ({ path }) => ({
       contents: (await transformAuspiceSource(await Bun.file(path).text(), path)).code,

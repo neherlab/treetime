@@ -1,6 +1,6 @@
 import { transformAuspiceSource } from "../auspice-vite";
 
-const AUSPICE_ROOT = "/repo/node_modules/.bun/auspice@3.0.0+ee1ed944166f6889/node_modules/auspice";
+const AUSPICE_ROOT = "/repo/node_modules/.bun/auspice@3.1.0+ee1ed944166f6889/node_modules/auspice";
 
 const TIMERS_SOURCE = `
 export const timerStart = (name) => { console.log("start", name); };

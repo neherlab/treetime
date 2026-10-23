@@ -20,7 +20,7 @@
       "ignore": ["src/generated/**"]
     },
     "packages/app-ui": {
-      "entry": ["src/App.tsx!"],
+      "entry": ["src/App.tsx!", "src/auspice/extensions.ts!"],
       "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"],
       "ignoreDependencies": [
         "tw-animate-css",

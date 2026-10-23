@@ -128,7 +128,7 @@
         "@tanstack/react-router": "1.170.38",
         "@tanstack/react-table": "9.2.4",
         "@tanstack/react-virtual": "3.14.13",
-        "auspice": "3.0.0",
+        "auspice": "3.1.0",
         "class-variance-authority": "0.7.1",
         "cn": "0.3.0",
         "d3-scale": "4.0.2",
@@ -237,7 +237,7 @@
     },
   },
   "patchedDependencies": {
-    "auspice@3.0.0": "patches/auspice@3.0.0.patch",
+    "auspice@3.1.0": "patches/auspice@3.1.0.patch",
     "unplugin-icons@24.0.0": "patches/unplugin-icons@24.0.0.patch",
   },
   "overrides": {
@@ -2035,7 +2035,7 @@
 
     "attr-accept": ["attr-accept@4.0.0", "", {}, "sha512-hmCnJClmeKNKlsBHgbM8yLZRiQZ4/20UXbLJb6OUT16eWcM5/xNZerr80a/zCYob768KIGq++aLrQNTuwPsIOQ=="],
 
-    "auspice": ["auspice@3.0.0", "", { "dependencies": { "@babel/core": "^7.3.4", "@babel/plugin-proposal-class-properties": "^7.3.4", "@babel/plugin-proposal-decorators": "^7.3.0", "@babel/plugin-syntax-dynamic-import": "^7.8.3", "@babel/plugin-transform-runtime": "^7.8.3", "@babel/preset-env": "^7.9.6", "@babel/preset-react": "^7.0.0", "@babel/preset-typescript": "^7.21.0", "@hot-loader/react-dom": "^16.13.0", "@maplibre/maplibre-gl-leaflet": "^0.1.3", "@reduxjs/toolkit": "^1.9.7", "@stdlib/stats-base-dists-normal-pdf": "^0.2.2", "argparse": "^1.0.10", "babel-loader": "^8.0.4", "babel-plugin-lodash": "^3.3.4", "babel-plugin-strip-function-call": "^1.0.2", "babel-plugin-styled-components": "^1.10.0", "binomial": "^0.2.0", "buffer": "^6.0.3", "chalk": "^2.4.1", "clean-webpack-plugin": "^4.0.0", "compression": "^1.7.3", "compression-webpack-plugin": "^3.1.0", "core-js": "^3.43.0", "create-react-class": "^15.7.0", "css-loader": "^3.4.0", "css.escape": "^1.5.1", "d3-array": "^2.2.0", "d3-axis": "^1.0.6", "d3-brush": "^1.0.4", "d3-color": "^1.0.3", "d3-ease": "^1.0.3", "d3-format": "^1.3.0", "d3-interpolate": "^1.1.5", "d3-scale": "^1.0.5", "d3-selection": "^1.1.0", "d3-shape": "^1.2.0", "d3-timer": "^1.0.7", "d3-transition": "^1.2.0", "d3-zoom": "^1.1.3", "dom-to-image": "^2.6.0", "dompurify": "^2.3.3", "express": "^4.16.3", "express-naked-redirect": "^0.1.9", "express-static-gzip": "^0.2.2", "html-webpack-plugin": "^5.6.7", "i18next": "^19.3.2", "leaflet": "^1.9.4", "leaflet-gesture-handling": "1.2.1", "linspace": "^1.0.0", "lodash": "^4.17.21", "lodash-webpack-plugin": "^0.11.6", "maplibre-gl": "^4.7.1", "marked": "^4.0.10", "mousetrap": "^1.6.2", "null-loader": "^4.0.0", "outer-product": "0.0.4", "papaparse": "^5.3.1", "prop-types": "^15.6.0", "query-string": "^4.2.3", "react": "^16.8.6", "react-collapsible": "^2.8.4", "react-dom": "^16.8.6", "react-helmet": "^5.2.1", "react-hot-loader": "^4.8.4", "react-i18next": "^11.15.6", "react-icons": "^3.9.0", "react-redux": "^7.2.6", "react-select": "^5.2.2", "react-tooltip": "^4.2.10", "react-transition-group": "^1.2.1", "react-virtualized": "^9.22.3", "regenerator-runtime": "^0.13.5", "style-loader": "^0.13.2", "styled-components": "^4.0.3", "typeface-lato": "^0.0.75", "webpack": "^5.74.0", "webpack-bundle-analyzer": "^3.9.0", "webpack-dev-middleware": "^3.7.3", "webpack-hot-middleware": "^2.25.2", "whatwg-fetch": "^0.10.1", "workbox-webpack-plugin": "^7.4.1", "xlsx": "^0.17.1", "yaml-front-matter": "^4.0.0" }, "bin": { "auspice": "auspice.js" } }, "sha512-39UrNQwN56AvTH4NUHNMBI0bDWpVbKdWgneGNN6xLXriZ1hujVqqiPECHBf/4/1898DqWvdgAaj4H5+eKVeNFw=="],
+    "auspice": ["auspice@3.1.0", "", { "dependencies": { "@babel/core": "^7.3.4", "@babel/plugin-proposal-class-properties": "^7.3.4", "@babel/plugin-proposal-decorators": "^7.3.0", "@babel/plugin-syntax-dynamic-import": "^7.8.3", "@babel/plugin-transform-runtime": "^7.8.3", "@babel/preset-env": "^7.9.6", "@babel/preset-react": "^7.0.0", "@babel/preset-typescript": "^7.21.0", "@hot-loader/react-dom": "^16.13.0", "@maplibre/maplibre-gl-leaflet": "^0.1.3", "@reduxjs/toolkit": "^1.9.7", "@stdlib/stats-base-dists-normal-pdf": "^0.2.2", "argparse": "^1.0.10", "babel-loader": "^8.0.4", "babel-plugin-lodash": "^3.3.4", "babel-plugin-strip-function-call": "^1.0.2", "babel-plugin-styled-components": "^1.10.0", "binomial": "^0.2.0", "buffer": "^6.0.3", "chalk": "^2.4.1", "clean-webpack-plugin": "^4.0.0", "compression": "^1.7.3", "compression-webpack-plugin": "^3.1.0", "core-js": "^3.43.0", "create-react-class": "^15.7.0", "css-loader": "^3.4.0", "css.escape": "^1.5.1", "d3-array": "^2.2.0", "d3-axis": "^1.0.6", "d3-brush": "^1.0.4", "d3-color": "^1.0.3", "d3-ease": "^1.0.3", "d3-format": "^1.3.0", "d3-interpolate": "^1.1.5", "d3-scale": "^1.0.5", "d3-selection": "^1.1.0", "d3-shape": "^1.2.0", "d3-timer": "^1.0.7", "d3-transition": "^1.2.0", "d3-zoom": "^1.1.3", "dompurify": "^2.3.3", "express": "^4.16.3", "express-naked-redirect": "^0.1.9", "express-static-gzip": "^0.2.2", "html-webpack-plugin": "^5.6.7", "i18next": "^19.3.2", "leaflet": "^1.9.4", "leaflet-gesture-handling": "1.2.1", "linspace": "^1.0.0", "lodash": "^4.17.21", "lodash-webpack-plugin": "^0.11.6", "maplibre-gl": "^4.7.1", "marked": "^4.0.10", "mousetrap": "^1.6.2", "null-loader": "^4.0.0", "outer-product": "0.0.4", "papaparse": "^5.3.1", "prop-types": "^15.6.0", "query-string": "^4.2.3", "react": "^16.8.6", "react-collapsible": "^2.8.4", "react-dom": "^16.8.6", "react-helmet": "^5.2.1", "react-hot-loader": "^4.8.4", "react-i18next": "^11.15.6", "react-icons": "^3.9.0", "react-redux": "^7.2.6", "react-select": "^5.2.2", "react-tooltip": "^4.2.10", "react-transition-group": "^1.2.1", "react-virtualized": "^9.22.3", "regenerator-runtime": "^0.13.5", "style-loader": "^0.13.2", "styled-components": "^4.0.3", "typeface-lato": "^0.0.75", "webpack": "^5.74.0", "webpack-bundle-analyzer": "^3.9.0", "webpack-dev-middleware": "^3.7.3", "webpack-hot-middleware": "^2.25.2", "whatwg-fetch": "^0.10.1", "workbox-webpack-plugin": "^7.4.1", "xlsx": "^0.17.1", "yaml-front-matter": "^4.0.0" }, "bin": { "auspice": "auspice.js" } }, "sha512-ixvpMmOsR+HOu2xytNcA20KeJfSCESyqnKcjrAUtT5K07aNwJsvqySGqQomPNyJ1tvzdnX/aYqIRODzyzkCFGQ=="],
 
     "available-typed-arrays": ["available-typed-arrays@1.0.7", "", { "dependencies": { "possible-typed-array-names": "^1.0.0" } }, "sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ=="],
 
@@ -2398,8 +2398,6 @@
     "dom-helpers": ["dom-helpers@3.4.0", "", { "dependencies": { "@babel/runtime": "^7.1.2" } }, "sha512-LnuPJ+dwqKDIyotW1VzmOZ5TONUN7CwkCR5hrgawTUbkBGYdeoNLZo6nNfGkCrjtE1nXXaj7iMMpDa8/d9WoIA=="],
 
     "dom-serializer": ["dom-serializer@2.0.0", "", { "dependencies": { "domelementtype": "^2.3.0", "domhandler": "^5.0.2", "entities": "^4.2.0" } }, "sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg=="],
-
-    "dom-to-image": ["dom-to-image@2.6.0", "", {}, "sha512-Dt0QdaHmLpjURjU7Tnu3AgYSF2LuOmksSGsUcE6ItvJoCWTBEmiMXcqBdNSAm9+QbbwD7JMoVsuuKX6ZVQv1qA=="],
 
     "dom-walk": ["dom-walk@0.1.2", "", {}, "sha512-6QvTW9mrGeIegrFXdtQi9pk7O/nSK6lSdXW2eqUspN5LWD7UTji2Fqw5V2YLjBpHEoU9Xl/eUWNpDeZvoyOv2w=="],
 

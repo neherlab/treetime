@@ -1,0 +1,1440 @@
+diff --git a/src/actions/filesDropped/parseCsv.ts b/src/actions/filesDropped/parseCsv.ts
+index d11def6d1ac56959b562bd02356321eb2c55f27c..c382465d9ace0605b9fe9c488532d1783ddb2762 100644
+--- a/src/actions/filesDropped/parseCsv.ts
++++ b/src/actions/filesDropped/parseCsv.ts
+@@ -77,20 +77,21 @@ export async function handleCsvLikeDroppedFile(file: File, nodeNames: Set<string
+   if (errors.length) throw new Error(errors.map((e) => e.message).join(", "));
+   let { colorings, header } = processHeader(meta.fields);
+   processRows(colorings, header, data, nodeNames);
+-  if (colorings.length === 0) {
++  /* a file may hold only the coordinates of its strains, which become a coloring of their own below */
++  if (colorings.length === 0 && !header.latLongKeys) {
+     throw new Error("No valid columns")
+   }
+   // Drop coloring for which no valid strains were found
+   colorings = colorings.filter((coloring) => Object.keys(coloring.strains).length)
++
++  const geographic = header.latLongKeys ?
++    processLatLongs(data, colorings, header, `${fileName}_geo`, nodeNames) :
++    [];
+   if (colorings.length === 0) {
+     throw new Error("No matching nodes found in tree")
+   }
+   addExistenceColoring(colorings, fileName);
+ 
+-  const geographic = header.latLongKeys ?
+-    processLatLongs(data, colorings, header, `${fileName}_geo`) :
+-    [];
+-
+   return {
+     attributes: Object.fromEntries(colorings.map((c) => [
+       c.attrName,
+@@ -302,7 +303,8 @@ function processLatLongs(
+   data: ParseResults['data'],
+   colorings: AttrColoring[],
+   header: Header,
+-  attrName: string
++  attrName: string,
++  nodeNames: Set<string>,
+ ): NewMetadata['geographic'] {
+   const [latKey, longKey] = [header.latLongKeys.latitude, header.latLongKeys.longitude];
+   const coordsStrains = new Map();
+@@ -311,17 +313,23 @@ function processLatLongs(
+   /* Collect groups of strains with identical lat/longs */
+   for (const row of data) {
+     const strain = row[header.strainKey];
++    if (!nodeNames.has(strain)) continue;
++    /* an empty cell is a missing coordinate, which `Number()` would read as 0 */
++    if (!row[latKey]?.trim() || !row[longKey]?.trim()) continue;
+     const [latitude, longitude] = [Number(row[latKey]), Number(row[longKey])];
+     if (isNaN(latitude) || isNaN(longitude) || latitude > 90 || latitude < -90 || longitude > 180 || longitude < -180) {
+       continue;
+     }
+-    const strKey = String(row[latKey])+String(row[longKey]);
++    /* group by the parsed pair: joined strings would put e.g. (1, 23) and (12, 3) into one location */
++    const strKey = `${latitude},${longitude}`;
+     if (!coordsStrains.has(strKey)) {
+       const deme = `deme_${demeCounter++}`; // visible to user as the attr value!
+       coordsStrains.set(strKey, {deme, latitude, longitude, strains: new Set<string>()});
+     }
+     coordsStrains.get(strKey).strains.add(strain);
+   }
++  /* no strain of the tree has valid coordinates: no location to show */
++  if (coordsStrains.size === 0) return [];
+ 
+   /* invert map to link each strain to a dummy value with lat/longs */
+   // TODO XXX what about the shape here?
+diff --git a/src/actions/recomputeReduxState.js b/src/actions/recomputeReduxState.js
+index 0c972ff1423bc036d1cb95e61a5c8f0919b74d51..ebe39c06fd72b4481e6b4fa94055f0ef40396afb 100644
+--- a/src/actions/recomputeReduxState.js
++++ b/src/actions/recomputeReduxState.js
+@@ -440,6 +440,7 @@ const modifyControlsStateViaTree = (state, tree, treeToo, metadata) => {
+   }
+   let [aaMuts, nucMuts] = [false, false];
+   let num_date_confidence = false; /* flag. Is confidence defined anywhere on the tree? */
++  let allNodesHaveNumDate = true; /* flag. Can every node be placed on a time axis? */
+   const examineNodes = function examineNodes(nodes) {
+     nodes.forEach((node) => {
+       /* check colorBys */
+@@ -463,6 +464,10 @@ const modifyControlsStateViaTree = (state, tree, treeToo, metadata) => {
+       if (!num_date_confidence && getTraitFromNode(node, "num_date", {confidence: true})) {
+         num_date_confidence = true;
+       }
++      /* check num_date: a node without a date has no position on a time axis */
++      if (allNodesHaveNumDate && getTraitFromNode(node, "num_date") === undefined) {
++        allNodesHaveNumDate = false;
++      }
+     });
+   };
+   examineNodes(tree.nodes);
+@@ -472,11 +477,12 @@ const modifyControlsStateViaTree = (state, tree, treeToo, metadata) => {
+     state.coloringsPresentOnTree.add("gt");
+   }
+ 
+-  /* does the tree have date information? if not, disable controls, modify view */
+-  const numDateAtRoot = getTraitFromNode(tree.nodes[0], "num_date") !== undefined;
++  /* does the tree have date information? if not, disable controls, modify view. A tree where only some nodes have
++  dates (e.g. sequences placed onto a dated tree) is shown by divergence, because the undated nodes would have no
++  position on the time axis */
+   const divAtRoot = getDivFromNode(tree.nodes[0]) !== undefined;
+-  state.branchLengthsToDisplay = (numDateAtRoot && divAtRoot) ? "divAndDate" :
+-    numDateAtRoot ? "dateOnly" :
++  state.branchLengthsToDisplay = (allNodesHaveNumDate && divAtRoot) ? "divAndDate" :
++    allNodesHaveNumDate ? "dateOnly" :
+       "divOnly";
+ 
+   /* if branchLengthsToDisplay is "divOnly", force to display by divergence
+@@ -1151,7 +1157,9 @@ function instantiateSecondTree(secondTreeDataset, metadata, genomeMap, secondTre
+   castIncorrectTypes(metadata, treeToo);
+   treeToo.debug = "RIGHT";
+   treeToo.name = secondTreeName;
+-  updateMetadataStateViaSecondTree({...metadata}, secondTreeDataset, genomeMap)
++  /* the comparison of the genome maps marks the metadata that it gets, so keep the marked copy */
++  const metadataWithSecondTree = {...metadata};
++  updateMetadataStateViaSecondTree(metadataWithSecondTree, secondTreeDataset, genomeMap);
+ 
+   const secondTreeColorings = convertColoringsListToDict(secondTreeDataset.meta?.colorings || []);
+   const stateCountAttrs = gatherTraitNames(treeToo.nodes, secondTreeColorings);
+@@ -1160,7 +1168,7 @@ function instantiateSecondTree(secondTreeDataset, metadata, genomeMap, secondTre
+   /* TODO: calc & display num tips in 2nd tree */
+   // metadata.secondTreeNumTips = calcTotalTipsInTree(treeToo.nodes);
+ 
+-  return {treeToo, metadata}
++  return {treeToo, metadata: metadataWithSecondTree}
+ }
+ 
+ /**
+diff --git a/src/actions/updateMetadata/updateMetadata.ts b/src/actions/updateMetadata/updateMetadata.ts
+index 2a7b13070bf910d100ba3195972736ee3d2a4310..700119b50c9f9e0696250c49b0bdb7d0c5139b80 100644
+--- a/src/actions/updateMetadata/updateMetadata.ts
++++ b/src/actions/updateMetadata/updateMetadata.ts
+@@ -6,6 +6,7 @@ import type{ ControlsState } from "../../reducers/controls";
+ import type { TreeState, NodeAttr} from "../../reducers/tree/types";
+ import type { UpdateMetadataAction, NewMetadata, AttrDetails } from "./updateMetadata.types";
+ import { changeColorBy } from "../colors";
++import { computeLegendPlacements } from "../../util/metadataJsonParsing";
+ 
+ export const SUCCESS = "SUCCESS";
+ 
+@@ -182,10 +183,16 @@ function _reduxMetadata(
+   const geoResolutions = geographic?.length &&
+     [...(state.geoResolutions || []), ...geographic];
+ 
++  /* the legend placements are computed from the panels of the dataset when it loads, so a map that the new metadata
++  makes available needs its placement too */
++  const legendPlacements = geoResolutions && !state.legendPlacements?.map &&
++    {...state.legendPlacements, ...computeLegendPlacements(["map"])};
++
+   return {
+     ...actionMetadata,
+     ...(Object.keys(colorings).length && { colorings }),
+     ...(geoResolutions && { geoResolutions }),
++    ...(legendPlacements && { legendPlacements }),
+   }
+ }
+ 
+diff --git a/src/components/controls/choose-branch-labelling.js b/src/components/controls/choose-branch-labelling.js
+index 36539c4b270cc1d7adc9cb75fde901eefdd3bf75..440254a6a7c5a2602aab7b2da501a7604bc47d38 100644
+--- a/src/components/controls/choose-branch-labelling.js
++++ b/src/components/controls/choose-branch-labelling.js
+@@ -33,6 +33,7 @@ class ChooseBranchLabelling extends React.Component {
+         </SidebarSubtitle>
+         <div style={{width: controlsWidth, fontSize: 14}}>
+           <CustomSelect
++            aria-label={t("sidebar:Branch Labels")}
+             value={selectOptions.filter(({value}) => value === this.props.selected)}
+             options={selectOptions}
+             isClearable={false}
+diff --git a/src/components/controls/choose-explode-attr.js b/src/components/controls/choose-explode-attr.js
+index ab53f83d52bf3b11208bdfd85aeb6d8b67912119..21b156765dccb1f8c566e107fabc54447e3d27f7 100644
+--- a/src/components/controls/choose-explode-attr.js
++++ b/src/components/controls/choose-explode-attr.js
+@@ -60,6 +60,7 @@ class ChooseExplodeAttr extends React.Component {
+         </SidebarSubtitleFlex>
+         <div style={{width: controlsWidth, fontSize: 14}}>
+           <CustomSelect
++            aria-label={t("sidebar:Explode Tree By")}
+             value={selectOptions.filter(({value}) => value === this.props.selected)}
+             options={selectOptions}
+             isClearable={false}
+diff --git a/src/components/controls/choose-layout.js b/src/components/controls/choose-layout.js
+index abdf85bf6f8ff256def86374262470df7b92d6de..993c9d6dc6c4724f324f41e1dff06640e97c4bda 100644
+--- a/src/components/controls/choose-layout.js
++++ b/src/components/controls/choose-layout.js
+@@ -81,6 +81,7 @@ class ChooseLayout extends React.Component {
+           <ScatterSelectContainer>
+             <CustomSelect
+               {...miscSelectProps}
++              aria-label="X axis"
+               value={options.filter(({value}) => value === selectedX.value)}
+               onChange={(value) => this.props.dispatch(changeLayout({x: value.value, xLabel: value.label}))}
+             />
+@@ -92,6 +93,7 @@ class ChooseLayout extends React.Component {
+           <ScatterSelectContainer>
+             <CustomSelect
+               {...miscSelectProps}
++              aria-label="Y axis"
+               value={options.filter(({value}) => value === selectedY.value)}
+               onChange={(value) => this.props.dispatch(changeLayout({y: value.value, yLabel: value.label}))}
+             />
+diff --git a/src/components/controls/choose-stream-trees.tsx b/src/components/controls/choose-stream-trees.tsx
+index ae2341db0f4b58db5ebdd5504c92f5a722df81de..a1359389c57f723194a2640df89977c380f077a4 100644
+--- a/src/components/controls/choose-stream-trees.tsx
++++ b/src/components/controls/choose-stream-trees.tsx
+@@ -60,6 +60,7 @@ export const ChooseStreamTrees = (): JSX.Element => {
+           </SidebarSubtitleFlex>
+           <div style={{width: controlsWidth, fontSize: 14}}>
+             <CustomSelect
++              aria-label={t("sidebar:Stream-tree branch label")}
+               value={selectOptions.filter(({value}) => value === streamTreeBranchLabel)}
+               options={selectOptions}
+               isClearable={false}
+diff --git a/src/components/controls/choose-tip-label.js b/src/components/controls/choose-tip-label.js
+index 1d17b09803a9c486dc6902b4a07456c54668b390..a652e73d38d6e645d03c73bc1c579fbd9d73add3 100644
+--- a/src/components/controls/choose-tip-label.js
++++ b/src/components/controls/choose-tip-label.js
+@@ -24,6 +24,7 @@ class ChooseTipLabel extends React.Component {
+         </SidebarSubtitle>
+         <div style={{width: controlsWidth, fontSize: 14}}>
+           <CustomSelect
++            aria-label={t("sidebar:Tip Labels")}
+             value={this.props.options.filter(({value}) => value === this.props.selected)}
+             // Select can't handle Symbols, so we have to convert to string for them
+             getOptionValue={(option) => option.value.toString()}
+diff --git a/src/components/controls/color-by.js b/src/components/controls/color-by.js
+index 6aa6e9373acfdc3880c70bb90c622dbd3dd83b83..428379632d2ee49b3839aef624bc5011433e18b1 100644
+--- a/src/components/controls/color-by.js
++++ b/src/components/controls/color-by.js
+@@ -156,6 +156,7 @@ class ColorBy extends React.Component {
+       <CustomSelect
+         name="selectGenotype"
+         id="selectGenotype"
++        aria-label="Gene"
+         placeholder="gene…"
+         value={gtGeneOptions.filter(({value}) => value === this.state.geneSelected)}
+         options={gtGeneOptions}
+@@ -214,6 +215,7 @@ class ColorBy extends React.Component {
+       <div style={styles.base} id="selectColorBy">
+         <CustomSelect
+           name="selectColorBy"
++          aria-label="Color By"
+           value={colorOptions.filter(({value}) => value === this.state.colorBySelected)}
+           options={colorOptions}
+           isClearable={false}
+diff --git a/src/components/controls/filter.js b/src/components/controls/filter.js
+index 3c3f9069abfbde12b762b1261c395ddc54e0064f..ee157e29e1e395e41f4d16aef4b8f28aee5e8484 100644
+--- a/src/components/controls/filter.js
++++ b/src/components/controls/filter.js
+@@ -202,6 +202,7 @@ class FilterData extends React.Component {
+       <div style={styles.base} key={divKey}>
+         <AsyncSelect
+           name="filterQueryBox"
++          aria-label="Filter Data"
+           placeholder="Type filter query here..."
+           value={null}
+           defaultOptions
+diff --git a/src/components/controls/geo-resolution.js b/src/components/controls/geo-resolution.js
+index 375464377679a53e4fb80c75f71f1bd623786bc8..64b4ade64684d283e20ea3ed208c81febc1bdfe3 100644
+--- a/src/components/controls/geo-resolution.js
++++ b/src/components/controls/geo-resolution.js
+@@ -34,6 +34,7 @@ class GeoResolution extends React.Component {
+         </SidebarSubtitle>
+         <div style={{marginBottom: 10, width: controlsWidth, fontSize: 14}}>
+           <CustomSelect
++            aria-label={t("sidebar:Geographic resolution")}
+             name="selectGeoResolution"
+             id="selectGeoResolution"
+             value={geoResolutionOptions.filter(({value}) => value === this.props.geoResolution)}
+diff --git a/src/components/controls/panelHeader.tsx b/src/components/controls/panelHeader.tsx
+index 42a8effb51dcff822e7a5399a2372c05ad3de0e2..8e5ef846efcb5a79c6d1e06aca3de568f7a38b5e 100644
+--- a/src/components/controls/panelHeader.tsx
++++ b/src/components/controls/panelHeader.tsx
+@@ -41,9 +41,21 @@ export const PanelHeader = ({ panel, title, tooltip, panelIsVisible, hasOptions,
+     setOptionsAreVisible(!optionsAreVisible);
+   }
+ 
++  /* expand and collapse the options on Enter and Space too, as a native button does */
++  function toggleOptionsVisibilityByKey(event: React.KeyboardEvent): void {
++    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
++    event.preventDefault();
++    toggleOptionsVisibility();
++  }
++
+   return (
+     <HeaderContainer {...(hasOptions ? {
+                             onClick: toggleOptionsVisibility,
++                            onKeyDown: toggleOptionsVisibilityByKey,
++                            role: "button",
++                            tabIndex: 0,
++                            "aria-expanded": optionsAreVisible,
++                            "aria-label": `${title} options`,
+                             style: {cursor: "pointer"}
+                           } :
+                           {} )}>
+@@ -62,7 +74,8 @@ export const PanelHeader = ({ panel, title, tooltip, panelIsVisible, hasOptions,
+           display={true}
+           on={panelIsVisible}
+           callback={togglePanelVisibility}
+-          label="" />
++          label=""
++          ariaLabel={`Show ${title} panel`} />
+       </span>
+     </HeaderContainer>
+   );
+diff --git a/src/components/controls/toggle.js b/src/components/controls/toggle.js
+index a73fe7bf478e18e97a194de0243718e9d2cb53bf..a969f919f0f2ecbfa74727f33351733d4884d3e5 100644
+--- a/src/components/controls/toggle.js
++++ b/src/components/controls/toggle.js
+@@ -7,6 +7,8 @@ const ToggleContainer = styled.div`
+   // Same as ToggleBackground, necessary for panel toggles.
+   height: 21px;
+   position: relative;
++  /* padding from the style prop adds to the height, also on pages that size all boxes as border-box (e.g. Bootstrap) */
++  box-sizing: content-box;
+ `
+ 
+ const ToggleBackground = styled.label`
+@@ -14,8 +16,14 @@ const ToggleBackground = styled.label`
+   display: inline-block;
+   width: 35px;
+   height: 21px;
++  /* hidden, but in its place and focusable, so the keyboard reaches the toggle */
+   input {
+-    display: none;
++    position: absolute;
++    inset: 0;
++    width: 100%;
++    height: 100%;
++    opacity: 0;
++    margin: 0;
+   }
+ 
+   input:checked {
+@@ -80,10 +88,15 @@ const Input = styled.input`
+   &:focus {
+     box-shadow: 0 0 1px #2196F3;
+   }
++  &:focus-visible + ${Slider} {
++    outline: 2px solid ${(props) => props.theme.selectedColor};
++    outline-offset: 2px;
++  }
+ `;
+ 
+ 
+-const Toggle = ({display, isExperimental = false, on, callback, label, style={}, disabled = false}) => {
++/* `ariaLabel` names a toggle without a visible label for assistive technology */
++const Toggle = ({display, isExperimental = false, on, callback, label, ariaLabel = undefined, style={}, disabled = false}) => {
+   if (!display) return null;
+ 
+   return (
+@@ -94,7 +107,7 @@ const Toggle = ({display, isExperimental = false, on, callback, label, style={},
+         </ExperimentalIcon>
+       }
+       <ToggleBackground>
+-        <Input type="checkbox" checked={on} onChange={disabled ? () => {} : callback}/>
++        <Input type="checkbox" checked={on} aria-label={ariaLabel} aria-disabled={disabled || undefined} onChange={disabled ? () => {} : callback}/>
+         <Slider disabled={disabled}/>
+         {label === "" ? null : (
+           <ToggleSubtitle>
+diff --git a/src/components/download/helperFunctions.js b/src/components/download/helperFunctions.js
+index 0e8ca5bd1ec93309b3f1a2706dd3b101955b2fb0..5f72b6e615508861aeccb5d55041b47b1d6b718a 100644
+--- a/src/components/download/helperFunctions.js
++++ b/src/components/download/helperFunctions.js
+@@ -12,6 +12,8 @@ import { createDatasetJson } from "../../util/constructDatasetJson";
+ import { dataFont } from "../../globalStyles";
+ import { htmlToSvg } from "./domToSvg";
+ import { latoFontDefs } from "./embedFont";
++import { calcEntropyInView } from "../../util/entropy";
++import { ENTROPY_DATA } from "../../actions/types";
+ 
+ export const isPaperURLValid = (d) => {
+   return (
+@@ -464,6 +466,61 @@ const svgElementToPanel = (el) => {
+   return {x: 0, y: 0, width, height, inner};
+ };
+ 
++/* Tree labels can extend past the panel edge: long tip labels, and axis labels centred on a grid
++line at the edge. Describe a tree panel (see svgElementToPanel for struct) and add `labelBox`, the
++box (in panel coordinates) that the panel and its labels occupy, so that the export can show
++these labels. Labels anchored outside the panel are never visible on screen, so they are removed. */
++const treeElementToPanel = (treeGroup) => {
++  if (!treeGroup) return svgElementToPanel(treeGroup);
++  const origin = treeGroup.ownerSVGElement.getBoundingClientRect();
++  const width = parseFloat(treeGroup.getAttribute("width"));
++  const height = parseFloat(treeGroup.getAttribute("height"));
++  const copy = treeGroup.cloneNode(true);
++  const copiedLabels = copy.querySelectorAll("text");
++  const labelBox = {left: 0, top: 0, right: width, bottom: height};
++  treeGroup.querySelectorAll("text").forEach((label, i) => {
++    const style = window.getComputedStyle(label);
++    const rect = label.getBoundingClientRect();
++    if (!label.textContent.trim() || !rect.width || style.visibility === "hidden") return;
++    const left = rect.left - origin.left;
++    const right = rect.right - origin.left;
++    const top = rect.top - origin.top;
++    const bottom = rect.bottom - origin.top;
++    const anchor = labelAnchorX(left, right, style.textAnchor);
++    if (anchor < 0 || anchor > width || bottom < 0 || top > height) {
++      copiedLabels[i].setAttribute("display", "none");
++      return;
++    }
++    labelBox.left = Math.min(labelBox.left, left);
++    labelBox.top = Math.min(labelBox.top, top);
++    labelBox.right = Math.max(labelBox.right, right);
++    labelBox.bottom = Math.max(labelBox.bottom, bottom);
++  });
++  const panel = svgElementToPanel(copy);
++  return panel && {...panel, labelBox};
++};
++
++const labelAnchorX = (left, right, textAnchor) => {
++  if (textAnchor === "middle") return (left + right) / 2;
++  if (textAnchor === "end") return right;
++  return left;
++};
++
++/* Return the image box (x, y, width, height) that holds the positioned panels and the tree labels
++which extend past their panel, with a margin around those labels */
++const boundsIncludingTreeLabels = (panels, width, height) => {
++  const margin = 10;
++  let [left, top, right, bottom] = [0, 0, width, height];
++  [panels.tree, panels.secondTree].forEach((panel) => {
++    if (!panel?.labelBox) return;
++    left = Math.min(left, panel.x + panel.labelBox.left - margin);
++    top = Math.min(top, panel.y + panel.labelBox.top - margin);
++    right = Math.max(right, panel.x + panel.labelBox.right + margin);
++    bottom = Math.max(bottom, panel.y + panel.labelBox.bottom + margin);
++  });
++  return {x: left, y: top, width: right - left, height: bottom - top};
++};
++
+ /* take the panels (see svgElementToPanel for struct) and calculate the overall size of the SVG
+ as well as the offsets (x, y) to position panels appropriately within this */
+ const createBoundingDimensionsAndPositionPanels = (panels, panelLayout, numLinesOfText) => {
+@@ -572,8 +629,14 @@ const injectAsSVGStrings = (output, key, data) => {
+   beyond the panel — spills out. An explicit clipPath (plus overflow="hidden" as belt-and-braces)
+   clips it everywhere. The key is unique per panel, so the clipPath id is too. */
+   const clipId = `${key}Clip`;
+-  output.push(`<svg id="${key}" width="${data.width}" height="${data.height}" x="${data.x}" y="${data.y}" overflow="hidden">`);
+-  output.push(`<clipPath id="${clipId}"><rect x="0" y="0" width="${data.width}" height="${data.height}" /></clipPath>`);
++  /* A tree panel shows its labels that extend past the panel (see treeElementToPanel): its nested
++  <svg> must not clip at the panel edge, and its clip path is the box of the panel and its labels */
++  const box = data.labelBox ?
++    {x: data.labelBox.left, y: data.labelBox.top, width: data.labelBox.right - data.labelBox.left, height: data.labelBox.bottom - data.labelBox.top} :
++    {x: 0, y: 0, width: data.width, height: data.height};
++  const overflow = data.labelBox ? "visible" : "hidden";
++  output.push(`<svg id="${key}" width="${data.width}" height="${data.height}" x="${data.x}" y="${data.y}" overflow="${overflow}">`);
++  output.push(`<clipPath id="${clipId}"><rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" /></clipPath>`);
+   output.push(`<g clip-path="url(#${clipId})">`);
+   output.push(data.inner);
+   output.push("</g>");
+@@ -651,7 +714,7 @@ const writeSVGPossiblyIncludingMap = (dispatch, filePrefix, panelsInDOM, panelLa
+ 
+   if (panelsInDOM.indexOf("tree") !== -1) {
+     try {
+-      panels.tree = svgElementToPanel(document.getElementById("MainTree"));
++      panels.tree = treeElementToPanel(document.getElementById("MainTree"));
+     } catch (e) {
+       panels.tree = undefined;
+       errors.push("tree");
+@@ -663,7 +726,7 @@ const writeSVGPossiblyIncludingMap = (dispatch, filePrefix, panelsInDOM, panelLa
+     }
+     if (panels.tree && document.getElementById('SecondTree')) {
+       try {
+-        panels.secondTree = svgElementToPanel(document.getElementById("SecondTree"));
++        panels.secondTree = treeElementToPanel(document.getElementById("SecondTree"));
+         if (document.getElementById('Tangle')) {
+           panels.tangle = svgElementToPanel(document.getElementById("Tangle"));
+         }
+@@ -747,7 +810,8 @@ const writeSVGPossiblyIncludingMap = (dispatch, filePrefix, panelsInDOM, panelLa
+   falls back to the renderer's defaults (commonly a serif face at a too-light weight). The base
+   weight 400 matches `html, p, div { font-weight: 400 }` in global.css. Text that sets its own
+   font-family / font-weight (legend, footer, via htmlToSvg) overrides these. */
+-  output.push(`<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" font-family="${dataFont}" font-weight="400" width="${overallDimensions.width}" height="${totalHeight}">`);
++  const bounds = boundsIncludingTreeLabels(panels, overallDimensions.width, totalHeight);
++  output.push(`<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" font-family="${dataFont}" font-weight="400" width="${bounds.width}" height="${bounds.height}" viewBox="${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}">`);
+   if (fontDefs) output.push(fontDefs); /* embedded @font-face so viewers render Lato, not a fallback */
+   for (const key in panels) {
+     if (panels[key]) {
+@@ -786,8 +850,41 @@ const writeSVGPossiblyIncludingMap = (dispatch, filePrefix, panelsInDOM, panelLa
+   }
+ };
+ 
+-export const SVG = async (dispatch, t, metadata, nodes, visibility, filePrefix, panelsInDOM, panelLayout, publications) => {
++/* An embedding app may give its own text lines (HTML) as `caption`, which replace the dataset, attribution, license and
++publication lines written for nextstrain datasets */
++export const SVG = async (dispatch, t, metadata, nodes, visibility, filePrefix, panelsInDOM, panelLayout, publications, caption = undefined) => {
++  /* The entropy panel computes its bars only while it is on screen, and shows "data loading" below
++  the fold. Compute the bars for the export, and write after the panel has drawn them. */
++  if (panelsInDOM.indexOf("entropy") !== -1 && dispatch(calcEntropyBarsIfMissing)) {
++    await new Promise((resolve) => { setTimeout(resolve, 0); });
++  }
++
+   /* make the text strings */
++  const textStrings = caption ? [...caption] : nextstrainCaption(t, metadata, nodes, visibility, publications);
++
++  /* embed the Lato font so the SVG renders identically outside the app (async: fetches the
++  already-cached font files & base64-encodes them) */
++  const fontDefs = await latoFontDefs();
++
++  /* downloading the map tiles is an async call. A map panel that is still loading has no converter yet */
++  if (panelsInDOM.indexOf("map") !== -1 && window.L?.getMapSvg) {
++    window.L.getMapSvg(writeSVGPossiblyIncludingMap.bind(this, dispatch, filePrefix, panelsInDOM, panelLayout, textStrings, fontDefs));
++  } else {
++    writeSVGPossiblyIncludingMap(dispatch, filePrefix, panelsInDOM, panelLayout, textStrings, fontDefs, undefined);
++  }
++};
++
++/* Thunk: compute the entropy bars if the panel has none, and return whether it computed them */
++const calcEntropyBarsIfMissing = (dispatch, getState) => {
++  const { entropy, tree } = getState();
++  if (entropy.bars !== undefined || !entropy.genomeMap || !tree.nodes || !tree.visibility) return false;
++  const [data, maxYVal] = calcEntropyInView(tree.nodes, tree.visibility, entropy.selectedCds, entropy.showCounts);
++  dispatch({type: ENTROPY_DATA, data, maxYVal});
++  return true;
++};
++
++/* Text lines below the figure for a nextstrain dataset */
++const nextstrainCaption = (t, metadata, nodes, visibility, publications) => {
+   const textStrings = [];
+   textStrings.push(metadata.title);
+   textStrings.push(`Last updated ${metadata.updated}`);
+@@ -806,17 +903,7 @@ export const SVG = async (dispatch, t, metadata, nodes, visibility, filePrefix,
+   publications.forEach((pub) => {
+     textStrings.push(`<a href="${pub.href}">${pub.author}, ${pub.title}, ${pub.journal} (${pub.year})</a>`);
+   });
+-
+-  /* embed the Lato font so the SVG renders identically outside the app (async: fetches the
+-  already-cached font files & base64-encodes them) */
+-  const fontDefs = await latoFontDefs();
+-
+-  /* downloading the map tiles is an async call */
+-  if (panelsInDOM.indexOf("map") !== -1) {
+-    window.L.getMapSvg(writeSVGPossiblyIncludingMap.bind(this, dispatch, filePrefix, panelsInDOM, panelLayout, textStrings, fontDefs));
+-  } else {
+-    writeSVGPossiblyIncludingMap(dispatch, filePrefix, panelsInDOM, panelLayout, textStrings, fontDefs, undefined);
+-  }
++  return textStrings;
+ };
+ 
+ export const entropyTSV = (dispatch, filePrefix, entropy) => {
+diff --git a/src/components/entropy/entropyD3.js b/src/components/entropy/entropyD3.js
+index e280bcde1139a3fd29d860512f3b1485f84880f6..e4e8ec70ac84f1f1c7f5940dbeece879319810b1 100644
+--- a/src/components/entropy/entropyD3.js
++++ b/src/components/entropy/entropyD3.js
+@@ -19,6 +19,15 @@ import { getCdsByName, getNucCoordinatesFromAaPos, getCdsRangeLocalFromRangeGeno
+  * unbind them when the chart goes away. */
+ const zoomKeys = ["option", "shift"];
+ 
++/* Narrowest space per tick of the genome axes. Their labels are numbers of up to 6 characters, such as "28,000" */
++const minPxPerAxisTick = 60;
++
++/* Number of ticks to request for an axis: as many as fit its width, at most `max` */
++const tickCount = (scale, max) => {
++  const [start, end] = scale.range();
++  return Math.max(2, Math.min(max, Math.floor(Math.abs(end - start) / minPxPerAxisTick)));
++};
++
+ /* EntropyChart uses D3 for visualisation. There are 2 methods exposed to
+  * keep the visualisation in sync with React:
+  * EntropyChart.render & EntropyChart.update
+@@ -625,9 +634,9 @@ EntropyChart.prototype._drawAxes = function _drawAxes() {
+    * the genome (which we already show when hovering over bars).
+    */
+   this.axes.xMain = axisBottom(this.scales.xMain)
+-    .ticks(16)
++    .ticks(tickCount(this.scales.xMain, 16))
+     .tickFormat((d) => this.aa ? Math.ceil(d/3) : d);
+-  this.axes.xNav = axisBottom(this.scales.xNav).ticks(20, ",f");
++  this.axes.xNav = axisBottom(this.scales.xNav).ticks(tickCount(this.scales.xNav, 20), ",f");
+   const visPos = this.scales.xNav.domain()[1] - this.scales.xNav.domain()[0];
+   if (visPos > 1e6) {   /* axes number differently if large genome */
+     this.axes.xNav.tickFormat(format(".1e"));
+diff --git a/src/components/entropy/index.js b/src/components/entropy/index.js
+index 4067926c1006ba9893202621939e96d4a70e6cfd..87192833a76d4db34b9459890f0f5bf6e78d9b99 100644
+--- a/src/components/entropy/index.js
++++ b/src/components/entropy/index.js
+@@ -335,9 +335,9 @@ class Entropy extends React.Component {
+   }
+ 
+   componentWillUnmount() {
+-    /* stop observing and tear the chart down, so neither outlives the component */
++    /* stop observing and remove the drawing, so neither outlives the component. Under React StrictMode the state does not hold the chart yet at the first unmount, so remove the drawing from the DOM */
+     if (this.observer) this.observer.disconnect();
+-    if (this.state.chart) this.state.chart.destroy();
++    select(this.d3entropy).selectAll("*").remove();
+   }
+ }
+ 
+diff --git a/src/components/info/filterBadge.js b/src/components/info/filterBadge.js
+index 5c1e69c62ab2328fd2c5ca71e17bc951bd724101..7a76b88e3a29fce33b8074dd27d358171daadb9d 100644
+--- a/src/components/info/filterBadge.js
++++ b/src/components/info/filterBadge.js
+@@ -92,11 +92,21 @@ export const Tooltip = ({id, children}) => (
+ );
+ 
+ 
++/* run the action of a badge button on Enter and Space too, as a native button does */
++const onButtonKey = (action) => (event) => {
++  if (event.key === "Enter" || event.key === " ") {
++    event.preventDefault();
++    action();
++  }
++};
++
+ /**
+  * React component to display a selected filter with associated
+  * icons to remove filter. More functionality to be added!
+  */
+ export const FilterBadge = ({remove, canMakeInactive, active, activate, inactivate, children, id, onHoverMessage="The visible data is being filtered by this"}) => {
++  /* the badge buttons are icons, so they are named after the filter value for assistive technology */
++  const name = typeof children === "string" ? children : id;
+   return (
+     <BadgeContainer striped={canMakeInactive && !active}>
+       <TextContainer active={canMakeInactive ? active : true} data-tip data-for={id}>
+@@ -106,12 +116,12 @@ export const FilterBadge = ({remove, canMakeInactive, active, activate, inactiva
+         {canMakeInactive && !active ? `This filter is currently inactive` : onHoverMessage}
+       </Tooltip>
+       {canMakeInactive && (
+-        <IconContainer onClick={active ? inactivate : activate} role="button" tabIndex={0} data-tip data-for={id+'active'}>
++        <IconContainer onClick={active ? inactivate : activate} onKeyDown={onButtonKey(active ? inactivate : activate)} role="button" tabIndex={0} aria-label={`${active ? "Hide" : "Show"} filter ${name}`} data-tip data-for={id+'active'}>
+           {active ? <FaRegEye/> : <FaRegEyeSlash/>}
+           <Tooltip id={id+'active'}>{active ? 'Inactivate this filter' : 'Re-activate this filter'}</Tooltip>
+         </IconContainer>
+       )}
+-      <IconContainer onClick={remove} role="button" tabIndex={0}>
++      <IconContainer onClick={remove} onKeyDown={onButtonKey(remove)} role="button" tabIndex={0} aria-label={`Remove filter ${name}`}>
+         <FaTrash data-tip data-for={id+'remove'}/>
+         <Tooltip id={id+'remove'}>{'Remove this filter'}</Tooltip>
+       </IconContainer>
+diff --git a/src/components/legend/legend.tsx b/src/components/legend/legend.tsx
+index 5ce39213472cdb6ad959c587d0d3cd607df0db10..8a3d3e06f074ad16224854ddc35ea011c422a8b0 100644
+--- a/src/components/legend/legend.tsx
++++ b/src/components/legend/legend.tsx
+@@ -67,10 +67,19 @@ interface DispatchProps {
+   dispatch: AppDispatch;
+ }
+ 
++/** Number of legends created, which makes the clip path ID of each legend unique in the page */
++let legendCount = 0;
++
+ class Legend extends React.Component<StateProps & DispatchProps & SuppliedProps> {
++  /** ID of the clip path of the first column. Each legend has its own, because the tree and the map can each show a
++   * legend on one page, and an ID resolves to the first element with it */
++  firstColumnClipId: string;
++
+   constructor(props: StateProps & DispatchProps & SuppliedProps) {
+     super(props);
+     this.handleLegendItemOnClick = this.handleLegendItemOnClick.bind(this);
++    legendCount += 1;
++    this.firstColumnClipId = `legendFirstColumnClip-${legendCount}`;
+   }
+ 
+   showLegend(): boolean {
+@@ -217,7 +226,7 @@ class Legend extends React.Component<StateProps & DispatchProps & SuppliedProps>
+             label={this.styleLabelText(d)}
+             index={i}
+             tooltip={tooltipText(this.props.colorScale, d)}
+-            clipId={nColumns > 1 && i<maxNumPerColumn ? "legendFirstColumnClip" : undefined}
++            clipId={nColumns > 1 && i<maxNumPerColumn ? this.firstColumnClipId : undefined}
+             handleOnClick={this.handleLegendItemOnClick}
+           />
+         );
+@@ -231,7 +240,7 @@ class Legend extends React.Component<StateProps & DispatchProps & SuppliedProps>
+     //   }}>
+     return (
+       <g id="ItemsContainer" height={height}>
+-        <clipPath id="legendFirstColumnClip">
++        <clipPath id={this.firstColumnClipId}>
+           <rect x="0" y="0" width={COLUMN_WIDTH-5} height={height} fill="rgb(150, 154, 223)"/>
+         </clipPath>
+         <g id="Items">
+diff --git a/src/components/map/map.js b/src/components/map/map.js
+index 0e85d44ae0212e6c531501d74031f48e219e0f8e..172f13f161f3bab59a843d5a812155232ac1a6b4 100644
+--- a/src/components/map/map.js
++++ b/src/components/map/map.js
+@@ -107,39 +107,46 @@ class Map extends React.Component {
+     if (!window.L) {
+       leaflet(); /* this sets up window.L */
+     }
+-    if (!window.L.getMapSvg) {
+-      /* Convert the on-screen map into SVG markup for the "download SVG" feature. We read the
+-       * live map container back via the shared htmlToSvg() converter rather than re-implementing
+-       * its layout: the WebGL basemap <canvas> is rasterised to a PNG <image> (hence the
+-       * preserveDrawingBuffer flag on the GL layer), and the d3 demes/transmissions overlay —
+-       * already an <svg> — is inlined as native vector. Document order gives the right z-order
+-       * (basemap tiles below, demes above). The zoom controls are on-screen chrome, so skip them. */
+-      window.L.getMapSvg = (loadendCallback) => {
+-        const emit = () => {
+-          const {width, height, markup} = htmlToSvg(this.state.map.getContainer(), {
+-            skip: (el) => el.classList && el.classList.contains("leaflet-control-container")
+-          });
+-          loadendCallback({mapSvg: markup, mapDimensions: {x: width, y: height}});
+-        };
+-        /* MapLibre renders lazily into the (preserved) WebGL buffer, so reading the basemap
+-         * canvas back at an arbitrary moment can catch an incomplete, background-only frame
+-         * (the grey map we used to get). Force a fresh paint and read inside the next render,
+-         * with a timeout fallback so a download always completes. */
+-        const glMap = this.glLayer && this.glLayer.getMaplibreMap();
+-        if (glMap) {
+-          let captured = false;
+-          const capture = () => { if (captured) return; captured = true; emit(); };
+-          glMap.once("render", capture);
+-          glMap.triggerRepaint();
+-          window.setTimeout(capture, 1000);
+-        } else {
+-          console.warn("[SVG export] MapLibre GL map unavailable; the basemap may be blank");
+-          emit();
+-        }
++    /* Convert the on-screen map into SVG markup for the "download SVG" feature. We read the
++     * live map container back via the shared htmlToSvg() converter rather than re-implementing
++     * its layout: the WebGL basemap <canvas> is rasterised to a PNG <image> (hence the
++     * preserveDrawingBuffer flag on the GL layer), and the d3 demes/transmissions overlay —
++     * already an <svg> — is inlined as native vector. Document order gives the right z-order
++     * (basemap tiles below, demes above). The zoom controls are on-screen chrome, so skip them.
++     * Each mounted map registers its own converter as `window.L.getMapSvg` (see componentDidMount),
++     * so that the download reads the map on screen and not one that was unmounted. */
++    this.getMapSvg = (loadendCallback) => {
++      const emit = () => {
++        const {width, height, markup} = htmlToSvg(this.state.map.getContainer(), {
++          skip: (el) => el.classList && el.classList.contains("leaflet-control-container")
++        });
++        loadendCallback({mapSvg: markup, mapDimensions: {x: width, y: height}});
+       };
+-    }
++      /* MapLibre renders lazily into the (preserved) WebGL buffer, so reading the basemap
++       * canvas back at an arbitrary moment can catch an incomplete, background-only frame
++       * (the grey map we used to get). Force a fresh paint and read inside the next render,
++       * with a timeout fallback so a download always completes. */
++      const glMap = this.glLayer && this.glLayer.getMaplibreMap();
++      if (glMap) {
++        let captured = false;
++        const capture = () => { if (captured) return; captured = true; emit(); };
++        glMap.once("render", capture);
++        glMap.triggerRepaint();
++        window.setTimeout(capture, 1000);
++      } else {
++        console.warn("[SVG export] MapLibre GL map unavailable; the basemap may be blank");
++        emit();
++      }
++    };
+   }
+   componentDidMount() {
++    window.L.getMapSvg = this.getMapSvg;
++    if (this.pendingCleanup !== undefined) {
++      /* React StrictMode (in development) unmounts this instance and mounts it again at once, keeping its DOM and its
++      state, which holds the Leaflet map of the first mount: keep that map */
++      window.clearTimeout(this.pendingCleanup);
++      this.pendingCleanup = undefined;
++    }
+     this.maybeChangeSize(this.props);
+     const removed = this.maybeRemoveAllDemesAndTransmissions(this.props); /* geographic resolution just changed (ie., country to division), remove everything. this change is upstream of maybeDraw */
+     // TODO: if demes are color blended circles, updating rather than redrawing demes would do
+@@ -735,8 +742,23 @@ class Map extends React.Component {
+     );
+   }
+   componentWillUnmount() {
+-    this.state.map.off("moveend");
+-    this.state.map.off("resize");
++    if (window.L && window.L.getMapSvg === this.getMapSvg) {
++      delete window.L.getMapSvg;
++    }
++    /* Remove the Leaflet map, which also releases its WebGL context, and the pending timers. The map is created on the
++    first update, so it can be missing (e.g. after an unmount right after the mount, or a failed WebGL setup). The
++    cleanup runs after the current task, so that a mount of this instance right after, as React StrictMode does, can
++    cancel it */
++    this.pendingCleanup = window.setTimeout(() => {
++      this.pendingCleanup = undefined;
++      window.clearTimeout(this.map_timeout);
++      window.clearTimeout(this.bounds_timeout);
++      if (this.state.map) {
++        this.state.map.off("moveend");
++        this.state.map.off("resize");
++        this.state.map.remove();
++      }
++    }, 0);
+   }
+ }
+ 
+diff --git a/src/components/modal/Modal.jsx b/src/components/modal/Modal.jsx
+index 364b7ebb8fe6c88998699559405e490c6fcb85ae..05fc2460a8500c9e66e146ee0a3047d7ff6585be 100644
+--- a/src/components/modal/Modal.jsx
++++ b/src/components/modal/Modal.jsx
+@@ -3,6 +3,7 @@ import Mousetrap from "mousetrap";
+ import { connect } from "react-redux";
+ import { withTranslation } from 'react-i18next';
+ import { SET_MODAL } from "../../actions/types";
++import { hasExtension, getExtension } from "../../util/extensions";
+ import { infoPanelStyles } from "../../globalStyles";
+ import { stopProp } from "../tree/infoPanels/click";
+ import DownloadModalContents from "../download/downloadModal";
+@@ -26,6 +27,8 @@ class Modal extends React.Component {
+    * and if _any_ modal's open pressing 'd' dismisses it
+    */
+   componentDidMount() {
++    /* an embedding app with its own downloads turns the download modal off (extension `downloadModal: false`) */
++    if (hasExtension("downloadModal") && !getExtension("downloadModal")) return;
+     Mousetrap.bind('d', () => {
+       this.props.dispatch({ type: SET_MODAL, modal: this.props.modal ? null : 'download' });
+     });
+diff --git a/src/components/tree/phyloTree/change.ts b/src/components/tree/phyloTree/change.ts
+index 911bb2cc1f89c896b22ed28d3517649cc2505f8f..8ff35fbe14412ee1156e3c4bcd4de851cc473870 100644
+--- a/src/components/tree/phyloTree/change.ts
++++ b/src/components/tree/phyloTree/change.ts
+@@ -244,6 +244,7 @@ export const modifySVGInStages = function modifySVGInStages(
+   let inProgress = 0; /* counter of transitions currently in progress */
+ 
+   const step3 = (): void => {
++    if (this.disposed) return;
+     this.drawBranches();
+     if (this.params.showGrid) this.addGrid();
+     this.svg.selectAll(".tip").remove();
+@@ -260,6 +261,7 @@ export const modifySVGInStages = function modifySVGInStages(
+ 
+   /* STEP 2: move tips */
+   const step2 = (): void => {
++    if (this.disposed) return;
+     if (!--inProgress) { /* decrement counter. When hits 0 run block */
+       this.setClipMask();
+       const updateTips = createUpdateCall(".tip", svgPropsToUpdate);
+@@ -343,6 +345,11 @@ export const change = function change(
+   if ((Date.now() - this.timeLastRenderRequested) < idealTransitionTime * 2 || performanceFlags.get("skipTreeAnimation")===true) {
+     transitionTime = 0;
+   }
++  /* the SVG takes its new size at once, so a transition would start from positions computed for the old size and
++  draw the tree misplaced until it ends */
++  if (svgHasChangedDimensions) {
++    transitionTime = 0;
++  }
+ 
+   /* the logic of converting what react is telling us to change
+   and what SVG elements, node properties, svg props we actually change */
+@@ -378,7 +385,12 @@ export const change = function change(
+     svgPropsToUpdate.add("stroke-width");
+     nodePropsToModify["stroke-width"] = branchThickness;
+   }
+-  if (newDistance || newLayout || updateLayout || zoomIntoClade || svgHasChangedDimensions || changeNodeOrder || changeVisibility || newTipLabelKey) {
++  /* branch labels change the margin on the root side, see `fitBranchLabelsInRootMargin()` */
++  const changeBranchLabels = !!newBranchLabellingKey || showAllBranchLabels !== undefined;
++  if (newBranchLabellingKey) {
++    this.params.branchLabelKey = newBranchLabellingKey === "none" ? undefined : newBranchLabellingKey;
++  }
++  if (newDistance || newLayout || updateLayout || zoomIntoClade || svgHasChangedDimensions || changeNodeOrder || changeVisibility || newTipLabelKey || changeBranchLabels) {
+     elemsToUpdate.add(".tip").add(".branch.S").add(".branch.T").add(".branch");
+     elemsToUpdate.add(".vaccineCross").add(".vaccineDottedLine").add(".conf");
+     elemsToUpdate.add('.branchLabel').add('.tipLabel');
+@@ -433,7 +445,7 @@ export const change = function change(
+       zoomIntoClade.n.parent.shell;
+     applyToChildren(this.zoomNode, (d: PhyloNode) => {d.inView = true;});
+   }
+-  if (svgHasChangedDimensions || changeNodeOrder || changeVisibility || newTipLabelKey) {
++  if (svgHasChangedDimensions || changeNodeOrder || changeVisibility || newTipLabelKey || changeBranchLabels) {
+     this.nodes.forEach((d) => {d.update = true;});
+   }
+ 
+@@ -472,7 +484,8 @@ export const change = function change(
+     streamDefinitionChange ||
+     changeVisibility ||
+     showConfidences ||
+-    newTipLabelKey
++    newTipLabelKey ||
++    changeBranchLabels
+   ) {
+     this.mapToScreen();
+   } else if (this.params.showStreamTrees && (changeColorBy || changeVisibility)) {
+diff --git a/src/components/tree/phyloTree/grid.js b/src/components/tree/phyloTree/grid.js
+index 8c34be4a2f8c79ce5cae7c9dc73177c42618c54d..ed9e7f1b8574ff0aa20e18038fcfc1b0ccfd1247 100644
+--- a/src/components/tree/phyloTree/grid.js
++++ b/src/components/tree/phyloTree/grid.js
+@@ -22,7 +22,8 @@ export const hideGrid = function hideGrid() {
+   }
+ };
+ 
+-const addSVGGroupsIfNeeded = (groups, svg) => {
++/* each tree has its own clip path, because clip path IDs are global to the document and a tanglegram shows two trees */
++const addSVGGroupsIfNeeded = (groups, svg, treeId) => {
+   if (!("temporalWindow" in groups)) {
+     groups.temporalWindow = svg.append("g").attr("id", "temporalWindow");
+ 
+@@ -33,10 +34,10 @@ const addSVGGroupsIfNeeded = (groups, svg) => {
+       .attr('class', 'temporalWindowEnd');
+   }
+   if (!("majorGrid" in groups)) {
+-    groups.majorGrid = svg.append("g").attr("id", "majorGrid").attr("clip-path", "url(#treeClip)");
++    groups.majorGrid = svg.append("g").attr("id", "majorGrid").attr("clip-path", `url(#treeClip-${treeId})`);
+   }
+   if (!("minorGrid" in groups)) {
+-    groups.minorGrid = svg.append("g").attr("id", "minorGrid").attr("clip-path", "url(#treeClip)");
++    groups.minorGrid = svg.append("g").attr("id", "minorGrid").attr("clip-path", `url(#treeClip-${treeId})`);
+   }
+   if (!("gridText" in groups)) {
+     groups.gridText = svg.append("g").attr("id", "gridText");
+@@ -221,7 +222,7 @@ export const computeTemporalGridPoints = (numDateMin, numDateMax, pxAvailable, a
+  */
+ export const addGrid = function addGrid() {
+   const layout = this.layout;
+-  addSVGGroupsIfNeeded(this.groups, this.svg);
++  addSVGGroupsIfNeeded(this.groups, this.svg, this.id);
+   if (layout==="unrooted") return;
+   timerStart("addGrid");
+ 
+@@ -387,6 +388,26 @@ export const addGrid = function addGrid() {
+         .attr("x", xTextPos(this.xScale, layout))
+         .attr("y", yTextPos(this.yScale, layout));
+ 
++  /* Keep grid labels whole. The top or bottom edge of the SVG cuts the labels of grid lines at that edge (y-axis labels
++  and the labels of the radial grid, which sit next to their circle on the vertical line through the root): hide them,
++  as the edge cuts their grid line too. x-axis labels are centered on their grid line, so the label of a grid line near
++  the left or right edge would be cut off: align such a label to its grid line on the inner side instead. */
++  const svgWidth = parseInt(this.svg.attr("width"), 10);
++  const svgHeight = parseInt(this.svg.attr("height"), 10);
++  this.groups.gridText.selectAll(".gridText")
++    .each(function keepInsideSvg(d) {
++      const box = this.getBBox();
++      if (box.y < 0 || box.y + box.height > svgHeight) {
++        this.style.visibility = "hidden";
++        return;
++      }
++      if (d.axis !== "x" || layout === "radial") return;
++      const x = Number(this.getAttribute("x"));
++      const halfWidth = this.getComputedTextLength() / 2;
++      if (x - halfWidth < 0) this.style.textAnchor = "start";
++      else if (x + halfWidth > svgWidth) this.style.textAnchor = "end";
++    });
++
+   /* add axis labels */
+   this.groups.axisText.selectAll("*").remove();
+   this.svg.selectAll(".axisText").remove();
+@@ -413,9 +434,15 @@ export const addGrid = function addGrid() {
+         .style("fill", this.params.tickLabelFill)
+         .style("text-anchor", "middle")
+         .attr("x", Math.abs(this.xScale.range()[1]-this.xScale.range()[0]) / 2)
+-        .attr("y", parseInt(this.svg.attr("height"), 10) - 1);
++        .attr("y", parseInt(this.svg.attr("height"), 10) - 1)
++        .each(function keepDescendersInsideSvg() {
++          /* the baseline sits 1px above the bottom edge, which cuts off descenders (e.g. the "g" of "Divergence") */
++          const overflow = this.getBBox().y + this.getBBox().height - parseInt(this.ownerSVGElement.getAttribute("height"), 10);
++          if (overflow > 0) this.setAttribute("y", Number(this.getAttribute("y")) - overflow);
++        });
+   }
+   if (yAxisLabel) {
++    const yMid = this.yScale.range()[1] / 2;
+     this.groups.axisText
+       .append("text")
+         .text(yAxisLabel)
+@@ -424,7 +451,12 @@ export const addGrid = function addGrid() {
+         .style("font-family", this.params.fontFamily)
+         .style("fill", this.params.tickLabelFill)
+         .style("text-anchor", "middle")
+-        .attr('transform', 'translate(' + 10 + ',' + (this.yScale.range()[1] / 2) + ') rotate(-90)');
++        .attr('transform', function uprightInsideSvg() {
++          /* the label is turned upright, so its ascenders point to the left edge of the SVG: keep the baseline at
++          least one ascent away from it, else a 10px offset cuts them off */
++          const x = Math.max(10, Math.ceil(-this.getBBox().y));
++          return 'translate(' + x + ',' + yMid + ') rotate(-90)';
++        });
+   }
+ 
+   this.grid=true;
+diff --git a/src/components/tree/phyloTree/labels.js b/src/components/tree/phyloTree/labels.js
+index d37f293a1be1dadb39303d4430cb4e0b3b50331c..1401ccabf77646e5d0358b34bf9588938a095a0e 100644
+--- a/src/components/tree/phyloTree/labels.js
++++ b/src/components/tree/phyloTree/labels.js
+@@ -30,6 +30,7 @@ export const updateTipLabels = function updateTipLabels(dt) {
+     }
+ 
+     window.setTimeout(() => {
++      if (this.disposed) return;
+       this.groups.tipLabels
+         .selectAll(".tipLabel")
+         .data(inViewVisibleTips)
+@@ -56,7 +57,7 @@ export const removeTipLabels = function removeTipLabels() {
+  * @param {str} key e.g. "aa" or "clade"
+  * @return {str} font size of the branch label, e.g. "12px"
+  */
+-const branchLabelSize = (key) => {
++export const branchLabelSize = (key) => {
+   if (key === "aa") return "10px";
+   return "14px";
+ };
+@@ -65,7 +66,7 @@ const branchLabelSize = (key) => {
+  * @param {str} key e.g. "aa" or "clade"
+  * @return {str} font weight of the branch label, e.g. "500"
+  */
+-const branchLabelFontWeight = (key) => {
++export const branchLabelFontWeight = (key) => {
+   if (key === "aa") return "500";
+   return "700";
+ };
+@@ -79,8 +80,8 @@ const branchLabelFontWeight = (key) => {
+  *                This fn will return "visible" or "hidden".
+  *                NOTE: the fn should only be provided nodes which have a label.
+  */
+-const createBranchLabelVisibility = (key, showAll, layout, totalTipsInView) => (d) => {
+-  if (d.visibility !== NODE_VISIBLE) return "hidden";
++export const createBranchLabelVisibility = (key, showAll, layout, totalTipsInView) => (d) => {
++  if (d.visibility !== NODE_VISIBLE || d.branchLabelCut) return "hidden";
+   if (showAll) return "visible";
+   const magicTipFractionToShowBranchLabel = 0.03;
+   /* if the number of _visible_ tips descending from this node are over the
+@@ -135,7 +136,7 @@ export const drawBranchLabels = function drawBranchLabels(key) {
+   const visibility = createBranchLabelVisibility(key, this.params.showAllBranchLabels, this.layout, this.zoomNode.n.tipCount);
+ 
+   if (!("branchLabels" in this.groups)) {
+-    this.groups.branchLabels = this.svg.append("g").attr("id", "branchLabels").attr("clip-path", "url(#treeClip)");
++    this.groups.branchLabels = this.svg.append("g").attr("id", "branchLabels").attr("clip-path", `url(#treeClip-${this.id})`);
+   }
+ 
+   const nodes = (this.params.showStreamTrees ? this.nodes.filter((d) => !d.n.inStream) : this.nodes)
+diff --git a/src/components/tree/phyloTree/layouts.ts b/src/components/tree/phyloTree/layouts.ts
+index 31747990c1a73011e72acfbaf544ac8e0f187613..3af282ce66a62423e49bb36072d46d58a1439745 100644
+--- a/src/components/tree/phyloTree/layouts.ts
++++ b/src/components/tree/phyloTree/layouts.ts
+@@ -8,6 +8,8 @@ import { numDate } from "../../../util/colorHelpers";
+ import { Layout, ScatterVariables } from "../../../reducers/controls";
+ import { ReduxNode, colorBySymbol } from "../../../reducers/tree/types";
+ import { Distance, Params, PhyloNode, PhyloTreeType, Ripple, TipLabelCallback } from "./types";
++import { branchLabelFontWeight, branchLabelSize, createBranchLabelVisibility } from "./labels";
++import { NODE_VISIBLE } from "../../../util/globals";
+ 
+ /**
+  * assigns the attribute this.layout and calls the function that
+@@ -345,13 +347,15 @@ export const setScales = function setScales(this: PhyloTreeType): void {
+ export const mapToScreen = function mapToScreen(this: PhyloTreeType): void {
+   timerStart("mapToScreen");
+   const inViewTerminalNodes = this.nodes.filter((d) => !d.n.hasChildren).filter((d) => d.inView);
++  const measureLabel = createLabelMeasure(this.svg.node());
+ 
+   /* set up space (padding) for axes etc, as we don't want the branches & tips to occupy the entire SVG! */
+   this.margins = {
+     left: (this.layout==="scatter" || this.layout==="clock") ? 40 : 5, // space for y-axis label
+-    right: 5 + getTipLabelPadding(this.params, inViewTerminalNodes, this.callbacks.tipLabel),
++    right: 5 + getTipLabelPadding(this.params, inViewTerminalNodes, this.callbacks.tipLabel, measureLabel),
+     top: this.layout==="radial" ? 10 : 15, // avoid tips rendering behind legend
+-    bottom: 35 // space for x-axis labels
++    bottom: 35, // space for x-axis labels
++    branchLabels: 0
+   };
+ 
+   /* construct & set the range of the x & y scales */
+@@ -473,6 +477,8 @@ export const mapToScreen = function mapToScreen(this: PhyloTreeType): void {
+   this.xScale.domain(xDomain);
+   this.yScale.domain(yDomain);
+ 
++  fitBranchLabelsInRootMargin.call(this, measureLabel);
++
+   const hiddenYPosition = this.yScale.range()[1] + 100;
+   const hiddenXPosition = this.xScale.range()[0] - 100;
+ 
+@@ -636,9 +642,16 @@ export function getTipLabelPadding(
+    * that the margin is sized from the labels actually on screen rather than the
+    * strain names. Varies with `controls.tipLabelKey`. */
+   tipLabel: TipLabelCallback,
++
++  /** width in pixels of a label as rendered; defaults to an estimate from the number of characters */
++  measureLabel: LabelMeasure = estimateLabelWidth,
+ ): number {
+   let padBy = 0;
+-  if (inViewTerminalNodes.length < params.tipLabelBreakL1) {
++  /* Labels are drawn for the visible tips only, while fewer than `tipLabelBreakL1` of them are in view, in a font size
++  that follows the number of all tips in view, see `updateTipLabels()`. Tips hidden by filters (e.g. all but the
++  sequences of interest) get no label, so they neither need room nor prevent the labels of the others */
++  const labelledTips = inViewTerminalNodes.filter((d) => d.visibility === NODE_VISIBLE);
++  if (labelledTips.length < params.tipLabelBreakL1) {
+ 
+     let fontSize = params.tipLabelFontSizeL1;
+     if (inViewTerminalNodes.length < params.tipLabelBreakL2) {
+@@ -648,12 +661,104 @@ export function getTipLabelPadding(
+       fontSize = params.tipLabelFontSizeL3;
+     }
+ 
+-    const longestLabel = Math.max(0, ...inViewTerminalNodes.map((d) => String(tipLabel(d) ?? "").length));
+-    padBy = 0.65 * longestLabel * fontSize;
++    /* labels start `tipLabelPadX` right of their tip, see `updateTipLabels()` */
++    const widestLabel = Math.max(0, ...labelledTips.map((d) => measureLabel(String(tipLabel(d) ?? ""), fontSize, 400)));
++    padBy = measureLabel === estimateLabelWidth ? widestLabel : widestLabel + params.tipLabelPadX;
+   }
+   return padBy;
+ }
+ 
++/** Width in pixels of a label in a font of the given size and weight, in the font family of the tree unless given */
++export type LabelMeasure = (text: string, fontSize: number, fontWeight: number, fontFamily?: string) => number
++
++/** Estimate of the label width from the number of characters, for environments that cannot measure text */
++export const estimateLabelWidth: LabelMeasure = (text, fontSize) => 0.65 * text.length * fontSize;
++
++let measureContext: CanvasRenderingContext2D | null | undefined;
++
++/**
++ * Measure labels as the browser renders them in the tree SVG, so that the margins fit labels with wide characters
++ * (e.g. "W") or narrow ones. Labels without their own font family use the family of the SVG. Where no canvas is
++ * available (e.g. in jsdom), fall back to the estimate from the number of characters.
++ */
++function createLabelMeasure(svg: Element | null): LabelMeasure {
++  if (measureContext === undefined) {
++    measureContext = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
++  }
++  const context = measureContext;
++  const svgFontFamily = svg ? window.getComputedStyle(svg).fontFamily : "";
++  if (!context || !svgFontFamily) return estimateLabelWidth;
++  return (text, fontSize, fontWeight, fontFamily = svgFontFamily) => {
++    context.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
++    return context.measureText(text).width;
++  };
++}
++
++/**
++ * In the rectangular, clock and scatter layouts, branch labels end just before their node on the root side (the left,
++ * unless the tree is mirrored), so the label of a branch near that edge can extend past the SVG, or past the clip mask
++ * into the margin. Widen the margin on the root side just enough for the visible labels to fit inside the SVG, and
++ * record how far the labels extend past the clip mask, so that it covers them. The margin takes at most a quarter of
++ * the tree's width: a label that would still extend past the SVG is hidden rather than cut. The radial and unrooted
++ * layouts center the tree, whose outermost nodes are tips.
++ */
++function fitBranchLabelsInRootMargin(this: PhyloTreeType, measureLabel: LabelMeasure): void {
++  this.nodes.forEach((d) => {d.branchLabelCut = false;});
++  const key = this.params.branchLabelKey;
++  if (!["rect", "clock", "scatter"].includes(this.layout) || !key || key === "none") return;
++
++  const width = parseInt(this.svg.attr("width"), 10);
++  const isMirrored = this.params.orientation[0] < 0;
++  /* x range from the root side to the far side */
++  const [rangeStart, rangeEnd] = this.xScale.range();
++  const span = rangeEnd - rangeStart;
++  if (!span) return;
++  /* distance from the SVG edge on the root side to the far end of the x range */
++  const farEnd = isMirrored ? width - rangeEnd : rangeEnd;
++
++  const fontSize = parseInt(branchLabelSize(key), 10);
++  const fontWeight = parseInt(branchLabelFontWeight(key), 10);
++  /* Labels hidden by filters count too, so that filtering does not move the tree */
++  const isLabelShown = createBranchLabelVisibility(key, this.params.showAllBranchLabels, this.layout, this.zoomNode.n.tipCount);
++  const labelGap = 5; // labels end this far from their node, see `drawBranchLabels()`
++
++  /* position of each label's node as a fraction of the x range, which does not depend on the margin */
++  const labels = this.nodes.flatMap((d) => {
++    const label = d.inView && d.n.branch_attrs?.labels?.[key];
++    if (!label || isLabelShown({ ...d, visibility: NODE_VISIBLE }) !== "visible") return [];
++    const fraction = (this.xScale(d.x) - rangeStart) / span;
++    if (fraction >= 1) return [];
++    return [{ node: d, fraction, width: measureLabel(String(label), fontSize, fontWeight, this.params.branchLabelFont) }];
++  });
++  /* a label starts `margin + fraction * (farEnd - margin) - labelGap - labelWidth` from the root side edge */
++  const labelStart = (margin: number, label: {fraction: number, width: number}): number =>
++    margin + label.fraction * (farEnd - margin) - labelGap - label.width;
++
++  const margin = isMirrored ? this.margins.right : this.margins.left;
++  /* the narrowest margin where no label starts before the edge, but no wider than a quarter of the tree, so that a
++  label far from the root does not squeeze it, and no narrower than the margin of the layout */
++  const needed = Math.max(0, ...labels.map((label) => (labelGap + label.width - label.fraction * farEnd) / (1 - label.fraction)));
++  const fitted = Math.max(margin, Math.min(farEnd / 4, needed));
++  const starts = labels.map((label) => labelStart(fitted, label));
++  labels.forEach((label, i) => {label.node.branchLabelCut = starts[i] < -0.5;});
++  const shownStarts = starts.filter((start) => start >= -0.5);
++  /* the clip mask ends 5px before the x range on the root side when the tree is not mirrored, 15px after it otherwise
++  (see `setClipMask()`) */
++  const clipEdge = isMirrored ? fitted - 15 : fitted - 5;
++  this.margins.branchLabels = shownStarts.length ? Math.max(0, clipEdge - Math.min(...shownStarts)) : 0;
++
++  if (fitted > margin) {
++    if (isMirrored) {
++      this.margins.right = fitted;
++      this.xScale.range([width - fitted, rangeEnd]);
++    } else {
++      this.margins.left = fitted;
++      this.xScale.range([fitted, rangeEnd]);
++    }
++  }
++  this.setClipMask();
++}
++
+ function leafWeight(node: ReduxNode): number {
+   return node.tipCount + 0.15*(node.fullTipCount-node.tipCount);
+ }
+diff --git a/src/components/tree/phyloTree/phyloTree.ts b/src/components/tree/phyloTree/phyloTree.ts
+index d4f928d487df9ad1b681caf4bedbd1c57e980c21..458ee23c9024a12b6f1b62c05a517049d1b53cb6 100644
+--- a/src/components/tree/phyloTree/phyloTree.ts
++++ b/src/components/tree/phyloTree/phyloTree.ts
+@@ -19,6 +19,7 @@ const PhyloTree = function PhyloTree(
+   idxOfInViewRootNode: number,
+ ): void {
+   this.grid = false;
++  this.disposed = false;
+   this.attributes = ['r', 'cx', 'cy', 'id', 'class', 'd'];
+   this.params = createDefaultParams();
+   this.groups = {};
+@@ -36,7 +37,9 @@ const PhyloTree = function PhyloTree(
+       n: d,
+       x: 0,
+       y: 0,
+-      inView: d.inView !== undefined ? d.inView : true /* each node is visible, unless set earlier! */
++      /* each node is visible, unless set earlier! Once drawn, the zoom is kept on the drawn nodes (`shell`) only, so
++      a new drawing of these nodes, e.g. after the tree component mounts again with the same store, takes it from there */
++      inView: d.shell ? d.shell.inView : d.inView !== undefined ? d.inView : true
+     };
+     d.shell = phyloNode;
+     return phyloNode;
+@@ -57,6 +60,7 @@ PhyloTree.prototype.modifySVGInStages = modifySVGInStages;
+ /* I N I T I A L        R E N D E R       E T C */
+ PhyloTree.prototype.render = renderers.render;
+ PhyloTree.prototype.clearSVG = renderers.clearSVG;
++PhyloTree.prototype.dispose = renderers.dispose;
+ 
+ /* D R A W I N G    F U N C T I O N S */
+ PhyloTree.prototype.setClipMask = renderers.setClipMask;
+diff --git a/src/components/tree/phyloTree/renderers.ts b/src/components/tree/phyloTree/renderers.ts
+index 367f3ec3a5b42c2f9db045300e6e74432247e54d..266c9bd6a28e85d791adcdc317911f5cfb0061e0 100644
+--- a/src/components/tree/phyloTree/renderers.ts
++++ b/src/components/tree/phyloTree/renderers.ts
+@@ -221,7 +221,7 @@ export const drawTips = function drawTips(this: PhyloTreeType): void {
+   timerStart("drawTips");
+   const params = this.params;
+   if (!("tips" in this.groups)) {
+-    this.groups.tips = this.svg.append("g").attr("id", "tips").attr("clip-path", "url(#treeClip)");
++    this.groups.tips = this.svg.append("g").attr("id", "tips").attr("clip-path", `url(#treeClip-${this.id})`);
+   }
+ 
+   const nodes = (this.params.showStreamTrees ? this.nodes.filter((d) => !d.n.inStream) : this.nodes)
+@@ -304,7 +304,7 @@ export const drawBranches = function drawBranches(this: PhyloTreeType): void {
+   /* PART 1: draw the branch Ts (i.e. the bit connecting nodes parent branch ends to child branch beginnings)
+   Only rectangular & radial trees have this, so we remove it for clock / unrooted layouts */
+   if (!("branchTee" in this.groups)) {
+-    this.groups.branchTee = this.svg.append("g").attr("id", "branchTee").attr("clip-path", "url(#treeClip)");
++    this.groups.branchTee = this.svg.append("g").attr("id", "branchTee").attr("clip-path", `url(#treeClip-${this.id})`);
+   }
+   if (this.layout === "clock" || this.layout === "scatter" || this.layout === "unrooted") {
+     this.groups.branchTee.selectAll("*").remove();
+@@ -339,7 +339,7 @@ export const drawBranches = function drawBranches(this: PhyloTreeType): void {
+   this.updateColorBy();
+   /* PART 2b: Draw the stems */
+   if (!("branchStem" in this.groups)) {
+-    this.groups.branchStem = this.svg.append("g").attr("id", "branchStem").attr("clip-path", "url(#treeClip)");
++    this.groups.branchStem = this.svg.append("g").attr("id", "branchStem").attr("clip-path", `url(#treeClip-${this.id})`);
+   }
+   this.groups.branchStem
+     .selectAll('.branch')
+@@ -382,7 +382,7 @@ export const drawRegression = function drawRegression(this: PhyloTreeType): void
+     " L " + this.xScale.range()[1].toString() + " " + rightY.toString();
+ 
+   if (!("regression" in this.groups)) {
+-    this.groups.regression = this.svg.append("g").attr("id", "regression").attr("clip-path", "url(#treeClip)");
++    this.groups.regression = this.svg.append("g").attr("id", "regression").attr("clip-path", `url(#treeClip-${this.id})`);
+   }
+ 
+   this.groups.regression
+@@ -396,16 +396,25 @@ export const drawRegression = function drawRegression(this: PhyloTreeType): void
+ 
+   /* Compute & draw regression text. Note that the text hasn't been created until now,
+   as we need to wait until rendering time when the scales have been calculated */
++  /* The text is centered on the x range, and set smaller where it is wider than the range, which would cut it */
++  const [xStart, xEnd] = this.xScale.range();
++  const fontSize = this.params.tickLabelSize + 8;
+   this.groups.regression
+     .append("text")
+     .text(makeRegressionText(this.regression, this.layout, this.yScale))
+     .attr("class", "regression")
+-    .attr("x", this.xScale.range()[1] / 2 - 75)
++    .attr("x", (xStart + xEnd) / 2)
+     .attr("y", this.yScale.range()[0] + 50)
++    .style("text-anchor", "middle")
+     .style("fill", this.params.regressionStroke)
+-    .style("font-size", this.params.tickLabelSize + 8)
++    .style("font-size", fontSize)
+     .style("font-weight", 400)
+-    .style("font-family", this.params.fontFamily);
++    .style("font-family", this.params.fontFamily)
++    .each(function fitXRange(this: SVGTextElement) {
++      const length = this.getComputedTextLength();
++      const available = Math.abs(xEnd - xStart);
++      if (length > available) this.style.fontSize = `${Math.floor(fontSize * available / length)}px`;
++    });
+ };
+ 
+ export const removeRegression = function removeRegression(this: PhyloTreeType): void {
+@@ -421,6 +430,13 @@ export const clearSVG = function clearSVG(this: PhyloTreeType): void {
+   this.svg.selectAll("*").remove();
+ };
+ 
++/* Stop drawing and remove everything drawn. Pending deferred drawing steps (staged transitions, tip label timers) check
++ * `disposed` and do nothing, so a disposed tree cannot draw into an SVG that is reused by another tree. */
++export const dispose = function dispose(this: PhyloTreeType): void {
++  this.disposed = true;
++  if (this.svg) this.clearSVG();
++};
++
+ 
+ /* Due to errors rendering gradients on SVG branches on some browsers/OSs which would
+ cause the branches to not appear, we're falling back to the previous solution which
+@@ -513,15 +529,19 @@ export const setClipMask = function setClipMask(this: PhyloTreeType): void {
+   // browsers don't like. See <https://github.com/nextstrain/auspice/issues/1755>
+   let [xMin, xMax] = this.xScale.range();
+   if (parseInt(xMin, 10)>parseInt(xMax, 10)) [xMin, xMax] = [xMax, xMin];
+-  const x0 = xMin - 5;
+-  const width = xMax - xMin + 20;  // RHS overflow is not problematic
++  /* branch labels can extend further into the margin on the root side, which is the left side unless the tree is
++  mirrored (see `fitBranchLabelsInRootMargin()`) */
++  const branchLabels = this.margins.branchLabels ?? 0;
++  const isMirrored = this.params.orientation[0] < 0;
++  const x0 = xMin - 5 - (isMirrored ? 0 : branchLabels);
++  const width = xMax - xMin + 20 + (isMirrored ? branchLabels : 0);  // RHS overflow is not problematic
+   const y0 = yMin - 15;            // some overflow at top is ok
+   const height = yMax - yMin + 20; // extra padding to allow tips & lowest major axis line to render
+ 
+   if (!this.groups.clipPath) {
+     this.groups.clipPath = this.svg.append("g").attr("id", "clipGroup");
+     this.groups.clipPath.append("clipPath")
+-        .attr("id", "treeClip")
++        .attr("id", `treeClip-${this.id}`)
+       .append("rect")
+         .attr("x", x0)
+         .attr("y", y0)
+diff --git a/src/components/tree/phyloTree/types.ts b/src/components/tree/phyloTree/types.ts
+index 242c7d9625cd04f78781fa4f320ef3a65c3fb18e..386283c0c174dd56af08db16bc0ddad69f9222c6 100644
+--- a/src/components/tree/phyloTree/types.ts
++++ b/src/components/tree/phyloTree/types.ts
+@@ -87,6 +87,10 @@ export type SVGProperty = keyof SVG
+ export interface PhyloNode extends SVG {
+   angle?: number
+   branch?: [string, string]
++
++  /** the branch label does not fit the SVG and is hidden, see `fitBranchLabelsInRootMargin()` */
++  branchLabelCut?: boolean
++
+   branchStroke?: string
+   conf?: [number, number]
+ 
+@@ -260,6 +264,8 @@ export interface PhyloTreeType {
+   callbacks: Callbacks
+   change: typeof change
+   clearSVG: typeof renderers.clearSVG
++  dispose: typeof renderers.dispose
++  disposed: boolean
+   confidencesInSVG: boolean
+   dateRange: [number, number]
+   distance: Distance
+@@ -298,6 +304,8 @@ export interface PhyloTreeType {
+     left: number
+     right: number
+     top: number
++    /** how far branch labels extend past the clip mask on the root side; the clip mask extends over it */
++    branchLabels: number
+   }
+   measurementsColorGrouping: string | undefined
+   modifySVG: typeof modifySVG
+diff --git a/src/components/tree/tangle/index.js b/src/components/tree/tangle/index.js
+index 633c0d018c5947ddec85ca057a7e2df53d85cd1d..6b4c6cbdf71b396948dea2035dbbd2e0368e6049 100644
+--- a/src/components/tree/tangle/index.js
++++ b/src/components/tree/tangle/index.js
+@@ -76,9 +76,16 @@ class Tangle extends React.Component {
+       } else {
+         select(this.d3ref).selectAll(".tangleLine").remove();
+       }
+-      this.timeout = window.setTimeout(this.drawLines.bind(this), 1000);
++      this.timeout = window.setTimeout(() => {
++        this.timeout = false;
++        this.drawLines();
++      }, 1000);
+     }
+   }
++  componentWillUnmount() {
++    /* a pending redraw would draw into an SVG that is gone */
++    if (this.timeout) window.clearTimeout(this.timeout);
++  }
+   render() {
+     const textStyles = {position: "absolute", top: 25, zIndex: 100, fontSize: 16, color: "#000", fontWeight: 500};
+     const lefts = [this.props.width/2 - this.props.spaceBetweenTrees/2, this.props.width/2 + this.props.spaceBetweenTrees/2];
+diff --git a/src/components/tree/tree.tsx b/src/components/tree/tree.tsx
+index 3e20d6df522fa2af4358659723d26bca2e674949..280bfb50539b509ed2507a937dc40abd2193d719 100644
+--- a/src/components/tree/tree.tsx
++++ b/src/components/tree/tree.tsx
+@@ -79,6 +79,9 @@ export class TreeComponent extends React.Component<TreeComponentProps, TreeCompo
+   }
+ 
+   override componentWillUnmount(): void {
++    /* stop the pending drawing steps of the trees (staged transitions, tip label timers) */
++    this.state.tree?.dispose();
++    this.state.treeToo?.dispose();
+     /* remove the drawing, so a later mount on the same DOM starts from an empty SVG */
+     for (const ref of [this.domRefs.mainTree, this.domRefs.secondTree]) {
+       if (ref) select(ref).selectAll("*").remove();
+diff --git a/src/util/extensions.ts b/src/util/extensions.ts
+index 939d1156923c7603360fdcfdd42cadcef3adc3d9..188ab78199f4c52e840e191e6f61690f9432a45e 100644
+--- a/src/util/extensions.ts
++++ b/src/util/extensions.ts
+@@ -1,37 +1,16 @@
++/* Nextclade bundles the Auspice sources with its own webpack configuration. The stock registry reads a build-time
++EXTENSION_DATA variable and loads components through webpack's `require.context("@extensions")`. Here "@extensions" is a
++webpack alias to a module of the app whose default export is the registry itself. */
++import registry from "@extensions";
++
+ // TODO: Add typing for individual extensions.
+ // See docs/customise-client/api.rst.
+ type Extensions = {
+   [key: string]: any
+ }
+ 
+-const registry: Extensions = ((): Extensions => {
+-  if (!process.env.EXTENSION_DATA) {
+-    return {};
+-  }
+-
+-  const extensions: Extensions = typeof process.env.EXTENSION_DATA === "string" ?
+-    JSON.parse(process.env.EXTENSION_DATA) : process.env.EXTENSION_DATA;
+-
+-  /* "@extensions" is a webpack alias resolving to the customisation directory.
+-  We use require.context (rather than a plain dynamic require) so we can
+-  constrain the generated context module to JS/TS files. This stops webpack
+-  from eagerly bundling non-code files in the extensions directory (e.g.
+-  README.md), which would otherwise error as they have no matching loader. */
+-  const extensionsContext = require.context("@extensions", true, /\.(jsx?|tsx?)$/);
+-
+-  Object.keys(extensions).forEach((key: string) => {
+-    if (key.endsWith("Component")) {
+-      const relPath = extensions[key].replace(/^\.\//, "");
+-      extensions[key] = extensionsContext(`./${relPath}`).default;
+-    }
+-  });
+-
+-  return extensions;
+-})();
+-
+-
+ export const getExtension = (what: string): any | false => {
+-  if (registry[what]) {
++  if (Object.prototype.hasOwnProperty.call(registry, what)) {
+     return registry[what];
+   }
+   console.error("Requested non-existing extension", what);
+diff --git a/src/util/metadataJsonParsing.ts b/src/util/metadataJsonParsing.ts
+index 5b200a6bd9ae93b1b868a9549f744eee15f419fa..d833149e6a551c2d72f7c4612479e333747b4809 100644
+--- a/src/util/metadataJsonParsing.ts
++++ b/src/util/metadataJsonParsing.ts
+@@ -126,7 +126,7 @@ export function parseJsonMetaBlock(json: unknown): { metadata: Metadata, entropy
+ 
+ }
+ 
+-function computeLegendPlacements(panels: Metadata["panels"]): Metadata["legendPlacements"] {
++export function computeLegendPlacements(panels: Metadata["panels"]): Metadata["legendPlacements"] {
+   return panels.reduce((acc, panel) => {
+     if (!PANELS_WITH_LEGEND.includes(panel)) return acc;
+ 
