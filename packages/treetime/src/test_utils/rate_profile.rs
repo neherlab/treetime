@@ -92,19 +92,24 @@ impl FrozenRateState {
       .collect()
   }
 
-  pub(crate) fn point(&self, rate: f64, with_prior: bool, spacing: f64) -> Result<RateProfilePoint, Report> {
-    let prior = with_prior.then_some(&self.prior);
+  /// TreeTime's log Z at `rate` under the frozen prior, without the reference
+  pub(crate) fn log_z(&self, rate: f64, with_prior: bool) -> Result<Option<f64>, Report> {
     let inputs = MarginalRateInputs {
       graph: &self.case.tree.graph,
       date_constraints: &self.constraints,
-      coalescent: prior,
+      coalescent: with_prior.then_some(&self.prior),
       bad_branches: &self.bad_branches,
       branches: &self.branches,
       reference_rate: self.spec.mu,
       window: RateWindow::InteriorMaximum,
       max_points: MaxGridPoints::default(),
     };
-    let treetime_log_z = marginal_log_lh_at_rate(&inputs, rate)?;
+    marginal_log_lh_at_rate(&inputs, rate)
+  }
+
+  pub(crate) fn point(&self, rate: f64, with_prior: bool, spacing: f64) -> Result<RateProfilePoint, Report> {
+    let prior = with_prior.then_some(&self.prior);
+    let treetime_log_z = self.log_z(rate, with_prior)?;
     let log_normalization = prior.map_or(0.0, prior_log_normalization);
     let branches = BranchTime::from_likelihoods(&branches_at_rate(&self.branches, self.spec.mu, rate)?)?;
     let reference = reference_log_z(&ReferenceInput {

@@ -52,6 +52,52 @@ mod tests {
     Ok(())
   }
 
+  // RESEARCH (not for commit): log Z over the rate under the frozen prior, validation layout
+  #[test]
+  #[ignore = "research"]
+  fn research_rate_profile_shape() -> Result<(), Report> {
+    use crate::test_utils::{CaseSpec, ModelFamily};
+    use rayon::prelude::*;
+    use std::fmt::Write as _;
+    use treetime_simulation::coalescent::SampleBatch;
+    use treetime_simulation::tc_schedule::TcSchedule;
+    let sampling = (0..40)
+      .map(|i| SampleBatch {
+        tau: f64::from(i) * 0.1,
+        count: 10,
+      })
+      .collect_vec();
+    let cases = [1000, 10000]
+      .into_iter()
+      .cartesian_product([3e-4, 1e-3, 3e-3, 1e-2])
+      .cartesian_product(0..5_u64)
+      .collect_vec();
+    let rows = cases
+      .par_iter()
+      .map(|&((length, mu), seed)| -> Result<String, Report> {
+        let spec = CaseSpec {
+          seed,
+          sampling: sampling.clone(),
+          schedule: TcSchedule::constant(10.0)?,
+          model: ModelFamily::RandomGtr,
+          mu,
+          length,
+        };
+        let state = FrozenRateState::new(&spec)?;
+        let mut out = String::new();
+        for i in -16..=16 {
+          let x = f64::from(i) * 0.1;
+          let log_z = state.log_z(mu * x.exp(), true)?.unwrap_or(f64::NAN);
+          writeln!(out, "{length}\t{mu}\t{seed}\t{x:.1}\t{log_z}")?;
+        }
+        eprintln!("done L={length} mu={mu} seed={seed}");
+        Ok(out)
+      })
+      .collect::<Result<Vec<_>, Report>>()?;
+    println!("L\tmu\tseed\tx\tlog_z\n{}", rows.concat());
+    Ok(())
+  }
+
   mod helpers {
     use crate::test_utils::{CaseSpec, ModelFamily};
     use eyre::Report;

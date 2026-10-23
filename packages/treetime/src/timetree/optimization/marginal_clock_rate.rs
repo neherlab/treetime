@@ -34,9 +34,22 @@ pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Resul
       "Marginal clock rate step found no finite marginal likelihood at the reference rate {reference}"
     ));
   }
-  let target = log_rate_target(probe(1.0 / PROBE_FACTOR)?, log_lh, probe(PROBE_FACTOR)?, inputs.window);
+  let research = Research::from_env();
+  let window = if research.guard {
+    inputs.window
+  } else {
+    RateWindow::FollowSlope
+  };
+  let target = log_rate_target(
+    probe(1.0 / PROBE_FACTOR)?,
+    log_lh,
+    probe(PROBE_FACTOR)?,
+    window,
+    research.power,
+    research.bound,
+  );
   Ok(MarginalRateStep {
-    clock_rate: reference * (STEP_FRACTION * target).exp(),
+    clock_rate: reference * (research.step * target).exp(),
     target_rate: reference * target.exp(),
     log_lh,
   })
@@ -99,11 +112,63 @@ pub(crate) fn branches_at_rate(
     .collect()
 }
 
-fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow) -> f64 {
+// RESEARCH (not for commit): coordinate, guards and step fraction of the rate step from the environment
+struct Research {
+  power: f64,
+  guard: bool,
+  step: f64,
+  bound: f64,
+}
+
+impl Research {
+  fn from_env() -> Self {
+    let power = match std::env::var("TREETIME_RATE_COORD").as_deref() {
+      Ok("sqrt") => 0.5,
+      Ok("cbrt") => 1.0 / 3.0,
+      Ok("rate") => 1.0,
+      _ => 0.0,
+    };
+    let guard = std::env::var("TREETIME_RATE_GUARD").as_deref() != Ok("none");
+    let step = std::env::var("TREETIME_RATE_STEP")
+      .ok()
+      .and_then(|s| s.parse().ok())
+      .unwrap_or(STEP_FRACTION);
+    let bound = std::env::var("TREETIME_RATE_BOUND")
+      .ok()
+      .and_then(|s| s.parse().ok())
+      .unwrap_or(MAX_TARGET_FACTOR);
+    Self {
+      power,
+      guard,
+      step,
+      bound,
+    }
+  }
+}
+
+/// Target in log rate from the parabola through the probes in u = exp(power x) (u = x for power 0)
+#[expect(
+  clippy::suspicious_operation_groupings,
+  reason = "the coefficients of the parabola through three points pair each squared abscissa with the other two ordinates"
+)]
+fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow, power: f64, max_factor: f64) -> f64 {
   let h = PROBE_FACTOR.ln();
-  let bound = MAX_TARGET_FACTOR.ln();
-  let curvature = above + below - 2.0 * at;
-  let maximum = (curvature.is_finite() && curvature < 0.0).then(|| h * (below - above) / (2.0 * curvature));
+  let bound = max_factor.ln();
+  let maximum = if power == 0.0 {
+    let curvature = above + below - 2.0 * at;
+    (curvature.is_finite() && curvature < 0.0).then(|| h * (below - above) / (2.0 * curvature))
+  } else {
+    let [u1, u2, u3] = [-h, 0.0, h].map(|x| (power * x).exp());
+    let denom = (u1 - u2) * (u1 - u3) * (u2 - u3);
+    let a = (u3 * (at - below) + u2 * (below - above) + u1 * (above - at)) / denom;
+    let b = (u3 * u3 * (below - at) + u2 * u2 * (above - below) + u1 * u1 * (at - above)) / denom;
+    let vertex = -b / (2.0 * a);
+    match (a.is_finite() && a < 0.0, vertex > 0.0) {
+      (true, true) => Some(vertex.ln() / power),
+      (true, false) => Some(-bound), // the maximum lies at zero rate: as far down as the bound allows
+      (false, _) => None,
+    }
+  };
   match (window, maximum) {
     (RateWindow::InteriorMaximum, Some(target)) if target.abs() <= h => target,
     (RateWindow::InteriorMaximum, _) => 0.0,
