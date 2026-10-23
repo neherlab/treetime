@@ -182,7 +182,7 @@ mod tests {
       (0..archive.len())
         .map(|index| {
           let file = archive.by_index(index).unwrap();
-          (file.name().to_owned(), file.compression())
+          (file.name().unwrap().into_owned(), file.compression())
         })
         .sorted_by_key(|(name, _)| name.clone())
         .collect_vec()

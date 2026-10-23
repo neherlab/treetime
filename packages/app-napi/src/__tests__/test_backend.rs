@@ -680,7 +680,7 @@ mod tests {
           let mut file = archive.by_index(index).unwrap();
           let mut content = vec![];
           file.read_to_end(&mut content).unwrap();
-          (file.name().to_owned(), content)
+          (file.name().unwrap().into_owned(), content)
         })
         .collect()
     }

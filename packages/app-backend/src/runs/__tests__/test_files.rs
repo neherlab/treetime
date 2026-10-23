@@ -179,7 +179,7 @@ mod tests {
           let mut file = archive.by_index(index).unwrap();
           let mut content = String::new();
           file.read_to_string(&mut content).unwrap();
-          (file.name().to_owned(), file.compression(), content)
+          (file.name().unwrap().into_owned(), file.compression(), content)
         })
         .collect_vec()
     }

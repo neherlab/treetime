@@ -234,7 +234,7 @@ tower-http = { version = "=0.7.1", features = [
 usvg = "=0.47.0"
 wasm-bindgen = "=0.2.129"
 wasm-bindgen-futures = "=0.4.79"
-zip = { version = "=8.6.0", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "=9.0.5", default-features = false, features = ["deflate-flate2"] }
 
 app-backend = { path = "packages/app-backend" }
 app-commands = { path = "packages/app-commands", default-features = false }
