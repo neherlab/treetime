@@ -15,7 +15,8 @@
     "./window": "./src/window.ts",
     "./host": "./src/host.ts",
     "./port": "./src/port.ts",
-    "./port-fetch": "./src/port-fetch.ts"
+    "./port-fetch": "./src/port-fetch.ts",
+    "./i18n": "./src/i18n/locale.tsx"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

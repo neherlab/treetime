@@ -16,6 +16,8 @@
 #               WebAssembly back end
 #   cli-docs    docs/docs/reference.md, from the CLI help tree
 #   data-index  data/index.json, the index of the example data, from the files git tracks in data/
+#   i18n        packages/app-ui/src/i18n/generated/, the Paraglide message modules, from the inlang
+#               project packages/app-ui/project.inlang and packages/app-ui/messages/
 #
 # Examples:
 #   $0 check
@@ -27,7 +29,7 @@ shopt -s inherit_errexit
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "${root}"
 
-all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs data-index)
+all_groups=(schemas openapi catalog ts-client napi-types wasm-types cli-docs data-index i18n)
 
 # Each produce_<group> writes the files of the group below the given directory,
 # at their repository-relative paths, and prints those paths.
@@ -81,6 +83,25 @@ produce_data_index() {
   printf 'data/index.json\n'
 }
 
+# The inlang SDK downloads and runs a module that settings.json names by URL, and
+# compiles without messages when a module fails to load, so both stop the group.
+produce_i18n() {
+  local settings=packages/app-ui/project.inlang/settings.json output
+  if jq -e '.modules[] | select(test("^[a-z][a-z0-9+.-]*:"; "i"))' "${settings}" >/dev/null; then
+    printf '%s names a module by URL; load the inlang plugins from node_modules\n' "${settings}" >&2
+    return 1
+  fi
+  output="$(cd packages/app-ui && bun node_modules/@inlang/paraglide-js/bin/run.js compile \
+    --project ./project.inlang --outdir "${1}/packages/app-ui/src/i18n/generated" \
+    --strategy baseLocale --output-structure message-modules --emit-ts-declarations \
+    --no-emit-git-ignore --no-emit-prettier-ignore --no-emit-readme 2>&1)"
+  if grep -qE 'WARN|ERROR|Error' <<<"${output}"; then
+    printf '%s\n' "${output}" >&2
+    return 1
+  fi
+  printf 'packages/app-ui/src/i18n/generated\n'
+}
+
 main() {
   local mode="${1:-}"
   case "${mode}" in
@@ -117,6 +138,7 @@ main() {
         return 1
       fi
       rm -rf "${path:?}"
+      mkdir -p "$(dirname "${path}")"
       cp -R "${out}/${path}" "${path}"
     elif ! diff -ru "${path}" "${out}/${path}" >&2; then
       printf 'The committed %s is stale; regenerate it with: just gen %s\n' "${path}" "${group}" >&2

@@ -20,6 +20,7 @@ export default projectConfig({
     ".build",
     "coverage",
     "packages/app-contracts/src/generated",
+    "packages/app-ui/src/i18n/generated",
     "packages/app-wasm/pkg",
   ],
 

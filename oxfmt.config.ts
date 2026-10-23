@@ -13,6 +13,7 @@ export default defineConfig({
     "packages/app-contracts/setting-catalog.json",
     "packages/app-contracts/src/generated",
     "packages/app-napi/index.d.ts",
+    "packages/app-ui/src/i18n/generated",
     "packages/app-output/src/__tests__/schemas",
     "packages/app-wasm/pkg",
     "packages/legacy",
