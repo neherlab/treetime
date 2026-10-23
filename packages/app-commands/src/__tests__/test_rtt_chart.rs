@@ -75,14 +75,14 @@ mod tests {
 
   #[test]
   fn test_rtt_chart_png_is_1200_by_800_with_drawn_pixels() {
-    let png = Pixmap::decode_png(&encode_chart(ChartFormat::Png, &chart_svg()).unwrap()).unwrap();
+    let png = Pixmap::decode_png(&encode_chart(ChartFormat::Png, chart_svg()).unwrap()).unwrap();
     assert_eq!((1200, 800), (png.width(), png.height()));
     assert!(non_white_pixel_count(&png) > 1000);
   }
 
   #[test]
   fn test_rtt_chart_pdf_is_a_900_by_600_page_with_a_lato_subset() {
-    let pdf = encode_chart(ChartFormat::Pdf, &chart_svg()).unwrap();
+    let pdf = encode_chart(ChartFormat::Pdf, chart_svg()).unwrap();
     let pdf = String::from_utf8_lossy(&pdf);
     assert!(pdf.starts_with("%PDF-"));
     assert!(pdf.contains("/MediaBox[0 0 900 600]"), "{pdf}");
@@ -98,8 +98,8 @@ mod tests {
   #[trace]
   fn test_rtt_chart_renders_the_same_bytes_twice(#[case] format: ChartFormat) {
     assert_eq!(
-      encode_chart(format, &chart_svg()).unwrap(),
-      encode_chart(format, &chart_svg()).unwrap()
+      encode_chart(format, chart_svg()).unwrap(),
+      encode_chart(format, chart_svg()).unwrap()
     );
   }
 
@@ -121,7 +121,7 @@ mod tests {
       .map(|entry| entry.unwrap().file_name().into_string().unwrap())
       .collect_vec();
     assert_eq!(
-      (vec![name.to_owned()], encode_chart(format, &chart_svg()).unwrap()),
+      (vec![name.to_owned()], encode_chart(format, chart_svg()).unwrap()),
       (files, helpers::read_decompressed(&path))
     );
   }

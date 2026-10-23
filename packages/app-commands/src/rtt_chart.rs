@@ -21,7 +21,7 @@ pub fn write_rtt_chart(
 ) -> Result<(), Report> {
   let format = ChartFormat::from_path(filepath)
     .ok_or_else(|| make_internal_report!("No chart format for '{}' after output planning", filepath.display()))?;
-  let bytes = encode_chart(format, &clock_regression_chart_svg(results, clock_model)?)?;
+  let bytes = encode_chart(format, clock_regression_chart_svg(results, clock_model)?)?;
   write_file_with(filepath, |writer| {
     writer
       .write_all(&bytes)
@@ -29,11 +29,11 @@ pub fn write_rtt_chart(
   })
 }
 
-pub fn encode_chart(format: ChartFormat, svg: &str) -> Result<Vec<u8>, Report> {
+pub fn encode_chart(format: ChartFormat, svg: String) -> Result<Vec<u8>, Report> {
   match format {
-    ChartFormat::Svg => Ok(svg.as_bytes().to_vec()),
-    ChartFormat::Png => svg_to_png(svg),
-    ChartFormat::Pdf => svg_to_pdf(svg),
+    ChartFormat::Svg => Ok(svg.into_bytes()),
+    ChartFormat::Png => svg_to_png(&svg),
+    ChartFormat::Pdf => svg_to_pdf(&svg),
   }
 }
 
