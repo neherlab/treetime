@@ -1,3 +1,4 @@
+import { useMounted } from "@mantine/hooks";
 import { useTheme } from "next-themes";
 import { useCallback, type ComponentType, type SVGProps } from "react";
 import Monitor from "~icons/lucide/monitor";
@@ -30,7 +31,8 @@ export function nextTheme(theme: string | undefined): ThemeChoice {
 export function ThemeCycleButton({ onChosen }: { onChosen?: (choice: ThemeChoice) => void }) {
   const locale = useLocale();
   const { theme, setTheme } = useTheme();
-  const choice = THEME_CYCLE.find((candidate) => candidate === theme) ?? "system";
+  const mounted = useMounted();
+  const choice = (mounted ? THEME_CYCLE.find((candidate) => candidate === theme) : undefined) ?? "system";
   const { label: labelOf, icon: Icon } = THEME_META[choice];
   const label = labelOf(locale);
 
