@@ -1,25 +1,44 @@
 #!/usr/bin/env bash
 #
-# The CPU flags of the shipped builds, shared by the cross builds
-# (dev/cross/build) and the native dist, profiling, and bench builds of the
-# justfile, so a local `just build-dist` compiles the code that ships. For
-# x86_64-unknown-linux-gnu these are all the code generation flags of the
-# shipped binary; dev/cross/build adds the static runtime and linker flags of
-# the other targets.
+# The CPU flags and the unwinder link of the shipped builds, shared by the cross
+# builds (dev/cross/build) and the native dist, profiling, bench, and addon
+# builds of the justfile, so a local `just build-dist` compiles and links the
+# code that ships. For x86_64-unknown-linux-gnu these are all the code
+# generation and link flags of the shipped binary; dev/cross/build adds the
+# static runtime and linker flags of the other targets.
 #
 # The prebuilt OpenBLAS, liblzma, and libzstd archives that the builds link are
 # compiled with these C CPU flags; the images check the build record of every
 # archive against them (dev/docker/files/install-image-libraries). OpenBLAS also
 # selects its kernels at run time.
 
-# Export RUSTFLAGS and the C and C++ flags of the shipped build for a target, by
-# default the host. RUSTFLAGS replaces the target rustflags of .cargo/config.toml
-# (mold, frame pointers, v0 symbol mangling) instead of adding to them, as in
-# the shipped builds. The C and C++ flags carry only the CPU baseline: the cc
-# crate passes the optimization level of the cargo profile.
+# Usage: export_dist_flags <binary|addon> [target]
+#
+# Export RUSTFLAGS and the C and C++ flags of the shipped build of a binary or
+# of the Node addon for a target, by default the host. RUSTFLAGS replaces the
+# target rustflags of .cargo/config.toml (mold, frame pointers, v0 symbol
+# mangling) instead of adding to them, as in the shipped builds. The C and C++
+# flags carry only the CPU baseline: the cc crate passes the optimization level
+# of the cargo profile.
 export_dist_flags() {
-  local target="${1:-$(rustc --print host-tuple)}" target_safe c_arch rust_arch
+  local kind="${1:?binary or addon}" target="${2:-$(rustc --print host-tuple)}" target_safe c_arch rust_arch link=""
   target_safe="${target//-/_}"
+
+  case "${kind}" in
+  binary | addon) ;;
+  *)
+    printf 'Unknown build kind: %s. Supported: binary, addon\n' "${kind}" >&2
+    return 1
+    ;;
+  esac
+
+  # The glibc binaries link the GCC unwinder statically, so they need no
+  # libgcc_s.so.1 and run on images that carry glibc alone (see the linker
+  # script in dev/cross/static-unwinder/). The Node addon keeps the shared
+  # unwinder of the Electron process that loads it.
+  if [[ "${kind}" == binary && "${target}" == *-linux-gnu ]]; then
+    link=" -L native=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)/dev/cross/static-unwinder"
+  fi
 
   case "${target}" in
   aarch64-apple-*)
@@ -57,7 +76,7 @@ export_dist_flags() {
     ;;
   esac
 
-  export RUSTFLAGS="${rust_arch}"
+  export RUSTFLAGS="${rust_arch}${link}"
   export "CFLAGS_${target_safe}=${CFLAGS:-} ${c_arch}"
   export "CXXFLAGS_${target_safe}=${CXXFLAGS:-} ${c_arch}"
 }

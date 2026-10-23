@@ -1,10 +1,10 @@
 /*
- * Linker script that dev/cross/build puts first on the library path of the
- * glibc builds of the CLI. Rust's std links the GCC unwinder with -lgcc_s,
- * which makes the binary need libgcc_s.so.1 at run time; minimal glibc images
- * such as gcr.io/distroless/base lack it. This script resolves -lgcc_s to the
- * static unwinder libgcc_eh.a of the cross toolchain instead. libgcc.a
- * provides the helpers that libgcc_eh.a calls, such as the outline atomics of
- * aarch64.
+ * Linker script that export_dist_flags (dev/lib/dist-flags.sh) puts first on
+ * the library path of the shipped glibc builds of the CLI. Rust's std links
+ * the GCC unwinder with -lgcc_s, which makes the binary need libgcc_s.so.1 at
+ * run time; minimal glibc images such as gcr.io/distroless/base lack it. This
+ * script resolves -lgcc_s to the static unwinder libgcc_eh.a of the GCC
+ * toolchain instead. libgcc.a provides the helpers that libgcc_eh.a calls,
+ * such as the outline atomics of aarch64.
  */
 GROUP(-lgcc_eh -lgcc)

@@ -217,7 +217,7 @@ check_emscripten() {
 cpu_flags() {
   (
     unset CFLAGS
-    export_dist_flags "$1"
+    export_dist_flags binary "$1"
     local name="CFLAGS_${1//-/_}"
     printf '%s' "${!name# }"
   )

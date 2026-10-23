@@ -34,7 +34,11 @@ target_safe="${target//-/_}"
 
 # shellcheck source=../lib/dist-flags.sh
 source "${root}/dev/lib/dist-flags.sh"
-export_dist_flags "${target}"
+if [[ -n "${lib}" ]]; then
+  export_dist_flags addon "${target}"
+else
+  export_dist_flags binary "${target}"
+fi
 
 # OpenBLAS with the Fortran runtime of flang, liblzma, and libzstd link
 # statically from the prebuilt archives of the image, which pkg-config finds
@@ -42,16 +46,6 @@ export_dist_flags "${target}"
 # (dev/docker/files/install-image-libraries).
 static="-C target-feature=+crt-static -C link-arg=-static -C link-self-contained=yes"
 case "${target}" in
-*-linux-gnu)
-  rustflags="${RUSTFLAGS}"
-  # The CLI links the GCC unwinder statically, so it needs no libgcc_s.so.1 and
-  # runs on images that carry glibc alone (see the linker script in
-  # dev/cross/static-unwinder/). The Node addon keeps the shared unwinder of
-  # the Electron process that loads it.
-  if [[ -z "${lib}" ]]; then
-    rustflags="${rustflags} -L native=${root}/dev/cross/static-unwinder"
-  fi
-  ;;
 *-linux-musl)
   if [[ -n "${lib}" ]]; then
     printf 'Cannot build a shared library for %s\n' "${target}" >&2
