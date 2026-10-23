@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Time tree with a skyline coalescent in the dense representation (ebola/362).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/ebola/362/timetree-dense.yaml --output-all tmp/examples/ebola/362/timetree-dense
+#
+# Every timetree iteration reconstructs the ancestral sequences again. With
+# `representation: dense` these reconstructions keep the state probabilities of
+# every site of the 19 kb genomes at every node. The skyline coalescent
+# (`coalescent: skyline`) fits a piecewise-linear history of the coalescent time
+# scale Tc over the 2014-2016 West African epidemic, and `confidence` adds the 90%
+# intervals of the node dates, including the uncertainty of the estimated clock
+# rate. `seed` makes the random order of the polytomy resolution reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+alignment:
+  - "aln.fasta.xz"
+
+representation: "dense"
+coalescent: "skyline"
+confidence: true
+seed: 42

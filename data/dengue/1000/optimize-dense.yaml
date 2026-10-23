@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch-length optimization in the dense representation (dengue/1000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/dengue/1000/optimize-dense.yaml --output-all tmp/examples/dengue/1000/optimize-dense
+#
+# `optimize` alternates marginal reconstruction and per-branch length updates. In
+# the dense representation (`representation: dense`) every pass keeps the state
+# probabilities of all sites at all nodes, so each iteration costs much more than
+# in the sparse representation that the default chooses. The run reroots on the
+# minimum-divergence branch.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+
+representation: "dense"
+reroot: "min-dev"

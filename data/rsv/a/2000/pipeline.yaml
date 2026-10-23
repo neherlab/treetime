@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# RSV-A time tree with resolved polytomies, then ancestral geography (rsv/a/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/rsv/a/2000/pipeline.yaml --output-all tmp/examples/rsv/a/2000/pipeline
+#
+# Preview the plan, or rerun only the second step after editing it:
+#   treetime pipeline --config data/rsv/a/2000/pipeline.yaml --dry-run --output-all tmp/examples/rsv/a/2000/pipeline
+#   treetime pipeline --config data/rsv/a/2000/pipeline.yaml --steps mugration --output-all tmp/examples/rsv/a/2000/pipeline
+#
+# A heavy timetree on 2000 RSV-A genomes. Trees of densely sampled respiratory
+# viruses contain many polytomies; `timetree` resolves them into binary mergers by
+# the node dates, in random order, and `seed` makes the result reproducible.
+# `confidence` runs a final marginal round of the time inference and writes the
+# 90% interval of every node date. The second step reconstructs the sampling
+# country (36 states) on the dated tree. The taxon names are in the `accession`
+# column.
+
+vars:
+  metadata_id_columns:
+    - "accession"
+
+steps:
+  # 1. Date the tree, resolve polytomies, and fit a constant coalescent time scale.
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      alignment:
+        - "aln.fasta.xz"
+      coalescent: "opt"
+      confidence: true
+      max_iter: 3
+      seed: 42
+
+  # 2. Reconstruct the sampling country on the dated tree from step 1.
+  - name: "mugration"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "country"

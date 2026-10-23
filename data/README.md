@@ -8,17 +8,25 @@ Examples run from any folder. A relative path inside a file resolves from the fo
 
 A per-command config is exactly the command's argument object. Its keys map one-to-one to the CLI flags: `--alignment a.fasta` is `alignment: [a.fasta]`, `--clock-rate 0.003` is `clock_rate: 0.003`. An explicit flag on the command line still overrides the file (flag > config > default).
 
-| File                                                                     | Command     | Demonstrates                                                |
-| ------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------- |
-| [`ebola/20/ancestral-parsimony.yaml`](ebola/20/ancestral-parsimony.yaml) | `ancestral` | Fitch parsimony: fast, model-free ancestral states          |
-| [`zika/20/ancestral.yaml`](zika/20/ancestral.yaml)                       | `ancestral` | Marginal reconstruction with an inferred GTR model          |
-| [`sc2/2844/ancestral.yaml`](sc2/2844/ancestral.yaml)                     | `ancestral` | Marginal reconstruction on 2844 SARS-CoV-2 genomes          |
-| [`dengue/100/clock.yaml`](dengue/100/clock.yaml)                         | `clock`     | Root-to-tip regression with a non-default id column         |
-| [`flu/h3n2/20/optimize.yaml`](flu/h3n2/20/optimize.yaml)                 | `optimize`  | Branch-length optimization and min-divergence rerooting     |
-| [`mpox/clade-ii/1000/optimize.yaml`](mpox/clade-ii/1000/optimize.yaml)   | `optimize`  | The mpox `augur refine` replacement (mutations, no indels)  |
-| [`rsv/a/100/prune.yaml`](rsv/a/100/prune.yaml)                           | `prune`     | Dropping short, empty, and shared-mutation branches         |
-| [`zika/20/mugration.yaml`](zika/20/mugration.yaml)                       | `mugration` | Discrete ancestral geography over sampling country          |
-| [`flu/h3n2/200/timetree.yaml`](flu/h3n2/200/timetree.yaml)               | `timetree`  | Dated tree with a fixed clock rate and confidence intervals |
+| File                                                                     | Command     | Demonstrates                                                  |
+| ------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------- |
+| [`ebola/20/ancestral-parsimony.yaml`](ebola/20/ancestral-parsimony.yaml) | `ancestral` | Fitch parsimony: fast, model-free ancestral states            |
+| [`zika/20/ancestral.yaml`](zika/20/ancestral.yaml)                       | `ancestral` | Marginal reconstruction with an inferred GTR model            |
+| [`sc2/2844/ancestral.yaml`](sc2/2844/ancestral.yaml)                     | `ancestral` | Marginal reconstruction on 2844 SARS-CoV-2 genomes            |
+| [`rsv/a/2000/ancestral-dense.yaml`](rsv/a/2000/ancestral-dense.yaml)     | `ancestral` | The dense representation on 2000 RSV-A genomes                |
+| [`dengue/100/clock.yaml`](dengue/100/clock.yaml)                         | `clock`     | Root-to-tip regression with a non-default id column           |
+| [`flu/h3n2/20/optimize.yaml`](flu/h3n2/20/optimize.yaml)                 | `optimize`  | Branch-length optimization and min-divergence rerooting       |
+| [`mpox/clade-ii/1000/optimize.yaml`](mpox/clade-ii/1000/optimize.yaml)   | `optimize`  | The mpox `augur refine` replacement (mutations, no indels)    |
+| [`dengue/1000/optimize-dense.yaml`](dengue/1000/optimize-dense.yaml)     | `optimize`  | Branch-length optimization in the dense representation        |
+| [`rsv/a/100/prune.yaml`](rsv/a/100/prune.yaml)                           | `prune`     | Dropping short, empty, and shared-mutation branches           |
+| [`zika/20/mugration.yaml`](zika/20/mugration.yaml)                       | `mugration` | Discrete ancestral geography over sampling country            |
+| [`tb/149/mugration.yaml`](tb/149/mugration.yaml)                         | `mugration` | A trait other than geography: the cluster of TB isolates      |
+| [`sc2/4500/mugration.yaml`](sc2/4500/mugration.yaml)                     | `mugration` | 95 countries on 4500 genomes, with sampling-bias correction   |
+| [`flu/h3n2/200/timetree.yaml`](flu/h3n2/200/timetree.yaml)               | `timetree`  | Dated tree with a fixed clock rate and confidence intervals   |
+| [`flu/h3n2/500/timetree.yaml`](flu/h3n2/500/timetree.yaml)               | `timetree`  | Estimated clock rate, skyline coalescent, resolved polytomies |
+| [`lassa/L/500/timetree.yaml`](lassa/L/500/timetree.yaml)                 | `timetree`  | A relaxed clock on an old and diverse virus                   |
+| [`ebola/362/timetree-dense.yaml`](ebola/362/timetree-dense.yaml)         | `timetree`  | Skyline coalescent in the dense representation                |
+| [`sc2/4500/timetree.yaml`](sc2/4500/timetree.yaml)                       | `timetree`  | Clock filter and skyline coalescent on 4500 genomes           |
 
 Run one with, for example:
 
@@ -30,14 +38,18 @@ treetime ancestral --config data/zika/20/ancestral.yaml --output-all tmp/zika-an
 
 A pipeline file lists named steps, each an analysis command with its arguments. Steps run sequentially in one process. A step reads an earlier step's output with `{{ steps.<name>.outputs.<selection> }}`, so intermediate paths are never hand-written. `vars` names shared values once. `treetime pipeline --output-all <dir>`, or a top-level `output_all` in the file, gives each step its own `<dir>/<step>/` output directory; the flag takes precedence.
 
-| File                                                                   | Chain                                   | Demonstrates                                                     |
-| ---------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------- |
-| [`zika/20/pipeline.yaml`](zika/20/pipeline.yaml)                       | `timetree` -> `mugration`               | Phylodynamics and phylogeography end to end                      |
-| [`flu/h3n2/200/pipeline.yaml`](flu/h3n2/200/pipeline.yaml)             | `optimize` -> `timetree`                | A shared, typed clock rate defined once in `vars`                |
-| [`flu/h3n2/500/pipeline.yaml`](flu/h3n2/500/pipeline.yaml)             | `optimize` -> `ancestral` -> `timetree` | A seasonal-influenza build with a fixed clock (500 sequences)    |
-| [`ebola/362/pipeline.yaml`](ebola/362/pipeline.yaml)                   | `optimize` -> `ancestral` -> `timetree` | A three-step build on the 2014 Ebola epidemic dataset            |
-| [`sc2/2844/pipeline.yaml`](sc2/2844/pipeline.yaml)                     | `optimize` -> `ancestral`               | A date-free build on 2844 SARS-CoV-2 genomes                     |
-| [`mpox/clade-ii/1000/pipeline.yaml`](mpox/clade-ii/1000/pipeline.yaml) | `optimize` -> `ancestral` -> `timetree` | The full Nextstrain mpox TreeTime chain (fixed clock, mutations) |
+| File                                                                   | Chain                                                  | Demonstrates                                                     |
+| ---------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| [`zika/20/pipeline.yaml`](zika/20/pipeline.yaml)                       | `timetree` -> `mugration`                              | Phylodynamics and phylogeography end to end                      |
+| [`zika/86/pipeline.yaml`](zika/86/pipeline.yaml)                       | `timetree` -> `mugration`                              | Ancestral geography with a prior weight per country              |
+| [`rsv/a/2000/pipeline.yaml`](rsv/a/2000/pipeline.yaml)                 | `timetree` -> `mugration`                              | Resolved polytomies and marginal dates on 2000 genomes           |
+| [`flu/h3n2/200/pipeline.yaml`](flu/h3n2/200/pipeline.yaml)             | `optimize` -> `timetree`                               | A shared, typed clock rate defined once in `vars`                |
+| [`flu/h3n2/500/pipeline.yaml`](flu/h3n2/500/pipeline.yaml)             | `optimize` -> `ancestral` -> `timetree`                | A seasonal-influenza build with a fixed clock (500 sequences)    |
+| [`ebola/362/pipeline.yaml`](ebola/362/pipeline.yaml)                   | `optimize` -> `ancestral` -> `timetree`                | A three-step build on the 2014 Ebola epidemic dataset            |
+| [`sc2/2844/pipeline.yaml`](sc2/2844/pipeline.yaml)                     | `optimize` -> `ancestral`                              | A date-free build on 2844 SARS-CoV-2 genomes                     |
+| [`mpox/clade-ii/1000/pipeline.yaml`](mpox/clade-ii/1000/pipeline.yaml) | `optimize` -> `ancestral` -> `timetree`                | The full Nextstrain mpox TreeTime chain (fixed clock, mutations) |
+| [`dengue/2000/pipeline.yaml`](dengue/2000/pipeline.yaml)               | `optimize` -> `ancestral` -> `timetree` -> `mugration` | Every step on 2000 genomes, with a skyline coalescent            |
+| [`mpox/clade-ii/2000/pipeline.yaml`](mpox/clade-ii/2000/pipeline.yaml) | `optimize` -> `ancestral` -> `timetree` -> `mugration` | The mpox chain on 2000 genomes, with ancestral geography         |
 
 Run a pipeline, preview its plan, or run only part of it:
 
