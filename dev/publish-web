@@ -34,6 +34,9 @@
 # Environment:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY   Credentials that may write the
 #                                              bucket and clear the cache
+#   AWS_DEFAULT_REGION                         Region of the bucket
+#   AWS_S3_BUCKET                              Bucket of the sites
+#   AWS_CLOUDFRONT_DISTRIBUTION_ID             Distribution in front of the bucket
 #
 # Examples:
 #   $0 neherlab--treetime--branch-rust treetime
@@ -42,9 +45,6 @@ set -euo pipefail
 shopt -s inherit_errexit
 trap "exit" INT
 
-BUCKET="click.neherlab.previews"
-BUCKET_REGION="eu-central-1"
-DISTRIBUTION_ID="EMDRDU0K6TEI5"
 PREVIEWS_DOMAIN="previews.neherlab.click"
 PRODUCTION_SITE="treetime"
 PRODUCTION_URL="https://treetime.neherlab.click"
@@ -96,6 +96,9 @@ main() {
 
   : "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID is not set}"
   : "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY is not set}"
+  : "${AWS_DEFAULT_REGION:?AWS_DEFAULT_REGION is not set}"
+  : "${AWS_S3_BUCKET:?AWS_S3_BUCKET is not set}"
+  : "${AWS_CLOUDFRONT_DISTRIBUTION_ID:?AWS_CLOUDFRONT_DISTRIBUTION_ID is not set}"
 
   if [[ ! -f "${dist}/index.html" ]]; then
     printf "No web2 build in %s: run just build-web2 first\n" "${dist}" >&2
@@ -127,7 +130,7 @@ main() {
   done
   popd >/dev/null
 
-  export DIST="${dist}" BUCKET BUCKET_REGION HASHED_NAME
+  export DIST="${dist}" AWS_S3_BUCKET HASHED_NAME
   export -f upload_file content_type cache_control
 
   for site in "${sites[@]}"; do
@@ -136,7 +139,7 @@ main() {
     upload_all "${site}" "${pages[@]}"
   done
 
-  aws cloudfront create-invalidation --distribution-id "${DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id" >/dev/null
+  aws cloudfront create-invalidation --distribution-id "${AWS_CLOUDFRONT_DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id" >/dev/null
 
   local urls=()
   for site in "${sites[@]}"; do
@@ -187,7 +190,6 @@ upload_file() {
   local key="${file%.html}"
   local body="${DIST}/${file}"
   local args=(
-    --region "${BUCKET_REGION}"
     --content-type "$(content_type "${file}")"
     --cache-control "$(cache_control "${file}")"
     --no-guess-mime-type
@@ -197,7 +199,7 @@ upload_file() {
     body="${body}.gz"
     args+=(--content-encoding gzip)
   fi
-  aws s3 cp "${args[@]}" "${body}" "s3://${BUCKET}/${site}/${key}"
+  aws s3 cp "${args[@]}" "${body}" "s3://${AWS_S3_BUCKET}/${site}/${key}"
 }
 
 content_type() {

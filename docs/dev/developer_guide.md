@@ -490,7 +490,7 @@ Prerelease builds are published in [neherlab/treetime-nightly](https://github.co
 - `https://neherlab--treetime--pr-<number>.previews.neherlab.click`: the latest upload of each open pull request of the branch; the run adds or updates a comment with the link in the pull request
 - `https://treetime.neherlab.click`: the latest push to `rust`
 
-Opening or reopening a pull request also starts a run, so a pull request gets its site without a new push. Pull requests from forks build without an upload, because workflows of forks get no secrets. The upload needs the organization secrets `PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID` and `PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY`. `dev/publish-web --help` describes the stored files, their caching, and what the edge functions of the distribution do; the edge functions themselves are not in this repository.
+Opening or reopening a pull request also starts a run, so a pull request gets its site without a new push. Pull requests from forks build without an upload, because workflows of forks get no secrets. The upload reads the access key, the region, the bucket, and the distribution from the organization secrets `PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID`, `PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY`, `PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION`, `PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET`, and `PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID`. `dev/publish-web --help` describes the stored files, their caching, and what the edge functions of the distribution do; the edge functions themselves are not in this repository.
 
 ## Continuous integration
 

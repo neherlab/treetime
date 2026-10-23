@@ -65,6 +65,9 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION }}
+          AWS_S3_BUCKET: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET }}
+          AWS_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
           GH_TOKEN: ${{ github.token }}
           COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
           BRANCH: ${{ github.head_ref || github.ref_name }}
