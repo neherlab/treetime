@@ -1,5 +1,6 @@
+use crate::lat_longs_tsv::Coordinates;
 use deser::{Deserialize, Serialize};
-use deser_value::{Map, Value, from_value};
+use deser_value::{Map, from_value};
 use eyre::{Report, WrapErr};
 use std::collections::BTreeMap;
 
@@ -61,11 +62,21 @@ pub struct AuspiceTreeMeta {
   #[deser(default, skip_serializing_if = AuspiceDisplayDefaults::is_empty)]
   pub display_defaults: AuspiceDisplayDefaults,
 
-  #[deser(skip_serializing_if = Option::is_none)]
-  pub geo_resolutions: Option<Value>,
+  #[deser(default, skip_serializing_if = Vec::is_empty)]
+  pub geo_resolutions: Vec<AuspiceGeoResolution>,
 
   #[deser(flatten)]
   pub other: Map,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AuspiceGeoResolution {
+  pub key: String,
+
+  #[deser(default, skip_serializing_if = Option::is_none)]
+  pub title: Option<String>,
+
+  pub demes: BTreeMap<String, Coordinates>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

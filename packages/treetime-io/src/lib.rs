@@ -7,6 +7,7 @@ pub mod discrete_states_csv;
 pub mod fasta;
 pub mod gff;
 pub mod graphviz;
+pub mod lat_longs_tsv;
 pub mod name_list;
 pub mod nex;
 pub mod nwk;

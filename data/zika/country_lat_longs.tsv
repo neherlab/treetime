@@ -1,0 +1,21 @@
+# Sampling countries of the Zika virus dataset (data/zika/86), with the label point of each country in
+# Natural Earth 1:50m Admin 0 Map Units, version 5.1.2 (public domain). Format of augur's --lat-longs:
+# resolution, name, latitude and longitude, separated by tabs.
+country	american_samoa	-14.32671	-170.747153
+country	brazil	-12.098687	-49.55945
+country	china	32.498178	106.337289
+country	colombia	3.373111	-73.174347
+country	cuba	21.334024	-77.975855
+country	dominican_republic	19.104137	-70.653998
+country	ecuador	-1.259076	-78.188375
+country	french_guiana	3.999223	-53.068349
+country	french_polynesia	-17.628081	-149.46157
+country	guadeloupe	16.299332	-61.433565
+country	guatemala	14.982133	-90.497134
+country	haiti	19.263784	-72.224051
+country	honduras	14.794801	-86.887604
+country	martinique	14.711979	-61.055657
+country	mexico	23.919988	-102.289448
+country	panama	8.72198	-80.352106
+country	puerto_rico	18.234668	-66.481065
+country	suriname	4.143987	-55.91094

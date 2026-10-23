@@ -4,6 +4,7 @@ mod test_discrete_states_csv;
 mod test_fasta;
 mod test_gff;
 mod test_graphviz;
+mod test_lat_longs_tsv;
 mod test_name_list;
 mod test_nex;
 mod test_nwk_comments;
