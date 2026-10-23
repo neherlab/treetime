@@ -419,6 +419,8 @@ def indel_pairs(results, o):
     about (s + k) / (1 + ρ) substitutions: gap branches grow by about one substitution, all others shrink by 1 + ρ.
     `predicted` applies this to the length without indels.
     """
+    if 'indels_per_sub' not in o:  # clean data: no gap events
+        return None
     rho = o[o.variant == 'fixed-topo'].set_index(['coal', 'rep', 'L', 'mu'])['indels_per_sub'].dropna()
     pairs = []
     for (coal, rep, L, mu), r in rho.items():
