@@ -69,7 +69,7 @@ The golden masters and the property and consistency tests are the independent or
 - `fn apply_initial_guess_mode()`: no test for finite negative branch lengths in `Never` mode
 - `fn run_optimize()`: no integration test proving negative branch lengths rejected
 - `fn OptimizationContribution::from_sparse()` and `fn get_coefficients()`: not exercised through real sparse fixtures
-- Damping guard of `fn run()` [packages/treetime/src/optimize/pipeline.rs#L43-L48](../../packages/treetime/src/optimize/pipeline.rs#L43-L48): no test that `damping >= 1.0` and `damping < 0.0` return the invalid-parameter error
+- Damping guard of `fn check_params()` [packages/treetime/src/optimize/pipeline.rs#L138-L143](../../packages/treetime/src/optimize/pipeline.rs#L138-L143): no test that `damping >= 1.0` and `damping < 0.0` return the invalid-parameter error
 
 ### Mugration and prune
 

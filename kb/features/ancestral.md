@@ -34,19 +34,22 @@
 - [x] Per-partition GTR assignment after dummy JC69 bootstrap
 - [x] Single `update_marginal()` pass after final GTR assignment
 
-## Several Alignment Files
+## Several Alignment Files and Partitions
 
-- [x] One partition per `--alignment` file, each with its own model and reconstruction ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
-- [x] For the most likely reconstruction, a run with several files equals separate single-file runs, and the log-likelihood is their sum. Posterior sampling (`--sample-from-profile` with `root` or `all`) draws from one random generator per run, file after file in the order of the `--alignment` list. A sampled result therefore depends on the order of the files, and every file after the first draws other values than in a separate run with the same seed
-- [x] Each file keeps its own short-branch floor
+- [x] One partition per `--alignment` file, or one per `--partition` entry over a set of sites of a file, each with its own model and reconstruction ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] In a file with two or more partitions, the inferred rates are scaled to a site-weighted mean of 1 over the inferred partitions, and named models keep their rate; the input branch lengths stay unchanged
+- [x] `--partition` with `--method-anc parsimony` stops with an argument error (parsimony uses no model)
+- [x] For the most likely reconstruction, a run with several files equals separate single-file runs, and the log-likelihood is their sum. Posterior sampling (`--sample-from-profile` with `root` or `all`) draws from one random generator per run, partition after partition in partition order. A sampled result therefore depends on the order of the partitions, and every partition after the first draws other values than in a separate run with the same seed
+- [x] Each file keeps its own short-branch floor, shared by all partitions of the file
 - [x] Missing-tip check per file (stop above one third unless `--allow-missing-sequences`)
 - [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, Nexus, Newick with `--newick-annotations beast` or `nhx`, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{alignment}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
-- [x] `--translations` and `--annotation` stop with an error on several files
+- [x] `--translations` and `--annotation` stop with an error on several files; several partitions of one file are allowed
+- [x] Model document (`--output-model`): the alignment files with their number, path, sites and indel rate, and one model entry per partition with its number, name, alignment number, sites, state characters
 
 ## Per-CDS Amino-Acid Reconstruction
 
 - [x] Multi-partition marginal traversal on shared graph (one parse, key-join)
-- [x] Stop-inclusive AA alphabet (22-state `aa`) for default infer model
+- [x] Stop-inclusive AA alphabet (21-state `aa`: 20 amino acids and the stop codon) for default infer model
 - [x] Empirical model out-of-alphabet handling (map to unknown, warn) ([kb/decisions/ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md](../decisions/ancestral-aa-empirical-model-out-of-alphabet-to-unknown.md))
 - [x] GFF3 CDS parsing with nextclade name-resolution priority
 - [x] Minus-strand compound CDS segments ordered 5'-to-3'

@@ -7,8 +7,10 @@
 - [x] PartitionMarginalSparse (variable positions only)
 - [x] PartitionMarginalDiscrete (discrete trait states for mugration)
 - [x] Marginal pass trait (`MarginalPasses`, shared by dense, sparse, and discrete partitions)
-- [x] Partition set: one partition per `--alignment` file, one representation per run (`enum PartitionSet`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
-- [ ] Codon-position partitioning (1st/2nd/3rd position splits, requires GFF annotation input, probabilistic methods only)
+- [x] Partition set: partitions as sets of sites of the `--alignment` files, one per file by default or one per `--partition` entry, each with its own model; one representation per run (`enum PartitionSet`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] Partition entries with site ranges `a`, `a-b` and `a-b\k` (1-based, the syntax of RAxML-NG partition files and NEXUS charsets) and a model per entry; every site of a file belongs to one entry, and each model must fit the alphabet, also without entries ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] Assembly of a split alignment back to file coordinates: sequences, ambiguity codes, substitutions, and indel events counted once per file ([kb/algo/partition-assembly.md](../algo/partition-assembly.md))
+- [ ] Automatic codon-position partitioning from GFF annotation input (codon positions given by hand work through `--partition` site ranges with a step of 3, for example `101-1600\3`)
 
 ## Payloads
 

@@ -15,7 +15,7 @@ The first condition identifies branches shorter than 10% of a single substitutio
 
 ## Pipeline insertion
 
-After `run_optimize_loop` completes and before the final `marginal_update` pass [packages/treetime/src/optimize/pipeline.rs#L141-L144](../../packages/treetime/src/optimize/pipeline.rs#L141-L144):
+After `run_optimize_loop` completes and before the final `marginal_update` pass [packages/treetime/src/optimize/pipeline.rs#L82-L99](../../packages/treetime/src/optimize/pipeline.rs#L82-L99):
 
 1. Compute the one-mutation resolution from the sequence length.
 2. For each eligible internal edge, evaluate both v0 pruning conditions.

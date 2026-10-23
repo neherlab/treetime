@@ -10,6 +10,8 @@ Adds a Poisson indel log-likelihood term to per-edge branch length optimization.
 
 v1: [`packages/treetime/src/optimize/indel.rs`](../../packages/treetime/src/optimize/indel.rs).
 
+With several alignment files, each file has its own rate $\hat{\mu}_a$ from its own events, and the term of a branch uses the summed count and the summed rate of the files ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). The events of a file split into partitions are the assembled events of the file, so a deletion across the sites of several partitions counts once ([kb/algo/partition-assembly.md](partition-assembly.md)).
+
 v0: not implemented. v0 ignores indels in the likelihood, same as RAxML, IQ-TREE, PhyML.
 
 This is a v1-only feature. See the indel models report ([kb/reports/indel-models/1-introduction.md](../reports/indel-models/1-introduction.md)) for the full catalog of alternative approaches, [intentional change](../decisions/optimize-indel-contribution-to-likelihood.md), and [alternatives proposal](../proposals/optimize-indel-model-alternatives.md).
@@ -120,8 +122,8 @@ Cases 1, 2, and 7 are expected to dominate in phylogenetic data. Cases 4 and 5 r
 ### Implementation
 
 - `fn compose_indels(parent: &[InDel], child: &[InDel]) -> Vec<InDel>` in [packages/treetime/src/seq/indel.rs](../../packages/treetime/src/seq/indel.rs), following the merge-sort pattern of `fn compose_substitutions()`
-- `fn chain_fitch_indels()` on `SparseEdgePartition` ([packages/treetime/src/partition/sparse.rs](../../packages/treetime/src/partition/sparse.rs)), analogous to `fn chain_fitch_subs()`
-- Call sites: `fn collapse_edge()` and `fn PartitionMarginalSparse::apply_reroot()`
+- `fn composed_edge_pieces()` in [packages/treetime/src/partition/marginal/sparse/alignment_indels.rs](../../packages/treetime/src/partition/marginal/sparse/alignment_indels.rs) composes the indels of two edges of a sparse reconstruction per alignment file: it assembles the indels of the partitions of the file, composes them in file coordinates, and splits the result back to the partitions ([kb/algo/partition-assembly.md](partition-assembly.md))
+- Call sites: edge collapse (`packages/treetime/src/optimize/topology/collapse.rs`), edge merges (`fn merge_edge_pair()`) and reroot (`packages/treetime/src/partition/marginal/sparse/reroot.rs`)
 
 ## Glossary
 

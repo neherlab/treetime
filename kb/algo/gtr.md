@@ -176,7 +176,7 @@ The order is the v0 order of `reconstruct_discrete_traits()`, with a rate step a
 
 ## GTR Output
 
-`struct GtrOutput` at [`packages/treetime/src/gtr/get_gtr.rs#L25`](../../packages/treetime/src/gtr/get_gtr.rs#L25) holds the GTR model parameters (model type, model name, mu, pi, W). Each command writes it with `json_write_file()` to the path of the `model` output (`.model.json` by default). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
+The model document (`--output-model`, `.model.json` by default) is `struct ModelOutput { alignments, models }` at [`packages/treetime/src/gtr/get_gtr.rs#L37-L46`](../../packages/treetime/src/gtr/get_gtr.rs#L37-L46). `alignments` lists the alignment files of the run (`struct AlignmentModel`: alignment number, path, number of sites, and the indel rate of the file); mugration leaves it out. `models` holds one entry per partition with a model, tagged `kind`: a `sequence` entry (`struct SequenceModel`: `partition`, `name`, `alignment` (the alignment number), `sites`, `clock_rate` in timetree, `states`) or a `trait` entry (`struct TraitModel`: `attribute`, `states`), each with the parameters of `struct GtrOutput` (model type, model name, mu, pi, W, number of states) flattened into it. `states` lists the characters of the states in the order of `pi` and `W`: the canonical characters of the partition's alphabet (`fn model_states()`, [`packages/treetime/src/gtr/get_gtr.rs#L25`](../../packages/treetime/src/gtr/get_gtr.rs#L25)) or the trait states. The commands build the document with `fn partition_models()` and write it with `fn write_gtr_output()` ([`packages/app-commands/src/commands/shared/gtr_output.rs`](../../packages/app-commands/src/commands/shared/gtr_output.rs)). Parameters are logged at info level via `log_gtr()` (`#log_gtr`).
 
 ---
 
@@ -184,7 +184,7 @@ The order is the v0 order of `reconstruct_discrete_traits()`, with a rate step a
 
 See [unimplemented](unimplemented.md) for full details:
 
-- Site-specific GTR partition integration (core math implemented, wiring to partition types pending)
+- Site-specific GTR ([kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md))
 - Random GTR generation
 - File-based GTR loading
 

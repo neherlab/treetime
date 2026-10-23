@@ -17,7 +17,7 @@ The engine substitutions reach every `optimize` output that carries mutations: t
 
 ## Mechanism
 
-- `fn optimize_result()` builds the partition result of each partition from `ReconstructionRef::edge_mutations()` for every edge ([packages/treetime/src/optimize/pipeline.rs#L199-L233](../../packages/treetime/src/optimize/pipeline.rs#L199-L233))
+- `fn optimize_results()` builds the result of each alignment from `fn partition_mutations()`, which calls `ReconstructionRef::edge_mutations()` for every edge of each partition, and assembles the mutations of the partitions per alignment ([packages/treetime/src/optimize/pipeline.rs#L242-L302](../../packages/treetime/src/optimize/pipeline.rs#L242-L302))
 - `fn optimize_output_maps()` passes these mutations through the unknown-mutation filter to the outputs ([packages/app-commands/src/commands/optimize/run.rs#L170-L185](../../packages/app-commands/src/commands/optimize/run.rs#L170-L185))
 - `ReconstructionRef::edge_mutations()` combines the engine substitutions with the edge indels ([packages/treetime/src/partition/marginal/reconstruction.rs#L228-L235](../../packages/treetime/src/partition/marginal/reconstruction.rs#L228-L235))
 - The dense engine compares the argmax states of the parent and child profiles and skips non-canonical states (`fn edge_subs()` in [packages/treetime/src/partition/marginal/dense/partition.rs#L80-L111](../../packages/treetime/src/partition/marginal/dense/partition.rs#L80-L111)), so the unknown-mutation filter that optimize applies never removes anything

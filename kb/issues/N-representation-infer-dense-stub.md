@@ -24,7 +24,7 @@ Implement a heuristic based on branch lengths, sequence length, or both. Alterna
 - Consumers:
   - ancestral, nucleotide [packages/treetime/src/ancestral/plan.rs#L49](../../packages/treetime/src/ancestral/plan.rs#L49)
   - ancestral, amino acid [packages/treetime/src/ancestral/aa.rs#L36](../../packages/treetime/src/ancestral/aa.rs#L36)
-  - optimize [packages/treetime/src/optimize/pipeline.rs#L66](../../packages/treetime/src/optimize/pipeline.rs#L66)
+  - optimize [packages/treetime/src/optimize/pipeline.rs#L173](../../packages/treetime/src/optimize/pipeline.rs#L173)
   - timetree [packages/treetime/src/timetree/pipeline.rs#L326](../../packages/treetime/src/timetree/pipeline.rs#L326)
 
 ## Related decisions

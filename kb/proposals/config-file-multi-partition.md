@@ -2,13 +2,13 @@
 
 ## Motivation
 
-Complex inputs combine several alignments, their substitution models, and discrete characters, and need a config file format. Currently each `--alignment` file is one partition, and all files take the one `--model` choice of the command ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Multi-segment genomes, mixed data types, and per-partition model specification all require a configuration system that the CLI flag approach cannot scale to.
+Complex inputs combine several alignments, their substitution models, and discrete characters, and need a config file format. Partitions of sequences are implemented: the `partition` setting of ancestral, optimize and timetree (see Implemented part). Mixed data types and configurations that span several commands still need a configuration system beyond the per-command settings.
 
 ## Use cases
 
 ### Multi-segment genomes
 
-Influenza has 8 genome segments, each with independent evolution but shared tree topology. One `--alignment` file per segment gives one partition per segment with its own fitted model and relative rate, but every segment takes the same `--model` choice. The v1 partition system already supports multiple independent partitions on the same tree -- the gap is input specification.
+Influenza has 8 genome segments, each with independent evolution but shared tree topology. One `--alignment` file per segment gives one partition per segment with its own model and relative rate; `partition` entries choose a different model per segment. Segments with different trees remain open ([kb/issues/N-io-multi-segment-genome-input.md](../issues/N-io-multi-segment-genome-input.md)).
 
 ### Mixed data types
 
@@ -16,7 +16,7 @@ Phylogeographic analysis combines nucleotide sequences (4-state alphabet, GTR mo
 
 ### Per-partition model specification
 
-Different genome regions evolve under different substitution models. Protein-coding regions may use codon models or amino acid models, while non-coding regions use nucleotide models. Each partition needs its own model assignment.
+Different genome regions evolve under different substitution models. Protein-coding regions may use codon models or amino acid models, while non-coding regions use nucleotide models. Each partition needs its own model assignment. The `partition` setting assigns a nucleotide model to each set of sites; codon models and amino-acid partitions next to nucleotide partitions remain open.
 
 ## Prior art
 
@@ -60,7 +60,28 @@ YAML or JSON configuration file specifying:
 - Shared parameters: tree path, clock model, coalescent model
 - Output specification
 
-This leverages the existing v1 partition architecture (`PartitionMarginalDense`, `PartitionMarginalSparse`) which already supports multiple independent partitions on the same tree.
+This leverages the existing v1 partition architecture (`enum PartitionSet` of dense or sparse partitions) which already supports multiple partitions on the same tree.
+
+## Implemented part
+
+The `partition` setting of ancestral, optimize and timetree (flag `--partition`, one entry per flag, or a list under the config key `partition`) describes each partition as a set of sites of one `--alignment` file with its own model ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)):
+
+```yaml
+alignment:
+  - genome.fasta.xz
+partition:
+  - {name: cp1, sites: ['101-1600\3']}
+  - {name: cp2, sites: ['102-1600\3']}
+  - {name: cp3, sites: ['103-1600\3'], model: hky85, model_params: ['kappa=4']}
+  - {name: noncoding}
+```
+
+- **Sites**: site ranges `a`, `a-b` and `a-b\k`, numbered from 1, in the syntax of RAxML-NG partition files and NEXUS charsets. An entry without `sites` takes the sites that the other entries of its alignment leave, and every site belongs to one entry
+- **Models**: each entry carries its own `model` and `model_params`, so `--model` and `--model-params` cannot be given together with entries
+- **Shared branch lengths**: the partitions share the branch lengths, with one relative rate per partition (proportional scaling, as IQ-TREE `-p`); indel events and rates stay per file
+- **Outputs**: sequence outputs stay one file per alignment, in the coordinates of the file
+
+The apps edit the entries in the settings form, and one Rust resolver checks them for the CLI and the apps.
 
 ## Implementation pointers
 
@@ -68,9 +89,8 @@ Open design questions:
 
 - YAML vs JSON vs TOML? The project already uses `serde` for all three. YAML is human-friendliest for nested config. JSON is simplest to validate. TOML is used for Cargo but less natural for lists-of-partitions.
 - Should the config file replace CLI flags or complement them? IQ-TREE uses partition file alongside CLI flags. BEAST uses XML for everything. A hybrid (config file for partitions, CLI for global options) is the lightest integration.
-- Edge-linked vs edge-unlinked partitions: should partitions share branch lengths (proportional scaling) or have independent branch lengths? IQ-TREE supports both via `-q` (linked) and `-sp` (unlinked). Several `--alignment` files currently share the branch lengths, with one relative rate per file (proportional scaling, as IQ-TREE `-p`).
+- Edge-linked vs edge-unlinked partitions: should partitions share branch lengths (proportional scaling) or have independent branch lengths? IQ-TREE supports both via `-q` (linked) and `-sp` (unlinked). All partitions currently share the branch lengths, with one relative rate per partition (proportional scaling, as IQ-TREE `-p`).
 
-The `mugration` command already demonstrates multi-partition operation (discrete trait partition alongside sequence partition). Study its partition setup for patterns.
 
 ## Related
 
@@ -79,7 +99,6 @@ The `mugration` command already demonstrates multi-partition operation (discrete
 - [N-io-sequence-name-matching-unreliable](../issues/N-io-sequence-name-matching-unreliable.md) -- config file could include explicit name mappings
 - [N-io-large-dataset-memory-constraint](../issues/N-io-large-dataset-memory-constraint.md) -- config could specify lazy loading options
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md) -- segments with different trees cannot share a run
-- [M-partition-site-ranges-and-per-partition-models-unsupported](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md) -- per-partition models and site ranges
 
 ### Proposals
 

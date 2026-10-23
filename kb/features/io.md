@@ -4,7 +4,7 @@
 
 - [x] FASTA (plain text)
 - [x] Compressed FASTA (gzip, xz, bzip2, zstd)
-- [x] Several FASTA files, one partition per file in the order of the `--alignment` list ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); homoplasy, `--translations` and `--annotation` accept one file
+- [x] Several FASTA files, numbered in the order of the `--alignment` list, one partition per file unless `--partition` entries split the files into sets of sites ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); homoplasy, `--translations` and `--annotation` accept one file
 - [/] Stdin input (`-` for at most one input of a run; `--config -` together with an input `-` reads standard input twice: [kb/issues/M-io-stdin-config-and-input-read-twice.md](../issues/M-io-stdin-config-and-input-read-twice.md))
 - [x] Newick tree
 - [x] Nexus tree
@@ -49,4 +49,4 @@
 
 ## Configuration Input
 
-- [x] `--config` per-command configuration object (JSON or YAML, optionally compressed), in the shape the command serializes to. Precedence: explicit CLI flag, then config file, then default. Scope is a single command's own args; the broader multi-partition config system (multiple alignments, per-partition models) remains an open design in [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md).
+- [x] `--config` per-command configuration object (JSON or YAML, optionally compressed), in the shape the command serializes to. Precedence: explicit CLI flag, then config file, then default. Scope is a single command's own args. The `partition` key of ancestral, optimize and timetree holds the partition entries (sites and model of each partition, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); a config file for several commands or for partitions of other data types remains an open design in [kb/proposals/config-file-multi-partition.md](../proposals/config-file-multi-partition.md).

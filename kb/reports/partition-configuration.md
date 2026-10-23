@@ -1,13 +1,10 @@
 # Partition Configuration for TreeTime v1
 
-> [!WARNING]
-> **Needs review.** Sections 1 and 5.1 describe the code before several alignment files became partitions. Ancestral, optimize, timetree and prune now build one partition per `--alignment` file, optimize and timetree hold them in `enum PartitionSet` ([packages/treetime/src/partition/set.rs#L49](../../packages/treetime/src/partition/set.rs#L49)) instead of a list of lock-guarded trait objects, and [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rules. Per-partition models and site ranges remain open ([kb/issues/M-partition-site-ranges-and-per-partition-models-unsupported.md](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md))
-
 ## 1. Current state
 
-Every command (ancestral, optimize, timetree, prune) creates exactly one sequence partition inline with hardcoded partition index `0`. The creation sequence is procedural code repeated per command: `create_fitch_partition` -> GTR resolution -> `log_gtr` -> conversion to marginal dense or sparse. Dense vs sparse is decided by a `--dense` CLI flag; when omitted, `infer_dense()` is called, which always returns `false` (stub).
+Ancestral, optimize and timetree build their sequence partitions from partition plans. A plan is a set of sites (columns) of one `--alignment` file with a model description (`struct PartitionPlan`, [packages/treetime/src/partition/resolve.rs#L124-L127](../../packages/treetime/src/partition/resolve.rs#L124-L127)). Without `--partition` entries, each file is one plan with the model of `--model` and `--model-params`; with entries, each entry is one plan with its own sites and model. One resolver (`fn resolve_partitions()`) turns the entries and the alignment lengths into the plans for the CLI and the apps, and the pipelines split each file into the sequences of its partitions (`fn split_alignments()`, [packages/treetime/src/partition/split.rs#L57-L101](../../packages/treetime/src/partition/split.rs#L57-L101)). Prune builds one sparse JC69 partition per file from the layouts of the same resolver, and homoplasy one partition from its one file. [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md) records the rules.
 
-The multi-partition infrastructure exists and works. Mugration adds a discrete trait partition alongside the sequence partition, demonstrating that the `Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>` architecture handles heterogeneous partition types. But no command creates more than one sequence partition. No `PartitionConfig` type exists. Partition creation is not separated from command orchestration.
+Optimize and timetree hold their partitions in `enum PartitionSet` ([packages/treetime/src/partition/set.rs#L70](../../packages/treetime/src/partition/set.rs#L70)), all dense or all sparse as `--representation` selects; the default comes from `infer_dense()`, which always returns `false` (sparse). Results come back per alignment file (`struct AlignmentResult`) and per partition (`struct PartitionResult`) ([packages/treetime/src/partition/result.rs](../../packages/treetime/src/partition/result.rs)), and the partitions of a split file are assembled back to the coordinates of the file ([kb/algo/partition-assembly.md](../algo/partition-assembly.md)). Mugration runs one discrete trait partition alone.
 
 v0 has no explicit partition concept. `TreeAnc` owns a single `self.gtr` and single `self.data`. One alignment, one model.
 
@@ -15,29 +12,27 @@ v0 has no explicit partition concept. `TreeAnc` owns a single `self.gtr` and sin
 
 Five distinct methods for specifying what partitions to create have been discussed in the project. They are not mutually exclusive: a partition configuration layer would accept input from any of these sources and produce a uniform `Vec<PartitionSpec>`.
 
-### 2.1 `--dense` flag (current default, v0 parity)
+### 2.1 `--representation` flag
 
-Single `--dense: Option<bool>` CLI flag on ancestral, optimize, and timetree commands. When `Some(true)`, creates one dense partition. When `Some(false)` or `None`, creates one sparse partition. Prune hardcodes sparse with JC69.
+The `--representation dense|sparse` flag of ancestral, optimize and timetree selects the representation of every partition of the run. Without the flag, `infer_dense()` decides (S2.2). Prune always uses the sparse representation with JC69.
 
-This is v0 parity: one alignment, one model, one partition.
-
-**Sources:** `commands/ancestral/args.rs`, `commands/optimize/args.rs`, `commands/timetree/args.rs`
+**Sources:** `packages/app-commands/src/commands/shared/representation.rs`
 
 ### 2.2 Auto-detection heuristic (`infer_dense`)
 
-When `--dense` is omitted, `infer_dense()` in `partition/algo/infer_dense.rs` determines dense vs sparse. The stub always returns `false`. The planned heuristic: select dense when tree branches are long enough that most positions become variable (expected mutations per branch approaches sequence length). Below that threshold, sparse saves memory and compute.
+When `--representation` is omitted, `infer_dense()` in `packages/treetime/src/partition/algo/infer_dense.rs` determines dense vs sparse. The stub always returns `false`. The planned heuristic: select dense when tree branches are long enough that most positions become variable (expected mutations per branch approaches sequence length). Below that threshold, sparse saves memory and compute.
 
 **Sources:** `kb/issues/N-representation-infer-dense-stub.md`
 
-### 2.3 Multiple alignment files
+### 2.3 Multiple alignment files and partition entries
 
-Each `--alignment` file is one partition, numbered by its position in the list, and all files take the one `--model` choice of the command. Optimize and timetree estimate one relative rate per file. Complex inputs that combine several alignments with different models, site ranges, and discrete characters still need a config file format (S2.5).
+Each `--alignment` file is numbered by its position in the list. Without `--partition` entries, each file is one partition and all files take the one `--model` choice. With entries, each entry takes a set of sites of one file (site ranges `a`, `a-b`, `a-b\k`, numbered from 1) and carries its own model, so one file can hold codon positions or genes with separate models. Optimize and timetree estimate one relative rate per partition. Discrete characters next to sequences still need a config format (S2.5).
 
-**Sources:** [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)
+**Sources:** [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md), `packages/app-commands/src/commands/shared/partition.rs`
 
 ### 2.4 `--segment` flag (multi-segment genomes)
 
-For segmented viruses (influenza: 8 segments, same alphabet, independent evolution), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Segments that share one tree now run as one `--alignment` file per segment (S2.3); segments with different trees remain open.
+For segmented viruses (influenza: 8 segments, same alphabet, independent evolution), a `--segment` flag would load segment-aware FASTA and create one partition per segment. Segments that share one tree run as one `--alignment` file per segment, or as `--partition` entries of one file (S2.3); segments with different trees remain open.
 
 v0 handles segments via concatenation.
 
@@ -51,7 +46,7 @@ A full proposal exists for a structured config file specifying:
 - Shared parameters: tree path, clock model, coalescent settings
 - Output specification
 
-This handles all use cases: multi-segment genomes, mixed data types (nucleotide + discrete location), per-partition model assignment, model file references for two-stage estimation. The config file complements CLI flags (simple cases use CLI, complex cases use config).
+This handles all use cases: multi-segment genomes, mixed data types (nucleotide + discrete location), per-partition model assignment, model file references for two-stage estimation. The config file complements CLI flags (simple cases use CLI, complex cases use config). Per-partition models and site ranges of sequence partitions are implemented as the `partition` setting (S2.3), which a per-command config file can hold.
 
 Prior art surveyed in the proposal:
 
@@ -62,9 +57,7 @@ Prior art surveyed in the proposal:
 | RAxML-NG | Partition file                           | `MODEL, name = start-end` per line              |
 | BEAST    | XML                                      | Full model hierarchy, link/unlink per partition |
 
-Open design questions: YAML vs JSON vs TOML; config replaces or complements CLI; edge-linked vs edge-unlinked partitions.
-
-Existing unmerged branches: `worktree/feat/optimize-multi-alignment` (config parsing + multi-partition tests).
+Open design questions: config files that span several commands; edge-linked vs edge-unlinked partitions.
 
 **Sources:** `kb/proposals/config-file-multi-partition.md`
 
@@ -118,7 +111,7 @@ Site-specific models (per-site $\pi^a$ and $\mu^a$, shared W) are one dense part
 
 Proposed type: `enum GtrModel { Scalar(GTR), SiteSpecific(GTRSiteSpecific) }`.
 
-The mathematical core is implemented and tested (4 golden master tests at 1e-10, 15 property tests). No production callers. Not wired into the partition system.
+v1 has no site-specific GTR code.
 
 Design constraints: site-specific GTR is dense-only. Reject `--sparse` + `--site-specific-gtr`.
 
@@ -142,7 +135,7 @@ Partitions sharing a tree can share branch lengths in two modes:
 - Edge-proportional (scaled, RAxML-NG default): shared topology and branch lengths, per-partition rate scaler $\mu_p$. Branch length for partition $p$ on edge $e$: $b_{pe} = \mu_p \cdot b_e$.
 - Edge-unlinked (independent): each partition has fully independent branch lengths. More parameters, less borrowing of signal.
 
-v1 currently shares branch lengths at the graph level (implicitly edge-linked with $\mu$ from GTR). Design recommendation R9: adopt scaled partition as default.
+v1 uses the edge-proportional mode: all partitions of optimize and timetree share the branch lengths, with one relative rate $\mu_p$ per partition (`--partition-rates`, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Edge-unlinked partitions are not implemented.
 
 **Sources:** `kb/proposals/config-file-multi-partition.md`, `kb/reports/auto-partitioning.md` S2.3, R9
 
@@ -150,17 +143,14 @@ v1 currently shares branch lengths at the graph level (implicitly edge-linked wi
 
 ### 5.1 Partition type system
 
-Three partition types with trait-based polymorphism:
+| Type | Storage | Use case |
+| --- | --- | --- |
+| `PartitionFitch` | Per-node state sets | Parsimony reconstruction, compression |
+| `PartitionMarginalDense` | `Array2<f64>` (positions x states) per node and edge | Full probability matrices |
+| `PartitionMarginalSparse` | Variable positions only | Sparse marginal reconstruction |
+| `PartitionMarginalDiscrete` | Discrete trait states | Mugration |
 
-| Type                      | Storage                                          | Use case                              |
-| ------------------------- | ------------------------------------------------ | ------------------------------------- |
-| `PartitionFitch`          | Per-node state sets                              | Parsimony reconstruction, compression |
-| `PartitionMarginalDense`  | `Array2<f64>` (positions x states) per node/edge | Full probability matrices             |
-| `PartitionMarginalSparse` | `BTreeMap<usize, VarPos>` per node/edge          | Variable positions only               |
-
-Traits: `PartitionMarginalOps` (attach, backward, forward, extract, reconstruct), `PartitionCompressed` (sparse access), `HasLogLh`, `PartitionTimetreeOps` (contributions, topology reconciliation), `PartitionRerootOps`, composed into `PartitionTimetreeAll`.
-
-Commands operate on `Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>` (type alias `PartitionTimetreeAllVec`).
+`trait MarginalPasses` ([packages/treetime/src/partition/marginal/shared/update.rs#L10](../../packages/treetime/src/partition/marginal/shared/update.rs#L10)) holds the marginal passes that the dense, sparse and discrete partitions share. `DenseReconstruction` and `SparseReconstruction` ([packages/treetime/src/partition/marginal/reconstruction.rs](../../packages/treetime/src/partition/marginal/reconstruction.rs)) hold a partition with its GTR and its layout (alignment number and columns); `enum PartitionSet` holds the reconstructions of a run as one vector of either kind, without trait objects or locks.
 
 **Sources:** `kb/decisions/partition-system-architecture.md`
 
@@ -175,12 +165,12 @@ Commands operate on `Vec<Arc<RwLock<dyn PartitionTimetreeAll>>>` (type alias `Pa
 
 The duplication in partition init code across four commands is a symptom. The four commands do not create duplicated identical partitions. They each create independent partitions with different models, different dense/sparse decisions, and different post-init handling. The real problem is that partition creation is entangled with command orchestration instead of being a configured, composable layer.
 
-The fix is not "extract shared init helper" but "implement partition configuration": commands receive configured partitions rather than constructing them inline. This requires:
+The fix is not "extract shared init helper" but "implement partition configuration": commands receive configured partitions rather than constructing them inline. The partition entries implement this for sequence partitions:
 
-1. A `PartitionSpec` type describing what partition to create (alignment, model, dense/sparse, index)
-2. A `create_partitions(specs, graph) -> Vec<Partition>` function that builds partitions from specs
-3. Configuration sources (CLI flags, config file, auto-detection) that produce `Vec<PartitionSpec>`
-4. Commands that accept pre-built partitions
+1. `struct PartitionPlan` describes the partition to create (sites of one alignment and a model description)
+2. `fn build_partition_set()` and the ancestral reconstruction plan build the partitions from the plans
+3. One resolver turns the configuration sources (CLI flags, config file, app settings) into plans
+4. The core pipelines receive the alignments and the plans (`struct SequenceInput`)
 
 ## 7. Cross-references
 
@@ -189,7 +179,6 @@ The fix is not "extract shared init helper" but "implement partition configurati
 - [N-io-multi-segment-genome-input](../issues/N-io-multi-segment-genome-input.md)
 - [N-representation-infer-dense-stub](../issues/N-representation-infer-dense-stub.md)
 - [kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)
-- [M-partition-site-ranges-and-per-partition-models-unsupported](../issues/M-partition-site-ranges-and-per-partition-models-unsupported.md)
 
 ### Proposals
 
@@ -200,6 +189,7 @@ The fix is not "extract shared init helper" but "implement partition configurati
 ### Decisions
 
 - [partition-system-architecture](../decisions/partition-system-architecture.md)
+- [multi-alignment-partitions](../decisions/multi-alignment-partitions.md)
 
 ### Reports
 
@@ -207,4 +197,4 @@ The fix is not "extract shared init helper" but "implement partition configurati
 
 ### Features
 
-- [representation](../features/representation.md) - codon-position partitioning `[ ]`
+- [representation](../features/representation.md) - automatic codon-position partitioning `[ ]`

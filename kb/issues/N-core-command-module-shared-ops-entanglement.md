@@ -23,5 +23,4 @@ Moving `commands/` waits until this boundary is decided. Scientific stage orderi
 
 ## Related issues
 
-- [M-partition-site-ranges-and-per-partition-models-unsupported.md](M-partition-site-ranges-and-per-partition-models-unsupported.md)
 - [N-command-output-ownership-is-scattered.md](N-command-output-ownership-is-scattered.md)

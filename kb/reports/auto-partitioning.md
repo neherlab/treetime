@@ -247,32 +247,29 @@ Informed by the software comparison and Puller et al. 2020 findings:
 
 ### 9.1 Existing infrastructure
 
-| Component                                                       | Location                                                                                                                                   |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `struct MutationCounts { nij, Ti, root_state }`                 | [packages/treetime/src/gtr/infer_gtr/common.rs#L10-L46](../../packages/treetime/src/gtr/infer_gtr/common.rs#L10-L46)                       |
-| `fn infer_gtr_from_counts()` single-partition solver                   | [packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163](../../packages/treetime/src/gtr/infer_gtr/common.rs#L102-L163)                   |
-| `struct GTRSiteSpecific` with per-site eigendecomposition       | [packages/treetime/src/gtr/gtr_site_specific.rs#L47-L67](../../packages/treetime/src/gtr/gtr_site_specific.rs#L47-L67)                     |
-| `fn infer_gtr_site_specific_impl()`                             | [packages/treetime/src/gtr/infer_gtr/site_specific.rs#L77-L187](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs#L77-L187)       |
-| `struct MutationCountsSiteSpecific { n_ija, T_ia, root_state }` | [packages/treetime/src/gtr/infer_gtr/site_specific.rs#L8-L26](../../packages/treetime/src/gtr/infer_gtr/site_specific.rs#L8-L26)           |
-| Multi-partition `Vec<Arc<RwLock<...>>>`                         | [packages/treetime/src/partition/timetree.rs](../../packages/treetime/src/partition/timetree.rs)             |
-| `trait HasGtr` (per-partition GTR access)                       | [packages/treetime/src/partition/traits.rs#L20-L32](../../packages/treetime/src/partition/traits.rs#L20-L32) |
-| `fn PartitionFitch::compress()`                                 | [packages/treetime/src/partition/fitch.rs#L34-L56](../../packages/treetime/src/partition/fitch.rs#L34-L56)   |
-| `fn Sub.pos()` for per-site mutation position                   | [packages/treetime/src/seq/mutation.rs#L21](../../packages/treetime/src/seq/mutation.rs#L21)                                               |
-| `ExpQtInterpolator` (61-point non-uniform grid)                 | [packages/treetime/src/gtr/gtr_site_specific.rs#L433-L468](../../packages/treetime/src/gtr/gtr_site_specific.rs#L433-L468)                 |
+| Component | Location |
+| --- | --- |
+| `struct MutationCounts { nij, Ti, root_state }` | [packages/treetime/src/gtr/infer_gtr/common.rs#L89-L96](../../packages/treetime/src/gtr/infer_gtr/common.rs#L89-L96) |
+| `fn infer_gtr_from_counts()` single-partition solver | [packages/treetime/src/gtr/infer_gtr/common.rs#L14-L87](../../packages/treetime/src/gtr/infer_gtr/common.rs#L14-L87) |
+| `--partition` entries: sets of sites of an alignment file, each with its own model | [packages/app-commands/src/commands/shared/partition.rs](../../packages/app-commands/src/commands/shared/partition.rs) |
+| `fn resolve_partitions()`: entries and alignment lengths to partition plans (columns and model) | [packages/treetime/src/partition/resolve.rs#L10-L38](../../packages/treetime/src/partition/resolve.rs#L10-L38) |
+| `fn split_alignments()`: the sequences of each partition from its columns | [packages/treetime/src/partition/split.rs#L57-L101](../../packages/treetime/src/partition/split.rs#L57-L101) |
+| `struct AlignmentLayout`: assembly of partition results back to alignment coordinates | [packages/treetime/src/partition/assembly.rs#L59](../../packages/treetime/src/partition/assembly.rs#L59) |
+| `enum PartitionSet`: dense or sparse partitions on one graph, one relative rate per partition | [packages/treetime/src/partition/set.rs#L70](../../packages/treetime/src/partition/set.rs#L70) |
+| `fn compress_sequences()`: Fitch compression | [packages/treetime/src/partition/fitch/passes.rs#L42](../../packages/treetime/src/partition/fitch/passes.rs#L42) |
+| `struct Sub` with `pos()` for per-site mutation position | [packages/treetime/src/seq/mutation.rs#L359](../../packages/treetime/src/seq/mutation.rs#L359) |
 
-The mathematical core for site-specific GTR has four golden-master test functions, with tolerances that depend on the tested operation: exponentiation and properties use `1e-10`, inference uses `1e-3`, and interpolation approximation uses `1e-8`. It also has 18 property tests and five deterministic tests. These tests cover the mathematical component; they do not provide an end-to-end tree-inference test, and no production command currently constructs a site-specific model.
+v1 has no site-specific GTR code ([kb/issues/M-gtr-site-specific-model-not-implemented.md](../issues/M-gtr-site-specific-model-not-implemented.md)). Partitions given as site sets are the input that the automatic strategies of section 7.1 would produce: a strategy computes the sites of each partition, and the partition system builds, fits and assembles them ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)).
 
 ### 9.2 New code needed
 
 | Component                                   | Notes                                                                                   |
 | ------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `enum GtrModel { Scalar, SiteSpecific }`    | Replace `pub gtr: GTR` at 7+ partition call sites                                       |
+| Site-specific model type                    | Partitions and reconstructions store the scalar `GTR` type                              |
 | `get_mutation_counts_site_specific_dense()` | Per-site $n_{ij}^a$ and $\tau_j^a$ from tree traversal (port v0 `treeanc.py:1558-1589`) |
 | Iterative refinement loop                   | Alternate model inference + ancestral reconstruction (port v0 `treeanc.py:1634-1677`)   |
 | Per-site mutation counting from Fitch subs  | Iterate edges' `fitch_subs()`, count per `sub.pos()`                                    |
 | Rate-based bin assignment                   | Sort positions by count, quantile split                                                 |
-| Position-to-partition map type              | `Vec<usize>` or newtype                                                                 |
-| Subsequence extraction from alignment       | Split FASTA records by position subset                                                  |
 | GTR family inference (pooled groups)        | Wrap existing solver, decompose $W$/$\pi$/$\mu$ updates                                 |
 | Partition grouping specification            | Data structure for $W$/$\pi$/$\mu$ group membership                                     |
 | GFF/annotation parsing                      | No annotation infrastructure exists                                                     |

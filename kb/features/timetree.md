@@ -5,7 +5,8 @@
 - [x] Load tree from `--tree`
 - [x] Date table from `--metadata`, required
 - [x] Optional alignment: `--branch-length-mode` `auto` (default) keeps the input branch lengths without an alignment
-- [x] Several alignment files share the branch lengths, with one relative rate per file estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, only with two or more files and re-estimated branch lengths, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a file is the clock rate times its rate
+- [x] Several partitions (one per `--alignment` file, or one per `--partition` entry) share the branch lengths, with one relative rate per partition estimated at the end of each ML branch-length pass and fixed during the dating rounds (`--partition-rates`, only with two or more partitions and re-estimated branch lengths, [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)); the clock rate of a partition is the clock rate times its rate
+- [x] Input branch-length mode takes the saturation level from the site-weighted mean over the partition models
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [ ] Gap handling matches v0: v0 timetree with the default `--gtr infer` uses the 5-state `nuc` alphabet, where the gap is a state ([packages/legacy/treetime/treetime/wrappers.py#L56](../../packages/legacy/treetime/treetime/wrappers.py#L56)); the v1 nucleotide alphabet puts the gap in the undetermined set together with the unknown character, so a gap carries no state information ([packages/treetime/src/alphabet/alphabet.rs#L131](../../packages/treetime/src/alphabet/alphabet.rs#L131)). Named models `JC69`, `F81` and `TN93` also use the 5-state alphabet, `K80`, `HKY85` and `T92` the 4-state one ([kb/issues/M-timetree-gap-state-v0-divergence.md](../issues/M-timetree-gap-state-v0-divergence.md))
 - [x] Initial node divergences always initialized
@@ -137,7 +138,7 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] Timetree Nexus
 - [x] Tree-format topology ordering
 - [x] Clock model JSON with `timetree.*` basename
-- [x] Model document (`--output-model`) with one entry per alignment file, including the clock rate of each file
+- [x] Model document (`--output-model`): the alignment files with their number, path, sites and indel rate, and one model entry per partition with its number, name, alignment number, sites, state characters, and the clock rate of each partition
 - [x] Per-file sequence outputs of several alignment files (FASTA, Auspice JSON, UShER MAT, Nexus, Newick with `--newick-annotations beast` or `nhx`, ancestral augur node data): `<command>.<n>.<ext>` under `--output-all`, or a `{alignment}` placeholder in the per-file flag; a per-file flag without the placeholder stops with an error
 - [x] Clock regression table (`--output-rtt`, opt-in; one row per sample with the date, date source (`input` or `inferred`), root-to-tip distance and clock-filter flag the final clock model was fitted on; new in v1, v0 has no table; app runs request it for the root-to-tip plot)
 - [x] Coalescent time scale TSV/CSV/JSON (`--output-coalescent-{tsv,csv,json}`; per-segment $T_c$, $N_e$, and confidence band for skyline, optimized-constant, and fixed $T_c$; TSV in the default `--output-all` set, CSV and JSON opt-in; the `skyline.pdf` plot remains, see [kb/issues/N-timetree-plot-unimplemented.md](../issues/N-timetree-plot-unimplemented.md))

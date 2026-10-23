@@ -1,6 +1,6 @@
 # Segments with different trees cannot share a run
 
-Segmented genomes such as influenza can have one tree per segment, because reassortment gives the segments different histories. TreeTime takes one `--tree` per run (for example [packages/app-commands/src/commands/timetree/args.rs#L129](../../packages/app-commands/src/commands/timetree/args.rs#L129)), and every `--alignment` file is one partition on that tree ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Segments that share one tree run together today; segments with different trees need one run per segment.
+Segmented genomes such as influenza can have one tree per segment, because reassortment gives the segments different histories. TreeTime takes one `--tree` per run (for example [packages/app-commands/src/commands/timetree/args.rs#L129](../../packages/app-commands/src/commands/timetree/args.rs#L129)), and every partition of the `--alignment` files lies on that tree ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md)). Segments that share one tree run together today; segments with different trees need one run per segment.
 
 ## Current state
 
@@ -30,7 +30,6 @@ Run TreeTime once per segment with the tree of that segment.
 
 - [N-io-sequence-name-matching-unreliable.md](N-io-sequence-name-matching-unreliable.md) -- name matching affects multi-segment attachment
 - [N-io-large-dataset-memory-constraint.md](N-io-large-dataset-memory-constraint.md) -- memory constraints compound with multiple segments
-- [M-partition-site-ranges-and-per-partition-models-unsupported.md](M-partition-site-ranges-and-per-partition-models-unsupported.md) -- per-partition models and site ranges
 
 ### Proposals
 

@@ -13,8 +13,10 @@
 - [x] Equilibrium frequencies (pi vector, normalized)
 - [x] Exchangeability matrix (W, symmetric, normalized by avg_transition)
 - [x] Rate scaling (mu parameter)
-- [x] Model document (`--output-model`): one JSON document `ModelOutput` with one entry per model, tagged `kind`. A `sequence` entry holds the partition number, the alignment path, the number of sites, the indel rate, in timetree the clock rate of the file (clock rate of the run times μ), and the model fields W, π, μ and number of states; a `trait` entry (mugration) holds the attribute, the ordered state labels and the model fields. A run without any model reports the output as unavailable
-- [x] One relative rate μ per alignment file in optimize and timetree with several files (`--partition-rates estimate|equal`; rate step with W and π fixed, normalization to a site-weighted mean of 1: [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] Model document (`--output-model`): one JSON document `ModelOutput` with `alignments` (each file with its number, path, number of sites and indel rate; absent without alignments) and `models`, one entry per model, tagged `kind`. A `sequence` entry holds the partition number, the partition name, the alignment number, the number of sites, in timetree the clock rate of the partition (clock rate of the run times μ), the state characters in the order of π and W, and the model fields W, π, μ and number of states; a `trait` entry (mugration) holds the attribute, the ordered state labels and the model fields. A run without any model reports the output as unavailable
+- [x] One model per partition: without entries `--model` and `--model-params` apply to every file; with `--partition` entries each entry carries its own `model` and `model_params`, and `--model` or `--model-params` next to entries is an argument error
+- [x] Model check against the alphabet: `k80`, `hky85`, `t92` and `tn93` need `nuc`, `jtt92` needs `aa-no-stop`, `pi` needs one value per state ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] One relative rate μ per partition in optimize and timetree with several partitions (`--partition-rates estimate|equal`; rate step with W and π fixed, normalization to a site-weighted mean of 1: [kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 
 ## Not Implemented
 

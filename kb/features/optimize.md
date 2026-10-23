@@ -5,14 +5,14 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 ## Standalone Command (v1-only)
 
 - [x] `optimize` command with `--tree`, `--alignment`, `--output-all`
-- [x] Dense or sparse partition setup, one partition per `--alignment` file, selected by `--representation` for the whole run
-- [x] Several alignment files share the branch lengths, with one relative rate per file (`--partition-rates`, only with two or more files, default `estimate`: a rate step and a site-weighted normalization after each iteration; `equal` fixes every rate at 1) and one indel rate per file in one combined Poisson term ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
+- [x] Dense or sparse partition setup, one partition per `--alignment` file or per `--partition` entry, selected by `--representation` for the whole run
+- [x] Several partitions share the branch lengths, with one relative rate per partition (`--partition-rates`, only with two or more partitions, default `estimate`: a rate step and a site-weighted normalization after each iteration; `equal` fixes every rate at 1; all rates normalized once before the first iteration when any partition has the model `infer`) and one indel rate per file in one combined Poisson term, with the indel events of a split file counted once ([kb/decisions/multi-alignment-partitions.md](../decisions/multi-alignment-partitions.md))
 - [x] Short-branch floors use the total length of all files
 - [x] Tips without a sequence in a file are filled as unknown; the run stops when a file misses more than a third of the tips
 - [x] Initial branch-length guess from observed mutation counts (excludes deletion and ambiguous positions)
 - [x] `--initial-branch-lengths` flag: `auto` (selective fill, treats zero BL as invalid when indels present), `always` (overwrite all), `never` (error on missing/NaN, and on zero branch length when indels are present)
 - [x] Output Newick and Nexus trees with the branch mutations (Nexus always, Newick with `--newick-annotations beast` or `nhx`)
-- [x] Model document (`--output-model`) with one entry per alignment file
+- [x] Model document (`--output-model`): the alignment files with their number, path, sites and indel rate, and one model entry per partition with its number, name, alignment number, sites, state characters
 - [x] Augur-compatible node data JSON (`optimize.node-data.json`, `--output-node-data`): per-node optimized `branch_length` plus `alignment`/`input_tree` metadata, equivalent to `augur refine` without `--timetree`
 
 ## Rerooting (v1-only, date-free)
