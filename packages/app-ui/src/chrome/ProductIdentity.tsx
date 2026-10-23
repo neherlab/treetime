@@ -22,9 +22,9 @@ export function ProductIdentity({
   );
 
   return href === undefined ? (
-    <div className="flex items-center gap-2 px-1">{content}</div>
+    <div className="flex shrink-0 items-center gap-2 px-1">{content}</div>
   ) : (
-    <a href={href} className="flex items-center gap-2 rounded-md px-1">
+    <a href={href} className="flex shrink-0 items-center gap-2 rounded-md px-1">
       {content}
     </a>
   );

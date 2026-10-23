@@ -2,6 +2,7 @@
 import { HeaderBar } from "@neherlab/app-ui/chrome/HeaderBar";
 import { m, type Locale } from "@neherlab/app-ui/i18n";
 import { buttonVariants } from "@neherlab/app-ui/ui/button";
+import { cn } from "cn";
 import { ProductIdentity } from "@neherlab/app-ui/chrome/ProductIdentity";
 import GitHub from "~icons/lucide/github";
 
@@ -31,13 +32,13 @@ const { locale, version, versionLabel, page, nodes, currentUrl, localeUrls } = A
   <LanguageSelect urls={localeUrls} locale={locale} />
   <a
     href="https://github.com/neherlab/treetime"
-    class={buttonVariants({ variant: "ghost", size: "icon" })}
+    class={cn(buttonVariants({ variant: "ghost", size: "icon" }), "hidden sm:inline-flex")}
     aria-label={m.chrome_github({}, { locale })}
     title={m.chrome_github({}, { locale })}
   >
     <GitHub aria-hidden />
   </a>
-  <a href="https://treetime.neherlab.click" class:list={[buttonVariants({ variant: "default", size: "sm" }), "hidden sm:inline-flex"]}>
+  <a href="https://treetime.neherlab.click" class={cn(buttonVariants({ variant: "default", size: "sm" }), "hidden sm:inline-flex")}>
     {m.chrome_open_app({}, { locale })}
   </a>
 </HeaderBar>

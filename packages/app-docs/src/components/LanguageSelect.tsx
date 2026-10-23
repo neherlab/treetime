@@ -18,9 +18,11 @@ export function LanguageSelect({ urls, locale }: { urls: ReadonlyMap<Locale, str
             hrefLang={target}
             lang={target}
             aria-current={target === locale ? "page" : undefined}
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "aria-[current=page]:bg-muted uppercase")}
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "aria-[current=page]:bg-muted")}
           >
-            <span aria-hidden>{target}</span>
+            <span aria-hidden className="uppercase">
+              {target}
+            </span>
             <span className="sr-only">{LOCALE_NAMES[target](target)}</span>
           </a>
         ))}

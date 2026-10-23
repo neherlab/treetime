@@ -20,11 +20,17 @@ export function VersionSelect({ version, label, page }: { version: string; label
   const onChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => void choose(event), [choose]);
 
   if (versions === undefined || versions.length < 2) {
-    return <span className="text-muted-foreground font-mono text-xs">{label}</span>;
+    return <span className="text-muted-foreground hidden font-mono text-xs sm:inline">{label}</span>;
   }
 
   return (
-    <NativeSelect size="sm" value={version} onChange={onChange} aria-label={m.docs_version({}, { locale })}>
+    <NativeSelect
+      size="sm"
+      value={version}
+      onChange={onChange}
+      aria-label={m.docs_version({}, { locale })}
+      className="hidden sm:block"
+    >
       {versions.map((entry) => (
         <NativeSelectOption key={entry.version} value={entry.version}>
           {entry.label}
