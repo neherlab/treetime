@@ -32,9 +32,23 @@ On the 36 single-threaded timetree runs of the simulated validation subset, rele
 - `lg_extent_max_active_fit:8`: all 36 runs at most 1.098 times the peak RSS of `rust`, at unchanged CPU time
 - `dirty_decay_ms:200`: helps short runs only
 
+### Dense optimize touches its memory again after freeing it
+
+Profiling build of `rust` `abad3947e` (jemalloc served the Rust allocations, and the profile arrays are Rust allocations), on the build host at 20 threads, in a window with no other heavy jobs, 3 runs each with the default configuration:
+
+| Run | Peak RSS | Page faults | First-touched memory (faults of 4 KiB) | Kernel share of CPU |
+| --- | ---: | ---: | ---: | ---: |
+| `optimize --representation=dense` `rsv/a/500` | 1.87 GB | 1.19-1.21 million | 4.9 GB | 10.5% |
+| `ancestral --representation=dense` `rsv/a/2000` | 8.02 GB | 2.00 million | 8.2 GB | 21.4% |
+
+- The `ancestral` run touches each page of its peak memory once, so its faults come from the size of its data ([N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md](N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md))
+- The `optimize` run first-touches 2.6 times its peak memory. A page faults only when it is not mapped, so more than half of these faults are on pages that the process gave back to the kernel and then wrote again
+- Inferred cause: jemalloc purges freed pages by its decay rules (with `muzzy_decay_ms` 0, a page leaves the dirty state straight to `madvise` purging), and the next pass of the optimize loop allocates arrays of the same size again. Which purge path returns the pages, and whether arenas of other threads add to it, is not measured
+- `thp:always` reduces the faults of the `optimize` run to about 220 thousand, but the run takes 16 percent longer wall time and 22 percent more user time. Huge pages are therefore no fix
+
 ## Fix direction
 
 Set the decay or arena configuration of jemalloc in the binaries, for example a short `dirty_decay_ms` or fewer arenas (`narenas`). Embed the setting at build time with the `malloc_conf` symbol or `JEMALLOC_SYS_WITH_MALLOC_CONF`, so every run uses it without an environment variable.
 
 > [!IMPORTANT]
-> **Investigation required.** The time cost of these settings is not measured. Returning freed pages at once adds `madvise` calls and page faults when the memory is used again, and fewer arenas add lock contention between worker threads. Measure wall time, user time, and peak RSS for each candidate setting on the caterpillar `mugration` case and on large standard datasets (for example `timetree dengue/2000`, `ancestral mpox/clade-ii/2000`, `ancestral --representation=dense rsv/a/2000`) at 1 and 20 threads, and keep a setting only when it does not slow these runs down.
+> **Investigation required.** The time cost of these settings is not measured. Returning freed pages at once adds `madvise` calls and page faults when the memory is used again, and fewer arenas add lock contention between worker threads. Measure wall time, user time, and peak RSS for each candidate setting on the caterpillar `mugration` case and on large standard datasets (for example `timetree dengue/2000`, `ancestral mpox/clade-ii/2000`, `ancestral --representation=dense rsv/a/2000`) at 1 and 20 threads, and keep a setting only when it does not slow these runs down. Also measure the page faults of `optimize --representation=dense rsv/a/500`: a setting that keeps freed pages for reuse in the same thread lowers its 1.2 million faults, and a shorter decay raises them.
