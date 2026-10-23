@@ -1,5 +1,9 @@
 pub mod convert;
 pub mod font;
+pub mod palette;
+pub mod scale;
+pub mod text;
+pub mod ticks;
 
 #[cfg(test)]
 mod __tests__;

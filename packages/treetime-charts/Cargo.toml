@@ -15,10 +15,12 @@ version.workspace = true
 doctest = false
 
 [dependencies]
+ab_glyph = { workspace = true }
 eyre = { workspace = true }
 fontdb = { workspace = true }
 krilla = { workspace = true }
 krilla-svg = { workspace = true }
+num-traits = { workspace = true }
 plotters = { workspace = true }
 resvg = { workspace = true }
 tiny-skia = { workspace = true }
@@ -26,10 +28,11 @@ treetime-utils = { workspace = true }
 usvg = { workspace = true }
 
 [dev-dependencies]
-ab_glyph = { workspace = true }
 ctor = { workspace = true }
 indoc = { workspace = true }
+itertools = { workspace = true }
 pretty_assertions = { workspace = true }
+proptest = { workspace = true }
 rayon = { workspace = true }
 rstest = { workspace = true }
 
