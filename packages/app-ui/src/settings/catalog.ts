@@ -1,4 +1,4 @@
-import type { AppCommand, CommandSettings, SettingSpec } from "@neherlab/app-contracts";
+import type { AppCommand, CommandSettings } from "@neherlab/app-contracts";
 import { settingCatalog } from "@neherlab/app-contracts/catalog";
 
 class CatalogError extends Error {
@@ -18,12 +18,4 @@ export function commandSettings(command: AppCommand): CommandSettings {
   }
 
   return settings;
-}
-
-export function groupedSpecs(settings: CommandSettings, specs: readonly SettingSpec[]): Array<[string, SettingSpec[]]> {
-  return settings.groups.flatMap((group) => {
-    const members = specs.filter((spec) => spec.group === group);
-
-    return members.length > 0 ? [[group, members]] : [];
-  });
 }

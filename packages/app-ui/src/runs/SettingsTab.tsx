@@ -6,13 +6,15 @@ import { Fragment, useMemo, useState } from "react";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
 import { CodeLineView, keyedLines } from "../analysis/CodePanel";
-import { defaultText } from "../analysis/SettingField";
 import { useApi } from "../api/hooks";
 import { CopyButton } from "../components/CopyButton";
 import { OptionToggle } from "../components/OptionToggle";
 import { Panel } from "../components/Panel";
-import { commandSettings, groupedSpecs } from "../settings/catalog";
+import { useLocale } from "../i18n/locale";
+import { commandSettings } from "../settings/catalog";
 import { documentedDefault, effectiveValue } from "../settings/config";
+import { groupedSpecs } from "../settings/groups";
+import { defaultText } from "../settings/help";
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
@@ -25,6 +27,7 @@ const CODE_FORMATS: ReadonlyArray<{ value: UiCodeFormat; label: string }> = [
 ];
 
 export function SettingsTab({ record }: { record: RunRecord }) {
+  const locale = useLocale();
   const settings = commandSettings(record.command);
   const specs = settings.settings;
   const config: SparseConfig = record.config;
@@ -99,10 +102,10 @@ export function SettingsTab({ record }: { record: RunRecord }) {
                         <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
                       </TableCell>
                       <TableCell className="font-mono text-xs break-all whitespace-normal">
-                        {defaultText(effectiveValue(config, spec))}
+                        {defaultText(effectiveValue(config, spec), locale)}
                       </TableCell>
                       <TableCell className="text-muted-foreground font-mono text-xs whitespace-normal">
-                        {spec.role === "setting" ? defaultText(documentedDefault(spec)) : ""}
+                        {spec.role === "setting" ? defaultText(documentedDefault(spec), locale) : ""}
                       </TableCell>
                     </TableRow>
                   );

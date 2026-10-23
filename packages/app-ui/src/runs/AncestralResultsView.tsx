@@ -4,6 +4,7 @@ import ChartColumn from "~icons/lucide/chart-column";
 
 import { CellText, DataTable, dataColumns } from "../components/DataTable";
 import { Panel, runTimeEntry, SummaryStrip, type SummaryEntry } from "../components/Panel";
+import { useLocale } from "../i18n/locale";
 import { Button } from "../ui/button";
 import { settingText } from "./settingText";
 import { MissingTree, TreeView, type TreeData } from "./TreeView";
@@ -67,17 +68,18 @@ export function AncestralResultsView({
   const sites = data.recurrent_sites;
   const total = data.mutations;
   const analyzeHomoplasy = useRerun(record, "homoplasy");
+  const locale = useLocale();
 
   const summary = useMemo<SummaryEntry[]>(
     () => [
       { label: "Mutations", value: String(total), detail: "On all branches" },
       { label: "Branches with mutations", value: String(branches.length) },
       { label: "Sites mutated on several branches", value: String(sites.length), detail: "Candidates for homoplasy" },
-      { label: "Substitution model", value: settingText(record, "model") },
-      { label: "Reconstruction", value: settingText(record, "method_anc") },
+      { label: "Substitution model", value: settingText(record, "model", locale) },
+      { label: "Reconstruction", value: settingText(record, "method_anc", locale) },
       runTimeEntry(record),
     ],
-    [branches.length, record, sites.length, total],
+    [branches.length, locale, record, sites.length, total],
   );
 
   return (

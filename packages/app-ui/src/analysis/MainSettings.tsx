@@ -20,6 +20,7 @@ import { commandSettings } from "../settings/catalog";
 import { choiceRow } from "../settings/choices";
 import type { SettingKey } from "../settings/commands";
 import { documentedDefault, isChanged, resetValue, settingValue } from "../settings/config";
+import { SettingHelp } from "../settings/help";
 import { isNumber, isString, sameJson } from "../settings/json";
 import { formatList, parseList } from "../settings/lists";
 import { Badge } from "../ui/badge";
@@ -32,7 +33,6 @@ import { CheckItem } from "./ChecksPanel";
 import { toFormValue, type FormConfig } from "./formValues";
 import { NumberInput } from "./NumberInput";
 import { SettingControl } from "./SettingControl";
-import { SettingHelp } from "./SettingField";
 
 type TimetreeKey = SettingKey<"timetree">;
 

@@ -12,8 +12,9 @@ import ChevronRight from "~icons/lucide/chevron-right";
 import Search from "~icons/lucide/search";
 
 import { OptionToggle } from "../components/OptionToggle";
-import { commandSettings, groupedSpecs } from "../settings/catalog";
+import { commandSettings } from "../settings/catalog";
 import { isChanged } from "../settings/config";
+import { groupedSpecs } from "../settings/groups";
 import { matchingSpecs } from "../settings/search";
 import { useDraftStore } from "../store/draft";
 import { Badge } from "../ui/badge";

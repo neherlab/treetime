@@ -11,14 +11,15 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 import ArrowLeftRight from "~icons/lucide/arrow-left-right";
 
-import { defaultText } from "../analysis/SettingField";
 import { useApi, useApiQueries } from "../api/hooks";
 import type { ApiCallContext } from "../api/keys";
 import { LoadingState, PageShell } from "../components/PageShell";
 import { Panel } from "../components/Panel";
 import { formatLevel, formatRate, formatSignedDays } from "../format";
+import { useLocale } from "../i18n/locale";
 import { fromJsonFloat, nonFiniteLabel } from "../results/numbers";
 import { commandSettings } from "../settings/catalog";
+import { defaultText } from "../settings/help";
 import { baseName } from "../settings/inputs";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
@@ -177,6 +178,7 @@ function SettingsDifferences({
 }
 
 function DifferenceRow({ record, difference }: { record: RunRecord; difference: SettingDifference }) {
+  const locale = useLocale();
   const spec = commandSettings(record.command).settings.find((candidate) => candidate.key === difference.key);
 
   return (
@@ -190,10 +192,14 @@ function DifferenceRow({ record, difference }: { record: RunRecord; difference: 
         )}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
-        {difference.kind === "input" ? difference.first.map(baseName).join(", ") : defaultText(difference.first)}
+        {difference.kind === "input"
+          ? difference.first.map(baseName).join(", ")
+          : defaultText(difference.first, locale)}
       </TableCell>
       <TableCell className="font-mono text-xs break-all whitespace-normal">
-        {difference.kind === "input" ? difference.second.map(baseName).join(", ") : defaultText(difference.second)}
+        {difference.kind === "input"
+          ? difference.second.map(baseName).join(", ")
+          : defaultText(difference.second, locale)}
       </TableCell>
     </TableRow>
   );

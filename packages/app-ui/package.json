@@ -18,6 +18,8 @@
     "./port-fetch": "./src/port-fetch.ts",
     "./chrome/*": "./src/chrome/*.tsx",
     "./i18n": "./src/i18n/locale.tsx",
+    "./settings/groups": "./src/settings/groups.ts",
+    "./settings/help": "./src/settings/help.tsx",
     "./env": "./src/env.d.ts"
   },
   "dependencies": {

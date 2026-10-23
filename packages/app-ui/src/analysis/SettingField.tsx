@@ -1,14 +1,12 @@
-import type { AppCommand, JsonValue, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
+import type { AppCommand, SettingSpec, SparseConfig } from "@neherlab/app-contracts";
 import { cn } from "cn";
 import { useCallback } from "react";
 import { useFormContext, useFormState } from "react-hook-form";
 import RotateCcw from "~icons/lucide/rotate-ccw";
 
-import { documentedDefault, isChanged, resetValue } from "../settings/config";
-import { isJsonObject } from "../settings/json";
-import { formatList } from "../settings/lists";
+import { isChanged, resetValue } from "../settings/config";
+import { SettingHelp, SettingSummary } from "../settings/help";
 import { Button } from "../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { Label } from "../ui/label";
 import { settingFieldId } from "./fieldIds";
 import { toFormValue, type FormConfig } from "./formValues";
@@ -41,13 +39,7 @@ export function SettingField({
         changed && "bg-accent/50",
       )}
     >
-      <div className="flex flex-wrap items-baseline gap-2">
-        <Label htmlFor={settingFieldId(spec.key)}>{label}</Label>
-        <code className="text-muted-foreground font-mono text-xs">{spec.flag}</code>
-        {spec.role === "setting" && (
-          <span className="text-muted-foreground text-xs">Default: {defaultText(documentedDefault(spec))}</span>
-        )}
-      </div>
+      <SettingSummary spec={spec} label={<Label htmlFor={settingFieldId(spec.key)}>{label}</Label>} />
       <div className="flex items-start gap-1.5 @xl:col-start-2 @xl:row-span-2 @xl:row-start-1">
         <div className="grid min-w-0 flex-1 gap-1">
           <SettingControl command={command} spec={spec} label={label} />
@@ -70,38 +62,4 @@ export function SettingField({
       <SettingHelp spec={spec} />
     </div>
   );
-}
-
-export function SettingHelp({ spec }: { spec: SettingSpec }) {
-  return (
-    <div className="text-muted-foreground max-w-[72ch] text-[0.8125rem]">
-      {spec.help}
-      {spec.more !== "" && (
-        <Collapsible className="inline">
-          <CollapsibleTrigger className="text-primary ml-1 underline-offset-4 hover:underline">More</CollapsibleTrigger>
-          <CollapsibleContent className="whitespace-pre-line">{spec.more}</CollapsibleContent>
-        </Collapsible>
-      )}
-    </div>
-  );
-}
-
-export function defaultText(value: JsonValue | undefined): string {
-  if (value === undefined) {
-    return "not set";
-  }
-
-  if (Array.isArray(value)) {
-    return value.length === 0 ? "none" : formatList(value);
-  }
-
-  if (value === true) {
-    return "on";
-  }
-
-  if (value === false) {
-    return "off";
-  }
-
-  return isJsonObject(value) ? JSON.stringify(value) : String(value);
 }
