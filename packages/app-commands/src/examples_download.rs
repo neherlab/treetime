@@ -1,7 +1,12 @@
+use crate::examples_unpack::{UnpackLimits, unpack_examples};
 use crate::version::{BUILD_MODE, LONG_VERSION, NIGHTLY_BUILD_MODE};
 use eyre::{Report, WrapErr};
 use std::fs;
+#[cfg(unix)]
+use std::fs::Permissions;
 use std::io::{ErrorKind, Seek, SeekFrom};
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use tempfile::Builder;
 use treetime_utils::make_error;
@@ -51,12 +56,16 @@ pub fn download_examples(url: &str, target: &Path, mut progress: impl FnMut(Down
     .seek(SeekFrom::Start(0))
     .wrap_err_with(|| format!("When rewinding the downloaded archive '{}'", archive.path().display()))?;
 
-  let unpacked = Builder::new()
-    .prefix(TEMPORARY_PREFIX)
+  let mut folder_builder = Builder::new();
+  folder_builder.prefix(TEMPORARY_PREFIX);
+  #[cfg(unix)]
+  folder_builder.permissions(Permissions::from_mode(0o700));
+  let unpacked = folder_builder
     .tempdir_in(parent)
     .wrap_err_with(|| format!("When creating a temporary folder in '{}'", parent.display()))?;
   ZipArchive::new(archive.as_file_mut())
-    .and_then(|mut zip| zip.extract(unpacked.path()))
+    .map_err(Report::new)
+    .and_then(|mut zip| unpack_examples(&mut zip, unpacked.path(), UnpackLimits::default()))
     .wrap_err_with(|| format!("When unpacking the example datasets from '{url}'"))?;
 
   remove_empty_target(target)?;

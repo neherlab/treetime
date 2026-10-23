@@ -8,6 +8,7 @@ pub mod config;
 pub mod examples_download;
 #[cfg(not(target_family = "wasm"))]
 mod examples_fetch;
+mod examples_unpack;
 pub mod json_value;
 #[cfg(not(target_family = "wasm"))]
 pub mod rtt_chart;

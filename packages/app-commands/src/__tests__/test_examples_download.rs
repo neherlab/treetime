@@ -4,6 +4,8 @@ mod tests {
   use helpers::{archive, files_in, serve};
   use pretty_assertions::assert_eq;
   use std::fs;
+  #[cfg(unix)]
+  use std::os::unix::fs::PermissionsExt;
   use tempfile::tempdir;
   use treetime_utils::assert_error;
 
@@ -130,18 +132,35 @@ mod tests {
   }
 
   #[test]
-  fn test_examples_download_keeps_an_absolute_entry_inside_the_folder() {
+  fn test_examples_download_refuses_an_absolute_entry() {
     let outside = tempdir().unwrap();
     let absolute = outside.path().join("escaped.txt");
-    let server = serve(archive(&[(absolute.to_str().unwrap(), "outside")]));
+    let name = absolute.to_str().unwrap().to_owned();
+    let server = serve(archive(&[(&name, "outside")]));
+    let root = tempdir().unwrap();
+    let target = root.path().join("examples");
+    let url = server.url("examples.zip");
+    assert_error!(
+      download_examples(&url, &target, |_| {}),
+      format!(
+        "When unpacking the example datasets from '{url}': the example archive is invalid: entry '{name}' has a path outside the folder"
+      )
+    );
+    assert_eq!(
+      (false, Vec::<String>::new()),
+      (absolute.exists(), files_in_top(root.path()))
+    );
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn test_examples_download_keeps_the_folder_private() {
+    let server = serve(archive(&[("ebola/20/tree.nwk", "(A:1);\n")]));
     let root = tempdir().unwrap();
     let target = root.path().join("examples");
     download_examples(&server.url("examples.zip"), &target, |_| {}).unwrap();
-    let inside = absolute.strip_prefix("/").unwrap().to_string_lossy().into_owned();
-    assert_eq!(
-      (false, vec![(inside, "outside".to_owned())]),
-      (absolute.exists(), files_in(&target))
-    );
+    let mode = fs::metadata(&target).unwrap().permissions().mode();
+    assert_eq!(0, mode & 0o077);
   }
 
   #[test]
