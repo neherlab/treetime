@@ -93,6 +93,7 @@ mod tests {
     use treetime_io::csv::default_name_candidates;
     use treetime_io::discrete_states_csv::discrete_attrs_read_file;
     use treetime_io::nwk::nwk_read_file;
+    use treetime_io::state_weights_csv::state_weights_read_file;
     use treetime_utils::io::json::json_read_file;
     use treetime_utils::{make_error, o};
 
@@ -168,15 +169,11 @@ mod tests {
       let weights = match &fixture.parameters.weights_path {
         Some(weights_path) => {
           let weights_filepath = project_root.join(weights_path);
-          let (map, _) = discrete_attrs_read_file::<f64>(
-            &weights_filepath,
-            &[',', '\t', ';'],
-            &[],
-            Some(fixture.attribute.as_str()),
-            Some("weight"),
-            |s| Ok(s.parse::<f64>()?),
-          )?;
-          Some(map.into_iter().collect())
+          Some(
+            state_weights_read_file(&weights_filepath, &[',', '\t', ';'])?
+              .into_iter()
+              .collect(),
+          )
         },
         None => None,
       };

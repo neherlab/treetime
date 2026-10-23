@@ -23,6 +23,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
+use treetime_io::state_weights_csv::state_weights_read_file;
 use treetime_utils::make_error;
 
 const UNMATCHED_NAMES_SHOWN: usize = 10;
@@ -61,15 +62,9 @@ pub fn run_mugration(
   } = pair_traits(rows, &graph, &names, &metadata.path, log);
 
   let weights = if let Some(weights_filepath) = &mugration_args.weights {
-    let (map, _) = discrete_attrs_read_file::<f64>(
-      weights_filepath,
-      &metadata.delimiters,
-      &[],
-      attribute_column,
-      Some("weight"),
-      |s| Ok(s.parse::<f64>()?),
-    )?;
-    let weights = map.into_iter().collect::<BTreeMap<String, f64>>();
+    let weights = state_weights_read_file(weights_filepath, &metadata.delimiters)?
+      .into_iter()
+      .collect::<BTreeMap<String, f64>>();
     validate_weights(&weights, weights_filepath)?;
     Some(weights)
   } else {
