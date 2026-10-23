@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::command::RawConfig;
   use crate::commands::clock::args::TreetimeClockArgsRaw;
-  use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs, ResolveOutputs};
+  use crate::commands::shared::output_args::{NewickAnnotationsArg, OutputCoreArgs};
   use app_output::command_outputs::CommandKind;
   use app_output::output_conditions::OutputSettings;
   use app_output::output_plan::TreeWriteKind;
@@ -641,24 +642,18 @@ mod tests {
     let dir = TempDir::new().unwrap();
     let dir_str = dir.path().to_str().unwrap();
     let args = TreetimeClockArgsRaw::try_parse_from(
-      ["treetime", "--metadata=/dev/null"]
+      ["treetime", "--tree=t.nwk", "--metadata=m.tsv"]
         .into_iter()
         .map(str::to_owned)
         .chain(flags.iter().map(|flag| flag.replace("{dir}", dir_str))),
     )
     .unwrap();
 
-    let resolved = args.resolve_outputs().unwrap();
+    let resolved = TreetimeClockArgsRaw::wrap(args.try_into().unwrap()).resolve_outputs().unwrap();
 
     let expected: BTreeMap<OutputSelection, PlannedFile> = expected
       .iter()
-      .map(|&(name, requested)| {
-        let file = PlannedFile {
-          path: dir.path().join(name),
-          requested,
-        };
-        (OutputSelection::RttChart, file)
-      })
+      .map(|&(name, requested)| (OutputSelection::RttChart, PlannedFile::new(dir.path().join(name), requested, None)))
       .collect();
     let actual: BTreeMap<OutputSelection, PlannedFile> = resolved
       .non_tree_outputs
