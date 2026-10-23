@@ -239,6 +239,22 @@ mod tests {
     Ok(())
   }
 
+  #[test]
+  fn test_print_help_markdown_has_no_html_tags_outside_code() -> Result<(), Report> {
+    let help = help_markdown()?;
+    let (body, _footer) = help.rsplit_once("<hr/>").unwrap_or((help.as_str(), ""));
+    let prose = Regex::new(r"(?s)```.*?```")?.replace_all(body, "");
+    let prose = Regex::new(r"`[^`\n]*`")?.replace_all(&prose, "");
+    let tags = Regex::new(r"<[A-Za-z/][^>\n]*>?")?
+      .find_iter(&prose)
+      .map(|tag| tag.as_str().to_owned())
+      .unique()
+      .collect_vec();
+
+    assert_eq!(Vec::<String>::new(), tags);
+    Ok(())
+  }
+
   mod helpers {
     use itertools::Itertools;
 

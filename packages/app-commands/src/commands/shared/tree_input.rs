@@ -67,11 +67,11 @@ pub struct TreeArgs {
 pub struct TreeDialectArgs {
   /// Newick dialect of the tree inputs (the tree and the reference topology)
   ///
-  /// A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-  /// is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-  /// and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-  /// ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-  /// and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+  /// A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+  /// structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+  /// with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+  /// (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+  /// annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
   #[cfg_attr(
     feature = "clap",
     clap(long, hide_short_help = true, value_enum, default_value_t = TreeDialectArg::default(), help_heading = "Input data")

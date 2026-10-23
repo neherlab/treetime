@@ -2907,11 +2907,11 @@ export type TimetreeConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -3395,11 +3395,11 @@ export type ClockConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -3637,11 +3637,11 @@ export type AncestralConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -3955,11 +3955,11 @@ export type HomoplasyConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -4223,11 +4223,11 @@ export type MugrationConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -4515,11 +4515,11 @@ export type OptimizeConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
@@ -4823,11 +4823,11 @@ export type PruneConfig = {
   /**
    * Newick dialect of the tree inputs (the tree and the reference topology)
    *
-   * A dialect is a tree structure and an annotation convention, written as <structure>,<annotations>. The structure
-   * is classic (plain labels and branch lengths), enewick (hybrid nodes such as x#H1) or rich (eNewick with support
-   * and probability fields). The annotations are plain (comments are text), beast ([&key=value]), nhx
-   * ([&&NHX:key=value]) or mrbayes ([&B name value]). For example, enewick,beast reads networks with BEAST annotations
-   * and classic,nhx reads NHX trees. TreeTime reads trees only, so a network input is an error.
+   * A dialect is a tree structure and an annotation convention, written as `<structure>,<annotations>`. The
+   * structure is classic (plain labels and branch lengths), enewick (hybrid nodes such as `x#H1`) or rich (eNewick
+   * with support and probability fields). The annotations are plain (comments are text), beast (`[&key=value]`), nhx
+   * (`[&&NHX:key=value]`) or mrbayes (`[&B name value]`). For example, `enewick,beast` reads networks with BEAST
+   * annotations and `classic,nhx` reads NHX trees. TreeTime reads trees only, so a network input is an error.
    */
   newick_dialect?: 'classic,plain' | 'classic,beast' | 'classic,nhx' | 'classic,mrbayes' | 'enewick,plain' | 'enewick,beast' | 'enewick,nhx' | 'enewick,mrbayes' | 'rich,plain' | 'rich,beast' | 'rich,nhx' | 'rich,mrbayes';
   /**
