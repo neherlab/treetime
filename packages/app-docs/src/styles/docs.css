@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "../../../app-ui/src/tokens.css";
+@import "../../../app-ui/src/components.css";
+@import "../../../app-ui/src/base.css";
+@plugin "@tailwindcss/typography";
+@source "../../../app-ui/src";
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading;
+  }
+}
+
+@layer components {
+  .prose {
+    --tw-prose-body: var(--foreground);
+    --tw-prose-headings: var(--foreground);
+    --tw-prose-lead: var(--muted-foreground);
+    --tw-prose-links: var(--primary);
+    --tw-prose-bold: var(--foreground);
+    --tw-prose-counters: var(--muted-foreground);
+    --tw-prose-bullets: var(--muted-foreground);
+    --tw-prose-hr: var(--border);
+    --tw-prose-quotes: var(--foreground);
+    --tw-prose-quote-borders: var(--border);
+    --tw-prose-captions: var(--muted-foreground);
+    --tw-prose-kbd: var(--foreground);
+    --tw-prose-kbd-shadows: var(--border);
+    --tw-prose-code: var(--foreground);
+    --tw-prose-pre-code: var(--foreground);
+    --tw-prose-pre-bg: var(--muted);
+    --tw-prose-th-borders: var(--border);
+    --tw-prose-td-borders: var(--border);
+
+    max-width: 72ch;
+    font-variant-numeric: proportional-nums;
+
+    :where(p, li) {
+      text-wrap: pretty;
+    }
+
+    :where(h1, h2, h3, h4) {
+      text-wrap: balance;
+      font-weight: 600;
+    }
+
+    :where(table, code, pre) {
+      font-variant-numeric: tabular-nums;
+    }
+
+    :where(code):not(:where(pre code)) {
+      @apply bg-muted rounded-sm px-1 py-px font-normal;
+    }
+
+    :where(code):not(:where(pre code))::before,
+    :where(code):not(:where(pre code))::after {
+      content: none;
+    }
+
+    :where(a) {
+      @apply underline-offset-3;
+    }
+
+    :where(h2, h3, h4) > a {
+      @apply text-inherit no-underline;
+    }
+  }
+
+  .katex {
+    font-size: 1.1em;
+  }
+
+  .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0.25rem;
+  }
+
+  .expressive-code :is(pre, code, span) {
+    font-variant-ligatures: none;
+  }
+
+  .fd-steps {
+    counter-reset: step;
+    @apply border-border relative ml-3 border-l pl-6;
+  }
+
+  .fd-step {
+    counter-increment: step;
+    @apply relative;
+  }
+
+  .fd-step::before {
+    content: counter(step);
+    @apply bg-muted text-foreground font-heading absolute -left-9.5 flex size-7 items-center justify-center rounded-full border text-sm font-semibold;
+  }
+}

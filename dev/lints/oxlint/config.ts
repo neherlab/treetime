@@ -74,13 +74,24 @@ const packageManifestSchema = z.object({
 export interface ProjectSettings<R extends string> {
   root: string;
   ignorePatterns: string[];
-  tailwind: { cwd: string; entryPoint: string };
+  tailwind: TailwindEntry;
+  tailwindScopes: readonly TailwindScope[];
   webScopes: string[];
   restrictions: Record<R, Restriction>;
   restrictedScopes: ReadonlyArray<RestrictedFiles<R>>;
   restrictionAllowances: ReadonlyArray<RestrictedFiles<R>>;
   contracts: ContractSettings | undefined;
   overrides: OxlintOverride[];
+}
+
+export interface TailwindEntry {
+  cwd: string;
+  entryPoint: string;
+}
+
+export interface TailwindScope extends TailwindEntry {
+  files: string[];
+  knownClasses: string[];
 }
 
 export type Restriction =
@@ -383,6 +394,7 @@ export function projectConfig<R extends string>(settings: ProjectSettings<R>): O
           ],
         },
       },
+      ...settings.tailwindScopes.map(tailwindOverride),
       ...settings.overrides,
       {
         files: ["**/vite.config.ts", "**/*.config.ts", "**/scripts/**"],
@@ -462,6 +474,24 @@ export function packageGraphPatterns(root: string, dir: string): Array<{ group: 
   const banned = packages.map((other) => other.name).filter((name) => !allowed.has(name));
 
   return banned.length === 0 ? [] : [{ group: banned, message: PACKAGE_GRAPH_MESSAGE }];
+}
+
+function tailwindOverride({ files, cwd, entryPoint, knownClasses }: TailwindScope): OxlintOverride {
+  const rule: ["error", TailwindEntry] = ["error", { cwd, entryPoint }];
+
+  const unknownClasses: ["error", TailwindEntry & { ignore: string[] }] = [
+    "error",
+    { cwd, entryPoint, ignore: knownClasses.map((name) => `^${name}$`) },
+  ];
+
+  return {
+    files,
+    rules: {
+      "better-tailwindcss/no-unknown-classes": unknownClasses,
+      "better-tailwindcss/no-conflicting-classes": rule,
+      "better-tailwindcss/no-duplicate-classes": rule,
+    },
+  };
 }
 
 function packageBoundaryOverrides(root: string): OxlintOverride[] {

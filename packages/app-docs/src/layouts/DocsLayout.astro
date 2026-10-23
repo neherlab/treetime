@@ -1,0 +1,93 @@
+---
+import "@neherlab/app-ui/fonts";
+import "katex/dist/katex.min.css";
+import "../styles/docs.css";
+
+import { m, type Locale } from "@neherlab/app-ui/i18n";
+
+import DocsHeader from "../components/DocsHeader.astro";
+import { NavTree } from "../components/NavTree";
+import ThemeScript from "../components/ThemeScript.astro";
+import type { NavNode } from "../lib/nav";
+import { assetUrl } from "../lib/urls";
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description?: string | undefined;
+  template: "doc" | "splash";
+  version: string;
+  versionLabel: string;
+  page: string;
+  nodes: NavNode[];
+  currentUrl: string;
+  localeUrls: ReadonlyMap<Locale, string>;
+}
+
+const { locale, title, description, template, version, versionLabel, page, nodes, currentUrl, localeUrls } =
+  Astro.props;
+
+const fullTitle = `${title} | ${m.docs_site_name({}, { locale })}`;
+
+const absolute = (url: string) => new URL(url, Astro.site).href;
+---
+
+<!doctype html>
+<html lang={locale} class="[--header-height:calc(--spacing(12))]">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <ThemeScript />
+    <title>{fullTitle}</title>
+    {description !== undefined && <meta name="description" content={description} />}
+    <link rel="canonical" href={absolute(currentUrl)} />
+    {[...localeUrls].map(([target, url]) => <link rel="alternate" hreflang={target} href={absolute(url)} />)}
+    <link rel="icon" href={assetUrl("favicon.svg")} type="image/svg+xml" />
+    <link rel="icon" href={assetUrl("favicon.ico")} sizes="32x32" />
+    <link rel="apple-touch-icon" href={assetUrl("apple-touch-icon.png")} />
+    <meta name="theme-color" content="#e9eeec" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1615" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    {description !== undefined && <meta property="og:description" content={description} />}
+    <meta property="og:locale" content={locale} />
+  </head>
+  <body class="min-h-svh">
+    <DocsHeader
+      locale={locale}
+      version={version}
+      versionLabel={versionLabel}
+      page={page}
+      nodes={nodes}
+      currentUrl={currentUrl}
+      localeUrls={localeUrls}
+    />
+    {
+      template === "splash" ? (
+        <main id="content" data-pagefind-body class="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6">
+          <slot />
+        </main>
+      ) : (
+        <div class="mx-auto grid w-full max-w-[90rem] gap-8 px-4 sm:px-6 md:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[17rem_minmax(0,1fr)_14rem]">
+          <aside class="bg-sidebar sticky top-(--header-height) hidden h-[calc(100svh-var(--header-height))] overflow-y-auto border-r py-4 pr-2 md:block">
+            <NavTree nodes={nodes} currentUrl={currentUrl} locale={locale} />
+          </aside>
+          <main id="content" class="min-w-0 py-8">
+            <slot name="before" />
+            <article data-pagefind-body class="bg-card rounded-lg border px-5 py-6 sm:px-8">
+              <slot name="banner" />
+              <h1 class="font-heading text-3xl font-semibold tracking-tight">{title}</h1>
+              {description !== undefined && <p class="text-muted-foreground mt-2 text-lg">{description}</p>}
+              <slot name="notice" />
+              <div class="prose mt-8">
+                <slot />
+              </div>
+            </article>
+            <slot name="footer" />
+          </main>
+          <slot name="toc" />
+        </div>
+      )
+    }
+  </body>
+</html>

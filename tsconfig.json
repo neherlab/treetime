@@ -1,21 +1,59 @@
 {
   "files": [],
   "references": [
-    { "path": "./dev/lints/oxlint/tsconfig.json" },
-    { "path": "./dev/lints/oxlint-anti-slop/tsconfig.json" },
-    { "path": "./packages/app-contracts/tsconfig.generated.json" },
-    { "path": "./packages/app-contracts/tsconfig.json" },
-    { "path": "./packages/app-contracts/tsconfig.node.json" },
-    { "path": "./packages/app-desktop/tsconfig.json" },
-    { "path": "./packages/app-desktop/tsconfig.node.json" },
-    { "path": "./packages/app-desktop/tsconfig.renderer.json" },
-    { "path": "./packages/app-ui/tsconfig.json" },
-    { "path": "./packages/app-ui/tsconfig.node.json" },
-    { "path": "./packages/app-wasm/tsconfig.json" },
-    { "path": "./packages/app-web/tsconfig.json" },
-    { "path": "./packages/app-web/tsconfig.node.json" },
-    { "path": "./packages/app-web2/tsconfig.json" },
-    { "path": "./packages/app-web2/tsconfig.node.json" },
-    { "path": "./tsconfig.tools.json" }
+    {
+      "path": "./dev/lints/oxlint/tsconfig.json"
+    },
+    {
+      "path": "./dev/lints/oxlint-anti-slop/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-contracts/tsconfig.generated.json"
+    },
+    {
+      "path": "./packages/app-contracts/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-contracts/tsconfig.node.json"
+    },
+    {
+      "path": "./packages/app-docs/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-docs/tsconfig.node.json"
+    },
+    {
+      "path": "./packages/app-desktop/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-desktop/tsconfig.node.json"
+    },
+    {
+      "path": "./packages/app-desktop/tsconfig.renderer.json"
+    },
+    {
+      "path": "./packages/app-ui/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-ui/tsconfig.node.json"
+    },
+    {
+      "path": "./packages/app-wasm/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-web/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-web/tsconfig.node.json"
+    },
+    {
+      "path": "./packages/app-web2/tsconfig.json"
+    },
+    {
+      "path": "./packages/app-web2/tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.tools.json"
+    }
   ]
 }

@@ -1,0 +1,62 @@
+---
+title: Code
+description: Code blocks, terminal frames, and line markers with Expressive Code.
+---
+
+:::note
+This page demonstrates the features of the docs site. Its text is a placeholder.
+:::
+
+## Terminal
+
+```bash title="Date the ancestors of a tree"
+just r treetime timetree --tree=data/flu/h3n2/20/tree.nwk --metadata=data/flu/h3n2/20/metadata.tsv --alignment=data/flu/h3n2/20/aln.fasta.xz --output-all=tmp/timetree/flu/h3n2/20
+```
+
+```sh frame="terminal" title="Help of a command"
+just r treetime ancestral --help
+```
+
+## Languages
+
+```yaml title="timetree.yaml"
+tree: data/ebola/362/tree.nwk
+metadata: data/ebola/362/metadata.tsv
+alignment:
+  - data/ebola/362/aln.fasta.xz
+clock_rate: 0.003
+max_iter: 3
+```
+
+```json title="versions.json"
+[{ "version": "dev", "label": "dev", "preferred": true }]
+```
+
+```rust title="A Rust function"
+fn root_to_tip(rate: f64, date: f64, root_date: f64) -> f64 {
+  rate * (date - root_date)
+}
+```
+
+## Line markers
+
+```bash {2} ins={3} del={4}
+just r treetime ancestral \
+  --method-anc=marginal \
+  --model=jc69 \
+  --representation=dense \
+  --tree=data/zika/86/tree.nwk --alignment=data/zika/86/aln.fasta.xz --output-all=tmp/ancestral/zika/86
+```
+
+```diff lang="yaml"
+ tree: data/ebola/362/tree.nwk
+-clock_rate: 0.003
++clock_rate: 0.0012
+ max_iter: 3
+```
+
+## Long lines
+
+```bash wrap
+just r treetime prune --tree=data/flu/h3n2/200/tree.nwk --alignment=data/flu/h3n2/200/aln.fasta.xz --output-all=tmp/flu/h3n2/200/prune --collapse-short=1e-6 --collapse-empty
+```

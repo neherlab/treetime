@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <up|serve|health|status|up-web2|serve-web2>
+# Usage: $0 <up|serve|health|status|up-web2|serve-web2|up-docs|serve-docs>
 #
 # Servers of the web app: the API server (treetime-server), and in development
 # the Vite dev server, which proxies /api to it. The web2 app needs no API
@@ -19,10 +19,15 @@
 #   serve-web2  Build the web2 app for production and serve it in the foreground
 #               until Ctrl-C; both WebAssembly modules must be built (just
 #               build-wasm prod, just build-wasm-mt prod)
+#   up-docs     Start the docs site development server in the foreground until Ctrl-C;
+#               it runs no post-build step, so search and the version list work only
+#               in serve-docs
+#   serve-docs  Build the docs site and serve the build in the foreground until Ctrl-C
 #
 # Each checkout resolves its own ports from its path, so worktrees run side by
 # side. TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT,
-# TREETIME_WEB2_PORT and TREETIME_WEB2_SERVE_PORT override the resolved ports.
+# TREETIME_WEB2_PORT, TREETIME_WEB2_SERVE_PORT, TREETIME_DOCS_PORT and
+# TREETIME_DOCS_SERVE_PORT override the resolved ports.
 #
 # Each mode keeps its runs in its own directory of the checkout:
 #
@@ -51,6 +56,8 @@ web_base_port=5173
 serve_base_port=4100
 web2_base_port=4620
 web2_serve_base_port=2580
+docs_base_port=6100
+docs_serve_base_port=6700
 
 resolve() {
   local toplevel offset branch
@@ -61,6 +68,8 @@ resolve() {
   export TREETIME_SERVE_PORT="${TREETIME_SERVE_PORT:-$((serve_base_port + offset))}"
   export TREETIME_WEB2_PORT="${TREETIME_WEB2_PORT:-$((web2_base_port + offset))}"
   export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$((web2_serve_base_port + offset))}"
+  export TREETIME_DOCS_PORT="${TREETIME_DOCS_PORT:-$((docs_base_port + offset))}"
+  export TREETIME_DOCS_SERVE_PORT="${TREETIME_DOCS_SERVE_PORT:-$((docs_serve_base_port + offset))}"
 
   if [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]; then
     TREETIME_HOSTNAME="treetime"
@@ -205,6 +214,8 @@ status() {
   printf 'serve port %s\n' "${TREETIME_SERVE_PORT}"
   printf 'web2  port %s\n' "${TREETIME_WEB2_PORT}"
   printf 'web2 serve port %s\n' "${TREETIME_WEB2_SERVE_PORT}"
+  printf 'docs  port %s\n' "${TREETIME_DOCS_PORT}"
+  printf 'docs serve port %s\n' "${TREETIME_DOCS_SERVE_PORT}"
   printf 'portless name %s.localhost (TREETIME_PORTLESS=%s)\n' "${TREETIME_HOSTNAME}" "${TREETIME_PORTLESS:-allowed}"
   printf 'checkout HEAD %s\n' "$(commit)"
   local svc
@@ -230,9 +241,22 @@ serve_web2() {
   exec bun run --cwd packages/app-web2 preview
 }
 
+up_docs() {
+  resolve
+  printf 'Starting the docs server on http://127.0.0.1:%s/dev (Ctrl-C to stop)\n' "${TREETIME_DOCS_PORT}" >&2
+  exec bun run --cwd packages/app-docs dev
+}
+
+serve_docs() {
+  resolve
+  bun run --silent build:docs
+  printf 'Serving the docs build on http://127.0.0.1:%s/dev (Ctrl-C to stop)\n' "${TREETIME_DOCS_SERVE_PORT}" >&2
+  exec bun run --cwd packages/app-docs preview
+}
+
 case "${1:-}" in
 up | serve | health | status) "${1}" ;;
-up-web2 | serve-web2) "${1//-/_}" ;;
+up-web2 | serve-web2 | up-docs | serve-docs) "${1//-/_}" ;;
 *)
   sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
   exit 1

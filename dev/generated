@@ -92,10 +92,7 @@ produce_i18n() {
     printf '%s names a module by URL; load the inlang plugins from node_modules\n' "${settings}" >&2
     return 1
   fi
-  output="$(cd packages/app-ui && bun node_modules/@inlang/paraglide-js/bin/run.js compile \
-    --project ./project.inlang --outdir "${1}/packages/app-ui/src/i18n/generated" \
-    --strategy baseLocale --output-structure message-modules --emit-ts-declarations \
-    --no-emit-git-ignore --no-emit-prettier-ignore --no-emit-readme 2>&1)"
+  output="$(bun run --silent --cwd packages/app-ui i18n --outdir "${1}/packages/app-ui/src/i18n/generated" 2>&1)"
   if grep -qE 'WARN|ERROR|Error' <<<"${output}"; then
     printf '%s\n' "${output}" >&2
     return 1

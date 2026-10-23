@@ -61,39 +61,46 @@
     "packages/app-docs": {
       "name": "@neherlab/app-docs",
       "version": "0.0.1",
-      "dependencies": {
+      "devDependencies": {
         "@astrojs/markdown-remark": "7.3.3",
         "@astrojs/mdx": "8.1.0",
         "@astrojs/react": "7.1.0",
         "@astrojs/sitemap": "3.7.4",
         "@neherlab/app-contracts": "workspace:*",
         "@neherlab/app-ui": "workspace:*",
+        "@tailwindcss/typography": "0.5.20",
+        "@tailwindcss/vite": "catalog:",
         "@tanstack/react-hotkeys": "catalog:",
+        "@testing-library/dom": "10.4.2",
+        "@testing-library/user-event": "14.6.7",
+        "@types/hast": "3.0.5",
+        "@types/mdast": "4.0.4",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "@types/react-dom": "catalog:",
         "astro": "7.4.0",
         "astro-expressive-code": "0.44.2",
+        "cn": "0.3.0",
         "fumadocs-core": "16.17.4",
+        "happy-dom": "20.14.6",
         "katex": "catalog:",
+        "mdast-util-directive": "3.1.1",
+        "mdast-util-mdx-jsx": "3.2.0",
+        "mdast-util-to-markdown": "2.2.0",
+        "p-wait-for": "catalog:",
         "pagefind": "1.5.2",
         "react": "catalog:",
         "react-dom": "catalog:",
         "rehype-katex": "7.0.1",
         "remark-directive": "4.0.0",
         "remark-math": "6.0.0",
+        "tailwindcss": "catalog:",
+        "ts-pattern": "catalog:",
+        "unist-util-visit": "5.1.0",
+        "vfile": "6.0.3",
+        "vite": "catalog:",
         "zod": "catalog:",
         "zustand": "catalog:",
-      },
-      "devDependencies": {
-        "@happy-dom/global-registrator": "20.14.6",
-        "@tailwindcss/typography": "0.5.20",
-        "@tailwindcss/vite": "catalog:",
-        "@testing-library/dom": "10.4.2",
-        "@testing-library/user-event": "14.6.7",
-        "@types/node": "catalog:",
-        "@types/react": "catalog:",
-        "@types/react-dom": "catalog:",
-        "happy-dom": "20.14.6",
-        "tailwindcss": "catalog:",
-        "vite": "catalog:",
       },
     },
     "packages/app-napi": {
@@ -112,7 +119,6 @@
         "@fontsource/ibm-plex-sans": "5.3.0",
         "@fontsource/lato": "5.3.0",
         "@hookform/resolvers": "5.9.1",
-        "@inlang/paraglide-js": "2.29.0",
         "@leeoniya/ufuzzy": "1.0.19",
         "@mantine/hooks": "9.6.2",
         "@neherlab/app-contracts": "workspace:*",
@@ -152,6 +158,7 @@
       "devDependencies": {
         "@happy-dom/global-registrator": "20.14.6",
         "@iconify-json/lucide": "1.2.135",
+        "@inlang/paraglide-js": "2.29.0",
         "@inlang/plugin-m-function-matcher": "2.3.4",
         "@inlang/plugin-message-format": "4.5.4",
         "@oxc-project/runtime": "0.150.0",
@@ -213,7 +220,7 @@
         "react": "catalog:",
         "react-dom": "catalog:",
         "remeda": "2.50.0",
-        "ts-pattern": "5.9.0",
+        "ts-pattern": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -253,6 +260,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwindcss": "4.3.3",
+    "ts-pattern": "5.9.0",
     "typescript": "7.0.2",
     "vite": "8.3.4",
     "vite-plugin-compression2": "2.5.3",
@@ -3984,7 +3992,7 @@
 
     "unpipe": ["unpipe@1.0.0", "", {}, "sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ=="],
 
-    "unplugin": ["unplugin@3.4.0", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "picomatch": "^4.0.7", "webpack-virtual-modules": "^0.6.2" }, "peerDependencies": { "@farmfe/core": "*", "@rsbuild/core": "*", "@rspack/core": "*", "bun-types-no-globals": "*", "esbuild": "*", "rolldown": "*", "rollup": "*", "unloader": "*", "vite": "*", "webpack": "*" }, "optionalPeers": ["@farmfe/core", "@rsbuild/core", "@rspack/core", "bun-types-no-globals", "esbuild", "rolldown", "rollup", "unloader", "vite", "webpack"] }, "sha512-9skdIFlCsPdFV7wUfZxNsFInlW+7nJmGu2gkTu0OUhF56aXGsHab9x52/QhdJ4lC7ZDPWTxbiC4ANqVlsuaW3w=="],
+    "unplugin": ["unplugin@2.3.11", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "acorn": "^8.15.0", "picomatch": "^4.0.3", "webpack-virtual-modules": "^0.6.2" } }, "sha512-5uKD0nqiYVzlmCRs01Fhs2BdkEgBS3SAVP6ndrBsuK42iC2+JHyxM05Rm9G8+5mkmRtzMZGY8Ct5+mliZxU/Ww=="],
 
     "unplugin-icons": ["unplugin-icons@24.0.0", "", { "dependencies": { "@antfu/install-pkg": "^1.1.0", "@iconify/utils": "^3.1.7", "local-pkg": "^1.2.1", "obug": "^2.2.1", "unplugin": "^3.3.0" }, "peerDependencies": { "@svgr/core": ">=7.0.0", "@svgx/core": "^1.0.1", "@vue/compiler-sfc": "^3.0.2", "@vue/compiler-vapor": "^3.6.0-rc.5", "svelte": "^3.0.0 || ^4.0.0 || ^5.0.0" }, "optionalPeers": ["@svgr/core", "@svgx/core", "@vue/compiler-sfc", "@vue/compiler-vapor", "svelte"] }, "sha512-wV6c7I0PtiIP8KIU7Z1Ukyc2uzgY9ind3RXNu7j63L9qTWDn7CzLnW9FD57DKbfGpWKQv3qyV2PCtBG8Y5Llcg=="],
 
@@ -4243,8 +4251,6 @@
     "@img/sharp-wasm32/@emnapi/runtime": ["@emnapi/runtime@1.11.3", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-Xz4Tpyki7XyrpbUK1jR1AhdAdaXyhhY4lZ3neLodmhpuWfy2PAQN5B46sAiU4liOXGLkHypn/qU+jvfWSCYYLA=="],
 
     "@inlang/paraglide-js/commander": ["commander@11.1.0", "", {}, "sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ=="],
-
-    "@inlang/paraglide-js/unplugin": ["unplugin@2.3.11", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "acorn": "^8.15.0", "picomatch": "^4.0.3", "webpack-virtual-modules": "^0.6.2" } }, "sha512-5uKD0nqiYVzlmCRs01Fhs2BdkEgBS3SAVP6ndrBsuK42iC2+JHyxM05Rm9G8+5mkmRtzMZGY8Ct5+mliZxU/Ww=="],
 
     "@inquirer/core/signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
 
@@ -4599,6 +4605,8 @@
     "unifont/undici": ["undici@8.12.2", "", {}, "sha512-XtuDWVdqTLr3NAxm2ly9/hU6kUsJOgGh1RASzMBbsw6aWCOaQzHdW+QQDfdERjfJ2V5vL5pRPa4RetO9UfivDg=="],
 
     "unplugin-icons/obug": ["obug@2.2.1", "", {}, "sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q=="],
+
+    "unplugin-icons/unplugin": ["unplugin@3.4.0", "", { "dependencies": { "@jridgewell/remapping": "^2.3.5", "picomatch": "^4.0.7", "webpack-virtual-modules": "^0.6.2" }, "peerDependencies": { "@farmfe/core": "*", "@rsbuild/core": "*", "@rspack/core": "*", "bun-types-no-globals": "*", "esbuild": "*", "rolldown": "*", "rollup": "*", "unloader": "*", "vite": "*", "webpack": "*" }, "optionalPeers": ["@farmfe/core", "@rsbuild/core", "@rspack/core", "bun-types-no-globals", "esbuild", "rolldown", "rollup", "unloader", "vite", "webpack"] }, "sha512-9skdIFlCsPdFV7wUfZxNsFInlW+7nJmGu2gkTu0OUhF56aXGsHab9x52/QhdJ4lC7ZDPWTxbiC4ANqVlsuaW3w=="],
 
     "unstorage/chokidar": ["chokidar@5.0.0", "", { "dependencies": { "readdirp": "^5.0.0" } }, "sha512-TQMmc3w+5AxjpL8iIiwebF73dRDF4fBIieAqGn9RGCWaEVwQ6Fb2cGe31Yns0RRIzii5goJ1Y7xbMwo1TxMplw=="],
 

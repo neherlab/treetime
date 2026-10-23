@@ -1,0 +1,43 @@
+---
+import { HeaderBar } from "@neherlab/app-ui/chrome/HeaderBar";
+import { m, type Locale } from "@neherlab/app-ui/i18n";
+import { buttonVariants } from "@neherlab/app-ui/ui/button";
+import { ProductIdentity } from "@neherlab/app-ui/chrome/ProductIdentity";
+import GitHub from "~icons/lucide/github";
+
+import type { NavNode } from "../lib/nav";
+import { assetUrl, docsUrl } from "../lib/urls";
+import { HeaderActions } from "./HeaderActions";
+import { LanguageSelect } from "./LanguageSelect";
+import { MobileNav } from "./MobileNav";
+
+interface Props {
+  locale: Locale;
+  version: string;
+  versionLabel: string;
+  page: string;
+  nodes: NavNode[];
+  currentUrl: string;
+  localeUrls: ReadonlyMap<Locale, string>;
+}
+
+const { locale, version, versionLabel, page, nodes, currentUrl, localeUrls } = Astro.props;
+---
+
+<HeaderBar className="sticky top-0">
+  <MobileNav client:media="(max-width: 767px)" nodes={nodes} currentUrl={currentUrl} locale={locale} />
+  <ProductIdentity logoSrc={assetUrl("logo-small.svg")} version={undefined} href={docsUrl([], locale)} />
+  <HeaderActions client:load locale={locale} version={version} versionLabel={versionLabel} page={page} />
+  <LanguageSelect urls={localeUrls} locale={locale} />
+  <a
+    href="https://github.com/neherlab/treetime"
+    class={buttonVariants({ variant: "ghost", size: "icon" })}
+    aria-label={m.chrome_github({}, { locale })}
+    title={m.chrome_github({}, { locale })}
+  >
+    <GitHub aria-hidden />
+  </a>
+  <a href="https://treetime.neherlab.click" class:list={[buttonVariants({ variant: "default", size: "sm" }), "hidden sm:inline-flex"]}>
+    {m.chrome_open_app({}, { locale })}
+  </a>
+</HeaderBar>

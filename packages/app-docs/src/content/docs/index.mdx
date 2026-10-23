@@ -1,0 +1,51 @@
+---
+title: TreeTime documentation
+description: Time-scaled phylogenies, ancestral sequences, and molecular clocks with TreeTime.
+template: splash
+---
+
+import { buttonVariants } from "@neherlab/app-ui/ui/button";
+
+<div className="not-prose grid gap-6 py-8">
+  <h1 className="font-heading max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+    TreeTime documentation
+  </h1>
+  <p className="text-muted-foreground max-w-2xl text-lg text-pretty">
+    Placeholder text: date the ancestors of a phylogeny, reconstruct ancestral sequences, and fit a molecular clock,
+    from the command line, the web app, or the desktop app.
+  </p>
+  <div className="flex flex-wrap gap-3">
+    <a href="/showcase/typography" className={buttonVariants({ size: "lg" })}>
+      Showcase
+    </a>
+    <a href="/reference/settings/timetree" className={buttonVariants({ variant: "outline", size: "lg" })}>
+      Settings reference
+    </a>
+    <a href="https://treetime.neherlab.click" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+      Open the web app
+    </a>
+  </div>
+</div>
+
+<CardGrid>
+  <LinkCard
+    title="Showcase"
+    description="Every feature of the docs site, with placeholder text."
+    href="/showcase/typography"
+  />
+  <LinkCard
+    title="Writing guide"
+    description="The syntax of callouts, steps, tabs, math, and code."
+    href="/showcase/writing"
+  />
+  <LinkCard
+    title="Settings reference"
+    description="Every setting of each command, generated from the setting catalog."
+    href="/reference/settings/timetree"
+  />
+  <LinkCard
+    title="Command-line reference"
+    description="Every command and flag of the treetime program."
+    href="/reference/cli"
+  />
+</CardGrid>

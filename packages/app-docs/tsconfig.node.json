@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "types": ["node", "bun-types", "bun-types/test", "bun-types/test-globals"],
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": ["astro.config.ts", "src/integrations", "src/env.d.ts", "../../test-matchers.d.ts"],
+  "references": [
+    {
+      "path": "../app-contracts/tsconfig.generated.json"
+    }
+  ]
+}

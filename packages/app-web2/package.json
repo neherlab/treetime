@@ -16,7 +16,7 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "remeda": "2.50.0",
-    "ts-pattern": "5.9.0",
+    "ts-pattern": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,0 +1,1 @@
+export const THEME_SCRIPT = `(()=>{let t="system";try{t=localStorage.getItem("theme")??"system"}catch{}document.documentElement.classList.toggle("dark",t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))})()`;

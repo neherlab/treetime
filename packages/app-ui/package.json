@@ -4,6 +4,9 @@
   "private": true,
   "description": "Shared React components of the TreeTime desktop and web apps",
   "type": "module",
+  "scripts": {
+    "i18n": "paraglide-js compile --project ./project.inlang --strategy baseLocale --output-structure message-modules --emit-ts-declarations --no-emit-git-ignore --no-emit-prettier-ignore --no-emit-readme"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./build/auspice-vite": "./build/auspice-vite.ts",
@@ -17,10 +20,18 @@
     "./port": "./src/port.ts",
     "./port-fetch": "./src/port-fetch.ts",
     "./chrome/*": "./src/chrome/*.tsx",
+    "./fonts": "./src/ui/fonts.ts",
+    "./fuzzy": "./src/fuzzy.ts",
+    "./hotkeys": "./src/hotkeys.ts",
     "./i18n": "./src/i18n/locale.tsx",
+    "./settings/catalog": "./src/settings/catalog.ts",
     "./settings/groups": "./src/settings/groups.ts",
     "./settings/help": "./src/settings/help.tsx",
-    "./env": "./src/env.d.ts"
+    "./theme": "./src/ThemeProvider.tsx",
+    "./ui/*": "./src/ui/*.tsx",
+    "./ui/sidebar-width": "./src/ui/sidebar-width.ts",
+    "./env": "./src/env.d.ts",
+    "./testing/dom": "./src/__tests__/dom.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
@@ -28,7 +39,6 @@
     "@fontsource/ibm-plex-sans": "5.3.0",
     "@fontsource/lato": "5.3.0",
     "@hookform/resolvers": "5.9.1",
-    "@inlang/paraglide-js": "2.29.0",
     "@leeoniya/ufuzzy": "1.0.19",
     "@mantine/hooks": "9.6.2",
     "@neherlab/app-contracts": "workspace:*",
@@ -68,6 +78,7 @@
   "devDependencies": {
     "@happy-dom/global-registrator": "20.14.6",
     "@iconify-json/lucide": "1.2.135",
+    "@inlang/paraglide-js": "2.29.0",
     "@inlang/plugin-m-function-matcher": "2.3.4",
     "@inlang/plugin-message-format": "4.5.4",
     "@oxc-project/runtime": "0.150.0",

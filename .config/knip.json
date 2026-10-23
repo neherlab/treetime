@@ -2,7 +2,9 @@
   "$schema": "https://unpkg.com/knip@6.36.0/schema.json",
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
-    "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": ["types"]
+    "dev/lints/oxlint-anti-slop/vendor/**/*.d.ts": [
+      "types"
+    ]
   },
   "workspaces": {
     ".": {
@@ -11,38 +13,93 @@
         "dev/lints/oxlint-anti-slop/effect/index.ts",
         "dev/lints/oxlint-anti-slop/**/*.test.ts"
       ],
-      "project": ["*.ts", "dev/lints/oxlint/**/*.ts", "dev/lints/oxlint-anti-slop/**/*.ts"],
-      "ignoreDependencies": ["react"]
+      "project": [
+        "*.ts",
+        "dev/lints/oxlint/**/*.ts",
+        "dev/lints/oxlint-anti-slop/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "react"
+      ]
     },
     "packages/app-contracts": {
-      "entry": ["src/generated/index.ts"],
-      "project": ["src/**/*.ts!"],
-      "ignore": ["src/generated/**"]
+      "entry": [
+        "src/generated/index.ts"
+      ],
+      "project": [
+        "src/**/*.ts!"
+      ],
+      "ignore": [
+        "src/generated/**"
+      ]
     },
     "packages/app-ui": {
-      "entry": ["src/App.tsx!"],
-      "project": ["src/**/*.{ts,tsx}!", "!src/**/__tests__/**!"],
-      "ignore": ["src/i18n/generated/**"],
-      "ignoreDependencies": ["tw-animate-css", "@svgr/plugin-jsx", "@oxc-project/runtime"]
+      "entry": [
+        "src/App.tsx!"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}!",
+        "!src/**/__tests__/**!"
+      ],
+      "ignoreDependencies": [
+        "tw-animate-css",
+        "@svgr/plugin-jsx",
+        "@oxc-project/runtime",
+        "@inlang/plugin-message-format",
+        "@inlang/plugin-m-function-matcher"
+      ]
     },
     "packages/app-web": {
-      "entry": ["index.html!"],
-      "project": ["src/**/*.{ts,tsx,css}!"]
+      "entry": [
+        "index.html!"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx,css}!"
+      ]
     },
     "packages/app-web2": {
-      "entry": ["index.html!", "src/backend/worker.ts!"],
-      "project": ["src/**/*.{ts,tsx,css}!"]
+      "entry": [
+        "index.html!",
+        "src/backend/worker.ts!"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx,css}!"
+      ]
+    },
+    "packages/app-docs": {
+      "entry": [
+        "src/pages/**/*.astro",
+        "src/content/**/*.mdx"
+      ],
+      "project": [
+        "*.ts",
+        "src/**/*.{ts,tsx,astro,mdx,css}",
+        "!src/**/__tests__/**"
+      ],
+      "ignoreUnresolved": [
+        "^~icons/"
+      ]
     },
     "packages/app-desktop": {
-      "entry": ["src/main.ts!", "src/backend.ts!", "src/preload.ts!", "renderer/index.html!"],
-      "project": ["src/**/*.{ts,tsx}!", "renderer/**/*.{ts,tsx,css}!"]
+      "entry": [
+        "src/main.ts!",
+        "src/backend.ts!",
+        "src/preload.ts!",
+        "renderer/index.html!"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}!",
+        "renderer/**/*.{ts,tsx,css}!"
+      ]
     },
     "packages/app-napi": {
       "entry": [],
       "project": []
     },
     "packages/app-wasm": {
-      "entry": ["smoke.ts"]
+      "entry": [
+        "smoke.ts"
+      ]
     }
   }
 }

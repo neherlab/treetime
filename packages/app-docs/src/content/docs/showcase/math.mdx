@@ -1,0 +1,64 @@
+---
+title: Math
+description: Inline and display math rendered with KaTeX at build time.
+---
+
+:::note
+This page demonstrates the features of the docs site. Its text is a placeholder.
+:::
+
+Inline math sits in the text, such as the clock rate $\mu$ or the coalescent time scale $\Tc$, which uses a macro of the site.
+
+## Display math
+
+<a id="eq-jc69"></a>
+
+$$
+P_{ii}(t) = \tfrac{1}{4} + \tfrac{3}{4} e^{-4t/3}, \qquad P_{ij}(t) = \tfrac{1}{4} - \tfrac{1}{4} e^{-4t/3} \tag{1}
+$$
+
+where:
+
+- $P_{ii}(t)$ is the probability that a site keeps its state over the branch length $t$
+- $P_{ij}(t)$ is the probability that a site changes to one other given state, for $i \neq j$
+- $t$ is the branch length in expected substitutions per site
+
+Equation [(1)](#eq-jc69) gives the transition probabilities of the Jukes-Cantor model.
+
+## Aligned derivation
+
+<a id="eq-rtt"></a>
+
+$$
+\begin{aligned}
+d_i &= \mu \, (t_i - t_0) + \varepsilon_i \\
+\expect{d_i} &= \mu \, t_i - \mu \, t_0
+\end{aligned} \tag{2}
+$$
+
+where:
+
+- $d_i$ is the root-to-tip distance of tip $i$
+- $t_i$ is the sampling date of tip $i$, and $t_0$ is the date of the root
+- $\mu$ is the clock rate, and $\varepsilon_i$ is the residual of tip $i$
+
+The slope of the regression in equation [(2)](#eq-rtt) estimates the clock rate.
+
+## Matrix
+
+<a id="eq-gtr"></a>
+
+$$
+Q = \begin{pmatrix}
+\cdot & \pi_C r_{AC} & \pi_G r_{AG} & \pi_T r_{AT} \\
+\pi_A r_{AC} & \cdot & \pi_G r_{CG} & \pi_T r_{CT} \\
+\pi_A r_{AG} & \pi_C r_{CG} & \cdot & \pi_T r_{GT} \\
+\pi_A r_{AT} & \pi_C r_{CT} & \pi_G r_{GT} & \cdot
+\end{pmatrix} \tag{3}
+$$
+
+where:
+
+- $Q$ is the rate matrix of the general time-reversible model, with each diagonal entry set so that its row sums to zero
+- $\pi_A, \pi_C, \pi_G, \pi_T$ are the equilibrium frequencies of the states
+- $r_{XY}$ is the exchangeability of the states $X$ and $Y$

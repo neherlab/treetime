@@ -634,6 +634,16 @@ up-web2: _js (build-wasm "dev") (build-wasm-mt "dev")
 serve-web2: _js (build-wasm "prod") (build-wasm-mt "prod")
     dev/app serve-web2
 
+# Start the docs site dev server in the foreground until Ctrl-C; search and the version list work only in `just serve-docs`
+[group("app")]
+up-docs: _js
+    dev/app up-docs
+
+# Build the docs site and serve the build until Ctrl-C
+[group("app")]
+serve-docs: _js
+    dev/app serve-docs
+
 # Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
 desktop: _js (build-napi "dev")
@@ -653,6 +663,11 @@ build-web: _js
 [group("app")]
 build-web2: _js (_compile-wasm-modules "prod") (build-wasm "prod") (build-wasm-mt "prod")
     bun run --silent build:web2
+
+# Build of the docs site into packages/app-docs/dist, with the site root files in packages/app-docs/dist-root
+[group("app")]
+build-docs: _js
+    bun run --silent build:docs
 
 # Production build of the desktop app, with the Node addon of the dist profile
 [group("app")]
@@ -752,7 +767,11 @@ tools-lock-image *tools:
 
 # Install the JavaScript dependencies from bun.lock
 _js:
-    [[ -n "${JS_READY:-}" ]] || bun install --frozen-lockfile --silent
+    [[ -n "${JS_READY:-}" ]] || { bun install --frozen-lockfile --silent && just _astro-sync; }
+
+# Generate the content collection types of the docs site (packages/app-docs/.astro), which the type check and the type-aware lint read
+_astro-sync:
+    bun run --silent --cwd packages/app-docs sync >/dev/null
 
 # Compile both WebAssembly modules at the same time. They use their own target
 # folders and toolchains, and the last step of each, the fat LTO of the dist

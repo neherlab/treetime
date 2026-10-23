@@ -17,3 +17,5 @@ node_modules
 target
 dist
 dist-electron
+.astro
+dist-root

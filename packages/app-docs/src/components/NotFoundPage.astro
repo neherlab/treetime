@@ -1,0 +1,33 @@
+---
+import { locales, m, type Locale } from "@neherlab/app-ui/i18n";
+
+import DocsLayout from "../layouts/DocsLayout.astro";
+import { navNodes } from "../lib/nav";
+import { source } from "../lib/source";
+import { docsUrl } from "../lib/urls";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+
+const version = import.meta.env.BASE_URL.replaceAll(/^\/+|\/+$/gu, "");
+
+const home = docsUrl([], locale);
+---
+
+<DocsLayout
+  locale={locale}
+  title={m.docs_not_found_title({}, { locale })}
+  template="doc"
+  version={version}
+  versionLabel={version}
+  page=""
+  nodes={navNodes(source.getPageTree(locale).children)}
+  currentUrl=""
+  localeUrls={new Map(locales.map((target) => [target, docsUrl([], target)]))}
+>
+  <p>{m.docs_not_found_body({}, { locale })}</p>
+  <p><a href={home}>{m.docs_not_found_home({}, { locale })}</a></p>
+</DocsLayout>

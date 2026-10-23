@@ -1,0 +1,69 @@
+---
+import { m, type Locale } from "@neherlab/app-ui/i18n";
+import { render } from "astro:content";
+
+import DocsLayout from "../layouts/DocsLayout.astro";
+import type { DocsSource } from "../lib/docs-source";
+import { pageView } from "../lib/page-view";
+import { entriesById, source } from "../lib/source";
+import { FallbackNotice } from "./FallbackNotice";
+import { mdxComponents } from "./mdx";
+import { PageFooter } from "./PageFooter";
+import { TableOfContents } from "./TableOfContents";
+import { VersionBanner } from "./VersionBanner";
+
+interface Props {
+  page: ReturnType<DocsSource["getPages"]>[number];
+  locale: Locale;
+}
+
+const { page, locale } = Astro.props;
+
+const entry = entriesById.get(page.data.entryId);
+
+if (entry === undefined) {
+  throw new Error(`the docs page ${page.path} has no content entry ${page.data.entryId}`);
+}
+
+const { Content, headings } = await render(entry);
+
+const view = pageView({ page, locale, tree: source.getPageTree(locale), headings, base: import.meta.env.BASE_URL });
+---
+
+<DocsLayout
+  locale={locale}
+  title={page.data.title}
+  description={page.data.description}
+  template={page.data.template}
+  version={view.version}
+  versionLabel={view.version}
+  page={view.slug}
+  nodes={view.nodes}
+  currentUrl={view.currentUrl}
+  localeUrls={view.localeUrls}
+>
+  {
+    view.showToc && (
+      <details slot="before" class="bg-card mb-4 rounded-lg border px-4 py-2 xl:hidden">
+        <summary class="font-heading cursor-pointer text-sm font-semibold">{m.docs_toc({}, { locale })}</summary>
+        <div class="py-2">
+          <TableOfContents headings={view.tocHeadings} locale={locale} />
+        </div>
+      </details>
+    )
+  }
+  <VersionBanner slot="banner" client:idle version={view.version} page={view.slug} locale={locale} />
+  {view.fallback && <FallbackNotice slot="notice" locale={locale} />}
+  <Content locale={locale} components={mdxComponents} />
+  <PageFooter slot="footer" previous={view.previous} next={view.next} editUrl={view.editUrl} locale={locale} />
+  {
+    view.showToc && (
+      <aside
+        slot="toc"
+        class="sticky top-(--header-height) hidden max-h-[calc(100svh-var(--header-height))] overflow-y-auto py-8 xl:block"
+      >
+        <TableOfContents client:idle headings={view.tocHeadings} locale={locale} />
+      </aside>
+    )
+  }
+</DocsLayout>
