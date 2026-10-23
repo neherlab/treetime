@@ -39,6 +39,7 @@ mod test_pipeline_reroot;
 mod test_prop_optimize_simulated;
 mod test_root_preservation;
 mod test_run_optimize_loop;
+mod test_sim_optimize_indel_policy;
 mod test_sim_optimize_recovery;
 mod test_solver_outcome;
 mod test_topology_cleanup;
