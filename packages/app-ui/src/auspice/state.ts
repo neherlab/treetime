@@ -40,12 +40,15 @@ export interface AuspiceTreeState {
   nodes: AuspiceNode[] | null;
   idxOfInViewRootNode: number;
   visibility: number[] | null;
+  nodeColors: readonly string[];
 }
 
 export interface AuspiceNode {
   name: string;
   arrayIdx: number;
   hasChildren: boolean;
+  fullTipCount: number;
+  parent: AuspiceNode;
 }
 
 export interface AuspiceControlsState {
@@ -55,7 +58,7 @@ export interface AuspiceControlsState {
   panelLayout: string;
   panelsToDisplay: readonly string[];
   selectedNode: AuspiceSelectedNode | null;
-  filters: Readonly<Record<string, readonly AuspiceFilterValue[]>>;
+  filters: Readonly<Partial<Record<string | symbol, readonly AuspiceFilterValue[]>>>;
   performanceFlags: ReadonlyMap<string, boolean>;
   scatterVariables: AuspiceScatterVariables;
 }

@@ -1,5 +1,7 @@
 import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
+import { applyFilter } from "auspice/src/actions/tree";
 import { CLEAN_START, NEW_COLORS } from "auspice/src/actions/types";
+import { NODE_VISIBLE, strainSymbol } from "auspice/src/util/globals";
 
 import { createAuspiceStore } from "../store";
 import { focusNode } from "../store-hooks";
@@ -56,17 +58,39 @@ describe("auspice store", () => {
     });
   });
 
-  test("focusing a tip twice adds no filter", () => {
-    const store = createAuspiceStore();
+  test("focusing a tip twice leaves one strain filter with that tip", () => {
+    const store = loadedFocusStore();
 
-    store.dispatch({
-      ...cleanStart({ tips: 1, controls: { filters: {} } }),
-      tree: { loaded: true, nodes: [{ name: "A", hasChildren: false, arrayIdx: 0, fullTipCount: 1 }] },
-    });
-    focusNode(store, "A");
-    focusNode(store, "A");
+    focusNode(store, "x1a0");
+    focusNode(store, "x1a0");
 
-    expect(store.getState().controls.filters).toStrictEqual({});
+    expect(store.getState().controls.filters[strainSymbol]).toStrictEqual([{ value: "x1a0", active: true }]);
+  });
+
+  test("focusing a tip outside the zoomed clade zooms to its smallest clade with at least 20 tips", () => {
+    const store = loadedFocusStore();
+    focusNode(store, "Y");
+
+    focusNode(store, "x1a0");
+
+    const { nodes, idxOfInViewRootNode } = store.getState().tree;
+
+    expect(nodes?.[idxOfInViewRootNode]?.name).toBe("X1");
+  });
+
+  test("a tip hidden by an active trait filter becomes visible and the filter becomes inactive", () => {
+    const store = loadedFocusStore();
+    store.dispatch(applyFilter("add", "country", ["brazil"]));
+
+    focusNode(store, "x1a0");
+
+    const { tree, controls } = store.getState();
+    const tip = tree.nodes?.find((node) => node.name === "x1a0");
+
+    expect([
+      tip === undefined ? undefined : tree.visibility?.[tip.arrayIdx],
+      controls.filters["country"],
+    ]).toStrictEqual([NODE_VISIBLE, [{ value: "brazil", active: false }]]);
   });
 
   test("a genotype color-by leaves the scatterplot axes unchanged in the rectangular layout", () => {
@@ -151,4 +175,47 @@ function auspiceDocument(meta: Readonly<Record<string, unknown>>) {
     },
     root_sequence: { nuc: "ACG" },
   };
+}
+
+function loadedFocusStore() {
+  const store = createAuspiceStore();
+  const state = createStateFromQueryOrJSONs({ json: focusDocument(), query: {}, dispatch: store.dispatch });
+
+  store.dispatch({ ...state, type: CLEAN_START });
+
+  return store;
+}
+
+function focusDocument() {
+  return {
+    version: "v2",
+    meta: {
+      title: "Focus",
+      updated: "2026-10-24",
+      colorings: [{ key: "country", title: "Country", type: "categorical" }],
+      panels: ["tree"],
+    },
+    tree: {
+      name: "root",
+      node_attrs: { div: 0 },
+      children: [
+        clade("X", [
+          clade("X1", [clade("X1a", tips("x1a", 3, "usa")), ...tips("x1", 19, "usa")]),
+          ...tips("x", 8, "usa"),
+        ]),
+        clade("Y", tips("y", 5, "brazil")),
+      ],
+    },
+  };
+}
+
+function clade(name: string, children: readonly unknown[]) {
+  return { name, node_attrs: { div: 0.1 }, children };
+}
+
+function tips(prefix: string, count: number, country: string) {
+  return Array.from({ length: count }, (_, index) => ({
+    name: `${prefix}${index}`,
+    node_attrs: { div: 0.2, country: { value: country } },
+  }));
 }
