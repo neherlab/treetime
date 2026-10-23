@@ -4,11 +4,14 @@
 # Development image: Rust and Bun toolchains, lint and test tools, and the
 # libraries the desktop app needs. dev/docker/run builds it and runs every
 # command as the host user, with HOME=/tmp/home and the cargo home in the
-# checkout. Ubuntu 24.04 keeps the glibc of the binaries built here no newer than
-# on current hosts, so profiling builds run on the host.
+# checkout. C, C++, and Rust code for x86_64-unknown-linux-gnu compiles and
+# links with the compiler, sysroot, and libraries of the shipped Linux build, so
+# the binaries built here need glibc 2.17 of the GCC 16.2.0 sysroot, not the
+# glibc of Ubuntu, and profiling builds also run on the host.
 FROM ubuntu:noble-20260930.1@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
+# libatomic1 is a run-time library of mold.
 RUN set -euxo pipefail >/dev/null \
 && export DEBIAN_FRONTEND=noninteractive \
 && apt-get update -qq \
@@ -18,11 +21,8 @@ RUN set -euxo pipefail >/dev/null \
   curl \
   file \
   git \
-  libc6-dev \
-  libfontconfig-dev \
-  libgcc-13-dev \
+  libatomic1 \
   libssl-dev \
-  libstdc++-13-dev \
   make \
   pigz \
   pixz \
@@ -88,16 +88,38 @@ COPY dev/docker/files/install-image-tools /
 COPY .config/mise.image.toml /mise-image/mise.toml
 COPY .config/mise.image.lock /mise-image/mise.lock
 
-# clang of LLVM 22 is the C compiler and link driver (`cc` and `c++`), on the C
-# library and the GCC runtime of Ubuntu; the native builds link with mold.
+# clang of LLVM 22 compiles and links x86_64-unknown-linux-gnu code on the
+# sysroot (glibc 2.17), crt files, libgcc, and libstdc++ of the GCC 16.2.0
+# toolchain, as in dev/docker/cross-linux.dockerfile. install-clang-target
+# writes the configuration x86_64-unknown-linux-gnu.cfg next to clang, which
+# clang reads for every call that targets this triple, its default, so `cc` and
+# `c++` use it too, as do the cc crate, the build scripts, and rustc, whose
+# default linker is `cc`. CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER stays
+# unset: it would replace the dylint-link linker of the lint libraries
+# (dev/lints/*/.cargo/config.toml). Development builds select mold in their
+# rustflags; clang takes the last -fuse-ld, so the rustflags win over
+# -fuse-ld=lld of the configuration.
 ENV PATH="/opt/llvm/bin:${PATH}"
+COPY dev/docker/files/install-clang-target /
 RUN set -euxo pipefail >/dev/null \
-&& /install-image-tools "llvm=/opt/llvm" \
+&& /install-image-tools "llvm=/opt/llvm" "gcc-x86_64-unknown-linux-gnu=/opt/gcc-x86_64-unknown-linux-gnu" \
 && clang --version \
-&& ln -sf "/opt/llvm/bin/clang" "/usr/local/bin/cc" \
-&& ln -sf "/opt/llvm/bin/clang++" "/usr/local/bin/c++" \
+&& test -d "/opt/gcc-x86_64-unknown-linux-gnu/lib/gcc/x86_64-unknown-linux-gnu/16.2.0" \
+&& test -d "/opt/gcc-x86_64-unknown-linux-gnu/x86_64-unknown-linux-gnu/sysroot" \
+&& /install-clang-target "/opt/llvm" "x86_64-unknown-linux-gnu" "/opt/gcc-x86_64-unknown-linux-gnu" \
+&& ln -sf "/opt/llvm/bin/x86_64-unknown-linux-gnu-clang" "/usr/local/bin/cc" \
+&& ln -sf "/opt/llvm/bin/x86_64-unknown-linux-gnu-clang++" "/usr/local/bin/c++" \
 && printf 'int main(void) { return 0; }\n' | cc -x c -o /tmp/cc-check - \
-&& rm /tmp/cc-check
+&& printf '#include <string>\nint main() { return std::string("a").size() - 1; }\n' | c++ -x c++ -o /tmp/cxx-check - \
+&& /tmp/cxx-check \
+&& llvm-objdump -T /tmp/cc-check | grep -qE 'GLIBC_2\.2\.5\).*__libc_start_main' \
+&& rm /install-clang-target /tmp/cc-check /tmp/cxx-check
+ENV CC_x86_64_unknown_linux_gnu="/opt/llvm/bin/x86_64-unknown-linux-gnu-clang"
+ENV CXX_x86_64_unknown_linux_gnu="/opt/llvm/bin/x86_64-unknown-linux-gnu-clang++"
+ENV AR_x86_64_unknown_linux_gnu="/opt/llvm/bin/llvm-ar"
+ENV HOST_CC="/opt/llvm/bin/x86_64-unknown-linux-gnu-clang"
+ENV HOST_CXX="/opt/llvm/bin/x86_64-unknown-linux-gnu-clang++"
+ENV HOST_AR="/opt/llvm/bin/llvm-ar"
 
 # The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
 # libraries, the toolchain that cargo-hawk is built against, and the nightly of
