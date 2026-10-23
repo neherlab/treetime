@@ -69,6 +69,7 @@
   "overrides": {
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "dompurify": "3.4.17",
     "katex": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
