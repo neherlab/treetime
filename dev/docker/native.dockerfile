@@ -8,6 +8,11 @@
 # links with the compiler, sysroot, and libraries of the shipped Linux build, so
 # the binaries built here need glibc 2.17 of the GCC 16.2.0 sysroot, not the
 # glibc of Ubuntu, and profiling builds also run on the host.
+#
+# The layers go from the inputs that change least to those that change most:
+# the Rust toolchains (rust-toolchain.toml and the pinned nightlies), the
+# toolchains, Emscripten, and libraries of .config/mise.image.lock, then the
+# tools of .config/mise.lock, so a tool update rebuilds only the last layers.
 FROM ubuntu:noble-20260930.1@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac
 SHELL ["bash", "-euxo", "pipefail", "-c"]
 
@@ -74,6 +79,28 @@ RUN set -euxo pipefail >/dev/null \
 
 COPY dev/docker/files/fetch dev/docker/files/checksums /
 
+# The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
+# libraries, the toolchain that cargo-hawk is built against, and the nightly of
+# the threaded WebAssembly build, which rebuilds std with atomics from rust-src
+# (-Zbuild-std).
+ENV RUSTUP_HOME="/usr/local/rustup"
+ENV CARGO_HOME="/usr/local/cargo"
+ENV PATH="/usr/local/cargo/bin:${PATH}"
+COPY dev/docker/files/install-rust /
+COPY rust-toolchain.toml /tmp/rust/
+COPY dev/lints/dylint-custom/rust-toolchain.toml /tmp/lints/dylint-custom/
+COPY dev/lints/dylint-mordant/rust-toolchain.toml /tmp/lints/dylint-mordant/
+COPY dev/lints/dylint-trailofbits/rust-toolchain.toml /tmp/lints/dylint-trailofbits/
+COPY dev/docker/files/hawk-toolchain dev/docker/files/wasm-threads-toolchain /tmp/
+# hadolint ignore=DL3003
+RUN set -euxo pipefail >/dev/null \
+&& /install-rust "/tmp/rust" \
+&& for dir in /tmp/lints/*; do (cd "${dir}" && rustup toolchain install) || exit 1; done \
+&& rustup toolchain install "$(cat /tmp/hawk-toolchain)" --profile minimal --component rustc-dev,llvm-tools-preview,rust-src \
+&& rustup toolchain install "$(cat /tmp/wasm-threads-toolchain)" --profile minimal --component rust-src,clippy \
+&& chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" \
+&& rm -rf /install-rust /tmp/rust /tmp/lints /tmp/hawk-toolchain /tmp/wasm-threads-toolchain
+
 # mise installs the build toolchains of .config/mise.image.toml here and the
 # tools of .config/mise.toml further down, each at the URLs and checksums of its
 # lockfile, so a change of the development tools keeps the toolchain layers.
@@ -121,64 +148,10 @@ ENV HOST_CC="/opt/llvm/bin/x86_64-unknown-linux-gnu-clang"
 ENV HOST_CXX="/opt/llvm/bin/x86_64-unknown-linux-gnu-clang++"
 ENV HOST_AR="/opt/llvm/bin/llvm-ar"
 
-# The Rust toolchain of rust-toolchain.toml, then the pinned nightly of the lint
-# libraries, the toolchain that cargo-hawk is built against, and the nightly of
-# the threaded WebAssembly build, which rebuilds std with atomics from rust-src
-# (-Zbuild-std).
-ENV RUSTUP_HOME="/usr/local/rustup"
-ENV CARGO_HOME="/usr/local/cargo"
-ENV PATH="/usr/local/cargo/bin:${PATH}"
-COPY dev/docker/files/install-rust /
-COPY rust-toolchain.toml /tmp/rust/
-COPY dev/lints/dylint-custom/rust-toolchain.toml /tmp/lints/dylint-custom/
-COPY dev/lints/dylint-mordant/rust-toolchain.toml /tmp/lints/dylint-mordant/
-COPY dev/lints/dylint-trailofbits/rust-toolchain.toml /tmp/lints/dylint-trailofbits/
-COPY dev/docker/files/hawk-toolchain dev/docker/files/wasm-threads-toolchain /tmp/
-# hadolint ignore=DL3003
-RUN set -euxo pipefail >/dev/null \
-&& /install-rust "/tmp/rust" \
-&& for dir in /tmp/lints/*; do (cd "${dir}" && rustup toolchain install) || exit 1; done \
-&& rustup toolchain install "$(cat /tmp/hawk-toolchain)" --profile minimal --component rustc-dev,llvm-tools-preview,rust-src \
-&& rustup toolchain install "$(cat /tmp/wasm-threads-toolchain)" --profile minimal --component rust-src,clippy \
-&& chmod -R a+w "${RUSTUP_HOME}" "${CARGO_HOME}" \
-&& rm -rf /install-rust /tmp/rust /tmp/lints /tmp/hawk-toolchain /tmp/wasm-threads-toolchain
-
-# mise installs every tool of .config/mise.toml at the URL and sha256 of .config/mise.lock and
-# links their executables into /usr/local/bin. The cargo registry that source
-# builds fetch is a BuildKit cache, so it stays out of the image. The host
-# libraries of .config/mise.toml stay disabled, in this layer and in every `just`
-# recipe, because the image links its own prebuilt libraries (see below).
-ENV MISE_DISABLE_TOOLS="openblas,liblzma"
-COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
-RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
-  set -euxo pipefail >/dev/null \
-&& export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
-&& mise -C "/tmp/mise/project" install \
-&& bin_paths="$(mise -C "/tmp/mise/project" bin-paths)" \
-&& printf '%s\n' "${bin_paths}" | while IFS= read -r dir; do \
-  find -L "${dir}" -mindepth 1 -maxdepth 1 -type f -executable -exec ln -sf -t "/usr/local/bin" {} + || exit 1; \
-done \
-&& chmod -R a+rX "${MISE_DATA_DIR}" \
-&& rm -rf "/tmp/mise" \
-&& just --version \
-&& cargo nextest --version \
-&& cargo dylint --version
-
-# mold links the development builds of the image; the link runs on every edit
-# and is never cached. cargo joins these rustflags with those of the project's
-# .cargo/config.toml. Builds that set RUSTFLAGS (dev/lib/dist-flags.sh) link
-# with rust-lld, as do builds outside the image.
-RUN set -euxo pipefail >/dev/null \
-&& mkdir -p "/.cargo" \
-&& printf '%s\n' \
-  "[target.x86_64-unknown-linux-gnu]" \
-  "rustflags = [\"-Clink-arg=-fuse-ld=mold\"]" \
-  >>"/.cargo/config.toml" \
-&& mold --version
-
 # Emscripten builds the WebAssembly back end of the web2 app for
 # wasm32-unknown-emscripten: rustc links through emcc, which finds Node on PATH.
-# Only the emcc front end goes on PATH, so the clang of Emscripten stays out of
+# Node comes with the tools of .config/mise.toml further down, whose layer
+# also runs the emcc check. Only the emcc front end goes on PATH, so the clang of Emscripten stays out of
 # native builds. emcc runs the configuration
 # .emscripten as Python at start: it names the LLVM and Binaryen of the archive
 # and drops the include paths of the native GCC, which the clang of emcc would
@@ -199,7 +172,6 @@ RUN set -euxo pipefail >/dev/null \
   >"/opt/emscripten/emscripten/.emscripten" \
 && version="$(MISE_TRUSTED_CONFIG_PATHS="/mise-image" mise -C "/mise-image" current "http:emscripten")" \
 && grep -qxF -e "${version}-git" "/opt/emscripten/emscripten/emscripten-version.txt" \
-&& emcc --version \
 && chmod -R a+rwX "/opt/emscripten/emscripten/cache"
 
 # OpenBLAS, liblzma, and libzstd of the native and the WebAssembly builds: the
@@ -212,6 +184,40 @@ COPY dev/docker/files/install-image-libraries dev/lib/dist-flags.sh /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-libraries "x86_64-unknown-linux-gnu" "wasm32-unknown-emscripten" \
 && rm -rf /install-image-libraries /dist-flags.sh /install-image-tools /mise-image "/tmp/mise"
+
+# mise installs every tool of .config/mise.toml at the URL and sha256 of .config/mise.lock and
+# links their executables into /usr/local/bin. The cargo registry that source
+# builds fetch is a BuildKit cache, so it stays out of the image. The host
+# libraries of .config/mise.toml stay disabled, in this layer and in every `just`
+# recipe, because the image links its own prebuilt libraries (see below).
+ENV MISE_DISABLE_TOOLS="openblas,liblzma"
+COPY .config/mise.toml .config/mise.lock /tmp/mise/project/
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+  set -euxo pipefail >/dev/null \
+&& export MISE_TRUSTED_CONFIG_PATHS="/tmp/mise/project" \
+&& mise -C "/tmp/mise/project" install \
+&& bin_paths="$(mise -C "/tmp/mise/project" bin-paths)" \
+&& printf '%s\n' "${bin_paths}" | while IFS= read -r dir; do \
+  find -L "${dir}" -mindepth 1 -maxdepth 1 -type f -executable -exec ln -sf -t "/usr/local/bin" {} + || exit 1; \
+done \
+&& chmod -R a+rX "${MISE_DATA_DIR}" \
+&& rm -rf "/tmp/mise" \
+&& just --version \
+&& cargo nextest --version \
+&& cargo dylint --version \
+&& emcc --version
+
+# mold links the development builds of the image; the link runs on every edit
+# and is never cached. cargo joins these rustflags with those of the project's
+# .cargo/config.toml. Builds that set RUSTFLAGS (dev/lib/dist-flags.sh) link
+# with rust-lld, as do builds outside the image.
+RUN set -euxo pipefail >/dev/null \
+&& mkdir -p "/.cargo" \
+&& printf '%s\n' \
+  "[target.x86_64-unknown-linux-gnu]" \
+  "rustflags = [\"-Clink-arg=-fuse-ld=mold\"]" \
+  >>"/.cargo/config.toml" \
+&& mold --version
 
 # dev/docker/run runs as the host user with HOME=/tmp/home.
 RUN set -euxo pipefail >/dev/null \

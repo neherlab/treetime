@@ -20,7 +20,9 @@
 #   TREETIME_DOCKER_IMAGE   `jupyter` selects the v0 Python image instead
 #   TREETIME_DOCKER_X11=1   Share the host X11 display (desktop app development)
 #   TREETIME_DOCKER_PUSH=1  Push the built image and its layer cache to the
-#                           registry (CI on the base branch only)
+#                           registry (CI on the base branch only), with zstd
+#                           layers, which compress and unpack faster than gzip;
+#                           pulling them needs Docker 23 or later
 #   TREETIME_DOCKER_CPUS    CPUs that one container may use (default 8, at most
 #                           the CPUs of the Docker daemon); scripts that start
 #                           containers in parallel divide it between them
@@ -119,9 +121,9 @@ build_image() {
     docker buildx inspect "${builder}" >/dev/null 2>&1 || docker buildx create --name="${builder}" --driver=docker-container >/dev/null
     flags=(
       --builder="${builder}"
-      --push
+      --output="type=registry,compression=zstd,oci-mediatypes=true"
       --cache-from="type=registry,ref=${registry}:cache-${kind}"
-      --cache-to="type=registry,mode=max,ref=${registry}:cache-${kind}"
+      --cache-to="type=registry,mode=max,ref=${registry}:cache-${kind},compression=zstd,oci-mediatypes=true"
     )
   else
     flags=(--load)

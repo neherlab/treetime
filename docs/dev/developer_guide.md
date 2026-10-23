@@ -515,4 +515,4 @@ Opening or reopening a pull request also starts a run, so a pull request gets it
 
 `.github/workflows/web.yml` builds and uploads the web2 app on every push (see Web app deploys).
 
-The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Only pushes to `rust` publish images.
+The CI jobs pull the container images from Docker Hub by the hash of their build inputs, and build them when the inputs changed. Only pushes to `rust` publish images, with zstd-compressed layers, which compress and unpack faster than gzip and need Docker 23 or later to pull. The layers of each image go from the inputs that change least to those that change most, so a tool update in `.config/mise.toml` rebuilds only the last layers.
