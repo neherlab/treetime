@@ -114,6 +114,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     let CheckConfigResponse::Invalid { checks, .. } = response else {
       panic!("expected an invalid config, got {response:?}");
@@ -151,6 +152,7 @@ pub(crate) mod tests {
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,
+      replace_inputs: SparseConfig::default(),
     });
     assert!(
       matches!(response, CheckConfigResponse::Valid { .. }),
