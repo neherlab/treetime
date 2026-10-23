@@ -913,24 +913,6 @@ export type ResultColoring = {
    * Distinct states of a categorical coloring, sorted; empty for other kinds.
    */
   states: Array<string>;
-  /**
-   * Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.
-   */
-  scale: Array<StateColor>;
-};
-
-/**
- * Color of one state of a categorical coloring.
- */
-export type StateColor = {
-  /**
-   * Value of the node attribute.
-   */
-  state: string;
-  /**
-   * CSS hex color.
-   */
-  color: string;
 };
 
 /**

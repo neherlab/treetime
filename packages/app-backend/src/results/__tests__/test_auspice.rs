@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::results::auspice::display_auspice;
-  use crate::results::tree::result_colorings;
   use eyre::Report;
-  use helpers::{MUTED, auspice, scales};
+  use helpers::{MUTED, auspice};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use serde_json::{Value, json};
+  use serde_json::json;
   use treetime::o;
   use treetime_utils::io::json::to_json_value;
 
@@ -62,31 +61,6 @@ mod tests {
     Ok(())
   }
 
-  #[rustfmt::skip]
-  #[rstest]
-  #[case::trait_with_two_states(("country",    "categorical", 2,  None))]
-  #[case::trait_with_ten_states(("country",    "categorical", 10, None))]
-  #[case::genotype_with_scale(  ("gt",         "categorical", 2,  Some(json!([["s0", "#000000"]]))))]
-  #[case::clock_outliers(       ("bad_branch", "categorical", 2,  None))]
-  #[trace]
-  fn test_display_auspice_scales_match_the_result_colorings(
-    #[case] (key, kind, states, own): (&str, &str, usize, Option<Value>),
-  ) -> Result<(), Report> {
-    let input = auspice(key, kind, states, own);
-    let colorings = result_colorings(&input)?;
-
-    let document = display_auspice(input)?;
-
-    assert_eq!(
-      colorings
-        .into_iter()
-        .map(|coloring| coloring.scale)
-        .collect::<Vec<_>>(),
-      scales(&document.0)
-    );
-    Ok(())
-  }
-
   #[test]
   fn test_display_auspice_changes_nothing_but_the_color_scales() -> Result<(), Report> {
     let input = auspice("country", "categorical", 2, None);
@@ -100,7 +74,6 @@ mod tests {
   }
 
   mod helpers {
-    use crate::results::tree::StateColor;
     use serde_json::{Value, json};
     use treetime_io::auspice_types::AuspiceTree;
     use treetime_utils::io::json::from_json_value;
@@ -123,25 +96,6 @@ mod tests {
         "tree": { "name": "root", "node_attrs": { "div": 0.0 }, "children": children }
       }))
       .unwrap()
-    }
-
-    pub(super) fn scales(tree: &AuspiceTree) -> Vec<Vec<StateColor>> {
-      tree
-        .data
-        .meta
-        .colorings
-        .iter()
-        .map(|coloring| {
-          coloring
-            .scale
-            .iter()
-            .map(|[state, color]| StateColor {
-              state: state.clone(),
-              color: color.clone(),
-            })
-            .collect()
-        })
-        .collect()
     }
   }
 }

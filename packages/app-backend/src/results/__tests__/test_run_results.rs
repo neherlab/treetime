@@ -21,6 +21,7 @@ mod tests {
   use helpers::{
     auspice_path, clock_model, dataset, finished_run, homoplasy_config, output_path, timetree_config, zika,
   };
+  use itertools::izip;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{Value, json};
@@ -547,30 +548,10 @@ mod tests {
       .iter()
       .find(|coloring| coloring["key"] == "region")
       .map(|coloring| coloring["scale"].clone());
-    assert_eq!(
-      (
-        vec!["#332288", "#88ccee", "#44aa99", "#117733"],
-        Some(json!(
-          region
-            .scale
-            .iter()
-            .map(|color| [&color.state, &color.color])
-            .collect::<Vec<_>>()
-        )),
-      ),
-      (
-        region
-          .scale
-          .iter()
-          .map(|color| color.color.as_str())
-          .collect::<Vec<_>>(),
-        scale,
-      )
-    );
-    assert_eq!(
-      region.states,
-      region.scale.iter().map(|color| color.state.clone()).collect::<Vec<_>>()
-    );
+    let expected = izip!(&region.states, ["#332288", "#88ccee", "#44aa99", "#117733"])
+      .map(|(state, color)| [state.as_str(), color])
+      .collect::<Vec<_>>();
+    assert_eq!(Some(json!(expected)), scale);
     Ok(())
   }
 
@@ -594,11 +575,11 @@ mod tests {
 
     let document = to_json_value(&run_auspice(&runs, &id)?)?;
 
-    let colorings = run_results(&runs, &id)?.tree.expect("the run wrote an Auspice tree").colorings;
     let mut expected: Value = serde_json::from_slice(&written)?;
-    for (coloring, result) in expected["meta"]["colorings"].as_array_mut().expect("colorings").iter_mut().zip(&colorings) {
-      if !result.scale.is_empty() {
-        coloring["scale"] = json!(result.scale.iter().map(|color| [&color.state, &color.color]).collect::<Vec<_>>());
+    let displayed = document["meta"]["colorings"].as_array().expect("colorings");
+    for (coloring, shown) in izip!(expected["meta"]["colorings"].as_array_mut().expect("colorings"), displayed) {
+      if let Some(scale) = shown.get("scale") {
+        coloring["scale"] = scale.clone();
       }
     }
     assert_eq!((written, expected), (fs::read(&path)?, document));

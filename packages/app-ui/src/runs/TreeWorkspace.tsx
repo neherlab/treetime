@@ -5,7 +5,8 @@ import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
 import { useApi } from "../api/hooks";
 import { AuspiceTree } from "../auspice/AuspiceTree";
-import type { AuspiceState } from "../auspice/state";
+import { traitColors } from "../auspice/colors";
+import type { AuspiceMetadataState, AuspiceNode, AuspiceState } from "../auspice/state";
 import type { AuspiceStore } from "../auspice/store";
 import { colorTreeBy, focusNode, showWholeTree, useAuspiceSelector, useAuspiceStore } from "../auspice/store-hooks";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
@@ -19,6 +20,7 @@ export interface TreeLink {
   select: (name: string) => void;
   reset: () => void;
   setColorBy: (colorBy: string) => void;
+  stateColors: (attribute: string) => ReadonlyMap<string, string>;
 }
 
 export function TreeWorkspace({
@@ -68,11 +70,14 @@ function useTreeLink(store: AuspiceStore, tree: ResultTree): TreeLink {
   const select = useCallback((name: string) => focusNode(store, name), [store]);
   const reset = useCallback(() => showWholeTree(store), [store]);
   const setColorBy = useCallback((key: string) => colorTreeBy(store, key), [store]);
+  const nodes = useAuspiceSelector(store, selectNodes);
+  const metadata = useAuspiceSelector(store, selectMetadata);
+  const stateColors = useCallback((attribute: string) => traitColors(nodes, metadata, attribute), [metadata, nodes]);
   const focus = nodeAt(tree, byName.get(focusName ?? ""));
 
   return useMemo(
-    () => ({ focus, zoomed, inView, colorBy, select, reset, setColorBy }),
-    [colorBy, focus, inView, reset, select, setColorBy, zoomed],
+    () => ({ focus, zoomed, inView, colorBy, select, reset, setColorBy, stateColors }),
+    [colorBy, focus, inView, reset, select, setColorBy, stateColors, zoomed],
   );
 }
 
@@ -91,6 +96,14 @@ function selectFocusName(state: AuspiceState): string | undefined {
 
 function selectInViewRootName(state: AuspiceState): string | undefined {
   return state.tree.nodes?.[state.tree.idxOfInViewRootNode]?.name;
+}
+
+function selectNodes(state: AuspiceState): readonly AuspiceNode[] | null {
+  return state.tree.nodes;
+}
+
+function selectMetadata(state: AuspiceState): AuspiceMetadataState {
+  return state.metadata;
 }
 
 function selectColorBy(state: AuspiceState): string {

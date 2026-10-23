@@ -2837,39 +2837,13 @@
             "items": {
               "type": "string"
             }
-          },
-          "scale": {
-            "description": "Colors of the states in the displayed Auspice tree; empty when Auspice chooses them.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StateColor"
-            }
           }
         },
         "required": [
           "key",
           "title",
           "kind",
-          "states",
-          "scale"
-        ]
-      },
-      "StateColor": {
-        "description": "Color of one state of a categorical coloring.",
-        "type": "object",
-        "properties": {
-          "state": {
-            "description": "Value of the node attribute.",
-            "type": "string"
-          },
-          "color": {
-            "description": "CSS hex color.",
-            "type": "string"
-          }
-        },
-        "required": [
-          "state",
-          "color"
+          "states"
         ]
       },
       "RunModels": {

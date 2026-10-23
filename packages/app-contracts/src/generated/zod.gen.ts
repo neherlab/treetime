@@ -508,22 +508,13 @@ export const zResultNode = z.object({
 });
 
 /**
- * Color of one state of a categorical coloring.
- */
-export const zStateColor = z.object({
-  state: z.string(),
-  color: z.string()
-});
-
-/**
  * A coloring of the Auspice tree.
  */
 export const zResultColoring = z.object({
   key: z.string(),
   title: z.string(),
   kind: z.string(),
-  states: z.array(z.string()),
-  scale: z.array(zStateColor)
+  states: z.array(z.string())
 });
 
 /**
