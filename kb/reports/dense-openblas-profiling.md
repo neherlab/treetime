@@ -39,7 +39,7 @@ The profiling binary is written to `.build/docker/profiling/treetime`. The relea
 
 ### 2.3 OpenBLAS source
 
-The project uses prebuilt static OpenBLAS from [binarylandia/build_openblas](https://github.com/binarylandia/build_openblas), installed via [`dev/docker/files/install-openblas`](../../dev/docker/files/install-openblas). The [2024-11-07 release](https://github.com/binarylandia/build_openblas/releases/tag/2024-11-07_22-51-18) provides both variants for each target triplet:
+At the report commit, the containers used prebuilt static OpenBLAS from [binarylandia/build_openblas](https://github.com/binarylandia/build_openblas), installed by the script `dev/docker/files/install-openblas`. The [2024-11-07 release](https://github.com/binarylandia/build_openblas/releases/tag/2024-11-07_22-51-18) provides both variants for each target triplet:
 
 - `openblas-static-threads-0.3.28` -- threaded (includes internal thread pool)
 - `openblas-static-0.3.28` -- sequential (no thread pool)
@@ -103,7 +103,7 @@ hyperfine --warmup 1 --runs 5 \
 
 ### 3.2 Sequential OpenBLAS
 
-**Method.** Changed [`dev/docker/files/install-openblas`](../../dev/docker/files/install-openblas) to download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28` (both from the same [binarylandia release](https://github.com/binarylandia/build_openblas/releases/tag/2024-11-07_22-51-18)). Rebuilt Docker image. Clean-rebuilt both profiling and release binaries. Verified `blas_thread_server` symbol is absent from the binary. Ran the profile and benchmark procedure from 3.1.
+**Method.** Changed `dev/docker/files/install-openblas` to download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28` (both from the same [binarylandia release](https://github.com/binarylandia/build_openblas/releases/tag/2024-11-07_22-51-18)). Rebuilt Docker image. Clean-rebuilt both profiling and release binaries. Verified `blas_thread_server` symbol is absent from the binary. Ran the profile and benchmark procedure from 3.1.
 
 ```bash
 # Verify the symbol is gone
@@ -204,6 +204,9 @@ The dominant cost is log-space probability arithmetic in the marginal forward/ba
 Log/exp arithmetic (36%), per-column GTR inference (13%), and per-column argmax (13%) are all O(L) in alignment length. The primary lever for further improvement is reducing L through column compression. Rayon work-stealing at 9.8% suggests task granularity could also be coarsened.
 
 ## 5. Out-of-Docker builds
+
+> [!NOTE]
+> Sections 5.1 to 5.4 describe the build setup at the report commit. The current builds link OpenBLAS through the build script of `packages/treetime-openblas` and pkg-config: the project archives of `.config/mise.toml` (hosts) and `.config/mise.image.toml` (containers), single-threaded on every native target, or the OpenBLAS of the system. The section "Host" of [docs/dev/developer_guide.md](../../docs/dev/developer_guide.md) describes host builds and `OPENBLAS_NUM_THREADS=1` for a threaded system OpenBLAS.
 
 The Docker fix (switching to `openblas-static-0.3.28`) only affects Docker-based builds. Developers building on the host are affected by a separate configuration path.
 
@@ -328,7 +331,7 @@ If `blas_thread_server` does not appear in the profile output, the mitigation is
 
 ### 6.1 Immediate (apply now)
 
-- Switch Docker builds to sequential OpenBLAS -- change [`dev/docker/files/install-openblas`](../../dev/docker/files/install-openblas) to download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28`. No code changes required. Eliminates 49.5% CPU waste for Docker-based builds.
+- Switch Docker builds to sequential OpenBLAS: download `openblas-static-0.3.28` instead of `openblas-static-threads-0.3.28`. No code changes required. Eliminates 49.5% CPU waste for Docker-based builds. Done: the containers and the mise archives of hosts link the sequential `openblas-static-` archives of build_openblas.
 - Set `OPENBLAS_NUM_THREADS=1` at startup -- add a one-line `std::env::set_var("OPENBLAS_NUM_THREADS", "1")` early in `main()`. Mitigates threaded OpenBLAS for all users on all platforms, including host builds and pre-built binaries distributed to end users.
 - Update developer guide -- replace `libopenblas-dev` with `libopenblas-serial-dev` in the [developer guide](../../docs/dev/developer_guide.md) dependency list.
 
