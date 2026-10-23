@@ -11,6 +11,7 @@ const alertVariants = cva(
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current",
         warning: "border-warning/40 bg-warning/10 *:[svg]:text-warning",
+        success: "border-success/40 bg-success/10 *:[svg]:text-success",
       },
     },
     defaultVariants: {
@@ -19,8 +20,13 @@ const alertVariants = cva(
   },
 );
 
-function Alert({ className, variant, ...props }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
-  return <div data-slot="alert" role="alert" className={cn(alertVariants({ variant }), className)} {...props} />;
+function Alert({
+  className,
+  variant,
+  role = "alert",
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+  return <div data-slot="alert" role={role} className={cn(alertVariants({ variant }), className)} {...props} />;
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
