@@ -17,7 +17,7 @@ The fixtures still hold the expected values of all datasets.
 | `ebola_20` | v1 dates 8 internal nodes that v0 leaves out ([N-timetree-dense-golden-master-node-mismatch.md](N-timetree-dense-golden-master-node-mismatch.md)) |
 | `tb_20` | v1 dates 6 internal nodes that v0 leaves out; 33.9 years at `NODE_0000016` |
 | `mpox_clade_ii_20` | exceeds the 300 s test timeout |
-| `zika_20` | the metadata has no column `#name` ([M-timetree-date-header-hash.md](M-timetree-date-header-hash.md)) |
+| `zika_20` | v1 dates 3 internal nodes that v0 leaves out ([N-timetree-dense-golden-master-node-mismatch.md](N-timetree-dense-golden-master-node-mismatch.md)); 0.077 years at `NODE_0000012` |
 
 The gaps on dengue, lassa and rsv are far above the 0.070 years of flu. No measurement separates a v1 defect from a fixture effect.
 

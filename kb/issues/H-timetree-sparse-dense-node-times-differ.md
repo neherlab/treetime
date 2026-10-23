@@ -24,7 +24,7 @@ Largest node-time difference between the modes, in years, measured with the inpu
 | `lassa_L_20` | 0.975 (0.931) | 1.167 (1.106) | `NODE_0000005` | 1.046 (0.971) | 0.995 (0.964) |
 
 - `mpox_clade_ii_20` exceeds the 300 s test timeout for the dense and the sparse run together
-- `zika_20` fails while reading the dates, before inference (see [M-timetree-date-header-hash.md](M-timetree-date-header-hash.md))
+- `zika_20` differs by $1.8 \cdot 10^{-3}$ years at `NODE_0000014` with indels included and excluded (code of 2026-10-23)
 
 ## Evidence
 

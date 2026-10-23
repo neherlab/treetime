@@ -197,7 +197,6 @@ Recommendation: 2a and 2b as opt-in flags, off by default. Defer 2c until a user
 
 - [kb/issues/N-io-sequence-name-matching-unreliable.md](../issues/N-io-sequence-name-matching-unreliable.md): user-facing name-matching defects, the source issue of this proposal
 - [kb/issues/N-io-missing-name-policy-differs-across-subsystems.md](../issues/N-io-missing-name-policy-differs-across-subsystems.md): what each input does with unmatched names
-- [kb/issues/M-dates-date-column-requires-exact-header-match.md](../issues/M-dates-date-column-requires-exact-header-match.md): date column detection matches exact headers only
 - [kb/issues/M-mugration-column-detection-no-positional-fallback.md](../issues/M-mugration-column-detection-no-positional-fallback.md): mugration column detection lacks the positional fallback of v0
 
 ### Proposals
