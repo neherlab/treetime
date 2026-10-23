@@ -22,7 +22,9 @@
 # - macOS: libraries in /usr/lib and frameworks in /System/Library
 #
 # It also fails when a macOS binary names another minimum macOS version than the
-# deployment target of its image.
+# deployment target of its image, and when the allocator functions of the C
+# library of a Linux binary (malloc, free, and the others) are not those of
+# jemalloc.
 #
 set -euo pipefail
 shopt -s inherit_errexit
@@ -104,6 +106,40 @@ macos_min_version() {
   '
 }
 
+# Print the allocator functions of the C library that a Linux binary does not
+# take from jemalloc. The binaries build jemalloc without a symbol prefix
+# (override_allocator_on_supported_platforms of tikv-jemalloc-sys), so its
+# malloc and free replace those of the C library, and the C code of the binary
+# (OpenBLAS, liblzma, libzstd, the C library itself) allocates through jemalloc
+# too. A glibc binary must define and export every allocator function of
+# glibc, so that glibc binds its own calls to it. A musl binary links the C
+# library statically and must define the functions that the
+# override_allocator_on_supported_platforms feature keeps; the linker drops
+# the other functions of jemalloc (memalign, valloc, malloc_usable_size) when
+# nothing calls them, and binds a call to them to jemalloc, which defines them
+# before the C library is searched. The jemalloc function mallocx shows that
+# the definitions are those of jemalloc.
+allocator_not_jemalloc() {
+  local file="${1}" exported=() functions="malloc calloc realloc free posix_memalign aligned_alloc"
+  case "${target}" in
+  *-linux-gnu)
+    exported=(--dynamic)
+    functions+=" memalign valloc malloc_usable_size"
+    ;;
+  *-linux-musl) ;;
+  *) return 0 ;;
+  esac
+  /opt/llvm/bin/llvm-nm --defined-only "${exported[@]}" "${file}" |
+    functions="${functions}" awk '
+      BEGIN { n = split(ENVIRON["functions"], name, " "); for (i = 1; i <= n; i++) missing[name[i]] = 1 }
+      $2 == "T" { delete missing[$3] }
+      END { for (f in missing) print f }
+    ' | sort
+  if ! /opt/llvm/bin/llvm-nm --defined-only "${file}" | awk '$2 == "T" && $3 == "mallocx" { found = 1 } END { exit !found }'; then
+    printf 'mallocx\n'
+  fi
+}
+
 # Print the glibc symbol versions above the oldest supported glibc.
 glibc_too_new() {
   local objdump version
@@ -156,6 +192,16 @@ if [[ "${target}" == *-linux-gnu ]]; then
     while IFS= read -r version; do
       printf '  * %s\n' "${version}" >&2
     done <<<"${too_new}"
+    failed=1
+  fi
+fi
+if [[ -z "${lib}" && "${target}" == *-linux-* ]]; then
+  not_jemalloc="$(allocator_not_jemalloc "${file}")"
+  if [[ -n "${not_jemalloc}" ]]; then
+    printf '%s does not take these allocator functions from jemalloc:\n' "${file}" >&2
+    while IFS= read -r entry; do
+      printf '  * %s\n' "${entry}" >&2
+    done <<<"${not_jemalloc}"
     failed=1
   fi
 fi
