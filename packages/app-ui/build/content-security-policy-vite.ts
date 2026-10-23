@@ -4,28 +4,33 @@ export interface ContentSecurityPolicyOptions {
   webAssembly?: boolean;
 }
 
-export function contentSecurityPolicy(
+export type ContentSecurityPolicyDirective = readonly [name: string, sources: readonly string[]];
+
+export function contentSecurityPolicyDirectives(
   devServer: boolean,
   { webAssembly = false }: ContentSecurityPolicyOptions = {},
-): string {
-  const scriptSources = [
-    "'self'",
-    ...(devServer ? ["'unsafe-inline'"] : []),
-    ...(webAssembly ? ["'wasm-unsafe-eval'"] : []),
-  ].join(" ");
-
+): ContentSecurityPolicyDirective[] {
   return [
-    "default-src 'self'",
-    `script-src ${scriptSources}`,
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    "connect-src 'self'",
-    "worker-src 'self' blob:",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join("; ");
+    ["default-src", ["'self'"]],
+    [
+      "script-src",
+      ["'self'", ...(devServer ? ["'unsafe-inline'"] : []), ...(webAssembly ? ["'wasm-unsafe-eval'"] : [])],
+    ],
+    ["style-src", ["'self'", "'unsafe-inline'"]],
+    ["img-src", ["'self'", "data:", "blob:"]],
+    ["font-src", ["'self'", "data:"]],
+    ["connect-src", ["'self'"]],
+    ["worker-src", ["'self'", "blob:"]],
+    ["object-src", ["'none'"]],
+    ["base-uri", ["'none'"]],
+    ["form-action", ["'none'"]],
+  ];
+}
+
+export function contentSecurityPolicy(devServer: boolean, options: ContentSecurityPolicyOptions = {}): string {
+  return contentSecurityPolicyDirectives(devServer, options)
+    .map(([name, sources]) => `${name} ${sources.join(" ")}`)
+    .join("; ");
 }
 
 export function contentSecurityPolicyMeta(options: ContentSecurityPolicyOptions = {}): Plugin {
