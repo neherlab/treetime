@@ -25,7 +25,7 @@ pub fn write_rtt_chart(
   write_file_with(filepath, |writer| {
     writer
       .write_all(&bytes)
-      .wrap_err_with(|| format!("When writing the {format:?} chart"))
+      .wrap_err_with(|| format!("When writing the {format} chart"))
   })
 }
 

@@ -57,10 +57,13 @@ pub struct UnsupportedExtension {
   pub extensions: &'static str,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 pub enum ChartFormat {
+  #[display("SVG")]
   Svg,
+  #[display("PNG")]
   Png,
+  #[display("PDF")]
   Pdf,
 }
 
