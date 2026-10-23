@@ -27,6 +27,11 @@
 # refers to a file that is not stored yet. Files that a previous upload stored and
 # this build lacks stay, so open pages of the previous version keep working.
 #
+# The build is uploaded once, to the first site, one file per `aws s3 cp` call.
+# Every other site gets copies of exactly these files from the first site inside
+# the bucket, which keep their content type, encoding, and cache control and take
+# one call per site; a site whose copy fails gets the upload instead.
+#
 # Options:
 #   -h, --help       Show this help
 #   --dist <dir>     Build to upload (default: packages/app-web2/dist)
@@ -133,10 +138,17 @@ main() {
   export DIST="${dist}" AWS_S3_BUCKET HASHED_NAME
   export -f upload_file content_type cache_control
 
-  for site in "${sites[@]}"; do
-    printf "Uploading %d files to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${site}" >&2
-    upload_all "${site}" "${files[@]}"
-    upload_all "${site}" "${pages[@]}"
+  local first="${sites[0]}"
+  printf "Uploading %d files to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${first}" >&2
+  upload_all "${first}" "${files[@]}"
+  upload_all "${first}" "${pages[@]}"
+  for site in "${sites[@]:1}"; do
+    printf "Copying %d files from %s to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${first}" "${site}" >&2
+    if ! { copy_all "${first}" "${site}" "${files[@]}" && copy_all "${first}" "${site}" "${pages[@]}"; }; then
+      printf "Copying to %s failed; uploading the build to it instead\n" "${site}" >&2
+      upload_all "${site}" "${files[@]}"
+      upload_all "${site}" "${pages[@]}"
+    fi
   done
 
   aws cloudfront create-invalidation --distribution-id "${AWS_CLOUDFRONT_DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id" >/dev/null
@@ -183,6 +195,31 @@ upload_all() {
   # shellcheck disable=SC2016 # $1 and $2 expand in the child shell
   printf "%s\0" "$@" |
     xargs -0 -P "${UPLOAD_JOBS}" -I {} bash -c 'upload_file "$1" "$2" || exit 255' _ "${site}" {}
+}
+
+# Copy the given files of the build from one site to another inside the bucket,
+# with one `aws s3 cp` call that filters the folder of the first site by their
+# keys. The copies keep the content type, encoding, and cache control of the
+# uploads (`metadata-directive`, which reads no tags). A key with a character
+# that the filters read as a pattern is copied on its own.
+copy_all() {
+  local from="${1}" to="${2}"
+  shift 2
+  (($# > 0)) || return 0
+  local filters=() file key
+  for file in "$@"; do
+    key="${file%.html}"
+    case "${key}" in
+    *'*'* | *'?'* | *'['*)
+      aws s3 cp --copy-props metadata-directive --only-show-errors \
+        "s3://${AWS_S3_BUCKET}/${from}/${key}" "s3://${AWS_S3_BUCKET}/${to}/${key}" || return 1
+      ;;
+    *) filters+=(--include "${key}") ;;
+    esac
+  done
+  ((${#filters[@]} > 0)) || return 0
+  aws s3 cp --recursive --copy-props metadata-directive --only-show-errors --exclude "*" "${filters[@]}" \
+    "s3://${AWS_S3_BUCKET}/${from}/" "s3://${AWS_S3_BUCKET}/${to}/"
 }
 
 upload_file() {
