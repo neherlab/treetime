@@ -2,7 +2,7 @@
 
 ## Summary
 
-`just dylint` fails on `rust`, and so does the CI job "Check (custom lints)" from commit `a013d8997` on. The lint libraries of `dev/lints/` (`custom`, `mordant`, `trailofbits`) report 55 findings in the crates they reach, and five application crates are not linted at all, so their findings are unknown.
+`just dylint` fails on `rust`, and so does the CI job "Check (custom lints)" from commit `a013d8997` on. The lint libraries of `dev/lints/` (`custom`, `mordant`, `trailofbits`) report 53 findings in the crates they reach, and five application crates are not linted at all, so their findings are unknown.
 
 ## Crates without a result
 
@@ -19,9 +19,7 @@ The `no_comments` lint of the `custom` library rejects the `///` lines in the `m
   - `NodePosterior`: `packages/treetime/src/coalescent/__tests__/test_mean_field.rs` (3), `packages/treetime/src/test_utils/timetree.rs` (2), `packages/treetime/src/timetree/__tests__/test_confidence_extract.rs`, `packages/treetime/src/timetree/__tests__/test_time_inference.rs`
   - `NodePosterior::time` assigned directly: `packages/treetime/src/timetree/__tests__/test_round.rs` (4), `packages/treetime/src/timetree/convergence/__tests__/test_node_times.rs`
 - **Catch-all arm over an own enum** (`wildcard_over_own_enum`): `packages/treetime-distribution/src/distribution_core/distribution.rs` and `packages/treetime-distribution/src/distribution_ops/__tests__/test_mass_trim.rs` (`Distribution`), `packages/treetime-distribution/src/distribution_ops/mass_profile.rs` (`Cell`)
-- **Repeated match** (`same_match_twice`, on `treetime_grid::Side`): `packages/treetime-distribution/src/distribution_ops/__tests__/test_divide.rs`
 - **Discarded error** (`let Ok(..) = .. else` drops the error): `packages/treetime/src/partition/marginal/sparse/reconstruct.rs`
-- **Renamed import**: `packages/treetime/src/timetree/max_posterior_region.rs`
 - **Version suffix** (`versioned_name`): `test_augur_node_data_mugration_model_and_root_match_v0` in `packages/app-commands/src/commands/mugration/__tests__/test_augur_node_data.rs`. Here `v0` names the reference implementation of the test, TreeTime 0.x
 - **Duplicate helper** (`mordant`, same signature and body): the test helper `function` in `packages/treetime-distribution/src/distribution_ops/__tests__/test_mass_profile_tails.rs` copies the one in `packages/treetime-distribution/src/distribution_ops/__tests__/test_mass_profile.rs`
 
