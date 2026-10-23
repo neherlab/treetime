@@ -39,6 +39,18 @@ aarch64 ^crc32_arch_optimized$
 # gzp, through cpu_features::is_enabled_avx2_and_bmi2).
 x86_64 ^<?(rustfft|memchr|aho_corasick|matrixmultiply|crc32fast|simdutf8|uuid_simd|chacha20|bytecount|zlib_rs)::
 
+# The image decoders of the chart libraries: the AVX2 IDCT, color conversion,
+# and upsamplers of zune-jpeg (JPEG images in resvg and krilla), which
+# choose_idct_func(), choose_idct_4x4_func(),
+# choose_ycbcr_to_rgb_convert_func(), and the choose_*_samp_function()
+# functions of upsampler.rs select only when
+# DecoderOptions::use_avx2() of zune-core is true
+# (is_x86_feature_detected!("avx2")), and the AVX2 Adler-32 of simd-adler32
+# (through fdeflate and miniz_oxide), which imp::avx2::get_imp() selects with
+# is_x86_feature_detected!("avx2").
+x86_64 ^zune_jpeg::(idct::avx2|color_convert::avx|upsampler::avx2)::
+x86_64 ^simd_adler32::imp::avx2::
+
 # ring (TLS of the examples download): the assembly routines that its CPU
 # feature flags (OPENSSL_ia32cap_P) select.
 x86_64 ^ring_core_[0-9_]+_
