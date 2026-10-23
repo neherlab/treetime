@@ -71,7 +71,7 @@ describe("auspice module entries", () => {
         "components\\download\\helperFunctions.d.ts",
         "actions/types.d.ts",
       ]),
-    ).toEqual([
+    ).toStrictEqual([
       "auspice/src/actions/types",
       "auspice/src/components/download/helperFunctions",
       "auspice/src/components/tree",
@@ -80,7 +80,7 @@ describe("auspice module entries", () => {
   });
 
   test("folders and files other than declarations name no module", () => {
-    expect(auspiceEntries(["components", "components/tree", "README.md", "reducers/tree/index.d.ts"])).toEqual([
+    expect(auspiceEntries(["components", "components/tree", "README.md", "reducers/tree/index.d.ts"])).toStrictEqual([
       "auspice/src/reducers/tree",
     ]);
   });

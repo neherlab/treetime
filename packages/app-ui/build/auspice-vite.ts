@@ -72,8 +72,12 @@ export function auspice(): Plugin {
 
 export function auspiceEntries(declarations: readonly string[]): string[] {
   return declarations
-    .map((path) => path.replaceAll("\\", "/"))
-    .filter((path) => DECLARATION.test(path))
-    .map((path) => `auspice/src/${path.replace(DECLARATION, "").replace(INDEX_MODULE, "")}`)
+    .flatMap((path) => {
+      const module = path.replaceAll("\\", "/");
+
+      return DECLARATION.test(module)
+        ? [`auspice/src/${module.replace(DECLARATION, "").replace(INDEX_MODULE, "")}`]
+        : [];
+    })
     .toSorted();
 }

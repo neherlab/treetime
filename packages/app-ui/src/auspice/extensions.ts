@@ -1,3 +1,3 @@
-const extensions: Record<string, unknown> = {};
+const extensions = {};
 
 export default extensions;
