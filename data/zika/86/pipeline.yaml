@@ -16,6 +16,9 @@
 # sampling country (18 states) on the dated tree. The number of sequences per
 # country differs much between countries, so `weights` gives the equilibrium
 # probability of each country (`../country_weights.csv`, one weight per country).
+# `lat_longs` gives the coordinates of each country (`../country_lat_longs.tsv`),
+# and `output_selection` adds the Auspice tree to the default outputs, so the step
+# writes a tree that Auspice shows with the countries on a map.
 
 steps:
   # 1. Date the tree and fit a constant coalescent time scale.
@@ -36,3 +39,11 @@ steps:
       metadata: "metadata.tsv"
       attribute: "country"
       weights: "../country_weights.csv"
+      lat_longs: "../country_lat_longs.tsv"
+      output_selection:
+        - "nwk"
+        - "nexus"
+        - "auspice"
+        - "node-data"
+        - "model"
+        - "traits"

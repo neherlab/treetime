@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "README.md",
-      "size": 11120
+      "size": 11702
     },
     {
       "path": "dengue/100/README.md",
@@ -702,7 +702,7 @@
     },
     {
       "path": "zika/86/pipeline.yaml",
-      "size": 1788
+      "size": 2198
     },
     {
       "path": "zika/86/tree.nwk",
@@ -711,6 +711,10 @@
     {
       "path": "zika/86/zika.phylip.xz",
       "size": 10840
+    },
+    {
+      "path": "zika/country_lat_longs.tsv",
+      "size": 970
     },
     {
       "path": "zika/country_weights.csv",

@@ -41,7 +41,7 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 | File                                                                   | Chain                                                  | Demonstrates                                                     |
 | ---------------------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
 | [`zika/20/pipeline.yaml`](zika/20/pipeline.yaml)                       | `timetree` -> `mugration`                              | Phylodynamics and phylogeography end to end                      |
-| [`zika/86/pipeline.yaml`](zika/86/pipeline.yaml)                       | `timetree` -> `mugration`                              | Ancestral geography with a prior weight per country              |
+| [`zika/86/pipeline.yaml`](zika/86/pipeline.yaml)                       | `timetree` -> `mugration`                              | Ancestral geography with a country prior and a map               |
 | [`rsv/a/2000/pipeline.yaml`](rsv/a/2000/pipeline.yaml)                 | `timetree` -> `mugration`                              | Resolved polytomies and marginal dates on 2000 genomes           |
 | [`flu/h3n2/200/pipeline.yaml`](flu/h3n2/200/pipeline.yaml)             | `optimize` -> `timetree`                               | A shared, typed clock rate defined once in `vars`                |
 | [`flu/h3n2/500/pipeline.yaml`](flu/h3n2/500/pipeline.yaml)             | `optimize` -> `ancestral` -> `timetree`                | A seasonal-influenza build with a fixed clock (500 sequences)    |
@@ -58,6 +58,8 @@ treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipe
 treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --dry-run
 treetime pipeline --config data/zika/20/pipeline.yaml --output-all tmp/zika-pipeline --steps mugration
 ```
+
+The mugration step of `zika/86/pipeline.yaml` reads two tables of the sampling countries. [`zika/country_weights.csv`](zika/country_weights.csv) gives the equilibrium probability of each country. [`zika/country_lat_longs.tsv`](zika/country_lat_longs.tsv) gives its coordinates in the format of augur's `--lat-longs`, so the Auspice tree of the step shows the countries on a map. The coordinates are the label points of the countries in Natural Earth 1:50m Admin 0 Map Units, version 5.1.2 (public domain), which list French Guiana, Guadeloupe and Martinique as units of their own.
 
 `--dry-run` resolves the whole plan (each step's inputs, its concrete output files, and every chained path) and prints it without running anything. `--steps` runs a named subset in list order; a referenced upstream step that is not selected must already have its outputs on disk. When a step fails, the error names the completed steps and prints the exact `--steps` value that resumes the rest.
 
