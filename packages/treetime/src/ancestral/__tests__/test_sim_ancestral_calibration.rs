@@ -34,6 +34,35 @@ pub(crate) mod tests {
   }
 
   #[test]
+  fn test_sim_ancestral_calibration_dense_posterior_with_coarsened_tips_predicts_the_error_of_the_most_likely_state()
+  -> Result<(), Report> {
+    let calibration = Calibration::simulate_coarsened()?;
+
+    let errors = calibration.site_errors(&calibration.dense_posteriors(calibration.true_gtr()?)?)?;
+
+    calibration.require_error_rate_in_range(&errors)?;
+    require_mean_not_rejected(
+      "dense, coarsened tips: wrong most likely states minus their posterior error probability, per site",
+      &errors.deviations(),
+      Alternative::TwoSided,
+    )
+  }
+
+  #[test]
+  fn test_sim_ancestral_calibration_sparse_posterior_with_coarsened_tips_predicts_the_error_of_the_most_likely_state()
+  -> Result<(), Report> {
+    let calibration = Calibration::simulate_coarsened()?;
+
+    let errors = calibration.site_errors(&calibration.sparse_posteriors(calibration.true_gtr()?)?)?;
+
+    require_mean_not_rejected(
+      "sparse, coarsened tips: wrong most likely states minus their posterior error probability, per site",
+      &errors.deviations(),
+      Alternative::TwoSided,
+    )
+  }
+
+  #[test]
   fn test_sim_ancestral_calibration_marginal_makes_no_more_errors_than_parsimony() -> Result<(), Report> {
     let calibration = Calibration::simulate()?;
 
@@ -74,8 +103,11 @@ pub(crate) mod tests {
     use treetime_simulation::FALSE_FAIL_RATE;
     use treetime_simulation::branch_lengths::exact;
     use treetime_simulation::coalescent::SampleBatch;
+    use treetime_simulation::evolve::leaf_records;
+    use treetime_simulation::observe::{TipObservation, observe_tips};
     use treetime_simulation::tc_schedule::TcSchedule;
     use treetime_utils::cast::ToF64Exact;
+    use treetime_utils::sync::random::get_random_number_generator;
     use treetime_utils::{make_error, make_report};
 
     const ANCESTRAL_MU: f64 = 0.4;
@@ -87,6 +119,7 @@ pub(crate) mod tests {
     const CALIBRATION_LENGTH: usize = 5000;
     const MIN_ERROR_RATE: f64 = 0.05;
     const MAX_ERROR_RATE: f64 = 0.2;
+    const COARSENING_SEED: u64 = 2;
 
     pub(crate) fn ancestral_case(seed: u64, length: usize) -> Result<CaseSpec, Report> {
       let gaps = (BATCH_COUNT - 1).to_f64_exact();
@@ -133,8 +166,24 @@ pub(crate) mod tests {
     impl Calibration {
       pub(super) fn simulate() -> Result<Self, Report> {
         let case = ancestral_case(CALIBRATION_SEED, CALIBRATION_LENGTH)?.simulate()?;
-        let lengths = exact(&case.tree.edge_durations(), &case.model)?;
         let records = case.sequences.leaf_records(&case.tree.graph, &case.tree.names);
+        Self::new(case, records)
+      }
+
+      pub(super) fn simulate_coarsened() -> Result<Self, Report> {
+        let case = ancestral_case(CALIBRATION_SEED, CALIBRATION_LENGTH)?.simulate()?;
+        let observed = observe_tips(
+          &case.tree.graph,
+          &case.sequences.sequences,
+          &coarsening(),
+          &mut get_random_number_generator(COARSENING_SEED),
+        )?;
+        let records = leaf_records(&case.tree.graph, &case.tree.names, &observed);
+        Self::new(case, records)
+      }
+
+      fn new(case: SimulatedCase, records: Vec<AlignmentRecord>) -> Result<Self, Report> {
+        let lengths = exact(&case.tree.edge_durations(), &case.model)?;
         let internal_nodes = case.tree.graph.get_internal_nodes().map(|node| node.key()).collect();
         Ok(Self {
           case,
@@ -319,6 +368,14 @@ pub(crate) mod tests {
     impl SiteErrors {
       pub(super) fn deviations(&self) -> Array1<f64> {
         &self.wrong - &self.expected
+      }
+    }
+
+    fn coarsening() -> TipObservation {
+      TipObservation {
+        ambiguity_rate: 0.1,
+        unknown_run_rate: 0.25,
+        unknown_run_lengths: 10..=500,
       }
     }
   }
