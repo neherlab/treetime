@@ -66,6 +66,7 @@ def eval_ancestral(out, set_dir):
     if not (out / 'gtr.json').exists():
         return m
     g_true, g_inf = (json.loads(p.read_text()) for p in [set_dir / 'gtr.json', out / 'gtr.json'])
+    g_inf = g_inf['models'][0] if 'models' in g_inf else g_inf  # one model per partition; the sets have one
     W_true, W_inf = np.array(g_true['W']), np.array(g_inf['W'])
     iu = np.triu_indices(4, 1)
     m['pi_max_abs_error'] = float(np.max(np.abs(np.array(g_inf['pi']) - np.array(g_true['pi']))))
