@@ -65,6 +65,82 @@ pub fn float_to_exponential<F: Into<f64>>(x: F, decimals: usize) -> String {
   format!("{mantissa}e{sign}{digits:0>2}")
 }
 
+pub fn float_to_power_of_ten(x: f64, significant_digits: usize) -> String {
+  match power_of_ten_parts(x, significant_digits) {
+    PowerOfTen::Scaled { mantissa, exponent } => with_power_of_ten(&signed(&mantissa), exponent),
+    PowerOfTen::Plain(text) => text,
+  }
+}
+
+pub fn float_to_power_of_ten_with_error(x: f64, error: f64, significant_digits: usize) -> String {
+  match power_of_ten_parts(x, significant_digits) {
+    PowerOfTen::Scaled { mantissa, exponent } => {
+      let decimals = significant_digits.saturating_sub(1);
+      let scaled_error = error / 10_f64.powi(exponent);
+      with_power_of_ten(&format!("{} ± {scaled_error:.decimals$}", signed(&mantissa)), exponent)
+    },
+    PowerOfTen::Plain(text) => format!("{text} ± {}", float_to_power_of_ten(error, significant_digits)),
+  }
+}
+
+enum PowerOfTen {
+  Scaled { mantissa: String, exponent: i32 },
+  Plain(String),
+}
+
+fn power_of_ten_parts(x: f64, significant_digits: usize) -> PowerOfTen {
+  if x.is_nan() {
+    return PowerOfTen::Plain("NaN".to_owned());
+  }
+  if x.is_infinite() {
+    return PowerOfTen::Plain(signed(if x > 0.0 { "∞" } else { "-∞" }));
+  }
+  if x == 0.0 {
+    return PowerOfTen::Plain("0".to_owned());
+  }
+  let decimals = significant_digits.saturating_sub(1);
+  let formatted = format!("{x:.decimals$e}");
+  match formatted
+    .split_once('e')
+    .map(|(mantissa, exponent)| (mantissa, exponent.parse::<i32>()))
+  {
+    Some((mantissa, Ok(exponent))) => PowerOfTen::Scaled {
+      mantissa: mantissa.to_owned(),
+      exponent,
+    },
+    _ => PowerOfTen::Plain(signed(&formatted)),
+  }
+}
+
+fn with_power_of_ten(mantissa: &str, exponent: i32) -> String {
+  if exponent == 0 {
+    return mantissa.to_owned();
+  }
+  let superscript: String = exponent.to_string().chars().map(superscript_char).collect();
+  format!("{mantissa} × 10{superscript}")
+}
+
+fn signed(text: &str) -> String {
+  text.replace('-', "\u{2212}")
+}
+
+fn superscript_char(c: char) -> char {
+  match c {
+    '0' => '⁰',
+    '1' => '¹',
+    '2' => '²',
+    '3' => '³',
+    '4' => '⁴',
+    '5' => '⁵',
+    '6' => '⁶',
+    '7' => '⁷',
+    '8' => '⁸',
+    '9' => '⁹',
+    '-' => '⁻',
+    other => other,
+  }
+}
+
 fn float_format<F: Into<f64>>(x: F, config: FmtFloatConfig) -> String {
   let raw = dtoa(x.into(), config);
   trim_trailing_zeros(&raw)

@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
-  use crate::fmt::float::*;
+  use crate::fmt::float::{
+    FloatFormatExt, float_to_digits, float_to_exponential, float_to_power_of_ten, float_to_power_of_ten_with_error,
+    float_to_significant_digits, trim_trailing_zeros,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
 
@@ -95,5 +98,33 @@ mod tests {
   #[trace]
   fn test_edge_cases(#[case] (input, digits): (f64, u8), #[case] expected: &str) {
     assert_eq!(input.to_significant_digits(digits), expected);
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::clock_rate(        (5.072_949e-5,       3), "5.07 × 10⁻⁵")]
+  #[case::keeps_zeros(       (3.0e-3,             3), "3.00 × 10⁻³")]
+  #[case::rounds_up_a_decade((9.996e-5,           3), "1.00 × 10⁻⁴")]
+  #[case::positive_exponent( (6.02e23,            3), "6.02 × 10²³")]
+  #[case::negative_minus(    (-2.1e-5,            2), "\u{2212}2.1 × 10⁻⁵")]
+  #[case::exponent_zero(     (4.25,               3), "4.25")]
+  #[case::single_digit(      (5.0e-5,             1), "5 × 10⁻⁵")]
+  #[case::zero(              (0.0,                3), "0")]
+  #[case::nan(               (f64::NAN,           3), "NaN")]
+  #[case::infinity(          (f64::INFINITY,      3), "∞")]
+  #[case::negative_infinity( (f64::NEG_INFINITY,  3), "\u{2212}∞")]
+  #[trace]
+  fn test_float_to_power_of_ten(#[case] (input, digits): (f64, usize), #[case] expected: &str) {
+    assert_eq!(expected, float_to_power_of_ten(input, digits));
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::shares_the_exponent((5.072_949e-5, 3.1e-6, 3), "5.07 ± 0.31 × 10⁻⁵")]
+  #[case::exponent_zero(      (4.25,         0.126,  3), "4.25 ± 0.13")]
+  #[case::zero_value(         (0.0,          3.1e-6, 2), "0 ± 3.1 × 10⁻⁶")]
+  #[trace]
+  fn test_float_to_power_of_ten_with_error(#[case] (input, error, digits): (f64, f64, usize), #[case] expected: &str) {
+    assert_eq!(expected, float_to_power_of_ten_with_error(input, error, digits));
   }
 }
