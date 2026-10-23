@@ -55,7 +55,11 @@ export interface AuspiceControlsState {
   colorBy: string;
   distanceMeasure: string;
   branchLengthsToDisplay: string;
-  panelLayout: string;
+  panelLayout: AuspicePanelLayout;
+  canTogglePanelLayout: boolean;
+  sidebarOpen: boolean;
+  showTreeToo: string | undefined;
+  panelsAvailable: readonly string[];
   panelsToDisplay: readonly string[];
   selectedNode: AuspiceSelectedNode | null;
   filters: Readonly<Partial<Record<string | symbol, readonly AuspiceFilterValue[]>>>;
@@ -88,6 +92,8 @@ interface AuspiceSelectedNode {
   idx: number;
   isBranch: boolean;
 }
+
+export type AuspicePanelLayout = "full" | "grid";
 
 export interface AuspiceEntropyState {
   loaded: boolean;

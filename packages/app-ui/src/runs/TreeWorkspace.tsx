@@ -37,7 +37,6 @@ export function TreeWorkspace({
   below?: ((link: TreeLink) => ReactNode) | undefined;
 }) {
   const store = useAuspiceStore(data.document, colorBy);
-  const tips = useMemo(() => data.tree.nodes.filter((node) => node.children.length === 0).length, [data.tree]);
   const link = useTreeLink(store, data.tree);
   const { data: version } = useApi((context) => getVersion(context), { staleTime: Infinity });
   const runs = useMemo(() => [data.run] as const, [data.run]);
@@ -46,7 +45,7 @@ export function TreeWorkspace({
     <div className="@container grid min-w-0 gap-4">
       <div className="grid min-w-0 grid-cols-1 gap-4 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]">
         <ErrorBoundary FallbackComponent={TreeFailure}>
-          <AuspiceTree store={store} tips={tips} runs={runs} version={version?.version} entropy={entropy} />
+          <AuspiceTree store={store} runs={runs} version={version?.version} entropy={entropy} />
         </ErrorBoundary>
         {aside !== undefined && <div className="grid min-w-0 content-start gap-4">{aside(link)}</div>}
       </div>

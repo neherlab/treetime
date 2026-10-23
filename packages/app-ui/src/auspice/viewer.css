@@ -1,0 +1,30 @@
+/* Auspice card of the tree viewer. The viewer sizes the drawings with Auspice's panel rules, so the card adds no
+   margins or padding of its own, and its title row has the height that the viewer reserves for it. The tree card
+   shows the viewer header in its title row instead of the title "Phylogeny" and its top line. The zoom buttons hang
+   from the top line of the title row: without that line, their top border would look like a piece of it, so they
+   lose it unless the header takes a row of its own */
+@utility auspice-card {
+  & > div:last-child {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  & > div:last-child > div:first-child {
+    box-sizing: border-box;
+    height: var(--auspice-card-title-height, 26px);
+    min-height: 0 !important;
+    margin: 0 !important;
+    line-height: 25px;
+  }
+
+  &[data-header] > div:last-child > div:first-child {
+    font-size: 0 !important;
+    border-top: none !important;
+  }
+
+  &[data-header="overlay"] > div:last-child > div + div > div:last-child > button {
+    border-top: none !important;
+    vertical-align: top;
+  }
+}
