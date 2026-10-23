@@ -1,6 +1,7 @@
 pub mod branch_lengths;
 pub mod coalescent;
 pub mod evolve;
+pub mod gaps;
 pub mod substitution_model;
 pub mod tc_schedule;
 
