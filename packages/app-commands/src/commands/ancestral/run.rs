@@ -85,7 +85,6 @@ pub fn run_ancestral_reconstruction(
     alignments: sources,
     partitions,
   };
-  sequences.reject_split_alignments()?;
   let input = ancestral_input(graph, branch_lengths, sequences);
   let branch_lengths = input.branch_lengths();
 

@@ -9,7 +9,7 @@ use std::iter::repeat_with;
 use std::path::PathBuf;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::fmt::string::counted;
-use treetime_utils::{make_internal_error, make_internal_report, make_report};
+use treetime_utils::{make_internal_error, make_internal_report};
 
 #[derive(Debug)]
 pub struct SequenceInput {
@@ -38,22 +38,6 @@ impl SequenceInput {
 
   pub(crate) fn has_inferred_model(&self) -> bool {
     self.partitions.iter().any(|plan| plan.model.is_infer())
-  }
-
-  pub fn reject_split_alignments(&self) -> Result<(), Report> {
-    let counts = self.partitions.iter().counts_by(|plan| plan.layout.alignment);
-    let Some((alignment, count)) = counts.into_iter().sorted().find(|(_, count)| *count > 1) else {
-      return Ok(());
-    };
-    let path = self
-      .alignments
-      .get(alignment - 1)
-      .map_or_else(String::new, |source| format!(" '{}'", source.path.display()));
-    Err(make_report!(
-      "alignment {alignment}{path} has {}, but a run cannot yet split one alignment into several partitions: give \
-       each alignment one partition entry",
-      counted(count, "partition")
-    ))
   }
 
   pub(crate) fn split(self) -> Result<SplitInput, Report> {

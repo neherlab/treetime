@@ -44,7 +44,6 @@ pub fn run_optimize(
     alignments: alignments.into_iter().map(|source| source.source).collect(),
     partitions,
   };
-  sequences.reject_split_alignments()?;
 
   let params = OptimizeParams {
     dense: args.dense,

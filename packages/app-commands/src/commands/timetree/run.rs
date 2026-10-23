@@ -78,11 +78,6 @@ pub fn run_timetree_estimation(
       partitions: input_data.partitions,
     })
   };
-  if branch_length_mode == BranchLengthMode::Marginal
-    && let TimetreeSequences::Alignments(input) = &sequences
-  {
-    input.reject_split_alignments()?;
-  }
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;
   let reconstructed_nuc_fasta = resolved.partition_paths(OutputSelection::Sequences);
   let mutation_units = args.branch_lengths.mutation_units;
