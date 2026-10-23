@@ -4,15 +4,17 @@ The Linux builds of the CLI and the API server allocate through jemalloc with it
 
 ## Allocator setup
 
-- `static GLOBAL` in [packages/app-cli/src/bin/treetime.rs#L1-L8](../../packages/app-cli/src/bin/treetime.rs#L1-L8) and in [packages/app-server/src/bin/treetime-server.rs#L1-L8](../../packages/app-server/src/bin/treetime-server.rs#L1-L8): `tikv_jemallocator::Jemalloc` as the global allocator on x86_64 and aarch64 Linux (gnu and musl). Other targets and the N-API module (`packages/app-napi`) use the system allocator
-- No `malloc_conf` is set: the binaries export no `_rjem_malloc_conf` symbol, and no build sets `JEMALLOC_SYS_WITH_MALLOC_CONF`. Only `_RJEM_MALLOC_CONF` at run time changes the configuration (`docs/dev/developer_guide.md`, section "Heap profiles")
+- `static GLOBAL` in [packages/app-cli/src/bin/treetime.rs#L1-L8](../../packages/app-cli/src/bin/treetime.rs#L1-L8) and in [packages/app-server/src/bin/treetime-server.rs#L1-L8](../../packages/app-server/src/bin/treetime-server.rs#L1-L8): `tikv_jemallocator::Jemalloc` as the global allocator on x86_64 and aarch64 Linux (gnu and musl). jemalloc is built without a symbol prefix and also replaces `malloc` and `free` of the C library, so the C code of these binaries allocates through it too (`docs/dev/developer_guide.md`, section "Allocator"). Other targets and the N-API module (`packages/app-napi`) use the system allocator
+- No `malloc_conf` is set: the binaries define no `malloc_conf` symbol, and no build sets `JEMALLOC_SYS_WITH_MALLOC_CONF`. Only `MALLOC_CONF` at run time changes the configuration
 - jemalloc 5.3 defaults (`tikv-jemalloc-sys` 0.6.1): `dirty_decay_ms` 10000 (freed pages stay resident for about 10 s), `muzzy_decay_ms` 0, and 4 automatic arenas per CPU (`narenas_ratio` 4). jemalloc assigns each thread to one arena, and an arena reuses only its own freed pages
 
 ## Measurement
 
+The measurements below predate the replacement of the C library allocator: jemalloc then served the allocations of Rust code only.
+
 `mugration` on a caterpillar tree with 100,000 leaves (each internal node has one leaf child and one internal child) and one attribute with 3 states, at 20 worker threads, peak RSS in MB (default configuration: median and range of 6 runs; other rows: 2 runs):
 
-| `_RJEM_MALLOC_CONF` | `602a051bb` (graph pass) | Tree scans |
+| jemalloc setting | `602a051bb` (graph pass) | Tree scans |
 | --- | --- | --- |
 | default | 839 [827-897] | 1221 [1129-1301] |
 | `dirty_decay_ms:0,muzzy_decay_ms:0` | 734 | 532 |
@@ -27,12 +29,12 @@ The Linux builds of the CLI and the API server allocate through jemalloc with it
 
 On the 36 single-threaded timetree runs of the simulated validation subset, release builds of the code with the forward-posterior trim against `rust` `d86d3eb65` (with the tree scans): 12 runs have more than 1.1 times the peak RSS of `rust`, at most 1.193 (42 to 50 MB), all small coalescent runs of 42 to 60 MB that grow by 4 to 10 MB, while the live heap at the peak of the worst run is 38.1 MB against 35.0 MB. The largest run of the subset grows from 123 to 133 MB (1.084). The maintainers accepted this residual for the trimming change ([kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md#results)); the allocator setting below remains open here.
 
-- `_RJEM_MALLOC_CONF=lg_extent_max_active_fit:8`: all 36 runs at most 1.098 times the peak RSS of `rust`, at unchanged CPU time
-- `_RJEM_MALLOC_CONF=dirty_decay_ms:200`: helps short runs only
+- `lg_extent_max_active_fit:8`: all 36 runs at most 1.098 times the peak RSS of `rust`, at unchanged CPU time
+- `dirty_decay_ms:200`: helps short runs only
 
 ## Fix direction
 
-Set the decay or arena configuration of jemalloc in the binaries, for example a short `dirty_decay_ms` or fewer arenas (`narenas`). Embed the setting at build time with the `_rjem_malloc_conf` symbol or `JEMALLOC_SYS_WITH_MALLOC_CONF`, so every run uses it without an environment variable.
+Set the decay or arena configuration of jemalloc in the binaries, for example a short `dirty_decay_ms` or fewer arenas (`narenas`). Embed the setting at build time with the `malloc_conf` symbol or `JEMALLOC_SYS_WITH_MALLOC_CONF`, so every run uses it without an environment variable.
 
 > [!IMPORTANT]
 > **Investigation required.** The time cost of these settings is not measured. Returning freed pages at once adds `madvise` calls and page faults when the memory is used again, and fewer arenas add lock contention between worker threads. Measure wall time, user time, and peak RSS for each candidate setting on the caterpillar `mugration` case and on large standard datasets (for example `timetree dengue/2000`, `ancestral mpox/clade-ii/2000`, `ancestral --representation=dense rsv/a/2000`) at 1 and 20 threads, and keep a setting only when it does not slow these runs down.
