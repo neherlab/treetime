@@ -1,11 +1,12 @@
 use crate::cli::pipeline::interpolate::{Interpolator, map_string_leaves, resolve_vars, template_context};
+use crate::cli::pipeline::safety::reject_step_cli_rule_violations;
 use crate::cli::pipeline::types::{RawStep, step_config};
 use app_commands::command::AppCommand;
 use app_commands::command_config::CommandConfig;
 use app_commands::commands::shared::argument_error::{ArgumentError, argument_error};
 use app_commands::config::load::InvalidSetting;
 use app_commands::config::resolve_paths::resolve_config_paths;
-use app_commands::config::source::escape_pointer;
+use app_commands::config::source::{ConfigSource, escape_pointer};
 use app_commands::config::suggest::{suggestion_suffix, valid_values};
 use app_output::output_conditions::OutputCondition;
 use app_output::output_plan::{OutputSelection, PathPlaceholder};
@@ -25,6 +26,7 @@ const OUTPUT_FOLDER_SETTINGS: [&str; 2] = ["output_all", "output_selection"];
 
 pub(crate) fn resolve_pipeline(
   doc: &PipelineDoc,
+  source: &ConfigSource,
   env: &Value,
   base: &Path,
   output_all: Option<&Path>,
@@ -58,6 +60,7 @@ pub(crate) fn resolve_pipeline(
     }
 
     let command = step_config(&raw.tag, &payload).map_err(|err| step_config_error(position, raw, err))?;
+    reject_step_cli_rule_violations(position, &raw.name, &command, source)?;
     let resolved = command
       .resolve_outputs()
       .map_err(|err| step_error(&raw.name, missing_outputs_error(err)))?;
@@ -367,8 +370,9 @@ mod tests {
   use treetime_utils::assert_error;
 
   fn resolve(config: Value) -> Result<ResolvedPipeline, Report> {
+    let source = ConfigSource::new("pipeline.json", config.to_string());
     let doc = PipelineDoc::from_value(config)?;
-    resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None)
+    resolve_pipeline(&doc, &source, &json!({}), Path::new(PIPELINE_FOLDER), None)
   }
 
   fn tree_of(step: &ResolvedStep) -> String {
@@ -556,6 +560,7 @@ mod tests {
     .unwrap();
     let resolved = resolve_pipeline(
       &doc,
+      &ConfigSource::new("pipeline.json", ""),
       &json!({}),
       Path::new(PIPELINE_FOLDER),
       Some(Path::new("/work/out")),
@@ -579,6 +584,7 @@ mod tests {
     .unwrap();
     let resolved = resolve_pipeline(
       &doc,
+      &ConfigSource::new("pipeline.json", ""),
       &json!({}),
       Path::new(PIPELINE_FOLDER),
       Some(Path::new("/work/out")),

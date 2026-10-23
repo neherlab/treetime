@@ -1,5 +1,6 @@
 use crate::cli::pipeline::inputs::step_inputs;
 use crate::cli::pipeline::resolve::{ResolvedPipeline, ResolvedStep};
+use app_commands::command_config::CommandConfig;
 use app_commands::commands::shared::run_paths::RunPath;
 use app_commands::config::cli_rules::cli_rule_diagnostics;
 use app_commands::config::source::{ConfigSource, render_and_bail};
@@ -10,33 +11,28 @@ use std::path::Path;
 use treetime_utils::io::file::is_path_stdout;
 use treetime_utils::make_error;
 
-pub(crate) fn validate_plan(
-  pipeline: &ResolvedPipeline,
-  source: &ConfigSource,
-  selected: Option<&BTreeSet<String>>,
-) -> Result<(), Report> {
-  reject_cli_rule_violations(pipeline, source)?;
+pub(crate) fn validate_plan(pipeline: &ResolvedPipeline, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
   reject_stdio_paths(pipeline)?;
   reject_output_collisions(pipeline)?;
   reject_missing_upstream(pipeline, selected)?;
   Ok(())
 }
 
-fn reject_cli_rule_violations(pipeline: &ResolvedPipeline, source: &ConfigSource) -> Result<(), Report> {
-  for (index, step) in pipeline.steps.iter().enumerate() {
-    let command = step.command.command();
-    let tag: &str = command.into();
-    let diags = cli_rule_diagnostics(command, &step.command.settings()?)?
-      .into_iter()
-      .map(|mut diag| {
-        diag.pointer = diag.pointer.map(|pointer| format!("/steps/{index}/{tag}{pointer}"));
-        diag
-      })
-      .collect();
-    render_and_bail(source, "invalid configuration", diags)
-      .wrap_err_with(|| format!("in pipeline step `{}`", step.name))?;
-  }
-  Ok(())
+pub(crate) fn reject_step_cli_rule_violations(
+  position: usize,
+  name: &str,
+  command: &CommandConfig,
+  source: &ConfigSource,
+) -> Result<(), Report> {
+  let tag: &str = command.command().into();
+  let diags = cli_rule_diagnostics(command.command(), &command.settings()?)?
+    .into_iter()
+    .map(|mut diag| {
+      diag.pointer = diag.pointer.map(|pointer| format!("/steps/{position}/{tag}{pointer}"));
+      diag
+    })
+    .collect();
+  render_and_bail(source, "invalid configuration", diags).wrap_err_with(|| format!("in pipeline step `{name}`"))
 }
 
 fn reject_stdio_paths(pipeline: &ResolvedPipeline) -> Result<(), Report> {
@@ -133,8 +129,8 @@ mod tests {
   fn validate(config: Value, selected: Option<&BTreeSet<String>>) -> Result<(), Report> {
     let source = ConfigSource::new("pipeline.json", config.to_string());
     let doc = PipelineDoc::from_value(config).unwrap();
-    let pipeline = resolve_pipeline(&doc, &json!({}), Path::new(PIPELINE_FOLDER), None)?;
-    validate_plan(&pipeline, &source, selected)
+    let pipeline = resolve_pipeline(&doc, &source, &json!({}), Path::new(PIPELINE_FOLDER), None)?;
+    validate_plan(&pipeline, selected)
   }
 
   #[test]
@@ -281,6 +277,23 @@ mod tests {
           .map(|problem| problem.span.map(|span| span.offset))
           .collect::<Vec<_>>()
       )
+    );
+  }
+
+  #[test]
+  fn test_safety_step_partition_with_model_params_reports_the_conflict() {
+    let result = validate(
+      json!({
+        "output_all": "out",
+        "steps": [
+          { "name": "a", "ancestral": { "tree": "in.nwk", "alignment": ["a.fasta"], "partition": [{}], "model_params": ["mu=2"] } }
+        ]
+      }),
+      None,
+    );
+    assert_error!(
+      result,
+      "in pipeline step `a`: invalid configuration: `model_params` cannot be used together with `partition`"
     );
   }
 
