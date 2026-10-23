@@ -203,7 +203,7 @@ reqwest = { version = "=0.13.4", default-features = false, features = ["blocking
 resvg = "=0.47.0"
 rgb = "=0.8.53"
 rstest = "=0.26.1"
-rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 saphyr = "=0.0.12"
 schemars = { version = "=1.2.2", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["preserve_order", "indexmap", "unbounded_depth"] }
@@ -221,7 +221,7 @@ thiserror = "=2.0.21"
 tikv-jemalloc-sys = "=0.6.1"
 tikv-jemallocator = "=0.6.0"
 tiny-skia = "=0.12.0"
-tokio = "=1.53.1"
+tokio = "=1.53.3"
 tokio-stream = "=0.1.19"
 tokio-util = { version = "=0.7.19", features = ["io", "io-util"] }
 tower = { version = "=0.5.3", default-features = false, features = ["timeout", "util"] }
