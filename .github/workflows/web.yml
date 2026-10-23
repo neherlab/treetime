@@ -66,53 +66,20 @@ jobs:
 
       - name: "Upload"
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION }}
-          AWS_S3_BUCKET: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET }}
-          AWS_CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
-          GH_TOKEN: ${{ github.token }}
-          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
-          BRANCH: ${{ github.head_ref || github.ref_name }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          prefix="neherlab--treetime--"
-
-          if [[ -n "${PR_NUMBER}" ]]; then
-            prs_text="${PR_NUMBER}"
-          else
-            prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open \
-              --json number,headRepositoryOwner \
-              --jq ".[] | select(.headRepositoryOwner.login == \"${GITHUB_REPOSITORY_OWNER}\") | .number")"
-          fi
-          prs=()
-          if [[ -n "${prs_text}" ]]; then
-            mapfile -t prs <<<"${prs_text}"
-          fi
-
-          sites=("${prefix}commit-${COMMIT:0:7}" "${prefix}branch-${BRANCH}")
-          for pr in "${prs[@]}"; do
-            sites+=("${prefix}pr-${pr}")
-          done
-          if [[ "${GITHUB_REF}" == "refs/heads/rust" && "${GITHUB_EVENT_NAME}" == "push" ]]; then
-            sites+=("treetime")
-          fi
-
-          urls_text="$(dev/publish-web "${sites[@]}")"
-          mapfile -t urls <<<"${urls_text}"
-
-          index=2
-          for pr in "${prs[@]}"; do
-            body="$(printf '<!-- web-preview -->\nWeb app preview: %s\n\nCommit %s: %s ([build](%s/%s/actions/runs/%s))\n' \
-              "${urls[index]}" "${COMMIT:0:7}" "${urls[0]}" "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}")"
-            comment_ids="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
-              --jq '.[] | select(.body | startswith("<!-- web-preview -->")) | .id')"
-            comment_id="${comment_ids%%$'\n'*}"
-            if [[ -n "${comment_id}" ]]; then
-              gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -f body="${body}" >/dev/null
-            else
-              gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" -f body="${body}" >/dev/null
-            fi
-            index=$((index + 1))
-          done
+        uses: ./.github/actions/publish-preview
+        with:
+          dist: packages/app-web2/dist
+          site-prefix: "neherlab--treetime--"
+          production-site: treetime
+          label: "Web app"
+          comment-marker: "<!-- web-preview -->"
+          comment-title: "Web app"
+          aws-access-key-id: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY }}
+          aws-default-region: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION }}
+          aws-s3-bucket: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET }}
+          aws-cloudfront-distribution-id: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
+          github-token: ${{ github.token }}
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          pr-number: ${{ github.event.pull_request.number }}

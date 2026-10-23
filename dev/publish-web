@@ -2,13 +2,15 @@
 #
 # Usage: $0 [options] <site>...
 #
-# Upload the production build of the web2 app (`just build-web2`) to each site
-# of the preview host, then clear the cache of the host. Each site is a folder of
-# the S3 bucket, and the CloudFront distribution in front of the bucket serves it
-# at https://<site>.previews.neherlab.click. The site `treetime` is also served at
-# https://treetime.neherlab.click. A site name is lowercased, every character
-# other than a-z, 0-9, and `-` becomes `-`, and the name is cut to the 63
-# characters of a DNS label.
+# Upload a static build, by default the production build of the web2 app (`just
+# build-web2`), to each site of the preview host, then clear the cache of the
+# host. Each site is a folder of the S3 bucket, and the CloudFront distribution in
+# front of the bucket serves it at https://<site>.previews.neherlab.click. The
+# production sites are also served on their own hosts: `treetime` at
+# https://treetime.neherlab.click, and the docs site `treetime-docs` at
+# https://docs.treetime.neherlab.click. A site name is lowercased, every
+# character other than a-z, 0-9, and `-` becomes `-`, and the name is cut to the
+# 63 characters of a DNS label.
 #
 # The edge functions of the distribution (AWS account preview-deployments, not in
 # this repository) map the first label of the host name to the folder of the same
@@ -16,7 +18,11 @@
 # `neherlab--treetime--` or equals `treetime`, serve `index` for every path
 # without a file extension outside `data/`, add the cross-origin isolation
 # headers that the threaded WebAssembly module needs, and leave the content
-# security policy to the page.
+# security policy to the page. The docs sites (`treetime-docs` and
+# `neherlab--treetime-docs--<suffix>`) fall outside these rules and are served as
+# plain files. Each docs build is a version folder of its site (`--prefix dev`),
+# and the site root holds `versions.json` and an `index` page that leads to the
+# preferred version.
 #
 # Every file is stored under its path in the build, except `*.html`, which loses
 # its extension, so `index.html` is the object `index`. A file with a `.gz` copy
@@ -33,8 +39,13 @@
 # one call per site; a site whose copy fails gets the upload instead.
 #
 # Options:
-#   -h, --help       Show this help
-#   --dist <dir>     Build to upload (default: packages/app-web2/dist)
+#   -h, --help         Show this help
+#   --dist <dir>       Build to upload (default: packages/app-web2/dist)
+#   --prefix <folder>  Store the build below <site>/<folder>/ instead of the site
+#                      root, and its root page also as the object <folder>, so
+#                      /<folder> serves it; other folders and the site root stay
+#   --label <text>     Heading of the site list in the GitHub step summary
+#                      (default: Web app)
 #
 # Environment:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY   Credentials that may write the
@@ -45,15 +56,19 @@
 #
 # Examples:
 #   $0 neherlab--treetime--branch-rust treetime
+#   $0 --dist packages/app-docs/dist --prefix dev --label Docs treetime-docs
 #
 set -euo pipefail
 shopt -s inherit_errexit
 trap "exit" INT
 
 PREVIEWS_DOMAIN="previews.neherlab.click"
-PRODUCTION_SITE="treetime"
-PRODUCTION_URL="https://treetime.neherlab.click"
 UPLOAD_JOBS=16
+
+declare -A PRODUCTION_URLS=(
+  [treetime]="https://treetime.neherlab.click"
+  [treetime - docs]="https://docs.treetime.neherlab.click"
+)
 
 # Vite names an emitted file `assets/<name>-<hash>.<ext>`, with 8 characters of
 # base64url as the hash.
@@ -64,7 +79,7 @@ main() {
     sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g"
   }
 
-  local dist="packages/app-web2/dist"
+  local dist="packages/app-web2/dist" prefix="" label="Web app"
 
   # shfmt:off
   while (($# > 0)); do
@@ -79,6 +94,18 @@ main() {
         exit 1
       fi
       dist="${2}"
+      shift 2
+      ;;
+    --prefix | --label)
+      if (($# < 2)); then
+        printf "Missing value of %s\n" "${1}" >&2
+        exit 1
+      fi
+      if [[ "${1}" == --prefix ]]; then
+        prefix="${2}"
+      else
+        label="${2}"
+      fi
       shift 2
       ;;
     --)
@@ -106,7 +133,12 @@ main() {
   : "${AWS_CLOUDFRONT_DISTRIBUTION_ID:?AWS_CLOUDFRONT_DISTRIBUTION_ID is not set}"
 
   if [[ ! -f "${dist}/index.html" ]]; then
-    printf "No web2 build in %s: run just build-web2 first\n" "${dist}" >&2
+    printf "No build in %s: it has no index.html; run the build recipe of %s first\n" "${dist}" "${dist}" >&2
+    exit 1
+  fi
+
+  if [[ -n "${prefix}" && ! "${prefix}" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
+    printf "Invalid prefix: '%s' (expected a folder name such as dev or 1.0)\n" "${prefix}" >&2
     exit 1
   fi
 
@@ -135,13 +167,14 @@ main() {
   done
   popd >/dev/null
 
-  export DIST="${dist}" AWS_S3_BUCKET HASHED_NAME
-  export -f upload_file content_type cache_control
+  export DIST="${dist}" PREFIX="${prefix}" AWS_S3_BUCKET HASHED_NAME
+  export -f upload_file upload_object content_type cache_control
 
   local first="${sites[0]}"
   printf "Uploading %d files to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${first}" >&2
   upload_all "${first}" "${files[@]}"
   upload_all "${first}" "${pages[@]}"
+  upload_folder_page "${first}"
   for site in "${sites[@]:1}"; do
     printf "Copying %d files from %s to %s\n" "$((${#files[@]} + ${#pages[@]}))" "${first}" "${site}" >&2
     if ! { copy_all "${first}" "${site}" "${files[@]}" && copy_all "${first}" "${site}" "${pages[@]}"; }; then
@@ -149,19 +182,20 @@ main() {
       upload_all "${site}" "${files[@]}"
       upload_all "${site}" "${pages[@]}"
     fi
+    upload_folder_page "${site}"
   done
 
   aws cloudfront create-invalidation --distribution-id "${AWS_CLOUDFRONT_DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id" >/dev/null
 
   local urls=()
   for site in "${sites[@]}"; do
-    urls+=("$(site_url "${site}")")
+    urls+=("$(site_url "${site}")${prefix:+/${prefix}}")
   done
   printf "%s\n" "${urls[@]}"
 
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     {
-      printf "## Web app\n\n"
+      printf "## %s\n\n" "${label}"
       printf -- "- %s\n" "${urls[@]}"
     } >>"${GITHUB_STEP_SUMMARY}"
   fi
@@ -176,8 +210,8 @@ site_name() {
 }
 
 site_url() {
-  if [[ "${1}" == "${PRODUCTION_SITE}" ]]; then
-    printf "%s\n" "${PRODUCTION_URL}"
+  if [[ -v "PRODUCTION_URLS[${1}]" ]]; then
+    printf "%s\n" "${PRODUCTION_URLS[${1}]}"
   else
     printf "https://%s.%s\n" "${1}" "${PREVIEWS_DOMAIN}"
   fi
@@ -208,7 +242,7 @@ copy_all() {
   (($# > 0)) || return 0
   local filters=() file key
   for file in "$@"; do
-    key="${file%.html}"
+    key="${PREFIX:+${PREFIX}/}${file%.html}"
     case "${key}" in
     *'*'* | *'?'* | *'['*)
       aws s3 cp --copy-props metadata-directive --only-show-errors \
@@ -222,9 +256,20 @@ copy_all() {
     "s3://${AWS_S3_BUCKET}/${from}/" "s3://${AWS_S3_BUCKET}/${to}/"
 }
 
+# Store the root page of a build in a version folder also as the object of the
+# folder name, so /<folder> serves it without an edge rule.
+upload_folder_page() {
+  [[ -n "${PREFIX}" ]] || return 0
+  upload_object "${1}" index.html "${PREFIX}"
+}
+
 upload_file() {
   local site="${1}" file="${2}"
-  local key="${file%.html}"
+  upload_object "${site}" "${file}" "${PREFIX:+${PREFIX}/}${file%.html}"
+}
+
+upload_object() {
+  local site="${1}" file="${2}" key="${3}"
   local body="${DIST}/${file}"
   local args=(
     --content-type "$(content_type "${file}")"

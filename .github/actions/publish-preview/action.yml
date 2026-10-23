@@ -1,0 +1,132 @@
+name: "Publish a preview site"
+description: >-
+  Upload a static build with dev/publish-web to one site per commit, per branch,
+  and per open pull request of the branch, plus the production site on pushes to
+  rust, and keep one comment with the preview link on each open pull request.
+
+inputs:
+  dist:
+    description: "Build folder to upload"
+    required: true
+  site-prefix:
+    description: "Prefix of the preview site names, such as neherlab--treetime--"
+    required: true
+  production-site:
+    description: "Site that pushes to rust also update"
+    required: true
+  label:
+    description: "Heading of the site list in the step summary"
+    required: true
+  comment-marker:
+    description: "HTML comment that marks the preview comment of a pull request"
+    required: true
+  comment-title:
+    description: "Name of the preview in the pull request comment"
+    required: true
+  folder:
+    description: "Folder of each site that holds the build (dev/publish-web --prefix); the site root when empty"
+    required: false
+    default: ""
+  root-files:
+    description: "Folder whose files go to the site root after the build, such as versions.json"
+    required: false
+    default: ""
+  aws-access-key-id:
+    description: "Access key that may write the bucket and clear the cache"
+    required: true
+  aws-secret-access-key:
+    description: "Secret of the access key"
+    required: true
+  aws-default-region:
+    description: "Region of the bucket"
+    required: true
+  aws-s3-bucket:
+    description: "Bucket of the sites"
+    required: true
+  aws-cloudfront-distribution-id:
+    description: "Distribution in front of the bucket"
+    required: true
+  github-token:
+    description: "Token that may read pull requests and write their comments"
+    required: true
+  commit:
+    description: "Commit of the build"
+    required: true
+  branch:
+    description: "Branch of the build"
+    required: true
+  pr-number:
+    description: "Pull request of the run, empty for a push"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Upload"
+      shell: bash -euo pipefail {0}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.aws-access-key-id }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.aws-secret-access-key }}
+        AWS_DEFAULT_REGION: ${{ inputs.aws-default-region }}
+        AWS_S3_BUCKET: ${{ inputs.aws-s3-bucket }}
+        AWS_CLOUDFRONT_DISTRIBUTION_ID: ${{ inputs.aws-cloudfront-distribution-id }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        DIST: ${{ inputs.dist }}
+        SITE_PREFIX: ${{ inputs.site-prefix }}
+        PRODUCTION_SITE: ${{ inputs.production-site }}
+        LABEL: ${{ inputs.label }}
+        COMMENT_MARKER: ${{ inputs.comment-marker }}
+        COMMENT_TITLE: ${{ inputs.comment-title }}
+        FOLDER: ${{ inputs.folder }}
+        ROOT_FILES: ${{ inputs.root-files }}
+        COMMIT: ${{ inputs.commit }}
+        BRANCH: ${{ inputs.branch }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+      run: |
+        if [[ -n "${PR_NUMBER}" ]]; then
+          prs_text="${PR_NUMBER}"
+        else
+          prs_text="$(gh pr list --repo "${GITHUB_REPOSITORY}" --head "${BRANCH}" --state open \
+            --json number,headRepositoryOwner \
+            --jq ".[] | select(.headRepositoryOwner.login == \"${GITHUB_REPOSITORY_OWNER}\") | .number")"
+        fi
+        prs=()
+        if [[ -n "${prs_text}" ]]; then
+          mapfile -t prs <<<"${prs_text}"
+        fi
+
+        sites=("${SITE_PREFIX}commit-${COMMIT:0:7}" "${SITE_PREFIX}branch-${BRANCH}")
+        for pr in "${prs[@]}"; do
+          sites+=("${SITE_PREFIX}pr-${pr}")
+        done
+        if [[ "${GITHUB_REF}" == "refs/heads/rust" && "${GITHUB_EVENT_NAME}" == "push" ]]; then
+          sites+=("${PRODUCTION_SITE}")
+        fi
+
+        options=(--dist "${DIST}" --label "${LABEL}")
+        if [[ -n "${FOLDER}" ]]; then
+          options+=(--prefix "${FOLDER}")
+        fi
+        urls_text="$(dev/publish-web "${options[@]}" "${sites[@]}")"
+        mapfile -t urls <<<"${urls_text}"
+
+        if [[ -n "${ROOT_FILES}" ]]; then
+          GITHUB_STEP_SUMMARY="" dev/publish-web --dist "${ROOT_FILES}" "${sites[@]}" >/dev/null
+        fi
+
+        index=2
+        for pr in "${prs[@]}"; do
+          body="$(printf '%s\n%s preview: %s\n\nCommit %s: %s ([build](%s/%s/actions/runs/%s))\n' \
+            "${COMMENT_MARKER}" "${COMMENT_TITLE}" "${urls[index]}" "${COMMIT:0:7}" "${urls[0]}" \
+            "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}" "${GITHUB_RUN_ID}")"
+          comment_ids="$(gh api "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"${COMMENT_MARKER}\")) | .id")"
+          comment_id="${comment_ids%%$'\n'*}"
+          if [[ -n "${comment_id}" ]]; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -f body="${body}" >/dev/null
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/${pr}/comments" -f body="${body}" >/dev/null
+          fi
+          index=$((index + 1))
+        done

@@ -1,0 +1,85 @@
+name: "Docs site"
+
+# Builds the docs site (packages/app-docs) and uploads it with dev/publish-web to
+# the version folder dev of one site per commit, per branch, and per open pull
+# request of the branch, at <site>.previews.neherlab.click/dev. Pushes to rust
+# also update https://docs.treetime.neherlab.click. Each upload also stores the
+# site root files (versions.json and the page that leads to the preferred
+# version). A push run publishes the sites of the
+# open pull requests of its branch, so a pull request triggers a run of its own
+# only when it is opened or reopened. Pull requests from forks build without an
+# upload, because they get no secrets.
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    types:
+      - opened
+      - reopened
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # A cancelled upload would leave docs.treetime.neherlab.click between two versions.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/rust' }}
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  CARGO_INCREMENTAL: "0"
+  KACHE_STORE: ${{ github.workspace }}/.cache/kache
+  FORCE_COLOR: "1"
+
+jobs:
+  docs:
+    name: "Build and upload the docs site"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: "Prepare the build container"
+        uses: ./.github/actions/prepare
+        with:
+          cache: "docs"
+          dockerhub-username: ${{ secrets.NEHERLAB_BOT_DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ github.event_name == 'push' && github.ref == 'refs/heads/rust' && secrets.NEHERLAB_BOT_DOCKERHUB_TOKEN || '' }}
+
+      - name: "Build"
+        run: dev/docker/run just build-docs
+
+      - name: "Upload"
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/publish-preview
+        with:
+          dist: packages/app-docs/dist
+          site-prefix: "neherlab--treetime-docs--"
+          production-site: treetime-docs
+          label: "Docs"
+          comment-marker: "<!-- docs-preview -->"
+          comment-title: "Docs"
+          folder: dev
+          root-files: packages/app-docs/dist-root
+          aws-access-key-id: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_SECRET_ACCESS_KEY }}
+          aws-default-region: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_DEFAULT_REGION }}
+          aws-s3-bucket: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_S3_BUCKET }}
+          aws-cloudfront-distribution-id: ${{ secrets.PREVIEWS_NEHERLAB_CLICK_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
+          github-token: ${{ github.token }}
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          pr-number: ${{ github.event.pull_request.number }}
