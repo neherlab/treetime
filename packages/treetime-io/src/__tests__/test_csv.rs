@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::csv::{
-    CsvWriter, TableFormat, csv_read, default_name_candidates, delimiter_from_path, detect_csv_delimiter, get_col_name,
+    ColumnRule, CsvWriter, TableFormat, csv_read, default_name_candidates, delimiter_from_path, detect_csv_delimiter,
+    find_column,
   };
   use eyre::{Report, WrapErr};
   use pretty_assertions::assert_eq;
@@ -37,33 +38,122 @@ mod tests {
     1,
   )]
   #[trace]
-  fn test_csv_get_col_name_header_position_priority(
+  fn test_csv_find_column_header_position_priority(
     #[case] headers: Vec<String>,
     #[case] expected_idx: usize,
   ) -> Result<(), Report> {
     let candidates = default_name_candidates();
-    let actual = get_col_name(&headers, &candidates, None)?;
+    let actual = find_column(&headers, ColumnRule::OneOf(&candidates))?;
     assert_eq!(expected_idx, actual);
     Ok(())
   }
 
   #[test]
-  fn test_csv_get_col_name_provided_name() -> Result<(), Report> {
+  fn test_csv_find_column_provided_name() -> Result<(), Report> {
     let headers = vec![o!("accession"), o!("date"), o!("strain")];
     let candidates = default_name_candidates();
-    let actual = get_col_name(&headers, &candidates, Some("strain"))?;
+    let actual = find_column(
+      &headers,
+      ColumnRule::requested_or(Some("strain"), ColumnRule::OneOf(&candidates)),
+    )?;
     assert_eq!(2, actual);
     Ok(())
   }
 
   #[test]
-  fn test_csv_get_col_name_no_match() {
+  fn test_csv_find_column_no_match() {
     let headers = vec![o!("region"), o!("country"), o!("date")];
     let candidates = default_name_candidates();
-    let result = get_col_name(&headers, &candidates, None);
+    let result = find_column(&headers, ColumnRule::OneOf(&candidates));
     assert_error!(
       result,
       "Unable to find column:\n  Looking for: strain, name, accession\n  Available columns are: region, country, date"
+    );
+  }
+
+  #[test]
+  fn test_csv_find_column_hash_name_as_candidate() -> Result<(), Report> {
+    let headers = vec![o!("name"), o!("date"), o!("country")];
+    let actual = find_column(&headers, ColumnRule::OneOf(&[o!("#name")]))?;
+    assert_eq!(0, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_csv_find_column_hash_name_as_provided_name() -> Result<(), Report> {
+    let headers = vec![o!("country"), o!("name"), o!("date")];
+    let actual = find_column(&headers, ColumnRule::Exact("#name"))?;
+    assert_eq!(1, actual);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::written_match_wins(vec![o!("name"), o!("date"), o!("#date")], "#date",   2)]
+  #[case::normalized_match(  vec![o!("name"), o!("#date")],              "date",    1)]
+  #[case::padded_request(    vec![o!("#name"), o!("date")],              " #name ", 0)]
+  #[case::hash_and_space(    vec![o!("# name"), o!("date")],             "name",    0)]
+  #[trace]
+  fn test_csv_find_column_provided_name_as_written_then_normalized(
+    #[case] headers: Vec<String>,
+    #[case] name: &str,
+    #[case] expected_idx: usize,
+  ) -> Result<(), Report> {
+    let actual = find_column(&headers, ColumnRule::Exact(name))?;
+    assert_eq!(expected_idx, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_csv_find_column_padded_candidate() -> Result<(), Report> {
+    let headers = vec![o!("country"), o!("#name")];
+    let actual = find_column(&headers, ColumnRule::OneOf(&[o!(" #name ")]))?;
+    assert_eq!(1, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_csv_find_column_provided_name_ambiguous_after_normalization() {
+    let headers = vec![o!("name"), o!("#date"), o!("date#")];
+    let result = find_column(&headers, ColumnRule::Exact("date"));
+    assert_error!(
+      result,
+      "Column 'date' is ambiguous: the columns '#date', 'date#' all read as 'date'. Request one of them as written"
+    );
+  }
+
+  #[test]
+  fn test_csv_find_column_provided_name_is_case_sensitive() {
+    let headers = vec![o!("strain"), o!("date")];
+    let result = find_column(&headers, ColumnRule::Exact("Date"));
+    assert_error!(
+      result,
+      "Unable to find column 'Date'. Available columns are: strain, date"
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::date(           vec![o!("strain"), o!("date")],                              1)]
+  #[case::num_date(       vec![o!("strain"), o!("num_date")],                          1)]
+  #[case::collection_date(vec![o!("strain"), o!("country"), o!("collection_date")],    2)]
+  #[case::date_submitted( vec![o!("strain"), o!("date_submitted")],                    1)]
+  #[case::capitalized(    vec![o!("strain"), o!("Date")],                              1)]
+  #[case::leftmost_wins(  vec![o!("strain"), o!("date_submitted"), o!("date")],        1)]
+  #[trace]
+  fn test_csv_find_column_containing(#[case] headers: Vec<String>, #[case] expected_idx: usize) -> Result<(), Report> {
+    let actual = find_column(&headers, ColumnRule::Containing("date"))?;
+    assert_eq!(expected_idx, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_csv_find_column_containing_no_match() {
+    let headers = vec![o!("strain"), o!("country")];
+    let result = find_column(&headers, ColumnRule::Containing("date"));
+    assert_error!(
+      result,
+      "Unable to find column:\n  Looking for: a name that contains 'date'\n  Available columns are: strain, country"
     );
   }
 

@@ -6,8 +6,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_utils::datetime::options::DateParserOptions;
-  use treetime_utils::o;
   use treetime_utils::pretty_assert_ulps_eq;
+  use treetime_utils::{assert_error, o};
 
   #[rustfmt::skip]
   #[rstest]
@@ -288,20 +288,23 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::csv(               "metadata.csv",    "strain,date,country\nA,2020-01-15,usa\nB,2020-02-03,peru\n",       ',',  Some("date"))]
-  #[case::tsv(               "metadata.tsv",    "strain\tdate\tcountry\nA\t2020-01-15\tusa\nB\t2020-02-03\tperu\n", '\t', Some("date"))]
-  #[case::tsv_named_as_csv(  "metadata.csv",    "strain\tdate\tcountry\nA\t2020-01-15\tusa\nB\t2020-02-03\tperu\n", '\t', Some("date"))]
-  #[case::csv_named_as_tsv(  "metadata.tsv.xz", "strain,date,country\nA,2020-01-15,usa\nB,2020-02-03,peru\n",       ',',  Some("date"))]
-  #[case::without_dates(     "metadata.tsv",    "strain\tcountry\nA\tusa\nB\tperu\n",                               '\t', None)]
-  #[case::explicit_date_column("metadata.tsv",  "strain\tdate,x\nA\t2020,1\nB\t2021,2\n",                          '\t', Some("date,x"))]
-  #[case::tie_broken_by_tsv( "metadata.tsv",    "strain,date,x\tstrain\tdate\nq\tA\t2020-01-15\nq\tB\t2020-02-03\n", '\t', Some("date"))]
-  #[case::tie_broken_by_csv( "metadata.csv",    "strain,date,x\tstrain\tdate\nA,2020-01-15,q\nB,2020-02-03,q\n",     ',',  Some("date"))]
+  #[case::csv(                 "metadata.csv",    "strain,date,country\nA,2020-01-15,usa\nB,2020-02-03,peru\n",          None,           (',',  Some("date")))]
+  #[case::tsv(                 "metadata.tsv",    "strain\tdate\tcountry\nA\t2020-01-15\tusa\nB\t2020-02-03\tperu\n",    None,           ('\t', Some("date")))]
+  #[case::tsv_named_as_csv(    "metadata.csv",    "strain\tdate\tcountry\nA\t2020-01-15\tusa\nB\t2020-02-03\tperu\n",    None,           ('\t', Some("date")))]
+  #[case::csv_named_as_tsv(    "metadata.tsv.xz", "strain,date,country\nA,2020-01-15,usa\nB,2020-02-03,peru\n",          None,           (',',  Some("date")))]
+  #[case::without_dates(       "metadata.tsv",    "strain\tcountry\nA\tusa\nB\tperu\n",                                  None,           ('\t', None))]
+  #[case::explicit_date_column("metadata.tsv",    "strain\tdate,x\nA\t2020,1\nB\t2021,2\n",                             Some("date,x"), ('\t', Some("date,x")))]
+  #[case::tie_broken_by_tsv(   "metadata.tsv",    "strain,x\tstrain\tdate\nq\tA\t2020-01-15\nq\tB\t2020-02-03\n",       None,           ('\t', Some("date")))]
+  #[case::tie_broken_by_csv(   "metadata.csv",    "strain,date,x\tstrain\nA,2020-01-15,q\nB,2020-02-03,q\n",              None,           (',',  Some("date")))]
+  #[case::num_date(            "metadata.tsv",    "strain\tnum_date\nA\t2020.1\nB\t2020.2\n",                            None,           ('\t', Some("num_date")))]
+  #[case::leftmost_date_like(  "metadata.tsv",    "strain\tcollection_date\tdate\nA\t2020\t2021\nB\t2020\t2021\n",       None,           ('\t', Some("collection_date")))]
+  #[case::explicit_hash_date(  "metadata.tsv",    "strain\t#date\nA\t2020\nB\t2021\n",                                  Some("#date"),  ('\t', Some("date")))]
   #[trace]
   fn test_metadata_read_picks_columns(
     #[case] file_name: &str,
     #[case] content: &str,
-    #[case] delimiter: char,
     #[case] date_column: Option<&str>,
+    #[case] (delimiter, expected_date_column): (char, Option<&str>),
   ) {
     let table = metadata_read(
       content.as_bytes(),
@@ -309,17 +312,72 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
       &[',', '\t', ';'],
       &[o!("strain"), o!("name")],
       None,
-      date_column.filter(|column| *column != "date"),
+      date_column,
     )
     .unwrap();
     assert_eq!(
-      (delimiter, o!("strain"), date_column.map(str::to_owned), vec![o!("A"), o!("B")]),
+      (delimiter, o!("strain"), expected_date_column.map(str::to_owned), vec![o!("A"), o!("B")]),
       (
         table.delimiter,
         table.id_column.clone(),
         table.date_column.as_ref().ok().cloned(),
         table.rows.iter().map(|row| row.name.clone()).collect::<Vec<_>>(),
       )
+    );
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::candidate(vec![o!("#name")], None)]
+  #[case::provided( vec![],            Some("#name"))]
+  #[trace]
+  fn test_metadata_read_hash_name_column(#[case] name_candidates: Vec<String>, #[case] name_column: Option<&str>) {
+    let table = metadata_read(
+      &b"#name\tdate\tcountry\nA\t2020\tusa\n"[..],
+      delimiter_from_path("metadata.tsv"),
+      &[',', '\t'],
+      &name_candidates,
+      name_column,
+      None,
+    )
+    .unwrap();
+    assert_eq!(
+      (o!("name"), vec![o!("A")]),
+      (table.id_column.clone(), table.rows.iter().map(|row| row.name.clone()).collect::<Vec<_>>())
+    );
+  }
+
+  #[test]
+  fn test_metadata_read_explicit_date_column_as_written() {
+    let table = metadata_read(
+      &b"name\tdate\t#date\nA\t2020\t2021\n"[..],
+      delimiter_from_path("metadata.tsv"),
+      &['\t'],
+      &[o!("name")],
+      None,
+      Some("#date"),
+    )
+    .unwrap();
+    assert_eq!(
+      vec![Some(o!("2021"))],
+      table.rows.iter().map(|row| row.date.clone()).collect::<Vec<_>>()
+    );
+  }
+
+  #[test]
+  fn test_metadata_read_explicit_date_column_is_case_sensitive() {
+    let table = metadata_read(
+      &b"strain\tdate\nA\t2020\n"[..],
+      delimiter_from_path("metadata.tsv"),
+      &['\t'],
+      &[o!("strain")],
+      None,
+      Some("Date"),
+    )
+    .unwrap();
+    assert_error!(
+      table.dates(&DateParserOptions::default()),
+      "Unable to find column 'Date'. Available columns are: strain, date"
     );
   }
 
@@ -334,12 +392,9 @@ A/Maryland/03/2013|KF789621|02/10/2013|USA|12_13|H3N2/1-1409	2013.11225188
       None,
     )
     .unwrap();
-    assert!(
-      table
-        .dates(&DateParserOptions::default())
-        .unwrap_err()
-        .to_string()
-        .contains("Looking for: date")
+    assert_error!(
+      table.dates(&DateParserOptions::default()),
+      "Unable to find column:\n  Looking for: a name that contains 'date'\n  Available columns are: strain, country"
     );
   }
 }

@@ -5,7 +5,7 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime_utils::o;
+  use treetime_utils::{assert_error, o};
 
   #[rustfmt::skip]
   #[rstest]
@@ -155,5 +155,37 @@ mod tests {
     assert_eq!(expected, values);
 
     Ok(())
+  }
+
+  #[test]
+  fn test_discrete_states_csv_value_column_as_written() -> Result<(), Report> {
+    let (values, attr_name) = discrete_attrs_read(
+      "name\tlocation\t#location\nA\tusa\teurope".as_bytes(),
+      None,
+      &['\t'],
+      &default_name_candidates(),
+      None,
+      Some("#location"),
+      |s| Ok(s.to_owned()),
+    )?;
+    assert_eq!((vec![(o!("A"), o!("europe"))], o!("location")), (values, attr_name));
+    Ok(())
+  }
+
+  #[test]
+  fn test_discrete_states_csv_value_column_ambiguous() {
+    let result = discrete_attrs_read(
+      "name\t#location\tlocation#\nA\tusa\teurope".as_bytes(),
+      None,
+      &['\t'],
+      &default_name_candidates(),
+      None,
+      Some("location"),
+      |s| Ok(s.to_owned()),
+    );
+    assert_error!(
+      result,
+      "Column 'location' is ambiguous: the columns '#location', 'location#' all read as 'location'. Request one of them as written"
+    );
   }
 }

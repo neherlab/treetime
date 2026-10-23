@@ -143,35 +143,51 @@ pub fn default_metadata_delimiters() -> Vec<char> {
   vec![',', '\t', ';']
 }
 
-pub(crate) fn get_col_name(
-  headers: &[String],
-  possible_names: &[String],
-  provided_name: Option<&str>,
-) -> Result<usize, Report> {
-  if let Some(provided_name) = provided_name {
-    match headers.iter().position(|header| header == provided_name) {
-      Some(idx) => Ok(idx),
-      None => make_error!(
-        "Unable to find column '{provided_name}'. Available columns are: {}",
-        headers.join(", ")
-      ),
-    }
-  } else {
-    let candidates_lower: Vec<String> = possible_names.iter().map(|c| c.to_lowercase()).collect();
-    headers
-      .iter()
-      .enumerate()
-      .find_map(|(idx, header)| {
-        let header_lower = header.to_lowercase();
-        candidates_lower.contains(&header_lower).then_some(idx)
-      })
-      .ok_or_else(|| {
-        make_report!(
-          "Unable to find column:\n  Looking for: {}\n  Available columns are: {}",
-          possible_names.join(", "),
-          headers.join(", ")
-        )
-      })
+pub(crate) fn find_column(headers: &[String], rule: ColumnRule<'_>) -> Result<usize, Report> {
+  let normalized = normalize_csv_headers(headers);
+  match rule {
+    ColumnRule::Exact(name) => find_named_column(headers, &normalized, name),
+    ColumnRule::OneOf(candidates) => {
+      let lowercase = candidates
+        .iter()
+        .map(|candidate| normalize_csv_header(candidate).to_lowercase())
+        .collect_vec();
+      normalized
+        .iter()
+        .position(|header| lowercase.contains(&header.to_lowercase()))
+        .ok_or_else(|| {
+          make_report!(
+            "Unable to find column:\n  Looking for: {}\n  Available columns are: {}",
+            candidates.join(", "),
+            headers.join(", ")
+          )
+        })
+    },
+    ColumnRule::Containing(word) => {
+      let word = word.to_lowercase();
+      normalized
+        .iter()
+        .position(|header| header.to_lowercase().contains(&word))
+        .ok_or_else(|| {
+          make_report!(
+            "Unable to find column:\n  Looking for: a name that contains '{word}'\n  Available columns are: {}",
+            headers.join(", ")
+          )
+        })
+    },
+  }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ColumnRule<'a> {
+  Exact(&'a str),
+  OneOf(&'a [String]),
+  Containing(&'a str),
+}
+
+impl<'a> ColumnRule<'a> {
+  pub(crate) fn requested_or(requested: Option<&'a str>, detected: Self) -> Self {
+    requested.map_or(detected, ColumnRule::Exact)
   }
 }
 
@@ -226,6 +242,29 @@ pub(crate) fn detect_csv_delimiter<R: BufRead + ?Sized>(
   }
 }
 
+fn find_named_column(headers: &[String], normalized: &[String], name: &str) -> Result<usize, Report> {
+  if let Some(index) = headers.iter().position(|header| header == name) {
+    return Ok(index);
+  }
+  let requested = normalize_csv_header(name);
+  match normalized
+    .iter()
+    .positions(|header| *header == requested)
+    .collect_vec()
+    .as_slice()
+  {
+    [index] => Ok(*index),
+    [] => make_error!(
+      "Unable to find column '{name}'. Available columns are: {}",
+      headers.join(", ")
+    ),
+    indices => make_error!(
+      "Column '{name}' is ambiguous: the columns {} all read as '{requested}'. Request one of them as written",
+      indices.iter().map(|&index| format!("'{}'", headers[index])).join(", ")
+    ),
+  }
+}
+
 fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
   u8::try_from(u32::from(delimiter))
     .map_err(Report::from)
@@ -235,7 +274,6 @@ fn delimiter_to_byte(delimiter: char) -> Result<u8, Report> {
 fn csv_headers(sample: &[u8], delimiter: u8) -> Result<Vec<String>, Report> {
   table_records(sample, delimiter)
     .read::<Vec<String>>()?
-    .map(|headers| normalize_csv_headers(&headers))
     .ok_or_else(|| make_report!("The table is empty"))
 }
 
@@ -248,10 +286,11 @@ pub(crate) fn table_records<R: Read>(reader: R, delimiter: u8) -> Reader<R, Stre
 }
 
 pub(crate) fn normalize_csv_headers(headers: &[String]) -> Vec<String> {
-  headers
-    .iter()
-    .map(|header| header.trim_start_matches('#').trim_end_matches('#').trim().to_owned())
-    .collect()
+  headers.iter().map(|header| normalize_csv_header(header)).collect()
+}
+
+fn normalize_csv_header(header: &str) -> String {
+  header.trim().trim_matches('#').trim().to_owned()
 }
 
 pub(crate) fn delimiter_from_path(filepath: impl AsRef<Path>) -> Option<u8> {

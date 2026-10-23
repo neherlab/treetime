@@ -1,4 +1,6 @@
-use crate::csv::{delimiter_from_path, detect_csv_delimiter, get_col_name, normalize_csv_headers, table_records};
+use crate::csv::{
+  ColumnRule, delimiter_from_path, detect_csv_delimiter, find_column, normalize_csv_headers, table_records,
+};
 use eyre::{Report, WrapErr};
 use std::io::BufRead;
 use std::path::Path;
@@ -8,7 +10,7 @@ use treetime_utils::datetime::parse_date::{parse_date, parse_date_range};
 use treetime_utils::datetime::parse_uncertain_date::parse_date_uncertain;
 use treetime_utils::datetime::year_fraction::{date_range_to_year_fraction_range, date_to_year_fraction};
 use treetime_utils::io::file::read_file_with;
-use treetime_utils::{make_internal_report, make_report, vec_of_owned};
+use treetime_utils::{make_internal_report, make_report};
 
 pub fn metadata_read_file(
   filepath: impl AsRef<Path>,
@@ -45,22 +47,23 @@ pub fn metadata_read(
   name_column: Option<&str>,
   date_column: Option<&str>,
 ) -> Result<MetadataTable, Report> {
-  let date_candidates = vec_of_owned!["date"];
+  let id_rule = ColumnRule::requested_or(name_column, ColumnRule::OneOf(name_candidates));
+  let date_rule = ColumnRule::requested_or(date_column, ColumnRule::Containing("date"));
   let delimiter = detect_csv_delimiter(&mut reader, path_delimiter, delimiters, |headers| {
-    get_col_name(headers, name_candidates, name_column).is_ok()
-      && get_col_name(headers, &date_candidates, date_column).is_ok()
+    find_column(headers, id_rule).is_ok() && find_column(headers, date_rule).is_ok()
   })
   .or_else(|_without_dates| {
     detect_csv_delimiter(&mut reader, path_delimiter, delimiters, |headers| {
-      get_col_name(headers, name_candidates, name_column).is_ok()
+      find_column(headers, id_rule).is_ok()
     })
   })
   .wrap_err("When detecting the metadata delimiter")?;
 
   let mut reader = table_records(reader, delimiter);
-  let columns = normalize_csv_headers(&reader.read::<Vec<String>>()?.unwrap_or_default());
-  let id_index = get_col_name(&columns, name_candidates, name_column)?;
-  let date_index = get_col_name(&columns, &date_candidates, date_column);
+  let written = reader.read::<Vec<String>>()?.unwrap_or_default();
+  let columns = normalize_csv_headers(&written);
+  let id_index = find_column(&written, id_rule)?;
+  let date_index = find_column(&written, date_rule);
 
   let rows = reader
     .iter::<Vec<String>>()
