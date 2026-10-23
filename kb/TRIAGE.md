@@ -209,5 +209,5 @@ These issues cover parity gaps, robustness, performance, tests, and tooling, and
 - **[kb/issues/M-release-install-docs-and-system-requirements-missing.md](issues/M-release-install-docs-and-system-requirements-missing.md)**: write the installation page with the CPU and operating system requirements and point first-time users to the web app
 - **[kb/issues/N-release-downloads-need-a-triplet-choice.md](issues/N-release-downloads-need-a-triplet-choice.md)**: add an install script and ship one Linux CLI download per architecture
 - **[kb/issues/N-app-reset-form-keeps-uploads-of-the-pending-run.md](issues/N-app-reset-form-keeps-uploads-of-the-pending-run.md)**: release the uploads of the pending run when the form resets
-- **[kb/issues/N-app-web-production-builds-not-in-ci.md](issues/N-app-web-production-builds-not-in-ci.md)**: add `build-web`, `build-web2`, and `test-wasm-mt` to a check group
+- **[kb/issues/N-app-web-production-builds-not-in-ci.md](issues/N-app-web-production-builds-not-in-ci.md)**: add `build-web` and `test-wasm-mt` to a check group
 - **[kb/issues/N-web2-jobs-parameter-lost-after-navigation.md](issues/N-web2-jobs-parameter-lost-after-navigation.md)**: keep the `jobs` parameter across navigation
