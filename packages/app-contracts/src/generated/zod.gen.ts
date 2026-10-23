@@ -385,22 +385,19 @@ export const zOutputSelection = z.enum([
   'mat-json',
   'graph-json',
   'dot',
-  'augur-node-data',
-  'gtr',
+  'node-data',
+  'model',
   'clock-model',
-  'confidence-tsv',
-  'confidence-csv',
-  'reconstructed-nuc-fasta',
-  'reconstructed-aa-fasta',
-  'traits-csv',
-  'clock-csv',
+  'dates',
+  'trait-probabilities',
+  'sequences',
+  'translations',
+  'traits',
+  'rtt',
   'tracelog',
-  'coalescent-tsv',
-  'coalescent-csv',
+  'coalescent',
   'coalescent-json',
-  'clock-chart-svg',
-  'clock-chart-png',
-  'clock-chart-pdf',
+  'rtt-chart',
   'homoplasy-stats',
   'homoplasy-report'
 ]);
@@ -429,6 +426,7 @@ export const zRunWarningKind = z.union([
   z.literal('duplicate-node-names'),
   z.literal('duplicate-sequence-names'),
   z.literal('duplicate-metadata-names'),
+  z.literal('duplicate-partition-names'),
   z.literal('branch-lengths-not-converged'),
   z.literal('dates-outside-input-dates')
 ]);
@@ -1353,18 +1351,6 @@ export const zSettingCatalog = z.object({
   commands: z.array(zCommandSettings)
 });
 
-export const zBranchLengthMode = z.union([
-  z.literal('auto'),
-  z.literal('input'),
-  z.literal('marginal')
-]);
-
-export const zRerootMethod = z.enum([
-  'least-squares',
-  'min-dev',
-  'oldest'
-]);
-
 export const zGtrModelName = z.union([
   z.literal('jc69'),
   z.literal('k80'),
@@ -1376,15 +1362,38 @@ export const zGtrModelName = z.union([
   z.literal('infer')
 ]);
 
-export const zPartitionRates = z.union([
-  z.literal('estimate'),
-  z.literal('equal')
-]);
+/**
+ * One partition: a set of sites of one `--alignment` file and its substitution model
+ */
+export const zPartitionSpec = z.strictObject({
+  name: z.string().optional(),
+  alignment: z.int().gte(1).optional(),
+  sites: z.array(z.string().regex(/^([0-9]+)(?:-([0-9]+)(?:\\([0-9]+))?)?$/)).optional(),
+  model: zGtrModelName.optional(),
+  model_params: z.array(z.string()).optional()
+});
 
 export const zAlphabetName = z.enum([
   'nuc',
   'aa',
   'aa-no-stop'
+]);
+
+export const zRerootMethod = z.enum([
+  'least-squares',
+  'min-dev',
+  'oldest'
+]);
+
+export const zBranchLengthMode = z.union([
+  z.literal('auto'),
+  z.literal('input'),
+  z.literal('marginal')
+]);
+
+export const zPartitionRates = z.union([
+  z.literal('estimate'),
+  z.literal('equal')
 ]);
 
 export const zRepresentation = z.union([
@@ -1398,8 +1407,6 @@ export const zGapFill = z.enum([
   'all',
   'none'
 ]);
-
-export const zDivergenceUnits = z.enum(['mutations-per-site', 'mutations']);
 
 export const zNewickAnnotationsArg = z.enum([
   'plain',
@@ -1416,22 +1423,23 @@ export const zTimetreeOutputSelection = z.enum([
   'mat-json',
   'graph-json',
   'dot',
-  'augur-node-data',
-  'gtr',
-  'reconstructed-nuc-fasta',
+  'node-data',
+  'model',
+  'sequences',
   'clock-model',
-  'clock-csv',
-  'confidence-tsv',
+  'rtt',
+  'dates',
   'tracelog',
-  'coalescent-tsv',
-  'coalescent-csv',
+  'coalescent',
   'coalescent-json'
 ]);
+
+export const zDivergenceUnits = z.enum(['mutations-per-site', 'mutations']);
 
 /**
  * Reconstructed nucleotide FASTA
  */
-export const zTimetreeAmbiguityOutput = z.literal('reconstructed-nuc-fasta');
+export const zTimetreeAmbiguityOutput = z.literal('sequences');
 
 export const zTopologyOrderArg = z.enum([
   'keep',
@@ -1450,13 +1458,11 @@ export const zTopologyOrderArg = z.enum([
 export const zTopologyOrderTargetAggregateArg = z.enum(['mean', 'median']);
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
- *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Infer a time-scaled tree from a tree, the sampling dates of its tips, and optionally an alignment
  */
 export const zTimetreeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
+  partition: z.array(zPartitionSpec).optional(),
   tree: z.string().optional(),
   newick_dialect: z.enum([
     'classic,plain',
@@ -1479,14 +1485,21 @@ export const zTimetreeConfig = z.strictObject({
   date_column: z.string().optional(),
   date_format: z.string().optional(),
   sequence_length: z.int().gte(0).optional(),
+  alphabet: zAlphabetName.optional(),
+  zero_based: z.boolean().optional(),
   clock_rate: z.number().optional(),
   clock_std_dev: z.number().optional(),
+  relax: z.array(z.number()).optional(),
+  clock_filter: z.number().optional(),
+  allow_negative_rate: z.boolean().optional(),
+  reroot: zRerootMethod.optional(),
+  outgroup: z.array(z.string()).optional(),
+  keep_root: z.boolean().optional(),
   branch_length_mode: zBranchLengthMode.optional(),
+  max_iter: z.int().gte(0).optional(),
   confidence: z.boolean().optional(),
   max_grid_points: z.int().gte(1000).optional(),
   keep_polytomies: z.boolean().optional(),
-  relax: z.array(z.number()).optional(),
-  max_iter: z.int().gte(0).optional(),
   coalescent: z.union([
     z.number().gt(0),
     z.string().regex(/^\+?([0-9]*[1-9][0-9]*\.?[0-9]*|[0-9]*\.[0-9]*[1-9][0-9]*)([eE][+-]?[0-9]+)?[ywd]?$/),
@@ -1496,34 +1509,16 @@ export const zTimetreeConfig = z.strictObject({
   n_skyline: z.int().gte(2).optional(),
   skyline_stiffness: z.number().optional(),
   coalescent_confidence: z.number().optional(),
-  clock_filter: z.number().optional(),
-  allow_negative_rate: z.boolean().optional(),
-  reroot: zRerootMethod.optional(),
-  outgroup: z.array(z.string()).optional(),
-  keep_root: z.boolean().optional(),
+  gen_per_year: z.number().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
-  alphabet: zAlphabetName.optional(),
   representation: zRepresentation.optional(),
   gap_fill: zGapFill.optional(),
-  zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
   reconstruct_tip_states: z.boolean().optional(),
   report_ambiguous: z.boolean().optional(),
   impute_missing_data: z.boolean().optional(),
-  no_indels: z.boolean().optional(),
-  divergence_units: zDivergenceUnits.optional(),
-  output_augur_node_data: z.string().optional(),
-  output_gtr: z.string().optional(),
-  output_reconstructed_nuc_fasta: z.string().optional(),
-  output_clock_model: z.string().optional(),
-  output_clock_csv: z.string().optional(),
-  output_confidence_tsv: z.string().optional(),
-  output_tracelog: z.string().optional(),
-  output_coalescent_tsv: z.string().optional(),
-  output_coalescent_csv: z.string().optional(),
-  output_coalescent_json: z.string().optional(),
   output_all: z.string().optional(),
   newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
@@ -1534,14 +1529,24 @@ export const zTimetreeConfig = z.strictObject({
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
   output_selection: z.array(zTimetreeOutputSelection).optional(),
+  no_indels: z.boolean().optional(),
+  divergence_units: zDivergenceUnits.optional(),
+  output_node_data: z.string().optional(),
+  output_model: z.string().optional(),
+  output_sequences: z.string().optional(),
+  output_clock_model: z.string().optional(),
+  output_rtt: z.string().optional(),
+  output_dates: z.string().optional(),
+  output_tracelog: z.string().optional(),
+  output_coalescent: z.string().optional(),
+  output_coalescent_json: z.string().optional(),
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zTimetreeAmbiguityOutput).optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_tree: z.string().optional(),
   topology_order_list: z.string().optional(),
   topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
-  gen_per_year: z.number().optional()
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 export const zClockOutputSelection = z.enum([
@@ -1554,14 +1559,12 @@ export const zClockOutputSelection = z.enum([
   'graph-json',
   'dot',
   'clock-model',
-  'clock-csv',
-  'clock-chart-svg',
-  'clock-chart-png',
-  'clock-chart-pdf'
+  'rtt',
+  'rtt-chart'
 ]);
 
 /**
- * Newick dialect of the tree inputs, shared by every command that reads a tree.
+ * Fit a molecular clock by root-to-tip regression, and reroot the tree for the best clock signal
  */
 export const zClockConfig = z.strictObject({
   tree: z.string().optional(),
@@ -1598,17 +1601,26 @@ export const zClockConfig = z.strictObject({
   output_tree_mat_json: z.string().optional(),
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
-  output_clock_model: z.string().optional(),
-  output_clock_csv: z.string().optional(),
-  output_clock_chart_svg: z.string().optional(),
-  output_clock_chart_png: z.string().optional(),
-  output_clock_chart_pdf: z.string().optional(),
   output_selection: z.array(zClockOutputSelection).optional(),
+  output_clock_model: z.string().optional(),
+  output_rtt: z.string().optional(),
+  output_rtt_chart: z.string().optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_tree: z.string().optional(),
   topology_order_list: z.string().optional(),
   topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
+
+/**
+ * Amino-acid substitution model: the values of `--model` that suit an amino-acid alphabet.
+ *
+ * The default `infer`, as in augur, infers a GTR model over the amino acids and the stop codon, starting from JC69.
+ * Empirical matrices apply only when selected.
+ */
+export const zAaModelName = z.union([
+  z.literal('infer'),
+  z.literal('jtt92')
+]);
 
 export const zMethodAncestral = z.enum(['marginal', 'parsimony']);
 
@@ -1616,19 +1628,6 @@ export const zSampleMode = z.enum([
   'argmax',
   'root',
   'all'
-]);
-
-/**
- * Amino-acid substitution model, mirroring the nucleotide `--model` but restricted to the values
- * that are sound over an amino-acid alphabet.
- *
- * The default `infer` matches augur, which reconstructs amino acids with a JC69-seeded inferred
- * GTR over the stop-inclusive alphabet (`augur ancestral` calls `TreeAnc(..., gtr='JC69',
- * alphabet='aa')` with `infer_gtr=True`). Empirical matrices are opt-in.
- */
-export const zAaModelName = z.union([
-  z.literal('infer'),
-  z.literal('jtt92')
 ]);
 
 export const zAncestralOutputSelection = z.enum([
@@ -1640,26 +1639,24 @@ export const zAncestralOutputSelection = z.enum([
   'mat-json',
   'graph-json',
   'dot',
-  'augur-node-data',
-  'gtr',
-  'reconstructed-nuc-fasta',
-  'reconstructed-aa-fasta'
+  'node-data',
+  'model',
+  'sequences',
+  'translations'
 ]);
 
 export const zAncestralAmbiguityOutput = z.union([
-  z.literal('reconstructed-nuc-fasta'),
-  z.literal('reconstructed-aa-fasta'),
-  z.literal('augur-node-data')
+  z.literal('sequences'),
+  z.literal('translations'),
+  z.literal('node-data')
 ]);
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
- *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Reconstruct ancestral sequences and map the mutations to the branches of a tree
  */
 export const zAncestralConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
+  partition: z.array(zPartitionSpec).optional(),
   tree: z.string().optional(),
   newick_dialect: z.enum([
     'classic,plain',
@@ -1675,28 +1672,24 @@ export const zAncestralConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
+  allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
+  zero_based: z.boolean().optional(),
+  annotation: z.string().optional(),
+  translations: z.string().optional(),
+  cds_selection: z.array(z.string()).optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
+  aa_model: zAaModelName.optional(),
   method_anc: zMethodAncestral.optional(),
   representation: zRepresentation.optional(),
   sample_from_profile: zSampleMode.optional(),
   gap_fill: zGapFill.optional(),
-  zero_based: z.boolean().optional(),
   include_leaves: z.boolean().optional(),
   reconstruct_tip_states: z.boolean().optional(),
   report_ambiguous: z.boolean().optional(),
   impute_missing_data: z.boolean().optional(),
-  allow_missing_sequences: z.boolean().optional(),
-  output_augur_node_data: z.string().optional(),
-  output_gtr: z.string().optional(),
-  output_reconstructed_nuc_fasta: z.string().optional(),
-  translations: z.string().optional(),
-  cds_selection: z.array(z.string()).optional(),
-  annotation: z.string().optional(),
   aa_root_sequence: z.string().optional(),
-  aa_model: zAaModelName.optional(),
-  output_reconstructed_aa_fasta: z.string().optional(),
   output_all: z.string().optional(),
   newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
@@ -1707,6 +1700,10 @@ export const zAncestralConfig = z.strictObject({
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
   output_selection: z.array(zAncestralOutputSelection).optional(),
+  output_node_data: z.string().optional(),
+  output_model: z.string().optional(),
+  output_sequences: z.string().optional(),
+  output_translations: z.string().optional(),
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zAncestralAmbiguityOutput).optional(),
   topology_order: zTopologyOrderArg.optional(),
@@ -1730,10 +1727,7 @@ export const zHomoplasyOutputSelection = z.enum([
 ]);
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
- *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Reconstruct ancestral sequences and count homoplasies, mutations that occur more than once in a tree
  */
 export const zHomoplasyConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -1752,17 +1746,16 @@ export const zHomoplasyConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
+  allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
+  zero_based: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   method_anc: zMethodAncestral.optional(),
   representation: zRepresentation.optional(),
-  gap_fill: zGapFill.optional(),
-  zero_based: z.boolean().optional(),
-  impute_missing_data: z.boolean().optional(),
-  allow_missing_sequences: z.boolean().optional(),
   sample_from_profile: zSampleMode.optional(),
-  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional(),
+  gap_fill: zGapFill.optional(),
+  impute_missing_data: z.boolean().optional(),
   constant_sites: z.int().gte(0).optional(),
   rescale: z.number().optional(),
   detailed: z.boolean().optional(),
@@ -1777,13 +1770,14 @@ export const zHomoplasyConfig = z.strictObject({
   output_tree_mat_json: z.string().optional(),
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
+  output_selection: z.array(zHomoplasyOutputSelection).optional(),
   output_homoplasy_stats: z.string().optional(),
   output_homoplasy_report: z.string().optional(),
-  output_selection: z.array(zHomoplasyOutputSelection).optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_tree: z.string().optional(),
   topology_order_list: z.string().optional(),
-  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
+  seed: z.int().gte(0).max(9007199254740991, { error: 'Invalid value: Expected uint64 to be <= 9007199254740991, the largest exact JSON integer' }).optional()
 });
 
 export const zMugrationOutputSelection = z.enum([
@@ -1795,20 +1789,20 @@ export const zMugrationOutputSelection = z.enum([
   'mat-json',
   'graph-json',
   'dot',
-  'augur-node-data',
-  'gtr',
-  'confidence-csv',
-  'traits-csv'
+  'node-data',
+  'model',
+  'trait-probabilities',
+  'traits'
 ]);
 
 export const zMugrationAmbiguityOutput = z.union([
-  z.literal('traits-csv'),
-  z.literal('augur-node-data'),
+  z.literal('traits'),
+  z.literal('node-data'),
   z.literal('auspice')
 ]);
 
 /**
- * Newick dialect of the tree inputs, shared by every command that reads a tree.
+ * Reconstruct the ancestral states of a discrete trait, such as location or host, and fit a model of its changes
  */
 export const zMugrationConfig = z.strictObject({
   tree: z.string().optional(),
@@ -1826,22 +1820,18 @@ export const zMugrationConfig = z.strictObject({
     'rich,nhx',
     'rich,mrbayes'
   ]).optional(),
-  attribute: z.string().optional(),
   metadata: z.string().optional(),
-  weights: z.string().optional(),
   metadata_id_columns: z.array(z.string()).optional(),
   metadata_delimiters: z.array(z.string().length(1)).optional(),
-  output_confidence_csv: z.string().optional(),
-  pc: z.number().optional(),
+  attribute: z.string().optional(),
+  weights: z.string().optional(),
   missing_data: z.string().optional(),
+  pc: z.number().optional(),
   missing_weights_threshold: z.number().optional(),
   model_iterations: z.int().gte(0).optional(),
   sampling_bias_correction: z.number().optional(),
   smooth_initial_pi: z.boolean().optional(),
   filter_uninformative_root: z.boolean().optional(),
-  output_augur_node_data: z.string().optional(),
-  output_gtr: z.string().optional(),
-  output_traits_csv: z.string().optional(),
   output_all: z.string().optional(),
   newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
@@ -1852,6 +1842,11 @@ export const zMugrationConfig = z.strictObject({
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
   output_selection: z.array(zMugrationOutputSelection).optional(),
+  confidence: z.boolean().optional(),
+  output_node_data: z.string().optional(),
+  output_model: z.string().optional(),
+  output_traits: z.string().optional(),
+  output_trait_probabilities: z.string().optional(),
   ambiguity_threshold: z.number().gte(0).lte(1).optional(),
   ambiguity_outputs: z.array(zMugrationAmbiguityOutput).optional(),
   topology_order: zTopologyOrderArg.optional(),
@@ -1859,41 +1854,6 @@ export const zMugrationConfig = z.strictObject({
   topology_order_list: z.string().optional(),
   topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
-
-export const zOptimizeOutputSelection = z.enum([
-  'all',
-  'nwk',
-  'nexus',
-  'auspice',
-  'mat-pb',
-  'mat-json',
-  'graph-json',
-  'dot',
-  'augur-node-data',
-  'gtr'
-]);
-
-/**
- * Controls whether marginal reconstruction estimates initial branch lengths
- * from substitutions divided by effective alignment length. Preserving valid
- * input lengths can provide a better Newton starting point.
- */
-export const zInitialGuessMode = z.union([
-  z.literal('auto'),
-  z.literal('always'),
-  z.literal('never')
-]);
-
-/**
- * Per-edge branch length optimization method.
- *
- * Controls how the maximum-likelihood branch length of each edge is found:
- * Brent's method or Newton-Raphson, both in $\sqrt{t}$ space.
- */
-export const zBranchOptMethod = z.union([
-  z.literal('brent'),
-  z.literal('newton')
-]);
 
 /**
  * Reroot methods available in the optimize command.
@@ -1905,13 +1865,45 @@ export const zBranchOptMethod = z.union([
 export const zOptimizeRerootMethod = z.enum(['min-dev']);
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
+ * Initial branch lengths: input lengths, or estimates from the number of substitutions divided by the effective
+ * alignment length. Valid input lengths can give Newton-Raphson a better starting point.
+ */
+export const zInitialGuessMode = z.union([
+  z.literal('auto'),
+  z.literal('always'),
+  z.literal('never')
+]);
+
+/**
+ * Per-edge branch length optimization method.
  *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Controls how the maximum-likelihood branch length of each edge is found:
+ * Optimizer of each branch length: Brent's method or Newton-Raphson, both on sqrt(t).
+ */
+export const zBranchOptMethod = z.union([
+  z.literal('brent'),
+  z.literal('newton')
+]);
+
+export const zOptimizeOutputSelection = z.enum([
+  'all',
+  'nwk',
+  'nexus',
+  'auspice',
+  'mat-pb',
+  'mat-json',
+  'graph-json',
+  'dot',
+  'node-data',
+  'model'
+]);
+
+/**
+ * Optimize the branch lengths of a tree for the likelihood of an alignment
  */
 export const zOptimizeConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
+  partition: z.array(zPartitionSpec).optional(),
   tree: z.string().optional(),
   newick_dialect: z.enum([
     'classic,plain',
@@ -1930,10 +1922,22 @@ export const zOptimizeConfig = z.strictObject({
   allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
   zero_based: z.boolean().optional(),
+  reroot: zOptimizeRerootMethod.optional(),
+  outgroup: z.array(z.string()).optional(),
+  keep_root: z.boolean().optional(),
+  max_iter: z.int().gte(0).optional(),
+  tolerance: z.number().optional(),
+  damping: z.number().optional(),
+  initial_branch_lengths: zInitialGuessMode.optional(),
+  optimizer: zBranchOptMethod.optional(),
+  no_collapse_zero_branches: z.boolean().optional(),
+  no_merge_shared_mutations: z.boolean().optional(),
+  no_hoist_reversions: z.boolean().optional(),
   model: zGtrModelName.optional(),
   model_params: z.array(z.string()).optional(),
   partition_rates: zPartitionRates.optional(),
   representation: zRepresentation.optional(),
+  gap_fill: zGapFill.optional(),
   output_all: z.string().optional(),
   newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
@@ -1943,27 +1947,15 @@ export const zOptimizeConfig = z.strictObject({
   output_tree_mat_json: z.string().optional(),
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
+  output_selection: z.array(zOptimizeOutputSelection).optional(),
   no_indels: z.boolean().optional(),
   divergence_units: zDivergenceUnits.optional(),
-  output_augur_node_data: z.string().optional(),
-  output_gtr: z.string().optional(),
-  output_selection: z.array(zOptimizeOutputSelection).optional(),
+  output_node_data: z.string().optional(),
+  output_model: z.string().optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_tree: z.string().optional(),
   topology_order_list: z.string().optional(),
-  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  max_iter: z.int().gte(0).optional(),
-  tolerance: z.number().optional(),
-  damping: z.number().optional(),
-  initial_branch_lengths: zInitialGuessMode.optional(),
-  optimizer: zBranchOptMethod.optional(),
-  reroot: zOptimizeRerootMethod.optional(),
-  outgroup: z.array(z.string()).optional(),
-  keep_root: z.boolean().optional(),
-  no_collapse_zero_branches: z.boolean().optional(),
-  no_merge_shared_mutations: z.boolean().optional(),
-  no_hoist_reversions: z.boolean().optional(),
-  gap_fill: zGapFill.optional()
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
 
 export const zPruneOutputSelection = z.enum([
@@ -1974,15 +1966,11 @@ export const zPruneOutputSelection = z.enum([
   'mat-pb',
   'mat-json',
   'graph-json',
-  'dot',
-  'gtr'
+  'dot'
 ]);
 
 /**
- * Sequence alignment input shared by all commands that accept an alignment.
- *
- * Each `--alignment` file is one partition, numbered by its position in the list (1, 2, ...). The path `-` reads
- * uncompressed FASTA from standard input and may appear at most once.
+ * Collapse short branches and branches without mutations, and remove named nodes from a tree
  */
 export const zPruneConfig = z.strictObject({
   alignment: z.array(z.string()).optional(),
@@ -2004,6 +1992,12 @@ export const zPruneConfig = z.strictObject({
   allow_missing_sequences: z.boolean().optional(),
   alphabet: zAlphabetName.optional(),
   zero_based: z.boolean().optional(),
+  gap_fill: zGapFill.optional(),
+  collapse_short: z.number().optional(),
+  collapse_empty: z.boolean().optional(),
+  merge_shared_mutations: z.boolean().optional(),
+  remove: z.array(z.string()).optional(),
+  remove_file: z.string().optional(),
   output_all: z.string().optional(),
   newick_annotations: zNewickAnnotationsArg.optional(),
   output_tree_nwk: z.string().optional(),
@@ -2013,18 +2007,11 @@ export const zPruneConfig = z.strictObject({
   output_tree_mat_json: z.string().optional(),
   output_tree_graph_json: z.string().optional(),
   output_tree_dot: z.string().optional(),
-  output_gtr: z.string().optional(),
   output_selection: z.array(zPruneOutputSelection).optional(),
   topology_order: zTopologyOrderArg.optional(),
   topology_order_tree: z.string().optional(),
   topology_order_list: z.string().optional(),
-  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional(),
-  gap_fill: zGapFill.optional(),
-  collapse_short: z.number().optional(),
-  collapse_empty: z.boolean().optional(),
-  merge_shared_mutations: z.boolean().optional(),
-  remove: z.array(z.string()).optional(),
-  remove_file: z.string().optional()
+  topology_order_aggregate: zTopologyOrderTargetAggregateArg.optional()
 });
 
 /**
