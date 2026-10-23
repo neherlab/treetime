@@ -16,10 +16,11 @@
 #
 # Export RUSTFLAGS and the C and C++ flags of the shipped build of a binary or
 # of the Node addon for a target, by default the host. RUSTFLAGS replaces the
-# target rustflags of .cargo/config.toml (mold, frame pointers, v0 symbol
-# mangling) instead of adding to them, as in the shipped builds. The C and C++
-# flags carry only the CPU baseline: the cc crate passes the optimization level
-# of the cargo profile.
+# target rustflags of every Cargo config file (frame pointers and v0 symbol
+# mangling of .cargo/config.toml, mold of the development image) instead of
+# adding to them, so the native builds link with rust-lld. The C and C++ flags
+# carry only the CPU baseline: the cc crate passes the optimization level of
+# the cargo profile.
 export_dist_flags() {
   local kind="${1:?binary or addon}" target="${2:-$(rustc --print host-tuple)}" target_safe c_arch rust_arch link=""
   target_safe="${target//-/_}"

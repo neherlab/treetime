@@ -25,16 +25,18 @@ CXXFLAGS_x86_64_unknown_linux_gnu = "-march=x86-64-v2"
 
 # The same flags for every native build, test, lint, and addon build, so these
 # never invalidate each other's artifacts:
-# - mold links fast; the link runs on every edit and is never cached
 # - the CPU level of the shipped builds (dev/lib/dist-flags.sh), so tests run
 #   the code that ships; dev/prebuilt-libs-check keeps both equal
 # - frame pointers and v0 symbol mangling give profilers and backtraces full
 #   stacks and generic paths
-# The dist, profiling, and bench builds and the cross builds replace these
-# flags with the flags of the shipped builds (dev/lib/dist-flags.sh).
+# These builds link with rust-lld, the default linker of rustc for this target.
+# The development image adds mold, which links faster, in its
+# /.cargo/config.toml (dev/docker/native.dockerfile); a host can add
+# "-Clink-arg=-fuse-ld=mold" to the rustflags of ~/.cargo/config.toml. The
+# dist, profiling, and bench builds and the cross builds replace these flags
+# with the flags of the shipped builds (dev/lib/dist-flags.sh).
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
-  "-Clink-arg=-fuse-ld=mold",
   "-Ctarget-cpu=x86-64-v2",
   "-Cforce-frame-pointers=yes",
   "-Csymbol-mangling-version=v0",

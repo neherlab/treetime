@@ -96,9 +96,9 @@ COPY .config/mise.image.lock /mise-image/mise.lock
 # `c++` use it too, as do the cc crate, the build scripts, and rustc, whose
 # default linker is `cc`. CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER stays
 # unset: it would replace the dylint-link linker of the lint libraries
-# (dev/lints/*/.cargo/config.toml). Development builds select mold in their
-# rustflags; clang takes the last -fuse-ld, so the rustflags win over
-# -fuse-ld=lld of the configuration.
+# (dev/lints/*/.cargo/config.toml). Development builds link with mold, which
+# the mise layer installs and /.cargo/config.toml selects; clang takes the last
+# -fuse-ld, so the rustflags win over -fuse-ld=lld of the configuration.
 ENV PATH="/opt/llvm/bin:${PATH}"
 COPY dev/docker/files/install-clang-target /
 RUN set -euxo pipefail >/dev/null \
@@ -163,6 +163,18 @@ done \
 && just --version \
 && cargo nextest --version \
 && cargo dylint --version
+
+# mold links the development builds of the image; the link runs on every edit
+# and is never cached. cargo joins these rustflags with those of the project's
+# .cargo/config.toml. Builds that set RUSTFLAGS (dev/lib/dist-flags.sh) link
+# with rust-lld, as do builds outside the image.
+RUN set -euxo pipefail >/dev/null \
+&& mkdir -p "/.cargo" \
+&& printf '%s\n' \
+  "[target.x86_64-unknown-linux-gnu]" \
+  "rustflags = [\"-Clink-arg=-fuse-ld=mold\"]" \
+  >>"/.cargo/config.toml" \
+&& mold --version
 
 # Emscripten builds the WebAssembly back end of the web2 app for
 # wasm32-unknown-emscripten: rustc links through emcc, which finds Node on PATH.
