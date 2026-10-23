@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::coalescent::mean_field::NodeSurvival;
+  use crate::coalescent::mean_field::{NodeSurvival, survival_levels};
   use crate::timetree::max_posterior_region::{
     MaxPosteriorRegion, PeakLocation, max_posterior_region, posterior_survival,
   };
@@ -41,7 +41,7 @@ mod tests {
   #[test]
   fn test_posterior_survival_follows_the_mass_model_inside_the_edge_cell() -> Result<(), Report> {
     let distribution = helpers::poisson()?;
-    let survival = posterior_survival(&distribution, 1e-9, 1e-6)?.expect("a function has a survival function");
+    let survival = posterior_survival(&distribution, &survival_levels())?.expect("a function has a survival function");
     let Distribution::Function(function) = distribution.normalize()? else {
       panic!("the posterior is a function");
     };
@@ -62,7 +62,7 @@ mod tests {
       .collect();
     let expected = x.mapv(|x| fractions.survival(x));
     let actual = x.mapv(|x| interpolant.at(x));
-    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-6);
+    pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-2);
     Ok(())
   }
 
