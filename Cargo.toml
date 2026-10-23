@@ -131,7 +131,11 @@ clap_lex = "=1.1.1"
 color-eyre = { version = "=0.6.5", default-features = false, features = ["track-caller"] }
 comfy-table = "=7.2.1"
 console_log = "=1.1.0"
-criterion = { version = "=0.7.0", features = ["html_reports"] }
+criterion = { version = "=0.7.0", default-features = false, features = [
+  "cargo_bench_support",
+  "html_reports",
+  "rayon",
+] }
 crossterm = "=0.29.0"
 ctor = "=1.0.13"
 derive_more = { version = "=2.1.1", features = ["full"] }

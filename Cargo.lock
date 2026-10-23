@@ -1198,7 +1198,6 @@ dependencies = [
  "itertools",
  "num-traits",
  "oorandom",
- "plotters",
  "rayon",
  "regex",
  "serde",
