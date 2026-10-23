@@ -1,0 +1,47 @@
+{
+  "name": "@neherlab/app-docs",
+  "version": "0.0.1",
+  "private": true,
+  "description": "TreeTime documentation site",
+  "type": "module",
+  "scripts": {
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "sync": "ASTRO_TELEMETRY_DISABLED=1 astro sync"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.3",
+    "@astrojs/mdx": "8.1.0",
+    "@astrojs/react": "7.1.0",
+    "@astrojs/sitemap": "3.7.4",
+    "@neherlab/app-contracts": "workspace:*",
+    "@neherlab/app-ui": "workspace:*",
+    "@tanstack/react-hotkeys": "catalog:",
+    "astro": "7.4.0",
+    "astro-expressive-code": "0.44.2",
+    "fumadocs-core": "16.17.4",
+    "katex": "catalog:",
+    "pagefind": "1.5.2",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "rehype-katex": "7.0.1",
+    "remark-directive": "4.0.0",
+    "remark-math": "6.0.0",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "20.14.6",
+    "@tailwindcss/typography": "0.5.20",
+    "@tailwindcss/vite": "catalog:",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "happy-dom": "20.14.6",
+    "tailwindcss": "catalog:",
+    "vite": "catalog:"
+  }
+}
