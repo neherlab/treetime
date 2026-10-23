@@ -1,7 +1,9 @@
 import { errorMessage, type ResultNode, type ResultTree } from "@neherlab/app-contracts";
+import { version as getVersion } from "@neherlab/app-contracts/client";
 import { useCallback, useMemo, type ReactNode } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
+import { useApi } from "../api/hooks";
 import { AuspiceTree } from "../auspice/AuspiceTree";
 import type { AuspiceState } from "../auspice/state";
 import type { AuspiceStore } from "../auspice/store";
@@ -35,12 +37,14 @@ export function TreeWorkspace({
   const store = useAuspiceStore(data.document, colorBy);
   const tips = useMemo(() => data.tree.nodes.filter((node) => node.children.length === 0).length, [data.tree]);
   const link = useTreeLink(store, data.tree);
+  const { data: version } = useApi((context) => getVersion(context), { staleTime: Infinity });
+  const runs = useMemo(() => [data.run] as const, [data.run]);
 
   return (
     <div className="@container grid min-w-0 gap-4">
       <div className="grid min-w-0 grid-cols-1 gap-4 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]">
         <ErrorBoundary FallbackComponent={TreeFailure}>
-          <AuspiceTree store={store} tips={tips} entropy={entropy} />
+          <AuspiceTree store={store} tips={tips} runs={runs} version={version?.version} entropy={entropy} />
         </ErrorBoundary>
         {aside !== undefined && <div className="grid min-w-0 content-start gap-4">{aside(link)}</div>}
       </div>

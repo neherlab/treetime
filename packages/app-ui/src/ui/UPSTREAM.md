@@ -4,7 +4,7 @@ The files in this directory started as [shadcn/ui](https://ui.shadcn.com) compon
 
 ## Source
 
-- Registry: `https://ui.shadcn.com/r/styles/base-vega/<name>.json`, the `files[0].content` field, fetched on 2026-09-28
+- Registry: `https://ui.shadcn.com/r/styles/base-vega/<name>.json`, the `files[0].content` field, fetched on 2026-09-28 (`dropdown-menu` on 2026-10-24)
 - Style: `base-vega`, built on Base UI (`@base-ui/react`)
 - Stylesheet: `shadcn.css` is `dist/tailwind.css` of the `shadcn` npm package 4.21.0, copied verbatim
 - License: MIT (<https://github.com/shadcn-ui/ui/blob/main/LICENSE.md>)
@@ -33,4 +33,5 @@ A component refreshed from the registry needs these changes again.
 - **`input-group.tsx`**: the group is a `label` element, so a click anywhere in it focuses the input; the addon has no click handler and neither element has `role="group"`
 - **`field.tsx`**: the field has no `role="group"`, which gave assistive technology an unnamed group
 - **`toast.tsx`**: the default action and close buttons are module constants
+- **`dropdown-menu.tsx`**: only the menu, its trigger, its content and plain items, without the `inset` and `variant` props of the items
 - **`label.tsx`, `spinner.tsx`, `input-group.tsx`**: each carries one lint suppression with its reason

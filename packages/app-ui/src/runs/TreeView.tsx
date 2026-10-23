@@ -2,6 +2,7 @@ import type { AuspiceDocument, ResultTree } from "@neherlab/app-contracts";
 import { lazy, Suspense, type ReactNode } from "react";
 import TreePine from "~icons/lucide/tree-pine";
 
+import type { FigureRun } from "../auspice/downloads";
 import { LoadingState } from "../components/PageShell";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { TreeLink } from "./TreeWorkspace";
@@ -11,6 +12,7 @@ const TreeWorkspace = lazy(async () => ({ default: (await import("./TreeWorkspac
 export interface TreeData {
   document: AuspiceDocument;
   tree: ResultTree;
+  run: FigureRun;
 }
 
 export function TreeView({

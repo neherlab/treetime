@@ -162,8 +162,11 @@ function FinishedResults({ record }: { record: RunRecord }) {
   );
 
   const tree = useMemo<TreeData | undefined>(
-    () => (results?.tree === undefined || document === undefined ? undefined : { document, tree: results.tree }),
-    [document, results],
+    () =>
+      results?.tree === undefined || document === undefined
+        ? undefined
+        : { document, tree: results.tree, run: { id: record.id, title: record.title, command: record.command } },
+    [document, record.command, record.id, record.title, results],
   );
 
   const failure = error ?? treeError;

@@ -1,5 +1,7 @@
 import type { Reducer } from "redux";
 
-declare const reducer: Reducer<unknown>;
+import type { AuspiceEntropyState } from "../../state";
+
+declare const reducer: Reducer<AuspiceEntropyState>;
 
 export default reducer;

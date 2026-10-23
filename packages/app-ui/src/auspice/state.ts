@@ -5,12 +5,34 @@ export interface AuspiceState {
   metadata: AuspiceMetadataState;
   tree: AuspiceTreeState;
   controls: AuspiceControlsState;
+  entropy: AuspiceEntropyState;
+  notifications: AuspiceNotificationsState;
 }
 
 export type AuspiceThunk = ThunkAction<void, AuspiceState, undefined, AnyAction>;
 
+export type AuspiceTranslate = (key: string, values?: Readonly<Record<string, string | number>>) => string;
+
 export interface AuspiceMetadataState {
   loaded: boolean;
+  title?: string;
+  updated?: string;
+  mainTreeNumTips: number;
+  sharing: AuspiceSharing;
+  colorings: Readonly<Record<string, AuspiceColoring>>;
+}
+
+interface AuspiceColoring {
+  title?: string;
+  type: string;
+}
+
+export interface AuspiceSharing {
+  dataset_json?: boolean;
+  metadata_tsv?: boolean;
+  trees?: boolean;
+  entropy?: boolean;
+  screenshot?: boolean;
 }
 
 export interface AuspiceTreeState {
@@ -20,7 +42,7 @@ export interface AuspiceTreeState {
   visibility: number[] | null;
 }
 
-interface AuspiceNode {
+export interface AuspiceNode {
   name: string;
   arrayIdx: number;
   hasChildren: boolean;
@@ -29,6 +51,8 @@ interface AuspiceNode {
 export interface AuspiceControlsState {
   colorBy: string;
   distanceMeasure: string;
+  branchLengthsToDisplay: string;
+  panelLayout: string;
   panelsToDisplay: readonly string[];
   selectedNode: AuspiceSelectedNode | null;
   filters: Readonly<Record<string, readonly AuspiceFilterValue[]>>;
@@ -61,6 +85,23 @@ interface AuspiceSelectedNode {
   idx: number;
   isBranch: boolean;
 }
+
+export interface AuspiceEntropyState {
+  loaded: boolean;
+}
+
+export interface AuspiceNotificationsState {
+  stack: readonly AuspiceNotification[];
+}
+
+export interface AuspiceNotification {
+  id: number;
+  notificationType: AuspiceNotificationType;
+  message: string;
+  details: string;
+}
+
+export type AuspiceNotificationType = "info" | "success" | "warning" | "error";
 
 export interface AuspicePublication {
   author: string;

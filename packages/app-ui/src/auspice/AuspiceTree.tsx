@@ -9,22 +9,20 @@ import FilterData, { FilterInfo } from "auspice/src/components/controls/filter";
 import { TreeInfo } from "auspice/src/components/controls/miscInfoText";
 import { ControlsContainer } from "auspice/src/components/controls/styles";
 import { ToggleFocus } from "auspice/src/components/controls/toggle-focus";
-import { DownloadButtons } from "auspice/src/components/download/downloadButtons";
-import { publications } from "auspice/src/components/download/downloadModal";
 import Entropy from "auspice/src/components/entropy";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
 import Tree from "auspice/src/components/tree";
 import { calcUsableWidth } from "auspice/src/util/computeResponsive";
-import { useCallback, useState } from "react";
 import { I18nextProvider } from "react-i18next";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "styled-components";
 
-import { Button } from "../ui/button";
+import type { FigureRuns } from "./downloads";
 import { AUSPICE_I18N } from "./i18n";
 import type { AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
+import { TreeDownloads } from "./TreeDownloads";
 
 const SIDEBAR_THEME = {
   background: "var(--muted)",
@@ -35,8 +33,6 @@ const SIDEBAR_THEME = {
   unselectedColor: "var(--muted-foreground)",
   alternateBackground: "var(--input)",
 };
-
-const RELEVANT_PUBLICATIONS = [publications.treetime];
 
 const MIN_TREE_WIDTH = 320;
 
@@ -51,14 +47,16 @@ const ENTROPY_HEIGHT = 300;
 export function AuspiceTree({
   store,
   tips,
+  runs,
+  version,
   entropy = true,
 }: {
   store: AuspiceStore;
   tips: number;
+  runs: FigureRuns;
+  version: string | undefined;
   entropy?: boolean | undefined;
 }) {
-  const [downloadsOpen, setDownloadsOpen] = useState(false);
-  const toggleDownloads = useCallback(() => setDownloadsOpen((open) => !open), []);
   const showEntropy = useAuspiceSelector(store, selectShowEntropy);
 
   return (
@@ -85,21 +83,8 @@ export function AuspiceTree({
                 <div className="min-w-0 flex-1">
                   <FiltersSummary />
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleDownloads}
-                  aria-expanded={downloadsOpen}
-                >
-                  {downloadsOpen ? "Hide downloads" : "Download figure and data"}
-                </Button>
+                <TreeDownloads store={store} runs={runs} version={version} />
               </div>
-              {downloadsOpen && (
-                <div className="mx-3 mt-2 rounded-md bg-[#30353f] px-4 py-3">
-                  <DownloadButtons relevantPublications={RELEVANT_PUBLICATIONS} />
-                </div>
-              )}
               <SizedPanels tips={tips} showEntropy={entropy && showEntropy} />
             </div>
           </div>
