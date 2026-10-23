@@ -207,46 +207,6 @@ impl TryFrom<TreetimeTimetreeArgsRaw> for TreetimeTimetreeArgs {
   }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TimetreeBranchLengths {
-  pub(crate) mode: BranchLengthModeCli,
-  pub(crate) sequence_length: Option<usize>,
-  pub(crate) indel_policy: IndelPolicy,
-  pub(crate) mutation_units: bool,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TimetreeSequenceModel {
-  pub(crate) model: GtrModel,
-  pub(crate) dense: Option<bool>,
-  pub(crate) partition_rates: PartitionRates,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct TimetreeClock {
-  pub(crate) clock_rate: Option<f64>,
-  pub(crate) clock_std_dev: Option<f64>,
-  pub(crate) clock_filter: f64,
-  pub(crate) allow_negative_rate: bool,
-  pub(crate) relax: Vec<f64>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TimetreeDating {
-  pub(crate) max_iter: usize,
-  pub(crate) keep_polytomies: bool,
-  pub(crate) confidence: bool,
-  pub(crate) max_grid_points: MaxGridPoints,
-  pub(crate) coalescent: CoalescentSettings,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct TimetreeTipSequences {
-  pub(crate) include_leaves: bool,
-  pub(crate) report_ambiguous: bool,
-  pub(crate) impute_missing_data: bool,
-}
-
 #[deny(unused_variables)]
 fn timetree_inputs(
   tree: Option<PathBuf>,
@@ -330,6 +290,14 @@ fn timetree_branch_lengths(
   })
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimetreeBranchLengths {
+  pub(crate) mode: BranchLengthModeCli,
+  pub(crate) sequence_length: Option<usize>,
+  pub(crate) indel_policy: IndelPolicy,
+  pub(crate) mutation_units: bool,
+}
+
 #[deny(unused_variables)]
 fn timetree_sequence_model(
   ModelArgs { model, model_params }: ModelArgs,
@@ -347,6 +315,13 @@ fn timetree_sequence_model(
     dense: representation_dense(representation),
     partition_rates: resolve_partition_rates(partition_rates),
   })
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct TimetreeSequenceModel {
+  pub(crate) model: GtrModel,
+  pub(crate) dense: Option<bool>,
+  pub(crate) partition_rates: PartitionRates,
 }
 
 #[deny(unused_variables)]
@@ -376,6 +351,15 @@ fn timetree_clock(
   })
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct TimetreeClock {
+  pub(crate) clock_rate: Option<f64>,
+  pub(crate) clock_std_dev: Option<f64>,
+  pub(crate) clock_filter: f64,
+  pub(crate) allow_negative_rate: bool,
+  pub(crate) relax: Vec<f64>,
+}
+
 #[deny(unused_variables)]
 fn timetree_dating(
   max_iter: usize,
@@ -391,6 +375,15 @@ fn timetree_dating(
     max_grid_points: max_grid_points.unwrap_or_default(),
     coalescent,
   }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimetreeDating {
+  pub(crate) max_iter: usize,
+  pub(crate) keep_polytomies: bool,
+  pub(crate) confidence: bool,
+  pub(crate) max_grid_points: MaxGridPoints,
+  pub(crate) coalescent: CoalescentSettings,
 }
 
 #[deny(unused_variables)]
@@ -464,6 +457,13 @@ fn timetree_tip_sequences(
     report_ambiguous,
     impute_missing_data: impute_missing_data || reconstruct_tip_states,
   }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimetreeTipSequences {
+  pub(crate) include_leaves: bool,
+  pub(crate) report_ambiguous: bool,
+  pub(crate) impute_missing_data: bool,
 }
 
 #[deny(unused_variables)]

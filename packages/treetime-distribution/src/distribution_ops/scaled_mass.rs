@@ -2,6 +2,41 @@ use itertools::Itertools;
 use std::iter::repeat_n;
 use std::ops::Add;
 
+#[derive(Clone, Debug)]
+pub(crate) struct CellSums {
+  nodes: Vec<ScaledMass>,
+}
+
+impl CellSums {
+  pub(crate) fn new(cells: impl ExactSizeIterator<Item = ScaledMass>) -> Self {
+    let n = cells.len();
+    let mut nodes = repeat_n(ScaledMass::ZERO, n).chain(cells).collect_vec();
+    for i in (1..n).rev() {
+      nodes[i] = nodes[2 * i] + nodes[2 * i + 1];
+    }
+    Self { nodes }
+  }
+
+  pub(crate) fn sum(&self, from: usize, to: usize) -> ScaledMass {
+    let n = self.nodes.len() >> 1;
+    let (mut lo, mut hi) = (from + n, to + n);
+    let mut sum = ScaledMass::ZERO;
+    while lo < hi {
+      if lo & 1 == 1 {
+        sum = sum + self.nodes[lo];
+        lo += 1;
+      }
+      if hi & 1 == 1 {
+        hi -= 1;
+        sum = sum + self.nodes[hi];
+      }
+      lo >>= 1;
+      hi >>= 1;
+    }
+    sum
+  }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ScaledMass {
   r: f64,
@@ -79,41 +114,6 @@ impl Add for ScaledMass {
       r: large.r,
       factor: large.factor * (1.0 + (small.ln_mass() - large.ln_mass()).exp()),
     }
-  }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct CellSums {
-  nodes: Vec<ScaledMass>,
-}
-
-impl CellSums {
-  pub(crate) fn new(cells: impl ExactSizeIterator<Item = ScaledMass>) -> Self {
-    let n = cells.len();
-    let mut nodes = repeat_n(ScaledMass::ZERO, n).chain(cells).collect_vec();
-    for i in (1..n).rev() {
-      nodes[i] = nodes[2 * i] + nodes[2 * i + 1];
-    }
-    Self { nodes }
-  }
-
-  pub(crate) fn sum(&self, from: usize, to: usize) -> ScaledMass {
-    let n = self.nodes.len() >> 1;
-    let (mut lo, mut hi) = (from + n, to + n);
-    let mut sum = ScaledMass::ZERO;
-    while lo < hi {
-      if lo & 1 == 1 {
-        sum = sum + self.nodes[lo];
-        lo += 1;
-      }
-      if hi & 1 == 1 {
-        hi -= 1;
-        sum = sum + self.nodes[hi];
-      }
-      lo >>= 1;
-      hi >>= 1;
-    }
-    sum
   }
 }
 

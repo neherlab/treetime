@@ -119,30 +119,6 @@ pub(crate) struct StreamOptions {
   pub(crate) report_unknown: bool,
 }
 
-pub(crate) trait PartitionSequences {
-  fn alphabet(&self) -> &Alphabet;
-
-  fn node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report>;
-
-  fn node_ambiguity(
-    &self,
-    graph: &Graph,
-    node_key: GraphNodeKey,
-    threshold: AmbiguityThreshold,
-  ) -> Result<AmbiguousSites, Report>;
-
-  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel>;
-
-  fn stream_sequences(
-    &self,
-    graph: &Graph,
-    track: SeqTrack<'_>,
-    include_leaves: bool,
-    report_unknown: bool,
-    sink: Option<SeqStream<'_>>,
-  ) -> Result<SequenceMutations, OperationError>;
-}
-
 impl<P: PartitionSequences + ?Sized> PartitionSequences for &P {
   fn alphabet(&self) -> &Alphabet {
     (**self).alphabet()
@@ -175,6 +151,30 @@ impl<P: PartitionSequences + ?Sized> PartitionSequences for &P {
   ) -> Result<SequenceMutations, OperationError> {
     (**self).stream_sequences(graph, track, include_leaves, report_unknown, sink)
   }
+}
+
+pub(crate) trait PartitionSequences {
+  fn alphabet(&self) -> &Alphabet;
+
+  fn node_sequence(&self, graph: &Graph, node_key: GraphNodeKey) -> Result<Seq, Report>;
+
+  fn node_ambiguity(
+    &self,
+    graph: &Graph,
+    node_key: GraphNodeKey,
+    threshold: AmbiguityThreshold,
+  ) -> Result<AmbiguousSites, Report>;
+
+  fn edge_indels(&self, edge_key: GraphEdgeKey) -> Vec<InDel>;
+
+  fn stream_sequences(
+    &self,
+    graph: &Graph,
+    track: SeqTrack<'_>,
+    include_leaves: bool,
+    report_unknown: bool,
+    sink: Option<SeqStream<'_>>,
+  ) -> Result<SequenceMutations, OperationError>;
 }
 
 #[derive(Clone, Copy, Debug)]

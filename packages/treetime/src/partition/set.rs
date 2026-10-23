@@ -54,18 +54,6 @@ pub(crate) fn build_partition_set(
   Ok(set.with_total_length(total_length))
 }
 
-pub(crate) fn layouts_or_whole<'a>(
-  partitions: impl IntoIterator<Item = (Option<&'a PartitionLayout>, usize)>,
-) -> Vec<Cow<'a, PartitionLayout>> {
-  partitions
-    .into_iter()
-    .zip(1..)
-    .map(|((layout, length), number)| {
-      layout.map_or_else(|| Cow::Owned(PartitionLayout::whole(number, length)), Cow::Borrowed)
-    })
-    .collect()
-}
-
 #[derive(Clone, Debug)]
 pub enum PartitionSet {
   Dense(Vec<DenseReconstruction>),
@@ -256,6 +244,18 @@ impl PartitionSet {
       ),
     }
   }
+}
+
+pub(crate) fn layouts_or_whole<'a>(
+  partitions: impl IntoIterator<Item = (Option<&'a PartitionLayout>, usize)>,
+) -> Vec<Cow<'a, PartitionLayout>> {
+  partitions
+    .into_iter()
+    .zip(1..)
+    .map(|((layout, length), number)| {
+      layout.map_or_else(|| Cow::Owned(PartitionLayout::whole(number, length)), Cow::Borrowed)
+    })
+    .collect()
 }
 
 fn update_each<R>(

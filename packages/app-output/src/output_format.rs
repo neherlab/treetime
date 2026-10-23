@@ -5,13 +5,6 @@ use treetime_io::csv::TableFormat;
 use treetime_utils::io::compression::remove_compression_ext;
 use treetime_utils::io::file::is_path_stdout;
 
-pub fn table_format(path: &Path) -> Option<TableFormat> {
-  if is_path_stdout(path) {
-    return Some(TableFormat::Tsv);
-  }
-  TableFormat::from_path(path)
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FileFormat {
   Table,
@@ -43,6 +36,13 @@ impl FileFormat {
       Self::Fixed => "",
     }
   }
+}
+
+pub fn table_format(path: &Path) -> Option<TableFormat> {
+  if is_path_stdout(path) {
+    return Some(TableFormat::Tsv);
+  }
+  TableFormat::from_path(path)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Display, Error)]

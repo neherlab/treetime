@@ -72,18 +72,6 @@ impl TryFrom<CoalescentValue> for CoalescentArg {
   }
 }
 
-impl From<CoalescentArg> for CoalescentValue {
-  fn from(arg: CoalescentArg) -> Self {
-    match arg {
-      CoalescentArg::Fixed(FixedTimescaleArg {
-        value,
-        unit: TimescaleUnit::SubstitutionsPerSite,
-      }) => Self::Number(value),
-      arg => Self::Text(arg.to_string()),
-    }
-  }
-}
-
 impl JsonSchema for CoalescentArg {
   fn inline_schema() -> bool {
     true
@@ -113,6 +101,45 @@ impl JsonSchema for CoalescentArg {
       ],
     })
   }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[deser(untagged)]
+enum CoalescentValue {
+  Number(f64),
+  Text(String),
+  Other(#[deser(as = Serde)] Value),
+}
+
+impl From<CoalescentArg> for CoalescentValue {
+  fn from(arg: CoalescentArg) -> Self {
+    match arg {
+      CoalescentArg::Fixed(FixedTimescaleArg {
+        value,
+        unit: TimescaleUnit::SubstitutionsPerSite,
+      }) => Self::Number(value),
+      arg => Self::Text(arg.to_string()),
+    }
+  }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Display, Error)]
+#[display(
+  "'{text}' is not a coalescent prior. Give a fixed time scale as a positive number in substitutions per site (0.01, \
+   1e-2) or as a positive number directly followed by the time unit y, w or d (10y, 26w, 90d); opt to fit a constant \
+   time scale; or skyline to fit a piecewise-constant one"
+)]
+pub struct InvalidCoalescent {
+  #[error(not(source))]
+  pub text: String,
+}
+
+fn parse_fixed_timescale(text: &str) -> Option<FixedTimescaleArg> {
+  let suffix = text.chars().last()?;
+  let (number, unit) = TimescaleUnit::from_suffix(suffix).map_or((text, TimescaleUnit::SubstitutionsPerSite), |unit| {
+    (text.strip_suffix(suffix).unwrap_or(text), unit)
+  });
+  FixedTimescaleArg::new(number.parse().ok()?, unit)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Display)]
@@ -166,31 +193,4 @@ impl TimescaleUnit {
       Self::Days => value / DAYS_PER_YEAR,
     }
   }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Display, Error)]
-#[display(
-  "'{text}' is not a coalescent prior. Give a fixed time scale as a positive number in substitutions per site (0.01, \
-   1e-2) or as a positive number directly followed by the time unit y, w or d (10y, 26w, 90d); opt to fit a constant \
-   time scale; or skyline to fit a piecewise-constant one"
-)]
-pub struct InvalidCoalescent {
-  #[error(not(source))]
-  pub text: String,
-}
-
-fn parse_fixed_timescale(text: &str) -> Option<FixedTimescaleArg> {
-  let suffix = text.chars().last()?;
-  let (number, unit) = TimescaleUnit::from_suffix(suffix).map_or((text, TimescaleUnit::SubstitutionsPerSite), |unit| {
-    (text.strip_suffix(suffix).unwrap_or(text), unit)
-  });
-  FixedTimescaleArg::new(number.parse().ok()?, unit)
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[deser(untagged)]
-enum CoalescentValue {
-  Number(f64),
-  Text(String),
-  Other(#[deser(as = Serde)] Value),
 }

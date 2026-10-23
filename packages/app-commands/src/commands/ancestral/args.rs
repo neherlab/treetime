@@ -298,16 +298,6 @@ fn ancestral_topology_order(
   )
 }
 
-struct DependentSettings<'a> {
-  method_anc: MethodAncestralCli,
-  partition: &'a [PartitionSpec],
-  model: Option<GtrModelNameCli>,
-  model_params: &'a [String],
-  translations: bool,
-  representation: Option<RepresentationCli>,
-  ambiguity_threshold: Option<AmbiguityThreshold>,
-}
-
 fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Report> {
   check_model_with_method_anc(settings.method_anc, settings.model, settings.model_params)?;
   check_partition_with_method_anc(settings.method_anc, settings.partition)?;
@@ -317,6 +307,16 @@ fn check_dependent_settings(settings: &DependentSettings<'_>) -> Result<(), Repo
   };
   marginal.check("representation", settings.representation.is_some())?;
   marginal.check("ambiguity_threshold", settings.ambiguity_threshold.is_some())
+}
+
+struct DependentSettings<'a> {
+  method_anc: MethodAncestralCli,
+  partition: &'a [PartitionSpec],
+  model: Option<GtrModelNameCli>,
+  model_params: &'a [String],
+  translations: bool,
+  representation: Option<RepresentationCli>,
+  ambiguity_threshold: Option<AmbiguityThreshold>,
 }
 
 #[derive(Debug, Clone, SmartDefault, JsonSchema, Serialize, Deserialize)]

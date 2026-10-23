@@ -17,6 +17,16 @@ const PLACEHOLDERS: [PathPlaceholder; 2] = [PathPlaceholder::Alignment, PathPlac
 
 const OUTPUT_ALL_KEY: &str = "output_all";
 
+pub fn check_command_paths(
+  command: AppCommand,
+  settings: &Map<String, Value>,
+  outputs: &ResolvedOutputs,
+) -> Result<(), Report> {
+  let inputs = run_inputs(command, settings)?;
+  let outputs = run_outputs(settings, &outputs.paths_by_selection());
+  check_run_paths(&inputs, &outputs)
+}
+
 pub fn check_run_paths(inputs: &[RunPath], outputs: &[RunPath]) -> Result<(), Report> {
   reject_repeated_standard_input(inputs)?;
   let outputs = outputs
@@ -48,16 +58,6 @@ pub fn check_run_paths(inputs: &[RunPath], outputs: &[RunPath]) -> Result<(), Re
     }
   }
   Ok(())
-}
-
-pub fn check_command_paths(
-  command: AppCommand,
-  settings: &Map<String, Value>,
-  outputs: &ResolvedOutputs,
-) -> Result<(), Report> {
-  let inputs = run_inputs(command, settings)?;
-  let outputs = run_outputs(settings, &outputs.paths_by_selection());
-  check_run_paths(&inputs, &outputs)
 }
 
 pub fn run_inputs(command: AppCommand, settings: &Map<String, Value>) -> Result<Vec<RunPath>, Report> {

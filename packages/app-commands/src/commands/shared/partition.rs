@@ -25,10 +25,6 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::error::report_to_string;
 use treetime_utils::io::json::from_json_value;
 
-pub fn partition_entries(specs: &[PartitionSpec]) -> Result<Vec<PartitionEntry>, Report> {
-  izip!(specs, 1..).map(|(spec, number)| spec.entry(number)).collect()
-}
-
 pub fn check_partition_applies(
   partition: &[PartitionSpec],
   other: &str,
@@ -36,19 +32,6 @@ pub fn check_partition_applies(
   rule: impl FnOnce() -> String,
 ) -> Result<(), Report> {
   check_applies("partition", !partition.is_empty(), other, applies, rule)
-}
-
-pub fn partition_argument_error(report: Report, has_entries: bool) -> Report {
-  let Some(PartitionError { kind, message }) = report.downcast_ref::<PartitionError>() else {
-    return report;
-  };
-  let settings: &[&str] = match (kind, has_entries) {
-    (PartitionErrorKind::Layout, true) => &["partition", "alignment"],
-    (PartitionErrorKind::Layout, false) => &["alignment"],
-    (PartitionErrorKind::Model, true) => &["partition", "alphabet"],
-    (PartitionErrorKind::Model, false) => &["model", "model_params", "alphabet"],
-  };
-  argument_error(settings, message.clone())
 }
 
 pub(crate) fn resolve_run_partitions(
@@ -132,6 +115,73 @@ pub struct PartitionArgs {
   pub partition: Vec<PartitionSpec>,
 }
 
+pub struct ConfigPartitions {
+  entries: Vec<PartitionEntry>,
+  model: GtrModel,
+  alphabet: Option<AlphabetName>,
+}
+
+impl ConfigPartitions {
+  pub fn from_config(config: &Map<String, Value>) -> Result<Self, Report> {
+    let settings = PartitionSettings::KEYS
+      .into_iter()
+      .filter_map(|key| config.get(key).map(|value| (key.to_owned(), value.clone())))
+      .collect();
+    let PartitionSettings {
+      partition,
+      model,
+      model_params,
+      alphabet,
+    } = from_json_value(&Value::Object(settings))?;
+    Ok(Self {
+      entries: partition_entries(&partition)?,
+      model: resolve_model(model, &model_params)?,
+      alphabet: alphabet.map(Into::into),
+    })
+  }
+
+  pub fn resolve(&self, lengths: &[usize]) -> Result<Vec<PartitionPlan>, Report> {
+    let ResolvedPartitions { plans, .. } = resolve_partitions(&self.entries, lengths, &self.model, self.alphabet)
+      .map_err(|report| partition_argument_error(report, !self.entries.is_empty()))?;
+    Ok(plans)
+  }
+}
+
+pub fn partition_entries(specs: &[PartitionSpec]) -> Result<Vec<PartitionEntry>, Report> {
+  izip!(specs, 1..).map(|(spec, number)| spec.entry(number)).collect()
+}
+
+pub fn partition_argument_error(report: Report, has_entries: bool) -> Report {
+  let Some(PartitionError { kind, message }) = report.downcast_ref::<PartitionError>() else {
+    return report;
+  };
+  let settings: &[&str] = match (kind, has_entries) {
+    (PartitionErrorKind::Layout, true) => &["partition", "alignment"],
+    (PartitionErrorKind::Layout, false) => &["alignment"],
+    (PartitionErrorKind::Model, true) => &["partition", "alphabet"],
+    (PartitionErrorKind::Model, false) => &["model", "model_params", "alphabet"],
+  };
+  argument_error(settings, message.clone())
+}
+
+#[derive(Default, Deserialize)]
+#[deser(default, deny_unknown_fields)]
+struct PartitionSettings {
+  partition: Vec<PartitionSpec>,
+  model: Option<GtrModelNameCli>,
+  model_params: Vec<String>,
+  alphabet: Option<AlphabetNameCli>,
+}
+
+impl PartitionSettings {
+  const KEYS: [&str; 4] = ["partition", "model", "model_params", "alphabet"];
+}
+
+#[cfg(feature = "clap")]
+fn parse_partition_spec(text: &str) -> Result<PartitionSpec, String> {
+  yaml_read_str(text).map_err(|report| report_to_string(&report))
+}
+
 /// One partition: a set of sites of one `--alignment` file and its substitution model
 #[derive(Debug, Clone, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
@@ -174,56 +224,6 @@ impl PartitionSpec {
       model,
     })
   }
-}
-
-pub struct ConfigPartitions {
-  entries: Vec<PartitionEntry>,
-  model: GtrModel,
-  alphabet: Option<AlphabetName>,
-}
-
-impl ConfigPartitions {
-  pub fn from_config(config: &Map<String, Value>) -> Result<Self, Report> {
-    let settings = PartitionSettings::KEYS
-      .into_iter()
-      .filter_map(|key| config.get(key).map(|value| (key.to_owned(), value.clone())))
-      .collect();
-    let PartitionSettings {
-      partition,
-      model,
-      model_params,
-      alphabet,
-    } = from_json_value(&Value::Object(settings))?;
-    Ok(Self {
-      entries: partition_entries(&partition)?,
-      model: resolve_model(model, &model_params)?,
-      alphabet: alphabet.map(Into::into),
-    })
-  }
-
-  pub fn resolve(&self, lengths: &[usize]) -> Result<Vec<PartitionPlan>, Report> {
-    let ResolvedPartitions { plans, .. } = resolve_partitions(&self.entries, lengths, &self.model, self.alphabet)
-      .map_err(|report| partition_argument_error(report, !self.entries.is_empty()))?;
-    Ok(plans)
-  }
-}
-
-#[derive(Default, Deserialize)]
-#[deser(default, deny_unknown_fields)]
-struct PartitionSettings {
-  partition: Vec<PartitionSpec>,
-  model: Option<GtrModelNameCli>,
-  model_params: Vec<String>,
-  alphabet: Option<AlphabetNameCli>,
-}
-
-impl PartitionSettings {
-  const KEYS: [&str; 4] = ["partition", "model", "model_params", "alphabet"];
-}
-
-#[cfg(feature = "clap")]
-fn parse_partition_spec(text: &str) -> Result<PartitionSpec, String> {
-  yaml_read_str(text).map_err(|report| report_to_string(&report))
 }
 
 fn layout_summary(layout: &PartitionLayout) -> String {

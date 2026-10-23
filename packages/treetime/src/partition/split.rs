@@ -100,15 +100,6 @@ pub(crate) fn split_alignments(
   Ok(SplitAlignments { alignments, partitions })
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct AlignmentInfo {
-  pub(crate) number: usize,
-  pub(crate) path: PathBuf,
-  pub(crate) alphabet: Alphabet,
-  pub(crate) length: usize,
-  pub(crate) mask: Vec<bool>,
-}
-
 pub(crate) struct SplitInput {
   pub(crate) alignments: Vec<AlignmentInfo>,
   pub(crate) partitions: Vec<SplitPartition>,
@@ -130,10 +121,13 @@ pub(crate) struct SplitAlignments {
   pub(crate) partitions: Vec<PartitionData>,
 }
 
-pub(crate) struct PartitionData {
-  pub(crate) layout: PartitionLayout,
+#[derive(Clone, Debug)]
+pub(crate) struct AlignmentInfo {
+  pub(crate) number: usize,
+  pub(crate) path: PathBuf,
   pub(crate) alphabet: Alphabet,
-  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub(crate) length: usize,
+  pub(crate) mask: Vec<bool>,
 }
 
 fn split_alignment(
@@ -210,4 +204,10 @@ fn split_alignment(
       })
       .collect(),
   )
+}
+
+pub(crate) struct PartitionData {
+  pub(crate) layout: PartitionLayout,
+  pub(crate) alphabet: Alphabet,
+  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
 }

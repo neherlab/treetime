@@ -526,12 +526,6 @@ impl PlannedFile {
   }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Requested {
-  Named,
-  All,
-}
-
 fn ensure_available(
   settings: OutputSettings,
   selection: OutputSelection,
@@ -545,6 +539,12 @@ fn ensure_available(
     }),
     None => Ok(()),
   }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Requested {
+  Named,
+  All,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Error)]

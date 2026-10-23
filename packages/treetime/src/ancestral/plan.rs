@@ -44,12 +44,6 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionMet
   }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum ReconstructionMethod {
-  Fitch,
-  Marginal(Representation),
-}
-
 #[expect(
   clippy::too_many_arguments,
   reason = "the partition inputs come from the command and the random generator, cancellation, stage and log sinks are run services of the caller; no type holds both groups"
@@ -226,6 +220,12 @@ pub(crate) fn reconstruct_partition(
       reconstruct_marginal(graph, reconstruction, branch_lengths, options, rng, cancel, stages, log)
     },
   }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ReconstructionMethod {
+  Fitch,
+  Marginal(Representation),
 }
 
 fn reconstruct_fitch(

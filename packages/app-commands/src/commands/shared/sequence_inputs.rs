@@ -44,19 +44,6 @@ pub(crate) fn read_tree_and_sources(
   })
 }
 
-pub(crate) fn read_sequence_sources(
-  alignments: &[PathBuf],
-  settings: &SourceSettings<'_>,
-  graph: &Graph,
-  names: &NodeNames,
-  log: &dyn LogSink,
-) -> Result<Vec<AlignmentSource>, Report> {
-  alignments
-    .iter()
-    .map(|path| read_sequence_source(path, settings, graph, names, log))
-    .collect()
-}
-
 pub(crate) fn ancestral_input(
   graph: Graph,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -130,6 +117,19 @@ impl SequenceInputs {
     let partitions = resolve_run_partitions(&self.partition_entries, model, &lengths, self.alphabet, log)?;
     Ok(SequenceSources { alignments, partitions })
   }
+}
+
+pub(crate) fn read_sequence_sources(
+  alignments: &[PathBuf],
+  settings: &SourceSettings<'_>,
+  graph: &Graph,
+  names: &NodeNames,
+  log: &dyn LogSink,
+) -> Result<Vec<AlignmentSource>, Report> {
+  alignments
+    .iter()
+    .map(|path| read_sequence_source(path, settings, graph, names, log))
+    .collect()
 }
 
 pub(crate) struct TreeAndSources {

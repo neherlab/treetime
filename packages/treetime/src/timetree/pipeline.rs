@@ -204,17 +204,6 @@ pub struct TimetreeOutput {
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
 }
 
-pub enum TimetreeSequences {
-  Alignments(SequenceInput),
-  Length(SequenceLength),
-}
-
-pub struct SequenceLength {
-  pub length: Option<usize>,
-  pub model: GtrModel,
-  pub alphabet: Option<AlphabetName>,
-}
-
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
   if has_seq_sink && params.branch_length_mode == BranchLengthMode::Input {
     return Err(OperationError::InvalidParams(make_report!(
@@ -355,6 +344,17 @@ fn initialize_branch_model(
       Ok((alignments, model_names, BranchModel::Marginal(partitions)))
     },
   }
+}
+
+pub enum TimetreeSequences {
+  Alignments(SequenceInput),
+  Length(SequenceLength),
+}
+
+pub struct SequenceLength {
+  pub length: Option<usize>,
+  pub model: GtrModel,
+  pub alphabet: Option<AlphabetName>,
 }
 
 fn report_coalescent_size(params: &TimetreeParams, coalescent: &CoalescentSetup, log: &dyn LogSink) {

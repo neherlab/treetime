@@ -57,10 +57,6 @@ pub(crate) fn input_branch_model(
   Ok(InputBranchModel::new(sequence_length, saturated_difference))
 }
 
-pub(crate) fn saturated_difference(pi: &Array1<f64>) -> f64 {
-  1.0 - pi.dot(pi)
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct InputBranchModel {
   one_mutation: f64,
@@ -259,6 +255,20 @@ impl InputBranchLikelihood {
   }
 }
 
+struct PoissonLevel {
+  likelihood: InputBranchLikelihood,
+  level: f64,
+}
+
+impl CostFunction for PoissonLevel {
+  type Param = f64;
+  type Output = f64;
+
+  fn cost(&self, branch_length: &f64) -> Result<f64, Error> {
+    Ok(self.likelihood.neg_log_lh(*branch_length) - self.level)
+  }
+}
+
 fn partitions_saturated_difference(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
@@ -287,16 +297,6 @@ fn partitions_saturated_difference(
   Ok(weighted / total_sites)
 }
 
-struct PoissonLevel {
-  likelihood: InputBranchLikelihood,
-  level: f64,
-}
-
-impl CostFunction for PoissonLevel {
-  type Param = f64;
-  type Output = f64;
-
-  fn cost(&self, branch_length: &f64) -> Result<f64, Error> {
-    Ok(self.likelihood.neg_log_lh(*branch_length) - self.level)
-  }
+pub(crate) fn saturated_difference(pi: &Array1<f64>) -> f64 {
+  1.0 - pi.dot(pi)
 }

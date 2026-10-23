@@ -99,21 +99,6 @@ pub fn resolve_partition_layouts(entries: &[PartitionEntry], lengths: &[usize]) 
   })
 }
 
-pub fn partition_label(number: usize, name: Option<&str>) -> String {
-  match name {
-    Some(name) => format!("partition {number} '{name}'"),
-    None => format!("partition {number}"),
-  }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct PartitionEntry {
-  pub name: Option<String>,
-  pub alignment: Option<usize>,
-  pub sites: Option<Vec<SiteRange>>,
-  pub model: GtrModel,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedPartitions {
   pub plans: Vec<PartitionPlan>,
@@ -124,6 +109,21 @@ pub struct ResolvedPartitions {
 pub struct PartitionPlan {
   pub layout: PartitionLayout,
   pub model: GtrModel,
+}
+
+fn whole_alignment_layouts(lengths: &[usize]) -> Result<ResolvedLayouts, Report> {
+  let layouts = izip!(lengths, 1..)
+    .map(|(&length, number)| {
+      if length == 0 {
+        return layout_error(format!("alignment {number} has no sites"));
+      }
+      Ok(PartitionLayout::whole(number, length))
+    })
+    .try_collect()?;
+  Ok(ResolvedLayouts {
+    layouts,
+    duplicate_names: vec![],
+  })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -157,34 +157,6 @@ impl PartitionLayout {
   pub fn label(&self) -> String {
     partition_label(self.number, self.name.as_deref())
   }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Display, Error)]
-#[display("{message}")]
-pub struct PartitionError {
-  pub kind: PartitionErrorKind,
-  pub message: String,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PartitionErrorKind {
-  Layout,
-  Model,
-}
-
-fn whole_alignment_layouts(lengths: &[usize]) -> Result<ResolvedLayouts, Report> {
-  let layouts = izip!(lengths, 1..)
-    .map(|(&length, number)| {
-      if length == 0 {
-        return layout_error(format!("alignment {number} has no sites"));
-      }
-      Ok(PartitionLayout::whole(number, length))
-    })
-    .try_collect()?;
-  Ok(ResolvedLayouts {
-    layouts,
-    duplicate_names: vec![],
-  })
 }
 
 fn entry_alignment(entry: &PartitionEntry, number: usize, n_alignments: usize) -> Result<usize, Report> {
@@ -286,6 +258,13 @@ fn take_remaining_sites(
   }
 }
 
+pub fn partition_label(number: usize, name: Option<&str>) -> String {
+  match name {
+    Some(name) => format!("partition {number} '{name}'"),
+    None => format!("partition {number}"),
+  }
+}
+
 fn duplicate_names(entries: &[PartitionEntry]) -> Vec<String> {
   entries
     .iter()
@@ -293,6 +272,14 @@ fn duplicate_names(entries: &[PartitionEntry]) -> Vec<String> {
     .duplicates()
     .sorted()
     .collect()
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PartitionEntry {
+  pub name: Option<String>,
+  pub alignment: Option<usize>,
+  pub sites: Option<Vec<SiteRange>>,
+  pub model: GtrModel,
 }
 
 fn model_alphabet_problem(model: &GtrModel, alphabet: AlphabetName, n_states: usize) -> Option<ModelAlphabetProblem> {
@@ -358,4 +345,17 @@ fn model_error<T>(message: String) -> Result<T, Report> {
     kind: PartitionErrorKind::Model,
     message,
   }))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Display, Error)]
+#[display("{message}")]
+pub struct PartitionError {
+  pub kind: PartitionErrorKind,
+  pub message: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PartitionErrorKind {
+  Layout,
+  Model,
 }

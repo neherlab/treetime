@@ -14,13 +14,6 @@ use treetime_utils::datetime::options::DateParserOptions;
 
 const UNMATCHED_NAMES_SHOWN: usize = 10;
 
-pub fn date_parser_options(date_format: Option<&str>) -> DateParserOptions {
-  DateParserOptions {
-    date_format: date_format.map(ToOwned::to_owned),
-    ..DateParserOptions::default()
-  }
-}
-
 pub(crate) fn read_input_dates(
   dates: &DatesInput,
   graph: &Graph,
@@ -77,6 +70,13 @@ pub(crate) fn read_input_dates(
       .filter_map(|(key, date)| Some((key, date?)))
       .collect(),
   )
+}
+
+pub fn date_parser_options(date_format: Option<&str>) -> DateParserOptions {
+  DateParserOptions {
+    date_format: date_format.map(ToOwned::to_owned),
+    ..DateParserOptions::default()
+  }
 }
 
 #[derive(Debug, Clone)]

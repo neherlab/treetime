@@ -7,32 +7,12 @@ use itertools::{Itertools, izip};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
 
-pub(crate) fn sparse_alignment_groups(partitions: &[SparseReconstruction]) -> Result<Vec<AlignmentGroup>, Report> {
-  alignment_groups(
-    partitions
-      .iter()
-      .map(|partition| (partition.layout(), partition.partition.length)),
-  )
-}
-
 pub(crate) fn assembled_edge_indels(
   group: &AlignmentGroup,
   partitions: &[SparseReconstruction],
   edge_key: GraphEdgeKey,
 ) -> Result<Vec<InDel>, Report> {
   group.layout.assemble_indels(&edge_pieces(group, partitions, edge_key))
-}
-
-pub(crate) fn composed_edge_pieces(
-  group: &AlignmentGroup,
-  partitions: &[SparseReconstruction],
-  parent_edge_key: GraphEdgeKey,
-  child_edge_key: GraphEdgeKey,
-) -> Result<Vec<Vec<InDel>>, Report> {
-  group.layout.compose_indels(
-    &edge_pieces(group, partitions, parent_edge_key),
-    &edge_pieces(group, partitions, child_edge_key),
-  )
 }
 
 pub(crate) fn store_edge_indels(
@@ -46,22 +26,6 @@ pub(crate) fn store_edge_indels(
   Ok(())
 }
 
-pub(crate) fn store_edge_pieces(
-  group: &AlignmentGroup,
-  partitions: &mut [SparseReconstruction],
-  edge_key: GraphEdgeKey,
-  pieces: Vec<Vec<InDel>>,
-) {
-  for (&index, pieces) in izip!(&group.partitions, pieces) {
-    partitions[index]
-      .partition
-      .obs_edges
-      .entry(edge_key)
-      .or_default()
-      .indels = pieces;
-  }
-}
-
 pub(crate) fn merge_sparse_edges(
   partitions: &mut [SparseReconstruction],
   merges: &[EdgeMergeInfo],
@@ -71,6 +35,14 @@ pub(crate) fn merge_sparse_edges(
     merge_edge_pair(partitions, &groups, merge)?;
   }
   Ok(())
+}
+
+pub(crate) fn sparse_alignment_groups(partitions: &[SparseReconstruction]) -> Result<Vec<AlignmentGroup>, Report> {
+  alignment_groups(
+    partitions
+      .iter()
+      .map(|partition| (partition.layout(), partition.partition.length)),
+  )
 }
 
 pub(crate) fn merge_edge_pair(
@@ -93,6 +65,34 @@ pub(crate) fn merge_edge_pair(
     store_edge_pieces(group, partitions, merge.merged_edge_key, pieces);
   }
   Ok(())
+}
+
+pub(crate) fn composed_edge_pieces(
+  group: &AlignmentGroup,
+  partitions: &[SparseReconstruction],
+  parent_edge_key: GraphEdgeKey,
+  child_edge_key: GraphEdgeKey,
+) -> Result<Vec<Vec<InDel>>, Report> {
+  group.layout.compose_indels(
+    &edge_pieces(group, partitions, parent_edge_key),
+    &edge_pieces(group, partitions, child_edge_key),
+  )
+}
+
+pub(crate) fn store_edge_pieces(
+  group: &AlignmentGroup,
+  partitions: &mut [SparseReconstruction],
+  edge_key: GraphEdgeKey,
+  pieces: Vec<Vec<InDel>>,
+) {
+  for (&index, pieces) in izip!(&group.partitions, pieces) {
+    partitions[index]
+      .partition
+      .obs_edges
+      .entry(edge_key)
+      .or_default()
+      .indels = pieces;
+  }
 }
 
 fn edge_pieces(group: &AlignmentGroup, partitions: &[SparseReconstruction], edge_key: GraphEdgeKey) -> Vec<Vec<InDel>> {

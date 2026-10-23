@@ -111,13 +111,6 @@ pub fn run(
   })
 }
 
-pub struct OptimizeParams {
-  pub dense: Option<bool>,
-  pub initial_guess: InitialGuessMode,
-  pub reroot_spec: Option<RerootSpec>,
-  pub loop_settings: OptimizeLoopSettings,
-}
-
 pub struct OptimizeInput {
   pub graph: Graph,
   pub names: NodeNames,
@@ -237,6 +230,13 @@ fn apply_initial_guess(
     names,
     log,
   )
+}
+
+pub struct OptimizeParams {
+  pub dense: Option<bool>,
+  pub initial_guess: InitialGuessMode,
+  pub reroot_spec: Option<RerootSpec>,
+  pub loop_settings: OptimizeLoopSettings,
 }
 
 fn optimize_results(

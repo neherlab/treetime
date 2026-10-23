@@ -238,25 +238,6 @@ pub fn mutation_event_strings(event: &MutationEvent, positions: PositionBase) ->
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PositionBase {
-  Zero,
-  One,
-}
-
-impl PositionBase {
-  pub fn from_zero_based(zero_based: bool) -> Self {
-    if zero_based { Self::Zero } else { Self::One }
-  }
-
-  pub fn first(self) -> usize {
-    match self {
-      Self::Zero => 0,
-      Self::One => 1,
-    }
-  }
-}
-
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum MutationEvent {
   Substitution(Sub),
@@ -300,6 +281,25 @@ fn mutation_position(start: usize, offset: usize, positions: PositionBase) -> Re
     .checked_add(offset)
     .and_then(|position| position.checked_add(positions.first()))
     .ok_or_else(|| eyre::eyre!("Mutation coordinate overflow at start {start} and offset {offset}"))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PositionBase {
+  Zero,
+  One,
+}
+
+impl PositionBase {
+  pub fn from_zero_based(zero_based: bool) -> Self {
+    if zero_based { Self::Zero } else { Self::One }
+  }
+
+  pub fn first(self) -> usize {
+    match self {
+      Self::Zero => 0,
+      Self::One => 1,
+    }
+  }
 }
 
 pub(crate) fn compose_substitutions(parent_subs: &[Sub], child_subs: &[Sub]) -> Result<Vec<Sub>, Report> {

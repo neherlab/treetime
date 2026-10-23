@@ -12,17 +12,6 @@ use treetime_primitives::{LogLh, Seq};
 use treetime_utils::make_internal_error;
 
 #[derive(Clone, Debug)]
-pub struct AlignmentResult {
-  pub number: usize,
-  pub path: PathBuf,
-  pub alphabet: Alphabet,
-  pub length: usize,
-  pub mask: Vec<bool>,
-  pub indel_rate: Option<f64>,
-  pub sequences: Option<AlignmentSequences>,
-}
-
-#[derive(Clone, Debug)]
 pub struct PartitionResult {
   pub number: usize,
   pub name: Option<String>,
@@ -90,6 +79,17 @@ pub(crate) fn alignment_results(
       })
     })
     .collect()
+}
+
+#[derive(Clone, Debug)]
+pub struct AlignmentResult {
+  pub number: usize,
+  pub path: PathBuf,
+  pub alphabet: Alphabet,
+  pub length: usize,
+  pub mask: Vec<bool>,
+  pub indel_rate: Option<f64>,
+  pub sequences: Option<AlignmentSequences>,
 }
 
 pub(crate) struct AlignmentOutcome {

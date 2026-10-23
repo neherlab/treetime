@@ -34,6 +34,23 @@ pub enum SequenceOutputs {
   NotReconstructed(NotReconstructed),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Error)]
+#[display("{}, but {}", request_text(*selection, *requested), cause.reason())]
+pub struct UnavailableOutput {
+  pub selection: OutputSelection,
+  pub requested: Requested,
+  pub cause: NotReconstructed,
+}
+
+impl UnavailableOutput {
+  pub fn request_setting(&self) -> String {
+    match self.requested {
+      Requested::Named => self.selection.setting_key(),
+      Requested::All => "output_selection".to_owned(),
+    }
+  }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NotReconstructed {
   InputBranchLengths,
@@ -56,6 +73,13 @@ impl NotReconstructed {
       Self::NoAlignment => "a run without --alignment reconstructs no sequences",
     }
   }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Error)]
+#[display("{} was requested, but {}", selection.flag_name(), condition.unmet_reason())]
+pub struct UnmetCondition {
+  pub selection: OutputSelection,
+  pub condition: OutputCondition,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -83,30 +107,6 @@ impl OutputCondition {
       },
     }
   }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Error)]
-#[display("{}, but {}", request_text(*selection, *requested), cause.reason())]
-pub struct UnavailableOutput {
-  pub selection: OutputSelection,
-  pub requested: Requested,
-  pub cause: NotReconstructed,
-}
-
-impl UnavailableOutput {
-  pub fn request_setting(&self) -> String {
-    match self.requested {
-      Requested::Named => self.selection.setting_key(),
-      Requested::All => "output_selection".to_owned(),
-    }
-  }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Error)]
-#[display("{} was requested, but {}", selection.flag_name(), condition.unmet_reason())]
-pub struct UnmetCondition {
-  pub selection: OutputSelection,
-  pub condition: OutputCondition,
 }
 
 fn request_text(selection: OutputSelection, requested: Requested) -> String {

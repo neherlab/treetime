@@ -12,10 +12,6 @@ use treetime_utils::make_error;
 
 const MAX_COINCIDENCE_ULPS: f64 = 4.0;
 
-pub fn coordinates_coincide(a: f64, b: f64, scale: f64) -> bool {
-  within_epsilons_of_scale(a, b, scale, MAX_COINCIDENCE_ULPS)
-}
-
 impl<T: InterpElem> IntoIterator for &Grid<T>
 where
   T: Float,
@@ -166,6 +162,10 @@ impl<T: InterpElem> Grid<T> {
   {
     GridIter::new(*self)
   }
+}
+
+pub fn coordinates_coincide(a: f64, b: f64, scale: f64) -> bool {
+  within_epsilons_of_scale(a, b, scale, MAX_COINCIDENCE_ULPS)
 }
 
 pub(crate) fn from_count<T: InterpElem>(count: usize) -> T {

@@ -65,31 +65,6 @@ fn args_conflict(cli: &Command, first: &Arg, second: &Arg) -> bool {
   declares(first, second) || declares(second, first)
 }
 
-struct GivenSetting<'a> {
-  key: &'a str,
-  flag: String,
-  arg: &'a Arg,
-  value: &'a Value,
-}
-
-impl<'a> GivenSetting<'a> {
-  fn new(property: &'a SettingProperty, arg: &'a Arg, value: &'a Value) -> Result<Self, Report> {
-    let long = arg
-      .get_long()
-      .ok_or_else(|| make_report!("config key `{}` has no command-line flag", property.key))?;
-    Ok(Self {
-      key: &property.key,
-      flag: format!("--{long}"),
-      arg,
-      value,
-    })
-  }
-
-  fn pointer(&self) -> String {
-    format!("/{}", escape_pointer(self.key))
-  }
-}
-
 fn conflict_diagnostic(first: &GivenSetting<'_>, second: &GivenSetting<'_>) -> RawDiagnostic {
   RawDiagnostic::builder(
     "config::conflict",
@@ -140,6 +115,31 @@ fn value_count_diagnostic(setting: &GivenSetting<'_>) -> Option<RawDiagnostic> {
     .at(setting.pointer())
     .build(),
   )
+}
+
+struct GivenSetting<'a> {
+  key: &'a str,
+  flag: String,
+  arg: &'a Arg,
+  value: &'a Value,
+}
+
+impl<'a> GivenSetting<'a> {
+  fn new(property: &'a SettingProperty, arg: &'a Arg, value: &'a Value) -> Result<Self, Report> {
+    let long = arg
+      .get_long()
+      .ok_or_else(|| make_report!("config key `{}` has no command-line flag", property.key))?;
+    Ok(Self {
+      key: &property.key,
+      flag: format!("--{long}"),
+      arg,
+      value,
+    })
+  }
+
+  fn pointer(&self) -> String {
+    format!("/{}", escape_pointer(self.key))
+  }
 }
 
 const fn plural<'a>(count: usize, one: &'a str, many: &'a str) -> &'a str {
