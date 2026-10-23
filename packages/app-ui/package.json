@@ -4,9 +4,6 @@
   "private": true,
   "description": "Shared React components of the TreeTime desktop and web apps",
   "type": "module",
-  "scripts": {
-    "i18n": "paraglide-js compile --project ./project.inlang --strategy baseLocale --output-structure message-modules --emit-ts-declarations --no-emit-git-ignore --no-emit-prettier-ignore --no-emit-readme"
-  },
   "exports": {
     ".": "./src/index.ts",
     "./build/auspice-vite": "./build/auspice-vite.ts",
@@ -32,6 +29,9 @@
     "./ui/sidebar-width": "./src/ui/sidebar-width.ts",
     "./env": "./src/env.d.ts",
     "./testing/dom": "./src/__tests__/dom.ts"
+  },
+  "scripts": {
+    "i18n": "paraglide-js compile --project ./project.inlang --strategy baseLocale --output-structure message-modules --emit-ts-declarations --no-emit-git-ignore --no-emit-prettier-ignore --no-emit-readme"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
