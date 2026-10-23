@@ -8,7 +8,7 @@ Purpose
 
 Model
   Each run uses TreeTime's own model: branch likelihoods from the alignment, node times integrated on grids, and,
-  with `--coalescent <Tc>`, the mean-field coalescent prior, whose expected lineage counts are frozen from the node
+  with `--coalescent <Tc>y`, the mean-field coalescent prior, whose expected lineage counts are frozen from the node
   posteriors of the same run. `log_lh_time` is the log marginal likelihood of the node times that the run reports
   after its single round (`--max-iter 1`) at the given `--clock-rate`.
 
@@ -25,8 +25,8 @@ Inputs (layout of `validation/README.md`)
     alignment  <data-set>/tips.fasta.xz
     dates      <data-set>/../tip_dates.tsv, column `date`
   The command has the shape of `command()` in `validation/run.py` (timetree suite, `COMMON` flags):
-    treetime timetree -t <tree> -a <aln> -d <dates> --date-column date --clock-filter 0 --clock-rate <mu> \
-      --max-iter 1 --keep-root [--coalescent <Tc>] --no-progress -q -j 1 --output-tracelog <csv>
+    treetime timetree -t <tree> -a <aln> -m <dates> --date-column date --clock-filter 0 --clock-rate <mu> \
+      --max-iter 1 --keep-root [--coalescent <Tc>y] --no-progress -q -j 1 --output-tracelog <csv>
   with OPENBLAS_NUM_THREADS=1.
 
 Output
@@ -172,7 +172,7 @@ class Prior:
   tc: float | None
 
   def flags(self) -> list[str]:
-    return ['--coalescent', f'{self.tc:g}'] if self.tc is not None else []
+    return ['--coalescent', f'{self.tc:g}y'] if self.tc is not None else []
 
   def label(self) -> str:
     return f'coalescent={self.tc:g}' if self.tc is not None else 'none'
@@ -183,7 +183,7 @@ def run_point(binary: Path, data: DataSet, mu: float, prior: Prior, work: Path,
   trace = work / f'trace_{prior.label()}_{mu:.10g}.csv'
   command = [
     binary, 'timetree', '-t', data.tree, '-a', data.alignment,
-    '-d', data.dates, '--date-column', 'date', '--clock-filter', '0',
+    '-m', data.dates, '--date-column', 'date', '--clock-filter', '0',
     '--clock-rate', f'{mu:.10g}', '--max-iter', '1', '--keep-root', *prior.flags(),
     *COMMON, '--output-tracelog', trace,
   ]  # fmt: skip
