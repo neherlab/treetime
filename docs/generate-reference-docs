@@ -2,15 +2,15 @@
 #
 # Usage: $0 <executable> <output.md>
 #
-# Re-generate CLI reference documentation in Markdown format.
+# Re-generate the command-line reference page of the docs site in Markdown format.
 #
 # The executable must support the `help-markdown` subcommand.
-# Output file is overwritten with a Docusaurus-compatible header
+# The output file is overwritten with the front matter of a docs page
 # followed by the generated markdown.
 #
 # Examples:
-#   $0 .out/treetime docs/docs/reference.md
-#   $0 ../target/debug/treetime docs/docs/reference.md
+#   $0 .out/treetime packages/app-docs/src/content/docs/reference/cli.md
+#   $0 target/debug/treetime packages/app-docs/src/content/docs/reference/cli.md
 #
 set -euo pipefail
 trap "exit" INT
@@ -37,18 +37,16 @@ main() {
 
   cat <<'EOF' >"${out}"
 ---
-sidebar_position: 9999
+title: Command-line reference
+description: Every command, flag, and default of the treetime command-line program.
+editUrl: false
 ---
-
-# Command-line reference
 
 <!-- WARNING: GENERATED CONTENT -->
 <!-- Do not edit the generated file manually! All manual changes will be overwritten by automation. -->
 <!-- See developer guide for how to properly work with this. -->
 
-:::warning
-Generated content. Report issues at https://github.com/neherlab/treetime/issues
-:::
+> This page is generated from the help text of the `treetime` program. Report issues at https://github.com/neherlab/treetime/issues
 
 EOF
 
