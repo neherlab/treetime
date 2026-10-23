@@ -36,9 +36,10 @@ target_safe="${target//-/_}"
 source "${root}/dev/lib/dist-flags.sh"
 export_dist_flags "${target}"
 
-# OpenBLAS and the Fortran runtime of flang link statically through the
-# override of the `openblas` link in /.cargo/config.toml of the image
-# (dev/docker/files/install-openblas).
+# OpenBLAS with the Fortran runtime of flang, liblzma, and libzstd link
+# statically from the prebuilt archives of the image, which pkg-config finds
+# through the [env] table of /.cargo/config.toml
+# (dev/docker/files/install-image-libraries).
 static="-C target-feature=+crt-static -C link-arg=-static -C link-self-contained=yes"
 case "${target}" in
 *-linux-gnu)

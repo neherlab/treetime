@@ -5,8 +5,8 @@
 # prebuilt standard library for this tier 3 target, so cargo builds it from the
 # rust-src component (-Zbuild-std, dev/cross/build). The crosstool-NG GCC 16
 # MinGW toolchain on msvcrt compiles and links for the target, because Windows 7
-# has no Universal C Runtime without an update; OpenBLAS is the msvcrt build of
-# binarylandia/build_openblas with the static Fortran runtime of flang. clang
+# has no Universal C Runtime without an update; the prebuilt OpenBLAS, liblzma,
+# and libzstd are msvcrt builds for Windows 7 as well. clang
 # compiles and links for the build machine on the glibc 2.17 sysroot of a
 # crosstool-NG GCC 16 toolchain. Wine runs the binaries.
 FROM debian:12.15-slim@sha256:7ff6ba31527b9e336162fa061746c366c4b2032f4d2cff2078bea43f78efe3f8
@@ -68,7 +68,7 @@ COPY .config/mise.image.lock /mise-image/mise.lock
 ENV LLVM_DIR="/opt/llvm"
 ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
 ENV CROSS_GCC_DIR="/opt/gcc-${CROSS_MINGW_TRIPLET}"
-COPY dev/docker/files/install-clang-target dev/docker/files/install-openblas /
+COPY dev/docker/files/install-clang-target /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-tools "llvm=${LLVM_DIR}" "gcc-${HOST_TUPLE}=${HOST_GCC_DIR}" "gcc-${CROSS_MINGW_TRIPLET}=${CROSS_GCC_DIR}" \
 && "${LLVM_DIR}/bin/clang" --version \
@@ -78,8 +78,15 @@ RUN set -euxo pipefail >/dev/null \
   || exit 1; \
 done \
 && /install-clang-target "${LLVM_DIR}" "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
-&& /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
-&& rm /install-clang-target /install-openblas
+&& rm /install-clang-target
+
+# OpenBLAS, liblzma, and libzstd of the target: the prebuilt archives of
+# .config/mise.image.toml, which cargo links through pkg-config with the [env]
+# table that the install writes to /.cargo/config.toml.
+COPY dev/docker/files/install-image-libraries /
+RUN set -euxo pipefail >/dev/null \
+&& /install-image-libraries "${CROSS_COMPILE}" \
+&& rm /install-image-libraries
 
 ENV PATH="${LLVM_DIR}/bin:${CROSS_GCC_DIR}/bin:${PATH}"
 

@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+#
+# Usage: $0 <target>...
+#
+# Install the prebuilt libraries of the image targets and point the pkg-config
+# probes of the build scripts (treetime-openblas, liblzma-sys,
+# zstd-sys) at the archives through the [env] table of /.cargo/config.toml,
+# which cargo reads for every project below /, so only builds in the container
+# use it.
+#
+# - The entries openblas-<target>, liblzma-<target>, and libzstd-<target> of
+#   .config/mise.image.toml (and openblas-mt-<target> for the threaded
+#   WebAssembly build) install through install-image-tools at the URL and
+#   checksum of the lockfile, into versioned folders. The pkg-config paths name
+#   these folders, so a new archive changes the environment of the build
+#   scripts: cargo reruns them and relinks every binary, test, and addon, which
+#   it would not do for a changed archive alone
+# - Per target, PKG_CONFIG_PATH_<target> and PKG_CONFIG_LIBDIR_<target> name
+#   the pkg-config folders of the archives only, so pkg-config never falls back
+#   to a library of the build machine; PKG_CONFIG_ALLOW_CROSS_<target> lets the
+#   pkg-config crate run for every target other than the build machine. The
+#   pkg-config files of the archives are relocatable, and the archives hold no
+#   shared libraries, so every library links statically.
+#   ZSTD_SYS_USE_PKG_CONFIG makes zstd-sys link the archive instead of
+#   compiling its bundled sources; liblzma-sys asks pkg-config by default
+# - The threaded WebAssembly module links its own OpenBLAS: the same variables
+#   with the threaded archive go to /.cargo/wasm-mt-env.toml, which every
+#   threaded cargo call passes with --config after dev/cargo/wasm-mt.toml
+# - Emscripten gives no ABI guarantee between versions, so the install fails
+#   when a WebAssembly archive comes from another Emscripten version than the
+#   installed one; an Emscripten upgrade needs new archives first
+#
+set -euo pipefail
+
+this_dir="$(dirname "${BASH_SOURCE[0]}")"
+config="${this_dir%/}/mise-image"
+export MISE_TRUSTED_CONFIG_PATHS="${config}"
+export MISE_DATA_DIR="/opt/image-tools"
+cargo_config="/.cargo/config.toml"
+cargo_config_mt="/.cargo/wasm-mt-env.toml"
+emscripten_version_file="/opt/emscripten/emscripten/emscripten-version.txt"
+wasm="wasm32-unknown-emscripten"
+failures=0
+
+main() {
+  if [[ $# -eq 0 ]]; then
+    printf 'Usage: %s <target>...\n' "$0" >&2
+    exit 1
+  fi
+  if [[ -f "${cargo_config}" ]] && grep -qxF '[env]' "${cargo_config}"; then
+    printf '%s already has an [env] table; install the libraries of all targets in one call.\n' "${cargo_config}" >&2
+    exit 1
+  fi
+
+  local target entries=()
+  for target in "$@"; do
+    entries+=("openblas-${target}" "liblzma-${target}" "libzstd-${target}")
+    if [[ "${target}" == "${wasm}" ]]; then
+      entries+=("openblas-mt-${target}")
+    fi
+  done
+  "${this_dir%/}/install-image-tools" "${entries[@]}"
+
+  local env_lines=() mt_lines=()
+  for target in "$@"; do
+    local openblas lzma zstd
+    openblas="$(where "openblas-${target}")"
+    lzma="$(where "liblzma-${target}")"
+    zstd="$(where "libzstd-${target}")"
+    check_openblas "${target}" "${openblas}"
+    check_compression "${target}" "${lzma}" lzma
+    check_compression "${target}" "${zstd}" zstd
+    env_lines+=("$(pkg_config_env "${target}" "${openblas}" "${lzma}" "${zstd}")")
+    if [[ "${target}" == "${wasm}" ]]; then
+      local openblas_mt
+      openblas_mt="$(where "openblas-mt-${target}")"
+      check_openblas "${target}" "${openblas_mt}"
+      mt_lines+=("$(pkg_config_env "${target}" "${openblas_mt}" "${lzma}" "${zstd}")")
+    fi
+  done
+  if ((failures > 0)); then
+    printf 'The prebuilt libraries do not match the image. Build new releases of binarylandia/build_openblas or binarylandia/staticbourg, or update the entries in .config/mise.image.toml.\n' >&2
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "${cargo_config}")"
+  printf '\n[env]\nZSTD_SYS_USE_PKG_CONFIG = "1"\n%s\n' "$(printf '%s\n' "${env_lines[@]}")" >>"${cargo_config}"
+  if ((${#mt_lines[@]} > 0)); then
+    printf '[env]\n%s\n' "$(printf '%s\n' "${mt_lines[@]}")" >"${cargo_config_mt}"
+  fi
+  cat "${cargo_config}"
+  if [[ -f "${cargo_config_mt}" ]]; then
+    cat "${cargo_config_mt}"
+  fi
+}
+
+where() {
+  mise -C "${config}" where "$1"
+}
+
+# The pkg-config variables of a target, as lines of a TOML table.
+pkg_config_env() {
+  local target="$1" target_safe="${1//-/_}" dirs
+  shift
+  dirs="$(printf '%s/lib/pkgconfig:' "$@")"
+  dirs="${dirs%:}"
+  printf 'PKG_CONFIG_PATH_%s = "%s"\n' "${target_safe}" "${dirs}"
+  printf 'PKG_CONFIG_LIBDIR_%s = "%s"' "${target_safe}" "${dirs}"
+  if [[ "${target}" != x86_64-unknown-linux-gnu ]]; then
+    printf '\nPKG_CONFIG_ALLOW_CROSS_%s = "1"' "${target_safe}"
+  fi
+}
+
+# OpenBLAS of build_openblas, with the Fortran runtime of flang except on
+# WebAssembly.
+check_openblas() {
+  local target="$1" dir="$2"
+  require_file "${dir}/lib/pkgconfig/openblas.pc"
+  require_file "${dir}/lib/libopenblas.a"
+  if [[ "${target}" == "${wasm}" ]]; then
+    check_emscripten "${dir}/share/openblas/emscripten-version.txt"
+  else
+    require_file "${dir}/lib/libflang_rt.runtime.a"
+  fi
+}
+
+# liblzma or libzstd of staticbourg.
+check_compression() {
+  local target="$1" dir="$2" library="$3"
+  require_file "${dir}/lib/pkgconfig/lib${library}.pc"
+  require_file "${dir}/lib/lib${library}.a"
+  if [[ "${target}" == "${wasm}" ]]; then
+    check_emscripten "${dir}/share/emscripten-version.txt"
+  fi
+}
+
+# A WebAssembly archive was built by the installed Emscripten.
+check_emscripten() {
+  local version_file="$1"
+  require_file "${version_file}"
+  if [[ -f "${version_file}" ]] && ! cmp -s "${version_file}" "${emscripten_version_file}"; then
+    printf '%s: built with Emscripten %s, but the image has Emscripten %s\n' \
+      "${version_file}" "$(<"${version_file}")" "$(<"${emscripten_version_file}")" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+require_file() {
+  if [[ ! -f "$1" ]]; then
+    printf 'Missing file: %s\n' "$1" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

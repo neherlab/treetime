@@ -2,12 +2,14 @@
 # `--config dev/cargo/wasm-mt.toml` by every cargo call for
 # wasm32-unknown-emscripten with threads. Cargo appends these rustflags to those
 # of .cargo/config.toml. The build runs on the nightly of
-# dev/docker/files/wasm-threads-toolchain.
+# dev/docker/files/wasm-threads-toolchain. In the development image, the calls
+# also pass /.cargo/wasm-mt-env.toml, whose pkg-config paths name the threaded
+# OpenBLAS archive (`-pthread`, `USE_LOCKING=1`) in place of the
+# single-threaded one of /.cargo/config.toml, because wasm-ld rejects the
+# single-threaded archive in a threaded link
+# (dev/docker/files/install-image-libraries).
 #
 # - std is rebuilt with atomics, because the std of rustup is built without them
-# - the threaded OpenBLAS archive (`-pthread`, `USE_LOCKING=1`), installed by
-#   dev/docker/files/install-openblas-emscripten; wasm-ld rejects the
-#   single-threaded archive in a threaded link
 # - a new pthread worker starts only after its creator returns to the event
 #   loop, and rayon waits for every thread of its pool while it builds the pool,
 #   so the module starts its pthread pool before main: the rayon threads of the
@@ -27,7 +29,3 @@ rustflags = [
   "-Clink-arg=-sPTHREAD_POOL_SIZE=globalThis.treetimeJobs+2",
   "-Clink-arg=-sPTHREAD_POOL_SIZE_STRICT=2",
 ]
-
-[target.wasm32-unknown-emscripten.openblas]
-rustc-link-lib = ["static:-bundle=openblas"]
-rustc-link-search = ["/usr/local/wasm32-unknown-emscripten-openblas-mt/lib"]

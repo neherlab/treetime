@@ -18,7 +18,8 @@ certifi = "0d"
 
 # v0 runs from the checkout, with the OpenBLAS 0.3.34 release of conda-forge on
 # one thread. The Rust build links OpenBLAS develop de5d4914, 432 commits after
-# 0.3.34, with LAPACK compiled by flang (dev/docker/files/install-openblas).
+# 0.3.34, with LAPACK compiled by flang (the openblas entries of
+# .config/mise.toml and .config/mise.image.toml).
 [activation.env]
 PYTHONPATH = "$PIXI_PROJECT_ROOT/packages/legacy/treetime"
 OPENBLAS_NUM_THREADS = "1"

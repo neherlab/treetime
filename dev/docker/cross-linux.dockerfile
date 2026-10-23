@@ -69,8 +69,7 @@ COPY .config/mise.image.lock /mise-image/mise.lock
 ENV LLVM_DIR="/opt/llvm"
 ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
 ENV CROSS_GCC_DIR="/opt/gcc-${CROSS_COMPILE}"
-ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
-COPY dev/docker/files/install-clang-target dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
+COPY dev/docker/files/install-clang-target /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-tools "llvm=${LLVM_DIR}" "gcc-${HOST_TUPLE}=${HOST_GCC_DIR}" "gcc-${CROSS_COMPILE}=${CROSS_GCC_DIR}" \
 && "${LLVM_DIR}/bin/clang" --version \
@@ -80,9 +79,15 @@ RUN set -euxo pipefail >/dev/null \
   && /install-clang-target "${LLVM_DIR}" "${triplet}" "/opt/gcc-${triplet}" \
   || exit 1; \
 done \
-&& /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
-&& /install-compression-libs "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-clang-target /install-openblas /install-compression-libs
+&& rm /install-clang-target
+
+# OpenBLAS, liblzma, and libzstd of the target: the prebuilt archives of
+# .config/mise.image.toml, which cargo links through pkg-config with the [env]
+# table that the install writes to /.cargo/config.toml.
+COPY dev/docker/files/install-image-libraries /
+RUN set -euxo pipefail >/dev/null \
+&& /install-image-libraries "${CROSS_COMPILE}" \
+&& rm /install-image-libraries
 
 ENV PATH="${LLVM_DIR}/bin:${PATH}"
 ENV CROSS_SYSROOT="${CROSS_GCC_DIR}/${CROSS_COMPILE}/sysroot"
@@ -103,10 +108,6 @@ ENV HOST_CC="${LLVM_DIR}/bin/${HOST_TUPLE}-clang"
 ENV HOST_CXX="${LLVM_DIR}/bin/${HOST_TUPLE}-clang++"
 ENV HOST_AR="${LLVM_DIR}/bin/llvm-ar"
 ENV CARGO_TARGET_${HOST_TUPLE_UPPER}_LINKER="${LLVM_DIR}/bin/${HOST_TUPLE}-clang"
-
-ENV PKG_CONFIG_ALLOW_CROSS="1"
-ENV PKG_CONFIG_PATH_${CROSS_COMPILE_SAFE}="${PREFIX_CROSS}/lib/pkgconfig"
-ENV PKG_CONFIG_SYSROOT_DIR_${CROSS_COMPILE_SAFE}="${PREFIX_CROSS}"
 
 # The Rust toolchain of rust-toolchain.toml with the target. dev/docker/run runs
 # as the host user with HOME=/tmp/home and the cargo home in the checkout.

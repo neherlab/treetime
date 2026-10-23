@@ -2,19 +2,27 @@
 #
 # Usage: $0
 #
-# Check that the prebuilt liblzma and libzstd archives, which the container
-# images link in place of the C sources of liblzma-sys and zstd-sys
-# (dev/docker/files/install-compression-libs), have the C versions that those
-# crates in Cargo.lock bundle. A crate update that changes the bundled C version
-# needs a binarylandia/staticbourg release of that version first. Exits 1 on a
-# mismatch.
+# Check the versions of the prebuilt libraries that .config/mise.toml (hosts)
+# and .config/mise.image.toml (images) install:
+#
+# - the liblzma and libzstd archives have the C versions that liblzma-sys and
+#   zstd-sys in Cargo.lock bundle, read from the asset names in the lockfiles,
+#   so that every build links the same C code, whether it links an archive or
+#   compiles the bundled sources. A crate update that changes the bundled C
+#   version needs a binarylandia/staticbourg release of that version first
+# - every liblzma and libzstd entry names the same staticbourg release, and
+#   every OpenBLAS entry the same OpenBLAS version, across the native, Windows 7,
+#   and Emscripten releases of binarylandia/build_openblas
+#
+# Exits 1 on a mismatch.
 #
 set -euo pipefail
 shopt -s inherit_errexit
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-install_script="dev/docker/files/install-compression-libs"
+configs=(.config/mise.toml .config/mise.image.toml)
+locks=(.config/mise.lock .config/mise.image.lock)
 
 # The xz version that each liblzma-sys release bundles (xz/src/liblzma/api/lzma/version.h
 # of the crate). zstd-sys names its zstd version in its own version.
@@ -26,29 +34,90 @@ lock_version() {
   yq -p toml -o yaml ".package[] | select(.name == \"$1\") | .version" Cargo.lock
 }
 
-script_version() {
-  sed -n "s/^$1=\"\(.*\)\"$/\1/p" "${install_script}"
+# The entry names and versions of the tools of a config whose names start with
+# a prefix, as "<name> <version>" lines.
+config_versions() {
+  PREFIX="$1" yq -p toml -o yaml '
+    .tools | to_entries | .[]
+    | select(.key | test("^" + strenv(PREFIX)))
+    | .key + " " + (.value.version // .value)
+  ' "$2"
+}
+
+# The asset names of the tools of a lockfile whose names start with a prefix.
+lock_assets() {
+  PREFIX="$1" yq -p toml -o yaml '
+    .tools | to_entries | .[]
+    | select(.key | test("^" + strenv(PREFIX)))
+    | .value[] | to_entries | .[]
+    | select(.key | test("^platforms\."))
+    | .value.url | sub(".*/", "")
+  ' "$2"
+}
+
+# The C versions of a library in the asset names <library>-<version>-static-*
+# of the lockfiles, one per line.
+asset_versions() {
+  local lock
+  for lock in "${locks[@]}"; do
+    lock_assets "$1" "${lock}"
+  done | sed -n "s/^$2-\([^-]*\)-static-.*/\1/p" | sort -u
+}
+
+# Fail unless the C version of a library in the lockfiles is the one that its
+# crate bundles.
+check_bundled() {
+  local entry="$1" asset="$2" library="$3" crate="$4" expected="$5" versions
+  versions="$(asset_versions "${entry}" "${asset}")"
+  if [[ -z "${versions}" ]]; then
+    printf 'No %s archives in %s\n' "${library}" "${locks[*]}" >&2
+    rc=1
+  elif [[ "${versions}" != "${expected}" ]]; then
+    printf '%s bundles %s %s, but the lockfiles install %s %s\n' \
+      "${crate}" "${library}" "${expected}" "${library}" "${versions//$'\n'/, }" >&2
+    rc=1
+  fi
+}
+
+# Fail unless the entries of the configs agree on one version, given the
+# entries as "<config>: <name> <version>" lines and the version of each entry,
+# one per line in the same order.
+check_same() {
+  local what="$1" entries="$2" versions="$3"
+  if [[ "$(sort -u <<<"${versions}" | wc -l)" -ne 1 ]]; then
+    printf 'The entries of %s name different versions:\n%s\n' "${what}" "${entries}" >&2
+    rc=1
+  fi
 }
 
 rc=0
 
 liblzma_sys="$(lock_version liblzma-sys)"
 lzma_expected="${liblzma_sys_bundles[${liblzma_sys}]:-}"
-lzma_installed="$(script_version lzma_version)"
 if [[ -z "${lzma_expected}" ]]; then
   printf 'liblzma-sys %s in Cargo.lock has no xz version in %s; add it\n' "${liblzma_sys}" "$0" >&2
   rc=1
-elif [[ "${lzma_expected}" != "${lzma_installed}" ]]; then
-  printf 'liblzma-sys %s bundles xz %s, but %s installs xz %s\n' "${liblzma_sys}" "${lzma_expected}" "${install_script}" "${lzma_installed}" >&2
-  rc=1
+else
+  check_bundled liblzma lzma xz "liblzma-sys ${liblzma_sys}" "${lzma_expected}"
 fi
 
 zstd_sys="$(lock_version zstd-sys)"
-zstd_expected="${zstd_sys##*+zstd.}"
-zstd_installed="$(script_version zstd_version)"
-if [[ "${zstd_expected}" != "${zstd_installed}" ]]; then
-  printf 'zstd-sys %s bundles zstd %s, but %s installs zstd %s\n' "${zstd_sys}" "${zstd_expected}" "${install_script}" "${zstd_installed}" >&2
-  rc=1
-fi
+check_bundled libzstd zstd zstd "zstd-sys ${zstd_sys}" "${zstd_sys##*+zstd.}"
+
+compression_entries=""
+openblas_entries=""
+for config in "${configs[@]}"; do
+  compression_entries+="$(config_versions 'lib(lzma|zstd)' "${config}" | sed "s|^|${config}: |")"$'\n'
+  openblas_entries+="$(config_versions openblas "${config}" | sed "s|^|${config}: |")"$'\n'
+done
+compression_entries="$(sed '/^$/d' <<<"${compression_entries}")"
+openblas_entries="$(sed '/^$/d' <<<"${openblas_entries}")"
+
+check_same "liblzma and libzstd (binarylandia/staticbourg release)" \
+  "${compression_entries}" "$(cut -d ' ' -f 3 <<<"${compression_entries}")"
+
+# An OpenBLAS release version is <OpenBLAS version>[-emscripten-<version>]-<build time>.
+openblas_versions="$(sed -E 's/.* //; s/-[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}$//; s/-emscripten-[0-9.]+$//' <<<"${openblas_entries}")"
+check_same "OpenBLAS (binarylandia/build_openblas)" "${openblas_entries}" "${openblas_versions}"
 
 exit "${rc}"

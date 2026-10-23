@@ -9,13 +9,13 @@
 #
 # The prebuilt archives that the builds link follow the same CPU baselines:
 # OpenBLAS selects its kernels at run time, and binarylandia/staticbourg builds
-# liblzma and libzstd for these baselines (dev/docker/files/install-compression-libs).
+# liblzma and libzstd for these baselines (.config/mise.image.toml).
 
 # Export RUSTFLAGS and the C and C++ flags of the shipped build for a target, by
 # default the host. RUSTFLAGS replaces the target rustflags of .cargo/config.toml
-# (mold, frame pointers, v0 symbol mangling, OpenBLAS link arguments) instead of
-# adding to them, as in the shipped builds. The C and C++ flags carry only the
-# CPU baseline: the cc crate passes the optimization level of the cargo profile.
+# (mold, frame pointers, v0 symbol mangling) instead of adding to them, as in
+# the shipped builds. The C and C++ flags carry only the CPU baseline: the cc
+# crate passes the optimization level of the cargo profile.
 export_dist_flags() {
   local target="${1:-$(rustc --print host-tuple)}" target_safe c_arch rust_arch
   target_safe="${target//-/_}"

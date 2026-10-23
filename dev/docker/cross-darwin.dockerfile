@@ -66,8 +66,7 @@ COPY .config/mise.image.lock /mise-image/mise.lock
 ENV LLVM_DIR="/opt/llvm"
 ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
 ENV OSX_CROSS_PATH="/opt/osxcross"
-ENV PREFIX_CROSS="/opt/cross-${CROSS_COMPILE}"
-COPY dev/docker/files/install-clang-target dev/docker/files/install-openblas dev/docker/files/install-compression-libs /
+COPY dev/docker/files/install-clang-target /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-tools "llvm=${LLVM_DIR}" "gcc-${HOST_TUPLE}=${HOST_GCC_DIR}" "osxcross=${OSX_CROSS_PATH}" \
 && "${LLVM_DIR}/bin/clang" --version \
@@ -76,9 +75,15 @@ RUN set -euxo pipefail >/dev/null \
 && /install-clang-target "${LLVM_DIR}" "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
 && cp -r "${OSX_CROSS_PATH}/compiler-rt/." "$("${LLVM_DIR}/bin/clang" -print-resource-dir)/" \
 && test -f "${OSX_CROSS_PATH}/SDK/MacOSX11.1.sdk/usr/lib/libSystem.B.tbd" \
-&& /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
-&& /install-compression-libs "${CROSS_COMPILE}" "${PREFIX_CROSS}" \
-&& rm /install-clang-target /install-openblas /install-compression-libs
+&& rm /install-clang-target
+
+# OpenBLAS, liblzma, and libzstd of the target: the prebuilt archives of
+# .config/mise.image.toml, which cargo links through pkg-config with the [env]
+# table that the install writes to /.cargo/config.toml.
+COPY dev/docker/files/install-image-libraries /
+RUN set -euxo pipefail >/dev/null \
+&& /install-image-libraries "${CROSS_COMPILE}" \
+&& rm /install-image-libraries
 
 ENV MACOSX_DEPLOYMENT_TARGET="${CROSS_MACOS_DEPLOYMENT_TARGET}"
 ENV PATH="${OSX_CROSS_PATH}/bin:${LLVM_DIR}/bin:${PATH}"

@@ -96,6 +96,11 @@ hawk_toolchain := trim(read("dev/docker/files/hawk-toolchain"))
 # the other builds.
 wasm_threads_toolchain := trim(read("dev/docker/files/wasm-threads-toolchain"))
 
+# The cargo settings of the threaded WebAssembly build. The development image
+# adds /.cargo/wasm-mt-env.toml, which points pkg-config at the threaded
+# OpenBLAS archive (dev/docker/files/install-image-libraries).
+wasm_mt_config := "--config=dev/cargo/wasm-mt.toml" + if path_exists("/.cargo/wasm-mt-env.toml") == "true" { " --config=/.cargo/wasm-mt-env.toml" } else { "" }
+
 # The package that emcc and wasm-bindgen write for the WebAssembly back end of
 # the web2 app: the single-threaded module in st/ and the threaded module in mt/,
 # each a JavaScript module and a WebAssembly binary under the names that emcc
@@ -225,7 +230,7 @@ build-wasm mode="dev":
 build-wasm-mt mode="dev":
     target_dir={{ quote(CARGO_TARGET_DIR / "wasm-mt") }}
     out="${target_dir}/wasm32-unknown-emscripten/{{ if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode } }}"
-    CARGO_TARGET_DIR="${target_dir}" cargo +{{ wasm_threads_toolchain }} build --locked --config=dev/cargo/wasm-mt.toml --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
+    CARGO_TARGET_DIR="${target_dir}" cargo +{{ wasm_threads_toolchain }} build --locked {{ wasm_mt_config }} --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
     if ! cmp -s "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts; then
       printf 'The threaded module declares other exports than %s. Run `just build-wasm` or `just gen wasm-types` after a change of the exports.\n' {{ quote(wasm_pkg / "app_wasm.d.ts") }} >&2
       exit 1
@@ -419,7 +424,7 @@ lint-wasm *args:
 # Clippy over the threaded WebAssembly back end, which compiles the code gated on `target_feature = "atomics"`; reports the warnings of every crate, then fails if there were any
 [group("lint")]
 lint-wasm-mt *args:
-    CARGO_TARGET_DIR={{ quote(lint_target_dir / "wasm-mt") }} {{ lint_kache_env }} CARGO_BUILD_WARNINGS=deny cargo +{{ wasm_threads_toolchain }} clippy --locked --config=dev/cargo/wasm-mt.toml -p app-wasm --bins --target=wasm32-unknown-emscripten --keep-going "$@"
+    CARGO_TARGET_DIR={{ quote(lint_target_dir / "wasm-mt") }} {{ lint_kache_env }} CARGO_BUILD_WARNINGS=deny cargo +{{ wasm_threads_toolchain }} clippy --locked {{ wasm_mt_config }} -p app-wasm --bins --target=wasm32-unknown-emscripten --keep-going "$@"
 
 # Apply clippy's machine-applicable fixes; stage your changes first
 [group("lint")]
@@ -596,7 +601,7 @@ data-reindex *args:
 fixtures-check:
     dev/fixtures-check
 
-# Fail when the prebuilt liblzma or libzstd of the container images differs from the C version that liblzma-sys or zstd-sys bundles
+# Fail when the prebuilt liblzma or libzstd of .config/mise.toml or .config/mise.image.toml differs from the C version that liblzma-sys or zstd-sys bundles, or when their entries name different releases of a library
 [group("generated")]
 prebuilt-libs-check:
     dev/prebuilt-libs-check

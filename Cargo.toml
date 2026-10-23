@@ -110,7 +110,7 @@ ndarray-stats = "=0.7.0"
 bzip2 = "=0.6.1"
 flate2 = { version = "=1.1.9", default-features = false, features = ["zlib-rs"] }
 gzp = { version = "=2.0.4", default-features = false, features = ["deflate_rust"] }
-liblzma = { version = "=0.4.8", features = ["static"] }
+liblzma = "=0.4.8"
 zstd = "=0.14.0"
 
 ab_glyph = "=0.2.32"

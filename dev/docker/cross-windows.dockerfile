@@ -64,11 +64,10 @@ COPY .config/mise.image.lock /mise-image/mise.lock
 
 # The <triple>-clang drivers of llvm-mingw load the sysroot, compiler-rt,
 # libunwind, and lld from the LLVM prefix, so llvm-mingw is copied over the
-# LLVM install. liblzma-sys and zstd-sys compile their bundled C sources for
-# this target, because binarylandia/staticbourg has no UCRT archives.
+# LLVM install.
 ENV LLVM_DIR="/opt/llvm"
 ENV HOST_GCC_DIR="/opt/gcc-${HOST_TUPLE}"
-COPY dev/docker/files/install-clang-target dev/docker/files/install-openblas /
+COPY dev/docker/files/install-clang-target /
 RUN set -euxo pipefail >/dev/null \
 && /install-image-tools "llvm=${LLVM_DIR}" "llvm-mingw=/opt/llvm-mingw" "gcc-${HOST_TUPLE}=${HOST_GCC_DIR}" \
 && cp -a "/opt/llvm-mingw/." "${LLVM_DIR}/" \
@@ -79,8 +78,15 @@ done \
 && test -d "${HOST_GCC_DIR}/lib/gcc/${HOST_TUPLE}/16.2.0" \
 && test -d "${HOST_GCC_DIR}/${HOST_TUPLE}/sysroot" \
 && /install-clang-target "${LLVM_DIR}" "${HOST_TUPLE}" "${HOST_GCC_DIR}" \
-&& /install-openblas "${CROSS_COMPILE}" "/opt/openblas" \
-&& rm /install-clang-target /install-openblas
+&& rm /install-clang-target
+
+# OpenBLAS, liblzma, and libzstd of the target: the prebuilt archives of
+# .config/mise.image.toml, which cargo links through pkg-config with the [env]
+# table that the install writes to /.cargo/config.toml.
+COPY dev/docker/files/install-image-libraries /
+RUN set -euxo pipefail >/dev/null \
+&& /install-image-libraries "${CROSS_COMPILE}" \
+&& rm /install-image-libraries
 
 ENV PATH="${LLVM_DIR}/bin:${PATH}"
 
