@@ -12,6 +12,7 @@ import PanelLayout from "auspice/src/components/controls/panel-layout";
 import { PanelSection } from "auspice/src/components/controls/panelSection";
 import { ControlsContainer } from "auspice/src/components/controls/styles";
 import { ToggleFocus } from "auspice/src/components/controls/toggle-focus";
+import ToggleTangle from "auspice/src/components/controls/toggle-tangle";
 import type { ComponentProps } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
@@ -50,6 +51,7 @@ export function SidebarControls({ store, entropy }: { store: AuspiceStore; entro
       <ChooseBranchLabelling />
       <ChooseTipLabel />
       <ChooseExplodeAttr tooltip={ExplodeTreeInfo} />
+      <ToggleTangle />
       {entropy && entropyAvailable && <PanelSection panel="entropy" title="Entropy" tooltip={EntropyInfo} />}
       {canTogglePanelLayout && (
         <>

@@ -6,9 +6,9 @@ import type {
   TimetreeEstimates,
   YearDate,
 } from "@neherlab/app-contracts";
-import { runsCompare, runsGet, runsList } from "@neherlab/app-contracts/client";
+import { runsAuspice, runsCompare, runsGet, runsList, runsResults } from "@neherlab/app-contracts/client";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { lazy, Suspense, useCallback, useMemo } from "react";
 import ArrowLeftRight from "~icons/lucide/arrow-left-right";
 
 import { useApi, useApiQueries } from "../api/hooks";
@@ -25,8 +25,11 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { Button } from "../ui/button";
 import { NativeSelect, NativeSelectOption } from "../ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
+import type { RunTree } from "./CompareTrees";
 import { DateIntervals } from "./DateIntervals";
 import { ShiftPlot } from "./ShiftPlot";
+
+const CompareTrees = lazy(async () => ({ default: (await import("./CompareTrees")).CompareTrees }));
 
 export function ComparePage({ first, second }: { first: string; second: string }) {
   const [left, right] = useApiQueries(
@@ -93,8 +96,79 @@ function Comparison({ left, right }: { left: RunRecord; right: RunRecord }) {
           <SettingsDifferences left={left} right={right} settings={comparison.settings ?? undefined} />
         </>
       )}
+      {left.status === "ok" && right.status === "ok" && <TreeComparison left={left} right={right} />}
     </PageShell>
   );
+}
+
+function TreeComparison({ left, right }: { left: RunRecord; right: RunRecord }) {
+  const runs = [left, right] as const;
+
+  const results = useApiQueries(
+    runs.map((run) => (context: ApiCallContext) => runsResults({ ...context, path: { id: run.id } })),
+    { staleTime: Infinity },
+  );
+
+  const withoutTree = results.flatMap((result, index) =>
+    result.data !== undefined && result.data.tree === undefined ? [runs[index]?.title] : [],
+  );
+
+  const withTrees = results.every((result) => result.data?.tree !== undefined);
+
+  const documents = useApiQueries(
+    runs.map((run) => (context: ApiCallContext) => runsAuspice({ ...context, path: { id: run.id } })),
+    { enabled: withTrees, staleTime: Infinity },
+  );
+
+  const [firstDocument, secondDocument] = documents.map((query) => query.data);
+  const error = [...results, ...documents].find((query) => query.error !== null)?.error ?? null;
+
+  const trees = useMemo<readonly [RunTree, RunTree] | undefined>(
+    () =>
+      firstDocument === undefined || secondDocument === undefined
+        ? undefined
+        : [
+            { run: figureRun(left), document: firstDocument },
+            { run: figureRun(right), document: secondDocument },
+          ],
+    [firstDocument, left, right, secondDocument],
+  );
+
+  if (error !== null) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>The trees cannot be read</AlertTitle>
+        <AlertDescription>{error.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (withoutTree.length > 0) {
+    return (
+      <Alert>
+        <AlertTitle>No tree comparison</AlertTitle>
+        <AlertDescription>
+          {withoutTree.join(" and ")} wrote no Auspice tree, so the trees are not drawn.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (trees === undefined) {
+    return <LoadingState text="Loading the trees" />;
+  }
+
+  return (
+    <Panel title="Trees" hint="Lines join the tips of the same name in the two trees">
+      <Suspense fallback={<LoadingState text="Loading the tree view" />}>
+        <CompareTrees first={trees[0]} second={trees[1]} />
+      </Suspense>
+    </Panel>
+  );
+}
+
+function figureRun(record: RunRecord) {
+  return { id: record.id, title: record.title, command: record.command };
 }
 
 function RunPicker({ current, other, side }: { current: RunRecord; other: RunRecord; side: "first" | "second" }) {

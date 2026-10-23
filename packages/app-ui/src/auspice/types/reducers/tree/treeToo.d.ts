@@ -1,5 +1,7 @@
 import type { Reducer } from "redux";
 
-declare const reducer: Reducer<unknown>;
+import type { AuspiceTreeTooState } from "../../../state";
+
+declare const reducer: Reducer<AuspiceTreeTooState>;
 
 export default reducer;

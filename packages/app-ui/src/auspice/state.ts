@@ -7,6 +7,7 @@ export interface AuspiceState {
   controls: AuspiceControlsState;
   entropy: AuspiceEntropyState;
   notifications: AuspiceNotificationsState;
+  treeToo: AuspiceTreeTooState;
 }
 
 export type AuspiceThunk = ThunkAction<void, AuspiceState, undefined, AnyAction>;
@@ -43,6 +44,13 @@ export interface AuspiceTreeState {
   nodeColors: readonly string[];
 }
 
+export interface AuspiceTreeTooState {
+  loaded: boolean;
+  nodes: AuspiceNode[] | null;
+  nodeColors: readonly string[];
+  tangleTipLookup?: readonly (readonly number[])[];
+}
+
 export interface AuspiceNode {
   name: string;
   arrayIdx: number;
@@ -59,6 +67,7 @@ export interface AuspiceControlsState {
   canTogglePanelLayout: boolean;
   sidebarOpen: boolean;
   showTreeToo: string | undefined;
+  explodeAttr: string | undefined;
   panelsAvailable: readonly string[];
   panelsToDisplay: readonly string[];
   selectedNode: AuspiceSelectedNode | null;

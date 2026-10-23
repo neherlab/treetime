@@ -120,6 +120,8 @@ function TreeCard({
   runs: FigureRuns;
   version: string | undefined;
 }) {
+  const treeKey = useAuspiceSelector(store, selectSecondTreeName) ?? "";
+
   const style = useMemo(
     () => cardStyle(twoTrees ? CARD_TITLE_HEIGHT_TWO_TREES : CARD_TITLE_HEIGHT, headerRight),
     [headerRight, twoTrees],
@@ -147,7 +149,7 @@ function TreeCard({
           <TreeDownloads store={store} runs={runs} version={version} />
         </div>
       </div>
-      {size.height > 0 && <Tree width={size.width} height={size.height} />}
+      {size.height > 0 && <Tree key={treeKey} width={size.width} height={size.height} />}
     </div>
   );
 }
@@ -234,6 +236,10 @@ function selectPanelsToDisplay(state: AuspiceState): readonly string[] {
 
 function selectPanelLayout(state: AuspiceState): AuspicePanelLayout {
   return state.controls.panelLayout;
+}
+
+function selectSecondTreeName(state: AuspiceState): string | undefined {
+  return state.controls.showTreeToo;
 }
 
 function selectTwoTrees(state: AuspiceState): boolean {

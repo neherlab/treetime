@@ -80,7 +80,7 @@ function useTreeLink(store: AuspiceStore, tree: ResultTree): TreeLink {
   );
 }
 
-function TreeFailure({ error }: FallbackProps) {
+export function TreeFailure({ error }: FallbackProps) {
   return (
     <Alert variant="destructive">
       <AlertTitle>Auspice cannot draw this tree</AlertTitle>

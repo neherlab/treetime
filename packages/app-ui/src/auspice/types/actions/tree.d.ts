@@ -9,3 +9,5 @@ export declare function applyFilter(
   trait: string | symbol,
   values: readonly string[],
 ): AuspiceThunk;
+
+export declare function explodeTree(attr: string | undefined): AuspiceThunk;

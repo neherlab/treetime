@@ -1,12 +1,15 @@
 import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
-import { applyFilter } from "auspice/src/actions/tree";
+import { applyFilter, explodeTree } from "auspice/src/actions/tree";
 import { CLEAN_START, NEW_COLORS } from "auspice/src/actions/types";
 import { NODE_VISIBLE, strainSymbol } from "auspice/src/util/globals";
 
+import { nucleotideColorBy } from "../genotype";
 import { createAuspiceStore } from "../store";
-import { focusNode } from "../store-hooks";
+import { colorTreeBy, focusNode, showSecondTree } from "../store-hooks";
 
 const NUC_ANNOTATION = { nuc: { start: 1, end: 3, strand: "+", type: "source" } };
+
+const MISSING_VALUE_COLOR = "#ADB1B3";
 
 const RUNTIME_WINDOW = Object.getOwnPropertyDescriptor(globalThis, "window");
 
@@ -91,6 +94,48 @@ describe("auspice store", () => {
       tip === undefined ? undefined : tree.visibility?.[tip.arrayIdx],
       controls.filters["country"],
     ]).toStrictEqual([NODE_VISIBLE, [{ value: "brazil", active: false }]]);
+  });
+
+  test("a second tree is named, paired with the first tree by tip name, and the first tree is no longer exploded", () => {
+    const store = loadedTwoTreeStore();
+
+    store.dispatch(explodeTree("country"));
+
+    showSecondTree(store, secondTreeDocument(), { first: "First run", second: "Second run" });
+
+    const { controls, tree, treeToo } = store.getState();
+
+    const pairs = (treeToo.tangleTipLookup ?? []).map(([left, right]) => [
+      tree.nodes?.[left ?? -1]?.name,
+      treeToo.nodes?.[right ?? -1]?.name,
+    ]);
+
+    expect([
+      controls.showTreeToo,
+      controls.explodeAttr,
+      pairs.toSorted(([a], [b]) => String(a).localeCompare(String(b))),
+    ]).toStrictEqual([
+      "Second run",
+      undefined,
+      [
+        ["A", "A"],
+        ["B", "B"],
+        ["C", "C"],
+      ],
+    ]);
+  });
+
+  test("a second tree with the same genome map is colored by genotype", () => {
+    const store = loadedTwoTreeStore();
+
+    showSecondTree(store, secondTreeDocument(), { first: "First run", second: "Second run" });
+
+    colorTreeBy(store, nucleotideColorBy(1) ?? "");
+
+    const { treeToo } = store.getState();
+    const mutated = treeToo.nodes?.find((node) => node.name === "A");
+
+    expect(mutated === undefined ? undefined : treeToo.nodeColors[mutated.arrayIdx]).not.toBe(MISSING_VALUE_COLOR);
   });
 
   test("a genotype color-by leaves the scatterplot axes unchanged in the rectangular layout", () => {
@@ -218,4 +263,48 @@ function tips(prefix: string, count: number, country: string) {
     name: `${prefix}${index}`,
     node_attrs: { div: 0.2, country: { value: country } },
   }));
+}
+
+function loadedTwoTreeStore() {
+  const store = createAuspiceStore();
+
+  const state = createStateFromQueryOrJSONs({
+    json: twoTreeDocument([{ name: "AB", children: [tip("A", ["A1T"]), tip("B", [])] }, tip("C", [])]),
+    query: {},
+    dispatch: store.dispatch,
+  });
+
+  store.dispatch({ ...state, type: CLEAN_START });
+
+  return store;
+}
+
+function secondTreeDocument() {
+  return twoTreeDocument([{ name: "AC", children: [tip("A", ["A1T"]), tip("C", [])] }, tip("B", [])]);
+}
+
+function twoTreeDocument(children: readonly unknown[]) {
+  return {
+    version: "v2",
+    meta: {
+      title: "Two trees",
+      updated: "2026-10-24",
+      colorings: [
+        { key: "gt", title: "Genotype", type: "categorical" },
+        { key: "country", title: "Country", type: "categorical" },
+      ],
+      genome_annotations: NUC_ANNOTATION,
+      panels: ["tree", "entropy"],
+    },
+    tree: { name: "root", node_attrs: { div: 0 }, children },
+    root_sequence: { nuc: "ACG" },
+  };
+}
+
+function tip(name: string, mutations: readonly string[]) {
+  return {
+    name,
+    node_attrs: { div: 0.1, country: { value: name === "C" ? "brazil" : "usa" } },
+    branch_attrs: { mutations: { nuc: mutations } },
+  };
 }

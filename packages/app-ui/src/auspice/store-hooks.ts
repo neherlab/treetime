@@ -1,8 +1,8 @@
 import type { AuspiceDocument } from "@neherlab/app-contracts";
 import { changeColorBy } from "auspice/src/actions/colors";
-import { createStateFromQueryOrJSONs } from "auspice/src/actions/recomputeReduxState";
-import { applyFilter, updateVisibleTipsAndBranchThicknesses } from "auspice/src/actions/tree";
-import { CLEAN_START, SELECT_NODE } from "auspice/src/actions/types";
+import { createStateFromQueryOrJSONs, createTreeTooState } from "auspice/src/actions/recomputeReduxState";
+import { applyFilter, explodeTree, updateVisibleTipsAndBranchThicknesses } from "auspice/src/actions/tree";
+import { CLEAN_START, SELECT_NODE, TREE_TOO_DATA } from "auspice/src/actions/types";
 import { genotypeSymbol, NODE_VISIBLE, strainSymbol } from "auspice/src/util/globals";
 import { getTraitFromNode } from "auspice/src/util/treeMiscHelpers";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
@@ -14,6 +14,21 @@ const FOCUS_MIN_CLADE_TIPS = 20;
 
 export function useAuspiceStore(document: AuspiceDocument, colorBy: string | undefined): AuspiceStore {
   return useMemo(() => loadedStore(document, colorBy), [colorBy, document]);
+}
+
+export function useTwoTreeStore(first: AuspiceDocument, second: AuspiceDocument, names: TreeNames): AuspiceStore {
+  return useMemo(() => {
+    const store = loadedStore(first, undefined);
+
+    showSecondTree(store, second, names);
+
+    return store;
+  }, [first, names, second]);
+}
+
+export interface TreeNames {
+  first: string;
+  second: string;
 }
 
 export function useAuspiceSelector<T>(store: AuspiceStore, selector: (state: AuspiceState) => T): T {
@@ -37,6 +52,22 @@ export function focusNode(store: AuspiceStore, name: string): void {
   }
 
   store.dispatch(showTip(node));
+}
+
+export function showSecondTree(store: AuspiceStore, document: AuspiceDocument, names: TreeNames): void {
+  if (store.getState().controls.explodeAttr !== undefined) {
+    store.dispatch(explodeTree(undefined));
+  }
+
+  const state = createTreeTooState({
+    json: structuredClone(document),
+    oldState: store.getState(),
+    originalTreeUrl: names.first,
+    secondTreeUrl: names.second,
+    dispatch: store.dispatch,
+  });
+
+  store.dispatch({ ...state, type: TREE_TOO_DATA });
 }
 
 export function colorTreeBy(store: AuspiceStore, colorBy: string): void {

@@ -9,3 +9,5 @@ export declare const REMOVE_NOTIFICATION: "REMOVE_NOTIFICATION";
 export declare const TOGGLE_SIDEBAR: "TOGGLE_SIDEBAR";
 
 export declare const CHANGE_PANEL_LAYOUT: "CHANGE_PANEL_LAYOUT";
+
+export declare const TREE_TOO_DATA: "TREE_TOO_DATA";
