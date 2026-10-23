@@ -44,7 +44,7 @@ pub(crate) fn run_optimize_loop(
     names,
     convergence: ConvergenceSummary::default(),
   };
-  let mut indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths);
+  let mut indels = indel_policy.edge_indels(graph, &partitions, &state.branch_lengths)?;
 
   let mut lh_history: Vec<LogLh> = Vec::with_capacity(max_iter + 1);
   let mut stopped_at: Option<(usize, ConvergenceReason)> = None;
@@ -103,7 +103,7 @@ pub(crate) fn run_optimize_loop(
   }
 
   Ok(OptimizeLoopResult {
-    indel_rates: indels.partition_rates(partitions.len()),
+    indel_rates: indels.alignment_rates(),
     partitions,
     branch_lengths: state.branch_lengths,
     names: state.names,
@@ -117,7 +117,7 @@ pub(crate) fn run_optimize_loop(
 pub(crate) struct OptimizeLoopResult {
   pub partitions: PartitionSet,
 
-  pub indel_rates: Vec<Option<f64>>,
+  pub indel_rates: BTreeMap<usize, f64>,
 
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 
@@ -248,7 +248,7 @@ fn update_branch_lengths(
     graph,
     partitions.total_length(),
     &partitions,
-    &indels.recount(graph, &partitions),
+    &indels.recount(graph, &partitions)?,
     settings.opt_method,
     branch_lengths,
   )?;
@@ -300,7 +300,9 @@ fn compute_iteration(
     PartitionSet::Sparse(_) => (marginal_lh, LogLh::ZERO),
     PartitionSet::Dense(_) => (LogLh::ZERO, marginal_lh),
   };
-  let indel_lh = indels.recount(graph, &partitions).total_log_lh(graph, branch_lengths)?;
+  let indel_lh = indels
+    .recount(graph, &partitions)?
+    .total_log_lh(graph, branch_lengths)?;
   let total_lh = sparse_lh + dense_lh + indel_lh;
 
   Ok(OptimizeIteration {

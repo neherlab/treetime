@@ -26,6 +26,7 @@ pub(crate) enum TestDataset {
 pub(crate) enum Columns {
   All,
   Leading(usize),
+  WholeCodons,
 }
 
 struct DatasetFiles {
@@ -103,6 +104,10 @@ impl TestDataset {
       Columns::Leading(count) => {
         let length = get_common_length(&records)?;
         Ok(columns(&records, 0..length.min(count)))
+      },
+      Columns::WholeCodons => {
+        let length = get_common_length(&records)?;
+        Ok(columns(&records, 0..length - length % 3))
       },
     }
   }

@@ -58,7 +58,7 @@ mod tests {
 
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     optimize_edge_lengths(
       &graph,

@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::error::OperationError;
 use crate::gtr::gtr::GTR;
+use crate::partition::alignment_sequences::PartitionSequences;
 use crate::partition::fitch::partition::PartitionFitch;
 use crate::partition::marginal::posterior_states::AmbiguityThreshold;
 use crate::partition::marginal::reconstruction::MarginalReconstruction;
@@ -41,15 +42,17 @@ impl AncestralPartition {
       Self::Marginal { reconstruction, .. } => reconstruction.graph_log_lh(graph).map(Some),
     }
   }
+}
 
-  pub(crate) fn alphabet(&self) -> &Alphabet {
+impl PartitionSequences for AncestralPartition {
+  fn alphabet(&self) -> &Alphabet {
     match self {
       Self::Fitch(partition) => &partition.alphabet,
       Self::Marginal { reconstruction, .. } => reconstruction.alphabet(),
     }
   }
 
-  pub(crate) fn stream_sequences(
+  fn stream_sequences(
     &self,
     graph: &Graph,
     track: SeqTrack<'_>,

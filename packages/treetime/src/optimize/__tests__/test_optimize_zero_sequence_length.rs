@@ -8,6 +8,7 @@ mod tests {
   use crate::optimize::params::ExistingBranchLengths;
   use crate::test_utils::dense_partition_with_constant_leaves;
   use eyre::Report;
+  use maplit::btreemap;
   use std::collections::BTreeMap;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
@@ -70,7 +71,7 @@ mod tests {
       &BTreeMap::new(),
       &EdgeIndels::Included {
         counts: BTreeMap::new(),
-        partition_rates: vec![1.0],
+        alignment_rates: btreemap! {1 => 1.0},
       },
       BranchOptMethod::Newton,
       &mut branch_lengths,

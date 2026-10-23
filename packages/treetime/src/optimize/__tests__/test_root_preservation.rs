@@ -279,6 +279,7 @@ mod tests {
     use crate::partition::set::PartitionSet;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
+    use maplit::btreemap;
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
@@ -346,7 +347,7 @@ mod tests {
         &contributions,
         &EdgeIndels::Included {
           counts: indel_counts.clone(),
-          partition_rates: vec![indel_rate],
+          alignment_rates: btreemap! {1 => indel_rate},
         },
         BranchOptMethod::Brent,
         &mut setup.branch_lengths,

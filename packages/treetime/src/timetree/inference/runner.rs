@@ -252,7 +252,7 @@ fn compute_branch_distributions_marginal_mode(
   let total_sites = partitions.total_length();
   let one_mutation = one_mutation(total_sites);
 
-  let indels = indel_policy.edge_indels(graph, partitions, branch_lengths);
+  let indels = indel_policy.edge_indels(graph, partitions, branch_lengths)?;
 
   let partition_count = partitions.len();
   progress_info!(

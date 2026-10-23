@@ -39,7 +39,7 @@ pub(super) mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     for (i, edge_ref) in graph.get_edges().enumerate() {
       let bl = branch_lengths[&edge_ref.key()].unwrap();
@@ -77,7 +77,7 @@ pub(super) mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     assert_eq!(
       None,
@@ -120,7 +120,7 @@ pub(super) mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, model, &mut branch_lengths)?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     assert!(
       reconstruction.single().gtr().certified_decay_rate().is_some(),
@@ -260,7 +260,7 @@ pub(super) mod tests {
     let reconstruction = setup_identical_reconstruction(&graph, &names, GtrModelName::K80, &mut branch_lengths)?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     assert_eq!(
       0,
@@ -463,7 +463,7 @@ pub(super) mod tests {
       )]);
       let (reconstruction, _) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
 
-      let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(graph, &reconstruction, branch_lengths)?;
       let evidence = InitialGuessEvidence::gather(graph, &reconstruction)?;
       guess_initial_branch_lengths(graph, &indels, &evidence, ExistingBranchLengths::Keep, branch_lengths)?;
 

@@ -29,7 +29,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = dense_reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph_dense, &dense_reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph_dense, &dense_reconstruction, &bl_dense);
+      let indels = IndelPolicy::Include.edge_indels(&graph_dense, &dense_reconstruction, &bl_dense)?;
       optimize_edge_lengths(&graph_dense, total_length, &contributions, &indels, method, &mut bl_dense)?;
       (dense_reconstruction, _) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     }
@@ -46,7 +46,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = sparse_reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph_sparse, &sparse_reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &sparse_reconstruction, &bl_sparse);
+      let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &sparse_reconstruction, &bl_sparse)?;
       optimize_edge_lengths(&graph_sparse, total_length, &contributions, &indels, method, &mut bl_sparse)?;
       (sparse_reconstruction, _) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     }
@@ -89,7 +89,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = dense_reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph_dense, &dense_reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph_dense, &dense_reconstruction, &bl_dense);
+      let indels = IndelPolicy::Include.edge_indels(&graph_dense, &dense_reconstruction, &bl_dense)?;
       optimize_edge_lengths(&graph_dense, total_length, &contributions, &indels, method, &mut bl_dense)?;
       (dense_reconstruction, _) = dense_reconstruction.marginal_update(&graph_dense, &branch_lengths_or_zero(&bl_dense))?;
     }
@@ -105,7 +105,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = sparse_reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph_sparse, &sparse_reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &sparse_reconstruction, &bl_sparse);
+      let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &sparse_reconstruction, &bl_sparse)?;
       optimize_edge_lengths(&graph_sparse, total_length, &contributions, &indels, method, &mut bl_sparse)?;
       (sparse_reconstruction, _) = sparse_reconstruction.marginal_update(&graph_sparse, &branch_lengths_or_zero(&bl_sparse))?;
     }

@@ -14,15 +14,13 @@ use crate::coalescent::population_size::effective_population_size;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::optimize::partition_rates::fix_equal_rates;
+use crate::partition::alignment_sequences::{ImputedReconstruction, StreamOptions, stream_alignment_sequences};
 use crate::partition::create::Representation;
-use crate::partition::marginal::reconstruction::ReconstructionRef;
-use crate::partition::result::{
-  AlignmentResult, AlignmentSequences, PartitionOutcome, PartitionResult, alignment_results,
-};
+use crate::partition::result::{AlignmentOutcome, AlignmentResult, PartitionResult, alignment_results};
 use crate::partition::set::build_partition_set;
 use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
-use crate::seq::sink::{SeqSink, SeqStream, SeqTrack};
+use crate::seq::sink::{SeqSink, SeqStream};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
 use crate::timetree::coalescent_timescale::{CoalescentSetup, build_coalescent_output};
@@ -43,7 +41,7 @@ use crate::timetree::refinement_loop::run_refinement_loop;
 use crate::timetree::round::{RoundInputs, RoundState, final_marginal_round, infer_final_times};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
-use itertools::izip;
+use itertools::{Itertools, izip};
 use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem;
@@ -559,35 +557,55 @@ fn final_partition_results(
     FinalSequences::Skip | FinalSequences::FromLastRound => partitions,
   };
   let streams_sequences = !matches!(context.final_sequences, FinalSequences::Skip);
-  let indel_rates = params
+  let indels = params
     .indel_policy
     .edge_indels(graph, &partitions, divergence_branch_lengths)
-    .partition_rates(partitions.len());
-  let (results, outcomes): (Vec<_>, Vec<_>) = izip!(partitions.iter(), partitions.layouts(), model_names, indel_rates)
-    .map(|(partition, layout, model_name, indel_rate)| {
+    .map_err(OperationError::classify)?;
+  let indel_rates = indels.alignment_rates();
+  let groups = partitions.alignment_groups().map_err(OperationError::InferenceFailed)?;
+  let reconstructions = partitions
+    .iter()
+    .map(|reconstruction| ImputedReconstruction {
+      reconstruction,
+      impute: params.impute_missing_data,
+    })
+    .collect_vec();
+  let stream_options = StreamOptions {
+    include_leaves: params.include_leaves,
+    report_unknown: params.report_ambiguous,
+  };
+  let outcomes = groups
+    .iter()
+    .map(|group| {
       let sequences = streams_sequences
         .then(|| {
-          stream_final_sequences(
-            params,
-            seq_stream.as_mut().map(SeqStream::reborrow),
+          stream_alignment_sequences(
             graph,
-            partition,
-            layout.alignment,
+            group,
+            &group.members(&reconstructions),
+            stream_options,
+            seq_stream.as_mut().map(SeqStream::reborrow),
           )
         })
         .transpose()?;
-      let log_lh = partition.graph_log_lh(graph).map_err(OperationError::classify)?;
-      let result = PartitionResult::new(&layout, model_name, Some(partition.gtr().clone()), Some(log_lh));
-      let outcome = PartitionOutcome {
-        alignment: layout.alignment,
-        indel_rate,
+      Ok(AlignmentOutcome {
+        alignment: group.alignment(),
+        indel_rate: indel_rates.get(&group.alignment()).copied(),
         sequences,
-      };
-      Ok((result, outcome))
+      })
     })
-    .collect::<Result<Vec<_>, OperationError>>()?
-    .into_iter()
-    .unzip();
+    .collect::<Result<Vec<_>, OperationError>>()?;
+  let results = izip!(partitions.iter(), partitions.layouts(), model_names)
+    .map(|(partition, layout, model_name)| {
+      let log_lh = partition.graph_log_lh(graph).map_err(OperationError::classify)?;
+      Ok(PartitionResult::new(
+        &layout,
+        model_name,
+        Some(partition.gtr().clone()),
+        Some(log_lh),
+      ))
+    })
+    .collect::<Result<Vec<_>, OperationError>>()?;
   let alignments = alignment_results(alignments, outcomes).map_err(OperationError::InferenceFailed)?;
   Ok((alignments, results))
 }
@@ -597,22 +615,4 @@ struct FinalInputs<'a> {
   context: &'a TimetreeContext,
   alignments: Vec<AlignmentInfo>,
   model_names: Vec<GtrModelName>,
-}
-
-fn stream_final_sequences(
-  params: &TimetreeParams,
-  seq_stream: Option<SeqStream<'_>>,
-  graph: &Graph,
-  partition: ReconstructionRef<'_>,
-  alignment: usize,
-) -> Result<AlignmentSequences, OperationError> {
-  let mutations = partition.stream_sequences(
-    graph,
-    params.impute_missing_data,
-    SeqTrack::Nuc(alignment),
-    params.include_leaves,
-    params.report_ambiguous,
-    seq_stream,
-  )?;
-  AlignmentSequences::new(mutations, partition.alphabet()).map_err(OperationError::InferenceFailed)
 }

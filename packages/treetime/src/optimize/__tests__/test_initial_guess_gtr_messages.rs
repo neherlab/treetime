@@ -85,7 +85,7 @@ mod tests {
     *reconstruction_stale.gtr_mut() = f81_gtr.clone();
     {
       let total_length = reconstruction_stale.total_length();
-      let indels = IndelPolicy::Include.edge_indels(&graph_stale, &reconstruction_stale, &branch_lengths_stale);
+      let indels = IndelPolicy::Include.edge_indels(&graph_stale, &reconstruction_stale, &branch_lengths_stale)?;
       let evidence = InitialGuessEvidence::gather(&graph_stale, &reconstruction_stale)?;
       guess_initial_branch_lengths(
         &graph_stale,
@@ -108,7 +108,7 @@ mod tests {
     let (reconstruction_fresh, _) =
       reconstruction_fresh.marginal_update(&graph_fresh, &branch_lengths_or_zero(&branch_lengths_fresh))?;
     {
-      let indels = IndelPolicy::Include.edge_indels(&graph_fresh, &reconstruction_fresh, &branch_lengths_fresh);
+      let indels = IndelPolicy::Include.edge_indels(&graph_fresh, &reconstruction_fresh, &branch_lengths_fresh)?;
       let evidence = InitialGuessEvidence::gather(&graph_fresh, &reconstruction_fresh)?;
       guess_initial_branch_lengths(
         &graph_fresh,
@@ -146,7 +146,7 @@ mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     {
       let total_length = reconstruction.total_length();
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
       guess_initial_branch_lengths(
         &graph,
@@ -168,7 +168,7 @@ mod tests {
     *reconstruction2.gtr_mut() = f81_gtr;
     let (reconstruction2, _) = reconstruction2.marginal_update(&graph2, &branch_lengths_or_zero(&branch_lengths2))?;
     {
-      let indels = IndelPolicy::Include.edge_indels(&graph2, &reconstruction2, &branch_lengths2);
+      let indels = IndelPolicy::Include.edge_indels(&graph2, &reconstruction2, &branch_lengths2)?;
       let evidence = InitialGuessEvidence::gather(&graph2, &reconstruction2)?;
       guess_initial_branch_lengths(
         &graph2,

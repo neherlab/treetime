@@ -5,7 +5,6 @@ use crate::partition::resolve::PartitionLayout;
 use crate::partition::split::AlignmentInfo;
 use crate::seq::mutation::{Mutation, SequenceMutations, edge_state_change_counts};
 use eyre::Report;
-use itertools::Itertools;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_graph::edge::GraphEdgeKey;
@@ -55,27 +54,23 @@ impl PartitionResult {
 
 pub(crate) fn alignment_results(
   alignments: Vec<AlignmentInfo>,
-  outcomes: Vec<PartitionOutcome>,
+  outcomes: Vec<AlignmentOutcome>,
 ) -> Result<Vec<AlignmentResult>, Report> {
-  let mut by_alignment = outcomes.into_iter().into_group_map_by(|outcome| outcome.alignment);
+  let mut by_alignment = BTreeMap::new();
+  for outcome in outcomes {
+    let alignment = outcome.alignment;
+    if by_alignment.insert(alignment, outcome).is_some() {
+      return make_internal_error!("Alignment {alignment} has two results");
+    }
+  }
   alignments
     .into_iter()
     .map(|info| {
-      let outcomes = by_alignment.remove(&info.number).unwrap_or_default();
-      let indel_rate = outcomes
-        .iter()
-        .filter_map(|outcome| outcome.indel_rate)
-        .reduce(|total, rate| total + rate);
-      let sequences = match <[PartitionOutcome; 1]>::try_from(outcomes) {
-        Ok([outcome]) => outcome.sequences,
-        Err(outcomes) if outcomes.iter().all(|outcome| outcome.sequences.is_none()) => None,
-        Err(outcomes) => {
-          return make_internal_error!(
-            "Alignment {} has the sequences of {} partitions, but sequences of a split alignment cannot be joined",
-            info.number,
-            outcomes.len()
-          );
-        },
+      let Some(AlignmentOutcome {
+        indel_rate, sequences, ..
+      }) = by_alignment.remove(&info.number)
+      else {
+        return make_internal_error!("Alignment {} has no result", info.number);
       };
       let AlignmentInfo {
         number,
@@ -97,7 +92,7 @@ pub(crate) fn alignment_results(
     .collect()
 }
 
-pub(crate) struct PartitionOutcome {
+pub(crate) struct AlignmentOutcome {
   pub(crate) alignment: usize,
   pub(crate) indel_rate: Option<f64>,
   pub(crate) sequences: Option<AlignmentSequences>,

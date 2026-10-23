@@ -5,6 +5,7 @@ mod tests {
     AaCdsNodeData, AaNodeData, annotation_cds_nuc_length, collect_aa_cds_node_data, diff_sequences, reconstruct_aa,
   };
   use crate::cancel::NoopCancel;
+  use crate::partition::alignment_sequences::PartitionSequences;
   use crate::progress::NoopProgress;
   use crate::seq::mutation::{MutationEvent, Sub};
   use crate::seq::sink::SeqTrack;

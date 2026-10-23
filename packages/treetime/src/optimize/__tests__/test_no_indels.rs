@@ -213,7 +213,7 @@ mod tests {
   fn test_no_indels_initial_guess_never_accepts_zero_bl_with_indels() -> Result<(), Report> {
     let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &mut reconstruction)?;
-    let indels = IndelPolicy::Exclude.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Exclude.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
@@ -256,10 +256,10 @@ mod tests {
     let mut branch_lengths_without_indel = nwk_parsed.branch_lengths;
     let reconstruction_without_indel = setup_identical_reconstruction(&graph_without_indel, &graph_without_indel_names, &mut branch_lengths_without_indel)?;
 
-    let indels_with_indel = IndelPolicy::Exclude.edge_indels(&graph_with_indel, &reconstruction_with_indel, &branch_lengths_with_indel);
+    let indels_with_indel = IndelPolicy::Exclude.edge_indels(&graph_with_indel, &reconstruction_with_indel, &branch_lengths_with_indel)?;
     let evidence_with_indel = InitialGuessEvidence::gather(&graph_with_indel, &reconstruction_with_indel)?;
     apply_initial_guess_mode(&graph_with_indel, &indels_with_indel, &evidence_with_indel, mode, &mut branch_lengths_with_indel, &graph_with_indel_names, &NoopProgress)?;
-    let indels_without_indel = IndelPolicy::Exclude.edge_indels(&graph_without_indel, &reconstruction_without_indel, &branch_lengths_without_indel);
+    let indels_without_indel = IndelPolicy::Exclude.edge_indels(&graph_without_indel, &reconstruction_without_indel, &branch_lengths_without_indel)?;
     let evidence_without_indel = InitialGuessEvidence::gather(&graph_without_indel, &reconstruction_without_indel)?;
     apply_initial_guess_mode(&graph_without_indel, &indels_without_indel, &evidence_without_indel, mode, &mut branch_lengths_without_indel, &graph_without_indel_names, &NoopProgress)?;
 

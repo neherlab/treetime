@@ -33,7 +33,7 @@ mod tests {
     for _ in 0..50 {
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let lh;
       (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -87,7 +87,7 @@ mod tests {
     for _ in 0..50 {
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let lh;
       (reconstruction, lh) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;

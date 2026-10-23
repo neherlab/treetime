@@ -107,7 +107,7 @@ pub(crate) mod tests {
   ) -> Result<(), Report> {
     guess_initial_branch_lengths(
       graph,
-      &IndelPolicy::Include.edge_indels(graph, reconstruction, branch_lengths),
+      &IndelPolicy::Include.edge_indels(graph, reconstruction, branch_lengths)?,
       &InitialGuessEvidence::gather(graph, reconstruction)?,
       ExistingBranchLengths::Overwrite,
       branch_lengths,

@@ -179,7 +179,7 @@ mod tests {
         deletion((4, 5), Seq::try_from_str("A")?),
       ],
     );
-    let recounted = indels.recount(&fixture.graph, &fixture.reconstruction);
+    let recounted = indels.recount(&fixture.graph, &fixture.reconstruction)?;
     let term = recounted.term(fixture.edge(0));
     assert_eq!(2, term.count);
     pretty_assert_ulps_eq!(INDEL_RATE, term.rate);
@@ -191,7 +191,7 @@ mod tests {
     let fixture = Fixture::new()?;
     let recounted = fixture
       .edge_indels(IndelPolicy::Exclude)
-      .recount(&fixture.graph, &fixture.reconstruction);
+      .recount(&fixture.graph, &fixture.reconstruction)?;
     assert!(matches!(recounted, EdgeIndels::Excluded), "got {recounted:?}");
     Ok(())
   }
@@ -252,7 +252,9 @@ mod tests {
       }
 
       pub(super) fn edge_indels(&self, policy: IndelPolicy) -> EdgeIndels {
-        policy.edge_indels(&self.graph, &self.reconstruction, &self.branch_lengths)
+        policy
+          .edge_indels(&self.graph, &self.reconstruction, &self.branch_lengths)
+          .expect("the fixture has one whole alignment")
       }
 
       pub(super) fn edge(&self, index: usize) -> GraphEdgeKey {

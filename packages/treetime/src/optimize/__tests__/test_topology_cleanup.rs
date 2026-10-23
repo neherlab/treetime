@@ -135,7 +135,7 @@ pub(super) mod tests {
     let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let total_length = reconstruction.total_length();
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
@@ -155,7 +155,7 @@ pub(super) mod tests {
       let old_branch_lengths = branch_lengths.clone();
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
@@ -216,7 +216,7 @@ pub(super) mod tests {
     let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let total_length = reconstruction.total_length();
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
@@ -234,7 +234,7 @@ pub(super) mod tests {
       let old_branch_lengths = branch_lengths.clone();
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
@@ -384,7 +384,7 @@ pub(super) mod tests {
     let (mut reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let total_length = reconstruction.total_length();
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
@@ -402,7 +402,7 @@ pub(super) mod tests {
       let old_branch_lengths = branch_lengths.clone();
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
         let zero_optimal_edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &branch_lengths);
       apply_damping(&mut branch_lengths, &old_branch_lengths, 0.75, i);
@@ -461,7 +461,7 @@ pub(super) mod tests {
     let (sp_partition, sp_node_states) = fitch.into_marginal_sparse(&graph)?;
     let reconstruction = PartitionSet::Sparse(vec![SparseReconstruction::seeded(sp_partition, jc69(JC69Params::default())?, sp_node_states)]);
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(&graph, &indels, &evidence, ExistingBranchLengths::Overwrite, &mut branch_lengths)?;
 
@@ -532,7 +532,7 @@ pub(super) mod tests {
       sp_node_states,
     )]);
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,

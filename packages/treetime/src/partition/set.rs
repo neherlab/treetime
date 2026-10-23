@@ -12,6 +12,7 @@ use crate::partition::split::{PartitionData, SplitPartition};
 use crate::progress::LogSink;
 use eyre::Report;
 use itertools::{Either, Itertools, izip};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -55,14 +56,12 @@ pub(crate) fn build_partition_set(
 
 pub(crate) fn layouts_or_whole<'a>(
   partitions: impl IntoIterator<Item = (Option<&'a PartitionLayout>, usize)>,
-) -> Vec<PartitionLayout> {
+) -> Vec<Cow<'a, PartitionLayout>> {
   partitions
     .into_iter()
     .zip(1..)
     .map(|((layout, length), number)| {
-      layout
-        .cloned()
-        .unwrap_or_else(|| PartitionLayout::whole(number, length))
+      layout.map_or_else(|| Cow::Owned(PartitionLayout::whole(number, length)), Cow::Borrowed)
     })
     .collect()
 }
@@ -109,7 +108,7 @@ impl PartitionSet {
     self.iter().map(ReconstructionRef::length).sum()
   }
 
-  pub(crate) fn layouts(&self) -> Vec<PartitionLayout> {
+  pub(crate) fn layouts(&self) -> Vec<Cow<'_, PartitionLayout>> {
     layouts_or_whole(self.iter().map(|partition| (partition.layout(), partition.length())))
   }
 

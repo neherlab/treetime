@@ -29,7 +29,7 @@ mod tests {
   fn test_initial_guess_auto_preserves_zero_bl_without_indels() -> Result<(), Report> {
     let (graph, reconstruction, mut branch_lengths) = setup_dense(TREE_ZERO_BL)?;
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -67,7 +67,7 @@ mod tests {
         });
     }
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,

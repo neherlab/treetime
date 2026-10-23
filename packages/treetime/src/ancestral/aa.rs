@@ -5,6 +5,7 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName};
+use crate::partition::alignment_sequences::PartitionSequences;
 use crate::partition::create::Representation;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::sample::SampleMode;

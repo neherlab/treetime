@@ -3,13 +3,15 @@ use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::{GtrModel, GtrModelName, JC69Params};
 use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
+use crate::partition::alignment_sequences::assemble_sequence_mutations;
 use crate::partition::create::build_sparse_reconstruction;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
+use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::resolve::PartitionLayout;
 use crate::partition::result::{
-  AlignmentResult, AlignmentSequences, PartitionOutcome, PartitionResult, alignment_results,
+  AlignmentOutcome, AlignmentResult, AlignmentSequences, PartitionResult, alignment_results,
 };
 use crate::partition::set::layouts_or_whole;
 use crate::partition::split::{AlignmentInfo, PartitionData, SplitAlignments, split_alignments};
@@ -18,6 +20,7 @@ use crate::prune::prune::prune_nodes;
 use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use eyre::Report;
+use itertools::{Itertools, izip};
 use std::collections::{BTreeMap, BTreeSet};
 use std::mem::take;
 use treetime_graph::edge::GraphEdgeKey;
@@ -86,7 +89,7 @@ pub fn run(
   }
 
   let (alignments, partitions) =
-    prune_results(&input.graph, alignments, partitions).map_err(OperationError::InferenceFailed)?;
+    prune_results(&input.graph, alignments, &partitions).map_err(OperationError::InferenceFailed)?;
 
   Ok(PruneOutput {
     graph: input.graph,
@@ -124,46 +127,55 @@ pub struct PruneOutput {
 fn prune_results(
   graph: &Graph,
   alignments: Vec<AlignmentInfo>,
-  partitions: Vec<SparseReconstruction>,
+  partitions: &[SparseReconstruction],
 ) -> Result<(Vec<AlignmentResult>, Vec<PartitionResult>), Report> {
-  let (results, outcomes): (Vec<_>, Vec<_>) = layouts_or_whole(
+  let track = MutationTrack::Nucleotide;
+  let outcomes = sparse_alignment_groups(partitions)?
+    .iter()
+    .map(|group| {
+      let members = group.members(partitions);
+      let mutations = members
+        .iter()
+        .map(|member| fitch_mutations(graph, &member.partition, &track))
+        .try_collect()?;
+      let mutations = assemble_sequence_mutations(
+        &group.layout,
+        mutations,
+        |member, edge_key| members[member].partition.edge_indels(edge_key),
+        &track,
+      )?;
+      Ok(AlignmentOutcome {
+        alignment: group.alignment(),
+        indel_rate: None,
+        sequences: Some(AlignmentSequences::new(mutations, &members[0].partition.alphabet)?),
+      })
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+  let layouts = layouts_or_whole(
     partitions
       .iter()
       .map(|partition| (partition.layout(), partition.partition.length)),
-  )
-  .into_iter()
-  .zip(partitions)
-  .map(|(layout, SparseReconstruction { partition, gtr, .. })| {
-    let outcome = PartitionOutcome {
-      alignment: layout.alignment,
-      indel_rate: None,
-      sequences: Some(fitch_sequences(graph, &partition)?),
-    };
-    Ok((
-      PartitionResult::new(&layout, GtrModelName::JC69, Some(gtr), None),
-      outcome,
-    ))
-  })
-  .collect::<Result<Vec<_>, Report>>()?
-  .into_iter()
-  .unzip();
+  );
+  let results = izip!(&layouts, partitions)
+    .map(|(layout, partition)| PartitionResult::new(layout, GtrModelName::JC69, Some(partition.gtr.clone()), None))
+    .collect();
   Ok((alignment_results(alignments, outcomes)?, results))
 }
 
-fn fitch_sequences(graph: &Graph, partition: &PartitionMarginalSparse) -> Result<AlignmentSequences, Report> {
+fn fitch_mutations(
+  graph: &Graph,
+  partition: &PartitionMarginalSparse,
+  track: &MutationTrack,
+) -> Result<SequenceMutations, Report> {
   let edge_mutations = graph
     .get_edges()
     .map(|edge| {
       let edge_key = edge.key();
-      Ok((
-        edge_key,
-        partition.edge_fitch_mutations(edge_key, &MutationTrack::Nucleotide)?,
-      ))
+      Ok((edge_key, partition.edge_fitch_mutations(edge_key, track)?))
     })
     .collect::<Result<BTreeMap<_, _>, Report>>()?;
-  let mutations = SequenceMutations {
+  Ok(SequenceMutations {
     root_sequence: partition.fitch_root_sequence(),
     edge_mutations,
-  };
-  AlignmentSequences::new(mutations, &partition.alphabet)
+  })
 }

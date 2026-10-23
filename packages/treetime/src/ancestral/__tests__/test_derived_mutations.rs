@@ -127,6 +127,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use crate::partition::alignment_sequences::PartitionSequences;
     use crate::seq::sink::SeqStream;
     use pretty_assertions::assert_eq;
 

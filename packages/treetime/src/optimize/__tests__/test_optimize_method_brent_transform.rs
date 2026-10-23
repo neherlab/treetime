@@ -76,7 +76,7 @@ mod tests {
     let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, 4)?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     let input_bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap_or(0.0);
     let one_mutation = 1.0 / total_length.to_f64_exact();

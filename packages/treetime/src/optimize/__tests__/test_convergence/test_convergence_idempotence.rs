@@ -32,7 +32,7 @@ mod tests {
     for i in 0..20 {
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       let (reconstruction_updated, log_lh) =
         reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
@@ -82,7 +82,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = reconstruction1.total_length();
       let contributions = gather_edge_contributions(&graph1, &reconstruction1)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph1, &reconstruction1, &branch_lengths1);
+      let indels = IndelPolicy::Include.edge_indels(&graph1, &reconstruction1, &branch_lengths1)?;
       optimize_edge_lengths(&graph1, total_length, &contributions, &indels, method, &mut branch_lengths1)?;
       (reconstruction1, _) = reconstruction1.marginal_update(&graph1, &branch_lengths_or_zero(&branch_lengths1))?;
     }
@@ -98,7 +98,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = reconstruction2.total_length();
       let contributions = gather_edge_contributions(&graph2, &reconstruction2)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph2, &reconstruction2, &branch_lengths2);
+      let indels = IndelPolicy::Include.edge_indels(&graph2, &reconstruction2, &branch_lengths2)?;
       optimize_edge_lengths(&graph2, total_length, &contributions, &indels, method, &mut branch_lengths2)?;
       (reconstruction2, _) = reconstruction2.marginal_update(&graph2, &branch_lengths_or_zero(&branch_lengths2))?;
     }

@@ -1,9 +1,8 @@
 use crate::optimize::branch_length::validate_branch_length_value;
-use crate::optimize::gather::{gather_edge_indel_counts, gather_partition_edge_indel_counts};
+use crate::optimize::gather::{gather_alignment_edge_indel_counts, gather_edge_indel_counts, sum_alignment_counts};
 use crate::optimize::likelihood::OptimizationMetrics;
 use crate::partition::set::PartitionSet;
 use eyre::Report;
-use itertools::Itertools;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use statrs::function::factorial::ln_factorial;
 use std::collections::BTreeMap;
@@ -26,19 +25,20 @@ impl IndelPolicy {
     graph: &Graph,
     partitions: &PartitionSet,
     branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> EdgeIndels {
+  ) -> Result<EdgeIndels, Report> {
     match self {
       Self::Include => {
-        let partition_rates = gather_partition_edge_indel_counts(graph, partitions)
+        let alignment_counts = gather_alignment_edge_indel_counts(graph, partitions)?;
+        let alignment_rates = alignment_counts
           .iter()
-          .map(|counts| estimate_indel_rate(graph, counts, branch_lengths))
-          .collect_vec();
-        EdgeIndels::Included {
-          counts: gather_edge_indel_counts(graph, partitions),
-          partition_rates,
-        }
+          .map(|(&alignment, counts)| (alignment, estimate_indel_rate(graph, counts, branch_lengths)))
+          .collect();
+        Ok(EdgeIndels::Included {
+          counts: sum_alignment_counts(graph, &alignment_counts),
+          alignment_rates,
+        })
       },
-      Self::Exclude => EdgeIndels::Excluded,
+      Self::Exclude => Ok(EdgeIndels::Excluded),
     }
   }
 }
@@ -47,40 +47,40 @@ impl IndelPolicy {
 pub(crate) enum EdgeIndels {
   Included {
     counts: BTreeMap<GraphEdgeKey, usize>,
-    partition_rates: Vec<f64>,
+    alignment_rates: BTreeMap<usize, f64>,
   },
   Excluded,
 }
 
 impl EdgeIndels {
-  pub(crate) fn recount(&self, graph: &Graph, partitions: &PartitionSet) -> Self {
-    match self {
-      Self::Included { partition_rates, .. } => Self::Included {
-        counts: gather_edge_indel_counts(graph, partitions),
-        partition_rates: partition_rates.clone(),
+  pub(crate) fn recount(&self, graph: &Graph, partitions: &PartitionSet) -> Result<Self, Report> {
+    Ok(match self {
+      Self::Included { alignment_rates, .. } => Self::Included {
+        counts: gather_edge_indel_counts(graph, partitions)?,
+        alignment_rates: alignment_rates.clone(),
       },
       Self::Excluded => Self::Excluded,
-    }
+    })
   }
 
   pub(crate) fn divide_rates(&mut self, divisor: f64) {
-    if let Self::Included { partition_rates, .. } = self {
-      for rate in partition_rates {
+    if let Self::Included { alignment_rates, .. } = self {
+      for rate in alignment_rates.values_mut() {
         *rate /= divisor;
       }
     }
   }
 
-  pub(crate) fn partition_rates(&self, partition_count: usize) -> Vec<Option<f64>> {
+  pub(crate) fn alignment_rates(&self) -> BTreeMap<usize, f64> {
     match self {
-      Self::Included { partition_rates, .. } => partition_rates.iter().copied().map(Some).collect(),
-      Self::Excluded => vec![None; partition_count],
+      Self::Included { alignment_rates, .. } => alignment_rates.clone(),
+      Self::Excluded => BTreeMap::new(),
     }
   }
 
   pub(crate) fn rate(&self) -> f64 {
     match self {
-      Self::Included { partition_rates, .. } => partition_rates.iter().sum(),
+      Self::Included { alignment_rates, .. } => alignment_rates.values().sum(),
       Self::Excluded => 0.0,
     }
   }

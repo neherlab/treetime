@@ -11,8 +11,9 @@ mod tests {
   use eyre::Report;
   use helpers::{
     Dataset, SmallSet, blocks_from_strings, build_set, build_set_with_model, column_blocks, internal_edge_above,
-    objective, optimize, rate_blocks, rate_step_from_rates, reversed,
+    objective, optimize, optimize_codon_positions, rate_blocks, rate_step_from_rates, reversed,
   };
+  use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::LogLh;
@@ -21,6 +22,8 @@ mod tests {
   use treetime_utils::pretty_assert_ulps_eq;
 
   const BLOCK: Columns = Columns::Leading(400);
+
+  const CODON_BLOCK: Columns = Columns::Leading(399);
 
   #[rustfmt::skip]
   #[rstest]
@@ -40,6 +43,31 @@ mod tests {
     let whole = optimize(&dataset, &[dataset.whole()], dense, PartitionRates::Equal)?;
     let split = optimize(&dataset, &column_blocks(&dataset)?, dense, PartitionRates::Equal)?;
     assert_eq!(whole.edges, split.edges);
+    pretty_assert_map_abs_diff_eq!(whole.branch_lengths, split.branch_lengths, epsilon = 1e-8);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::zika_dense(  TestDataset::Zika20,  true,  CODON_BLOCK          )]
+  #[case::flu_dense(   TestDataset::Flu20,   true,  CODON_BLOCK          )]
+  #[case::ebola_dense( TestDataset::Ebola20, true,  CODON_BLOCK          )]
+  #[case::zika_sparse( TestDataset::Zika20,  false, Columns::WholeCodons )]
+  #[case::flu_sparse(  TestDataset::Flu20,   false, Columns::WholeCodons )]
+  #[case::ebola_sparse(TestDataset::Ebola20, false, Columns::WholeCodons )]
+  #[trace]
+  fn test_optimize_codon_positions_give_the_branch_lengths_and_mutations_of_one_alignment(
+    #[case] dataset: TestDataset,
+    #[case] dense: bool,
+    #[case] selection: Columns,
+  ) -> Result<(), Report> {
+    let dataset = Dataset::new(dataset, selection)?;
+    let whole = optimize(&dataset, &[dataset.whole()], dense, PartitionRates::Equal)?;
+    let split = optimize_codon_positions(&dataset, dense)?;
+    assert_eq!(
+      (&whole.edges, &whole.sequences, &whole.indel_rates),
+      (&split.edges, &split.sequences, &split.indel_rates)
+    );
     pretty_assert_map_abs_diff_eq!(whole.branch_lengths, split.branch_lengths, epsilon = 1e-8);
     Ok(())
   }
@@ -84,11 +112,11 @@ mod tests {
       branch_lengths,
       partitions,
     } = build_set(&blocks, dense)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths)?;
     let term = indels.term(internal_edge_above(&graph, &names, "AB"));
     assert_eq!(
-      (6, 2, vec![Some(2.0), Some(2.0)]),
-      (partitions.total_length(), term.count, indels.partition_rates(partitions.len()))
+      (6, 2, btreemap! {1 => 2.0, 2 => 2.0}),
+      (partitions.total_length(), term.count, indels.alignment_rates())
     );
     pretty_assert_ulps_eq!(4.0, term.rate, max_ulps = 4);
     Ok(())
@@ -109,7 +137,7 @@ mod tests {
       ..
     } = build_set(&rate_blocks()?, dense)?;
     partitions.set_rates(&[0.5, 3.0])?;
-    let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths);
+    let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths)?;
     let indel_rate = indels.rate();
     let before = objective(&graph, &partitions, &branch_lengths, &indels)?;
 
@@ -157,11 +185,11 @@ mod tests {
       partitions,
       ..
     } = build_set(&rate_blocks()?, false)?;
-    let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths);
+    let mut indels = IndelPolicy::Include.edge_indels(&graph, &partitions, &branch_lengths)?;
     let log_lh = LogLh::new(objective(&graph, &partitions, &branch_lengths, &indels)?);
     let mut best = None;
     record_if_best(&mut best, 0, log_lh, &branch_lengths, &partitions, &indels);
-    let recorded = (partitions.rates(), branch_lengths.clone(), indels.partition_rates(2));
+    let recorded = (partitions.rates(), branch_lengths.clone(), indels.alignment_rates());
 
     let mut current_branch_lengths = branch_lengths;
     let partitions = update_partition_rates(
@@ -181,12 +209,12 @@ mod tests {
       (
         partitions.rates(),
         current_branch_lengths.clone(),
-        indels.partition_rates(2)
+        indels.alignment_rates()
       )
     );
     let restored_log_lh = partitions.graph_log_lh(&graph)?
       + indels
-        .recount(&graph, &partitions)
+        .recount(&graph, &partitions)?
         .total_log_lh(&graph, &current_branch_lengths)?;
     pretty_assert_abs_diff_eq!(log_lh.value(), restored_log_lh.value(), epsilon = 1e-10);
     Ok(())
@@ -238,9 +266,10 @@ mod tests {
     use crate::partition::split::SequenceInput;
     use crate::progress::NoopProgress;
     use crate::seq::alignment::SequenceSource;
+    use crate::seq::mutation::Mutation;
     use crate::test_utils::{
-      Columns, TestDataset, find_node_key_by_name, leaf_seq_inputs, sequence_source, split_at_gap_free_column,
-      whole_alignment_set,
+      Columns, TestDataset, codon_positions_input, find_node_key_by_name, leaf_seq_inputs, sequence_source,
+      split_at_gap_free_column, whole_alignment_set,
     };
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
@@ -327,6 +356,8 @@ mod tests {
     pub(super) struct Optimized {
       pub(super) edges: BTreeSet<(String, String)>,
       pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+      pub(super) sequences: Vec<(Seq, BTreeMap<GraphEdgeKey, Vec<Mutation>>)>,
+      pub(super) indel_rates: Vec<Option<f64>>,
       pub(super) paths: Vec<PathBuf>,
     }
 
@@ -336,9 +367,26 @@ mod tests {
       dense: bool,
       partition_rates: PartitionRates,
     ) -> Result<Optimized, Report> {
+      run_optimize(dataset, dense, partition_rates, |graph, names| {
+        SequenceInput::whole_alignments(sources(graph, names, blocks)?, &jc69())
+      })
+    }
+
+    pub(super) fn optimize_codon_positions(dataset: &Dataset, dense: bool) -> Result<Optimized, Report> {
+      run_optimize(dataset, dense, PartitionRates::Equal, |graph, names| {
+        codon_positions_input(sources(graph, names, &[dataset.whole()])?, &jc69())
+      })
+    }
+
+    fn run_optimize(
+      dataset: &Dataset,
+      dense: bool,
+      partition_rates: PartitionRates,
+      sequences: impl FnOnce(&Graph, &NodeNames) -> Result<SequenceInput, Report>,
+    ) -> Result<Optimized, Report> {
       let parse = dataset.tree()?;
       let names = parse.names.clone();
-      let sources = sources(&parse.graph, &names, blocks)?;
+      let sequences = sequences(&parse.graph, &names)?;
       let params = OptimizeParams {
         dense: Some(dense),
         initial_guess: InitialGuessMode::Auto,
@@ -356,7 +404,7 @@ mod tests {
       let input = OptimizeInput {
         graph: parse.graph,
         names,
-        sequences: SequenceInput::whole_alignments(sources, &GtrModel::JC69(JC69Params::default()))?,
+        sequences,
         branch_lengths: parse.branch_lengths,
       };
       let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
@@ -370,11 +418,25 @@ mod tests {
           )
         })
         .collect();
+      let sequences = output
+        .alignments
+        .iter()
+        .map(|alignment| {
+          let sequences = alignment.sequences.as_ref().expect("optimize returns sequences");
+          (sequences.root_sequence.clone(), sequences.edge_mutations.clone())
+        })
+        .collect();
       Ok(Optimized {
         edges,
         branch_lengths: branch_lengths_or_zero(&output.branch_lengths),
+        sequences,
+        indel_rates: output.alignments.iter().map(|alignment| alignment.indel_rate).collect(),
         paths: output.alignments.into_iter().map(|result| result.path).collect(),
       })
+    }
+
+    fn jc69() -> GtrModel {
+      GtrModel::JC69(JC69Params::default())
     }
 
     pub(super) struct SmallSet {
@@ -429,7 +491,9 @@ mod tests {
       let (partitions, log_lh) = partitions
         .clone()
         .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
-      let indel_log_lh = indels.recount(graph, &partitions).total_log_lh(graph, branch_lengths)?;
+      let indel_log_lh = indels
+        .recount(graph, &partitions)?
+        .total_log_lh(graph, branch_lengths)?;
       Ok((log_lh + indel_log_lh).value())
     }
 

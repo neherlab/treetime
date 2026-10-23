@@ -241,7 +241,7 @@ fn optimize_branch_lengths(
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
 
-  let indels = indel_policy.edge_indels(graph, partitions, &branch_lengths);
+  let indels = indel_policy.edge_indels(graph, partitions, &branch_lengths)?;
   let unconverged = optimize_edge_lengths(
     graph,
     partitions.total_length(),

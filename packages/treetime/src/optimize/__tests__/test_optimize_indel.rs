@@ -20,6 +20,7 @@ pub(super) mod tests {
   use crate::seq::indel::InDel;
   use crate::test_utils::{ReconstructionMut, SingleReconstruction, deletion, sparse_reconstruction_mut};
   use eyre::Report;
+  use maplit::btreemap;
   use ndarray::array;
   use rstest::rstest;
   use std::collections::BTreeMap;
@@ -78,7 +79,7 @@ pub(super) mod tests {
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
 
     let rate = IndelPolicy::Include
-      .edge_indels(&graph, &reconstruction, &branch_lengths)
+      .edge_indels(&graph, &reconstruction, &branch_lengths)?
       .rate();
     pretty_assert_abs_diff_eq!(rate, 0.0, epsilon = 1e-15);
     Ok(())
@@ -97,7 +98,7 @@ pub(super) mod tests {
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
     let rate = IndelPolicy::Include
-      .edge_indels(&graph, &reconstruction, &branch_lengths)
+      .edge_indels(&graph, &reconstruction, &branch_lengths)?
       .rate();
 
     let total_bl: f64 = graph
@@ -122,7 +123,7 @@ pub(super) mod tests {
     let first_edge_key = inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
     branch_lengths.insert(first_edge_key, Some(0.1));
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let indel_rate = indels.rate();
     let total_lh = indels
       .total_log_lh(&graph, &branch_lengths)
@@ -159,7 +160,7 @@ pub(super) mod tests {
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
     branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(0.0));
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let indel_rate = indels.rate();
     let total_lh = indels
       .total_log_lh(&graph, &branch_lengths)
@@ -181,7 +182,7 @@ pub(super) mod tests {
 
     branch_lengths.insert(graph.get_edges().collect::<Vec<_>>()[0].key(), Some(0.0));
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let indel_rate = indels.rate();
     let total_lh = indels
       .total_log_lh(&graph, &branch_lengths)
@@ -219,28 +220,28 @@ pub(super) mod tests {
 
     let total_length_low = reconstruction_low.total_length();
     let contributions_low = gather_edge_contributions(&graph_low, &reconstruction_low)?;
-    let indel_counts_low = gather_edge_indel_counts(&graph_low, &reconstruction_low);
+    let indel_counts_low = gather_edge_indel_counts(&graph_low, &reconstruction_low)?;
     optimize_edge_lengths(
       &graph_low,
       total_length_low,
       &contributions_low,
       &EdgeIndels::Included {
         counts: indel_counts_low,
-        partition_rates: vec![1.0],
+        alignment_rates: btreemap! {1 => 1.0},
       },
       BranchOptMethod::Newton,
       &mut branch_lengths_low,
     )?;
     let total_length_high = reconstruction_high.total_length();
     let contributions_high = gather_edge_contributions(&graph_high, &reconstruction_high)?;
-    let indel_counts_high = gather_edge_indel_counts(&graph_high, &reconstruction_high);
+    let indel_counts_high = gather_edge_indel_counts(&graph_high, &reconstruction_high)?;
     optimize_edge_lengths(
       &graph_high,
       total_length_high,
       &contributions_high,
       &EdgeIndels::Included {
         counts: indel_counts_high,
-        partition_rates: vec![8.0],
+        alignment_rates: btreemap! {1 => 8.0},
       },
       BranchOptMethod::Newton,
       &mut branch_lengths_high,
@@ -267,7 +268,7 @@ pub(super) mod tests {
     let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -300,7 +301,7 @@ pub(super) mod tests {
     let indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
     inject_indels_on_first_edge(&graph, &mut reconstruction, &indels);
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -339,7 +340,7 @@ pub(super) mod tests {
 
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
@@ -372,7 +373,7 @@ pub(super) mod tests {
 
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let error = optimize_edge_lengths(&graph, total_length, &contributions, &indels, BranchOptMethod::Brent, &mut branch_lengths)
       .expect_err("negative branch length must return an error");
     let message = format!("{error:?}");
@@ -405,7 +406,7 @@ pub(super) mod tests {
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
     let total_length = reconstruction.total_length();
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -424,7 +425,7 @@ pub(super) mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let bl_final = branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap();
@@ -652,7 +653,7 @@ pub(super) mod tests {
     let (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
     let bl = branch_lengths[&edge_ref.key()].unwrap();

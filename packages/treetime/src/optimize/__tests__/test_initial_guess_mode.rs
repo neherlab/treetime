@@ -111,7 +111,7 @@ pub(super) mod tests {
     let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -141,7 +141,7 @@ pub(super) mod tests {
       );
     }
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -169,7 +169,7 @@ pub(super) mod tests {
     let nan_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     branch_lengths.insert(nan_edge_key, Some(f64::NAN));
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -212,7 +212,7 @@ pub(super) mod tests {
       inject_indel_on_first_edge(&graph, &mut reconstruction)?;
     }
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
@@ -245,7 +245,7 @@ pub(super) mod tests {
     let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
 
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     guess_initial_branch_lengths(
       &graph,
@@ -264,7 +264,7 @@ pub(super) mod tests {
   fn test_initial_guess_mode_never_accepts_complete_tree() -> Result<(), Report> {
     let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     apply_initial_guess_mode(
       &graph,
@@ -283,7 +283,7 @@ pub(super) mod tests {
   #[test]
   fn test_initial_guess_mode_never_rejects_nan_tree() -> Result<(), Report> {
     let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITHOUT_LENGTHS)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
@@ -307,7 +307,7 @@ pub(super) mod tests {
   fn test_initial_guess_mode_never_accepts_zero_bl_without_indels() -> Result<(), Report> {
     let (graph, names, reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     apply_initial_guess_mode(
       &graph,
@@ -330,7 +330,7 @@ pub(super) mod tests {
   fn test_initial_guess_mode_never_rejects_zero_bl_with_indels() -> Result<(), Report> {
     let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_ZERO_BL)?;
     inject_indel_on_first_edge(&graph, &mut reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     let result = apply_initial_guess_mode(
       &graph,
@@ -359,7 +359,7 @@ pub(super) mod tests {
     let (graph, names, mut reconstruction, mut branch_lengths) = setup_dense_with_marginal(TREE_WITH_LENGTHS)?;
     inject_indel_on_first_edge(&graph, &mut reconstruction)?;
     let before = get_branch_lengths(&graph, &branch_lengths);
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
     apply_initial_guess_mode(
       &graph,

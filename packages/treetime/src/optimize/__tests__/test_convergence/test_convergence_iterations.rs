@@ -29,7 +29,7 @@ mod tests {
       let recon_ref = setup_reconstruction(&graph_ref, &graph_ref_names, &aln, &mut branch_lengths_ref)?;
       let total_length_ref = recon_ref.total_length();
       let contributions_ref = gather_edge_contributions(&graph_ref, &recon_ref)?;
-      let indels_ref = IndelPolicy::Include.edge_indels(&graph_ref, &recon_ref, &branch_lengths_ref);
+      let indels_ref = IndelPolicy::Include.edge_indels(&graph_ref, &recon_ref, &branch_lengths_ref)?;
       for _ in 0..max_iter {
         optimize_edge_lengths(&graph_ref, total_length_ref, &contributions_ref, &indels_ref, BranchOptMethod::Brent, &mut branch_lengths_ref)?;
       }
@@ -46,7 +46,7 @@ mod tests {
 
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     for _ in 0..max_iter {
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
@@ -80,7 +80,7 @@ mod tests {
 
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
     for _ in 0..10 {
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
     }
@@ -120,7 +120,7 @@ mod tests {
     for _ in 0..10 {
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
       (reconstruction, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     }

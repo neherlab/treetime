@@ -41,7 +41,7 @@ mod tests {
     let reconstruction = setup_sparse(&graph, &names, &aln, &branch_lengths)?;
 
     {
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
       guess_initial_branch_lengths(
         &graph,
@@ -80,7 +80,7 @@ mod tests {
     let reconstruction = setup_dense(&graph, &names, &aln, &branch_lengths)?;
 
     {
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       let evidence = InitialGuessEvidence::gather(&graph, &reconstruction)?;
       guess_initial_branch_lengths(
         &graph,
@@ -130,7 +130,7 @@ mod tests {
 
     {
       let total_length = reconstruction_dense.total_length();
-      let indels = IndelPolicy::Include.edge_indels(&graph_dense, &reconstruction_dense, &branch_lengths_dense);
+      let indels = IndelPolicy::Include.edge_indels(&graph_dense, &reconstruction_dense, &branch_lengths_dense)?;
       let evidence = InitialGuessEvidence::gather(&graph_dense, &reconstruction_dense)?;
       guess_initial_branch_lengths(
         &graph_dense,
@@ -141,7 +141,7 @@ mod tests {
       )?;
     }
     {
-      let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &reconstruction_sparse, &branch_lengths_sparse);
+      let indels = IndelPolicy::Include.edge_indels(&graph_sparse, &reconstruction_sparse, &branch_lengths_sparse)?;
       let evidence = InitialGuessEvidence::gather(&graph_sparse, &reconstruction_sparse)?;
       guess_initial_branch_lengths(
         &graph_sparse,

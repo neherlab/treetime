@@ -32,6 +32,7 @@ mod test_mask;
 mod test_output_consistency_prop;
 mod test_partition_plans;
 mod test_pipeline_partitions;
+mod test_pipeline_split_alignment;
 mod test_plan;
 mod test_prop_marginal_dense_sparse_simulated;
 mod test_python_parity;

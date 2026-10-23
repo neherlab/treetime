@@ -1,3 +1,4 @@
+use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
 use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::partition::set::PartitionSet;
@@ -84,36 +85,49 @@ impl InitialGuessEvidence {
   }
 }
 
-pub(crate) fn gather_edge_indel_counts(graph: &Graph, partitions: &PartitionSet) -> BTreeMap<GraphEdgeKey, usize> {
-  graph
-    .get_edges()
-    .collect::<Vec<_>>()
-    .into_par_iter()
-    .map(|edge_ref| {
-      let edge_key = edge_ref.key();
-      let count = partitions
-        .iter()
-        .map(|partition| partition.edge_indel_count(edge_key))
-        .sum();
-      (edge_key, count)
+pub(crate) fn gather_edge_indel_counts(
+  graph: &Graph,
+  partitions: &PartitionSet,
+) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
+  Ok(sum_alignment_counts(
+    graph,
+    &gather_alignment_edge_indel_counts(graph, partitions)?,
+  ))
+}
+
+pub(crate) fn gather_alignment_edge_indel_counts(
+  graph: &Graph,
+  partitions: &PartitionSet,
+) -> Result<BTreeMap<usize, BTreeMap<GraphEdgeKey, usize>>, Report> {
+  let reconstructions = partitions.iter().collect_vec();
+  partitions
+    .alignment_groups()?
+    .iter()
+    .map(|group| {
+      let members = group.members(&reconstructions);
+      let counts = graph
+        .get_edges()
+        .collect::<Vec<_>>()
+        .into_par_iter()
+        .map(|edge_ref| {
+          let edge_key = edge_ref.key();
+          Ok((edge_key, alignment_edge_indel_count(group, &members, edge_key)?))
+        })
+        .collect::<Result<_, Report>>()?;
+      Ok((group.alignment(), counts))
     })
     .collect()
 }
 
-pub(crate) fn gather_partition_edge_indel_counts(
+pub(crate) fn sum_alignment_counts(
   graph: &Graph,
-  partitions: &PartitionSet,
-) -> Vec<BTreeMap<GraphEdgeKey, usize>> {
-  partitions
-    .iter()
-    .map(|partition| {
-      graph
-        .get_edges()
-        .map(|edge_ref| {
-          let edge_key = edge_ref.key();
-          (edge_key, partition.edge_indel_count(edge_key))
-        })
-        .collect()
+  counts: &BTreeMap<usize, BTreeMap<GraphEdgeKey, usize>>,
+) -> BTreeMap<GraphEdgeKey, usize> {
+  graph
+    .get_edges()
+    .map(|edge_ref| {
+      let edge_key = edge_ref.key();
+      (edge_key, counts.values().map(|counts| counts[&edge_key]).sum())
     })
     .collect()
 }
@@ -136,4 +150,18 @@ fn gather_edge_sums(
       Ok((edge_key, sum))
     })
     .collect()
+}
+
+fn alignment_edge_indel_count(
+  group: &AlignmentGroup,
+  members: &[&ReconstructionRef<'_>],
+  edge_key: GraphEdgeKey,
+) -> Result<usize, Report> {
+  if let [member] = members
+    && group.layout.is_whole()
+  {
+    return Ok(member.edge_indel_count(edge_key));
+  }
+  let indels = members.iter().map(|member| member.edge_indels(edge_key)).collect_vec();
+  Ok(group.layout.assemble_indels(&indels)?.len())
 }

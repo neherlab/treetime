@@ -38,7 +38,7 @@ pub(super) mod tests {
     let reconstruction = setup_reconstruction(&graph, &names, &aln, &mut branch_lengths)?;
     let total_length = reconstruction.total_length();
     let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+    let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
 
     optimize_edge_lengths(&graph, total_length, &contributions, &indels, method, &mut branch_lengths)?;
 
@@ -186,7 +186,7 @@ pub(super) mod tests {
         .indels = indels;
 
       let indel_rate = IndelPolicy::Include
-        .edge_indels(graph, &reconstruction, branch_lengths)
+        .edge_indels(graph, &reconstruction, branch_lengths)?
         .rate();
 
       Ok((reconstruction, indel_rate))
@@ -203,7 +203,7 @@ pub(super) mod tests {
       let (reconstruction, indel_rate) = setup_with_indels(&graph, &names, &mut branch_lengths, n_indels)?;
       let total_length = reconstruction.total_length();
       let contributions = gather_edge_contributions(&graph, &reconstruction)?;
-      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths);
+      let indels = IndelPolicy::Include.edge_indels(&graph, &reconstruction, &branch_lengths)?;
       optimize_edge_lengths(
         &graph,
         total_length,
@@ -242,7 +242,7 @@ pub(super) mod tests {
     ) -> Result<f64, Report> {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let contributions = gather_edge_contributions(graph, reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(graph, reconstruction);
+      let indel_counts = gather_edge_indel_counts(graph, reconstruction)?;
       let edge_contributions = &contributions[&edge_key];
       let indel_count: usize = indel_counts[&edge_key];
 
@@ -264,7 +264,7 @@ pub(super) mod tests {
     ) -> Result<OptimizationMetrics, Report> {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
       let contributions = gather_edge_contributions(graph, reconstruction)?;
-      let indel_counts = gather_edge_indel_counts(graph, reconstruction);
+      let indel_counts = gather_edge_indel_counts(graph, reconstruction)?;
       let edge_contributions = &contributions[&edge_key];
       let indel_count: usize = indel_counts[&edge_key];
 

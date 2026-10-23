@@ -262,7 +262,7 @@ mod tests {
     let reconstruction_clean = setup_sparse(&graph_clean, &graph_clean_names, &aln_clean, &branch_lengths_clean)?;
     {
       let total_length = reconstruction_clean.total_length();
-      let indels = IndelPolicy::Include.edge_indels(&graph_clean, &reconstruction_clean, &branch_lengths_clean);
+      let indels = IndelPolicy::Include.edge_indels(&graph_clean, &reconstruction_clean, &branch_lengths_clean)?;
       let evidence = InitialGuessEvidence::gather(&graph_clean, &reconstruction_clean)?;
       guess_initial_branch_lengths(
         &graph_clean,
@@ -284,7 +284,7 @@ mod tests {
     let mut branch_lengths_gappy = nwk_parsed.branch_lengths;
     let reconstruction_gappy = setup_sparse(&graph_gappy, &graph_gappy_names, &aln_gappy, &branch_lengths_gappy)?;
     {
-      let indels = IndelPolicy::Include.edge_indels(&graph_gappy, &reconstruction_gappy, &branch_lengths_gappy);
+      let indels = IndelPolicy::Include.edge_indels(&graph_gappy, &reconstruction_gappy, &branch_lengths_gappy)?;
       let evidence = InitialGuessEvidence::gather(&graph_gappy, &reconstruction_gappy)?;
       guess_initial_branch_lengths(
         &graph_gappy,
