@@ -1,9 +1,11 @@
 use crate::ancestral::params::AncestralParams;
-use crate::ancestral::plan::{ReconstructionOptions, reconstruct_partitions, resolve_plan};
+use crate::ancestral::plan::{ReconstructedPartition, ReconstructionOptions, reconstruct_partitions, resolve_plan};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
-use crate::partition::result::{PartitionResult, PartitionSequences, split_sources};
+use crate::partition::result::{
+  AlignmentResult, AlignmentSequences, PartitionOutcome, PartitionResult, alignment_results,
+};
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::AncestralInput;
 use crate::seq::sink::{SeqStream, SeqTrack};
@@ -19,8 +21,8 @@ pub fn run(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<AncestralOutput, OperationError> {
-  let plan = resolve_plan(params)?;
-  if input.sources.is_empty() {
+  let method = resolve_plan(params)?;
+  if input.sequences.is_empty() {
     return Err(OperationError::InvalidInput(make_report!(
       "Ancestral reconstruction requires at least one alignment"
     )));
@@ -28,11 +30,13 @@ pub fn run(
   let options = ReconstructionOptions::new(params.impute_missing_data, params.sample_from_profile);
   let mut rng = get_random_number_generator(params.seed);
   let branch_lengths = branch_lengths_or_zero(&input.branch_lengths());
-  let AncestralInput { graph, sources, .. } = input;
-  let partitions = reconstruct_partitions(
+  let AncestralInput { graph, sequences, .. } = input;
+  let split = sequences.split().map_err(OperationError::classify)?;
+  let alignments = split.alignments.clone();
+  let reconstructed = reconstruct_partitions(
     &graph,
-    &plan,
-    split_sources(sources),
+    method,
+    split,
     &branch_lengths,
     &options,
     &mut rng,
@@ -41,37 +45,47 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  let results = partitions
+  let (partitions, outcomes): (Vec<_>, Vec<_>) = reconstructed
     .into_iter()
-    .map(|(source, partition)| {
-      let mutations = partition.stream_sequences(
-        &graph,
-        SeqTrack::Nuc(source.number),
-        params.include_leaves,
-        params.report_ambiguous,
-        seq_stream.as_mut().map(SeqStream::reborrow),
-      )?;
-      let alphabet = partition.alphabet().clone();
-      let sequences = PartitionSequences::new(mutations, &alphabet).map_err(OperationError::InferenceFailed)?;
-      Ok(PartitionResult {
-        number: source.number,
-        path: source.path,
-        length: source.length,
-        mask: source.mask,
-        model_name: params.model.name(),
-        gtr: partition.gtr().cloned(),
-        indel_rate: None,
-        log_lh: partition.log_lh(&graph).map_err(OperationError::classify)?,
-        sequences: Some(sequences),
-        alphabet,
-      })
-    })
-    .collect::<Result<Vec<_>, OperationError>>()?;
-  Ok(AncestralOutput { results, graph })
+    .map(
+      |ReconstructedPartition {
+         layout,
+         model_name,
+         partition,
+       }| {
+        let mutations = partition.stream_sequences(
+          &graph,
+          SeqTrack::Nuc(layout.alignment),
+          params.include_leaves,
+          params.report_ambiguous,
+          seq_stream.as_mut().map(SeqStream::reborrow),
+        )?;
+        let sequences =
+          AlignmentSequences::new(mutations, partition.alphabet()).map_err(OperationError::InferenceFailed)?;
+        let log_lh = partition.log_lh(&graph).map_err(OperationError::classify)?;
+        let result = PartitionResult::new(&layout, model_name, partition.gtr().cloned(), log_lh);
+        let outcome = PartitionOutcome {
+          alignment: layout.alignment,
+          indel_rate: None,
+          sequences: Some(sequences),
+        };
+        Ok((result, outcome))
+      },
+    )
+    .collect::<Result<Vec<_>, OperationError>>()?
+    .into_iter()
+    .unzip();
+  let alignments = alignment_results(alignments, outcomes).map_err(OperationError::InferenceFailed)?;
+  Ok(AncestralOutput {
+    alignments,
+    partitions,
+    graph,
+  })
 }
 
 #[derive(Debug)]
 pub struct AncestralOutput {
-  pub results: Vec<PartitionResult>,
+  pub alignments: Vec<AlignmentResult>,
+  pub partitions: Vec<PartitionResult>,
   pub graph: Graph,
 }

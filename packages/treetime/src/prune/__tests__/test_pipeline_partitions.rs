@@ -23,7 +23,7 @@ mod tests {
     #[case] expected: BTreeSet<&str>,
   ) -> Result<(), Report> {
     let output = run_prune_empty(files)?;
-    let numbers = output.results.iter().map(|result| result.number).collect::<Vec<_>>();
+    let numbers = output.alignments.iter().map(|result| result.number).collect::<Vec<_>>();
     assert_eq!(
       (expected, (1..=files.len()).collect::<Vec<_>>()),
       (internal_node_names(&output), numbers)
@@ -69,8 +69,10 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
     use crate::cancel::NoopCancel;
+    use crate::partition::resolve::{PartitionLayout, resolve_partition_layouts};
     use crate::progress::NoopProgress;
     use crate::prune::pipeline::{PruneInput, PruneOutput, PruneParams, run};
+    use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{leaf_seq_inputs, sequence_source};
     use eyre::Report;
     use maplit::btreeset;
@@ -122,7 +124,8 @@ mod tests {
       let input = PruneInput {
         graph: parsed.graph,
         names,
-        sources,
+        layouts: whole_layouts(&sources)?,
+        alignments: sources,
         branch_lengths: parsed.branch_lengths,
       };
       run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
@@ -167,10 +170,16 @@ mod tests {
       let input = PruneInput {
         graph: parsed.graph,
         names,
-        sources,
+        layouts: whole_layouts(&sources)?,
+        alignments: sources,
         branch_lengths: parsed.branch_lengths,
       };
       run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
+    }
+
+    fn whole_layouts(sources: &[SequenceSource]) -> Result<Vec<PartitionLayout>, Report> {
+      let lengths = sources.iter().map(|source| source.length).collect::<Vec<_>>();
+      Ok(resolve_partition_layouts(&[], &lengths)?.layouts)
     }
 
     pub(super) fn internal_node_names(output: &PruneOutput) -> BTreeSet<&str> {

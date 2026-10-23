@@ -1,13 +1,12 @@
-use crate::gtr::get_gtr::GtrModel;
 use crate::gtr::gtr::GTR;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
 };
-use crate::partition::result::{PartitionSource, SplitSource, split_sources};
+use crate::partition::resolve::PartitionLayout;
+use crate::partition::split::{PartitionData, SplitPartition};
 use crate::progress::LogSink;
-use crate::seq::alignment::SequenceSource;
 use eyre::Report;
 use itertools::{Either, Itertools, izip};
 use std::collections::BTreeMap;
@@ -19,33 +18,50 @@ use treetime_utils::{make_internal_error, make_internal_report};
 
 pub(crate) fn build_partition_set(
   representation: Representation,
-  model: &GtrModel,
   graph: &Graph,
-  sources: Vec<SequenceSource>,
+  partitions: Vec<SplitPartition>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
-) -> Result<(Vec<PartitionSource>, PartitionSet), Report> {
-  let sources = split_sources(sources);
-  let rate = InferredRate::for_file_count(sources.len());
-  let (sources, reconstructions): (Vec<_>, Vec<_>) = sources
+) -> Result<PartitionSet, Report> {
+  let rate = InferredRate::for_partition_count(partitions.len());
+  let reconstructions = partitions
     .into_iter()
-    .map(
-      |SplitSource {
-         source,
-         alphabet,
-         nodes,
-       }| {
-        let reconstruction =
-          build_marginal_partition(representation, model, rate, graph, alphabet, nodes, branch_lengths, log)?;
-        Ok((source, reconstruction))
-      },
-    )
-    .collect::<Result<Vec<_>, Report>>()?
-    .into_iter()
-    .unzip();
+    .map(|SplitPartition { data, model }| {
+      let PartitionData {
+        layout,
+        alphabet,
+        nodes,
+      } = data;
+      let reconstruction = build_marginal_partition(
+        representation,
+        &model,
+        rate,
+        graph,
+        alphabet,
+        nodes,
+        branch_lengths,
+        log,
+      )?;
+      Ok(reconstruction.with_layout(layout))
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
   let set = PartitionSet::from_reconstructions(reconstructions)?;
   let total_length = set.total_length();
-  Ok((sources, set.with_total_length(total_length)))
+  Ok(set.with_total_length(total_length))
+}
+
+pub(crate) fn layouts_or_whole<'a>(
+  partitions: impl IntoIterator<Item = (Option<&'a PartitionLayout>, usize)>,
+) -> Vec<PartitionLayout> {
+  partitions
+    .into_iter()
+    .zip(1..)
+    .map(|((layout, length), number)| {
+      layout
+        .cloned()
+        .unwrap_or_else(|| PartitionLayout::whole(number, length))
+    })
+    .collect()
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +104,10 @@ impl PartitionSet {
 
   pub(crate) fn total_length(&self) -> usize {
     self.iter().map(ReconstructionRef::length).sum()
+  }
+
+  pub(crate) fn layouts(&self) -> Vec<PartitionLayout> {
+    layouts_or_whole(self.iter().map(|partition| (partition.layout(), partition.length())))
   }
 
   pub(crate) fn graph_log_lh(&self, graph: &Graph) -> Result<LogLh, Report> {

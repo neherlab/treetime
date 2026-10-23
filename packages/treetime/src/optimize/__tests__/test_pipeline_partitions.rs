@@ -234,11 +234,13 @@ mod tests {
     use crate::optimize::partition_rates::update_partition_rates;
     use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
     use crate::partition::create::Representation;
-    use crate::partition::set::{PartitionSet, build_partition_set};
+    use crate::partition::set::PartitionSet;
+    use crate::partition::split::SequenceInput;
     use crate::progress::NoopProgress;
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{
       Columns, TestDataset, find_node_key_by_name, leaf_seq_inputs, sequence_source, split_at_gap_free_column,
+      whole_alignment_set,
     };
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
@@ -338,7 +340,6 @@ mod tests {
       let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
       let params = OptimizeParams {
-        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(dense),
         initial_guess: InitialGuessMode::Auto,
         reroot_spec: None,
@@ -355,7 +356,7 @@ mod tests {
       let input = OptimizeInput {
         graph: parse.graph,
         names,
-        sources,
+        sequences: SequenceInput::whole_alignments(sources, &GtrModel::JC69(JC69Params::default()))?,
         branch_lengths: parse.branch_lengths,
       };
       let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
@@ -372,7 +373,7 @@ mod tests {
       Ok(Optimized {
         edges,
         branch_lengths: branch_lengths_or_zero(&output.branch_lengths),
-        paths: output.results.into_iter().map(|result| result.path).collect(),
+        paths: output.alignments.into_iter().map(|result| result.path).collect(),
       })
     }
 
@@ -397,14 +398,7 @@ mod tests {
         Representation::Sparse
       };
       let branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
-      let (_, partitions) = build_partition_set(
-        representation,
-        model,
-        &parse.graph,
-        sources,
-        &branch_lengths,
-        &NoopProgress,
-      )?;
+      let partitions = whole_alignment_set(representation, model, &parse.graph, sources, &branch_lengths)?;
       let (partitions, _) = partitions.marginal_update(&parse.graph, &branch_lengths)?;
       Ok(SmallSet {
         graph: parse.graph,
@@ -454,13 +448,12 @@ mod tests {
       let names = parse.names.clone();
       let sources = sources(&parse.graph, &names, blocks)?;
       let input_branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
-      let (_, mut partitions) = build_partition_set(
+      let mut partitions = whole_alignment_set(
         Representation::resolve(Some(dense)),
         &GtrModel::JC69(JC69Params::default()),
         &parse.graph,
         sources,
         &input_branch_lengths,
-        &NoopProgress,
       )?;
       partitions.set_rates(&[start_rate, start_rate])?;
       let (partitions, _) = partitions.marginal_update(&parse.graph, &input_branch_lengths)?;

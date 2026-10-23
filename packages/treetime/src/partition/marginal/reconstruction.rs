@@ -11,6 +11,7 @@ use crate::partition::marginal::sparse::mutations::sparse_edge_mutations;
 use crate::partition::marginal::sparse::partition::{PartitionMarginalSparse, SparseMarginalEdges};
 use crate::partition::marginal::sparse::reroot::reroot_sparse;
 use crate::partition::optimize::contribution::OptimizationContribution;
+use crate::partition::resolve::PartitionLayout;
 use crate::partition::storage::dense::DenseNodeState;
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::LogSink;
@@ -54,6 +55,22 @@ impl MarginalReconstruction {
 
   pub(crate) fn gtr(&self) -> &GTR {
     self.view().gtr()
+  }
+
+  #[must_use]
+  pub(crate) fn with_layout(self, layout: PartitionLayout) -> Self {
+    match self {
+      Self::Dense(reconstruction) => Self::Dense(reconstruction.with_layout(layout)),
+      Self::Sparse(reconstruction) => Self::Sparse(reconstruction.with_layout(layout)),
+    }
+  }
+
+  #[must_use]
+  pub(crate) fn with_total_length(self, total_length: usize) -> Self {
+    match self {
+      Self::Dense(reconstruction) => Self::Dense(reconstruction.with_total_length(total_length)),
+      Self::Sparse(reconstruction) => Self::Sparse(reconstruction.with_total_length(total_length)),
+    }
   }
 
   pub fn alphabet(&self) -> &Alphabet {
@@ -124,6 +141,10 @@ impl<'a> ReconstructionRef<'a> {
 
   pub(crate) fn length(self) -> usize {
     each_kind!(self, |reconstruction| reconstruction.partition.length)
+  }
+
+  pub(crate) fn layout(self) -> Option<&'a PartitionLayout> {
+    each_kind!(self, |reconstruction| reconstruction.layout.as_ref())
   }
 
   pub(crate) fn alphabet(self) -> &'a Alphabet {
@@ -326,6 +347,7 @@ pub struct SparseReconstruction {
   pub(crate) gtr: GTR,
   pub(crate) node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
   pub(crate) edges: SparseMarginalEdges,
+  pub(crate) layout: Option<PartitionLayout>,
 }
 
 impl SparseReconstruction {
@@ -339,7 +361,20 @@ impl SparseReconstruction {
       gtr,
       node_states,
       edges: SparseMarginalEdges::default(),
+      layout: None,
     }
+  }
+
+  #[must_use]
+  pub(crate) fn with_layout(self, layout: PartitionLayout) -> Self {
+    Self {
+      layout: Some(layout),
+      ..self
+    }
+  }
+
+  pub fn layout(&self) -> Option<&PartitionLayout> {
+    self.layout.as_ref()
   }
 
   pub(crate) fn marginal_update(
@@ -352,6 +387,7 @@ impl SparseReconstruction {
       gtr,
       node_states,
       edges,
+      layout,
     } = self;
     drop(edges);
     let MarginalUpdate {
@@ -365,6 +401,7 @@ impl SparseReconstruction {
         gtr,
         node_states,
         edges,
+        layout,
       },
       log_lh,
     ))
@@ -393,22 +430,25 @@ impl SparseReconstruction {
       RateRangeEdge::LowerCostEnd,
       log,
     )?;
-    Ok(Self::seeded(self.partition, gtr, self.node_states))
+    Ok(Self::seeded(self.partition, gtr, self.node_states).keeping_layout(self.layout))
   }
 
   pub(crate) fn apply_reroot(self, changes: &RerootResult) -> Result<Self, Report> {
-    reroot_sparse(self.partition, self.gtr, self.node_states, changes)
+    Ok(reroot_sparse(self.partition, self.gtr, self.node_states, changes)?.keeping_layout(self.layout))
   }
 
   pub(crate) fn reconcile_topology(self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<Self, Report> {
     let live_nodes = live_node_keys(graph);
     let mut partition = self.partition;
     partition.reconcile_topology(graph, merges)?;
-    Ok(Self::seeded(
-      partition,
-      self.gtr,
-      reconcile_node_states(self.node_states, &live_nodes, SparseNodeState::empty),
-    ))
+    Ok(
+      Self::seeded(
+        partition,
+        self.gtr,
+        reconcile_node_states(self.node_states, &live_nodes, SparseNodeState::empty),
+      )
+      .keeping_layout(self.layout),
+    )
   }
 
   #[must_use]
@@ -418,6 +458,11 @@ impl SparseReconstruction {
       self.gtr,
       reconcile_node_states(self.node_states, &live_node_keys(graph), SparseNodeState::empty),
     )
+    .keeping_layout(self.layout)
+  }
+
+  fn keeping_layout(self, layout: Option<PartitionLayout>) -> Self {
+    Self { layout, ..self }
   }
 }
 
@@ -427,6 +472,7 @@ pub struct DenseReconstruction {
   pub(crate) gtr: GTR,
   pub(crate) node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
   pub(crate) edges: DenseMarginalEdges,
+  pub(crate) layout: Option<PartitionLayout>,
 }
 
 impl DenseReconstruction {
@@ -436,7 +482,20 @@ impl DenseReconstruction {
       gtr,
       node_states: BTreeMap::new(),
       edges: DenseMarginalEdges::default(),
+      layout: None,
     }
+  }
+
+  #[must_use]
+  pub(crate) fn with_layout(self, layout: PartitionLayout) -> Self {
+    Self {
+      layout: Some(layout),
+      ..self
+    }
+  }
+
+  pub fn layout(&self) -> Option<&PartitionLayout> {
+    self.layout.as_ref()
   }
 
   #[must_use]
@@ -449,7 +508,10 @@ impl DenseReconstruction {
 
   #[must_use]
   pub(crate) fn reseeded(self) -> Self {
-    Self::seeded(self.partition, self.gtr)
+    Self {
+      layout: self.layout,
+      ..Self::seeded(self.partition, self.gtr)
+    }
   }
 
   pub(crate) fn with_estimated_rate(
@@ -467,7 +529,10 @@ impl DenseReconstruction {
       RateRangeEdge::LowerCostEnd,
       log,
     )?;
-    Ok(Self::seeded(self.partition, gtr))
+    Ok(Self {
+      layout: self.layout,
+      ..Self::seeded(self.partition, gtr)
+    })
   }
 
   pub(crate) fn marginal_update(
@@ -480,6 +545,7 @@ impl DenseReconstruction {
       gtr,
       node_states,
       edges,
+      layout,
     } = self;
     drop(node_states);
     drop(edges);
@@ -494,6 +560,7 @@ impl DenseReconstruction {
         gtr,
         node_states,
         edges,
+        layout,
       },
       log_lh,
     ))

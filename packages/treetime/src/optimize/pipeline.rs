@@ -3,7 +3,7 @@ use crate::cancel::Cancel;
 use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
 use crate::clock::reroot::reroot_undated;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::{GtrModel, GtrModelName};
+use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::IndelPolicy;
@@ -15,10 +15,12 @@ use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
 use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::create::Representation;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
-use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource};
+use crate::partition::result::{
+  AlignmentResult, AlignmentSequences, PartitionOutcome, PartitionResult, alignment_results,
+};
 use crate::partition::set::{PartitionSet, build_partition_set};
+use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
-use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -53,18 +55,21 @@ pub fn run(
     )));
   }
 
-  if input.sources.is_empty() {
+  if input.sequences.is_empty() {
     return Err(OperationError::InvalidInput(make_report!(
       "Branch length optimization requires at least one alignment"
     )));
   }
 
   let mut branch_lengths = std::mem::take(&mut input.branch_lengths);
-  let (sources, partitions) = build_partition_set(
+  let normalize_inferred = input.sequences.has_inferred_model();
+  let split = input.sequences.split().map_err(OperationError::classify)?;
+  let model_names = split.model_names();
+  let SplitInput { alignments, partitions } = split;
+  let partitions = build_partition_set(
     Representation::resolve(params.dense),
-    &params.model,
     &input.graph,
-    std::mem::take(&mut input.sources),
+    partitions,
     &branch_lengths_or_zero(&branch_lengths),
     log,
   )
@@ -89,7 +94,7 @@ pub fn run(
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
 
-  if params.model.is_infer() {
+  if normalize_inferred {
     normalize_partition_rates(&mut partitions, &mut branch_lengths, None).map_err(OperationError::classify)?;
   }
   let mut partitions = fix_equal_rates(
@@ -164,23 +169,25 @@ pub fn run(
     .marginal_update(&input.graph, &branch_lengths_or_zero(&branch_lengths))
     .map_err(OperationError::classify)?;
 
-  let results = izip!(sources, partitions.iter(), loop_result.indel_rates)
-    .map(|(source, partition, indel_rate)| {
-      optimize_result(&input.graph, source, partition, params.model.name(), indel_rate)
-    })
-    .collect::<Result<Vec<_>, Report>>()
-    .map_err(OperationError::InferenceFailed)?;
+  let (alignments, partitions) = optimize_results(
+    &input.graph,
+    alignments,
+    &partitions,
+    &model_names,
+    loop_result.indel_rates,
+  )
+  .map_err(OperationError::InferenceFailed)?;
 
   Ok(OptimizeOutput {
     graph: input.graph,
-    results,
+    alignments,
+    partitions,
     branch_lengths,
     names: loop_result.names,
   })
 }
 
 pub struct OptimizeParams {
-  pub model: GtrModel,
   pub dense: Option<bool>,
   pub initial_guess: InitialGuessMode,
   pub reroot_spec: Option<RerootSpec>,
@@ -190,25 +197,48 @@ pub struct OptimizeParams {
 pub struct OptimizeInput {
   pub graph: Graph,
   pub names: NodeNames,
-  pub sources: Vec<SequenceSource>,
+  pub sequences: SequenceInput,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
 
 #[derive(Debug)]
 pub struct OptimizeOutput {
   pub graph: Graph,
-  pub results: Vec<PartitionResult>,
+  pub alignments: Vec<AlignmentResult>,
+  pub partitions: Vec<PartitionResult>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub names: NodeNames,
 }
 
-fn optimize_result(
+fn optimize_results(
   graph: &Graph,
-  source: PartitionSource,
-  reconstruction: ReconstructionRef<'_>,
-  model_name: GtrModelName,
-  indel_rate: Option<f64>,
-) -> Result<PartitionResult, Report> {
+  alignments: Vec<AlignmentInfo>,
+  partitions: &PartitionSet,
+  model_names: &[GtrModelName],
+  indel_rates: Vec<Option<f64>>,
+) -> Result<(Vec<AlignmentResult>, Vec<PartitionResult>), Report> {
+  let (results, outcomes): (Vec<_>, Vec<_>) = izip!(partitions.iter(), partitions.layouts(), model_names, indel_rates)
+    .map(|(partition, layout, &model_name, indel_rate)| {
+      let result = PartitionResult::new(
+        &layout,
+        model_name,
+        Some(partition.gtr().clone()),
+        Some(partition.graph_log_lh(graph)?),
+      );
+      let outcome = PartitionOutcome {
+        alignment: layout.alignment,
+        indel_rate,
+        sequences: Some(partition_sequences(graph, partition)?),
+      };
+      Ok((result, outcome))
+    })
+    .collect::<Result<Vec<_>, Report>>()?
+    .into_iter()
+    .unzip();
+  Ok((alignment_results(alignments, outcomes)?, results))
+}
+
+fn partition_sequences(graph: &Graph, reconstruction: ReconstructionRef<'_>) -> Result<AlignmentSequences, Report> {
   let edge_mutations = graph
     .get_edges()
     .map(|edge| {
@@ -223,19 +253,7 @@ fn optimize_result(
     root_sequence: reconstruction.root_sequence(graph)?,
     edge_mutations,
   };
-  let alphabet = reconstruction.alphabet().clone();
-  Ok(PartitionResult {
-    number: source.number,
-    path: source.path,
-    length: reconstruction.length(),
-    mask: source.mask,
-    model_name,
-    gtr: Some(reconstruction.gtr().clone()),
-    indel_rate,
-    log_lh: Some(reconstruction.graph_log_lh(graph)?),
-    sequences: Some(PartitionSequences::new(mutations, &alphabet)?),
-    alphabet,
-  })
+  AlignmentSequences::new(mutations, reconstruction.alphabet())
 }
 
 fn pre_reroot_optimize(

@@ -7,10 +7,11 @@ use schemars::JsonSchema;
 use std::path::PathBuf;
 use treetime::gtr::get_gtr::{GtrModelName, GtrOutput, ModelEntry, ModelOutput, SequenceModel, TraitModel};
 use treetime::gtr::gtr::GTR;
-use treetime::partition::result::PartitionResult;
+use treetime::partition::result::{AlignmentResult, PartitionResult};
 use treetime::progress::LogSink;
 use treetime_schema::{schema_defaults, skip_serializing_optionals};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
+use treetime_utils::make_internal_error;
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]
 #[deser(skip_serializing_optionals)]
@@ -41,17 +42,31 @@ pub(crate) fn write_gtr_output(
   json_write_file(&file.path, &ModelOutput { models }, JsonPretty(true))
 }
 
-pub(crate) fn partition_models(results: &[PartitionResult], clock_rate: Option<f64>) -> Vec<ModelEntry> {
-  results
+pub(crate) fn partition_models(
+  partitions: &[PartitionResult],
+  alignments: &[AlignmentResult],
+  clock_rate: Option<f64>,
+) -> Result<Vec<ModelEntry>, Report> {
+  partitions
     .iter()
-    .filter_map(|result| {
-      let gtr = result.gtr.as_ref()?;
-      let model = GtrOutput::builder().gtr(gtr).model_name(result.model_name).build();
-      Some(ModelEntry::Sequence(SequenceModel {
-        partition: result.number,
-        alignment: result.path.clone(),
-        sites: result.length,
-        indel_rate: result.indel_rate,
+    .filter_map(|partition| Some((partition, partition.gtr.as_ref()?)))
+    .map(|(partition, gtr)| {
+      let Some(alignment) = alignments
+        .iter()
+        .find(|alignment| alignment.number == partition.alignment)
+      else {
+        return make_internal_error!(
+          "Partition {} belongs to alignment {}, which the run did not return",
+          partition.number,
+          partition.alignment
+        );
+      };
+      let model = GtrOutput::builder().gtr(gtr).model_name(partition.model_name).build();
+      Ok(ModelEntry::Sequence(SequenceModel {
+        partition: partition.number,
+        alignment: alignment.path.clone(),
+        sites: partition.sites,
+        indel_rate: alignment.indel_rate,
         clock_rate: clock_rate.map(|rate| rate * model.mu()),
         model,
       }))

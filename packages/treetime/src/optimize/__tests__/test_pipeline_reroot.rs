@@ -7,7 +7,8 @@ mod tests {
   use crate::test_utils::sequence_source;
   use eyre::Report;
   use helpers::{
-    assert_branch_lengths_valid, leaf_names, load, load_with_unary_root, params_with, root_child_keys, root_key,
+    assert_branch_lengths_valid, jc69_sequences, leaf_names, load, load_with_unary_root, params_with, root_child_keys,
+    root_key,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -23,7 +24,7 @@ mod tests {
       OptimizeInput {
         graph,
         names,
-        sources: vec![sequence_source(alphabet, sequences)?],
+        sequences: jc69_sequences(sequence_source(alphabet, sequences)?)?,
         branch_lengths,
       },
       &NoopCancel,
@@ -52,7 +53,7 @@ mod tests {
       OptimizeInput {
         graph,
         names,
-        sources: vec![sequence_source(alphabet, sequences)?],
+        sequences: jc69_sequences(sequence_source(alphabet, sequences)?)?,
         branch_lengths,
       },
       &NoopCancel,
@@ -79,7 +80,7 @@ mod tests {
       OptimizeInput {
         graph,
         names,
-        sources: vec![sequence_source(alphabet, sequences)?],
+        sequences: jc69_sequences(sequence_source(alphabet, sequences)?)?,
         branch_lengths,
       },
       &NoopCancel,
@@ -113,7 +114,7 @@ mod tests {
       OptimizeInput {
         graph,
         names,
-        sources: vec![sequence_source(alphabet, sequences)?],
+        sequences: jc69_sequences(sequence_source(alphabet, sequences)?)?,
         branch_lengths,
       },
       &NoopCancel,
@@ -144,7 +145,7 @@ mod tests {
       OptimizeInput {
         graph,
         names,
-        sources: vec![sequence_source(alphabet, sequences)?],
+        sequences: jc69_sequences(sequence_source(alphabet, sequences)?)?,
         branch_lengths,
       },
       &NoopCancel,
@@ -166,7 +167,8 @@ mod tests {
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::OptimizeParams;
-    use crate::seq::alignment::NodeSeqInput;
+    use crate::partition::split::SequenceInput;
+    use crate::seq::alignment::{NodeSeqInput, SequenceSource};
     use crate::test_utils::{TestDataset, leaf_seq_inputs};
     use eyre::Report;
     use std::collections::BTreeMap;
@@ -193,9 +195,12 @@ mod tests {
       loaded(nwk_read(format!("({subtree}:0.001)UNARYROOT;").as_bytes())?)
     }
 
+    pub(super) fn jc69_sequences(source: SequenceSource) -> Result<SequenceInput, Report> {
+      SequenceInput::whole_alignments(vec![source], &GtrModel::JC69(JC69Params::default()))
+    }
+
     pub(super) fn params_with(reroot_spec: Option<RerootSpec>) -> OptimizeParams {
       OptimizeParams {
-        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(false),
         initial_guess: InitialGuessMode::default(),
         reroot_spec,

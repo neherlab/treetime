@@ -4,6 +4,8 @@ use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::gtr::get_gtr::{GtrModel, JC69Params};
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::partition_rates::PartitionRates;
+use crate::partition::split::SequenceInput;
+use crate::seq::alignment::SequenceSource;
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent_timescale::CoalescentMode;
@@ -13,6 +15,7 @@ use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
 };
 use crate::timetree::params::{BranchLengthMode, TimetreeParams};
+use crate::timetree::pipeline::TimetreeSequences;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -30,6 +33,13 @@ pub(crate) fn jc69_input_branch_model(sequence_length: usize) -> BranchModel {
     sequence_length,
     JC69_NUCLEOTIDE_SATURATED_DIFFERENCE,
   ))
+}
+
+pub(crate) fn jc69_timetree_sequences(sources: Vec<SequenceSource>) -> Result<TimetreeSequences, Report> {
+  Ok(TimetreeSequences::Alignments(SequenceInput::whole_alignments(
+    sources,
+    &GtrModel::JC69(JC69Params::default()),
+  )?))
 }
 
 pub(crate) fn constraint_expectation(
@@ -66,13 +76,10 @@ pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
 
 pub(crate) fn marginal_timetree_params() -> TimetreeParams {
   TimetreeParams {
-    model: GtrModel::JC69(JC69Params::default()),
-    alphabet: None,
     dense: None,
     branch_length_mode: BranchLengthMode::Marginal,
     indel_policy: IndelPolicy::Include,
     partition_rates: PartitionRates::Estimate,
-    sequence_length: None,
     clock_rate: None,
     clock_std_dev: None,
     keep_root: true,

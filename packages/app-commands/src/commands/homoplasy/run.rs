@@ -23,6 +23,7 @@ use treetime::cancel::Cancel;
 use treetime::homoplasy;
 use treetime::homoplasy::pipeline::{HomoplasyInput, HomoplasyParams};
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::PositionBase;
@@ -69,7 +70,11 @@ pub fn run_homoplasy(
     branch_lengths,
     ..
   } = tree;
-  let mut input = ancestral_input(graph, branch_lengths, vec![source]);
+  let sequences = SequenceInput {
+    alignments: vec![source],
+    partitions,
+  };
+  let mut input = ancestral_input(graph, branch_lengths, sequences);
   for edge in input.edges.values_mut() {
     edge.branch_length = edge.branch_length.map(|branch_length| branch_length * args.rescale);
   }
@@ -83,8 +88,8 @@ pub fn run_homoplasy(
   let params = homoplasy_ancestral_params(args, seed);
   let output = ancestral::pipeline::run(&params, input, None, cancel, stages, log).map_err(|err| err.into_report())?;
   let mut graph = output.graph;
-  let result = output.results.into_iter().exactly_one().map_err(|error| {
-    make_internal_report!("Homoplasy reconstruction is expected to return one partition result: {error}")
+  let result = output.alignments.into_iter().exactly_one().map_err(|error| {
+    make_internal_report!("Homoplasy reconstruction is expected to return one alignment result: {error}")
   })?;
   let Some(sequences) = result.sequences else {
     return make_internal_error!("Homoplasy reconstruction returned no reconstructed sequences");

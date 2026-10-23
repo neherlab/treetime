@@ -24,7 +24,8 @@ use treetime::clock::divergence::root_to_node_divergences;
 use treetime::clock::find_best_root::params::RerootSpec;
 use treetime::make_internal_error;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
-use treetime::partition::result::PartitionSequences;
+use treetime::partition::result::AlignmentSequences;
+use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
@@ -32,7 +33,7 @@ use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::{BranchLengthMode, TimetreeParams};
-use treetime::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
+use treetime::timetree::pipeline::{self, SequenceLength, TimetreeInput, TimetreeOutput, TimetreeSequences};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
@@ -59,6 +60,29 @@ pub fn run_timetree_estimation(
   log_partitions(&input_data.partitions, log);
   let input_leaf_order = input_data.input_leaf_order.clone();
   let branch_length_mode = input_data.branch_length_mode.mode;
+  let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
+    .sequences
+    .into_iter()
+    .enumerate()
+    .map(|(index, aligned)| (aligned.source, (index + 1, aligned.descs)))
+    .unzip();
+  let sequences = if sources.is_empty() {
+    TimetreeSequences::Length(SequenceLength {
+      length: args.branch_lengths.sequence_length,
+      model: args.sequence_model.model.clone(),
+      alphabet: args.sequences.alphabet,
+    })
+  } else {
+    TimetreeSequences::Alignments(SequenceInput {
+      alignments: sources,
+      partitions: input_data.partitions,
+    })
+  };
+  if branch_length_mode == BranchLengthMode::Marginal
+    && let TimetreeSequences::Alignments(input) = &sequences
+  {
+    input.reject_split_alignments()?;
+  }
   settle_branch_length_outputs(&mut resolved, &input_data.branch_length_mode, log)?;
   let reconstructed_nuc_fasta = resolved.partition_paths(OutputSelection::Sequences);
   let mutation_units = args.branch_lengths.mutation_units;
@@ -78,16 +102,10 @@ pub fn run_timetree_estimation(
   let reroot_spec = args.reroot.spec(&input_data.graph, &input_data.names)?;
   let params = timetree_params(args, branch_length_mode, reroot_spec, sequence_outputs_requested, seed);
 
-  let (sources, aln_descs): (Vec<_>, BTreeMap<_, _>) = input_data
-    .sequences
-    .into_iter()
-    .enumerate()
-    .map(|(index, aligned)| (aligned.source, (index + 1, aligned.descs)))
-    .unzip();
   let input = TimetreeInput {
     graph: input_data.graph,
     names: input_data.names,
-    sources,
+    sequences,
     dates: Some(input_data.dates),
     branch_lengths: input_data.branch_lengths,
   };
@@ -144,13 +162,10 @@ fn timetree_params(
   seed: u64,
 ) -> TimetreeParams {
   TimetreeParams {
-    model: args.sequence_model.model.clone(),
-    alphabet: args.sequences.alphabet,
     dense: args.sequence_model.dense,
     branch_length_mode,
     indel_policy: args.branch_lengths.indel_policy,
     partition_rates: args.sequence_model.partition_rates,
-    sequence_length: args.branch_lengths.sequence_length,
     clock_rate: args.clock.clock_rate,
     clock_std_dev: args.clock.clock_std_dev,
     keep_root: args.keep_root,
@@ -198,7 +213,11 @@ fn write_model_outputs(resolved: &ResolvedOutputs, output: &TimetreeOutput, log:
 
   write_gtr_output(
     resolved,
-    partition_models(&output.results, Some(output.clock_model.clock_rate())),
+    partition_models(
+      &output.partitions,
+      &output.alignments,
+      Some(output.clock_model.clock_rate()),
+    )?,
     "no GTR model was fitted (provide an alignment with --alignment)",
     log,
   )
@@ -230,7 +249,7 @@ fn write_result_outputs(
     clock_model,
     confidence_intervals,
     dates,
-    mut results,
+    alignments: mut results,
     ..
   } = output;
   let maps = results
@@ -401,11 +420,11 @@ impl SeqSink for ReconstructedNucSink {
 
 fn timetree_output_maps(
   graph: &Graph,
-  sequences: PartitionSequences,
+  sequences: AlignmentSequences,
   report_ambiguous: bool,
   alphabet: &Alphabet,
 ) -> Result<TimetreeOutputMaps, Report> {
-  let PartitionSequences {
+  let AlignmentSequences {
     root_sequence,
     edge_mutations,
     edge_mutation_counts,

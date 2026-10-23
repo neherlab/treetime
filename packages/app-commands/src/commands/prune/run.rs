@@ -12,7 +12,7 @@ use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use treetime::cancel::Cancel;
-use treetime::partition::result::PartitionSequences;
+use treetime::partition::result::AlignmentSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::Mutation;
@@ -61,7 +61,8 @@ pub fn run_prune(
   let input = PruneInput {
     graph,
     names,
-    sources,
+    alignments: sources,
+    layouts,
     branch_lengths: branch_lengths_input,
   };
 
@@ -70,9 +71,10 @@ pub fn run_prune(
   let output = pipeline::run(&params, input, cancel, log).map_err(|err| err.into_report())?;
   let pipeline::PruneOutput {
     mut graph,
-    mut results,
+    alignments: mut results,
     names,
     branch_lengths: branch_lengths_opt,
+    ..
   } = output;
   let maps = if resolved.tree_write_kinds().any(TreeWriteKind::is_per_partition) {
     results
@@ -142,7 +144,7 @@ fn write_prune_trees(
 
 fn prune_output_maps(
   graph: &Graph,
-  sequences: PartitionSequences,
+  sequences: AlignmentSequences,
   filter: UnknownMutationFilter,
 ) -> Result<PruneOutputMaps, Report> {
   Ok(PruneOutputMaps {

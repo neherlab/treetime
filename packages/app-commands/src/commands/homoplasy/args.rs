@@ -44,7 +44,6 @@ pub const HOMOPLASY_ABOUT: &str =
 pub fn homoplasy_ancestral_params(args: &TreetimeHomoplasyArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
-    model: args.model.clone(),
     dense: args.dense,
     include_leaves: false,
     report_ambiguous: true,

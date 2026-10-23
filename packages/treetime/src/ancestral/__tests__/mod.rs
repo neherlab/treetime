@@ -30,6 +30,7 @@ mod test_marginal_tip_reconstruction;
 mod test_marginal_topology;
 mod test_mask;
 mod test_output_consistency_prop;
+mod test_partition_plans;
 mod test_pipeline_partitions;
 mod test_plan;
 mod test_prop_marginal_dense_sparse_simulated;

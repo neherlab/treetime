@@ -3,7 +3,7 @@ mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::ancestral::attach::sanitize_to_alphabet;
   use crate::ancestral::partition::AncestralPartition;
-  use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstruct_partition};
+  use crate::ancestral::plan::{ReconstructionMethod, ReconstructionOptions, reconstruct_partition};
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::{GtrModel, GtrModelName};
@@ -18,6 +18,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{RSV_A_20_TRANSLATION_G_XZ, TestDataset, fasta_xz_records};
   use eyre::Report;
+  use helpers::Plan;
   use itertools::Itertools;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -40,7 +41,7 @@ mod tests {
       helpers::marginal(Representation::Dense, GtrModelName::Infer),
       helpers::marginal(Representation::Sparse, GtrModelName::Infer)
     )]
-    plan: ReconstructionPlan,
+    plan: Plan,
     #[values(false, true)] impute: bool,
     #[values(false, true)] include_leaves: bool,
   ) -> Result<(), Report> {
@@ -81,7 +82,7 @@ mod tests {
   #[case::sparse(helpers::marginal(Representation::Sparse, GtrModelName::JC69))]
   #[trace]
   fn test_derived_mutations_report_observed_ambiguous_leaf_states(
-    #[case] plan: ReconstructionPlan,
+    #[case] plan: Plan,
     #[values(false, true)] include_leaves: bool,
   ) -> Result<(), Report> {
     let (mutations, sequences) = helpers::ambiguous_leaf_mutations(&plan, include_leaves, false)?;
@@ -136,15 +137,14 @@ mod tests {
       pub actual: EdgeSubs,
     }
 
-    pub(super) const fn fitch() -> ReconstructionPlan {
-      ReconstructionPlan::Fitch
+    pub(super) type Plan = (ReconstructionMethod, GtrModel);
+
+    pub(super) fn fitch() -> Plan {
+      (ReconstructionMethod::Fitch, GtrModel::Infer)
     }
 
-    pub(super) fn marginal(representation: Representation, model: GtrModelName) -> ReconstructionPlan {
-      ReconstructionPlan::Marginal {
-        representation,
-        model: GtrModel::from(model),
-      }
+    pub(super) fn marginal(representation: Representation, model: GtrModelName) -> Plan {
+      (ReconstructionMethod::Marginal(representation), GtrModel::from(model))
     }
 
     pub(super) fn engine_and_derived_subs(
@@ -152,7 +152,7 @@ mod tests {
       alignment_xz: &[u8],
       alphabet: Alphabet,
       track: SeqTrack<'_>,
-      plan: &ReconstructionPlan,
+      plan: &Plan,
       impute: bool,
       include_leaves: bool,
     ) -> Result<EngineAndDerivedSubs, Report> {
@@ -177,7 +177,8 @@ mod tests {
       let options = ReconstructionOptions::new(impute, SampleMode::Argmax);
       let partition = reconstruct_partition(
         &parse.graph,
-        plan,
+        plan.0,
+        &plan.1,
         InferredRate::Unit,
         alphabet,
         node_inputs,
@@ -289,7 +290,7 @@ mod tests {
     }
 
     pub(super) fn ambiguous_leaf_mutations(
-      plan: &ReconstructionPlan,
+      plan: &Plan,
       include_leaves: bool,
       impute: bool,
     ) -> Result<(BTreeMap<String, Vec<String>>, BTreeMap<String, String>), Report> {
@@ -304,7 +305,8 @@ mod tests {
       let node_inputs = leaf_seq_inputs(graph, &names, sequences);
       let partition = reconstruct_partition(
         graph,
-        plan,
+        plan.0,
+        &plan.1,
         InferredRate::Unit,
         alphabet,
         node_inputs,

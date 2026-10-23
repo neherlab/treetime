@@ -44,6 +44,7 @@ mod tests {
     use crate::optimize::params::{BranchOptMethod, InitialGuessMode, OptimizeLoopSettings, TopologyOps};
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
+    use crate::partition::split::SequenceInput;
     use crate::progress::NoopProgress;
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{TestDataset, simulated_sequence_source};
@@ -91,7 +92,6 @@ mod tests {
         })
         .collect::<Result<Vec<_>, Report>>()?;
       let params = OptimizeParams {
-        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(false),
         initial_guess: InitialGuessMode::Auto,
         reroot_spec: None,
@@ -108,12 +108,12 @@ mod tests {
       let input = OptimizeInput {
         graph: parse.graph,
         names: parse.names,
-        sources,
+        sequences: SequenceInput::whole_alignments(sources, &GtrModel::JC69(JC69Params::default()))?,
         branch_lengths: parse.branch_lengths,
       };
       let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
       output
-        .results
+        .partitions
         .iter()
         .map(|result| {
           result

@@ -32,6 +32,7 @@ mod test_optimize_method_newton_safeguard;
 mod test_optimize_method_step_clamping;
 mod test_optimize_zero_sequence_length;
 mod test_pipeline_gtr_normalized;
+mod test_pipeline_partition_models;
 mod test_pipeline_partition_rate_recovery;
 mod test_pipeline_partitions;
 mod test_pipeline_reroot;

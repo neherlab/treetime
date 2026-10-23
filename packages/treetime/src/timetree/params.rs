@@ -1,7 +1,5 @@
-use crate::alphabet::alphabet::AlphabetName;
 use crate::clock::date_constraints::DateConstraints;
 use crate::clock::find_best_root::params::RerootSpec;
-use crate::gtr::get_gtr::GtrModel;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::partition_rates::PartitionRates;
 use crate::timetree::coalescent_timescale::CoalescentMode;
@@ -10,13 +8,10 @@ use strum_macros::Display;
 use treetime_grid::MaxGridPoints;
 
 pub struct TimetreeParams {
-  pub model: GtrModel,
-  pub alphabet: Option<AlphabetName>,
   pub dense: Option<bool>,
   pub branch_length_mode: BranchLengthMode,
   pub indel_policy: IndelPolicy,
   pub partition_rates: PartitionRates,
-  pub sequence_length: Option<usize>,
   pub clock_rate: Option<f64>,
   pub clock_std_dev: Option<f64>,
   pub keep_root: bool,

@@ -605,6 +605,7 @@ pub(super) mod tests {
         gtr: jc69(JC69Params::default())?,
         node_states: btreemap! {},
         edges: MarginalEdges::default(),
+        layout: None,
       })
     }
 

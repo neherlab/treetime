@@ -4,7 +4,9 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::clock::divergence::root_to_node_divergences;
   use crate::error::OperationError;
-  use crate::partition::result::{PartitionResult, PartitionSequences};
+  use crate::gtr::get_gtr::{GtrModel, JC69Params};
+  use crate::partition::result::{AlignmentResult, AlignmentSequences};
+  use crate::partition::split::SequenceInput;
   use crate::progress::{NoopProgress, RunWarning, RunWarningKind, StageSink};
   use crate::seq::sink::SeqSink;
   use crate::test_utils::{
@@ -14,7 +16,7 @@ mod tests {
   use crate::timetree::coalescent_timescale::{CoalescentMode, FixedTimescale};
   use crate::timetree::inference::result::date_branch_lengths;
   use crate::timetree::params::{BranchLengthMode, TimetreeParams};
-  use crate::timetree::pipeline::{self, TimetreeInput, TimetreeOutput};
+  use crate::timetree::pipeline::{self, SequenceLength, TimetreeInput, TimetreeOutput, TimetreeSequences};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -202,7 +204,6 @@ mod tests {
       branch_length_mode: BranchLengthMode::Input,
       keep_root: false,
       clock_filter: CLOCK_FILTER_IQD,
-      sequence_length: Some(ZIKA_SEQUENCE_LENGTH),
       ..marginal_timetree_params()
     };
 
@@ -224,7 +225,6 @@ mod tests {
       branch_length_mode: BranchLengthMode::Input,
       keep_root: false,
       clock_rate: Some(TIP_PAST_OPTIMUM_RATE),
-      sequence_length: Some(TIP_PAST_OPTIMUM_SEQUENCE_LENGTH),
       ..marginal_timetree_params()
     };
 
@@ -461,8 +461,8 @@ mod tests {
       }
     }
 
-    pub(super) fn only_sequences(output: TimetreeOutput) -> PartitionSequences {
-      let [result] = <[PartitionResult; 1]>::try_from(output.results).expect("one alignment gives one result");
+    pub(super) fn only_sequences(output: TimetreeOutput) -> AlignmentSequences {
+      let [result] = <[AlignmentResult; 1]>::try_from(output.alignments).expect("one alignment gives one result");
       result.sequences.expect("sequence outputs were requested")
     }
 
@@ -473,7 +473,7 @@ mod tests {
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        sources: vec![],
+        sequences: sequence_length(None),
         dates,
         branch_lengths: nwk_parsed.branch_lengths,
       };
@@ -492,7 +492,7 @@ mod tests {
       Ok(TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        sources: vec![],
+        sequences: sequence_length(Some(TIP_PAST_OPTIMUM_SEQUENCE_LENGTH)),
         dates: Some(dates),
         branch_lengths: nwk_parsed.branch_lengths,
       })
@@ -520,24 +520,33 @@ mod tests {
       let alphabet = Alphabet::default();
       let nwk_parsed = nwk_read(newick.as_bytes())?;
       let names = nwk_parsed.names.clone();
-      let source = if with_alignment {
+      let sequences = if with_alignment {
         let records = TestDataset::Zika20.alignment()?;
-        Some(sequence_source(
-          alphabet,
-          leaf_seq_inputs(&nwk_parsed.graph, &names, records),
+        let source = sequence_source(alphabet, leaf_seq_inputs(&nwk_parsed.graph, &names, records))?;
+        TimetreeSequences::Alignments(SequenceInput::whole_alignments(
+          vec![source],
+          &GtrModel::JC69(JC69Params::default()),
         )?)
       } else {
-        None
+        sequence_length(Some(ZIKA_SEQUENCE_LENGTH))
       };
       let dates = dates_by_node(dates, &nwk_parsed.graph, &names);
       let input = TimetreeInput {
         graph: nwk_parsed.graph,
         names,
-        sources: source.into_iter().collect(),
+        sequences,
         dates: Some(dates),
         branch_lengths: nwk_parsed.branch_lengths,
       };
       Ok(input)
+    }
+
+    pub(super) fn sequence_length(length: Option<usize>) -> TimetreeSequences {
+      TimetreeSequences::Length(SequenceLength {
+        length,
+        model: GtrModel::JC69(JC69Params::default()),
+        alphabet: None,
+      })
     }
 
     pub(super) fn leaf_names(graph: &Graph, names: &NodeNames) -> BTreeSet<String> {

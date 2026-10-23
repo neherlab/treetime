@@ -632,6 +632,7 @@ mod tests {
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
+        layout: None,
       }])
       .marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
       let sequence_length = partition.total_length();

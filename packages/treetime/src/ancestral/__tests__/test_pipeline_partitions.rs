@@ -2,7 +2,7 @@
 mod tests {
   use crate::ancestral::params::MethodAncestral;
   use eyre::Report;
-  use helpers::{assert_same_partition, column_blocks, reconstruct, total_log_lh};
+  use helpers::{assert_same_alignment, assert_same_partition, column_blocks, reconstruct, total_log_lh};
   use itertools::{Itertools, izip};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -27,14 +27,22 @@ mod tests {
       .collect::<Result<Vec<_>, Report>>()?;
 
     assert_eq!(
-      vec![1, 2],
-      joint.results.iter().map(|result| result.number).collect_vec()
+      (vec![1, 2], vec![(1, 1), (2, 2)]),
+      (
+        joint.alignments.iter().map(|alignment| alignment.number).collect_vec(),
+        joint
+          .partitions
+          .iter()
+          .map(|partition| (partition.number, partition.alignment))
+          .collect_vec()
+      )
     );
-    for (joint_result, (single, _)) in izip!(&joint.results, &separate) {
-      let [single_result] = single.results.as_slice() else {
-        panic!("one alignment gives one result");
+    for (joint_alignment, joint_partition, (single, _)) in izip!(&joint.alignments, &joint.partitions, &separate) {
+      let ([single_alignment], [single_partition]) = (single.alignments.as_slice(), single.partitions.as_slice()) else {
+        panic!("one alignment gives one alignment result and one partition result");
       };
-      assert_same_partition(joint_result, single_result);
+      assert_same_alignment(joint_alignment, single_alignment);
+      assert_same_partition(joint_partition, single_partition);
     }
 
     let node_count = joint.graph.num_nodes();
@@ -43,9 +51,9 @@ mod tests {
 
     let separate_total = separate
       .iter()
-      .map(|(single, _)| total_log_lh(&single.results))
+      .map(|(single, _)| total_log_lh(&single.partitions))
       .sum::<Option<f64>>();
-    match (total_log_lh(&joint.results), separate_total) {
+    match (total_log_lh(&joint.partitions), separate_total) {
       (Some(joint_total), Some(separate_total)) => {
         pretty_assert_abs_diff_eq!(separate_total, joint_total, epsilon = 1e-10);
       },
@@ -66,7 +74,7 @@ mod tests {
     use crate::cancel::NoopCancel;
     use crate::gtr::get_gtr::GtrModel;
     use crate::partition::marginal::sample::SampleMode;
-    use crate::partition::result::PartitionResult;
+    use crate::partition::result::{AlignmentResult, PartitionResult};
     use crate::progress::NoopProgress;
     use crate::seq::sink::SeqStream;
     use crate::seq::sink::{SeqItem, SeqSink, SeqTrack};
@@ -118,7 +126,6 @@ mod tests {
         .collect::<Result<Vec<_>, Report>>()?;
       let params = AncestralParams {
         method,
-        model: GtrModel::Infer,
         dense,
         include_leaves: true,
         report_ambiguous: true,
@@ -129,7 +136,7 @@ mod tests {
       let mut sink = TrackSink::default();
       let output = run(
         &params,
-        ancestral_input_for_tree(parse, sources),
+        ancestral_input_for_tree(parse, sources, &GtrModel::Infer)?,
         Some(SeqStream::new(&mut sink, &names)),
         &NoopCancel,
         &NoopProgress,
@@ -138,10 +145,10 @@ mod tests {
       Ok((output, sink.tracks))
     }
 
-    pub(super) fn assert_same_partition(joint: &PartitionResult, single: &PartitionResult) {
+    pub(super) fn assert_same_alignment(joint: &AlignmentResult, single: &AlignmentResult) {
       assert_eq!(
-        (&single.path, single.length, &single.mask, single.model_name),
-        (&joint.path, joint.length, &joint.mask, joint.model_name)
+        (&single.path, single.length, &single.mask, single.indel_rate),
+        (&joint.path, joint.length, &joint.mask, joint.indel_rate)
       );
       let joint_sequences = joint.sequences.as_ref().expect("ancestral returns sequences");
       let single_sequences = single.sequences.as_ref().expect("ancestral returns sequences");
@@ -150,6 +157,13 @@ mod tests {
       assert_eq!(
         single_sequences.edge_mutation_counts,
         joint_sequences.edge_mutation_counts
+      );
+    }
+
+    pub(super) fn assert_same_partition(joint: &PartitionResult, single: &PartitionResult) {
+      assert_eq!(
+        (single.sites, single.model_name, &single.name),
+        (joint.sites, joint.model_name, &joint.name)
       );
       let model = |result: &PartitionResult| {
         result

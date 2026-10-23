@@ -15,6 +15,7 @@ use treetime::ancestral::pipeline::run;
 use treetime::cancel::NoopCancel;
 use treetime::gtr::get_gtr::{GtrModel, JC69Params};
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::partition::split::SequenceInput;
 use treetime::progress::NoopProgress;
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource, pair_leaf_sequences};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqStream};
@@ -38,7 +39,6 @@ fn benchmark_marginal_scaling(criterion: &mut Criterion) {
 
   let params = AncestralParams {
     method: MethodAncestral::Marginal,
-    model: GtrModel::JC69(JC69Params::default()),
     dense: Some(false),
     include_leaves: false,
     report_ambiguous: true,
@@ -103,13 +103,17 @@ fn setup() -> (AncestralInput, NodeNames) {
       .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
       .collect(),
     graph: nwk_parsed.graph,
-    sources: vec![SequenceSource {
-      path: project_root.join("data/flu/h3n2/200/aln.fasta.xz"),
-      alphabet,
-      length,
-      nodes: sequences.nodes,
-      mask,
-    }],
+    sequences: SequenceInput::whole_alignments(
+      vec![SequenceSource {
+        path: project_root.join("data/flu/h3n2/200/aln.fasta.xz"),
+        alphabet,
+        length,
+        nodes: sequences.nodes,
+        mask,
+      }],
+      &GtrModel::JC69(JC69Params::default()),
+    )
+    .unwrap(),
   };
   (input, names)
 }

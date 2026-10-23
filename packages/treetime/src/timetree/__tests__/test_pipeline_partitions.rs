@@ -42,7 +42,9 @@ mod tests {
     use crate::error::OperationError;
     use crate::optimize::partition_rates::PartitionRates;
     use crate::progress::NoopProgress;
-    use crate::test_utils::{TestDataset, dates_by_node, leaf_seq_inputs, marginal_timetree_params, sequence_source};
+    use crate::test_utils::{
+      TestDataset, dates_by_node, jc69_timetree_sequences, leaf_seq_inputs, marginal_timetree_params, sequence_source,
+    };
     use crate::timetree::params::TimetreeParams;
     use crate::timetree::pipeline::{TimetreeInput, run};
     use eyre::Report;
@@ -82,7 +84,7 @@ mod tests {
       let input = TimetreeInput {
         graph: parse.graph,
         names,
-        sources,
+        sequences: jc69_timetree_sequences(sources)?,
         dates: Some(dates),
         branch_lengths: parse.branch_lengths,
       };
@@ -104,7 +106,7 @@ mod tests {
         .map(|(key, date)| (key, date.expect("every node of a timetree has a date")))
         .collect();
       let log_lh = output
-        .results
+        .partitions
         .iter()
         .map(|result| result.log_lh.map(LogLh::value))
         .sum::<Option<f64>>()
@@ -112,8 +114,8 @@ mod tests {
       Ok(Timetree {
         edges,
         node_dates,
-        total_length: output.results.iter().map(|result| result.length).sum(),
-        numbers: output.results.iter().map(|result| result.number).collect(),
+        total_length: output.alignments.iter().map(|result| result.length).sum(),
+        numbers: output.alignments.iter().map(|result| result.number).collect(),
         log_lh,
       })
     }

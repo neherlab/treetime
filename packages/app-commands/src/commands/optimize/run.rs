@@ -13,7 +13,8 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::cancel::Cancel;
 use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
-use treetime::partition::result::PartitionSequences;
+use treetime::partition::result::AlignmentSequences;
+use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
@@ -39,10 +40,13 @@ pub fn run_optimize(
   let branch_lengths = nwk_parsed.branch_lengths;
   let SequenceSources { alignments, partitions } = args.sequences.read_partitions(&args.model, &graph, &names, log)?;
   log_partitions(&partitions, log);
-  let sources = alignments.into_iter().map(|source| source.source).collect();
+  let sequences = SequenceInput {
+    alignments: alignments.into_iter().map(|source| source.source).collect(),
+    partitions,
+  };
+  sequences.reject_split_alignments()?;
 
   let params = OptimizeParams {
-    model: args.model.clone(),
     dense: args.dense,
     initial_guess: args.initial_branch_lengths,
     reroot_spec: args
@@ -56,18 +60,19 @@ pub fn run_optimize(
   let input = OptimizeInput {
     graph,
     names,
-    sources,
+    sequences,
     branch_lengths,
   };
 
   let output = pipeline::run(&params, input, cancel, stages, log).map_err(|err| err.into_report())?;
   let pipeline::OptimizeOutput {
     mut graph,
-    mut results,
+    alignments: mut results,
+    partitions,
     branch_lengths,
     names,
   } = output;
-  let models = partition_models(&results, None);
+  let models = partition_models(&partitions, &results, None)?;
   let maps = results
     .iter_mut()
     .map(|result| {
@@ -154,10 +159,10 @@ struct OptimizeTrees<'a> {
 
 fn optimize_output_maps(
   graph: &Graph,
-  sequences: PartitionSequences,
+  sequences: AlignmentSequences,
   filter: UnknownMutationFilter,
 ) -> Result<OptimizeOutputMaps, Report> {
-  let PartitionSequences {
+  let AlignmentSequences {
     root_sequence,
     edge_mutations,
     edge_mutation_counts,

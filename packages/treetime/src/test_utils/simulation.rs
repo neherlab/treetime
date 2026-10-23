@@ -2,10 +2,11 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::gtr::get_gtr::GtrModel;
 use crate::gtr::gtr::{GTR, Mu};
 use crate::optimize::pipeline::OptimizeInput;
+use crate::partition::split::SequenceInput;
 use crate::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use crate::test_utils::{leaf_seq_inputs, marginal_timetree_params, sequence_source};
 use crate::timetree::params::TimetreeParams;
-use crate::timetree::pipeline::TimetreeInput;
+use crate::timetree::pipeline::{TimetreeInput, TimetreeSequences};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use ndarray::aview1;
@@ -65,7 +66,6 @@ pub(crate) fn timetree_cell(seed: u64) -> Result<CaseSpec, Report> {
 
 pub(crate) fn timetree_cell_params() -> TimetreeParams {
   TimetreeParams {
-    model: GtrModel::Infer,
     keep_root: true,
     clock_filter: 0.0,
     max_iter: 2,
@@ -133,7 +133,7 @@ impl SimulatedCase {
   pub(crate) fn timetree_cell_input(&self, columns: usize) -> Result<TimetreeInput, Report> {
     let sequences = first_columns(&self.sequences.sequences, columns)?;
     let branch_lengths = realized(&self.tree.graph, &sequences)?;
-    timetree_input(&self.tree, &sequences, &branch_lengths)
+    timetree_input(&self.tree, &sequences, &branch_lengths, &GtrModel::Infer)
   }
 }
 
@@ -196,11 +196,12 @@ pub(crate) fn timetree_input(
   tree: &SimulatedTree,
   sequences: &BTreeMap<GraphNodeKey, Seq>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  model: &GtrModel,
 ) -> Result<TimetreeInput, Report> {
   Ok(TimetreeInput {
     graph: copy_graph(&tree.graph)?,
     names: tree.names.clone(),
-    sources: vec![simulated_sequence_source(&tree.graph, &tree.names, sequences)?],
+    sequences: TimetreeSequences::Alignments(simulated_sequence_input(tree, sequences, model)?),
     dates: Some(exact_tip_dates(tree)),
     branch_lengths: edge_lengths(&tree.graph, branch_lengths)?,
   })
@@ -210,11 +211,12 @@ pub(crate) fn optimize_input(
   tree: &SimulatedTree,
   sequences: &BTreeMap<GraphNodeKey, Seq>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  model: &GtrModel,
 ) -> Result<OptimizeInput, Report> {
   Ok(OptimizeInput {
     graph: copy_graph(&tree.graph)?,
     names: tree.names.clone(),
-    sources: vec![simulated_sequence_source(&tree.graph, &tree.names, sequences)?],
+    sequences: simulated_sequence_input(tree, sequences, model)?,
     branch_lengths: edge_lengths(&tree.graph, branch_lengths)?,
   })
 }
@@ -223,6 +225,7 @@ pub(crate) fn ancestral_input(
   tree: &SimulatedTree,
   sequences: &BTreeMap<GraphNodeKey, Seq>,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  model: &GtrModel,
 ) -> Result<AncestralInput, Report> {
   Ok(AncestralInput {
     graph: copy_graph(&tree.graph)?,
@@ -230,8 +233,19 @@ pub(crate) fn ancestral_input(
       .into_iter()
       .map(|(edge, branch_length)| (edge, EdgeSeqInput { branch_length }))
       .collect(),
-    sources: vec![simulated_sequence_source(&tree.graph, &tree.names, sequences)?],
+    sequences: simulated_sequence_input(tree, sequences, model)?,
   })
+}
+
+fn simulated_sequence_input(
+  tree: &SimulatedTree,
+  sequences: &BTreeMap<GraphNodeKey, Seq>,
+  model: &GtrModel,
+) -> Result<SequenceInput, Report> {
+  SequenceInput::whole_alignments(
+    vec![simulated_sequence_source(&tree.graph, &tree.names, sequences)?],
+    model,
+  )
 }
 
 pub(crate) fn match_internal_nodes(
@@ -515,6 +529,7 @@ fn zero_spread_p_value(side: BoundSide, mean: f64, bound: f64) -> f64 {
 #[cfg(test)]
 mod tests {
   use crate::cancel::NoopCancel;
+  use crate::gtr::get_gtr::GtrModel;
   use crate::progress::NoopProgress;
   use crate::test_utils::{
     CaseSpec, ModelFamily, SimulatedCase, TIMETREE_CELL_LENGTH, TIMETREE_CELL_MU, TIMETREE_CELL_TC, ancestral_input,
@@ -526,7 +541,7 @@ mod tests {
   use crate::timetree::params::TimetreeParams;
   use crate::timetree::pipeline;
   use eyre::Report;
-  use helpers::{Margins, leaves_with_sequence, simulated_tree_from_newick};
+  use helpers::{Margins, leaves_with_sequence, simulated_tree_from_newick, timetree_alignments};
   use itertools::{Itertools, izip};
   use maplit::btreemap;
   use ndarray::array;
@@ -589,7 +604,10 @@ mod tests {
     assert_eq!(Some(exact_tip_dates(&case.tree)), input.dates);
     assert_eq!(
       (500, 20),
-      (input.sources[0].length, leaves_with_sequence(&input.sources[0]))
+      (
+        timetree_alignments(&input)[0].length,
+        leaves_with_sequence(&timetree_alignments(&input)[0])
+      )
     );
     Ok(())
   }
@@ -604,16 +622,20 @@ mod tests {
     let sequences = &case.sequences.sequences;
     let lengths = exact(&case.tree.edge_durations(), &case.model)?;
 
-    let timetree = timetree_input(&case.tree, sequences, &lengths)?;
-    let optimize = optimize_input(&case.tree, sequences, &lengths)?;
-    let ancestral = ancestral_input(&case.tree, sequences, &lengths)?;
+    let timetree = timetree_input(&case.tree, sequences, &lengths, &GtrModel::Infer)?;
+    let optimize = optimize_input(&case.tree, sequences, &lengths, &GtrModel::Infer)?;
+    let ancestral = ancestral_input(&case.tree, sequences, &lengths, &GtrModel::Infer)?;
 
     let expected = lengths
       .into_iter()
       .map(|(edge, length)| (edge, Some(length)))
       .collect::<BTreeMap<_, _>>();
-    let leaf_counts =
-      [&timetree.sources, &optimize.sources, &ancestral.sources].map(|sources| leaves_with_sequence(&sources[0]));
+    let leaf_counts = [
+      timetree_alignments(&timetree),
+      optimize.sequences.alignments.as_slice(),
+      ancestral.sequences.alignments.as_slice(),
+    ]
+    .map(|sources| leaves_with_sequence(&sources[0]));
     assert_eq!(expected, timetree.branch_lengths);
     assert_eq!(expected, optimize.branch_lengths);
     assert_eq!(expected, ancestral.branch_lengths());
@@ -895,6 +917,7 @@ mod tests {
   mod helpers {
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{MeanCheck, recovery_check, upper_recovery_check};
+    use crate::timetree::pipeline::{TimetreeInput, TimetreeSequences};
     use eyre::Report;
     use std::collections::BTreeMap;
     use treetime_io::nwk::nwk_read;
@@ -917,6 +940,13 @@ mod tests {
 
     pub(super) fn leaves_with_sequence(source: &SequenceSource) -> usize {
       source.nodes.values().filter(|node| node.seq.is_some()).count()
+    }
+
+    pub(super) fn timetree_alignments(input: &TimetreeInput) -> &[SequenceSource] {
+      match &input.sequences {
+        TimetreeSequences::Alignments(sequences) => &sequences.alignments,
+        TimetreeSequences::Length(_) => &[],
+      }
     }
 
     pub(super) fn simulated_tree_from_newick(newick: &str) -> Result<SimulatedTree, Report> {

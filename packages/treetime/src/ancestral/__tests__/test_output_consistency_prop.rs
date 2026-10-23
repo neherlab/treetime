@@ -7,7 +7,7 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::result::PartitionSequences;
+  use crate::partition::result::AlignmentSequences;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::{SequenceSource, pair_leaf_sequences};
   use crate::seq::mutation::MutationEvent;
@@ -44,7 +44,6 @@ mod tests {
       let (method, dense, sample_from_profile) = RECONSTRUCTIONS[reconstruction];
       let params = AncestralParams {
         method,
-        model: GtrModel::JC69(JC69Params::default()),
         dense,
         include_leaves,
         report_ambiguous: true,
@@ -55,7 +54,7 @@ mod tests {
       let (sink, output) =
         helpers::run_recorded(&input, &params).map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
       let graph = &output.graph;
-      let [result] = output.results.as_slice() else {
+      let [result] = output.alignments.as_slice() else {
         return Err(TestCaseError::fail("one alignment gives one result"));
       };
       let sequences = result.sequences.as_ref().ok_or_else(|| TestCaseError::fail("no sequences"))?;
@@ -104,7 +103,7 @@ mod tests {
         nodes: sequences.nodes,
         mask,
       };
-      let ancestral_input = ancestral_input_for_tree(nwk_parsed, vec![source]);
+      let ancestral_input = ancestral_input_for_tree(nwk_parsed, vec![source], &GtrModel::JC69(JC69Params::default()))?;
       let mut sink = RecordingSeqSink::default();
       let output = run(
         params,
@@ -120,7 +119,7 @@ mod tests {
 
     pub(super) fn apply_substitutions(
       parent: &Seq,
-      sequences: &PartitionSequences,
+      sequences: &AlignmentSequences,
       edge_key: GraphEdgeKey,
     ) -> Result<Seq, TestCaseError> {
       let mut rebuilt = parent.clone();

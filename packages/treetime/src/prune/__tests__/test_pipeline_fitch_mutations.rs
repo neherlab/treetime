@@ -2,7 +2,8 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::cancel::NoopCancel;
-  use crate::partition::result::PartitionSequences;
+  use crate::partition::resolve::resolve_partition_layouts;
+  use crate::partition::result::AlignmentSequences;
   use crate::progress::NoopProgress;
   use crate::prune::pipeline::{PruneInput, PruneOutput, PruneParams, run};
   use crate::seq::alignment::SequenceSource;
@@ -77,7 +78,8 @@ mod tests {
       let input = PruneInput {
         graph: parsed.graph,
         names,
-        sources: vec![source],
+        layouts: resolve_partition_layouts(&[], &[source.length])?.layouts,
+        alignments: vec![source],
         branch_lengths: parsed.branch_lengths,
       };
       run(&params, input, &NoopCancel, &NoopProgress).map_err(|err| err.into_report())
@@ -98,8 +100,8 @@ mod tests {
         .try_collect()
     }
 
-    pub(super) fn only_sequences(output: &PruneOutput) -> &PartitionSequences {
-      let [result] = output.results.as_slice() else {
+    pub(super) fn only_sequences(output: &PruneOutput) -> &AlignmentSequences {
+      let [result] = output.alignments.as_slice() else {
         panic!("one alignment gives one result");
       };
       result.sequences.as_ref().expect("prune with sequences returns them")

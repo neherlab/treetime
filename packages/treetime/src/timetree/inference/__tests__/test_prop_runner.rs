@@ -146,6 +146,7 @@ mod tests {
         gtr: jc69(JC69Params::default())?,
         node_states: BTreeMap::new(),
         edges: MarginalEdges::default(),
+        layout: None,
       }]);
       let branch_model = BranchModel::Marginal(
         partition

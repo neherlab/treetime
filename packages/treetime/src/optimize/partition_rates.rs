@@ -1,4 +1,5 @@
 use crate::branch_lengths::branch_lengths_or_zero;
+use crate::gtr::gtr::GTR;
 use crate::optimize::indel::EdgeIndels;
 use crate::partition::set::PartitionSet;
 use crate::progress::LogSink;
@@ -72,10 +73,25 @@ pub(crate) fn normalize_partition_rates(
   indels: Option<&mut EdgeIndels>,
 ) -> Result<(), Report> {
   let mut partitions = partitions.lengths_and_gtrs_mut();
+  let Some(total_average) = scale_rates_to_unit_mean(&mut partitions)? else {
+    return Ok(());
+  };
+
+  for value in branch_lengths.values_mut().flatten() {
+    *value *= total_average;
+  }
+
+  if let Some(indels) = indels {
+    indels.divide_rates(total_average);
+  }
+  Ok(())
+}
+
+pub(crate) fn scale_rates_to_unit_mean(partitions: &mut [(usize, &mut GTR)]) -> Result<Option<f64>, Report> {
   let total_length: usize = partitions.iter().map(|(length, _)| *length).sum();
 
   if total_length == 0 {
-    return Ok(());
+    return Ok(None);
   }
 
   let weighted_rate: f64 = partitions
@@ -86,19 +102,11 @@ pub(crate) fn normalize_partition_rates(
   let total_average = weighted_rate / total_length.to_f64_exact();
 
   if total_average == 0.0 {
-    return Ok(());
+    return Ok(None);
   }
 
-  for (_, gtr) in &mut partitions {
+  for (_, gtr) in partitions.iter_mut() {
     gtr.set_mu(gtr.mu() / total_average)?;
   }
-
-  for value in branch_lengths.values_mut().flatten() {
-    *value *= total_average;
-  }
-
-  if let Some(indels) = indels {
-    indels.divide_rates(total_average);
-  }
-  Ok(())
+  Ok(Some(total_average))
 }

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
-use crate::ancestral::plan::{ReconstructionOptions, ReconstructionPlan, reconstruct_partition};
+use crate::ancestral::plan::{ReconstructionMethod, ReconstructionOptions, reconstruct_partition};
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
@@ -61,13 +61,10 @@ pub fn reconstruct_aa(
     validate_cds_length(&name, annotation.as_ref(), alignment_length)?;
     let unknown = alphabet.unknown();
     let node_inputs = nodes;
-    let plan = ReconstructionPlan::Marginal {
-      representation,
-      model: GtrModel::from(gtr_model),
-    };
     let partition = reconstruct_partition(
       graph,
-      &plan,
+      ReconstructionMethod::Marginal(representation),
+      &GtrModel::from(gtr_model),
       InferredRate::Fitted,
       alphabet,
       node_inputs,

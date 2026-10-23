@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::ancestral::mask::create_mask;
 use crate::error::input_error;
+use crate::partition::split::SequenceInput;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -16,7 +17,7 @@ use treetime_primitives::{AlignmentRecord, Seq};
 pub struct AncestralInput {
   pub graph: Graph,
   pub edges: BTreeMap<GraphEdgeKey, EdgeSeqInput>,
-  pub sources: Vec<SequenceSource>,
+  pub sequences: SequenceInput,
 }
 
 impl AncestralInput {

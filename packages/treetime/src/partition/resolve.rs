@@ -141,6 +141,19 @@ pub struct PartitionLayout {
 }
 
 impl PartitionLayout {
+  pub fn whole(number: usize, length: usize) -> Self {
+    Self {
+      number,
+      name: None,
+      alignment: number,
+      columns: (0..length).collect(),
+    }
+  }
+
+  pub fn covers(&self, length: usize) -> bool {
+    self.columns.len() == length
+  }
+
   pub fn label(&self) -> String {
     partition_label(self.number, self.name.as_deref())
   }
@@ -165,12 +178,7 @@ fn whole_alignment_layouts(lengths: &[usize]) -> Result<ResolvedLayouts, Report>
       if length == 0 {
         return layout_error(format!("alignment {number} has no sites"));
       }
-      Ok(PartitionLayout {
-        number,
-        name: None,
-        alignment: number,
-        columns: (0..length).collect(),
-      })
+      Ok(PartitionLayout::whole(number, length))
     })
     .try_collect()?;
   Ok(ResolvedLayouts {

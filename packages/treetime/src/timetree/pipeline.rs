@@ -1,3 +1,4 @@
+use crate::alphabet::alphabet::AlphabetName;
 use crate::branch_lengths::branch_length_or_zero;
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
@@ -11,13 +12,16 @@ use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regres
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::coalescent::population_size::effective_population_size;
 use crate::error::OperationError;
+use crate::gtr::get_gtr::{GtrModel, GtrModelName};
 use crate::optimize::partition_rates::fix_equal_rates;
 use crate::partition::create::Representation;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
-use crate::partition::result::{PartitionResult, PartitionSequences, PartitionSource};
+use crate::partition::result::{
+  AlignmentResult, AlignmentSequences, PartitionOutcome, PartitionResult, alignment_results,
+};
 use crate::partition::set::build_partition_set;
+use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
-use crate::seq::alignment::SequenceSource;
 use crate::seq::sink::{SeqSink, SeqStream, SeqTrack};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
@@ -63,21 +67,21 @@ pub fn run(
   validate_params(params, seq_sink.is_some())?;
   let TimetreeInput {
     graph,
-    sources,
+    sequences,
     dates,
     branch_lengths,
     mut names,
   } = input;
-  let alignment_length = (!sources.is_empty()).then(|| sources.iter().map(|source| source.length).sum());
-  let context = prepare_inputs(params, &graph, alignment_length, dates.as_ref(), log)?;
+  let context = prepare_inputs(params, &graph, &sequences, dates.as_ref(), log)?;
 
   cancel.check().map_err(OperationError::classify)?;
   stages.report("Clock regression", 0.1, "");
   let (graph, branch_lengths, clock_fit) =
     estimate_initial_clock(params, &context, graph, &mut names, branch_lengths, log)
       .map_err(OperationError::classify)?;
-  let has_alignment = !sources.is_empty();
-  let (sources, branch_model) = initialize_branch_model(params, &context, &graph, &branch_lengths, sources, log)?;
+  let has_alignment = matches!(sequences, TimetreeSequences::Alignments(_));
+  let (alignments, model_names, branch_model) =
+    initialize_branch_model(params, &context, &graph, &branch_lengths, sequences, log)?;
   let pre_loop_inputs = PreLoopInputs {
     params,
     context: &context,
@@ -116,7 +120,8 @@ pub fn run(
   let final_inputs = FinalInputs {
     params,
     context: &context,
-    sources,
+    alignments,
+    model_names,
   };
   assemble_output(final_inputs, seq_sink, initial.outliers, dates, results, log)
 }
@@ -139,7 +144,7 @@ fn assemble_output(
     time_inference,
     ..
   } = results.state;
-  let partition_results = final_partition_results(
+  let (alignments, partitions) = final_partition_results(
     inputs,
     seq_sink.map(|sink| SeqStream::new(sink, &names)),
     &graph,
@@ -161,7 +166,8 @@ fn assemble_output(
     clock_regression: results.clock_regression,
     confidence_intervals: results.confidence_intervals,
     dates,
-    results: partition_results,
+    alignments,
+    partitions,
     coalescent: results.coalescent_output,
     branch_lengths,
     date_branch_lengths,
@@ -177,7 +183,7 @@ fn assemble_output(
 pub struct TimetreeInput {
   pub graph: Graph,
   pub names: NodeNames,
-  pub sources: Vec<SequenceSource>,
+  pub sequences: TimetreeSequences,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
 }
@@ -194,9 +200,21 @@ pub struct TimetreeOutput {
   pub clock_model: ClockModel,
   pub clock_regression: Vec<ClockRegressionResult>,
   pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
-  pub results: Vec<PartitionResult>,
+  pub alignments: Vec<AlignmentResult>,
+  pub partitions: Vec<PartitionResult>,
   pub coalescent: Option<CoalescentOutput>,
   pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
+}
+
+pub enum TimetreeSequences {
+  Alignments(SequenceInput),
+  Length(SequenceLength),
+}
+
+pub struct SequenceLength {
+  pub length: Option<usize>,
+  pub model: GtrModel,
+  pub alphabet: Option<AlphabetName>,
 }
 
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
@@ -217,7 +235,7 @@ fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), Op
 fn prepare_inputs(
   params: &TimetreeParams,
   graph: &Graph,
-  alignment_length: Option<usize>,
+  sequences: &TimetreeSequences,
   dates: Option<&BTreeMap<GraphNodeKey, DateConstraint>>,
   log: &dyn LogSink,
 ) -> Result<TimetreeContext, OperationError> {
@@ -226,18 +244,25 @@ fn prepare_inputs(
     params.branch_length_mode, params.keep_root
   );
 
-  let sequence_length = match alignment_length {
-    Some(length) => length,
-    None if params.branch_length_mode == BranchLengthMode::Marginal => {
+  let sequence_length = match sequences {
+    TimetreeSequences::Alignments(input) if !input.is_empty() => input.total_length(),
+    _ if params.branch_length_mode == BranchLengthMode::Marginal => {
       return Err(OperationError::InvalidInput(make_report!(
         "Alignment required for marginal reconstruction"
       )));
     },
-    None => params.sequence_length.filter(|&length| length > 0).ok_or_else(|| {
-      OperationError::InvalidParams(make_report!(
-        "--sequence-length is required without an alignment: the time inference needs the sequence length"
-      ))
-    })?,
+    TimetreeSequences::Alignments(_) => {
+      return Err(OperationError::InvalidInput(make_report!(
+        "The sequence input of the time inference has no alignment"
+      )));
+    },
+    TimetreeSequences::Length(SequenceLength { length, .. }) => {
+      length.filter(|&length| length > 0).ok_or_else(|| {
+        OperationError::InvalidParams(make_report!(
+          "--sequence-length is required without an alignment: the time inference needs the sequence length"
+        ))
+      })?
+    },
   };
 
   let date_constraints = if let Some(dates) = dates {
@@ -296,46 +321,40 @@ fn initialize_branch_model(
   context: &TimetreeContext,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sources: Vec<SequenceSource>,
+  sequences: TimetreeSequences,
   log: &dyn LogSink,
-) -> Result<(Vec<PartitionSource>, BranchModel), OperationError> {
+) -> Result<(Vec<AlignmentInfo>, Vec<GtrModelName>, BranchModel), OperationError> {
   match params.branch_length_mode {
     BranchLengthMode::Input => {
       progress_info!(log, "Branch length mode: Input - using tree branch lengths");
-      let model = input_branch_model(
-        &params.model,
-        params.alphabet,
-        context.sequence_length,
-        graph,
-        branch_lengths,
-        sources,
-        log,
-      )
-      .map_err(OperationError::classify)?;
-      Ok((vec![], BranchModel::Input(model)))
+      let model = input_branch_model(context.sequence_length, graph, branch_lengths, sequences, log)
+        .map_err(OperationError::classify)?;
+      Ok((vec![], vec![], BranchModel::Input(model)))
     },
     BranchLengthMode::Marginal => {
       progress_info!(
         log,
         "Branch length mode: Marginal - initializing partitions from alignment"
       );
-      if sources.is_empty() {
+      let TimetreeSequences::Alignments(input) = sequences else {
         return Err(OperationError::InvalidInput(make_report!(
           "Alignment required for marginal reconstruction"
         )));
-      }
-      let (sources, partitions) = build_partition_set(
+      };
+      let split = input.split().map_err(OperationError::classify)?;
+      let model_names = split.model_names();
+      let SplitInput { alignments, partitions } = split;
+      let partitions = build_partition_set(
         Representation::resolve(params.dense),
-        &params.model,
         graph,
-        sources,
+        partitions,
         &branch_lengths_or_zero(branch_lengths),
         log,
       )
       .map_err(OperationError::classify)?;
       let partitions =
         fix_equal_rates(graph, partitions, params.partition_rates, branch_lengths).map_err(OperationError::classify)?;
-      Ok((sources, BranchModel::Marginal(partitions)))
+      Ok((alignments, model_names, BranchModel::Marginal(partitions)))
     },
   }
 }
@@ -513,11 +532,12 @@ fn final_partition_results(
   divergence_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   final_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   log: &dyn LogSink,
-) -> Result<Vec<PartitionResult>, OperationError> {
+) -> Result<(Vec<AlignmentResult>, Vec<PartitionResult>), OperationError> {
   let FinalInputs {
     params,
     context,
-    sources,
+    alignments,
+    model_names,
   } = inputs;
   let BranchModel::Marginal(partitions) = branch_model else {
     if params.include_leaves || params.impute_missing_data {
@@ -527,7 +547,7 @@ fn final_partition_results(
          no ancestral reconstruction was performed under --branch-length-mode=input"
       );
     }
-    return Ok(vec![]);
+    return Ok((vec![], vec![]));
   };
   let partitions = match context.final_sequences {
     FinalSequences::AfterMarginalUpdate => {
@@ -543,8 +563,8 @@ fn final_partition_results(
     .indel_policy
     .edge_indels(graph, &partitions, divergence_branch_lengths)
     .partition_rates(partitions.len());
-  izip!(sources, partitions.iter(), indel_rates)
-    .map(|(source, partition, indel_rate)| {
+  let (results, outcomes): (Vec<_>, Vec<_>) = izip!(partitions.iter(), partitions.layouts(), model_names, indel_rates)
+    .map(|(partition, layout, model_name, indel_rate)| {
       let sequences = streams_sequences
         .then(|| {
           stream_final_sequences(
@@ -552,30 +572,31 @@ fn final_partition_results(
             seq_stream.as_mut().map(SeqStream::reborrow),
             graph,
             partition,
-            source.number,
+            layout.alignment,
           )
         })
         .transpose()?;
-      Ok(PartitionResult {
-        number: source.number,
-        path: source.path,
-        alphabet: partition.alphabet().clone(),
-        length: source.length,
-        mask: source.mask,
-        model_name: params.model.name(),
-        gtr: Some(partition.gtr().clone()),
+      let log_lh = partition.graph_log_lh(graph).map_err(OperationError::classify)?;
+      let result = PartitionResult::new(&layout, model_name, Some(partition.gtr().clone()), Some(log_lh));
+      let outcome = PartitionOutcome {
+        alignment: layout.alignment,
         indel_rate,
-        log_lh: Some(partition.graph_log_lh(graph).map_err(OperationError::classify)?),
         sequences,
-      })
+      };
+      Ok((result, outcome))
     })
-    .collect()
+    .collect::<Result<Vec<_>, OperationError>>()?
+    .into_iter()
+    .unzip();
+  let alignments = alignment_results(alignments, outcomes).map_err(OperationError::InferenceFailed)?;
+  Ok((alignments, results))
 }
 
 struct FinalInputs<'a> {
   params: &'a TimetreeParams,
   context: &'a TimetreeContext,
-  sources: Vec<PartitionSource>,
+  alignments: Vec<AlignmentInfo>,
+  model_names: Vec<GtrModelName>,
 }
 
 fn stream_final_sequences(
@@ -583,15 +604,15 @@ fn stream_final_sequences(
   seq_stream: Option<SeqStream<'_>>,
   graph: &Graph,
   partition: ReconstructionRef<'_>,
-  number: usize,
-) -> Result<PartitionSequences, OperationError> {
+  alignment: usize,
+) -> Result<AlignmentSequences, OperationError> {
   let mutations = partition.stream_sequences(
     graph,
     params.impute_missing_data,
-    SeqTrack::Nuc(number),
+    SeqTrack::Nuc(alignment),
     params.include_leaves,
     params.report_ambiguous,
     seq_stream,
   )?;
-  PartitionSequences::new(mutations, partition.alphabet()).map_err(OperationError::InferenceFailed)
+  AlignmentSequences::new(mutations, partition.alphabet()).map_err(OperationError::InferenceFailed)
 }

@@ -53,7 +53,6 @@ pub const ANCESTRAL_ABOUT: &str = "Reconstruct ancestral sequences and map the m
 pub fn ancestral_params(args: &TreetimeAncestralArgs, seed: u64) -> AncestralParams {
   AncestralParams {
     method: args.method_anc,
-    model: args.model.clone(),
     dense: args.dense,
     include_leaves: args.include_leaves,
     report_ambiguous: args.report_ambiguous,

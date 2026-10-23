@@ -5,19 +5,22 @@ use crate::ancestral::params::MethodAncestral;
 use crate::ancestral::partition::AncestralPartition;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
-use crate::gtr::get_gtr::GtrModel;
+use crate::gtr::get_gtr::{GtrModel, GtrModelName};
+use crate::gtr::gtr::GTR;
+use crate::optimize::partition_rates::scale_rates_to_unit_mean;
 use crate::partition::create::{Representation, build_marginal_partition};
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::inferred_rate::InferredRate;
 use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalReconstruction, SparseReconstruction};
 use crate::partition::marginal::sample::SampleMode;
 use crate::partition::marginal::shared::update::{MarginalPasses, MarginalUpdate};
-use crate::partition::result::{PartitionSource, SplitSource};
+use crate::partition::resolve::PartitionLayout;
+use crate::partition::split::{AlignmentInfo, PartitionData, SplitInput, SplitPartition};
 use crate::progress::{LogSink, StageSink};
 use crate::seq::alignment::NodeSeqInput;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
-use itertools::izip;
+use itertools::{Itertools, izip};
 use rand::Rng;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
@@ -25,7 +28,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::{make_internal_report, make_report};
 
-pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPlan, OperationError> {
+pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionMethod, OperationError> {
   if params.sample_from_profile != SampleMode::Argmax && params.method != MethodAncestral::Marginal {
     return Err(OperationError::InvalidParams(make_report!(
       "--sample-from-profile={:?} requires --method-anc=marginal. Posterior sampling is only defined \
@@ -36,12 +39,15 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
   }
 
   match params.method {
-    MethodAncestral::Parsimony => Ok(ReconstructionPlan::Fitch),
-    MethodAncestral::Marginal => Ok(ReconstructionPlan::Marginal {
-      representation: Representation::resolve(params.dense),
-      model: params.model.clone(),
-    }),
+    MethodAncestral::Parsimony => Ok(ReconstructionMethod::Fitch),
+    MethodAncestral::Marginal => Ok(ReconstructionMethod::Marginal(Representation::resolve(params.dense))),
   }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum ReconstructionMethod {
+  Fitch,
+  Marginal(Representation),
 }
 
 #[expect(
@@ -50,64 +56,128 @@ pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionPla
 )]
 pub(crate) fn reconstruct_partitions(
   graph: &Graph,
-  plan: &ReconstructionPlan,
-  sources: Vec<SplitSource>,
+  method: ReconstructionMethod,
+  input: SplitInput,
   branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
   options: &ReconstructionOptions,
   rng: &mut dyn Rng,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
-) -> Result<Vec<(PartitionSource, AncestralPartition)>, Report> {
-  let n_sources = sources.len();
-  match *plan {
-    ReconstructionPlan::Fitch => {
-      let (sources, inputs): (Vec<_>, Vec<_>) = sources
+) -> Result<Vec<ReconstructedPartition>, Report> {
+  let SplitInput { alignments, partitions } = input;
+  let (heads, inputs): (Vec<_>, Vec<_>) = partitions
+    .into_iter()
+    .map(|SplitPartition { data, model }| {
+      let PartitionData {
+        layout,
+        alphabet,
+        nodes,
+      } = data;
+      ((layout, model), (alphabet, nodes))
+    })
+    .unzip();
+  let partitions = match method {
+    ReconstructionMethod::Fitch => reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?,
+    ReconstructionMethod::Marginal(representation) => {
+      let reconstructions = build_alignment_partitions(
+        graph,
+        representation,
+        &alignments,
+        &heads,
+        inputs,
+        branch_lengths,
+        cancel,
+        stages,
+        log,
+      )?;
+      reconstructions
         .into_iter()
-        .map(
-          |SplitSource {
-             source,
-             alphabet,
-             nodes,
-           }| (source, (alphabet, nodes)),
-        )
-        .unzip();
-      let partitions = reconstruct_fitch(graph, inputs, options.impute, cancel, stages, log)?;
-      Ok(izip!(sources, partitions).collect())
+        .map(|reconstruction| {
+          checkpoint(cancel, stages, "Marginal reconstruction", 0.4)?;
+          reconstruct_marginal(graph, reconstruction, branch_lengths, options, rng, cancel, stages, log)
+        })
+        .collect::<Result<Vec<_>, Report>>()?
     },
-    ReconstructionPlan::Marginal { .. } => sources
-      .into_iter()
-      .map(
-        |SplitSource {
-           source,
-           alphabet,
-           nodes,
-         }| {
-          if n_sources > 1 {
-            progress_info!(
-              log,
-              "Partition {}: alignment '{}'",
-              source.number,
-              source.path.display()
-            );
-          }
-          let partition = reconstruct_partition(
-            graph,
-            plan,
-            InferredRate::for_separate_files(),
-            alphabet,
-            nodes,
-            branch_lengths,
-            options,
-            rng,
-            cancel,
-            stages,
-            log,
-          )?;
-          Ok((source, partition))
-        },
-      )
+  };
+  Ok(
+    izip!(heads, partitions)
+      .map(|((layout, model), partition)| ReconstructedPartition {
+        layout,
+        model_name: model.name(),
+        partition,
+      })
       .collect(),
+  )
+}
+
+pub(crate) struct ReconstructedPartition {
+  pub(crate) layout: PartitionLayout,
+  pub(crate) model_name: GtrModelName,
+  pub(crate) partition: AncestralPartition,
+}
+
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the partition inputs come from the command and the cancellation, stage and log sinks are run services of the caller; no type holds both groups"
+)]
+fn build_alignment_partitions(
+  graph: &Graph,
+  representation: Representation,
+  alignments: &[AlignmentInfo],
+  heads: &[(PartitionLayout, GtrModel)],
+  inputs: Vec<(Alphabet, BTreeMap<GraphNodeKey, NodeSeqInput>)>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  cancel: &dyn Cancel,
+  stages: &dyn StageSink,
+  log: &dyn LogSink,
+) -> Result<Vec<MarginalReconstruction>, Report> {
+  let counts = heads.iter().counts_by(|(layout, _)| layout.alignment);
+  let mut reconstructions = izip!(heads, inputs)
+    .map(|((layout, model), (alphabet, nodes))| {
+      checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
+      let alignment = &alignments[layout.alignment - 1];
+      if heads.len() > 1 {
+        progress_info!(
+          log,
+          "{}: alignment '{}'",
+          capitalized_label(layout),
+          alignment.path.display()
+        );
+      }
+      let rate = InferredRate::for_partition_count(counts[&layout.alignment]);
+      let reconstruction =
+        build_marginal_partition(representation, model, rate, graph, alphabet, nodes, branch_lengths, log)?;
+      Ok(
+        reconstruction
+          .with_layout(layout.clone())
+          .with_total_length(alignment.length),
+      )
+    })
+    .collect::<Result<Vec<_>, Report>>()?;
+  for alignment in alignments {
+    let mut inferred = izip!(heads, &mut reconstructions)
+      .filter(|((layout, model), _)| layout.alignment == alignment.number && model.is_infer())
+      .map(|((layout, _), reconstruction)| (layout.columns.len(), reconstruction_gtr(reconstruction)))
+      .collect_vec();
+    if counts[&alignment.number] > 1 {
+      scale_rates_to_unit_mean(&mut inferred)?;
+    }
+  }
+  Ok(reconstructions)
+}
+
+fn reconstruction_gtr(reconstruction: &mut MarginalReconstruction) -> &mut GTR {
+  match reconstruction {
+    MarginalReconstruction::Dense(dense) => &mut dense.gtr,
+    MarginalReconstruction::Sparse(sparse) => &mut sparse.gtr,
+  }
+}
+
+fn capitalized_label(layout: &PartitionLayout) -> String {
+  match &layout.name {
+    Some(name) => format!("Partition {} '{name}'", layout.number),
+    None => format!("Partition {}", layout.number),
   }
 }
 
@@ -117,7 +187,8 @@ pub(crate) fn reconstruct_partitions(
 )]
 pub(crate) fn reconstruct_partition(
   graph: &Graph,
-  plan: &ReconstructionPlan,
+  method: ReconstructionMethod,
+  model: &GtrModel,
   rate: InferredRate,
   alphabet: Alphabet,
   node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
@@ -128,8 +199,8 @@ pub(crate) fn reconstruct_partition(
   stages: &dyn StageSink,
   log: &dyn LogSink,
 ) -> Result<AncestralPartition, Report> {
-  match plan {
-    ReconstructionPlan::Fitch => reconstruct_fitch(
+  match method {
+    ReconstructionMethod::Fitch => reconstruct_fitch(
       graph,
       vec![(alphabet, node_inputs)],
       options.impute,
@@ -139,10 +210,10 @@ pub(crate) fn reconstruct_partition(
     )?
     .pop()
     .ok_or_else(|| make_internal_report!("Fitch reconstruction lost its partition")),
-    ReconstructionPlan::Marginal { representation, model } => {
+    ReconstructionMethod::Marginal(representation) => {
       checkpoint(cancel, stages, "Inferring GTR model", 0.2)?;
       let reconstruction = build_marginal_partition(
-        *representation,
+        representation,
         model,
         rate,
         graph,
@@ -155,15 +226,6 @@ pub(crate) fn reconstruct_partition(
       reconstruct_marginal(graph, reconstruction, branch_lengths, options, rng, cancel, stages, log)
     },
   }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum ReconstructionPlan {
-  Fitch,
-  Marginal {
-    representation: Representation,
-    model: GtrModel,
-  },
 }
 
 fn reconstruct_fitch(
@@ -237,6 +299,7 @@ fn fit_reconstruction(
       partition,
       gtr,
       node_states,
+      layout,
       ..
     }) => {
       let MarginalUpdate { node_states, edges, .. } =
@@ -246,15 +309,19 @@ fn fit_reconstruction(
         gtr,
         node_states,
         edges,
+        layout,
       })
     },
-    MarginalReconstruction::Dense(DenseReconstruction { partition, gtr, .. }) => {
+    MarginalReconstruction::Dense(DenseReconstruction {
+      partition, gtr, layout, ..
+    }) => {
       let MarginalUpdate { node_states, edges, .. } = partition.marginal_update(&gtr, graph, branch_lengths, &())?;
       MarginalReconstruction::Dense(DenseReconstruction {
         partition,
         gtr,
         node_states,
         edges,
+        layout,
       })
     },
   })

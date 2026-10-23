@@ -121,6 +121,7 @@ mod tests {
     use treetime::optimize::params::OptimizeLoopSettings;
     use treetime::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
     use treetime::optimize::pipeline::{self, OptimizeInput, OptimizeParams};
+    use treetime::partition::split::SequenceInput;
     use treetime::progress::NoopProgress;
     use treetime::seq::alignment::{SequenceSource, pair_leaf_sequences};
     use treetime_io::fasta::fasta_read_file;
@@ -139,7 +140,6 @@ mod tests {
       .collect();
 
     let params = OptimizeParams {
-      model: GtrModel::default(),
       dense: None,
       initial_guess: InitialGuessMode::default(),
       reroot_spec: None,
@@ -159,13 +159,17 @@ mod tests {
     let input = OptimizeInput {
       graph,
       names,
-      sources: vec![SequenceSource {
-        path: root.join("data/flu/h3n2/20/aln.fasta.xz"),
-        alphabet,
-        length,
-        nodes: sequences.nodes,
-        mask,
-      }],
+      sequences: SequenceInput::whole_alignments(
+        vec![SequenceSource {
+          path: root.join("data/flu/h3n2/20/aln.fasta.xz"),
+          alphabet,
+          length,
+          nodes: sequences.nodes,
+          mask,
+        }],
+        &GtrModel::default(),
+      )
+      .unwrap(),
       branch_lengths,
     };
 

@@ -8,6 +8,7 @@ mod tests {
   use crate::optimize::params::{BranchOptMethod, InitialGuessMode, TopologyOps};
   use crate::optimize::partition_rates::PartitionRates;
   use crate::optimize::pipeline::{OptimizeInput, OptimizeParams, run};
+  use crate::partition::split::SequenceInput;
   use crate::progress::NoopProgress;
   use crate::test_utils::{TestDataset, leaf_seq_inputs, sequence_source};
   use eyre::Report;
@@ -25,7 +26,6 @@ mod tests {
     let sequences = leaf_seq_inputs(&graph, &names, TestDataset::Flu20.alignment()?);
 
     let params = OptimizeParams {
-      model: GtrModel::Infer,
       dense: Some(false),
       initial_guess: InitialGuessMode::default(),
       reroot_spec: None,
@@ -42,13 +42,13 @@ mod tests {
     let input = OptimizeInput {
       graph,
       names,
-      sources: vec![sequence_source(alphabet, sequences)?],
+      sequences: SequenceInput::whole_alignments(vec![sequence_source(alphabet, sequences)?], &GtrModel::Infer)?,
       branch_lengths,
     };
 
     let output = run(&params, input, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
-    let [result] = output.results.as_slice() else {
+    let [result] = output.partitions.as_slice() else {
       panic!("one alignment gives one result");
     };
     let gtr = result.gtr.as_ref().expect("optimize fits a model");

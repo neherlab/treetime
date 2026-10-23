@@ -81,9 +81,10 @@ mod tests {
         START_PERTURBATION_SIGMA,
         &mut get_random_number_generator(perturbation_seed),
       )?;
-      let input = optimize_input(tree, &case.sequences.sequences, &start_lengths)?;
+      let jc69 = GtrModel::JC69(JC69Params::default());
+      let input = optimize_input(tree, &case.sequences.sequences, &start_lengths, &jc69)?;
       let start_input_lengths = input.branch_lengths.clone();
-      let exact_input_lengths = optimize_input(tree, &case.sequences.sequences, &exact_lengths)?.branch_lengths;
+      let exact_input_lengths = optimize_input(tree, &case.sequences.sequences, &exact_lengths, &jc69)?.branch_lengths;
       let log = RecordingLog::default();
 
       let output = run(&optimize_params(), input, &NoopCancel, &NoopProgress, &log)?;
@@ -130,7 +131,6 @@ mod tests {
 
     fn optimize_params() -> OptimizeParams {
       OptimizeParams {
-        model: GtrModel::JC69(JC69Params::default()),
         dense: Some(true),
         initial_guess: InitialGuessMode::Never,
         reroot_spec: None,

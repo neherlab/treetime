@@ -29,6 +29,7 @@ use treetime::ancestral::pipeline;
 use treetime::cancel::Cancel;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::marginal::sample::SampleMode;
+use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_warn;
 use treetime::seq::alignment::{LeafSequences, SequenceSource};
@@ -80,7 +81,12 @@ pub fn run_ancestral_reconstruction(
     .zip(1..)
     .map(|(AlignmentSource { source, descs, .. }, partition)| (source, (partition, descs)))
     .unzip();
-  let input = ancestral_input(graph, branch_lengths, sources);
+  let sequences = SequenceInput {
+    alignments: sources,
+    partitions,
+  };
+  sequences.reject_split_alignments()?;
+  let input = ancestral_input(graph, branch_lengths, sequences);
   let branch_lengths = input.branch_lengths();
 
   let topology_order = args
@@ -104,8 +110,8 @@ pub fn run_ancestral_reconstruction(
   )
   .map_err(|err| err.into_report())?;
   let mut graph = output.graph;
-  let models = partition_models(&output.results, None);
-  let mut results = output.results;
+  let models = partition_models(&output.partitions, &output.alignments, None)?;
+  let mut results = output.alignments;
   let AncestralSeqSink {
     fasta,
     mut node_sequences,

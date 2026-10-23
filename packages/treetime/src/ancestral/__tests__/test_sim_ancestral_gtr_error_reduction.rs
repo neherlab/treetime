@@ -79,7 +79,6 @@ mod tests {
     ) -> Result<GtrErrors, Report> {
       let params = AncestralParams {
         method: MethodAncestral::Marginal,
-        model: GtrModel::Infer,
         dense: Some(true),
         include_leaves: false,
         report_ambiguous: false,
@@ -87,10 +86,15 @@ mod tests {
         seed: 0,
         sample_from_profile: SampleMode::Argmax,
       };
-      let input = ancestral_input(&case.tree, &first_columns(&case.sequences.sequences, sites)?, lengths)?;
+      let input = ancestral_input(
+        &case.tree,
+        &first_columns(&case.sequences.sequences, sites)?,
+        lengths,
+        &GtrModel::Infer,
+      )?;
       let output = pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress)?;
       let gtr = output
-        .results
+        .partitions
         .iter()
         .exactly_one()
         .map_err(|error| make_report!("Expected one partition: {error}"))?

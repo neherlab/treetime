@@ -1,12 +1,12 @@
-use crate::alphabet::alphabet::AlphabetName;
 use crate::branch_lengths::{branch_lengths_or_zero, one_mutation};
 use crate::gtr::get_gtr::{GtrModel, JC69Params, log_gtr};
 use crate::partition::create::source_gtr;
 use crate::partition::inferred_rate::InferredRate;
-use crate::partition::result::{SplitSource, split_sources};
+use crate::partition::resolve::model_alphabet;
+use crate::partition::split::{PartitionData, SequenceInput, SplitInput, SplitPartition};
 use crate::progress::LogSink;
-use crate::seq::alignment::SequenceSource;
 use crate::timetree::inference::runner::GRID_POINTS;
+use crate::timetree::pipeline::{SequenceLength, TimetreeSequences};
 use argmin::core::{CostFunction, Error, Executor, TerminationReason, TerminationStatus};
 use argmin::solver::brent::BrentRoot;
 use eyre::Report;
@@ -34,25 +34,24 @@ const GRID_END_SOLVE_MAX_ITERS: u64 = 200;
 const GRID_POINTS_PER_WIDTH: f64 = 10.0;
 
 pub(crate) fn input_branch_model(
-  model: &GtrModel,
-  alphabet: Option<AlphabetName>,
   sequence_length: usize,
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sources: Vec<SequenceSource>,
+  sequences: TimetreeSequences,
   log: &dyn LogSink,
 ) -> Result<InputBranchModel, Report> {
-  let saturated_difference = if sources.is_empty() {
-    let model = if model.is_infer() {
-      &GtrModel::JC69(JC69Params::default())
-    } else {
-      model
-    };
-    let gtr = model.build(alphabet.or_else(|| model.alphabet()).unwrap_or_default())?;
-    log_gtr(&gtr, model.name(), log)?;
-    saturated_difference(gtr.pi())
-  } else {
-    sources_saturated_difference(model, graph, branch_lengths, sources, log)?
+  let saturated_difference = match sequences {
+    TimetreeSequences::Length(SequenceLength { model, alphabet, .. }) => {
+      let model = if model.is_infer() {
+        GtrModel::JC69(JC69Params::default())
+      } else {
+        model
+      };
+      let gtr = model.build(model_alphabet(&model, alphabet))?;
+      log_gtr(&gtr, model.name(), log)?;
+      saturated_difference(gtr.pi())
+    },
+    TimetreeSequences::Alignments(input) => partitions_saturated_difference(graph, branch_lengths, input, log)?,
   };
   debug!("Input branch lengths: saturated difference = {saturated_difference:.6}");
   Ok(InputBranchModel::new(sequence_length, saturated_difference))
@@ -260,31 +259,32 @@ impl InputBranchLikelihood {
   }
 }
 
-fn sources_saturated_difference(
-  model: &GtrModel,
+fn partitions_saturated_difference(
   graph: &Graph,
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  sources: Vec<SequenceSource>,
+  input: SequenceInput,
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
-  let rate = InferredRate::for_file_count(sources.len());
+  let SplitInput { partitions, .. } = input.split()?;
+  let rate = InferredRate::for_partition_count(partitions.len());
   let branch_lengths = branch_lengths_or_zero(branch_lengths);
-  let total_length: f64 = sources.iter().map(|source| source.length.to_f64_exact()).sum();
-  let weighted: f64 = split_sources(sources)
+  let total_sites: f64 = partitions
+    .iter()
+    .map(|partition| partition.data.layout.columns.len().to_f64_exact())
+    .sum();
+  let weighted: f64 = partitions
     .into_iter()
-    .map(
-      |SplitSource {
-         source,
-         alphabet,
-         nodes,
-       }|
-       -> Result<f64, Report> {
-        let gtr = source_gtr(model, rate, graph, alphabet, nodes, &branch_lengths, log)?;
-        Ok(source.length.to_f64_exact() * saturated_difference(gtr.pi()))
-      },
-    )
+    .map(|SplitPartition { data, model }| -> Result<f64, Report> {
+      let PartitionData {
+        layout,
+        alphabet,
+        nodes,
+      } = data;
+      let gtr = source_gtr(&model, rate, graph, alphabet, nodes, &branch_lengths, log)?;
+      Ok(layout.columns.len().to_f64_exact() * saturated_difference(gtr.pi()))
+    })
     .sum::<Result<f64, Report>>()?;
-  Ok(weighted / total_length)
+  Ok(weighted / total_sites)
 }
 
 struct PoissonLevel {

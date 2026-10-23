@@ -31,7 +31,7 @@ pub(crate) use marginal::{
   dense_reconstruction_mut, emitted_sequences_by_name, internal_node_keys, leaf_seq_inputs, make_nonuniform_gtr,
   marginal_update_reconstruction, node_keys, run_dense_marginal, run_dense_marginal_with_newick, run_sparse_marginal,
   run_sparse_marginal_with_newick, sequence_source, sparse_reconstruction, sparse_reconstruction_mut,
-  sparse_topology_partition, sparse_topology_partitions,
+  sparse_topology_partition, sparse_topology_partitions, whole_alignment_set,
 };
 pub(crate) use poisson_cherry::PoissonCherry;
 pub(crate) use progress::RecordingLog;
@@ -48,6 +48,6 @@ pub(crate) use simulation::{
 pub(crate) use sparse::{fitch_edge_obs, sparse_edge_obs};
 pub(crate) use timetree::{
   FullPosterior, JC69_NUCLEOTIDE_SATURATED_DIFFERENCE, constraint_expectation, empty_time_inference, full_posterior,
-  jc69_input_branch_model, marginal_timetree_params, parent_edge_key, point_coalescent_prior,
+  jc69_input_branch_model, jc69_timetree_sequences, marginal_timetree_params, parent_edge_key, point_coalescent_prior,
   point_coalescent_prior_by_key, point_date_constraints, unknown_branches,
 };

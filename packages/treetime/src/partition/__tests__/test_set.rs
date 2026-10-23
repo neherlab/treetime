@@ -86,9 +86,10 @@ mod tests {
     use crate::optimize::indel::IndelTerm;
     use crate::optimize::likelihood::evaluate_with_indels_log_lh_only;
     use crate::partition::create::Representation;
-    use crate::partition::set::{PartitionSet, build_partition_set};
-    use crate::progress::NoopProgress;
-    use crate::test_utils::{TestDataset, find_node_key_by_name, leaf_seq_inputs, parent_edge_key, sequence_source};
+    use crate::partition::set::PartitionSet;
+    use crate::test_utils::{
+      TestDataset, find_node_key_by_name, leaf_seq_inputs, parent_edge_key, sequence_source, whole_alignment_set,
+    };
     use eyre::Report;
     use indoc::indoc;
     use itertools::Itertools;
@@ -141,13 +142,12 @@ mod tests {
         .collect();
       let source = sequence_source(Alphabet::default(), leaf_seq_inputs(&graph, &names, records))?;
       let branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
-      let (_, set) = build_partition_set(
+      let set = whole_alignment_set(
         representation,
         &GtrModel::JC69(JC69Params::default()),
         &graph,
         vec![source],
         &branch_lengths,
-        &NoopProgress,
       )?;
       let (set, _) = set.marginal_update(&graph, &branch_lengths)?;
       Ok(PolytomySet {
@@ -243,13 +243,12 @@ mod tests {
         .map(|records| sequence_source(Alphabet::default(), leaf_seq_inputs(&parse.graph, &names, records)))
         .collect::<Result<Vec<_>, Report>>()?;
       let branch_lengths = branch_lengths_or_zero(&parse.branch_lengths);
-      let (_, set) = build_partition_set(
+      let set = whole_alignment_set(
         representation,
         &GtrModel::JC69(JC69Params::default()),
         &parse.graph,
         sources,
         &branch_lengths,
-        &NoopProgress,
       )?;
       let (set, _) = set.marginal_update(&parse.graph, &branch_lengths)?;
       Ok((parse.graph, set))

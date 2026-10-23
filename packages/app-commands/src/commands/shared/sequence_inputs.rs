@@ -12,6 +12,7 @@ use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leave
 use treetime::cancel::Cancel;
 use treetime::gtr::get_gtr::GtrModel;
 use treetime::partition::resolve::{PartitionEntry, PartitionPlan};
+use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
@@ -59,13 +60,17 @@ pub(crate) fn read_sequence_sources(
 pub(crate) fn ancestral_input(
   graph: Graph,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  sources: Vec<SequenceSource>,
+  sequences: SequenceInput,
 ) -> AncestralInput {
   let edges = branch_lengths
     .into_iter()
     .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
     .collect();
-  AncestralInput { graph, edges, sources }
+  AncestralInput {
+    graph,
+    edges,
+    sequences,
+  }
 }
 
 #[derive(Debug, Clone, Default, JsonSchema, Serialize, Deserialize)]

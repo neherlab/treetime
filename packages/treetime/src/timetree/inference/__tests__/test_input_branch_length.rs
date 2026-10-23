@@ -2,15 +2,20 @@
 mod tests {
   use crate::alphabet::alphabet::AlphabetName;
   use crate::gtr::get_gtr::{F81Params, GtrModel, JC69Params, Jtt92Params};
+  use crate::partition::resolve::{PartitionEntry, resolve_partitions};
+  use crate::partition::sites::SiteRange;
+  use crate::partition::split::SequenceInput;
   use crate::progress::NoopProgress;
   use crate::test_utils::JC69_NUCLEOTIDE_SATURATED_DIFFERENCE;
   use crate::timetree::inference::input_branch_length::{InputBranchLikelihood, InputBranchModel, input_branch_model};
+  use crate::timetree::pipeline::{SequenceLength, TimetreeSequences};
   use eyre::Report;
   use ndarray::array;
   use rstest::rstest;
+  use std::str::FromStr;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_grid::MaxGridPoints;
-  use treetime_utils::{pretty_assert_relative_eq, pretty_assert_ulps_eq};
+  use treetime_utils::{o, pretty_assert_relative_eq, pretty_assert_ulps_eq};
 
   const SEQUENCE_LENGTH: usize = 1000;
 
@@ -104,9 +109,10 @@ mod tests {
       pi: Some(array![0.4, 0.3, 0.2, 0.1]),
       ..F81Params::default()
     });
-    let (graph, branch_lengths, sources) = helpers::cherry(with_alignment)?;
+    let (graph, branch_lengths, source) = helpers::cherry(with_alignment)?;
+    let sequences = helpers::sequences(source, &model, None)?;
 
-    let actual = input_branch_model(&model, None, SEQUENCE_LENGTH, &graph, &branch_lengths, sources, &NoopProgress)?;
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
 
     pretty_assert_ulps_eq!(
       helpers::long_branch_variance(InputBranchModel::new(SEQUENCE_LENGTH, 0.7)),
@@ -123,17 +129,10 @@ mod tests {
   fn test_input_branch_model_named_jc69_has_the_four_state_saturation(
     #[case] with_alignment: bool,
   ) -> Result<(), Report> {
-    let (graph, branch_lengths, sources) = helpers::cherry(with_alignment)?;
+    let (graph, branch_lengths, source) = helpers::cherry(with_alignment)?;
+    let sequences = helpers::sequences(source, &GtrModel::JC69(JC69Params::default()), None)?;
 
-    let actual = input_branch_model(
-      &GtrModel::JC69(JC69Params::default()),
-      None,
-      SEQUENCE_LENGTH,
-      &graph,
-      &branch_lengths,
-      sources,
-      &NoopProgress,
-    )?;
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
 
     assert_eq!(InputBranchModel::new(SEQUENCE_LENGTH, 0.75), actual);
     Ok(())
@@ -141,17 +140,10 @@ mod tests {
 
   #[test]
   fn test_input_branch_model_without_alignment_infers_nothing_and_takes_jc69() -> Result<(), Report> {
-    let (graph, branch_lengths, sources) = helpers::cherry(false)?;
+    let (graph, branch_lengths, source) = helpers::cherry(false)?;
+    let sequences = helpers::sequences(source, &GtrModel::Infer, None)?;
 
-    let actual = input_branch_model(
-      &GtrModel::Infer,
-      None,
-      SEQUENCE_LENGTH,
-      &graph,
-      &branch_lengths,
-      sources,
-      &NoopProgress,
-    )?;
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
 
     assert_eq!(InputBranchModel::new(SEQUENCE_LENGTH, 0.75), actual);
     Ok(())
@@ -169,12 +161,50 @@ mod tests {
     #[case] alphabet: Option<AlphabetName>,
     #[case] saturated_difference: f64,
   ) -> Result<(), Report> {
-    let (graph, branch_lengths, sources) = helpers::cherry(false)?;
+    let (graph, branch_lengths, source) = helpers::cherry(false)?;
+    let sequences = helpers::sequences(source, &model, alphabet)?;
 
-    let actual = input_branch_model(&model, alphabet, SEQUENCE_LENGTH, &graph, &branch_lengths, sources, &NoopProgress)?;
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
 
     pretty_assert_ulps_eq!(
       helpers::long_branch_variance(InputBranchModel::new(SEQUENCE_LENGTH, saturated_difference)),
+      helpers::long_branch_variance(actual),
+      max_ulps = 8
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_input_branch_model_takes_the_site_weighted_saturation_of_the_partition_models() -> Result<(), Report> {
+    let (graph, branch_lengths, source) = helpers::cherry(true)?;
+    let entries = vec![
+      PartitionEntry {
+        name: Some(o!("f81")),
+        alignment: None,
+        sites: Some(vec![SiteRange::from_str("1-4")?]),
+        model: GtrModel::F81(F81Params {
+          pi: Some(array![0.4, 0.3, 0.2, 0.1]),
+          ..F81Params::default()
+        }),
+      },
+      PartitionEntry {
+        name: Some(o!("jc69")),
+        alignment: None,
+        sites: None,
+        model: GtrModel::JC69(JC69Params::default()),
+      },
+    ];
+    let source = source.expect("the cherry has an alignment");
+    let partitions = resolve_partitions(&entries, &[source.length], &GtrModel::Infer, None)?.plans;
+    let sequences = TimetreeSequences::Alignments(SequenceInput {
+      alignments: vec![source],
+      partitions,
+    });
+
+    let actual = input_branch_model(SEQUENCE_LENGTH, &graph, &branch_lengths, sequences, &NoopProgress)?;
+
+    pretty_assert_ulps_eq!(
+      helpers::long_branch_variance(InputBranchModel::new(SEQUENCE_LENGTH, (4.0 * 0.7 + 6.0 * 0.75) / 10.0)),
       helpers::long_branch_variance(actual),
       max_ulps = 8
     );
@@ -194,22 +224,37 @@ mod tests {
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
 
-    type Cherry = (Graph, BTreeMap<GraphEdgeKey, Option<f64>>, Vec<SequenceSource>);
+    type Cherry = (Graph, BTreeMap<GraphEdgeKey, Option<f64>>, Option<SequenceSource>);
 
     pub(super) fn cherry(with_alignment: bool) -> Result<Cherry, Report> {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;
-      let sources = if with_alignment {
+      let source = if with_alignment {
         let alphabet = Alphabet::new(AlphabetName::Nuc)?;
         let aln = fasta_read(b">A\nACGTACGTAC\n>B\nACGTTCGTAA\n".as_slice(), &alphabet)?
           .into_iter()
           .map(AlignmentRecord::from)
           .collect();
         let nodes = leaf_seq_inputs(&nwk_parsed.graph, &nwk_parsed.names, aln);
-        vec![sequence_source(alphabet, nodes)?]
+        Some(sequence_source(alphabet, nodes)?)
       } else {
-        vec![]
+        None
       };
-      Ok((nwk_parsed.graph, nwk_parsed.branch_lengths, sources))
+      Ok((nwk_parsed.graph, nwk_parsed.branch_lengths, source))
+    }
+
+    pub(super) fn sequences(
+      source: Option<SequenceSource>,
+      model: &GtrModel,
+      alphabet: Option<AlphabetName>,
+    ) -> Result<TimetreeSequences, Report> {
+      Ok(match source {
+        Some(source) => TimetreeSequences::Alignments(SequenceInput::whole_alignments(vec![source], model)?),
+        None => TimetreeSequences::Length(SequenceLength {
+          length: Some(SEQUENCE_LENGTH),
+          model: model.clone(),
+          alphabet,
+        }),
+      })
     }
 
     pub(super) fn long_branch_variance(model: InputBranchModel) -> f64 {

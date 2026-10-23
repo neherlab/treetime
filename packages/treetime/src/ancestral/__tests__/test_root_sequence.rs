@@ -6,7 +6,7 @@ mod tests {
   use crate::cancel::NoopCancel;
   use crate::gtr::get_gtr::{GtrModel, JC69Params};
   use crate::partition::marginal::sample::SampleMode;
-  use crate::partition::result::PartitionSequences;
+  use crate::partition::result::AlignmentSequences;
   use crate::progress::NoopProgress;
   use crate::seq::alignment::SequenceSource;
   use crate::seq::mutation::MutationEvent;
@@ -107,10 +107,9 @@ mod tests {
         length,
         mask: vec![false; length],
       };
-      let input = ancestral_input_for_tree(parse, vec![source]);
+      let input = ancestral_input_for_tree(parse, vec![source], &GtrModel::JC69(JC69Params::default()))?;
       let params = AncestralParams {
         method,
-        model: GtrModel::JC69(JC69Params::default()),
         dense,
         include_leaves: true,
         report_ambiguous: true,
@@ -131,8 +130,8 @@ mod tests {
       Ok((output, emitted))
     }
 
-    pub(super) fn sequences(output: &AncestralOutput) -> &PartitionSequences {
-      let [result] = output.results.as_slice() else {
+    pub(super) fn sequences(output: &AncestralOutput) -> &AlignmentSequences {
+      let [result] = output.alignments.as_slice() else {
         panic!("one alignment gives one result");
       };
       result

@@ -2,9 +2,8 @@
 mod tests {
   use crate::ancestral::params::AncestralParams;
   use crate::ancestral::params::MethodAncestral;
-  use crate::ancestral::plan::{ReconstructionPlan, resolve_plan};
+  use crate::ancestral::plan::{ReconstructionMethod, resolve_plan};
   use crate::error::OperationError;
-  use crate::gtr::get_gtr::{GtrModel, HKY85Params};
   use crate::partition::create::Representation;
   use crate::partition::marginal::sample::SampleMode;
   use pretty_assertions::assert_eq;
@@ -13,7 +12,7 @@ mod tests {
   #[test]
   fn test_plan_parsimony_resolves_to_fitch() {
     let params = helpers::params(MethodAncestral::Parsimony);
-    assert!(matches!(resolve_plan(&params), Ok(ReconstructionPlan::Fitch)));
+    assert!(matches!(resolve_plan(&params), Ok(ReconstructionMethod::Fitch)));
   }
 
   #[rustfmt::skip]
@@ -27,26 +26,10 @@ mod tests {
       dense,
       ..helpers::params(MethodAncestral::Marginal)
     };
-    let Ok(ReconstructionPlan::Marginal { representation, .. }) = resolve_plan(&params) else {
+    let Ok(ReconstructionMethod::Marginal(representation)) = resolve_plan(&params) else {
       panic!("marginal method must resolve to a marginal plan");
     };
     assert_eq!(expected_dense, matches!(representation, Representation::Dense));
-  }
-
-  #[test]
-  fn test_plan_marginal_keeps_model() {
-    let expected = GtrModel::HKY85(HKY85Params {
-      kappa: 4.0,
-      ..HKY85Params::default()
-    });
-    let params = AncestralParams {
-      model: expected.clone(),
-      ..helpers::params(MethodAncestral::Marginal)
-    };
-    let Ok(ReconstructionPlan::Marginal { model, .. }) = resolve_plan(&params) else {
-      panic!("marginal method must resolve to a marginal plan");
-    };
-    assert_eq!(expected, model);
   }
 
   #[test]
@@ -70,7 +53,6 @@ mod tests {
     pub(super) fn params(method: MethodAncestral) -> AncestralParams {
       AncestralParams {
         method,
-        model: GtrModel::Infer,
         dense: None,
         include_leaves: false,
         report_ambiguous: true,

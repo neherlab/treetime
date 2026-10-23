@@ -211,7 +211,6 @@ pub(crate) mod tests {
       pub(super) fn parsimony_wrong_states(&self) -> Result<Array1<f64>, Report> {
         let params = AncestralParams {
           method: MethodAncestral::Parsimony,
-          model: GtrModel::Infer,
           dense: None,
           include_leaves: false,
           report_ambiguous: false,
@@ -219,7 +218,12 @@ pub(crate) mod tests {
           seed: 0,
           sample_from_profile: SampleMode::Argmax,
         };
-        let input = ancestral_input(&self.case.tree, &self.case.sequences.sequences, &self.lengths)?;
+        let input = ancestral_input(
+          &self.case.tree,
+          &self.case.sequences.sequences,
+          &self.lengths,
+          &GtrModel::Infer,
+        )?;
         let mut sink = RecordingSeqSink::default();
         pipeline::run(
           &params,

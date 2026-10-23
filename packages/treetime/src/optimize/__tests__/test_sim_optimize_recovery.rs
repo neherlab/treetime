@@ -120,7 +120,12 @@ mod tests {
 
       fn optimize(&self, columns: usize) -> Result<OptimizeOutput, Report> {
         let sequences = first_columns(&self.case.sequences.sequences, columns)?;
-        let input = optimize_input(&self.case.tree, &sequences, &self.start)?;
+        let input = optimize_input(
+          &self.case.tree,
+          &sequences,
+          &self.start,
+          &GtrModel::JC69(JC69Params::default()),
+        )?;
         Ok(run(
           &optimize_params(),
           input,
@@ -179,7 +184,6 @@ mod tests {
 
     fn optimize_params() -> OptimizeParams {
       OptimizeParams {
-        model: GtrModel::JC69(JC69Params::default()),
         dense: None,
         initial_guess: InitialGuessMode::Never,
         reroot_spec: None,

@@ -2,15 +2,17 @@ use crate::alphabet::alphabet::{Alphabet, AlphabetName};
 use crate::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
 use crate::ancestral::mask::create_mask;
 use crate::branch_lengths::branch_lengths_or_zero;
-use crate::gtr::get_gtr::{JC69Params, jc69};
+use crate::gtr::get_gtr::{GtrModel, JC69Params, jc69};
 use crate::gtr::gtr::{GTR, Mu};
+use crate::partition::create::Representation;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::partition::marginal::dense::partition::PartitionMarginalDense;
 use crate::partition::marginal::reconstruction::{
   DenseReconstruction, MarginalReconstruction, ReconstructionRef, SparseReconstruction,
 };
 use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
-use crate::partition::set::PartitionSet;
+use crate::partition::set::{PartitionSet, build_partition_set};
+use crate::partition::split::{SequenceInput, SplitInput};
 use crate::partition::storage::sparse::SparseNodeState;
 use crate::progress::NoopProgress;
 use crate::seq::alignment::{
@@ -303,16 +305,31 @@ pub(crate) fn sequence_source(
   })
 }
 
-pub(crate) fn ancestral_input_for_tree(parse: NwkParse, sources: Vec<SequenceSource>) -> AncestralInput {
-  AncestralInput {
+pub(crate) fn ancestral_input_for_tree(
+  parse: NwkParse,
+  sources: Vec<SequenceSource>,
+  model: &GtrModel,
+) -> Result<AncestralInput, Report> {
+  Ok(AncestralInput {
     edges: parse
       .branch_lengths
       .into_iter()
       .map(|(key, branch_length)| (key, EdgeSeqInput { branch_length }))
       .collect(),
     graph: parse.graph,
-    sources,
-  }
+    sequences: SequenceInput::whole_alignments(sources, model)?,
+  })
+}
+
+pub(crate) fn whole_alignment_set(
+  representation: Representation,
+  model: &GtrModel,
+  graph: &Graph,
+  sources: Vec<SequenceSource>,
+  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+) -> Result<PartitionSet, Report> {
+  let SplitInput { partitions, .. } = SequenceInput::whole_alignments(sources, model)?.split()?;
+  build_partition_set(representation, graph, partitions, branch_lengths, &NoopProgress)
 }
 
 pub(crate) fn complete_leaf_sequences(

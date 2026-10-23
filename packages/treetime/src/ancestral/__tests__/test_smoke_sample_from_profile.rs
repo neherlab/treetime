@@ -35,7 +35,6 @@ mod tests {
 
     let params = AncestralParams {
       method: MethodAncestral::Parsimony,
-      model: GtrModel::Infer,
       dense: None,
       include_leaves: false,
       report_ambiguous: true,
@@ -45,7 +44,7 @@ mod tests {
     };
     let names = parse.names.clone();
     let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta").unwrap();
-    let input = ancestral_input_for_tree(parse, vec![source]);
+    let input = ancestral_input_for_tree(parse, vec![source], &GtrModel::Infer).unwrap();
 
     let result = pipeline::run(&params, input, None, &NoopCancel, &NoopProgress, &NoopProgress)
       .map_err(OperationError::into_report);
@@ -77,7 +76,6 @@ mod tests {
 
       let params = AncestralParams {
         method: MethodAncestral::Marginal,
-        model: GtrModel::Infer,
         dense: None,
         include_leaves: false,
         report_ambiguous: true,
@@ -87,7 +85,7 @@ mod tests {
       };
       let names = parse.names.clone();
       let source = complete_sequence_source(&parse.graph, &names, sequences, &alphabet, "aln.fasta")?;
-      let input = ancestral_input_for_tree(parse, vec![source]);
+      let input = ancestral_input_for_tree(parse, vec![source], &GtrModel::Infer)?;
 
       let mut sink = RecordingSeqSink::default();
       pipeline::run(
