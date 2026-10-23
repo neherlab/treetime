@@ -95,6 +95,7 @@ hawk_toolchain := trim(read("dev/docker/files/hawk-toolchain"))
 # run use their own target folders, because their std differs from the std of
 # the other builds.
 wasm_threads_toolchain := trim(read("dev/docker/files/wasm-threads-toolchain"))
+wasm_mt_target_dir := CARGO_TARGET_DIR / "wasm-mt"
 
 # The cargo settings of the threaded WebAssembly build. The development image
 # adds /.cargo/wasm-mt-env.toml, which points pkg-config at the threaded
@@ -217,9 +218,8 @@ build-napi profile="dev":
 # Build the single-threaded WebAssembly back end of the web2 app into packages/app-wasm/pkg/st/: just build-wasm [dev|release|prod]; prod, as shipped, uses the dist profile
 [group("build")]
 [script]
-build-wasm mode="dev":
+build-wasm mode="dev": (_compile-wasm mode)
     out={{ quote(CARGO_TARGET_DIR / "wasm32-unknown-emscripten" / (if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode })) }}
-    cargo build --locked --config=dev/cargo/wasm-st.toml --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
     mkdir -p {{ wasm_pkg }}/st
     cp "${out}/deps/app_wasm.js" "${out}/deps/app_wasm.wasm" {{ wasm_pkg }}/st/
     cp "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts
@@ -227,10 +227,8 @@ build-wasm mode="dev":
 # Build the threaded WebAssembly back end of the web2 app into packages/app-wasm/pkg/mt/: just build-wasm-mt [dev|release|prod]; fails when its exports differ from the declarations of the single-threaded build
 [group("build")]
 [script]
-build-wasm-mt mode="dev":
-    target_dir={{ quote(CARGO_TARGET_DIR / "wasm-mt") }}
-    out="${target_dir}/wasm32-unknown-emscripten/{{ if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode } }}"
-    CARGO_TARGET_DIR="${target_dir}" cargo +{{ wasm_threads_toolchain }} build --locked {{ wasm_mt_config }} --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
+build-wasm-mt mode="dev": (_compile-wasm-mt mode)
+    out={{ quote(wasm_mt_target_dir / "wasm32-unknown-emscripten" / (if mode == "dev" { "debug" } else if mode == "prod" { "dist" } else { mode })) }}
     if ! cmp -s "${out}/deps/app-wasm.d.ts" {{ wasm_pkg }}/app_wasm.d.ts; then
       printf 'The threaded module declares other exports than %s. Run `just build-wasm` or `just gen wasm-types` after a change of the exports.\n' {{ quote(wasm_pkg / "app_wasm.d.ts") }} >&2
       exit 1
@@ -651,9 +649,9 @@ desktop-prod: build-desktop
 build-web: _js
     bun run --silent build:web
 
-# Production build of the web2 app, with the WebAssembly back end of the dist profile
+# Production build of the web2 app, with the WebAssembly back end of the dist profile; both modules compile at the same time
 [group("app")]
-build-web2: _js (build-wasm "prod") (build-wasm-mt "prod")
+build-web2: _js (_compile-wasm-modules "prod") (build-wasm "prod") (build-wasm-mt "prod")
     bun run --silent build:web2
 
 # Production build of the desktop app, with the Node addon of the dist profile
@@ -755,6 +753,22 @@ tools-lock-image *tools:
 # Install the JavaScript dependencies from bun.lock
 _js:
     [[ -n "${JS_READY:-}" ]] || bun install --frozen-lockfile --silent
+
+# Compile both WebAssembly modules at the same time. They use their own target
+# folders and toolchains, and the last step of each, the fat LTO of the dist
+# profile, runs on one CPU, so the two builds overlap instead of leaving CPUs
+# idle. A recipe runs once per `just` call, so build-wasm and build-wasm-mt
+# after this one only copy the modules.
+[parallel]
+_compile-wasm-modules mode: (_compile-wasm mode) (_compile-wasm-mt mode)
+
+# Compile the single-threaded WebAssembly module: just _compile-wasm [dev|release|prod]
+_compile-wasm mode:
+    cargo build --locked --config=dev/cargo/wasm-st.toml --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
+
+# Compile the threaded WebAssembly module: just _compile-wasm-mt [dev|release|prod]
+_compile-wasm-mt mode:
+    CARGO_TARGET_DIR={{ quote(wasm_mt_target_dir) }} cargo +{{ wasm_threads_toolchain }} build --locked {{ wasm_mt_config }} --profile={{ if mode == "prod" { "dist" } else { quote(mode) } }} --target=wasm32-unknown-emscripten -p app-wasm
 
 _main-checkout:
     test "$(git rev-parse --path-format=absolute --git-common-dir)" = "$(git rev-parse --path-format=absolute --git-dir)" || { printf 'run this recipe in the main checkout, not in a worktree\n' >&2; exit 1; }
