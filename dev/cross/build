@@ -120,7 +120,13 @@ if [[ -n "${lib}" && "${target}" == *-windows-gnullvm ]]; then
 fi
 
 if [[ -n "${lib}" ]]; then
-  cargo build --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --package="${name}" --lib
+  # Cargo runs LTO only when every crate type of a package allows it, and the
+  # package of the addon is also a Rust library (crate types cdylib and lib), so
+  # only its shared library (cdylib) is built here. Without LTO, the linker keeps the unused
+  # LAPACK wrappers of the lax crate, and on Windows, where lld removes no code
+  # from archive members outside COMDAT sections, these keep the complex LAPACK
+  # routines with the C library functions they call (cabs, csqrt).
+  cargo rustc --locked --profile=dist --target="${target}" --target-dir="${target_dir}" --package="${name}" --lib --crate-type=cdylib
   lib_name="${name//-/_}"
   case "${target}" in
   *-apple-darwin) lib_file="lib${lib_name}.dylib" ;;

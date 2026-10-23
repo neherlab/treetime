@@ -212,7 +212,7 @@ build-profiling-heap *args:
 # Build the Node addon of the desktop app and copy it to packages/app-napi/app-napi.node: just build-napi [dev|dist]
 [group("build")]
 build-napi profile="dev":
-    {{ if profile == "dev" { "" } else { "source dev/lib/dist-flags.sh && export_dist_flags addon &&" } }} cargo build --locked -p app-napi --lib --profile {{ quote(profile) }}
+    {{ if profile == "dev" { "" } else { "source dev/lib/dist-flags.sh && export_dist_flags addon &&" } }} cargo rustc --locked -p app-napi --lib --crate-type=cdylib --profile {{ quote(profile) }}
     cp {{ quote(CARGO_TARGET_DIR / (if profile == "dev" { "debug" } else { profile }) / "libapp_napi.so") }} packages/app-napi/app-napi.node
 
 # Build the single-threaded WebAssembly back end of the web2 app into packages/app-wasm/pkg/st/: just build-wasm [dev|release|prod]; prod, as shipped, uses the dist profile
