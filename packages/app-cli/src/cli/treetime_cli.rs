@@ -1,9 +1,10 @@
 use crate::cli::color::ColorArgs;
 use crate::cli::command_help::{
   ANCESTRAL_EXAMPLES, ANCESTRAL_USAGE, CLOCK_EXAMPLES, CLOCK_USAGE, COMPLETIONS_EXAMPLES, COMPLETIONS_USAGE, HELP_HINT,
-  HELP_HINT_OUTPUTS, HELP_MARKDOWN_EXAMPLES, HELP_MARKDOWN_USAGE, HOMOPLASY_EXAMPLES, HOMOPLASY_USAGE, MUGRATION_EXAMPLES, MUGRATION_USAGE, OPTIMIZE_EXAMPLES, OPTIMIZE_USAGE,
-  PIPELINE_EXAMPLES, PIPELINE_USAGE, PRUNE_EXAMPLES, PRUNE_USAGE, SCHEMA_WRITE_EXAMPLES, SCHEMA_WRITE_USAGE,
-  TIMETREE_EXAMPLES, TIMETREE_USAGE, after_help, after_long_help,
+  HELP_HINT_OUTPUTS, HELP_MARKDOWN_EXAMPLES, HELP_MARKDOWN_USAGE, HOMOPLASY_EXAMPLES, HOMOPLASY_USAGE,
+  MUGRATION_EXAMPLES, MUGRATION_USAGE, OPTIMIZE_EXAMPLES, OPTIMIZE_USAGE, PIPELINE_EXAMPLES, PIPELINE_USAGE,
+  PRUNE_EXAMPLES, PRUNE_USAGE, SCHEMA_WRITE_EXAMPLES, SCHEMA_WRITE_USAGE, TIMETREE_EXAMPLES, TIMETREE_USAGE,
+  after_help, after_long_help,
 };
 use crate::cli::config::overlay_config;
 use crate::cli::schema::SchemaTarget;
@@ -315,11 +316,7 @@ impl TreetimeCommands {
       Self::Clock(args) => dry_run_config_of(args, args.config_args.dry_run),
       Self::Homoplasy(args) => dry_run_config_of(args, args.config_args.dry_run),
       Self::Mugration(args) => dry_run_config_of(args, args.config_args.dry_run),
-      Self::Pipeline(_)
-      | Self::Completions { .. }
-      | Self::Schema { .. }
-      | Self::HelpMarkdown
-      | Self::Debug => None,
+      Self::Pipeline(_) | Self::Completions { .. } | Self::Schema { .. } | Self::HelpMarkdown | Self::Debug => None,
     }
   }
 }

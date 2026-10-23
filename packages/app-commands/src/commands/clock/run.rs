@@ -130,7 +130,12 @@ fn write_clock_chart(
     .non_tree_outputs
     .get(&OutputSelection::RttChart)
     .map_or(Ok(()), |file| {
-      output_unavailable(OutputSelection::RttChart, file, "the web app back end draws no charts", log)
+      output_unavailable(
+        OutputSelection::RttChart,
+        file,
+        "the web app back end draws no charts",
+        log,
+      )
     })
 }
 

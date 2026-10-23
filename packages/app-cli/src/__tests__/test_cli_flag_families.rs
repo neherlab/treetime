@@ -1,8 +1,8 @@
 #[cfg(test)]
 pub(crate) mod tests {
   use crate::__tests__::test_cli_support::tests::helpers::{
-    AN, ANALYSIS, CL, COMPLETIONS, EVERY, HELP_MARKDOWN, HO, MU, OP, PI, PR, RUN, SCHEMA_WRITE, TT,
-    find_command, leaf_commands, long_flags, treetime_command,
+    AN, ANALYSIS, CL, COMPLETIONS, EVERY, HELP_MARKDOWN, HO, MU, OP, PI, PR, RUN, SCHEMA_WRITE, TT, find_command,
+    leaf_commands, long_flags, treetime_command,
   };
   use helpers::{expected_flags, per_file_output_flags};
   use itertools::Itertools;

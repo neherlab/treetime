@@ -14,7 +14,11 @@ use treetime_utils::{make_error, make_internal_report};
 
 const CHART_SIZE: (u32, u32) = (1200, 800);
 
-pub fn write_rtt_chart(results: &[ClockRegressionResult], clock_model: &ClockModel, filepath: &Path) -> Result<(), Report> {
+pub fn write_rtt_chart(
+  results: &[ClockRegressionResult],
+  clock_model: &ClockModel,
+  filepath: &Path,
+) -> Result<(), Report> {
   let format = match ChartFormat::from_path(filepath)
     .ok_or_else(|| make_internal_report!("No chart format for '{}' after output planning", filepath.display()))?
   {

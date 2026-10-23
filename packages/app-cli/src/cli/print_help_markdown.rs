@@ -111,7 +111,10 @@ mod tests {
         "treetime timetree --tree <FILE> --metadata <FILE> [(--alignment <FILE>)... | --sequence-length <N>] (-O <DIR> | --output-* <FILE>) [OPTIONS]",
       ),
       ("treetime timetree", "treetime timetree --config <FILE> [OPTIONS]"),
-      ("treetime schema write", "treetime schema write [--for <TARGET>] [-o <PATH>] [OPTIONS]"),
+      (
+        "treetime schema write",
+        "treetime schema write [--for <TARGET>] [-o <PATH>] [OPTIONS]",
+      ),
       ("treetime help-markdown", "treetime help-markdown [OPTIONS] > <FILE>"),
     ];
 

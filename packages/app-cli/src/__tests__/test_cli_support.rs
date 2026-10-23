@@ -20,19 +20,7 @@ pub(crate) mod tests {
 
     pub(crate) const ANALYSIS: &[&str] = &[TT, AN, CL, MU, HO, OP, PR];
     pub(crate) const RUN: &[&str] = &[TT, AN, CL, MU, HO, OP, PR, PI];
-    pub(crate) const EVERY: &[&str] = &[
-      TT,
-      AN,
-      CL,
-      MU,
-      HO,
-      OP,
-      PR,
-      PI,
-      SCHEMA_WRITE,
-      COMPLETIONS,
-      HELP_MARKDOWN,
-    ];
+    pub(crate) const EVERY: &[&str] = &[TT, AN, CL, MU, HO, OP, PR, PI, SCHEMA_WRITE, COMPLETIONS, HELP_MARKDOWN];
 
     pub(crate) fn treetime_command() -> Command {
       let mut command = TreetimeArgs::command();
