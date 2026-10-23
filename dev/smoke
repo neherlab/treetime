@@ -77,8 +77,8 @@ Snapshot store:
       last-run.json                 statuses of the last run and its checkout (for --rerun-failed)
       cases/<case-id>/
         out/                        outputs; a file of at least 1 MiB is stored compressed as <name>.zst
-        outputs.json                SHA-256 of every output after removing the volatile fields (see below),
-                                    and whether it is compressed
+        outputs.json                SHA-256 of every output after replacing the run directory and removing
+                                    the volatile fields (see below), and whether it is compressed
         stdout.txt, stderr.txt
         cmd.sh                      the exact command, runnable from the repository root in the container
         result.json                 status, exit code, wall and CPU time, case key
@@ -125,9 +125,10 @@ Comparison categories (current against baseline):
     still-failing       both did not pass, without an expectation       (fail)
     unexpected-pass     current is xpass                                 (fail)
 
-Outputs are compared byte for byte, after removing `meta.updated` from `*.auspice.json` and
-`generated_by.version` from `*.node-data.json`. Numeric differences are summarized in the report,
-never tolerated.
+Outputs are compared byte for byte, after replacing the run directory of the case with `{run}` and
+removing `meta.updated` from `*.auspice.json` and `generated_by.version` from `*.node-data.json`. A
+config case reads its inputs below the run directory, so its outputs record paths that differ between
+snapshots. Numeric differences are summarized in the report, never tolerated.
 
 The stderr of a case that passes in both snapshots is compared after removing color codes, log
 timestamps and the snapshot directory. A difference, such as a new, repeated or reworded warning, is
@@ -231,6 +232,11 @@ VOLATILE_FIELDS: dict[str, tuple[str, ...]] = {
   ".auspice.json": ("meta", "updated"),
   ".node-data.json": ("generated_by", "version"),
 }
+
+# Replaces the run directory of a case (<snapshot>/cases/<id>, or its rerun/ for --check-determinism) in the outputs.
+# A config case resolves its input paths from the config folder in its sandbox below the run directory, and a pipeline
+# reads the outputs of earlier steps from out/, so the outputs record absolute paths that differ between runs.
+RUN_DIR_PLACEHOLDER = b"{run}"
 
 
 ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "standalone", "outputs", "tier", "timeout",
@@ -1135,16 +1141,35 @@ def store_outputs(run_dir: Path) -> None:
   for path in sorted(p for p in out.rglob("*") if p.is_file()):
     name = path.relative_to(out).as_posix()
     compressed = not path.is_symlink() and path.stat().st_size >= COMPRESS_MIN_BYTES
-    manifest[name] = {"sha256": output_digest(name, path), "compressed": compressed}
+    manifest[name] = {"sha256": output_digest(name, path, run_dir), "compressed": compressed}
     if compressed:
       zstd("-q", "--rm", "-o", f"{path}{COMPRESSED_SUFFIX}", "--", str(path))
   write_json(run_dir / OUTPUTS_FILE, manifest)
 
 
-def output_digest(name: str, path: Path) -> str:
+def output_digest(name: str, path: Path, run_dir: Path) -> str:
   if volatile_key_path(name) is None:
-    return sha256_file(path)
-  return hashlib.sha256(normalized_bytes(name, path.read_bytes())).hexdigest()
+    return run_dir_digest(path, run_dir)
+  return hashlib.sha256(normalized_bytes(name, path.read_bytes(), run_dir)).hexdigest()
+
+
+def run_dir_digest(path: Path, run_dir: Path) -> str:
+  """SHA-256 of a file with the run directory replaced by RUN_DIR_PLACEHOLDER, read in chunks.
+
+  The tail of each chunk that can hold the start of the run directory path is carried into the next chunk, so the
+  digest equals the one of `data.replace(run_dir, RUN_DIR_PLACEHOLDER)` over the whole file.
+  """
+  needle = str(run_dir).encode()
+  keep = len(needle) - 1
+  digest = hashlib.sha256()
+  pending = b""
+  with path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1 << 20), b""):
+      pending = (pending + chunk).replace(needle, RUN_DIR_PLACEHOLDER)
+      digest.update(pending[:-keep])
+      pending = pending[-keep:]
+  digest.update(pending)
+  return digest.hexdigest()
 
 
 def zstd(*args: str) -> bytes:
@@ -1318,8 +1343,10 @@ def diff_run_dirs(case: Case, base_dir: Path, current_dir: Path) -> list[FileDif
     elif name not in base_files:
       diffs.append(FileDiff(name, "only-current", "only in the current run"))
     elif base_files[name].sha256 != current_files[name].sha256:
-      old, new = (normalized_bytes(name, files[name].read()) for files in (base_files, current_files))
-      diffs.append(content_diff(name, old, new))
+      old = normalized_bytes(name, base_files[name].read(), base_dir)
+      new = normalized_bytes(name, current_files[name].read(), current_dir)
+      if old != new:
+        diffs.append(content_diff(name, old, new))
   return diffs
 
 
@@ -1355,8 +1382,12 @@ def normalized_stderr(snapshot: Snapshot, case_id: str) -> str:
   return LOG_TIMESTAMP_RE.sub("", text.replace(str(snapshot.dir), "<snapshot>"))
 
 
-def normalized_bytes(name: str, data: bytes) -> bytes:
-  """Content of the output file `name` with the volatile fields removed; JSON files of those types are re-serialized."""
+def normalized_bytes(name: str, data: bytes, run_dir: Path) -> bytes:
+  """Content of the output file `name` with the run directory replaced and the volatile fields removed.
+
+  JSON files with volatile fields are re-serialized.
+  """
+  data = data.replace(str(run_dir).encode(), RUN_DIR_PLACEHOLDER)
   key_path = volatile_key_path(name)
   if key_path is None:
     return data
