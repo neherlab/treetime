@@ -46,13 +46,13 @@ function NavEntry({ node, currentUrl }: { node: NavNode; currentUrl: string }) {
 function NavFolder({ folder, currentUrl }: { folder: Extract<NavNode, { kind: "folder" }>; currentUrl: string }) {
   return (
     <SidebarGroup className="p-0">
-      <details open={containsUrl(folder, currentUrl)} className="group/folder">
+      <details open={containsUrl(folder, currentUrl)}>
         <SidebarGroupLabel
           // oxlint-disable-next-line jsx-a11y/control-has-associated-label -- the summary gets its text from the label children
           render={<summary />}
           className="hover:bg-sidebar-accent cursor-pointer list-none gap-1 [&::-webkit-details-marker]:hidden"
         >
-          <ChevronRight aria-hidden className="transition-transform group-open/folder:rotate-90" />
+          <ChevronRight aria-hidden className="transition-transform [details[open]>summary>&]:rotate-90" />
           {folder.name}
         </SidebarGroupLabel>
         <div className="border-sidebar-border ml-3.5 border-l pl-2">
