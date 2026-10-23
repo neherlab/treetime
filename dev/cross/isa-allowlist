@@ -43,6 +43,12 @@ x86_64 ^<?(rustfft|memchr|aho_corasick|matrixmultiply|crc32fast|simdutf8|uuid_si
 # feature flags (OPENSSL_ia32cap_P) select.
 x86_64 ^ring_core_[0-9_]+_
 x86_64 ^(_aesni_ctr32_6x|_aesni_ctr32_ghash_6x|mulx4x_internal|__bn_postx4x_internal|__bn_sqrx8x_reduction|__ecp_nistz256_(mul|sqr)_montx)$
+# ring: the AES, GHASH (PMULL), SHA256, and SHA512 routines of its ARMv8
+# assembly, which aead/aes_gcm.rs and digest/sha2 select through
+# cpu::GetFeature with the features that cpu/arm/linux.rs (getauxval),
+# cpu/arm/windows.rs (IsProcessorFeaturePresent), and cpu/arm/darwin.rs
+# (sysctlbyname) detect.
+aarch64 ^ring_core_[0-9_]+__(aes_gcm_(enc|dec)_kernel|aes_hw_(ctr32_encrypt_blocks|set_encrypt_key)|gcm_(init|gmult|ghash)_clmul|sha(256|512)_block_data_order_hw)$
 # ring: the CRYPTOGAMS signature string that armv8-mont.S keeps after the last
 # instruction of bn_mul4x_mont. ELF marks it as data with a mapping symbol;
 # COFF and Mach-O have no such marker, so it disassembles as SVE instructions.
@@ -55,6 +61,14 @@ aarch64 ^__aarch64_(cas|casp|swp|ldadd|ldclr|ldeor|ldset)[0-9]+_(relax|acq|rel|a
 
 # crc32fast: the CRC32 code that is_aarch64_feature_detected!("crc") selects.
 aarch64 ^crc32fast::specialized::aarch64::
+
+# sha2: the SHA256 code that sha2_hwcap::get() of cpufeatures selects.
+aarch64 ^sha2::sha256::aarch64_sha2::
+
+# libunwind: the SME code of __libunwind_Registers_arm64_za_disable, which
+# Registers_arm64::zaDisable() calls only when checkHasSME() found SME in
+# AT_HWCAP2 (Registers.hpp; always false on Windows).
+aarch64 ^__libunwind_Registers_arm64_za_disable$
 
 # zlib-rs: the CRC32 code that cpu_features::is_enabled_crc() selects with
 # is_aarch64_feature_detected!("crc").

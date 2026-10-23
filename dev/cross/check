@@ -114,39 +114,47 @@ macos_min_version() {
 # - x86_64 (x86-64-v2): VEX and EVEX instructions and the BMI, LZCNT, MOVBE,
 #   and ADX instructions; TZCNT is left out, because CPUs without BMI run its
 #   encoding as BSF, and compilers use it on purpose for generic code
-# - aarch64 Linux (Armv8.0): LSE atomics, RDM, the dot product, LDAPR, JSCVT,
-#   CRC32, and SVE
+# - aarch64 Linux (Armv8.0): every extension of Armv8.1 and later and the
+#   optional ones of Armv8.0: the features of the Apple M1 (LSE atomics, CRC32,
+#   RDM, LOR, the dot product, RCPC and RCPC2, JSCVT, FCMA, pointer
+#   authentication outside the hint space, FlagM, FRINTTS, FP16 arithmetic and
+#   FHM, AES, SHA1, SHA256, SHA512, SHA3, 64-bit PMULL, SB, SPECRES, DPB) and the
+#   features above the M1
 # - aarch64 Windows (Armv8.0 with LSE): the same without the LSE atomics
-# - aarch64 macOS (Apple M1, the features that LLVM's apple-m1 CPU enables):
-#   SVE and SME, BF16, I8MM, MTE, MOPS, CSSC, LSE128, RCPC3, WFxT, LS64, RNG,
-#   HBC, and the compare-and-branch instructions
+# - aarch64 macOS (Apple M1, the features that LLVM's apple-m1 CPU enables): the
+#   features above the M1: SVE and SME, BF16, I8MM, MTE, MOPS, CSSC, LSE128,
+#   RCPC3, WFxT, LS64, RNG, HBC, the compare-and-branch instructions, SM3, SM4,
+#   FP8, FAMINMAX, LUT, and XS
+# FP16 arithmetic is any floating-point instruction on half-precision registers
+# or vectors except the conversions FCVT, FCVTL, and FCVTN, which Armv8.0 has.
 # COFF and Mach-O keep the labels of assembly code (L*, .L*, ltmp*) as symbols;
 # their instructions count for the function that contains them. Mach-O names C
 # functions with a leading underscore, which is removed to match the ELF names.
 # The NEON syntax is the generic one on every target, because llvm-objdump
 # prints the Apple syntax (sdot.4s) for Mach-O.
 isa_above_baseline() {
-  local file="${1}" pattern allow armv8 lse sve above_m1 cssc object=""
-  armv8='sqrdmlah|sqrdmlsh|sdot|udot|usdot|sudot|ldapr[bh]?|fjcvtzs|crc32c?[bhwx]'
+  local file="${1}" pattern allow insn lse m1 m1_line above_m1 above_m1_line object=""
+  insn='^[[:space:]]*[0-9a-f]+:[[:space:]]+'
   lse='(ldadd|ldclr|ldeor|ldset|ldsmax|ldsmin|ldumax|ldumin|swp|cas|casp)[albh]*'
-  sve=' z[0-9]+\.| p[0-9]+[./]'
+  m1='crc32c?[bhwx]|sqrdmlah|sqrdmlsh|sdot|udot|ldlar[bh]?|stllr[bh]?|ldapr[bh]?|ldapur(s?[bh]|sw)?|stlur[bh]?|fjcvtzs|fcmla|fcadd|(pac|aut)(ia|ib|da|db|iza|izb|dza|dzb)|pacga|xpac[id]|bl?ra(a|b|az|bz)|e?reta[ab]|ldra[ab]|cfinv|rmif|setf(8|16)|axflag|xaflag|frint(32|64)[xz]|fmlal2?|fmlsl2?|aes(e|d|mc|imc)|sha1(c|h|m|p|su0|su1)|sha(256|512)(h|h2|su0|su1)|eor3|bcax|rax1|xar|sb|cfp|dvp|cpp|cosp'
+  m1_line="${insn}(f[a-z0-9]*|[su]cvtf)[[:space:]].*([[:space:]]h[0-9]+|\.[248]h)|${insn}pmull2?[[:space:]]+v[0-9]+\.1q|${insn}dc[[:space:]]+cvad?p,"
+  above_m1='smstart|smstop|bfdot|bfmmla|bfmlal[bt]|bfcvtn?2?|smmla|ummla|usmmla|usdot|sudot|irg|gmi|addg|subg|subps?|stz?2?g|stgp|ldgm?|stz?gm|cpyf?[pme][a-z]*|setg?[pme](t|n|tn)?|ctz|(ldclrp|ldsetp|swpp)(a|l|al)?|ldiapp|stilp|ldap1|stl1|wfet|wfit|ld64b|st64bv?0?|bc\..*|cbh?b?(gt|ge|hi|hs|eq|ne|lt|lo|le|ls)|sm3(ss1|tt1a|tt1b|tt2a|tt2b|partw1|partw2)|sm4e(key)?|b?f[12]cvtl2?|fscale|fdot|fmlal[bt][bt]?|fmlall[bt][bt]|famax|famin|luti[24]'
+  above_m1_line="${insn}(abs|cnt|smax|smin|umax|umin)[[:space:]]+[wx][0-9z]|${insn}mrs[[:space:]]+x[0-9]+, (RNDR|RNDRRS)\$|${insn}(dsb|tlbi)[[:space:]]+[a-z0-9]*nxs|[{ ]za[0-9]*[hv]?[.}[]| z[0-9]+\.| p[0-9]+[./]"
   case "${target}" in
   x86_64-*)
     pattern='^(v[a-z0-9]+|(andn|bextr|blsi|blsmsk|blsr|bzhi|mulx|pdep|pext|rorx|sarx|shlx|shrx|lzcnt|movbe|adcx|adox)[bwlq]?)$|%[yz]mm'
     allow="x86_64"
     ;;
   aarch64-*-linux-*)
-    pattern="^(${lse}|${armv8})\$|${sve}"
+    pattern="^(${lse}|${m1}|${above_m1})\$|${m1_line}|${above_m1_line}"
     allow="aarch64"
     ;;
   aarch64-*-windows-*)
-    pattern="^(${armv8})\$|${sve}"
+    pattern="^(${m1}|${above_m1})\$|${m1_line}|${above_m1_line}"
     allow="aarch64"
     ;;
   aarch64-apple-*)
-    above_m1='smstart|smstop|bfdot|bfmmla|bfmlal[bt]|bfcvtn?2?|smmla|ummla|usmmla|usdot|sudot|irg|gmi|addg|subg|subps?|stz?2?g|stgp|ldgm?|stz?gm|cpyf?[pme][a-z]*|setg?[pme](t|n|tn)?|ctz|(ldclrp|ldsetp|swpp)(a|l|al)?|ldiapp|stilp|ldap1|stl1|wfet|wfit|ld64b|st64bv?0?|bc\..*|cbh?b?(gt|ge|hi|hs|eq|ne|lt|lo|le|ls)'
-    cssc='^[[:space:]]*[0-9a-f]+:[[:space:]]+(abs|cnt|smax|smin|umax|umin)[[:space:]]+[wx][0-9z]'
-    pattern="^(${above_m1})\$|${cssc}|mrs[[:space:]]+x[0-9]+, (RNDR|RNDRRS)\$|[{ ]za[0-9]*[hv]?[.}[]|${sve}"
+    pattern="^(${above_m1})\$|${above_m1_line}"
     allow="aarch64"
     ;;
   *) return 0 ;;
@@ -157,6 +165,7 @@ isa_above_baseline() {
   esac
   /opt/llvm/bin/llvm-objdump -d --no-show-raw-insn --demangle -mllvm=--aarch64-neon-syntax=generic "${file}" |
     pattern="${pattern}" object="${object}" awk '
+      $2 ~ /^(fcvt|fcvtl2?|fcvtn2?)$/ { next }
       /^[0-9a-f]+ <.*>:$/ {
         name = substr($0, index($0, "<") + 1); sub(/>:$/, "", name)
         if (ENVIRON["object"] != "" && name ~ /^(\.L|L[a-z0-9_]|ltmp)/) next
