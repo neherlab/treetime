@@ -2,7 +2,7 @@
 mod tests {
   use crate::__tests__::test_cli_flag_families::tests::{FAMILIES, Family};
   use crate::__tests__::test_cli_support::tests::helpers::{
-    AN, CL, EXAMPLES_GET, HO, MU, OP, PR, ROOT, SCHEMA_WRITE, TT, all_commands, find_command, treetime_command,
+    AN, CL, HO, MU, OP, PR, ROOT, SCHEMA_WRITE, TT, all_commands, find_command, treetime_command,
   };
   use helpers::{Scope, ShortFlag, ShortFlagUse, ShortHelpDeviation, short_flag_deviations, short_help_deviation};
   use itertools::Itertools;
@@ -25,7 +25,6 @@ mod tests {
     ShortFlag { short: 'V', long: "version",          scope: Scope::Only(&[ROOT]) },
     ShortFlag { short: 'n', long: "num-mut",          scope: Scope::Only(&[HO]) },
     ShortFlag { short: 'o', long: "output",           scope: Scope::Only(&[SCHEMA_WRITE]) },
-    ShortFlag { short: 'o', long: "output-dir",       scope: Scope::Only(&[EXAMPLES_GET]) },
   ];
 
   #[rustfmt::skip]

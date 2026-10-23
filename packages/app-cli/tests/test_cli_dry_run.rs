@@ -294,50 +294,6 @@ mod tests {
   }
 
   #[test]
-  fn test_cli_examples_get_dry_run_prints_the_download_without_downloading() {
-    let dir = tempdir().unwrap();
-    let run = treetime_in(
-      dir.path(),
-      &[
-        "examples",
-        "get",
-        "--output-dir",
-        "examples",
-        "--url",
-        "https://example.org/examples.zip",
-        "--dry-run",
-      ],
-    );
-    assert_eq!(
-      (
-        Run {
-          code: Some(0),
-          stdout: format!(
-            "Download: https://example.org/examples.zip\nUnpack into: {}\n",
-            path_in(dir.path(), "examples")
-          ),
-          stderr: String::new(),
-        },
-        false
-      ),
-      (run, dir.path().join("examples").exists())
-    );
-  }
-
-  #[test]
-  fn test_cli_examples_get_dry_run_rejects_a_folder_that_is_not_empty() {
-    let dir = tempdir().unwrap();
-    write_file(dir.path(), "existing.txt", "");
-    let folder = dir.path().to_str().unwrap();
-    let run = treetime_in(dir.path(), &["examples", "get", "--output-dir", folder, "--dry-run"]);
-    let message = format!("the folder '{folder}' is not empty");
-    assert_eq!(
-      (Some(1), String::new(), true),
-      (run.code, run.stdout, run.stderr.contains(&message))
-    );
-  }
-
-  #[test]
   fn test_cli_schema_write_dry_run_lists_the_files_without_writing() {
     let dir = tempdir().unwrap();
     let run = treetime_in(

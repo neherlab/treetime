@@ -111,7 +111,7 @@ mod tests {
         "treetime timetree --tree <FILE> --metadata <FILE> [(--alignment <FILE>)... | --sequence-length <N>] (-O <DIR> | --output-* <FILE>) [OPTIONS]",
       ),
       ("treetime timetree", "treetime timetree --config <FILE> [OPTIONS]"),
-      ("treetime examples get", "treetime examples get -o <DIR> [OPTIONS]"),
+      ("treetime schema write", "treetime schema write [--for <TARGET>] [-o <PATH>] [OPTIONS]"),
       ("treetime help-markdown", "treetime help-markdown [OPTIONS] > <FILE>"),
     ];
 
@@ -138,7 +138,7 @@ mod tests {
     let sampled = usage
       .iter()
       .filter(|(path, _)| {
-        ["treetime timetree", "treetime examples get", "treetime help-markdown"].contains(&path.as_str())
+        ["treetime timetree", "treetime schema write", "treetime help-markdown"].contains(&path.as_str())
       })
       .map(|(path, line)| (path.as_str(), line.as_str()))
       .collect_vec();

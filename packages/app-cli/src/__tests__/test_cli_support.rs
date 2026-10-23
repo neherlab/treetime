@@ -13,7 +13,6 @@ pub(crate) mod tests {
     pub(crate) const OP: &str = "optimize";
     pub(crate) const PR: &str = "prune";
     pub(crate) const PI: &str = "pipeline";
-    pub(crate) const EXAMPLES_GET: &str = "examples get";
     pub(crate) const SCHEMA_WRITE: &str = "schema write";
     pub(crate) const COMPLETIONS: &str = "completions";
     pub(crate) const HELP_MARKDOWN: &str = "help-markdown";
@@ -30,7 +29,6 @@ pub(crate) mod tests {
       OP,
       PR,
       PI,
-      EXAMPLES_GET,
       SCHEMA_WRITE,
       COMPLETIONS,
       HELP_MARKDOWN,

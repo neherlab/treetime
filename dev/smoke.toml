@@ -978,10 +978,6 @@ variant = "ancestral-dry-run"
 args = "ancestral --tree={data}/zika/20/tree.nwk --alignment={data}/zika/20/aln.fasta.xz --dry-run --output-all=tmp/ancestral-dry-run"
 
 [[cli]]
-variant = "examples-get-dry-run"
-args = "examples get --output-dir=tmp/examples-dry-run --url=https://example.org/examples.zip --dry-run"
-
-[[cli]]
 variant = "schema-all-dry-run"
 args = "schema write --for=all --output=tmp/schemas-dry-run --dry-run"
 

@@ -31,7 +31,6 @@ pub(crate) const EVERY_COMMAND: &[&str] = &[
   OPTIMIZE,
   PRUNE,
   PIPELINE,
-  "examples",
   "schema",
   "completions",
   "help-markdown",

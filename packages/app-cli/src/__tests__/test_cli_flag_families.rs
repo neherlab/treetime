@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(crate) mod tests {
   use crate::__tests__::test_cli_support::tests::helpers::{
-    AN, ANALYSIS, CL, COMPLETIONS, EVERY, EXAMPLES_GET, HELP_MARKDOWN, HO, MU, OP, PI, PR, RUN, SCHEMA_WRITE, TT,
+    AN, ANALYSIS, CL, COMPLETIONS, EVERY, HELP_MARKDOWN, HO, MU, OP, PI, PR, RUN, SCHEMA_WRITE, TT,
     find_command, leaf_commands, long_flags, treetime_command,
   };
   use helpers::{expected_flags, per_file_output_flags};
@@ -20,7 +20,7 @@ pub(crate) mod tests {
   pub(crate) const FAMILIES: &[Family] = &[
     Family { name: "Global",                   commands: EVERY,                flags: &["--verbose", "--quiet", "--verbosity", "--silent", "--no-progress", "--color", "--help"] },
     Family { name: "Run",                      commands: RUN,                  flags: &["--config", "--jobs", "--output-all"] },
-    Family { name: "Preview",                  commands: &[TT, AN, CL, MU, HO, OP, PR, PI, EXAMPLES_GET, SCHEMA_WRITE],
+    Family { name: "Preview",                  commands: &[TT, AN, CL, MU, HO, OP, PR, PI, SCHEMA_WRITE],
                                                                                flags: &["--dry-run"] },
     Family { name: "Output",                   commands: ANALYSIS,             flags: &["--output-selection"] },
     Family { name: "Tree input and output",    commands: ANALYSIS,             flags: &["--tree", "--newick-dialect", "--newick-annotations", "--topology-order",
@@ -56,7 +56,6 @@ pub(crate) mod tests {
                       "--no-merge-shared-mutations", "--no-hoist-reversions"]),
     (PR,            &["--collapse-short", "--collapse-empty", "--merge-shared-mutations", "--remove", "--remove-file"]),
     (PI,            &["--steps"]),
-    (EXAMPLES_GET,  &["--output-dir", "--url"]),
     (SCHEMA_WRITE,  &["--for", "--output"]),
     (COMPLETIONS,   &[]),
     (HELP_MARKDOWN, &[]),
@@ -107,7 +106,6 @@ pub(crate) mod tests {
   #[case::optimize(     OP)]
   #[case::prune(        PR)]
   #[case::pipeline(     PI)]
-  #[case::examples_get( EXAMPLES_GET)]
   #[case::schema_write( SCHEMA_WRITE)]
   #[case::completions(  COMPLETIONS)]
   #[case::help_markdown(HELP_MARKDOWN)]

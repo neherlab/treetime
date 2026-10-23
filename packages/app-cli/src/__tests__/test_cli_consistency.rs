@@ -60,8 +60,7 @@ mod tests {
     (
       "--dry-run",
       &[Property::Help, Property::Heading],
-      "pipeline prints the plan of every step, examples get the download and schema write the files, instead of the \
-       settings of one command",
+      "pipeline prints the plan of every step and schema write the files, instead of the settings of one command",
     ),
     (
       "--output-all",

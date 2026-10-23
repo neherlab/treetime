@@ -468,26 +468,6 @@ mod tests {
     );
   }
 
-  #[test]
-  fn test_cli_examples_get_checks_the_folder_of_the_short_flag_before_any_download() {
-    let dir = tempdir().unwrap();
-    write_file(dir.path(), "kept.txt", "");
-    let folder = dir.path().to_str().unwrap();
-    let run = treetime(
-      &[
-        "examples",
-        "get",
-        "-o",
-        folder,
-        "--url",
-        "http://127.0.0.1:9/examples.zip",
-      ],
-      &[],
-    );
-    let message = format!("the folder '{folder}' is not empty");
-    assert_eq!((Some(1), true), (run.code, run.stderr.contains(&message)));
-  }
-
   mod helpers {
     use std::fs;
     use std::path::Path;
