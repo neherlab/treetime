@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod __tests__;
 pub(crate) mod algo;
+pub mod assembly;
 pub(crate) mod create;
 pub mod fitch;
 pub(crate) mod inferred_rate;

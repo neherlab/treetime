@@ -60,6 +60,7 @@ pub(crate) fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) ->
         range: (p.range.0, c.range.1),
         seq: merged_seq,
         kind: InDelKind::Deletion,
+        split_from: None,
       });
       pi += 1;
       ci += 1;
@@ -99,6 +100,7 @@ pub(crate) fn compose_indels(parent_indels: &[InDel], child_indels: &[InDel]) ->
             range: (merged_start, merged_end),
             seq: merged_seq,
             kind: InDelKind::Deletion,
+            split_from: None,
           });
         },
         (InDelKind::Insertion, InDelKind::Insertion) => {
@@ -277,6 +279,7 @@ pub(crate) fn resolve_indels_forward(
           range: (lo, hi),
           seq: (&parent_sequence[lo..hi]).into(),
           kind: InDelKind::Deletion,
+          split_from: None,
         });
       }
       if let Some(last) = new_node_gaps.last_mut().filter(|l| l.1 == lo) {
@@ -293,6 +296,7 @@ pub(crate) fn resolve_indels_forward(
           range: (lo, hi),
           seq: (&node_sequence[lo..hi]).into(),
           kind: InDelKind::Insertion,
+          split_from: None,
         });
       }
     } else if in_parent {
@@ -312,6 +316,7 @@ pub struct InDel {
   pub(crate) range: (usize, usize),
   pub(crate) seq: Seq,
   pub(crate) kind: InDelKind,
+  pub(crate) split_from: Option<SplitFrom>,
 }
 
 impl InDel {
@@ -343,6 +348,12 @@ impl fmt::Display for InDel {
     };
     write!(f, "{}--{}: {}", self.range.0, self.range.1, delta_str)
   }
+}
+
+#[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq)]
+pub struct SplitFrom {
+  pub(crate) index: usize,
+  pub(crate) range: (usize, usize),
 }
 
 #[derive(Clone, Copy, Debug, Ord, PartialOrd, Eq, PartialEq)]

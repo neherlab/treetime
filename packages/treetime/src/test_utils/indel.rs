@@ -21,7 +21,12 @@ fn indel(range: (usize, usize), seq: impl Into<Seq>, kind: InDelKind) -> Result<
       seq.len()
     );
   }
-  Ok(InDel { range, seq, kind })
+  Ok(InDel {
+    range,
+    seq,
+    kind,
+    split_from: None,
+  })
 }
 
 #[cfg(test)]

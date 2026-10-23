@@ -63,6 +63,7 @@ mod tests {
           range: (4, 7),
           seq: Seq::try_from_str("ACG")?,
           kind: crate::seq::indel::InDelKind::Deletion,
+          split_from: None,
         });
     }
 
