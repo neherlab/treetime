@@ -73,10 +73,6 @@ impl Graph {
     self.topology_changed().edges.get_mut(key.as_usize())?.take()
   }
 
-  pub(crate) fn nodes_mut(&mut self) -> impl Iterator<Item = &mut Node> {
-    self.topology_changed().nodes.iter_mut().flatten()
-  }
-
   pub(crate) fn set_roots_and_leaves(&mut self, roots: Vec<GraphNodeKey>, leaves: Vec<GraphNodeKey>) {
     let graph = self.topology_changed();
     graph.roots = roots;
