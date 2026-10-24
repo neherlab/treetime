@@ -191,7 +191,7 @@
       "x-cli-flag": "--allow-negative-rate"
     },
     "reroot": {
-      "description": "Reroot the tree by temporal-signal optimization.\n\nWithout a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or\n--keep-root to keep the input root.",
+      "description": "Method that chooses the root of the tree\n\n`least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root\nonce on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by\nleast-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.",
       "$ref": "#/$defs/RerootMethod",
       "x-unset": true,
       "x-cli-flag": "--reroot"
@@ -649,11 +649,27 @@
       ]
     },
     "RerootMethod": {
-      "type": "string",
-      "enum": [
-        "least-squares",
-        "min-dev",
-        "oldest"
+      "oneOf": [
+        {
+          "description": "Minimizes the residuals of the root-to-tip regression on the sampling dates",
+          "type": "string",
+          "const": "least-squares"
+        },
+        {
+          "description": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint",
+          "type": "string",
+          "const": "min-dev"
+        },
+        {
+          "description": "Roots at the middle of the branch above the oldest dated tip",
+          "type": "string",
+          "const": "oldest"
+        },
+        {
+          "description": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips",
+          "type": "string",
+          "const": "midpoint"
+        }
       ]
     },
     "BranchLengthMode": {

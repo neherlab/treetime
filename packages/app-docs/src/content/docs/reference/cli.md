@@ -171,11 +171,19 @@ treetime timetree --config timetree.yaml -O results
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
-* `--reroot <REROOT>` — Reroot the tree by temporal-signal optimization.
+* `--reroot <REROOT>` — Method that chooses the root of the tree
 
-   Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
+   `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
 
-  Possible values: `least-squares`, `min-dev`, `oldest`
+  Possible values:
+  - `least-squares`:
+    Minimizes the residuals of the root-to-tip regression on the sampling dates
+  - `min-dev`:
+    Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint
+  - `oldest`:
+    Roots at the middle of the branch above the oldest dated tip
+  - `midpoint`:
+    Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips
 
 * `--outgroup <OUTGROUP>` — Root the tree on the branch above the most recent common ancestor of the named tips
 
@@ -692,11 +700,19 @@ treetime clock -t tree.nwk -m metadata.tsv --keep-root --output-rtt rtt.tsv
 * `--allow-negative-rate` — Allow negative clock rates.
 
    By default, rates are forced to be positive. For trees with little temporal signal, removing this restriction gives essentially mid-point rooting.
-* `--reroot <REROOT>` — Reroot the tree by temporal-signal optimization.
+* `--reroot <REROOT>` — Method that chooses the root of the tree
 
-   Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
+   `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
 
-  Possible values: `least-squares`, `min-dev`, `oldest`
+  Possible values:
+  - `least-squares`:
+    Minimizes the residuals of the root-to-tip regression on the sampling dates
+  - `min-dev`:
+    Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint
+  - `oldest`:
+    Roots at the middle of the branch above the oldest dated tip
+  - `midpoint`:
+    Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips
 
 * `--outgroup <OUTGROUP>` — Root the tree on the branch above the most recent common ancestor of the named tips
 
@@ -1175,11 +1191,15 @@ treetime optimize -t tree.nwk -a aln.fasta.xz --model hky85 --reroot min-dev --o
 * `--zero-based` — Report sequence positions counted from 0 instead of 1.
 
    Applies to the mutations in the comments of Newick and Nexus trees and to the positions of the homoplasy report. Auspice JSON, augur node data, and UShER MAT outputs count from 1, as their formats require. An input table with positions, such as `--drms`, is always counted from 1.
-* `--reroot <REROOT>` — Reroot the tree by minimizing the variance of the root-to-tip divergence
+* `--reroot <REROOT>` — Method that chooses the root of the tree from the branch lengths
 
-   Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available where the inputs have dates.
+   The tree is rerooted once, on the branch lengths after the initial guess, and every tip counts. Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available where the inputs have dates.
 
-  Possible values: `min-dev`
+  Possible values:
+  - `min-dev`:
+    Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint
+  - `midpoint`:
+    Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips
 
 * `--outgroup <OUTGROUP>` — Root the tree on the branch above the most recent common ancestor of the named tips
 

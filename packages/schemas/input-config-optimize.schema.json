@@ -90,7 +90,7 @@
       "x-cli-flag": "--zero-based"
     },
     "reroot": {
-      "description": "Reroot the tree by minimizing the variance of the root-to-tip divergence\n\nWithout this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`)\nare available where the inputs have dates.",
+      "description": "Method that chooses the root of the tree from the branch lengths\n\nThe tree is rerooted once, on the branch lengths after the initial guess, and every tip counts. Without this\nsetting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available\nwhere the inputs have dates.",
       "$ref": "#/$defs/OptimizeRerootMethod",
       "x-unset": true,
       "x-cli-flag": "--reroot"
@@ -406,9 +406,17 @@
     },
     "OptimizeRerootMethod": {
       "description": "Reroot methods available in the optimize command.\n\nOnly date-free methods are valid here because optimize has no sampling dates.\nDate-dependent methods (least-squares, oldest) are available\nin the timetree and clock commands.",
-      "type": "string",
-      "enum": [
-        "min-dev"
+      "oneOf": [
+        {
+          "description": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint",
+          "type": "string",
+          "const": "min-dev"
+        },
+        {
+          "description": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips",
+          "type": "string",
+          "const": "midpoint"
+        }
       ]
     },
     "InitialGuessMode": {

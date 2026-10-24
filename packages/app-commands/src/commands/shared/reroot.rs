@@ -19,10 +19,11 @@ use treetime_schema::{schema_defaults, skip_serializing_optionals};
 #[deser(default, deny_unknown_fields)]
 #[cfg_attr(feature = "clap", derive(clap::Args))]
 pub struct RerootArgs {
-  /// Reroot the tree by temporal-signal optimization.
+  /// Method that chooses the root of the tree
   ///
-  /// Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or
-  /// --keep-root to keep the input root.
+  /// `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root
+  /// once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by
+  /// least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
   #[cfg_attr(
     feature = "clap",
     clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
@@ -97,13 +98,18 @@ pub fn resolve_outgroup(tips: &[String], graph: &Graph, names: &NodeNames) -> Re
 #[deser(rename_all = "kebab-case")]
 #[schemars(rename = "RerootMethod")]
 pub enum RerootMethodCli {
+  /// Minimizes the residuals of the root-to-tip regression on the sampling dates
   #[default]
   LeastSquares,
+  /// Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint
   MinDev,
+  /// Roots at the middle of the branch above the oldest dated tip
   Oldest,
+  /// Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips
+  Midpoint,
 }
 
-impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest });
+impl_from_mirror!(RerootMethodCli => RerootMethod { LeastSquares, MinDev, Oldest, Midpoint });
 
 #[cfg(test)]
 mod tests {

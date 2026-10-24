@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
   use crate::cli::v0_args::{EVERY_COMMAND, ROOT, Then, V0_SPELLINGS, V0Rewrite, Values, rewrite_v0_args};
-  use clap::Command;
+  use app_commands::commands::shared::reroot::RerootMethodCli;
+  use clap::{Command, ValueEnum};
   use helpers::{accepts, attached, find_command, long_flag, non_utf8, rewrite, rewritten_args, treetime_command};
   use itertools::Itertools;
   use maplit::btreeset;
@@ -67,6 +68,7 @@ mod tests {
   #[case::reroot_min_dev(           "timetree --reroot min_dev",                   "timetree --reroot min-dev")]
   #[case::reroot_oldest(            "timetree --reroot oldest",                    "timetree --reroot oldest")]
   #[case::reroot_least_squares(     "timetree --reroot=least-squares",             "timetree --reroot=least-squares")]
+  #[case::reroot_midpoint(          "clock --reroot midpoint",                     "clock --reroot midpoint")]
   #[case::reroot_tips(              "clock --reroot A B --tree t.nwk",             "clock --outgroup A B --tree t.nwk")]
   #[case::reroot_tip_joined(        "clock --reroot=A",                            "clock --outgroup=A")]
   #[case::reroot_tip_list_split_at_commas_which_unquoted_newick_names_lack("clock --reroot A,B", "clock --outgroup A,B")]
@@ -85,6 +87,23 @@ mod tests {
   #[trace]
   fn test_v0_args_silent_rewrite(#[case] argv: &str, #[case] expected: &str) {
     assert_eq!(rewritten_args(expected), rewrite(argv).unwrap().args);
+  }
+
+  #[test]
+  fn test_v0_args_keeps_every_reroot_method_of_treetime_1() {
+    let command_lines = RerootMethodCli::value_variants()
+      .iter()
+      .filter_map(ValueEnum::to_possible_value)
+      .map(|value| format!("clock --reroot {}", value.get_name()))
+      .collect_vec();
+
+    let actual = command_lines
+      .iter()
+      .map(|argv| rewrite(argv).unwrap().args)
+      .collect_vec();
+
+    let expected = command_lines.iter().map(|argv| rewritten_args(argv)).collect_vec();
+    assert_eq!(expected, actual);
   }
 
   #[rustfmt::skip]

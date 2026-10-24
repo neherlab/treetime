@@ -2,6 +2,7 @@ use crate::clock::clock_regression::clock_regression;
 use crate::clock::clock_state::ClockInputs;
 use crate::progress::LogSink;
 use crate::reroot::edge_search::search_edges;
+use crate::reroot::midpoint::midpoint_root;
 use crate::reroot::named_node::{named_node_point, oldest_tip, tip_group_mrca};
 use crate::reroot::params::{RerootMethod, RerootParams, RerootSpec, RootObjective};
 use eyre::Report;
@@ -26,6 +27,7 @@ pub(crate) fn find_root(
       return named_node_point(graph, branch_lengths, oldest_tip(graph, inputs)?);
     },
     RerootSpec::Tips(tips) => return named_node_point(graph, branch_lengths, tip_group_mrca(graph, tips)?),
+    RerootSpec::Method(RerootMethod::Midpoint) => return midpoint_root(graph, branch_lengths),
   };
   let state = clock_regression(graph, inputs, outliers, branch_lengths, None)?;
   let best = search_edges(graph, &state, branch_lengths, force_positive, objective, log)?;

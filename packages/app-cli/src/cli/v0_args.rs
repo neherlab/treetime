@@ -86,11 +86,11 @@ pub(crate) const V0_SPELLINGS: &[Entry] = &[
   Entry { flag: "--stochastic-resolve",   arity: Arity::None,      commands: &[TIMETREE],       rules: &[always(Then::Drop("TreeTime 1 resolves polytomies stochastically"))] },
   Entry { flag: "--greedy-resolve",       arity: Arity::None,      commands: &[TIMETREE],       rules: &[always(Then::Stop("TreeTime 1 resolves polytomies stochastically only"))] },
   Entry { flag: "--reroot",               arity: Arity::OneOrMore, commands: &[TIMETREE, CLOCK], rules: &[
-    on(Values::OneOf(&["best", "residual", "res"]),             Then::Replace(&["--reroot", "least-squares"])),
-    on(Values::OneOf(&["min_dev"]),                             Then::Replace(&["--reroot", "min-dev"])),
-    on(Values::OneOf(&["ML"]),                                  Then::StopWith(COVARIATION_REROOT, "use --reroot least-squares")),
-    on(Values::OneOf(&["min_dev_ML"]),                          Then::StopWith(COVARIATION_REROOT, "use --reroot min-dev")),
-    on(Values::OneOf(&["least-squares", "min-dev", "oldest"]), Then::Keep),
+    on(Values::OneOf(&["best", "residual", "res"]),                         Then::Replace(&["--reroot", "least-squares"])),
+    on(Values::OneOf(&["min_dev"]),                                         Then::Replace(&["--reroot", "min-dev"])),
+    on(Values::OneOf(&["ML"]),                                              Then::StopWith(COVARIATION_REROOT, "use --reroot least-squares")),
+    on(Values::OneOf(&["min_dev_ML"]),                                      Then::StopWith(COVARIATION_REROOT, "use --reroot min-dev")),
+    on(Values::OneOf(&["least-squares", "min-dev", "oldest", "midpoint"]), Then::Keep),
     always(Then::Rename("--outgroup")),
   ] },
   Entry { flag: "--coalescent",           arity: Arity::One,       commands: &[TIMETREE],       rules: &[

@@ -2828,7 +2828,7 @@ export type GtrModelName = 'jc69' | 'k80' | 'f81' | 'hky85' | 't92' | 'tn93' | '
 
 export type AlphabetName = 'nuc' | 'aa' | 'aa-no-stop';
 
-export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest';
+export type RerootMethod = 'least-squares' | 'min-dev' | 'oldest' | 'midpoint';
 
 export type BranchLengthMode = 'auto' | 'input' | 'marginal';
 
@@ -2988,10 +2988,11 @@ export type TimetreeConfig = {
    */
   allow_negative_rate?: boolean;
   /**
-   * Reroot the tree by temporal-signal optimization.
+   * Method that chooses the root of the tree
    *
-   * Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or
-   * --keep-root to keep the input root.
+   * `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root
+   * once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by
+   * least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
    */
   reroot?: RerootMethod;
   /**
@@ -3426,10 +3427,11 @@ export type ClockConfig = {
    */
   allow_negative_rate?: boolean;
   /**
-   * Reroot the tree by temporal-signal optimization.
+   * Method that chooses the root of the tree
    *
-   * Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or
-   * --keep-root to keep the input root.
+   * `least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root
+   * once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by
+   * least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root.
    */
   reroot?: RerootMethod;
   /**
@@ -4453,7 +4455,7 @@ export type MugrationConfig = {
  * Date-dependent methods (least-squares, oldest) are available
  * in the timetree and clock commands.
  */
-export type OptimizeRerootMethod = 'min-dev';
+export type OptimizeRerootMethod = 'min-dev' | 'midpoint';
 
 /**
  * Initial branch lengths: input lengths, or estimates from the number of substitutions divided by the effective
@@ -4538,10 +4540,11 @@ export type OptimizeConfig = {
    */
   zero_based?: boolean;
   /**
-   * Reroot the tree by minimizing the variance of the root-to-tip divergence
+   * Method that chooses the root of the tree from the branch lengths
    *
-   * Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`)
-   * are available where the inputs have dates.
+   * The tree is rerooted once, on the branch lengths after the initial guess, and every tip counts. Without this
+   * setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available
+   * where the inputs have dates.
    */
   reroot?: OptimizeRerootMethod;
   /**

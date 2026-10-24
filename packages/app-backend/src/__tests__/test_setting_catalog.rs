@@ -262,7 +262,10 @@ mod tests {
   fn test_setting_catalog_optional_enum_lists_its_values() {
     let reroot = spec(AppCommand::Timetree, "reroot");
     assert_eq!(
-      (SettingKind::Enum, vec_of_owned!["least-squares", "min-dev", "oldest"]),
+      (
+        SettingKind::Enum,
+        vec_of_owned!["least-squares", "min-dev", "oldest", "midpoint"]
+      ),
       (
         reroot.kind,
         reroot.options.into_iter().map(|option| option.value).collect_vec()

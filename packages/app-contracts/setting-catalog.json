@@ -749,15 +749,19 @@
           "options": [
             {
               "value": "least-squares",
-              "help": ""
+              "help": "Minimizes the residuals of the root-to-tip regression on the sampling dates"
             },
             {
               "value": "min-dev",
-              "help": ""
+              "help": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint"
             },
             {
               "value": "oldest",
-              "help": ""
+              "help": "Roots at the middle of the branch above the oldest dated tip"
+            },
+            {
+              "value": "midpoint",
+              "help": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips"
             }
           ],
           "item_kind": "string",
@@ -770,8 +774,8 @@
             "keep_root",
             "outgroup"
           ],
-          "help": "Reroot the tree by temporal-signal optimization.",
-          "more": "Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root."
+          "help": "Method that chooses the root of the tree",
+          "more": "`least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root."
         },
         {
           "key": "outgroup",
@@ -2366,15 +2370,19 @@
           "options": [
             {
               "value": "least-squares",
-              "help": ""
+              "help": "Minimizes the residuals of the root-to-tip regression on the sampling dates"
             },
             {
               "value": "min-dev",
-              "help": ""
+              "help": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint"
             },
             {
               "value": "oldest",
-              "help": ""
+              "help": "Roots at the middle of the branch above the oldest dated tip"
+            },
+            {
+              "value": "midpoint",
+              "help": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips"
             }
           ],
           "item_kind": "string",
@@ -2387,8 +2395,8 @@
             "keep_root",
             "outgroup"
           ],
-          "help": "Reroot the tree by temporal-signal optimization.",
-          "more": "Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root."
+          "help": "Method that chooses the root of the tree",
+          "more": "`least-squares` and `oldest` use the sampling dates; `min-dev` and `midpoint` use only the branch lengths, root once on the input branch lengths, and count every tip. Without a rooting setting the tree is rerooted by least-squares. Use --outgroup to root on named tips, or --keep-root to keep the input root."
         },
         {
           "key": "outgroup",
@@ -6594,7 +6602,11 @@
           "options": [
             {
               "value": "min-dev",
-              "help": ""
+              "help": "Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint"
+            },
+            {
+              "value": "midpoint",
+              "help": "Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips"
             }
           ],
           "item_kind": "string",
@@ -6607,8 +6619,8 @@
             "keep_root",
             "outgroup"
           ],
-          "help": "Reroot the tree by minimizing the variance of the root-to-tip divergence",
-          "more": "Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available where the inputs have dates."
+          "help": "Method that chooses the root of the tree from the branch lengths",
+          "more": "The tree is rerooted once, on the branch lengths after the initial guess, and every tip counts. Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available where the inputs have dates."
         },
         {
           "key": "outgroup",

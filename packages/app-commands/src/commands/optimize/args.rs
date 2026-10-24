@@ -289,10 +289,11 @@ pub struct TreetimeOptimizeArgsRaw {
   #[deser(flatten)]
   pub zero_based: ZeroBasedArgs,
 
-  /// Reroot the tree by minimizing the variance of the root-to-tip divergence
+  /// Method that chooses the root of the tree from the branch lengths
   ///
-  /// Without this setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`)
-  /// are available where the inputs have dates.
+  /// The tree is rerooted once, on the branch lengths after the initial guess, and every tip counts. Without this
+  /// setting, the input root stays. The rerooting methods that need dates (`least-squares`, `oldest`) are available
+  /// where the inputs have dates.
   #[cfg_attr(
     feature = "clap",
     clap(long, value_enum, conflicts_with = "outgroup", help_heading = "Rooting")
@@ -446,13 +447,17 @@ pub struct TreetimeOptimizeArgsRaw {
 #[schemars(rename_all = "kebab-case")]
 #[deser(rename_all = "kebab-case")]
 pub enum OptimizeRerootMethod {
+  /// Minimizes the variance of root-to-tip distances over all tips; more robust than midpoint
   MinDev,
+  /// Roots at the middle of the longest tip-to-tip path; uses only the two farthest tips
+  Midpoint,
 }
 
 impl From<OptimizeRerootMethod> for RerootMethod {
   fn from(m: OptimizeRerootMethod) -> Self {
     match m {
       OptimizeRerootMethod::MinDev => RerootMethod::MinDev,
+      OptimizeRerootMethod::Midpoint => RerootMethod::Midpoint,
     }
   }
 }

@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""
+Golden master capture script for midpoint rooting.
+
+Roots the tree of each dataset with Biopython's `Tree.root_at_midpoint()`, the
+midpoint rooting that `augur refine --root mid_point` applies, and writes the
+tips on each side of the new root and the root-to-tip distance of every tip to
+gm_reroot_midpoint_outputs.json.
+
+The capture stops for a dataset whose longest tip-to-tip path is not unique or
+whose midpoint lies on a node, because Biopython then adds a root with a branch
+of length zero, and the comparison of the two sides of the root has no unique
+answer.
+
+Usage:
+    ./dev/docker/python python packages/treetime/src/reroot/__tests__/__fixtures__/gm_reroot_midpoint_capture
+"""
+
+from __future__ import annotations
+
+import itertools
+import json
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+
+import Bio
+from Bio import Phylo
+
+FIXTURES_DIR = Path(__file__).parent
+REPO_ROOT = FIXTURES_DIR.parents[5]
+DATASETS = ["zika/20", "ebola/20", "lassa/L/20", "tb/20", "mpox/clade-ii/20"]
+RELATIVE_TIE_TOLERANCE = 1e-9
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    outputs = {
+        "biopython": Bio.__version__,
+        "datasets": {dataset: capture(dataset).as_json() for dataset in DATASETS},
+    }
+    path = FIXTURES_DIR / "gm_reroot_midpoint_outputs.json"
+    path.write_text(json.dumps(outputs, indent=2, sort_keys=True) + "\n")
+    logging.info("Wrote %s", path)
+
+
+def capture(dataset: str) -> MidpointRoot:
+    tree = Phylo.read(REPO_ROOT / "data" / dataset / "tree.nwk", "newick")
+    require_unique_longest_path(dataset, tree)
+    tree.root_at_midpoint()
+    sides = [sorted(tip.name for tip in child.get_terminals()) for child in tree.root.clades]
+    if len(sides) != 2 or any(child.branch_length == 0.0 for child in tree.root.clades):
+        raise ValueError(f"{dataset}: the midpoint lies on a node; choose another dataset")
+    depths = tree.depths()
+    return MidpointRoot(
+        sides=sorted(sides),
+        root_to_tip={tip.name: depths[tip] for tip in tree.get_terminals()},
+    )
+
+
+@dataclass(frozen=True)
+class MidpointRoot:
+    sides: list[list[str]]
+    root_to_tip: dict[str, float]
+
+    def as_json(self) -> dict:
+        return {"sides": self.sides, "root_to_tip": self.root_to_tip}
+
+
+def require_unique_longest_path(dataset: str, tree: Phylo.BaseTree.Tree) -> None:
+    tips = tree.get_terminals()
+    distances = sorted((tree.distance(a, b) for a, b in itertools.combinations(tips, 2)), reverse=True)
+    longest, second = distances[0], distances[1]
+    if longest - second <= RELATIVE_TIE_TOLERANCE * longest:
+        raise ValueError(f"{dataset}: the longest tip-to-tip path is not unique; choose another dataset")
+
+
+if __name__ == "__main__":
+    main()

@@ -1371,10 +1371,11 @@ export const zAlphabetName = z.enum([
   'aa-no-stop'
 ]);
 
-export const zRerootMethod = z.enum([
-  'least-squares',
-  'min-dev',
-  'oldest'
+export const zRerootMethod = z.union([
+  z.literal('least-squares'),
+  z.literal('min-dev'),
+  z.literal('oldest'),
+  z.literal('midpoint')
 ]);
 
 export const zBranchLengthMode = z.union([
@@ -1855,7 +1856,10 @@ export const zMugrationConfig = z.strictObject({
  * Date-dependent methods (least-squares, oldest) are available
  * in the timetree and clock commands.
  */
-export const zOptimizeRerootMethod = z.enum(['min-dev']);
+export const zOptimizeRerootMethod = z.union([
+  z.literal('min-dev'),
+  z.literal('midpoint')
+]);
 
 /**
  * Initial branch lengths: input lengths, or estimates from the number of substitutions divided by the effective

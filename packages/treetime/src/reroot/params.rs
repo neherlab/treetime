@@ -19,7 +19,7 @@ impl RerootSpec {
   pub(crate) fn placement(&self) -> Placement {
     match self {
       Self::Method(RerootMethod::LeastSquares | RerootMethod::MinDev) => Placement::EdgeEndBand,
-      Self::Method(RerootMethod::Oldest) | Self::Tips(_) => Placement::Exact,
+      Self::Method(RerootMethod::Oldest | RerootMethod::Midpoint) | Self::Tips(_) => Placement::Exact,
     }
   }
 }
@@ -37,6 +37,7 @@ pub enum RerootMethod {
   LeastSquares,
   MinDev,
   Oldest,
+  Midpoint,
 }
 
 #[derive(Copy, Debug, Clone, PartialEq, SmartDefault)]

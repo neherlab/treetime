@@ -355,6 +355,11 @@ datasets = ["flu/h3n2/20"]
 args = "--reroot=min-dev"
 
 [[clock]]
+variant = "reroot-midpoint"
+datasets = ["flu/h3n2/20"]
+args = "--reroot=midpoint"
+
+[[clock]]
 variant = "reroot-oldest"
 datasets = ["flu/h3n2/20"]
 args = "--reroot=oldest"
@@ -482,6 +487,11 @@ args = "--representation=sparse --optimizer=newton"
 variant = "reroot-min-dev"
 datasets = ["flu/h3n2/20"]
 args = "--representation=sparse --reroot=min-dev"
+
+[[optimize]]
+variant = "reroot-midpoint"
+datasets = ["flu/h3n2/20"]
+args = "--representation=sparse --reroot=midpoint"
 
 # Per-file output flags in place of --output-all
 [[optimize]]
@@ -761,6 +771,11 @@ tier = "quick"
 variant = "reroot-mindev"
 datasets = ["flu/h3n2/20", "ebola/362"]
 args = "--reroot=min-dev"
+
+[[timetree]]
+variant = "reroot-midpoint"
+datasets = ["flu/h3n2/20", "ebola/362"]
+args = "--reroot=midpoint"
 
 [[timetree]]
 variant = "reroot-oldest"

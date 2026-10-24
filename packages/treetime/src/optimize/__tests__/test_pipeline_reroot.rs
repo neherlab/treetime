@@ -7,8 +7,8 @@ mod tests {
   use crate::test_utils::sequence_source;
   use eyre::Report;
   use helpers::{
-    assert_branch_lengths_valid, jc69_sequences, leaf_names, load, load_with_unary_root, params_with, root_child_keys,
-    root_key,
+    assert_branch_lengths_valid, jc69_sequences, leaf_names, load, load_with_unary_root, midpoint_root_clades,
+    params_with, root_child_keys, root_clades, root_key,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -137,6 +137,29 @@ mod tests {
   }
 
   #[test]
+  fn test_optimize_pipeline_reroot_midpoint_roots_at_the_midpoint_of_the_starting_tree() -> Result<(), Report> {
+    let (graph, names, alphabet, sequences, branch_lengths) = load()?;
+    let expected = midpoint_root_clades()?;
+
+    let output = run(
+      &params_with(Some(RerootSpec::Method(RerootMethod::Midpoint))),
+      OptimizeInput {
+        graph,
+        names,
+        sequences: jc69_sequences(sequence_source(alphabet, sequences)?)?,
+        branch_lengths,
+      },
+      &NoopCancel,
+      &NoopProgress,
+      &NoopProgress,
+    )?;
+
+    assert_eq!(expected, root_clades(&output.graph, &output.names)?);
+    assert_branch_lengths_valid(&output.graph, &output.branch_lengths);
+    Ok(())
+  }
+
+  #[test]
   fn test_optimize_pipeline_keep_root_completes() -> Result<(), Report> {
     let (graph, names, alphabet, sequences, branch_lengths) = load()?;
     let leaves_before = graph.get_leaves().count();
@@ -167,15 +190,19 @@ mod tests {
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::OptimizeParams;
     use crate::partition::split::SequenceInput;
-    use crate::reroot::params::RerootSpec;
+    use crate::progress::NoopProgress;
+    use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
+    use crate::reroot::params::{RerootMethod, RerootSpec};
     use crate::seq::alignment::{NodeSeqInput, SequenceSource};
     use crate::test_utils::{TestDataset, leaf_seq_inputs};
     use eyre::Report;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
+    use treetime_graph::clades::{TipIds, graph_clade_keys};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
+    use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkParse, nwk_read};
 
     pub(super) type Loaded = (
@@ -238,6 +265,34 @@ mod tests {
 
     pub(super) fn leaf_names(graph: &Graph, names: &NodeNames) -> Vec<String> {
       graph.get_leaves().map(|leaf| names[leaf.key()].to_owned()).collect()
+    }
+
+    pub(super) fn midpoint_root_clades() -> Result<BTreeSet<BTreeSet<String>>, Report> {
+      let (mut graph, mut names, _, _, mut branch_lengths) = load()?;
+      reroot_date_free(
+        &mut graph,
+        &mut branch_lengths,
+        &RerootSpec::Method(RerootMethod::Midpoint),
+        &|_| false,
+        LengthsAdvice::InitialBranchLengths,
+        &mut names,
+        &NoopProgress,
+      )?;
+      root_clades(&graph, &names)
+    }
+
+    pub(super) fn root_clades(graph: &Graph, names: &NodeNames) -> Result<BTreeSet<BTreeSet<String>>, Report> {
+      let mut ids = TipIds::default();
+      let clades = graph_clade_keys(graph, names, &mut ids)?;
+      let schedule = GraphSchedule::new(graph)?;
+      let root_key = graph.get_exactly_one_root()?.key();
+      Ok(
+        schedule
+          .children(root_key)
+          .iter()
+          .map(|(child_key, _)| clades[child_key].iter().map(|&id| ids.name(id).to_owned()).collect())
+          .collect(),
+      )
     }
 
     fn loaded(nwk_parsed: NwkParse) -> Result<Loaded, Report> {
