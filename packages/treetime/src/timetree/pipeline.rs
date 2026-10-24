@@ -309,8 +309,10 @@ fn estimate_initial_clock(
     log,
   )
   .wrap_err("Failed to infer clock model")?;
-  let clock_fit =
-    fit.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), log))?;
+  let floor = fit.signal_rate_floor();
+  let clock_fit = fit.into_clock_fit_or(floor, || {
+    gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), floor, log)
+  })?;
   Ok((graph, branch_lengths, clock_fit))
 }
 

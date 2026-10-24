@@ -79,7 +79,7 @@ mod tests {
 
     let negative = helpers::root_fit(TREE_4, &falling)?;
     assert!(negative.regression().unwrap().clock_rate() < 0.0);
-    let model = negative.into_clock_fit_or(|| Ok(rate))?.model;
+    let model = negative.into_clock_fit_or(0.0, || Ok(rate))?.model;
     let n = divs.len().to_f64_exact();
     let expected_intercept = (divs.values().sum::<f64>() - rate * falling.values().sum::<f64>()) / n;
     pretty_assert_abs_diff_eq!(rate, model.clock_rate(), epsilon = 1e-15);
@@ -88,7 +88,7 @@ mod tests {
     let positive = helpers::root_fit(TREE_4, &helpers::leaf_dates())?;
     let regression_rate = positive.regression().unwrap().clock_rate();
     let model = positive
-      .into_clock_fit_or(|| panic!("the fallback must not be asked for"))?
+      .into_clock_fit_or(0.0, || panic!("the fallback must not be asked for"))?
       .model;
     pretty_assert_abs_diff_eq!(regression_rate, model.clock_rate(), epsilon = 0.0);
     Ok(())

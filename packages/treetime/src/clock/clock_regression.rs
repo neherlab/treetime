@@ -16,7 +16,12 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
+use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_internal_report;
+
+/// A start rate below this fraction of the mean root-to-tip divergence per year of sampling leaves the time inference
+/// little to recover from: the divergence would have to span ten times the sampling window.
+const SIGNAL_RATE_FLOOR_FRACTION: f64 = 0.1;
 
 pub(crate) fn fit_clock_model(
   tree: &ClockTree,
@@ -105,9 +110,14 @@ impl ClockFitResult {
     })
   }
 
-  pub(crate) fn into_clock_fit_or(self, fallback: impl FnOnce() -> Result<f64, Report>) -> Result<ClockFit, Report> {
+  /// Clock fit of the regression, or of the rate from `fallback` when the estimated rate is not above `min_rate`.
+  pub(crate) fn into_clock_fit_or(
+    self,
+    min_rate: f64,
+    fallback: impl FnOnce() -> Result<f64, Report>,
+  ) -> Result<ClockFit, Report> {
     match &self.estimate {
-      ClockEstimate::Estimated(regression) if regression.clock_rate() <= 0.0 => {
+      ClockEstimate::Estimated(regression) if regression.clock_rate() <= min_rate => {
         let model = ClockModel::with_fixed_rate(&self.root_clock_set, fallback()?)?;
         Ok(ClockFit {
           model,
@@ -116,6 +126,28 @@ impl ClockFitResult {
       },
       ClockEstimate::Estimated(_) | ClockEstimate::Fixed(_) => self.into_clock_fit(),
     }
+  }
+
+  /// A tenth of the mean root-to-tip divergence of the dated tips per year of their date span, or 0 when the dates do
+  /// not vary. Meaningful when the divergences are substitution lengths, as in the fit before the refinement loop.
+  pub(crate) fn signal_rate_floor(&self) -> f64 {
+    let dated: Vec<(f64, f64)> = self
+      .points
+      .iter()
+      .filter(|point| !point.is_outlier)
+      .filter_map(|point| point.date.map(|date| (date, point.div)))
+      .collect();
+    let (first, last) = dated
+      .iter()
+      .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &(date, _)| {
+        (lo.min(date), hi.max(date))
+      });
+    let span = last - first;
+    if span <= 0.0 {
+      return 0.0;
+    }
+    let mean_div = dated.iter().map(|&(_, div)| div).sum::<f64>() / dated.len().to_f64_exact();
+    SIGNAL_RATE_FLOOR_FRACTION * mean_div / span
   }
 
   fn into_clock_model(self) -> Result<ClockModel, Report> {

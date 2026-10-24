@@ -299,8 +299,9 @@ fn update_clock_model(
   let ClockTree {
     graph, branch_lengths, ..
   } = tree;
-  let ClockFit { model, points } =
-    fit.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, log))?;
+  let ClockFit { model, points } = fit.into_clock_fit_or(0.0, || {
+    gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, 0.0, log)
+  })?;
   Ok((
     RoundState {
       graph,

@@ -156,7 +156,9 @@ fn reroot(
   let clock_fit = if reroot_params.is_some() {
     fit.into_clock_fit()?
   } else {
-    fit.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, outliers, log))?
+    fit.into_clock_fit_or(0.0, || {
+      gaussian_start_rate(&graph, &branch_lengths, inputs.context, outliers, 0.0, log)
+    })?
   };
   Ok(PreLoopState {
     graph,
