@@ -7,6 +7,7 @@ pub mod query;
 pub mod rebuild;
 pub mod references;
 pub(crate) mod refresh;
+pub mod reprune;
 pub mod spr;
 
 #[cfg(test)]

@@ -6,6 +6,7 @@ use crate::build::query::Query;
 use crate::build::rebuild::{RebuildParams, RebuildStats, rebuild_round};
 use crate::build::references::{Reaches, ReferenceSelection, select_references};
 use crate::build::refresh::fitch_refresh;
+use crate::build::reprune::{RepruneParams, RepruneStats, reprune};
 use crate::build::spr::{SprStats, spr_round};
 use crate::make_error;
 use eyre::Report;
@@ -49,6 +50,7 @@ pub struct BuildParams {
   pub fitch_refresh: bool,
   pub compare_exhaustive: bool,
   pub rebuild: Option<RebuildParams>,
+  pub reprune: Option<RepruneParams>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -71,6 +73,7 @@ pub struct BuildStats {
   pub comparison: Option<ExhaustiveComparison>,
   pub spr: Vec<SprStats>,
   pub rebuild: Vec<RebuildStats>,
+  pub reprune: Option<RepruneStats>,
   pub collapsed_edges: usize,
 }
 
@@ -196,6 +199,11 @@ pub fn refine_mat(
   }
   if params.fitch_refresh {
     mat = fitch_refresh(mat, seqs, alphabet)?;
+  }
+  if let Some(reprune_params) = &params.reprune {
+    let (repruned, reprune_stats) = reprune(mat, seqs, alphabet, reprune_params)?;
+    mat = repruned;
+    stats.reprune = Some(reprune_stats);
   }
   stats.collapsed_edges = mat.collapse_empty_internal_edges()?;
   stats.final_parsimony = mat.parsimony();

@@ -11,6 +11,7 @@ use treetime::build::pipeline::{
 };
 use treetime::build::rebuild::RebuildParams;
 use treetime::build::references::ReferenceSelection;
+use treetime::build::reprune::RepruneParams;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::GraphSchedule;
@@ -39,7 +40,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [reprune=<batches>] [reprune_rounds=1]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -89,6 +90,16 @@ fn parse_args() -> Result<Args, Report> {
       },
       fitch_refresh: options.contains_key("refresh"),
       compare_exhaustive: options.contains_key("compare"),
+      reprune: options
+        .get("reprune")
+        .map(|batches| -> Result<RepruneParams, Report> {
+          Ok(RepruneParams {
+            batches: batches.parse()?,
+            rounds: get("reprune_rounds", "1").parse()?,
+            seed: 0,
+          })
+        })
+        .transpose()?,
       rebuild: options
         .get("rebuild")
         .map(|radius| -> Result<RebuildParams, Report> {
@@ -126,7 +137,12 @@ fn report_locality(label: &str, missed: &[MissedSplit]) {
   let tips = conflicting.iter().flat_map(|split| &split.misplaced).collect_vec();
   let branches = histogram(&tips.iter().map(|tip| tip.branches).collect_vec(), &[1, 2, 3, 5, 10]);
   let substitutions = tips.iter().map(|tip| tip.substitutions).sorted().collect_vec();
-  let quantile = |q: usize| substitutions.get((substitutions.len() * q).div_euclid(100)).copied().unwrap_or(0);
+  let quantile = |q: usize| {
+    substitutions
+      .get((substitutions.len() * q).div_euclid(100))
+      .copied()
+      .unwrap_or(0)
+  };
   println!(
     "{label}: missed={} unresolved={} conflicting={} tips_to_move={} misplaced_tips={} branches_from_split={} substitutions_from_split_median={} p90={} max={}",
     missed.len(),
@@ -313,6 +329,12 @@ fn main() -> Result<(), Report> {
     println!(
       "rebuild_round={round} tried={} improved={} gain={} too_large={}",
       rebuild.tried, rebuild.improved, rebuild.gain, rebuild.too_large
+    );
+  }
+  if let Some(reprune) = &stats.reprune {
+    println!(
+      "reprune batches={} accepted={} gain={}",
+      reprune.batches, reprune.accepted, reprune.gain
     );
   }
   if let Some(comparison) = &stats.comparison {

@@ -9,7 +9,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Mat {
   graph: Graph,
   root: GraphNodeKey,
@@ -330,6 +330,13 @@ impl Mat {
       None => [Some(parent), None],
     };
     Ok(Detached { reattach_hint })
+  }
+
+  pub(crate) fn remove_sample(&mut self, leaf: GraphNodeKey) -> Result<(), Report> {
+    self.detach(leaf)?;
+    self.graph.remove_node(leaf)?;
+    self.samples.remove(&leaf);
+    Ok(())
   }
 
   fn collapse_unary(&mut self, node: GraphNodeKey) -> Result<Option<(GraphNodeKey, GraphNodeKey)>, Report> {

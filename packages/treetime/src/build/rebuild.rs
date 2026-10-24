@@ -140,6 +140,7 @@ fn best_local_tree(
     fitch_refresh: false,
     compare_exhaustive: false,
     rebuild: None,
+    reprune: None,
   };
   let mut rng = get_random_number_generator(usize_to_u64(center.as_usize()));
   let mut order = (0..queries.len()).collect_vec();
