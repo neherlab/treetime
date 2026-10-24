@@ -1,5 +1,6 @@
 use crate::InterpElem;
 use crate::grid_iter::GridIter;
+use crate::hard_approach_law::Side;
 use crate::max_grid_points::MaxGridPoints;
 use eyre::Report;
 use ndarray::Array1;
@@ -75,6 +76,19 @@ impl<T: InterpElem> Grid<T> {
       return make_error!("Grid must have at least 2 points, got {n_points}");
     }
     Ok(Self { x_min, dx, n_points })
+  }
+
+  pub(crate) fn anchored(self, side: Side, x: T) -> Self
+  where
+    T: Float,
+  {
+    match side {
+      Side::Left => Self { x_min: x, ..self },
+      Side::Right => Self {
+        x_min: x - self.dx * from_count::<T>(self.n_points - 1),
+        ..self
+      },
+    }
   }
 
   pub(crate) fn from_array(x: &Array1<T>) -> Result<Self, Report>

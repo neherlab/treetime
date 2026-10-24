@@ -268,11 +268,19 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     self.resample(&grid)
   }
 
-  fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
+  fn resample_range_dx_clamped(
+    &self,
+    x_range: (T, T),
+    dx: T,
+    anchor: Side,
+    max_points: MaxGridPoints,
+  ) -> Result<Self, Report>
   where
     T: Float,
   {
-    let grid_fn = self.grid_fn.resample_range_dx_clamped(x_range, dx, max_points)?;
+    let grid_fn = self
+      .grid_fn
+      .resample_range_dx_clamped(x_range, dx, anchor, max_points)?;
     Ok(Self::from_grid_fn_with_extrap(
       grid_fn,
       self.ampl,
@@ -285,7 +293,15 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
   where
     T: Float,
   {
-    self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, max_points)
+    let y = self.y();
+    let (first, last) = (y[0], y[y.len() - 1]);
+    let right_end_denser = if Y::likely_is_maximum() {
+      last > first
+    } else {
+      last < first
+    };
+    let denser_end = if right_end_denser { Side::Right } else { Side::Left };
+    self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, denser_end, max_points)
   }
 
   pub(crate) fn len(&self) -> usize {
