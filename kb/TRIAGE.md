@@ -148,7 +148,6 @@ Each line names the issue and the measurement or analysis that must come first.
 - **[kb/issues/N-timetree-branch-mutations-output-unimplemented.md](issues/N-timetree-branch-mutations-output-unimplemented.md)**: trace the columns, order, coordinates, and ambiguity handling of the v0 branch mutation table
 - **[kb/issues/N-timetree-forward-fine-fallback-can-build-large-grids.md](issues/N-timetree-forward-fine-fallback-can-build-large-grids.md)**: find which forward stage builds the 43 513-point grid of `mpox/clade-ii/1000` at 5e-4 and why its window is so wide
 - **[kb/issues/N-timetree-gm-runner-dataset-cases-disabled.md](issues/N-timetree-gm-runner-dataset-cases-disabled.md)**: find out why the v0 capture does not reproduce the committed fixture, and why the dense `mpox_clade_ii_20` case is slow
-- **[kb/issues/N-timetree-parallel-cpu-efficiency-low.md](issues/N-timetree-parallel-cpu-efficiency-low.md)**: re-measure CPU time at 1 and 20 threads on an idle host; a loaded 12-CPU host shows only 1.1 to 1.4 times
 - **[kb/issues/N-web2-supported-dataset-size-undocumented.md](issues/N-web2-supported-dataset-size-undocumented.md)**: measure the memory of the tab in the browsers with runs computing at the same time and after several large runs in one page session
 
 ## Fix now
