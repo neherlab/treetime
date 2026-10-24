@@ -2,6 +2,7 @@ import { errorMessage } from "@neherlab/app-contracts";
 import { publications } from "auspice/src/components/download/downloadModal";
 import { auspiceJSON, entropyTSV, exportTree, strainTSV, SVG } from "auspice/src/components/download/helperFunctions";
 import { datasetSummary } from "auspice/src/components/info/datasetSummary";
+import { getMapTilesSettings } from "auspice/src/util/globals";
 import { useCallback, useMemo } from "react";
 import ChevronDownIcon from "~icons/lucide/chevron-down";
 
@@ -187,7 +188,7 @@ async function writeFigure({ store, prefix, runs, version, fail }: DownloadConte
       branchLengthsToDisplay: controls.branchLengthsToDisplay,
       t: translateAuspice,
     }),
-    mapAttribution: undefined,
+    mapAttribution: controls.panelsToDisplay.includes("map") ? getMapTilesSettings().attribution : undefined,
     publications: RELEVANT_PUBLICATIONS,
   });
 

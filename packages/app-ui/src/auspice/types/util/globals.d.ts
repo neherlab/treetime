@@ -13,3 +13,5 @@ export declare const controlsPadding: number;
 export declare const controlsHiddenWidth: number;
 
 export declare const twoColumnBreakpoint: number;
+
+export declare function getMapTilesSettings(): { attribution: string };

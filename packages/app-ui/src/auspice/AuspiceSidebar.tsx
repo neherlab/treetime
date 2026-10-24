@@ -7,12 +7,20 @@ import ColorBy, { ColorByInfo } from "auspice/src/components/controls/color-by";
 import { ControlHeader } from "auspice/src/components/controls/controlHeader";
 import DateRangeInputs, { DateRangeInfo } from "auspice/src/components/controls/date-range-inputs";
 import FilterData, { FilterInfo } from "auspice/src/components/controls/filter";
-import { EntropyInfo, ExplodeTreeInfo, PanelLayoutInfo, TreeInfo } from "auspice/src/components/controls/miscInfoText";
+import GeoResolution from "auspice/src/components/controls/geo-resolution";
+import {
+  EntropyInfo,
+  ExplodeTreeInfo,
+  MapInfo,
+  PanelLayoutInfo,
+  TreeInfo,
+} from "auspice/src/components/controls/miscInfoText";
 import PanelLayout from "auspice/src/components/controls/panel-layout";
 import { PanelSection } from "auspice/src/components/controls/panelSection";
 import { ControlsContainer } from "auspice/src/components/controls/styles";
 import { ToggleFocus } from "auspice/src/components/controls/toggle-focus";
 import ToggleTangle from "auspice/src/components/controls/toggle-tangle";
+import TransmissionLines from "auspice/src/components/controls/transmission-lines";
 import type { ComponentProps } from "react";
 import ChevronLeftIcon from "~icons/lucide/chevron-left";
 import ChevronRightIcon from "~icons/lucide/chevron-right";
@@ -27,9 +35,17 @@ const HIDE_CONTROLS = "Hide Auspice controls";
 
 const SHOW_CONTROLS = "Show Auspice controls";
 
+const MAP_OPTIONS = (
+  <>
+    <GeoResolution />
+    <TransmissionLines />
+  </>
+);
+
 export function SidebarControls({ store, entropy }: { store: AuspiceStore; entropy: boolean }) {
   const dated = useAuspiceSelector(store, selectDated);
   const entropyAvailable = useAuspiceSelector(store, selectEntropyAvailable);
+  const mapAvailable = useAuspiceSelector(store, selectMapAvailable);
   const canTogglePanelLayout = useAuspiceSelector(store, selectCanTogglePanelLayout);
 
   return (
@@ -52,6 +68,7 @@ export function SidebarControls({ store, entropy }: { store: AuspiceStore; entro
       <ChooseTipLabel />
       <ChooseExplodeAttr tooltip={ExplodeTreeInfo} />
       <ToggleTangle />
+      {mapAvailable && <PanelSection panel="map" title="Map" tooltip={MapInfo} options={MAP_OPTIONS} />}
       {entropy && entropyAvailable && <PanelSection panel="entropy" title="Entropy" tooltip={EntropyInfo} />}
       {canTogglePanelLayout && (
         <>
@@ -111,6 +128,10 @@ function selectDated(state: AuspiceState): boolean {
 
 function selectEntropyAvailable(state: AuspiceState): boolean {
   return state.controls.panelsAvailable.includes("entropy");
+}
+
+function selectMapAvailable(state: AuspiceState): boolean {
+  return state.controls.panelsAvailable.includes("map") && state.controls.showTreeToo === undefined;
 }
 
 function selectCanTogglePanelLayout(state: AuspiceState): boolean {

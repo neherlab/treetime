@@ -1,8 +1,11 @@
 import { useElementSize } from "@mantine/hooks";
+import { errorMessage } from "@neherlab/app-contracts";
 import Entropy from "auspice/src/components/entropy";
 import FiltersSummary from "auspice/src/components/info/filtersSummary";
 import Tree from "auspice/src/components/tree";
 import {
+  lazy,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -12,7 +15,9 @@ import {
   type RefCallback,
   type RefObject,
 } from "react";
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import type { FigureRuns } from "./downloads";
 import {
   CARD_TITLE_HEIGHT,
@@ -25,6 +30,9 @@ import type { AuspicePanelLayout, AuspiceState } from "./state";
 import type { AuspiceStore } from "./store";
 import { useAuspiceSelector } from "./store-hooks";
 import { TreeDownloads } from "./TreeDownloads";
+import { canDrawMaps } from "./webgl";
+
+const AuspiceMap = lazy(async () => import("auspice/src/components/map/map"));
 
 const ZOOM_BUTTONS = ":scope > div:last-child > div + div > div:last-child";
 
@@ -94,6 +102,7 @@ export function AuspicePanels({
         runs={runs}
         version={version}
       />
+      <MapCard sizes={sizes} />
       <EntropyCard sizes={sizes} />
     </div>
   );
@@ -151,6 +160,50 @@ function TreeCard({
       </div>
       {size.height > 0 && <Tree key={treeKey} width={size.width} height={size.height} />}
     </div>
+  );
+}
+
+function MapCard({ sizes }: { sizes: PanelSizes }) {
+  const webGl = useMemo(() => canDrawMaps(), []);
+  const legend = useMemo(() => ({ swatches: !sizes.mapInGrid, demes: true }), [sizes.mapInGrid]);
+
+  if (sizes.map === undefined || sizes.map.height <= 0) {
+    return null;
+  }
+
+  if (!webGl) {
+    return (
+      <Alert className="basis-full">
+        <AlertTitle>No map</AlertTitle>
+        <AlertDescription>
+          This browser cannot draw the map, because WebGL is turned off or not supported.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className={sizes.mapInGrid ? "auspice-card relative flex-none" : "auspice-card relative flex-none basis-full"}>
+      <ErrorBoundary FallbackComponent={MapFailure}>
+        <Suspense fallback={null}>
+          <AuspiceMap
+            width={sizes.map.width}
+            height={sizes.map.height}
+            justGotNewDatasetRenderNewMap={false}
+            legend={legend}
+          />
+        </Suspense>
+      </ErrorBoundary>
+    </div>
+  );
+}
+
+function MapFailure({ error }: FallbackProps) {
+  return (
+    <Alert variant="destructive">
+      <AlertTitle>Auspice cannot draw the map</AlertTitle>
+      <AlertDescription>{errorMessage(error)}</AlertDescription>
+    </Alert>
   );
 }
 
