@@ -43,7 +43,7 @@ pub fn year_fraction_days_between(from: f64, to: f64) -> f64 {
 #[expect(
   clippy::as_conversions,
   clippy::disallowed_methods,
-  reason = "the integer part of the year fraction casts to the i32 year that chrono takes; Duration::from_secs_f64 panics on the negative span of a year before 1 CE, see kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
+  reason = "the integer part of the year fraction casts to the i32 year that chrono takes; Duration::from_secs_f64 panics on the negative span of a year before 1 CE, see kb/issues/H-io-negative-numdate-panics-in-date-string-conversion.md"
 )]
 pub fn year_fraction_to_date(year_fraction: f64) -> DateTime<Utc> {
   let year = year_fraction.trunc() as i32;

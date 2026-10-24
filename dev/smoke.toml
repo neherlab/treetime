@@ -750,7 +750,7 @@ args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk"
 variant = "clock-rate-1e-6"
 datasets = ["zika/20"]
 args = "--clock-rate=1e-6"
-fail = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
+fail = "kb/issues/H-io-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]
 variant = "coalescent"
