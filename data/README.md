@@ -12,7 +12,7 @@ A per-command config is exactly the command's argument object. Its keys map one-
 | ------------------------------------------------------------------------ | ----------- | ------------------------------------------------------------- |
 | [`ebola/20/ancestral-parsimony.yaml`](ebola/20/ancestral-parsimony.yaml) | `ancestral` | Fitch parsimony: fast, model-free ancestral states            |
 | [`zika/20/ancestral.yaml`](zika/20/ancestral.yaml)                       | `ancestral` | Marginal reconstruction with an inferred GTR model            |
-| [`sc2/2844/ancestral.yaml`](sc2/2844/ancestral.yaml)                     | `ancestral` | Marginal reconstruction on 2844 SARS-CoV-2 genomes            |
+| [`sc2/2844/ancestral.yaml`](sc2/2844/ancestral.yaml)                     | `ancestral` | Marginal reconstruction on 2504 SARS-CoV-2 genomes            |
 | [`rsv/a/2000/ancestral-dense.yaml`](rsv/a/2000/ancestral-dense.yaml)     | `ancestral` | The dense representation on 2000 RSV-A genomes                |
 | [`dengue/100/clock.yaml`](dengue/100/clock.yaml)                         | `clock`     | Root-to-tip regression with a non-default id column           |
 | [`flu/h3n2/20/optimize.yaml`](flu/h3n2/20/optimize.yaml)                 | `optimize`  | Branch-length optimization and min-divergence rerooting       |
@@ -46,7 +46,7 @@ A pipeline file lists named steps, each an analysis command with its arguments. 
 | [`flu/h3n2/200/pipeline.yaml`](flu/h3n2/200/pipeline.yaml)             | `optimize` -> `timetree`                               | A shared, typed clock rate defined once in `vars`                |
 | [`flu/h3n2/500/pipeline.yaml`](flu/h3n2/500/pipeline.yaml)             | `optimize` -> `ancestral` -> `timetree`                | A seasonal-influenza build with a fixed clock (500 sequences)    |
 | [`ebola/362/pipeline.yaml`](ebola/362/pipeline.yaml)                   | `optimize` -> `ancestral` -> `timetree`                | A three-step build on the 2014 Ebola epidemic dataset            |
-| [`sc2/2844/pipeline.yaml`](sc2/2844/pipeline.yaml)                     | `optimize` -> `ancestral`                              | A date-free build on 2844 SARS-CoV-2 genomes                     |
+| [`sc2/2844/pipeline.yaml`](sc2/2844/pipeline.yaml)                     | `optimize` -> `ancestral`                              | A date-free build on 2504 SARS-CoV-2 genomes                     |
 | [`mpox/clade-ii/1000/pipeline.yaml`](mpox/clade-ii/1000/pipeline.yaml) | `optimize` -> `ancestral` -> `timetree`                | The full Nextstrain mpox TreeTime chain (fixed clock, mutations) |
 | [`dengue/2000/pipeline.yaml`](dengue/2000/pipeline.yaml)               | `optimize` -> `ancestral` -> `timetree` -> `mugration` | Every step on 2000 genomes, with a skyline coalescent            |
 | [`mpox/clade-ii/2000/pipeline.yaml`](mpox/clade-ii/2000/pipeline.yaml) | `optimize` -> `ancestral` -> `timetree` -> `mugration` | The mpox chain on 2000 genomes, with ancestral geography         |

@@ -1,101 +1,101 @@
-name	" date"
-EM_COY_2015_015982	" 2015.30"
-CON-10590	" 2015.61"
-EM_079497	" 2014.26"
-LIBR10180	" 2014.77"
-KG12	" 2015.40"
-G3770	" 2014.44"
-Makona-G4419.1	" 2014.54"
-NZG_0358	" 2016.22"
-EM_079422	" 2014.23"
-EM_079775	" 2014.39"
-Makona-G5112.1	" 2014.63"
-0507_C2_MK0664	" 2014.99"
-G3682	" 2014.40"
-V633	" 2014.61"
-EM111	" 2014.42"
-V20143415	" 2014.83"
-3004_C1_KT5974	" 2015.20"
-1507_C2_15674_EMLK	" 2015.49"
-EM_079408	" 2014.24"
-2607_C2_12781_EMLH	" 2015.26"
-1805_C1_MK2724	" 2015.17"
-J0053	" 2014.76"
-LIBR0430	" 2014.92"
-REDC_GUI_2015_02242	" 2015.81"
-1807_C2_14846_EMLK	" 2015.32"
-G3734	" 2014.43"
-LIBR10017	" 2014.63"
-EM_FORE_2015_1076	" 2015.50"
-EM_079815	" 2014.40"
-Makona-G3972.1	" 2014.48"
-2208_C2_18659R_EMLH	" 2015.52"
-1209_C1_20573_EMLK	" 2015.69"
-REDC-GUI-2015-00502	" 2015.53"
-EM_074461	" 2014.59"
-IPDPFHGINSP_GUI_2015_5038	" 2015.25"
-V1561	" 2014.80"
-J0037	" 2014.75"
-EM_079681	" 2014.36"
-1007_C2_PL4105	" 2015.16"
-1807_C2_10398_EMLK	" 2015.11"
-J0127	" 2014.83"
-0806_C1_KT4677	" 2015.09"
-V509	" 2014.56"
-0106_C2_PL7375	" 2015.40"
-EM_076948	" 2014.87"
-EM_GUI_2015_004674	" 2015.23"
-1507_C1_18647_EMLH	" 2015.52"
-1805_C1_MK2382	" 2015.15"
-EM_079749	" 2014.38"
-Makona-G5853.1	" 2014.72"
-1807_C2_14763_EMLK	" 2015.30"
-EM_079542	" 2014.28"
-0205_C2_PL6086	" 2015.28"
-DML25411	" 2015.19"
-Makona-G4347.1	" 2014.53"
-1708_C1_13031_EMLH	" 2015.38"
-1009_C1_20524_EMLK	" 2015.68"
-J0016	" 2014.74"
-EM_079434	" 2014.25"
-EM_COY_2015_016456	" 2015.36"
-EM-FORE-2015-1414	" 2015.53"
-V20140729	" 2014.69"
-LIBR10271	" 2014.65"
-J0169	" 2014.85"
-EM_079413	" 2014.24"
-CON-8559	" 2015.47"
-LIBR10196	" 2014.65"
-2507_C2_10084_EMLK	" 2015.06"
-EM_078556	" 2014.91"
-V20143648	" 2014.84"
-LIBR1221	" 2015.09"
-2906_C1_PL8172	" 2015.46"
-Makona-G4264.1	" 2014.52"
-2507_C1_10022_EMLK	" 2015.05"
-0208_C1_77679_EMLK	" 2015.02"
-G3827	" 2014.45"
-EM_COY_2015_017574	" 2015.44"
-REDC_GUI_2015_01323	" 2015.65"
-LIBR0622	" 2014.97"
-3004_C2_KT5320	" 2015.15"
-EM_COY_2015_017174	" 2015.41"
-CON12930	" 2015.78"
-EM_076534	" 2014.83"
-V20144192	" 2014.85"
-J0020	" 2014.73"
-FCH1785_S	" 2015.70"
-LIBR10237	" 2014.52"
-IPDPFHGINSP_GUI_2015_6505	" 2015.33"
-G3809	" 2014.45"
-1805_C1_MK2825	" 2015.18"
-2807_C2_77716_EMLK	" 2015.02"
-1507_C2_MK0866	" 2015.01"
-Gueckedou-C05	" 2014.21"
-1807_C1_15360_EMLK	" 2015.43"
-1807_C1_PL9150Rb	" 2015.53"
-CON-11010	" 2015.64"
-2906_C2_MK0368	" 2014.97"
-V1116	" 2014.73"
-EM_004085	" 2014.96"
-EM_079622	" 2014.32"
+name	" date"	region	country	division
+EM_COY_2015_015982	" 2015.30"	africa	guinea	forecariah
+CON-10590	" 2015.61"	africa	guinea	conakry
+EM_079497	" 2014.26"	africa	guinea	gueckedou
+LIBR10180	" 2014.77"	africa	liberia	montserrado
+KG12	" 2015.40"	africa	guinea	boke
+G3770	" 2014.44"	africa	sierra_leone	kailahun
+Makona-G4419.1	" 2014.54"	africa	sierra_leone	kenema
+NZG_0358	" 2016.22"	africa	guinea	macenta
+EM_079422	" 2014.23"	africa	guinea	macenta
+EM_079775	" 2014.39"	africa	guinea	gueckedou
+Makona-G5112.1	" 2014.63"	africa	sierra_leone	kenema
+0507_C2_MK0664	" 2014.99"	africa	sierra_leone	sierra_leone
+G3682	" 2014.40"	africa	sierra_leone	kailahun
+V633	" 2014.61"	africa	guinea	gueckedou
+EM111	" 2014.42"	africa	sierra_leone	kailahun
+V20143415	" 2014.83"	africa	sierra_leone	western_rural
+3004_C1_KT5974	" 2015.20"	africa	sierra_leone	sierra_leone
+1507_C2_15674_EMLK	" 2015.49"	africa	sierra_leone	kambia
+EM_079408	" 2014.24"	africa	guinea	gueckedou
+2607_C2_12781_EMLH	" 2015.26"	africa	sierra_leone	western_area
+1805_C1_MK2724	" 2015.17"	africa	sierra_leone	bombali
+J0053	" 2014.76"	africa	sierra_leone	western_rural
+LIBR0430	" 2014.92"	africa	liberia	grand_bassa
+REDC_GUI_2015_02242	" 2015.81"	africa	guinea	forecariah
+1807_C2_14846_EMLK	" 2015.32"	africa	sierra_leone	kambia
+G3734	" 2014.43"	africa	sierra_leone	kailahun
+LIBR10017	" 2014.63"	africa	liberia	montserrado
+EM_FORE_2015_1076	" 2015.50"	africa	guinea	forecariah
+EM_079815	" 2014.40"	africa	guinea	gueckedou
+Makona-G3972.1	" 2014.48"	africa	sierra_leone	sierra_leone
+2208_C2_18659R_EMLH	" 2015.52"	africa	sierra_leone	western_area
+1209_C1_20573_EMLK	" 2015.69"	africa	sierra_leone	kambia
+REDC-GUI-2015-00502	" 2015.53"	africa	guinea	conakry
+EM_074461	" 2014.59"	africa	guinea	gueckedou
+IPDPFHGINSP_GUI_2015_5038	" 2015.25"	africa	guinea	conakry
+V1561	" 2014.80"	africa	guinea	conakry
+J0037	" 2014.75"	africa	sierra_leone	port_loko
+EM_079681	" 2014.36"	africa	guinea	gueckedou
+1007_C2_PL4105	" 2015.16"	africa	sierra_leone	port_loko
+1807_C2_10398_EMLK	" 2015.11"	africa	sierra_leone	western_area
+J0127	" 2014.83"	africa	sierra_leone	western_urban
+0806_C1_KT4677	" 2015.09"	africa	sierra_leone	western_area
+V509	" 2014.56"	africa	guinea	conakry
+0106_C2_PL7375	" 2015.40"	africa	sierra_leone	port_loko
+EM_076948	" 2014.87"	africa	guinea	gueckedou
+EM_GUI_2015_004674	" 2015.23"	africa	guinea	siguiri
+1507_C1_18647_EMLH	" 2015.52"	africa	sierra_leone	western_area
+1805_C1_MK2382	" 2015.15"	africa	sierra_leone	bombali
+EM_079749	" 2014.38"	africa	guinea	gueckedou
+Makona-G5853.1	" 2014.72"	africa	sierra_leone	moyamba
+1807_C2_14763_EMLK	" 2015.30"	africa	sierra_leone	kambia
+EM_079542	" 2014.28"	africa	guinea	gueckedou
+0205_C2_PL6086	" 2015.28"	africa	sierra_leone	kambia
+DML25411	" 2015.19"	africa	sierra_leone	kono
+Makona-G4347.1	" 2014.53"	africa	sierra_leone	kenema
+1708_C1_13031_EMLH	" 2015.38"	africa	sierra_leone	western_area
+1009_C1_20524_EMLK	" 2015.68"	africa	sierra_leone	kambia
+J0016	" 2014.74"	africa	sierra_leone	western_rural
+EM_079434	" 2014.25"	africa	guinea	macenta
+EM_COY_2015_016456	" 2015.36"	africa	guinea	dubreka
+EM-FORE-2015-1414	" 2015.53"	africa	guinea	forecariah
+V20140729	" 2014.69"	africa	sierra_leone	bo
+LIBR10271	" 2014.65"	africa	liberia	liberia
+J0169	" 2014.85"	africa	sierra_leone	western_urban
+EM_079413	" 2014.24"	africa	guinea	gueckedou
+CON-8559	" 2015.47"	africa	guinea	conakry
+LIBR10196	" 2014.65"	africa	liberia	liberia
+2507_C2_10084_EMLK	" 2015.06"	africa	sierra_leone	sierra_leone
+EM_078556	" 2014.91"	africa	guinea	kankan
+V20143648	" 2014.84"	africa	sierra_leone	koinadugu
+LIBR1221	" 2015.09"	africa	liberia	montserrado
+2906_C1_PL8172	" 2015.46"	africa	sierra_leone	port_loko
+Makona-G4264.1	" 2014.52"	africa	sierra_leone	kenema
+2507_C1_10022_EMLK	" 2015.05"	africa	sierra_leone	western_area
+0208_C1_77679_EMLK	" 2015.02"	africa	sierra_leone	western_area
+G3827	" 2014.45"	africa	sierra_leone	kailahun
+EM_COY_2015_017574	" 2015.44"	africa	guinea	boke
+REDC_GUI_2015_01323	" 2015.65"	africa	guinea	conakry
+LIBR0622	" 2014.97"	africa	liberia	montserrado
+3004_C2_KT5320	" 2015.15"	africa	sierra_leone	western_area
+EM_COY_2015_017174	" 2015.41"	africa	guinea	forecariah
+CON12930	" 2015.78"	africa	guinea	conakry
+EM_076534	" 2014.83"	africa	guinea	macenta
+V20144192	" 2014.85"	africa	sierra_leone	bombali
+J0020	" 2014.73"	africa	sierra_leone	bombali
+FCH1785_S	" 2015.70"	africa	guinea	forecariah
+LIBR10237	" 2014.52"	africa	liberia	liberia
+IPDPFHGINSP_GUI_2015_6505	" 2015.33"	africa	guinea	forecariah
+G3809	" 2014.45"	africa	sierra_leone	kailahun
+1805_C1_MK2825	" 2015.18"	africa	sierra_leone	bombali
+2807_C2_77716_EMLK	" 2015.02"	africa	sierra_leone	western_area
+1507_C2_MK0866	" 2015.01"	africa	sierra_leone	sierra_leone
+Gueckedou-C05	" 2014.21"	africa	guinea	gueckedou
+1807_C1_15360_EMLK	" 2015.43"	africa	sierra_leone	kambia
+1807_C1_PL9150Rb	" 2015.53"	africa	sierra_leone	port_loko
+CON-11010	" 2015.64"	africa	guinea	conakry
+2906_C2_MK0368	" 2014.97"	africa	sierra_leone	bombali
+V1116	" 2014.73"	africa	guinea	dalaba
+EM_004085	" 2014.96"	africa	guinea	kissidougou
+EM_079622	" 2014.32"	africa	guinea	gueckedou

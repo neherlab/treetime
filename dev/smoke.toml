@@ -41,6 +41,7 @@ metadata_args = "--metadata-id-columns=genbank_accession"
 mugration_attribute = "country"
 
 [families.ebola]
+mugration_attribute = "country"
 
 [families."flu/h3n2"]
 mugration_attribute = "location"
@@ -142,9 +143,15 @@ args = "--method-anc=parsimony"
 variant = "marginal-sparse"
 args = "--method-anc=marginal --representation=sparse"
 
+# The dense profile arrays of the long mpox genomes and the large sc2 trees exceed the memory budget of a 32 GB host
 [[ancestral]]
 variant = "marginal-dense"
 args = "--method-anc=marginal --representation=dense --model=jc69"
+skip.'mpox/clade-ii/500' = "dense needs 23 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'mpox/clade-ii/1000' = "dense needs 48 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'mpox/clade-ii/2000' = "dense needs 100 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'sc2/2844' = "dense needs 17 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'sc2/4500' = "dense needs 39 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 
 [[ancestral]]
 variant = "model-jc69"
@@ -476,9 +483,15 @@ args = "--zero-based"
 variant = "sparse"
 args = "--representation=sparse"
 
+# The dense profile arrays of the long mpox genomes and the large sc2 trees exceed the memory budget of a 32 GB host
 [[optimize]]
 variant = "dense"
 args = "--representation=dense"
+skip.'mpox/clade-ii/500' = "dense needs 23 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'mpox/clade-ii/1000' = "dense needs 48 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'mpox/clade-ii/2000' = "dense needs 100 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'sc2/2844' = "dense needs 17 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'sc2/4500' = "dense needs 39 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 
 [[optimize]]
 variant = "newton"
@@ -508,7 +521,7 @@ outputs = ["bl.json", "opti.auspice.json"]
 variant = "rerooted-input"
 datasets = ["mpox/clade-ii/1000"]
 standalone = true
-args = "--tree={dataset}/tree_opt.nwk --alignment={dataset}/aln.fasta.xz --representation=sparse --output-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
+args = "--tree={data}/smoke/mpox-clade-ii-1000-tree-optimized.nwk --alignment={dataset}/aln.fasta.xz --representation=sparse --output-node-data={out}/bl.json --output-tree-auspice={out}/opti.auspice.json"
 outputs = ["bl.json", "opti.auspice.json"]
 
 [[optimize]]
@@ -651,7 +664,6 @@ args = "--remove-file={dataset}/prune-nodes.txt"
 [[timetree]]
 variant = "basic"
 fail.'lassa/L/20' = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
-fail.'lassa/L/200' = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]
 variant = "fixed-clock"
@@ -884,7 +896,7 @@ args = "--confidence --clock-std-dev=0.001 --max-iter=3"
 [[timetree]]
 variant = "fixed-clock-tree-opt"
 datasets = ["mpox/clade-ii/1000"]
-args = "--tree={dataset}/tree_opt.nwk --clock-rate=5.7e-05 --divergence-units=mutations --seed=34234"
+args = "--tree={data}/smoke/mpox-clade-ii-1000-tree-optimized.nwk --clock-rate=5.7e-05 --divergence-units=mutations --seed=34234"
 
 [[timetree]]
 variant = "fixed-clock"
@@ -898,6 +910,13 @@ variant = "grid-point-limit"
 datasets = ["mpox/clade-ii/20"]
 args = "--clock-rate=0.5 --max-iter=1"
 fail = "stops at the grid point limit: kb/decisions/distribution-grid-point-limit.md"
+
+# The input root kept with a fixed clock rate and a coalescent prior: a backward time message holds NaN
+[[timetree]]
+variant = "keep-root-fixed-clock"
+datasets = ["lassa/L/500"]
+args = "--keep-root --clock-rate=0.00078 --coalescent=opt"
+fail = "kb/issues/M-timetree-backward-message-nan-with-kept-root-and-fixed-rate.md"
 
 
 # A Nexus input tree

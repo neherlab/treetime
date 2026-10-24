@@ -94,7 +94,7 @@
     },
     {
       "path": "ebola/100/metadata.tsv",
-      "size": 2400
+      "size": 5111
     },
     {
       "path": "ebola/100/tree.nwk",
@@ -114,7 +114,7 @@
     },
     {
       "path": "ebola/20/metadata.tsv",
-      "size": 487
+      "size": 1037
     },
     {
       "path": "ebola/20/prune-nodes.txt",
@@ -125,12 +125,16 @@
       "size": 772
     },
     {
+      "path": "ebola/362/README.md",
+      "size": 551
+    },
+    {
       "path": "ebola/362/aln.fasta.xz",
       "size": 28944
     },
     {
       "path": "ebola/362/metadata.tsv",
-      "size": 8673
+      "size": 18485
     },
     {
       "path": "ebola/362/pipeline.yaml",
@@ -309,10 +313,6 @@
       "size": 31623
     },
     {
-      "path": "mpox/clade-ii/1000/tree_opt.nwk",
-      "size": 30353
-    },
-    {
       "path": "mpox/clade-ii/20/README.md",
       "size": 834
     },
@@ -333,6 +333,10 @@
       "size": 698
     },
     {
+      "path": "mpox/clade-ii/2000/README.md",
+      "size": 550
+    },
+    {
       "path": "mpox/clade-ii/2000/aln.fasta.xz",
       "size": 431188
     },
@@ -347,6 +351,722 @@
     {
       "path": "mpox/clade-ii/2000/pipeline.yaml",
       "size": 2774
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG001.fasta.xz",
+      "size": 9248
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG001_dup.fasta.xz",
+      "size": 9452
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG002.fasta.xz",
+      "size": 8356
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG002_dup.fasta.xz",
+      "size": 8576
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG003.fasta.xz",
+      "size": 10332
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG003_dup.fasta.xz",
+      "size": 10336
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG005.fasta.xz",
+      "size": 7792
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG015.fasta.xz",
+      "size": 8440
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG015_dup.fasta.xz",
+      "size": 8888
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG016.fasta.xz",
+      "size": 8720
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG019.fasta.xz",
+      "size": 6864
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG021.fasta.xz",
+      "size": 7624
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG022.fasta.xz",
+      "size": 6836
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG023.fasta.xz",
+      "size": 12908
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG024.fasta.xz",
+      "size": 7548
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG025.fasta.xz",
+      "size": 13408
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG027.fasta.xz",
+      "size": 6792
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG029.fasta.xz",
+      "size": 8728
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG030.fasta.xz",
+      "size": 8368
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG031.fasta.xz",
+      "size": 8612
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG034.fasta.xz",
+      "size": 8492
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG035.fasta.xz",
+      "size": 6984
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG036.fasta.xz",
+      "size": 7976
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG037.fasta.xz",
+      "size": 8672
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG038.fasta.xz",
+      "size": 7880
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG039.fasta.xz",
+      "size": 6956
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG040.fasta.xz",
+      "size": 9348
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG042.fasta.xz",
+      "size": 12048
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG043.fasta.xz",
+      "size": 7272
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG044.fasta.xz",
+      "size": 7400
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG045.fasta.xz",
+      "size": 7492
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG046.fasta.xz",
+      "size": 7480
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG047.fasta.xz",
+      "size": 9524
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG048.fasta.xz",
+      "size": 10856
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG049.fasta.xz",
+      "size": 8520
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG050.fasta.xz",
+      "size": 6304
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG051.fasta.xz",
+      "size": 7988
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG052.fasta.xz",
+      "size": 7684
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG053.fasta.xz",
+      "size": 9480
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG054.fasta.xz",
+      "size": 8800
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG055.fasta.xz",
+      "size": 8320
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG056.fasta.xz",
+      "size": 10544
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG057.fasta.xz",
+      "size": 8380
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG058.fasta.xz",
+      "size": 6616
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG059.fasta.xz",
+      "size": 3336
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG060.fasta.xz",
+      "size": 7260
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG061.fasta.xz",
+      "size": 7568
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG062.fasta.xz",
+      "size": 6892
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG063.fasta.xz",
+      "size": 8720
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG064.fasta.xz",
+      "size": 10992
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG065.fasta.xz",
+      "size": 7408
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG066.fasta.xz",
+      "size": 7924
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG068.fasta.xz",
+      "size": 10436
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG069.fasta.xz",
+      "size": 7208
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG070.fasta.xz",
+      "size": 7636
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG071.fasta.xz",
+      "size": 10992
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG072.fasta.xz",
+      "size": 6456
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG073.fasta.xz",
+      "size": 7360
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG074.fasta.xz",
+      "size": 9796
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG075.fasta.xz",
+      "size": 7872
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG076.fasta.xz",
+      "size": 3436
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG077.fasta.xz",
+      "size": 7796
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG078.fasta.xz",
+      "size": 6920
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG079.fasta.xz",
+      "size": 7204
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG080.fasta.xz",
+      "size": 10052
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG081.fasta.xz",
+      "size": 6344
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG082.fasta.xz",
+      "size": 7508
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG083.fasta.xz",
+      "size": 8392
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG084.fasta.xz",
+      "size": 10244
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG085.fasta.xz",
+      "size": 9192
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG086.fasta.xz",
+      "size": 6816
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG087.fasta.xz",
+      "size": 7796
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG088.fasta.xz",
+      "size": 6960
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG089.fasta.xz",
+      "size": 12212
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG090.fasta.xz",
+      "size": 6788
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG091.fasta.xz",
+      "size": 8184
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG092.fasta.xz",
+      "size": 12424
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG093.fasta.xz",
+      "size": 7476
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG094.fasta.xz",
+      "size": 8760
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG095.fasta.xz",
+      "size": 7644
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG096.fasta.xz",
+      "size": 7124
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG097.fasta.xz",
+      "size": 7916
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG098.fasta.xz",
+      "size": 8228
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG099.fasta.xz",
+      "size": 7360
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG100.fasta.xz",
+      "size": 7208
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG101.fasta.xz",
+      "size": 8336
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG102.fasta.xz",
+      "size": 7992
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG103.fasta.xz",
+      "size": 6808
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG104.fasta.xz",
+      "size": 7556
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG105.fasta.xz",
+      "size": 13088
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG106.fasta.xz",
+      "size": 7696
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG107.fasta.xz",
+      "size": 6888
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG108.fasta.xz",
+      "size": 8188
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG109.fasta.xz",
+      "size": 15924
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG110.fasta.xz",
+      "size": 11256
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG111.fasta.xz",
+      "size": 8612
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG112.fasta.xz",
+      "size": 6104
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG113.fasta.xz",
+      "size": 10592
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG114.fasta.xz",
+      "size": 6332
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG115.fasta.xz",
+      "size": 6848
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG116.fasta.xz",
+      "size": 7860
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG117.fasta.xz",
+      "size": 10696
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG118.fasta.xz",
+      "size": 15680
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG119.fasta.xz",
+      "size": 10640
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG120.fasta.xz",
+      "size": 10836
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG121.fasta.xz",
+      "size": 7352
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG122.fasta.xz",
+      "size": 7324
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG123.fasta.xz",
+      "size": 9916
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG124.fasta.xz",
+      "size": 7584
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG125.fasta.xz",
+      "size": 10816
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG126.fasta.xz",
+      "size": 7436
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG127.fasta.xz",
+      "size": 8320
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG128.fasta.xz",
+      "size": 6840
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG129.fasta.xz",
+      "size": 9328
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG130.fasta.xz",
+      "size": 7532
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG131.fasta.xz",
+      "size": 7536
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG132.fasta.xz",
+      "size": 8336
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG133.fasta.xz",
+      "size": 14004
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG134.fasta.xz",
+      "size": 7084
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG135.fasta.xz",
+      "size": 7080
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG136.fasta.xz",
+      "size": 11400
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG137.fasta.xz",
+      "size": 7476
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG138.fasta.xz",
+      "size": 7640
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG139.fasta.xz",
+      "size": 6884
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG140.fasta.xz",
+      "size": 6784
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG141.fasta.xz",
+      "size": 4076
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG142.fasta.xz",
+      "size": 6912
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG143.fasta.xz",
+      "size": 8752
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG144.fasta.xz",
+      "size": 8244
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG145.fasta.xz",
+      "size": 7392
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG146.fasta.xz",
+      "size": 6752
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG147.fasta.xz",
+      "size": 6844
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG148.fasta.xz",
+      "size": 9552
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG149.fasta.xz",
+      "size": 7532
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG150.fasta.xz",
+      "size": 10324
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG151.fasta.xz",
+      "size": 16116
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG153.fasta.xz",
+      "size": 9876
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG154.fasta.xz",
+      "size": 7044
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG155.fasta.xz",
+      "size": 6228
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG156.fasta.xz",
+      "size": 7744
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG157.fasta.xz",
+      "size": 6880
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG158.fasta.xz",
+      "size": 3824
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG159.fasta.xz",
+      "size": 8596
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG160.fasta.xz",
+      "size": 8968
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG161.fasta.xz",
+      "size": 7032
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG162.fasta.xz",
+      "size": 7224
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG163.fasta.xz",
+      "size": 9792
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG164.fasta.xz",
+      "size": 10504
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG165.fasta.xz",
+      "size": 7660
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG166.fasta.xz",
+      "size": 6644
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG167.fasta.xz",
+      "size": 7952
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG170.fasta.xz",
+      "size": 7900
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG171.fasta.xz",
+      "size": 7440
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG172.fasta.xz",
+      "size": 7976
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG173.fasta.xz",
+      "size": 6884
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG174.fasta.xz",
+      "size": 8344
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG175.fasta.xz",
+      "size": 7236
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG176.fasta.xz",
+      "size": 7124
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG178.fasta.xz",
+      "size": 7864
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG180.fasta.xz",
+      "size": 9740
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG181.fasta.xz",
+      "size": 7956
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG185.fasta.xz",
+      "size": 8164
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG187.fasta.xz",
+      "size": 6580
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG188.fasta.xz",
+      "size": 9220
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG189.fasta.xz",
+      "size": 10224
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG190.fasta.xz",
+      "size": 7880
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG191.fasta.xz",
+      "size": 7324
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG192.fasta.xz",
+      "size": 8048
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG193.fasta.xz",
+      "size": 7800
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG195.fasta.xz",
+      "size": 7316
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG197.fasta.xz",
+      "size": 7424
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG198.fasta.xz",
+      "size": 9664
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG199.fasta.xz",
+      "size": 9516
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG200.fasta.xz",
+      "size": 8624
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG204.fasta.xz",
+      "size": 7768
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG205.fasta.xz",
+      "size": 10652
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG208.fasta.xz",
+      "size": 8816
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG209.fasta.xz",
+      "size": 8012
+    },
+    {
+      "path": "mpox/clade-ii/2000/translations/OPG210.fasta.xz",
+      "size": 17920
     },
     {
       "path": "mpox/clade-ii/2000/tree.nwk",
@@ -493,6 +1213,10 @@
       "size": 698
     },
     {
+      "path": "rsv/a/2000/README.md",
+      "size": 400
+    },
+    {
       "path": "rsv/a/2000/aln.fasta.xz",
       "size": 288612
     },
@@ -511,6 +1235,50 @@
     {
       "path": "rsv/a/2000/pipeline.yaml",
       "size": 1968
+    },
+    {
+      "path": "rsv/a/2000/translations/F.fasta.xz",
+      "size": 15688
+    },
+    {
+      "path": "rsv/a/2000/translations/G.fasta.xz",
+      "size": 22712
+    },
+    {
+      "path": "rsv/a/2000/translations/L.fasta.xz",
+      "size": 34616
+    },
+    {
+      "path": "rsv/a/2000/translations/M.fasta.xz",
+      "size": 8620
+    },
+    {
+      "path": "rsv/a/2000/translations/M2-1.fasta.xz",
+      "size": 10520
+    },
+    {
+      "path": "rsv/a/2000/translations/M2-2.fasta.xz",
+      "size": 9124
+    },
+    {
+      "path": "rsv/a/2000/translations/N.fasta.xz",
+      "size": 10556
+    },
+    {
+      "path": "rsv/a/2000/translations/NS1.fasta.xz",
+      "size": 8944
+    },
+    {
+      "path": "rsv/a/2000/translations/NS2.fasta.xz",
+      "size": 8284
+    },
+    {
+      "path": "rsv/a/2000/translations/P.fasta.xz",
+      "size": 11112
+    },
+    {
+      "path": "rsv/a/2000/translations/SH.fasta.xz",
+      "size": 7824
     },
     {
       "path": "rsv/a/2000/tree.nwk",
@@ -533,8 +1301,12 @@
       "size": 15155
     },
     {
+      "path": "sc2/2844/README.md",
+      "size": 1646
+    },
+    {
       "path": "sc2/2844/aln.fasta.xz",
-      "size": 181488
+      "size": 161312
     },
     {
       "path": "sc2/2844/ancestral.yaml",
@@ -545,12 +1317,16 @@
       "size": 544
     },
     {
+      "path": "sc2/2844/metadata.tsv.xz",
+      "size": 223464
+    },
+    {
       "path": "sc2/2844/pipeline.yaml",
       "size": 1433
     },
     {
       "path": "sc2/2844/tree.nwk",
-      "size": 148530
+      "size": 120520
     },
     {
       "path": "sc2/4500/aln.fasta.xz",
@@ -578,11 +1354,15 @@
     },
     {
       "path": "smoke/README.md",
-      "size": 1363
+      "size": 1672
     },
     {
       "path": "smoke/flu-h3n2-20-tree-single-child-polytomy.nwk",
       "size": 1592
+    },
+    {
+      "path": "smoke/mpox-clade-ii-1000-tree-optimized.nwk",
+      "size": 30353
     },
     {
       "path": "smoke/zika-20-tree-without-internal-branch-lengths.nwk",
@@ -613,11 +1393,7 @@
       "size": 1328
     },
     {
-      "path": "tb/149/informative_sites.fasta",
-      "size": 33972
-    },
-    {
-      "path": "tb/149/lee_2015.vcf.xz",
+      "path": "tb/149/aln.vcf.xz",
       "size": 1470600
     },
     {
@@ -629,7 +1405,7 @@
       "size": 904
     },
     {
-      "path": "tb/149/tb_ref.fasta.xz",
+      "path": "tb/149/reference.fasta.xz",
       "size": 1180556
     },
     {
@@ -697,6 +1473,10 @@
       "size": 7312
     },
     {
+      "path": "zika/86/aln.phylip.xz",
+      "size": 10840
+    },
+    {
       "path": "zika/86/metadata.tsv",
       "size": 5437
     },
@@ -707,10 +1487,6 @@
     {
       "path": "zika/86/tree.nwk",
       "size": 4979
-    },
-    {
-      "path": "zika/86/zika.phylip.xz",
-      "size": 10840
     },
     {
       "path": "zika/country_lat_longs.tsv",
@@ -1157,6 +1933,10 @@
         {
           "kind": "alignment",
           "path": "sc2/2844/aln.fasta.xz"
+        },
+        {
+          "kind": "metadata",
+          "path": "sc2/2844/metadata.tsv.xz"
         }
       ]
     },
@@ -1444,9 +2224,9 @@
     {
       "path": "sc2/2844/ancestral.yaml",
       "command": "ancestral",
-      "title": "Marginal ancestral reconstruction on 2844 SARS-CoV-2 genomes (sc2/2844).",
+      "title": "Marginal ancestral reconstruction on 2504 SARS-CoV-2 genomes (sc2/2844).",
       "folder": "sc2/2844",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral reconstruction on 2844 SARS-CoV-2 genomes (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/sc2/2844/ancestral.yaml --output-all tmp/examples/sc2/2844/ancestral\n#\n# A large single-command run: marginal reconstruction treats every site\n# independently, fits a GTR rate matrix from the data (the default\n# `model: infer`), and maps nucleotide mutations onto the tree. The sparse\n# representation (the default) stores only variable sites, which keeps a\n# genome-length SARS-CoV-2 alignment tractable.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nmethod_anc: \"marginal\"\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Marginal ancestral reconstruction on 2504 SARS-CoV-2 genomes (sc2/2844).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/sc2/2844/ancestral.yaml --output-all tmp/examples/sc2/2844/ancestral\n#\n# A large single-command run: marginal reconstruction treats every site\n# independently, fits a GTR rate matrix from the data (the default\n# `model: infer`), and maps nucleotide mutations onto the tree. The sparse\n# representation (the default) stores only variable sites, which keeps a\n# genome-length SARS-CoV-2 alignment tractable.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nmethod_anc: \"marginal\"\n",
       "inputs": {
         "alignment": [
           "sc2/2844/aln.fasta.xz"
