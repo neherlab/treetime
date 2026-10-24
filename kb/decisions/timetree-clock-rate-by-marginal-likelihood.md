@@ -14,12 +14,15 @@ the slope of the root-to-tip regression. Without a coalescent prior the regressi
 
 - The branch-time distributions are a rate-independent likelihood on a branch-length grid divided by the rate, so a
   candidate rate rescales their time axis (`fn Distribution.scale_time()`) and costs one backward pass.
-- One parabolic step in log rate: `log_lh_time` at the round's rate and at that rate divided and multiplied by 1.25
-  gives a parabola. In the first round its maximum, at most 2-fold away, is the target; without a maximum the target
-  is that bound on the side of the better probe (`RateWindow::FollowSlope`). From the second round on, only a maximum
-  between the probes counts, and otherwise the rate stays (`RateWindow::InteriorMaximum`); see
-  [Rate window](#rate-window). The rate moves 2/3 of the way to the target in log rate (`STEP_FRACTION`), so at most
-  by a factor of $2^{2/3} \approx 1.59$ in the first round and $1.25^{2/3} \approx 1.16$ after it.
+- One parabolic step in log rate: `log_lh_time` at the round's rate and at that rate times $e^{\pm h}$ gives a
+  parabola. In the first round its maximum, at most 2-fold away, is the target; without a maximum the target is that
+  bound on the side of the better probe. From the second round on, only a maximum between the probes counts, and
+  otherwise the rate stays; see [Rate window](#rate-window). The half-width $h$ starts at $\ln 1.25$ and halves after
+  each step to a maximum between the probes, down to $\ln(1.25)/8$ (`struct RateWindow`
+  [packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L125-L149](../../packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L125-L149),
+  carried from round to round by the refinement loop); see [Shrinking probe window](#shrinking-probe-window). The
+  rate moves 2/3 of the way to the target in log rate (`STEP_FRACTION`), so at most by a factor of
+  $2^{2/3} \approx 1.59$ in the first round and $1.25^{2/3} \approx 1.16$ after it.
 - The step does not optimize precisely: the refinement loop repeats it every round, with the coalescent timescale and
   the node times re-estimated in between. A full Brent search (to `1e-3` within a 3-fold window) made the loop
   oscillate: on a flat `log_lh_time` the rate moved a few percent per round, and node times jumped by up to 1.8 years
@@ -103,7 +106,7 @@ $\ln$ rate at high signal, against 0.11 left after 12 rounds, most of it the lin
 ## Rate window
 
 > [!WARNING]
-> **Needs review.** The tilt of about 77 per unit of $\ln$ rate was measured with the rectangle sum in the convolution of two time functions, which biased $\log Z$ toward slow rates ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)). The report [kb/reports/timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md) attributes most of the tilt to that error, not to the frozen prior. Neither the tilt nor that attribution has been measured on the current code: [kb/issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md](../issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md).
+> **Needs review.** The tilt of about 77 per unit of $\ln$ rate was measured with the rectangle sum in the convolution of two time functions, which biased $\log Z$ toward slow rates ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)). The report [kb/reports/timetree-low-signal-rate-bias-from-convolution-edges.md](../reports/timetree-low-signal-rate-bias-from-convolution-edges.md) attributes most of the tilt to that error, not to the frozen prior. The tilt has not been measured on the current code: [kb/issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md](../issues/M-timetree-low-signal-rate-bias-claims-not-reproduced.md). The window is still needed with the trapezoid rule: without it the rate drifts at low signal over six rounds (see [Shrinking probe window](#shrinking-probe-window)), though there the `skyline` dates drift as well at the fixed true rate ([kb/issues/M-coalescent-skyline-dates-drift-over-rounds-at-low-signal.md](../issues/M-coalescent-skyline-dates-drift-over-rounds-at-low-signal.md)).
 
 At low signal the rate drifted with the number of rounds: at $L=10^3$, $\mu=3\cdot10^{-4}$ the median
 $\lvert\ln\rvert$ rate error grew from 0.51 after two rounds to 1.26 after six, and the node date RMSE from 0.49 to
@@ -143,6 +146,33 @@ median rate error at $L=10^3$, $\mu=3\cdot10^{-4}$ 0.505 to 0.281 (`keep-opt-est
 0.783 to 0.453 (`reroot-skyline-est`), at $L=10^3$, $\mu=10^{-3}$ 0.143 to 0.191 (`keep-opt-est`) and 0.189 to 0.166
 (`reroot-skyline-est`), elsewhere within 0.01. No date changed: in these runs the output dates came from the rate
 before the last step. The final time pass (see [Method](#method)) has since made the dates follow the last step.
+
+## Shrinking probe window
+
+For a $\log Z$ of Poisson shape, $f'''/f'' = 1$ in log rate, and the three-probe parabola stops $h^2/6$ below the
+maximum: $-0.8\%$ of the rate at $h = \ln 1.25$, which the validation runs show as $-1.1\%$ to $-1.5\%$ at high
+signal ([kb/reports/timetree-rate-step-coordinate-and-guards.md](../reports/timetree-rate-step-coordinate-and-guards.md)).
+Halving $h$ after each step to an interior maximum shrinks the offset four-fold per halving without changing the
+coordinate; the floor of $1/8$ keeps the probe differences above the grid noise of $\log Z$ at low signal.
+
+Clean validation data, 240 sets per tip density, `{keep,reroot}-{opt,skyline}-est`, true topology,
+`--clock-filter 0`. Median $\lvert\ln\rvert$ rate error over all sets (`opt` / `skyline`), and the signed median at
+$L=10^4$, $\mu=10^{-2}$ (`opt`):
+
+| set | rounds | fixed window | shrinking window, gated | shrinking window, no gate |
+| --- | --- | --- | --- | --- |
+| 400 tips | 2 | 0.032 / 0.033, $-1.3\%$ | 0.030 / 0.032, $-0.8\%$ | 0.030 / 0.031, $-0.8\%$ |
+| 400 tips | 6 | 0.031 / 0.032, $-1.5\%$ | 0.030 / 0.027, $-0.6\%$ | 0.037 / 0.042, $-0.6\%$ |
+| 1200 tips | 2 | 0.029 / 0.030, $-1.3\%$ | 0.030 / 0.029, $-1.0\%$ | 0.030 / 0.030, $-1.0\%$ |
+
+The gated variant keeps the lowest-signal sets ($L=10^3$, $\mu=3\cdot10^{-4}$) as they were: 10% (`opt`) and 12%
+(`skyline`) of the runs beyond 2-fold of the true rate on 400 tips, 23% and 33% on 1200 tips, and after six rounds a
+median $\ln$ rate error of $+0.15$ (`opt`, fixed window $+0.23$) and $+0.16$ (`skyline`, $+0.15$). Without the gate,
+six rounds drift: $+0.32$ for `opt` and $-1.12$ for `skyline`, with 17% and 76% of the runs beyond 2-fold and one
+failed run. On `const/rep00` with `keep-skyline-est` the rate fell from $4.33\cdot10^{-4}$ to $1.29\cdot10^{-4}$
+(true $3\cdot10^{-4}$) over rounds 2-6 while `log_lh_time` rose from $-1914$ to $-1867$: under each round's refitted
+prior $\log Z$ still rises toward slower rates there. With the fixed window or the gate, the target equals the rate in
+rounds 2-6 of that run and the rate stays. No run failed with the gate; run times are unchanged.
 
 ## Accepted limitations
 
