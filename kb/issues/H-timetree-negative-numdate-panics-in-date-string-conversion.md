@@ -13,16 +13,9 @@ treetime timetree --tree=data/zika/20/tree.nwk --metadata=data/zika/20/metadata.
   --alignment=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
 ```
 
-The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. Without a fixed rate, the `timetree/lassa/L/200/basic` case panics the same way:
+The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. It panics in the augur node data writer (`fn refine_dates()` calling `year_fraction_to_datestring()`) with: `cannot convert float seconds to Duration: value is negative`
 
-```bash
-treetime timetree --tree=data/lassa/L/200/tree.nwk --metadata=data/lassa/L/200/metadata.tsv \
-  --alignment=data/lassa/L/200/aln.fasta.xz --metadata-id-columns=accession --output-all=<dir>
-```
-
-The clock filter marks 7 tips dated 2009 to 2017 as outliers, with apparent dates between 1589 and 1758. The written clock model has rate $1.18 \cdot 10^{-4}$ and intercept $0.119$, so the regression line reaches zero divergence near the year $-1000$, and the panic comes from the augur node data writer (`fn refine_dates()` calling `year_fraction_to_datestring()`).
-
-Panics with: `cannot convert float seconds to Duration: value is negative`
+The default run on `lassa/L/200` panicked the same way when its regression put the root near the year $-1000$. It no longer reaches a negative date: the clock filter marks 4 outliers, the clock model has rate $3.78 \cdot 10^{-4}$ and intercept $-0.374$, and the oldest node is dated 1082.
 
 The offending value is the negative `numdate` of the root.
 
@@ -65,7 +58,7 @@ The `date` field is cosmetic -- `augur export v2` reads the numeric `numdate`, n
 
 ### C -- separate question (not the crash)
 
-Whether a root near the year $-1000$ for `lassa/L/200` is faithful to the clock inference of v0 or a v1 clock or extrapolation parity defect. Needs a separate comparison. The crash fix must not mask this.
+Whether the root of `lassa/L/200`, near the year 1082 today and near $-1000$ before, is faithful to the clock inference of v0 or a v1 clock or extrapolation parity defect. Needs a separate comparison. The crash fix must not mask this.
 
 ## Related issues
 

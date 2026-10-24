@@ -34,6 +34,23 @@ Huge pages remove up to 98 percent of the faults, but the runs take 16 to 90 per
 - For `rsv/a/2000` (3996 nodes, 3995 edges, L = 15225, s = 4), the 15981 arrays hold 7.79 GB, which accounts for almost all of the 8.02 GB peak RSS
 - The products that create these arrays return a new `Array2` from `.dot()`: `fn GTR.evolve()` [packages/treetime/src/gtr/gtr.rs#L154](../../packages/treetime/src/gtr/gtr.rs#L154), `fn GTR.propagate_profile()` [packages/treetime/src/gtr/gtr.rs#L174](../../packages/treetime/src/gtr/gtr.rs#L174), and `fn in_eigenbasis()` [packages/treetime/src/gtr/gtr.rs#L259-L267](../../packages/treetime/src/gtr/gtr.rs#L259-L267)
 
+## Memory of the large example datasets
+
+The same count, one L-by-s array of 8-byte values per node and three per edge with s = 4, gives the dense profile memory of the large datasets:
+
+| Dataset | Nodes | L | Profile arrays |
+| --- | ---: | ---: | ---: |
+| `dengue/2000` | 3906 | 10723 | 5.4 GB |
+| `rsv/a/2000` | 3996 | 15225 | 7.8 GB |
+| `mpox/clade-ii/100` | 198 | 197209 | 5.0 GB |
+| `mpox/clade-ii/500` | 924 | 197209 | 23.3 GB |
+| `mpox/clade-ii/1000` | 1916 | 197209 | 48.3 GB |
+| `mpox/clade-ii/2000` | 3976 | 197209 | 100.3 GB |
+| `sc2/2844` | 4455 | 29903 | 17.0 GB |
+| `sc2/4500` | 10199 | 29903 | 39.0 GB |
+
+On the build host, dense `ancestral` and `optimize` stop with an allocation failure on `mpox/clade-ii/{500,1000,2000}` and `sc2/{2844,4500}`, at 14 to 16 GB of resident memory, when the smoke test limits each process to 18.5 GiB of data segment. `dev/smoke.toml` skips these datasets in its dense rows, because whether they fit depends on the memory of the host.
+
 ## Fix direction
 
 Reduce the number of L-by-s arrays that a run holds at the same time, for example by dropping a message after the last pass that reads it, or by computing a node profile only when an output needs it. Fewer arrays mean fewer first-touch faults and a lower peak RSS. Column compression ([N-optimize-dense-iteration-slow.md](N-optimize-dense-iteration-slow.md)) reduces L and therefore every array.
