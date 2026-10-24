@@ -351,18 +351,15 @@ mod tests {
           &graph,
           &forward_inputs,
           backward(prior)?,
-          |key, view| NodePosterior::summarize(key, view, summaries, bad_branches[&key]),
+          |key, view| NodePosterior::summarize(key, view, summaries),
           &NoopProgress,
         )
       };
       let tc = Distribution::constant(tc);
       let prior_free = passes(None)?;
-      let seed = CoalescentPrior::new(
-        &LineageExpectation::from_posterior(&graph, &prior_free, &bad_branches)?,
-        &tc,
-      )?;
+      let seed = CoalescentPrior::new(&LineageExpectation::from_posterior(&graph, &prior_free)?, &tc)?;
       let first = passes(Some(&seed))?;
-      let rebuilt = CoalescentPrior::new(&LineageExpectation::from_posterior(&graph, &first, &bad_branches)?, &tc)?;
+      let rebuilt = CoalescentPrior::new(&LineageExpectation::from_posterior(&graph, &first)?, &tc)?;
       let posterior = propagate_distributions_forward(
         &graph,
         &forward_inputs,

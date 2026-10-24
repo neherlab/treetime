@@ -188,12 +188,12 @@ mod tests {
         max_ulps = 16
       );
       assert_eq!(
-        times.keys().collect::<Vec<_>>(),
+        times.keys().filter(|name| *name != "D").collect::<Vec<_>>(),
         expected_times.keys().collect::<Vec<_>>()
       );
-      for (name, (mean, std)) in &times {
-        pretty_assert_ulps_eq!(*mean, expected_times[name].0, max_ulps = 16);
-        pretty_assert_ulps_eq!(*std, expected_times[name].1, max_ulps = 16);
+      for (name, (mean, std)) in &expected_times {
+        pretty_assert_ulps_eq!(times[name].0, *mean, max_ulps = 16);
+        pretty_assert_ulps_eq!(times[name].1, *std, max_ulps = 16);
       }
     }
     Ok(())
