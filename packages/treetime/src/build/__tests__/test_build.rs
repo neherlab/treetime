@@ -5,6 +5,7 @@ mod tests {
   use crate::build::mat::Mat;
   use crate::build::pipeline::{BuildParams, BuiltMat, SampleOrder, SearchMode, build_mat, mat_to_tree};
   use crate::build::query::Query;
+  use crate::build::rebuild::RebuildParams;
   use crate::build::references::{ReferenceSelection, eccentricities, local_branching_index};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{CaseSpec, ModelFamily};
@@ -119,6 +120,7 @@ mod tests {
       spr_slack: Some(1),
       fitch_refresh: false,
       compare_exhaustive: true,
+      rebuild: None,
     }
   }
 
@@ -133,6 +135,17 @@ mod tests {
     BuildParams {
       search: SearchMode::FromReferences { references },
       ..walk_params(batch_size, 0, false)
+    }
+  }
+
+  fn rebuilding_params(batch_size: usize) -> BuildParams {
+    BuildParams {
+      rebuild: Some(RebuildParams {
+        radius: 3,
+        max_leaves: 16,
+        orders: 3,
+      }),
+      ..refreshing_params(batch_size)
     }
   }
 
@@ -173,6 +186,7 @@ mod tests {
   #[case::lbi_references(reference_params(8, lbi_references()))]
   #[case::long_branch_references(reference_params(8, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(8))]
+  #[case::rebuilding(rebuilding_params(8))]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
     let alphabet = Alphabet::default();
     for seed in 0..5 {
@@ -217,6 +231,7 @@ mod tests {
   #[case::lbi_references(reference_params(4, lbi_references()))]
   #[case::long_branch_references(reference_params(4, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(4))]
+  #[case::rebuilding(rebuilding_params(4))]
   fn test_build_keeps_mat_consistent_with_homoplasy_and_missing_data(
     #[case] params: BuildParams,
   ) -> Result<(), Report> {
