@@ -11,7 +11,7 @@ At low temporal signal, the log marginal likelihood of the node times (`log_lh_t
 
 ## Cause
 
-The cause was not the model or the coalescent approximation. It was the FFT convolution of two functions, `fn convolution_function_function_fine()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs). It computed a Riemann sum of the samples, which has a first-order error wherever an operand has a large density at a grid end ([M-distribution-fft-convolution-hard-edge-first-order-error.md](../issues/M-distribution-fft-convolution-hard-edge-first-order-error.md)). In the backward pass, both operands of most edge convolutions have such an end:
+The cause was not the model or the coalescent approximation. It was the FFT convolution of two functions, `fn convolution_function_function_fine()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs). It computed a Riemann sum of the samples, which has a first-order error wherever an operand has a large density at a grid end ([kb/decisions/distribution-convolution-trapezoid-rule.md](../decisions/distribution-convolution-trapezoid-rule.md)). In the backward pass, both operands of most edge convolutions have such an end:
 
 - A branch without substitutions has its maximum at zero length
 - The coalescent prior factor rises toward the tips (about 2 per year here), so an internal node's subtree distribution peaks at the date of its earliest child

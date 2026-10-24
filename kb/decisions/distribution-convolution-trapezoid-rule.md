@@ -76,9 +76,27 @@ The grid spacing scales with $1/\mu$, where $\mu$ is the clock rate, so the rect
 
   The trapezoid rule reduces the error 100 to 1000 times. The limits are $10^{-5}$ or $10^{-4}$ per case, and all 6 cases fail with the rectangle sum
 
-## Remaining first-order cases
+## Operands resampled to a common spacing keep their denser end on a grid point
 
-The trapezoid rule is second order only for an integrand that is smooth on the grid scale up to the overlap end. An operand with a `HardApproach` boundary, an exponential edge whose decay length is comparable to the spacing, and the extreme outputs $h f_0 g_0 / 4$ remain. Where several hard ends meet, the error of $\log Z$ stays large: on the tree of the $\log Z$ test above, with all tip branches at zero substitutions it is $3.8 \cdot 10^{-4}$ to $1.5 \cdot 10^{-3}$ (rectangle sum: $1.3 \cdot 10^{-3}$ to $4.9 \cdot 10^{-3}$), and with B and I at zero substitutions $3.2 \cdot 10^{-5}$ to $1.1 \cdot 10^{-4}$ (rectangle sum: $7.4 \cdot 10^{-4}$ to $2.5 \cdot 10^{-3}$), over the same 6 cases. Issue: [kb/issues/M-distribution-fft-convolution-hard-edge-first-order-error.md](../issues/M-distribution-fft-convolution-hard-edge-first-order-error.md).
+Both operands are resampled to the finer of their spacings before the FFT (`fn convolution_function_function_fine()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs](../../packages/treetime-distribution/src/distribution_ops/convolve.rs)). When the range of an operand is not a whole number of cells of that spacing, one of its ends falls between grid points. `fn DistributionFunction::resample_dx()` keeps the end of higher density on a grid point, and the other end moves by less than a cell.
+
+The grid used to be anchored at the left end. In the backward pass the negated branch distribution has its right end at branch length 0, where a short branch has its highest density. The convolution then lost (or, past half a cell, gained) the fraction $r$ of the edge cell, a relative mass error of $r\,h\,B(0) / \int B$ for the spacing $h$ and the branch density $B$: first order in $h$. On the tree of the $\log Z$ test above with B and I at zero substitutions, the I-to-root message missed the reference by $r = 0.020$ and $0.062$ of a cell at the rates $10^{-4}$ and $3 \cdot 10^{-4}$, and the predicted errors $3.37 \cdot 10^{-5}$ and $1.03 \cdot 10^{-4}$ match the measured $3.45 \cdot 10^{-5}$ and $1.04 \cdot 10^{-4}$. Every other step of that backward pass (leaf shifts, products, the root integral) was below $10^{-6}$.
+
+Error of $\log Z$ against the reference over the 6 cases of the test, before and after anchoring at the denser end:
+
+| substitution counts (A, B, I, C) | left anchor | denser-end anchor |
+| --- | --- | --- |
+| 1, 0, 1, 0 (one zero next to each of two tips) | 1.1e-6 to 9.8e-6 | unchanged |
+| 0, 0, 1, 0 (all tip branches zero) | 3.8e-4 to 1.5e-3 | 1.5e-6 to 2.4e-5 |
+| 1, 0, 0, 1 (B and I zero) | 3.2e-5 to 1.1e-4 | 3.1e-7 to 7.9e-6 |
+
+With the denser-end anchor the I-to-root message converges at second order in the branch grid ($8.7 \cdot 10^{-7}$, $2.2 \cdot 10^{-7}$, $5.4 \cdot 10^{-8}$, $1.4 \cdot 10^{-8}$ at 6001 to 48001 points, rate $10^{-4}$). Tests: `test_convolution_keeps_the_dense_hard_end_of_a_resampled_operand_at_second_order` against the closed form of two exponentials, and the three count sets of `test_marginal_likelihood_matches_the_reference_with_zero_count_branches_next_to_tips`.
+
+Other hard-edge effects measured against closed forms of two exponentials with hard ends at their maximum (aligned and misaligned grids, spacing ratios 1, 1.37 and 2, the backward layout through `fn convolve_across_edge()`):
+
+- **Steep exponential edge**: an edge whose decay length is comparable to the spacing is resolved at second order once $kh < 1$ (log-decay rate $k = 40$: observed order 1.27 at $kh = 5$, 2.00 at $kh = 0.16$); it is the accepted second-order error of the grid ([discretization error of the default grid](distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid))
+- **Extreme outputs** $h f_0 g_0 / 4$ at the point where two hard ends meet: the mass stays second order; the log density in the first cells next to that point is off by up to order 1, because a density that vanishes linearly is stored as log-linear pieces
+- **`HardApproach` operands**: the convolution reads only grid values of the edge cell ([kb/issues/N-distribution-fft-convolution-ignores-edge-cell-law.md](../issues/N-distribution-fft-convolution-ignores-edge-cell-law.md))
 
 ## Soft grid ends
 
