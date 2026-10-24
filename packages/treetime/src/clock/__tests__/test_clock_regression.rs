@@ -94,6 +94,64 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[case::below_the_rate(0.5, false)]
+  #[case::at_the_rate(1.0, true)]
+  #[case::above_the_rate(2.0, true)]
+  #[trace]
+  fn test_clock_regression_fallback_replaces_a_positive_rate_not_above_the_minimum(
+    #[case] min_rate_factor: f64,
+    #[case] falls_back: bool,
+  ) -> Result<(), Report> {
+    let fallback_rate = 1e-3;
+    let positive = helpers::root_fit(TREE_4, &helpers::leaf_dates())?;
+    let regression_rate = positive.regression().unwrap().clock_rate();
+    assert!(regression_rate > 0.0);
+
+    let model = positive
+      .into_clock_fit_or(min_rate_factor * regression_rate, || Ok(fallback_rate))?
+      .model;
+
+    let expected = if falls_back { fallback_rate } else { regression_rate };
+    pretty_assert_abs_diff_eq!(expected, model.clock_rate(), epsilon = 0.0);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::all_tips_dated(&[])]
+  #[case::one_tip_undated(&["D"])]
+  #[trace]
+  fn test_clock_regression_signal_rate_floor_is_a_tenth_of_the_mean_divergence_per_year_of_sampling(
+    #[case] undated: &[&str],
+  ) -> Result<(), Report> {
+    let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
+    let names = nwk_parsed.names.clone();
+    let branch_lengths = nwk_parsed.branch_lengths;
+    let divergences = root_to_node_divergences(&nwk_parsed.graph, |edge_key| {
+      branch_lengths[&edge_key].unwrap_or_default()
+    })?;
+    let divs: BTreeMap<String, f64> = nwk_parsed
+      .graph
+      .get_leaves()
+      .map(|leaf| (names[leaf.key()].to_owned(), divergences[&leaf.key()]))
+      .collect();
+    let dates: BTreeMap<String, f64> = helpers::leaf_dates()
+      .into_iter()
+      .filter(|(name, _)| !undated.contains(&name.as_str()))
+      .collect();
+
+    let fit = helpers::root_fit(TREE_4, &dates)?;
+
+    let mean_div = dates.keys().map(|name| divs[name]).sum::<f64>() / dates.len().to_f64_exact();
+    let (first, last) = dates.values().copied().minmax().into_option().expect("dated tips");
+    pretty_assert_abs_diff_eq!(
+      0.1 * mean_div / (last - first),
+      fit.signal_rate_floor(),
+      epsilon = 1e-15
+    );
+    Ok(())
+  }
+
   #[test]
   fn test_clock_regression_dateless_leaf_does_not_change_root_statistics() -> Result<(), Report> {
     let dates = btreemap! {
