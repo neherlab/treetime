@@ -4,8 +4,8 @@ mod tests {
   use crate::reroot::params::{RerootMethod, RerootSpec};
   use eyre::Report;
   use helpers::{
-    MISSING_LENGTH_TREE, SYMMETRIC_TREE, X_TIPS, find_tips, outlier_names, root_child_lengths, run_timetree,
-    run_timetree_operation,
+    MISSING_LENGTH_TREE, NEGATIVE_RATE_TREE, SYMMETRIC_TREE, X_TIPS, find_tips, outlier_names, root_child_lengths,
+    run_timetree, run_timetree_operation,
   };
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -34,6 +34,23 @@ mod tests {
       least_squares.clock_model.intercept(),
       outgroup.clock_model.intercept(),
       max_ulps = 4
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_pipeline_reroot_date_free_root_without_a_positive_regression_rate_starts_from_the_gaussian_rate()
+  -> Result<(), Report> {
+    let output = run_timetree(NEGATIVE_RATE_TREE, |tree| {
+      RerootSpec::Tips(find_tips(tree, &["A", "B"]))
+    })?;
+
+    let input_root = btreemap! { o!("X") => 0.010, o!("Y") => 0.010 };
+    pretty_assert_map_ulps_eq!(input_root, root_child_lengths(&output)?, max_ulps = 4);
+    assert!(
+      output.clock_model.clock_rate() > 0.0,
+      "the clock refits of the pre-loop on the kept root fall back to the positive Gaussian rate, got {}",
+      output.clock_model.clock_rate()
     );
     Ok(())
   }
@@ -74,6 +91,8 @@ mod tests {
                                              (P:0.014,Q:0.010,S:0.018,T:0.015,U:0.025,V:0.023,W:0.0575)Y:0.010)R;";
 
     pub(super) const X_TIPS: [&str; 7] = ["A", "B", "C", "D", "E", "F", "O"];
+
+    pub(super) const NEGATIVE_RATE_TREE: &str = "((A:0.040,B:0.030)X:0.010,(C:0.020,D:0.010)Y:0.010)R;";
 
     pub(super) const MISSING_LENGTH_TREE: &str = "((A:0.010,B)AB:0.010,(C:0.010,D:0.020)CD:0.010)R;";
 

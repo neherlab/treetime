@@ -15,6 +15,7 @@ use crate::progress_info;
 use crate::reroot::params::{RerootParams, RerootSpec};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
+use crate::timetree::init::gaussian_start_rate;
 use crate::timetree::optimization::outliers::report_outliers;
 use crate::timetree::optimization::reroot::{RerootFitParams, RerootedTree, reroot_tree};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
@@ -137,7 +138,7 @@ fn reroot(
     graph,
     branch_lengths,
     branch_model,
-    clock_fit,
+    fit,
   } = reroot_tree(
     graph,
     branch_lengths,
@@ -152,6 +153,11 @@ fn reroot(
     &mut names,
     log,
   )?;
+  let clock_fit = if reroot_params.is_some() {
+    fit.into_clock_fit()?
+  } else {
+    fit.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, outliers, log))?
+  };
   Ok(PreLoopState {
     graph,
     names,

@@ -112,7 +112,7 @@ mod tests {
 
     let RerootedTree {
       graph,
-      clock_fit: ClockFit { model: clock_model, .. },
+      fit: fit_clock_model,
       ..
     } = reroot_tree(
       graph,
@@ -128,6 +128,7 @@ mod tests {
       &mut names,
       &NoopProgress,
     )?;
+    let ClockFit { model: clock_model, .. } = fit_clock_model.into_clock_fit()?;
 
     let root = graph.get_exactly_one_root()?;
 
@@ -489,9 +490,7 @@ mod tests {
       graph,
       branch_lengths,
       branch_model,
-      clock_fit: ClockFit {
-        model: clock_model_1, ..
-      },
+      fit: fit_clock_model_1,
     } = reroot_tree(
       graph,
       branch_lengths,
@@ -506,6 +505,9 @@ mod tests {
       &mut names,
       &NoopProgress,
     )?;
+    let ClockFit {
+      model: clock_model_1, ..
+    } = fit_clock_model_1.into_clock_fit()?;
 
     let _ = graph.get_exactly_one_root()?;
     assert_eq!(
@@ -518,9 +520,7 @@ mod tests {
 
     let RerootedTree {
       graph,
-      clock_fit: ClockFit {
-        model: clock_model_2, ..
-      },
+      fit: fit_clock_model_2,
       ..
     } = reroot_tree(
       graph,
@@ -536,6 +536,9 @@ mod tests {
       &mut names,
       &NoopProgress,
     )?;
+    let ClockFit {
+      model: clock_model_2, ..
+    } = fit_clock_model_2.into_clock_fit()?;
 
     let _ = graph.get_exactly_one_root()?;
     assert_eq!(

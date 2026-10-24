@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
+use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
 use crate::progress::LogSink;
@@ -61,7 +61,7 @@ pub(crate) fn reroot_tree(
     graph,
     branch_lengths,
     branch_model,
-    clock_fit: fit.into_clock_fit()?,
+    fit,
   })
 }
 
@@ -143,5 +143,5 @@ pub(crate) struct RerootedTree {
   pub graph: Graph,
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub branch_model: BranchModel,
-  pub clock_fit: ClockFit,
+  pub fit: ClockFitResult,
 }
