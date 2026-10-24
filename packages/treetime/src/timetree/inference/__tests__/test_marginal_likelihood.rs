@@ -80,24 +80,23 @@ mod tests {
     Ok(())
   }
 
-  // TODO: kb/issues/M-distribution-fft-convolution-hard-edge-first-order-error.md
-  // The log marginal likelihood differs from the reference by up to 9.8e-6 (coalescent prior, rate 1e-4).
   #[rustfmt::skip]
   #[rstest]
-  #[case::no_prior_rate_1e_4(  1e-4, None,      0.05,  (1e-5, 1e-6))]
-  #[case::no_prior_rate_3e_4(  3e-4, None,      0.025, (1e-5, 1e-6))]
-  #[case::no_prior_rate_1e_3(  1e-3, None,      0.05,  (1e-4, 1e-5))]
-  #[case::coalescent_rate_1e_4(1e-4, Some(5.0), 0.05,  (1e-4, 1e-5))]
-  #[case::coalescent_rate_3e_4(3e-4, Some(5.0), 0.025, (1e-5, 1e-6))]
-  #[case::coalescent_rate_1e_3(1e-3, Some(5.0), 0.05,  (1e-4, 1e-5))]
+  #[case::no_prior_rate_1e_4(  1e-4, None,      0.05,   (1e-5, 1e-6))]
+  #[case::no_prior_rate_3e_4(  3e-4, None,      0.025,  (1e-5, 1e-6))]
+  #[case::no_prior_rate_1e_3(  1e-3, None,      0.0125, (1e-4, 1e-5))]
+  #[case::coalescent_rate_1e_4(1e-4, Some(5.0), 0.05,   (1e-4, 1e-5))]
+  #[case::coalescent_rate_3e_4(3e-4, Some(5.0), 0.0125, (1e-5, 1e-6))]
+  #[case::coalescent_rate_1e_3(1e-3, Some(5.0), 0.0125, (1e-4, 1e-5))]
   #[trace]
   fn test_marginal_likelihood_matches_the_reference_with_zero_count_branches_next_to_tips(
     #[case] rate: f64,
     #[case] tc: Option<f64>,
     #[case] spacing: f64,
     #[case] (max_error, max_reference_error): (f64, f64),
+    #[values(helpers::ZERO_TIP_COUNTS, helpers::ALL_TIPS_ZERO_COUNTS, helpers::ZERO_INNER_COUNTS)] counts: [(&str, f64); 4],
   ) -> Result<(), Report> {
-    let setup = helpers::setup(&helpers::ZERO_TIP_COUNTS)?;
+    let setup = helpers::setup(&counts)?;
     let branches = &branches_at_rate(&setup.branches, helpers::REFERENCE_RATE, rate)?;
     let model = tc.map(|tc| helpers::coalescent(&setup, tc)).transpose()?;
     let backward = propagate_distributions_backward(
@@ -147,6 +146,8 @@ mod tests {
     ];
     pub(super) const COUNTS: [(&str, f64); 4] = [("A", 3.0), ("B", 2.0), ("I", 2.0), ("C", 5.0)];
     pub(super) const ZERO_TIP_COUNTS: [(&str, f64); 4] = [("A", 1.0), ("B", 0.0), ("I", 1.0), ("C", 0.0)];
+    pub(super) const ALL_TIPS_ZERO_COUNTS: [(&str, f64); 4] = [("A", 0.0), ("B", 0.0), ("I", 1.0), ("C", 0.0)];
+    pub(super) const ZERO_INNER_COUNTS: [(&str, f64); 4] = [("A", 1.0), ("B", 0.0), ("I", 0.0), ("C", 1.0)];
     const ZERO_COUNT_SPAN: f64 = 20.0;
 
     pub(super) struct Setup {
