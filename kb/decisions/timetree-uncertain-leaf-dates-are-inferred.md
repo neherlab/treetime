@@ -69,8 +69,9 @@ within that year. With every date exact, the output is byte-identical to before.
 An undated leaf is the limiting case of the same rule: on the run above with `V633`'s date also
 removed, it is now dated 2014.55 from its parent and branch-length distribution (true date 2014.61),
 where it was previously left undated with a zero-length branch. It stays a bad branch throughout —
-it sends no message to its parent and is excluded from the coalescent — so it still contributes
-nothing to the fit.
+it sends no message to its parent — so it still contributes nothing to the fit. Its lineage enters
+the coalescent lineage counts by its posterior
+([timetree-undated-leaves-enter-lineage-counts-by-posterior.md](timetree-undated-leaves-enter-lineage-counts-by-posterior.md)).
 
 ## Why a posterior can come out empty at all
 
