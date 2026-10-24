@@ -7,6 +7,7 @@ mod tests {
   use crate::build::query::Query;
   use crate::build::rebuild::RebuildParams;
   use crate::build::references::{ReferenceSelection, eccentricities, local_branching_index};
+  use crate::build::reprune::RepruneParams;
   use crate::seq::mutation::Sub;
   use crate::test_utils::{CaseSpec, ModelFamily};
   use eyre::Report;
@@ -121,6 +122,7 @@ mod tests {
       fitch_refresh: false,
       compare_exhaustive: true,
       rebuild: None,
+      reprune: None,
     }
   }
 
@@ -144,6 +146,17 @@ mod tests {
         radius: 3,
         max_leaves: 16,
         orders: 3,
+      }),
+      ..refreshing_params(batch_size)
+    }
+  }
+
+  fn repruning_params(batch_size: usize) -> BuildParams {
+    BuildParams {
+      reprune: Some(RepruneParams {
+        batches: 4,
+        rounds: 1,
+        seed: 0,
       }),
       ..refreshing_params(batch_size)
     }
@@ -187,6 +200,7 @@ mod tests {
   #[case::long_branch_references(reference_params(8, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(8))]
   #[case::rebuilding(rebuilding_params(8))]
+  #[case::repruning(repruning_params(8))]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
     let alphabet = Alphabet::default();
     for seed in 0..5 {
@@ -232,6 +246,7 @@ mod tests {
   #[case::long_branch_references(reference_params(4, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(4))]
   #[case::rebuilding(rebuilding_params(4))]
+  #[case::repruning(repruning_params(4))]
   fn test_build_keeps_mat_consistent_with_homoplasy_and_missing_data(
     #[case] params: BuildParams,
   ) -> Result<(), Report> {
