@@ -698,7 +698,7 @@ index 5ce39213472cdb6ad959c587d0d3cd607df0db10..8a3d3e06f074ad16224854ddc35ea011
          </clipPath>
          <g id="Items">
 diff --git a/src/components/map/map.js b/src/components/map/map.js
-index 0e85d44ae0212e6c531501d74031f48e219e0f8e..172f13f161f3bab59a843d5a812155232ac1a6b4 100644
+index 0e85d44ae0212e6c531501d74031f48e219e0f8e..08089788957f8036c0650f25e0dffa95f7d46fc0 100644
 --- a/src/components/map/map.js
 +++ b/src/components/map/map.js
 @@ -107,39 +107,46 @@ class Map extends React.Component {
@@ -778,7 +778,19 @@ index 0e85d44ae0212e6c531501d74031f48e219e0f8e..172f13f161f3bab59a843d5a81215523
      this.maybeChangeSize(this.props);
      const removed = this.maybeRemoveAllDemesAndTransmissions(this.props); /* geographic resolution just changed (ie., country to division), remove everything. this change is upstream of maybeDraw */
      // TODO: if demes are color blended circles, updating rather than redrawing demes would do
-@@ -735,8 +742,23 @@ class Map extends React.Component {
+@@ -551,7 +558,10 @@ class Map extends React.Component {
+       // see scripts/transform-mapbox-style-json.js for an example.
+       transformRequest: (url) => {
+         // Upgrade insecure URLs (e.g. Mapbox's TileJSON references tile URLs over http://).
+-        let next = url.startsWith('http://') ? `https://${url.slice('http://'.length)}` : url;
++        // A URL of the page's own origin keeps its scheme: a page served over http, such as a
++        // local server, serves its basemap over http only.
++        const sameOrigin = url.startsWith(`${window.location.origin}/`);
++        let next = url.startsWith('http://') && !sameOrigin ? `https://${url.slice('http://'.length)}` : url;
+         // Substitute the access token into URLs that template it. The placeholder is the token
+         // value only — the surrounding query param (?access_token=, ?key=, …) comes from the
+         // provider's own URL structure — so this works regardless of tile provider.
+@@ -735,8 +745,23 @@ class Map extends React.Component {
      );
    }
    componentWillUnmount() {
