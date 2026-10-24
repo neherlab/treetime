@@ -20,7 +20,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
-    "portless": "0.15.6",
     "tailwindcss": "catalog:",
     "vite": "catalog:",
     "vite-plugin-compression2": "catalog:"

@@ -36,13 +36,6 @@
 #   tmp/app/web-dev/runs    runs of the development servers (up)
 #   tmp/app/web-prod/runs   runs of the production server (serve)
 #
-# When the portless proxy (https://github.com/vercel-labs/portless) is set up on
-# the machine, the web server also registers https://<name>.localhost:<proxy-port>,
-# where <name> is `treetime` in the main checkout and `<branch>.treetime` in a
-# linked worktree. TREETIME_PORTLESS selects the behavior: `allowed` (default)
-# registers when the proxy state directory exists, `off` never registers, and
-# `required` fails when the proxy is not set up.
-#
 set -euo pipefail
 shopt -s inherit_errexit
 
@@ -62,7 +55,7 @@ docs_base_port=6100
 docs_serve_base_port=6700
 
 resolve() {
-  local toplevel offset branch
+  local toplevel offset
   toplevel="$(git rev-parse --show-toplevel)"
   offset="$(($(printf '%s' "${toplevel}" | cksum | cut -d' ' -f1) % 512))"
   export TREETIME_API_PORT="${TREETIME_API_PORT:-$((api_base_port + offset))}"
@@ -72,17 +65,6 @@ resolve() {
   export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$((web2_serve_base_port + offset))}"
   export TREETIME_DOCS_PORT="${TREETIME_DOCS_PORT:-$((docs_base_port + offset))}"
   export TREETIME_DOCS_SERVE_PORT="${TREETIME_DOCS_SERVE_PORT:-$((docs_serve_base_port + offset))}"
-
-  if [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]; then
-    TREETIME_HOSTNAME="treetime"
-  else
-    branch="$(git branch --show-current)"
-    branch="${branch#worktree/}"
-    branch="$(printf '%s' "${branch}" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-')"
-    branch="${branch#-}"
-    TREETIME_HOSTNAME="${branch%-}.treetime"
-  fi
-  export TREETIME_HOSTNAME
 }
 
 commit() {
@@ -218,7 +200,6 @@ status() {
   printf 'web2 serve port %s\n' "${TREETIME_WEB2_SERVE_PORT}"
   printf 'docs  port %s\n' "${TREETIME_DOCS_PORT}"
   printf 'docs serve port %s\n' "${TREETIME_DOCS_SERVE_PORT}"
-  printf 'portless name %s.localhost (TREETIME_PORTLESS=%s)\n' "${TREETIME_HOSTNAME}" "${TREETIME_PORTLESS:-allowed}"
   printf 'checkout HEAD %s\n' "$(commit)"
   local svc
   for svc in api web; do

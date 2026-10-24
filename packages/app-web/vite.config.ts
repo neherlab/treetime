@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import zlib from "node:zlib";
 
 import { auspice } from "@neherlab/app-ui/build/auspice-vite";
@@ -10,8 +7,7 @@ import { icons } from "@neherlab/app-ui/build/icons-vite";
 import { publicDir } from "@neherlab/app-ui/build/public-dir";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { RouteStore, formatUrl, parseHostname } from "portless";
-import { createLogger, defineConfig, type Plugin } from "vite";
+import { createLogger, defineConfig } from "vite";
 import { compression, defineAlgorithm } from "vite-plugin-compression2";
 
 const apiPort = process.env["TREETIME_API_PORT"] ?? "3100";
@@ -39,7 +35,6 @@ export default defineConfig({
     icons(),
     tailwindcss(),
     react(),
-    portless(),
     compression({
       include: COMPRESSIBLE_FILES,
       threshold: COMPRESSION_THRESHOLD,
@@ -61,37 +56,3 @@ export default defineConfig({
     },
   },
 });
-
-function portless(): Plugin {
-  return {
-    name: "treetime-portless",
-    apply: "serve",
-    configureServer(server) {
-      const mode = process.env["TREETIME_PORTLESS"] ?? "allowed";
-
-      if (mode === "off") return;
-
-      const stateDir = process.env["PORTLESS_STATE_DIR"] ?? join(homedir(), ".portless");
-      const store = new RouteStore(stateDir);
-      const hostname = parseHostname(process.env["TREETIME_HOSTNAME"] ?? "treetime");
-
-      server.httpServer?.once("listening", () => {
-        let proxyPort: number;
-
-        try {
-          proxyPort = Number(readFileSync(store.portFilePath, "utf8").trim());
-        } catch (error) {
-          if (mode === "required") throw new Error(`portless proxy is not set up in ${stateDir}`, { cause: error });
-
-          return;
-        }
-
-        store.addRoute(hostname, webPort, 0);
-        server.config.logger.info(`  portless: ${formatUrl(hostname, proxyPort, true)}`);
-      });
-      process.once("exit", () => {
-        store.removeRoute(hostname, 0);
-      });
-    },
-  };
-}
