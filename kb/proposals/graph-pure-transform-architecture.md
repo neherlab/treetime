@@ -132,7 +132,7 @@ The inference passes share a dependency order, but their numerical operations an
 - **Marginal**: log-space profile product; matrix propagation across the branch
 - **Dating**: distribution product [packages/treetime/src/timetree/inference/backward_pass.rs#L118](../../packages/treetime/src/timetree/inference/backward_pass.rs#L118); convolution across the branch
 - **Fitch**: state-set intersection with union fallback [packages/treetime/src/ancestral/fitch_sub.rs#L81](../../packages/treetime/src/partition/fitch/sub.rs#L81); identity
-- **Clock regression**: moment sum [packages/treetime/src/clock/clock_regression.rs#L279](../../packages/treetime/src/clock/clock_regression.rs#L279); affine map
+- **Clock regression**: moment sum [packages/treetime/src/clock/clock_regression.rs#L234](../../packages/treetime/src/clock/clock_regression.rs#L234); affine map
 
 These operations suggest a possible shared traversal driver. Its interface must also account for:
 
@@ -150,7 +150,7 @@ Message type and normalization also vary:
 
 The forward contribution-removal diverges most:
 
-- **Regression**: subtraction [packages/treetime/src/clock/clock_regression.rs#L309](../../packages/treetime/src/clock/clock_regression.rs#L309). Numerical error requires separate validation
+- **Regression**: subtraction [packages/treetime/src/clock/clock_regression.rs#L265](../../packages/treetime/src/clock/clock_regression.rs#L265). Numerical error requires separate validation
 - **Marginal and dating**: division, the <a id="gloss-use-4"></a>cavity distribution <sup>[4](#gloss-4)</sup> clamped away from zero [packages/treetime/src/partition/marginal/shared/pass.rs#L320](../../packages/treetime/src/partition/marginal/shared/pass.rs#L320) and guarded against disjoint support [packages/treetime/src/timetree/inference/forward_pass.rs#L212](../../packages/treetime/src/timetree/inference/forward_pass.rs#L212)
 - **Fitch**: a top-down resolution that removes nothing [packages/treetime/src/ancestral/fitch_sub.rs#L177](../../packages/treetime/src/partition/fitch/sub.rs#L177)
 
