@@ -594,6 +594,11 @@ generated-check: _js
 data-reindex *args:
     dev/data-reindex "$@"
 
+# Download Natural Earth 5.1.2 and the Noto Sans glyphs, check their SHA-256, and write the basemap of the Auspice map (uses the network)
+[group("generated")]
+basemap: _js
+    bun packages/app-ui/build/basemap.ts
+
 # Fail when a reference fixture is missing, stale, or unclaimed in dev/registry/reference-files.toml
 [group("generated")]
 fixtures-check:
