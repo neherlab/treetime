@@ -101,7 +101,7 @@ impl FrozenRateState {
       bad_branches: &self.bad_branches,
       branches: &self.branches,
       reference_rate: self.spec.mu,
-      window: RateWindow::InteriorMaximum,
+      window: RateWindow::initial(),
       max_points: MaxGridPoints::default(),
     };
     let treetime_log_z = marginal_log_lh_at_rate(&inputs, rate)?;

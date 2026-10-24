@@ -43,8 +43,8 @@ mod tests {
   }
 
   #[rstest]
-  #[case::follow_slope(RateWindow::FollowSlope)]
-  #[case::interior_maximum(RateWindow::InteriorMaximum)]
+  #[case::follow_slope(RateWindow::initial())]
+  #[case::interior_maximum(RateWindow { half_width: 1.25_f64.ln(), follow_slope: false })]
   #[trace]
   fn test_marginal_clock_rate_steps_the_step_fraction_toward_the_parabola_maximum(
     #[case] window: RateWindow,
@@ -73,7 +73,14 @@ mod tests {
   ) -> Result<(), Report> {
     let setup = helpers::cherry()?;
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::InteriorMaximum))?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(
+      &branches,
+      reference,
+      RateWindow {
+        half_width: 1.25_f64.ln(),
+        follow_slope: false,
+      },
+    ))?;
     pretty_assert_ulps_eq!(reference, step.target_rate, max_ulps = 0);
     pretty_assert_ulps_eq!(reference, step.clock_rate, max_ulps = 0);
     Ok(())
@@ -83,7 +90,7 @@ mod tests {
   fn test_marginal_clock_rate_follow_slope_window_without_a_maximum_steps_toward_the_bound_of_the_better_probe()
   -> Result<(), Report> {
     let setup = helpers::cherry()?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 1.0, RateWindow::FollowSlope))?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 1.0, RateWindow::initial()))?;
     pretty_assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(2.0_f64.powf(STEP_FRACTION), step.clock_rate, epsilon = 1e-12);
     Ok(())
@@ -94,7 +101,7 @@ mod tests {
     let setup = helpers::cherry()?;
     let reference = 2.0;
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::FollowSlope))?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::initial()))?;
     let target = parabola_maximum(reference);
     assert!(target > 1.25_f64.ln() && target < 2.0_f64.ln());
     pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-12);
@@ -110,7 +117,7 @@ mod tests {
       .by_node
       .insert(leaf_a, Some(Arc::new(Distribution::<NegLog>::point(2015.0, f64::NAN))));
 
-    let result = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 0.5, RateWindow::FollowSlope));
+    let result = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 0.5, RateWindow::initial()));
 
     assert_error!(
       result,
@@ -140,7 +147,7 @@ mod tests {
 
     impl Cherry {
       pub(super) fn inputs(&self) -> MarginalRateInputs<'_> {
-        self.inputs_at(&self.branches, 1.0, RateWindow::FollowSlope)
+        self.inputs_at(&self.branches, 1.0, RateWindow::initial())
       }
 
       pub(super) fn inputs_at<'a>(
