@@ -152,6 +152,27 @@ On `sc2/4500` and `mpox/clade-ii/2000` about a third of the balls of radius 5 ex
 
 The simulations reach the true tree even at 15.6% divergence, while `lassa/L/500` does not reach the reference tree. Neither the v0 nor the v1 simulator varies the substitution rate among sites. Rate variation concentrates homoplasy at fast sites and makes the parsimony landscape rough, so simulated data with gamma-distributed site rates is needed to test the builder on Lassa-like data.
 
+## How local the topological differences are
+
+`fn missed_splits()` takes every informative split of a reference tree that the built tree lacks and classifies it as unresolved (compatible with all informative splits of the built tree, so a polytomy and not an error) or conflicting. For a conflicting split it finds the smallest number of tips on the wrong side over all edges of the built tree, which does not depend on the root, and the distance of each of these tips from the split in the reference tree.
+
+**Simulated data, reference = true tree.** Without rebuilds, a tree of 400 or 1200 tips has 0 to 10 conflicting splits; most need 1 to 5 tips moved, and the moved tips lie 1 to 10 branches from the split. After rebuilds of radius 3 no conflicting split is left at $\mu \le 0.003$. At $\mu = 0.01$ (15.6% divergence), 2 to 7 remain, 1 to 20 tips each, about 200 substitutions from the split; the built trees then score at or below the true tree, so these are cases where parsimony prefers another tree, not failures of the search.
+
+**Real data, reference = maximum-likelihood tree, built with rebuilds of radius 3.** The reference tree is not the truth, so a conflict can be an error of either tree or a resolution that the data do not determine.
+
+| Dataset | Missed splits: unresolved / conflicting | Tips to move per conflicting split: 1 / 2 / 3-5 / 6-20 / more | Misplaced tips within 5 branches of the split | Distance of misplaced tips in substitutions: median / 90th percentile |
+| --- | --- | --- | --- | --- |
+| `flu/h3n2/500` | 10 / 20 | 7 / 4 / 6 / 3 / 0 | 59% | 5 / 11 |
+| `mpox/clade-ii/2000` | 115 / 74 | 33 / 20 / 10 / 11 / 0 | 71% | 3 / 34 |
+| `rsv/a/2000` | 80 / 92 | 53 / 16 / 14 / 8 / 1 | 76% | 29 / 74 |
+| `dengue/2000` | 49 / 103 | 59 / 15 / 18 / 10 / 1 | 70% | 81 / 1023 |
+| `sc2/4500` | 194 / 284 | 122 / 44 / 53 / 38 / 27 | 33% | 11 / 33 |
+| `lassa/L/500` | 2 / 122 | 48 / 17 / 25 / 26 / 6 | 55% | 366 / 665 |
+
+- About half of the conflicting splits concern one tip and three quarters at most 5 tips; 0 to 10% move more than 20 tips
+- In substitutions the distances scale with the divergence of the data. In branches most misplaced tips lie within 5 branches, except on `sc2/4500`, where 41% lie more than 10 branches away but only 11 substitutions (median) away: long chains of branches with one substitution each make a radius in branches a poor measure of a neighbourhood
+- The rebuilds remove 38% of the conflicting splits on `rsv/a/2000` (149 to 92) and 52% on `dengue/2000` (216 to 103), but 18% on `lassa/L/500` (149 to 122) and 3 to 10% on `sc2/4500`, `mpox/clade-ii/2000`, and `flu/h3n2/500`, where the remaining score gap to the reference tree is 0 to 0.4%
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -198,4 +219,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions.
