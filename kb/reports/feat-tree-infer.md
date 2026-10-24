@@ -398,7 +398,7 @@ A native builder changes scientific outputs, so each part needs evidence of the 
 - **Low-divergence data favors parsimony placement and sparse likelihood methods.** UShER with matOptimize equals or exceeds ML builders on SARS-CoV-2, MAPLE and CMAPLE exceed both, and the advantage decreases with divergence (see [Parsimony and placement on mutation-annotated trees](#parsimony-and-placement-on-mutation-annotated-trees) and [Pandemic-scale likelihood](#pandemic-scale-likelihood-maple-and-cmaple))
 - **The v1 sparse likelihood keeps the constant-site contribution.** The fixed-state counts enter the log-likelihood, so an ascertainment correction is needed only for inputs without invariant sites (code evidence in [Pandemic-scale likelihood](#pandemic-scale-likelihood-maple-and-cmaple))
 - **v0 has no internal tree builder.** It calls external programs; the KB issue that describes neighbor joining in v0 is out of date (see [TreeTime v0 and v1](#treetime-v0-and-v1))
-- **Placement cannot build the first tree.** It needs a backbone, so a native builder needs an initial-topology method in addition to placement
+- **Placement can build the first tree.** A mutation-annotated tree rooted at a reference sequence starts with one sample, and later samples split its edges, as in UShER and MAPLE; the prototype in [feat-tree-infer-prototype.md](feat-tree-infer-prototype.md) builds every tree this way
 
 ### Open
 

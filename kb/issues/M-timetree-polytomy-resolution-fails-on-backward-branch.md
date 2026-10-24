@@ -19,6 +19,7 @@ Error:
 - The x86_64 glibc dist binaries of `rust` `926cdf77b` fail with this seed at 1 and at 20 threads. The x86_64 musl dist binary passes with the same seed, so the outcome depends on the last bits of the math functions of the C library
 - With random seeds, 1 of 400 runs of the glibc binary on this dataset failed; seeds 1 to 300 all passed
 - The failing run first logs that 1 branch runs backwards in time and that its clock branch length was committed as zero
+- A tree with many large polytomies reaches the error without a tolerance effect: `timetree --config data/sc2/4500/timetree.yaml` with the tree of the prototype builder in date order ([kb/reports/feat-tree-infer-prototype.md](../reports/feat-tree-infer-prototype.md)) in place of `tree.nwk` stops in round 1 with `got 2.023032e3` for a polytomy at `2.023826e3`, a child 0.8 years older than its parent, after 18 branches run backwards in time
 
 ## Location
 
