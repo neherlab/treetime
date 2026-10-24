@@ -11,7 +11,7 @@ fit, the polytomy merger rates, the reported likelihood and the convergence trac
 - [x] Mean-field prior per node, local in its own time
 - [x] Per-lineage merger rate $\kappa(t)=\max(1/2,\bar k-1)/(2T_c)$ for polytomy resolution
 - [x] Expected statistics per segment: pair-rate integral $I_i=\int \tfrac12(\bar k^2-\bar k+V)\,dt$ and mergers $M_i=\sum_v m_v P(t_v\in i)$, each node with its actual merger count
-- [x] Bad branches and undated nodes count as surviving at all times
+- [x] Bad branches count in the lineage counts by the survival of their posterior, and an undated leaf's posterior carries its leaf factor; only a node without a posterior counts as surviving at all times ([timetree-undated-leaves-enter-lineage-counts-by-posterior.md](../decisions/timetree-undated-leaves-enter-lineage-counts-by-posterior.md))
 - [ ] v0 parity of the reported likelihood: v1 reports the expected complete-data log-likelihood, v0 the edge-based total likelihood; decision file pending (phase 5 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposals/timetree-coalescent-prior-and-clock-rate-streamlining.md))
 
 ## Time scale $T_c$
