@@ -3,7 +3,9 @@ mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts, missed_splits};
   use crate::build::mat::Mat;
-  use crate::build::pipeline::{BuildParams, BuiltMat, SampleOrder, SearchMode, build_mat, mat_to_tree};
+  use crate::build::pipeline::{
+    BuildParams, BuiltMat, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat, mat_to_tree,
+  };
   use crate::build::query::Query;
   use crate::build::rebuild::RebuildParams;
   use crate::build::references::{ReferenceSelection, eccentricities, local_branching_index};
@@ -123,6 +125,8 @@ mod tests {
       compare_exhaustive: true,
       rebuild: None,
       reprune: None,
+      scaffold: None,
+      initial: InitialTree::Placement,
     }
   }
 
@@ -159,6 +163,31 @@ mod tests {
         seed: 0,
       }),
       ..refreshing_params(batch_size)
+    }
+  }
+
+  fn ordered_params(order: SampleOrder) -> BuildParams {
+    BuildParams {
+      order,
+      ..refreshing_params(8)
+    }
+  }
+
+  fn scaffold_params() -> BuildParams {
+    BuildParams {
+      scaffold: Some(ScaffoldParams {
+        size: 20,
+        restarts: 3,
+        seed: 1,
+      }),
+      ..refreshing_params(8)
+    }
+  }
+
+  fn nj_params() -> BuildParams {
+    BuildParams {
+      initial: InitialTree::NeighborJoining,
+      ..refreshing_params(8)
     }
   }
 
@@ -201,6 +230,10 @@ mod tests {
   #[case::refreshing(refreshing_params(8))]
   #[case::rebuilding(rebuilding_params(8))]
   #[case::repruning(repruning_params(8))]
+  #[case::random_order(ordered_params(SampleOrder::Random { seed: 3 }))]
+  #[case::scaffold_order(ordered_params(SampleOrder::Scaffold { anchors: 10, seed: 3 }))]
+  #[case::scaffold(scaffold_params())]
+  #[case::neighbor_joining(nj_params())]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
     let alphabet = Alphabet::default();
     for seed in 0..5 {
@@ -374,6 +407,92 @@ mod tests {
       missed[0].misplaced.iter().map(|tip| tip.branches).collect_vec(),
       vec![1]
     );
+    Ok(())
+  }
+
+  #[test]
+  fn test_query_scores_ambiguity_codes_as_state_sets() -> Result<(), Report> {
+    let alphabet = Alphabet::default();
+    let reference: Seq = std::iter::repeat_n(A, 3).collect();
+    let seq: Seq = "RNC"
+      .chars()
+      .map(|c| AsciiChar::from_byte_unchecked(u8::try_from(c).unwrap_or(b'N')))
+      .collect();
+    let query = Query::from_seq(&seq, &reference, &alphabet);
+    let g = AsciiChar::from_byte_unchecked(b'G');
+    let t = AsciiChar::from_byte_unchecked(b'T');
+    assert_eq!(query.cost_against(&[], &reference), 1);
+    assert_eq!(query.cost_against(&[(0, g), (1, t)], &reference), 1);
+    assert_eq!(query.cost_against(&[(0, C), (2, C)], &reference), 1);
+    assert_eq!(query.cost_against(&[(0, t), (1, g), (2, t)], &reference), 2);
+    Ok(())
+  }
+
+  #[test]
+  fn test_neighbor_joining_recovers_the_splits_of_an_additive_metric() -> Result<(), Report> {
+    let truth = treetime_io::nwk::nwk_read(b"(((t0:1,t1:2):3,t2:1):2,(t3:2,(t4:1,t5:1):4):1);".as_slice())?;
+    let tips = (0..6).map(|i| format!("t{i}")).collect_vec();
+    let key = |name: &str| {
+      truth
+        .graph
+        .get_leaves()
+        .find(|leaf| &truth.names[leaf.key()] == name)
+        .map(|leaf| leaf.key())
+    };
+    let depth = |mut node| {
+      let mut path = vec![];
+      while let Ok(Some((parent, edge))) = truth.graph.node_parent(node) {
+        path.push((node, truth.branch_lengths[&edge].unwrap_or(0.0)));
+        node = parent;
+      }
+      path
+    };
+    let keys = tips
+      .iter()
+      .map(|name| key(name).ok_or_else(|| crate::make_report!("Tip {name} not found")))
+      .collect::<Result<Vec<_>, Report>>()?;
+    let mut distances = vec![0.0; 36];
+    for (i, &a) in keys.iter().enumerate() {
+      for (j, &b) in keys.iter().enumerate() {
+        let (pa, pb) = (depth(a), depth(b));
+        let shared: f64 = pa
+          .iter()
+          .filter(|(node, _)| pb.iter().any(|(other, _)| other == node))
+          .map(|(_, length)| length)
+          .sum();
+        let total = |path: &[(GraphNodeKey, f64)]| path.iter().map(|(_, length)| length).sum::<f64>();
+        distances[i * 6 + j] = total(&pa) + total(&pb) - 2.0 * shared;
+      }
+    }
+    let (graph, samples) = crate::build::nj::neighbor_joining(&distances, 6)?;
+    let names = NodeNames::from_input(
+      samples
+        .iter()
+        .map(|(&node, &sample)| (node, Some(tips[sample].clone())))
+        .collect(),
+      &graph,
+    )?
+    .names;
+    let ones = |graph: &Graph| {
+      graph
+        .get_edges()
+        .map(|edge| (edge.key(), 1))
+        .collect::<BTreeMap<_, _>>()
+    };
+    let (built_counts, true_counts) = (ones(&graph), ones(&truth.graph));
+    let splits = compare_splits(
+      &TreeWithCounts {
+        graph: &graph,
+        names: &names,
+        edge_counts: &built_counts,
+      },
+      &TreeWithCounts {
+        graph: &truth.graph,
+        names: &truth.names,
+        edge_counts: &true_counts,
+      },
+    )?;
+    assert_eq!((splits.only_first, splits.only_second, splits.shared), (0, 0, 3));
     Ok(())
   }
 }
