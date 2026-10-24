@@ -446,11 +446,21 @@ impl<T: InterpElem> GridFn<T> {
     Self::from_grid_array(*grid, Array1::from_vec(y_new))
   }
 
-  pub fn resample_range_dx_clamped(&self, x_range: (T, T), dx: T, max_points: MaxGridPoints) -> Result<Self, Report>
+  pub fn resample_range_dx_clamped(
+    &self,
+    x_range: (T, T),
+    dx: T,
+    anchor: Side,
+    max_points: MaxGridPoints,
+  ) -> Result<Self, Report>
   where
     T: Float,
   {
-    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?;
+    let anchor_x = match anchor {
+      Side::Left => x_range.0,
+      Side::Right => x_range.1,
+    };
+    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?.anchored(anchor, anchor_x);
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
     let y_new = (0..grid.n_points())

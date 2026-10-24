@@ -2,6 +2,7 @@
 mod tests {
   use crate::grid::Grid;
   use crate::grid_fn::GridFn;
+  use crate::hard_approach_law::Side;
   use crate::max_grid_points::{GridPointLimitExceeded, MaxGridPoints};
   use eyre::Report;
   use ndarray::array;
@@ -149,7 +150,7 @@ mod tests {
   #[test]
   fn test_max_grid_points_resample_range_dx_clamped_at_the_limit() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 1.0])?;
-    let resampled = grid_fn.resample_range_dx_clamped((0.0, 999.0), 1.0, MaxGridPoints::new(1_000)?)?;
+    let resampled = grid_fn.resample_range_dx_clamped((0.0, 999.0), 1.0, Side::Left, MaxGridPoints::new(1_000)?)?;
     assert_eq!(1_000, resampled.len());
     Ok(())
   }
@@ -158,7 +159,7 @@ mod tests {
   fn test_max_grid_points_resample_range_dx_clamped_above_the_limit() {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 1.0]).unwrap();
     assert_error!(
-      grid_fn.resample_range_dx_clamped((0.0, 1000.0), 1.0, MaxGridPoints::new(1_000).unwrap()),
+      grid_fn.resample_range_dx_clamped((0.0, 1000.0), 1.0, Side::Left, MaxGridPoints::new(1_000).unwrap()),
       "A grid over [0, 1000] with spacing 1 needs 1001 points, more than the limit of 1000"
     );
   }
