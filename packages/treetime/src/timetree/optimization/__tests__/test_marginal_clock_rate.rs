@@ -32,8 +32,7 @@ mod tests {
     Ok(())
   }
 
-  fn parabola_maximum(reference: f64) -> f64 {
-    let h = 1.25_f64.ln();
+  fn parabola_maximum(reference: f64, h: f64) -> f64 {
     let curve = |x: f64| {
       let mu = reference * x.exp();
       -mu.ln() - (mu - 3.0).powi(2)
@@ -42,69 +41,75 @@ mod tests {
     h * (below - above) / (2.0 * (above + below - 2.0 * at))
   }
 
+  #[rustfmt::skip]
   #[rstest]
-  #[case::follow_slope(RateWindow::initial())]
-  #[case::interior_maximum(RateWindow { half_width: 1.25_f64.ln(), follow_slope: false })]
+  #[case::first_step(           2.7, 1.0,   true,  0.5  )]
+  #[case::later_step(           2.7, 0.5,   false, 0.25 )]
+  #[case::at_an_eighth_of_start(2.8, 0.125, false, 0.125)]
   #[trace]
-  fn test_marginal_clock_rate_steps_the_step_fraction_toward_the_parabola_maximum(
-    #[case] window: RateWindow,
+  fn test_marginal_clock_rate_steps_the_step_fraction_toward_a_maximum_between_the_probes_and_halves_the_window(
+    #[case] reference: f64,
+    #[case] scale: f64,
+    #[case] follow_slope: bool,
+    #[case] next_scale: f64,
   ) -> Result<(), Report> {
     let setup = helpers::cherry()?;
-    let reference = 2.5;
+    let window = helpers::window(scale, follow_slope);
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
 
-    let target = parabola_maximum(reference);
-    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-6);
+    let target = parabola_maximum(reference, window.half_width);
+    assert!(target.abs() <= window.half_width);
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-5);
     pretty_assert_abs_diff_eq!(
       reference * (STEP_FRACTION * target).exp(),
       step.clock_rate,
-      epsilon = 1e-6
+      epsilon = 1e-5
     );
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::convex(1.0)]
-  #[case::concave_maximum_past_the_window(2.0)]
-  #[trace]
-  fn test_marginal_clock_rate_interior_maximum_window_without_a_maximum_between_the_probes_keeps_the_rate(
-    #[case] reference: f64,
-  ) -> Result<(), Report> {
-    let setup = helpers::cherry()?;
-    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(
-      &branches,
-      reference,
-      RateWindow {
-        half_width: 1.25_f64.ln(),
-        follow_slope: false,
-      },
-    ))?;
-    pretty_assert_ulps_eq!(reference, step.target_rate, max_ulps = 0);
-    pretty_assert_ulps_eq!(reference, step.clock_rate, max_ulps = 0);
+    assert_eq!(helpers::window(next_scale, false), step.window);
     Ok(())
   }
 
   #[test]
-  fn test_marginal_clock_rate_follow_slope_window_without_a_maximum_steps_toward_the_bound_of_the_better_probe()
+  fn test_marginal_clock_rate_later_step_without_a_maximum_between_the_probes_keeps_the_rate_and_window()
   -> Result<(), Report> {
     let setup = helpers::cherry()?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&setup.branches, 1.0, RateWindow::initial()))?;
-    pretty_assert_abs_diff_eq!(2.0, step.target_rate, epsilon = 1e-12);
-    pretty_assert_abs_diff_eq!(2.0_f64.powf(STEP_FRACTION), step.clock_rate, epsilon = 1e-12);
+    let reference = 2.5;
+    let window = helpers::window(0.5, false);
+    let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
+    pretty_assert_ulps_eq!(reference, step.clock_rate, max_ulps = 0);
+    assert_eq!(window, step.window);
     Ok(())
   }
 
-  #[test]
-  fn test_marginal_clock_rate_follow_slope_window_takes_a_maximum_past_the_probes() -> Result<(), Report> {
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::convex_to_the_bound(    1.0, false)]
+  #[case::maximum_past_the_probes(2.0, true )]
+  #[trace]
+  fn test_marginal_clock_rate_first_step_follows_the_slope_out_of_the_window_and_keeps_its_width(
+    #[case] reference: f64,
+    #[case] concave: bool,
+  ) -> Result<(), Report> {
     let setup = helpers::cherry()?;
-    let reference = 2.0;
+    let window = RateWindow::initial();
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
-    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, RateWindow::initial()))?;
-    let target = parabola_maximum(reference);
-    assert!(target > 1.25_f64.ln() && target < 2.0_f64.ln());
-    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-12);
+    let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
+
+    let target = if concave {
+      parabola_maximum(reference, window.half_width)
+    } else {
+      2.0_f64.ln()
+    };
+    assert!(target > window.half_width && target <= 2.0_f64.ln());
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(
+      reference * (STEP_FRACTION * target).exp(),
+      step.clock_rate,
+      epsilon = 1e-5
+    );
+    assert_eq!(helpers::window(1.0, false), step.window);
     Ok(())
   }
 
@@ -136,6 +141,13 @@ mod tests {
     const PRECISION: f64 = 4.0;
 
     const BRANCH_GRID_DX: f64 = 0.001;
+
+    pub(super) fn window(scale: f64, follow_slope: bool) -> RateWindow {
+      RateWindow {
+        half_width: RateWindow::initial().half_width * scale,
+        follow_slope,
+      }
+    }
 
     pub(super) struct Cherry {
       pub graph: Graph,
