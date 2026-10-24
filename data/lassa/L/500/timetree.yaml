@@ -1,19 +1,14 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
 
-# Lassa virus time tree with a relaxed clock (lassa/L/500).
+# Time tree with the default settings (lassa/L/500).
 #
 # Run from any folder; relative paths in this file resolve from its folder, and
 # `--output-all` chooses the output folder. From the repository root:
 #   treetime timetree --config data/lassa/L/500/timetree.yaml --output-all tmp/examples/lassa/L/500/timetree
 #
-# Lassa virus circulates in rodents across West Africa and its lineages are
-# centuries old, so the rate of evolution can differ between lineages. `relax`
-# lets every branch have its own rate around the mean clock rate: the first value
-# is the strength of the prior on the rate deviation of a branch, the second the
-# coupling between the rates of parent and child branches (0 gives an
-# uncorrelated clock). `coalescent: opt` fits a constant coalescent time scale, and
-# `seed` makes the random order of the polytomy resolution reproducible. The taxon
-# names are in the `accession` column; the 500 sequences are of the L segment.
+# `timetree` estimates the clock rate of 414 Lassa virus L segments, reroots the tree,
+# and dates every node. `seed` makes the random order of the polytomy resolution
+# reproducible.
 
 tree: "tree.nwk"
 metadata: "metadata.tsv"
@@ -22,10 +17,4 @@ metadata_id_columns:
 alignment:
   - "aln.fasta.xz"
 
-relax:
-  - 1.0
-  - 0.5
-coalescent: "opt"
-confidence: true
-max_iter: 3
 seed: 42

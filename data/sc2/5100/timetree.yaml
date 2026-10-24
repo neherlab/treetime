@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Time tree with the default settings (sc2/5100).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/sc2/5100/timetree.yaml --output-all tmp/examples/sc2/5100/timetree
+#
+# `timetree` estimates the clock rate of 5100 SARS-CoV-2 genomes, reroots the tree,
+# and dates every node. `seed` makes the random order of the polytomy resolution
+# reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv.xz"
+alignment:
+  - "aln.fasta.xz"
+
+seed: 42

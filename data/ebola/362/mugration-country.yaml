@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json
+
+# Ancestral country of the 2014-2016 West African Ebola epidemic (ebola/362).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime mugration --config data/ebola/362/mugration-country.yaml --output-all tmp/examples/ebola/362/mugration-country
+#
+# The first trait of the Nextstrain ebola west-africa-2014 build: Guinea, Liberia and
+# Sierra Leone.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+attribute: "country"
+
+confidence: true

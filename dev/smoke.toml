@@ -151,7 +151,7 @@ skip.'mpox/clade-ii/500' = "dense needs 23 GB of profile arrays: kb/issues/N-anc
 skip.'mpox/clade-ii/1000' = "dense needs 48 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 skip.'mpox/clade-ii/2000' = "dense needs 100 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 skip.'sc2/2844' = "dense needs 17 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
-skip.'sc2/4500' = "dense needs 39 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'sc2/5100' = "dense needs 39 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 
 [[ancestral]]
 variant = "model-jc69"
@@ -273,6 +273,18 @@ outputs = [
   "ancestral.mat.pb",
   "ancestral.mat.json",
 ]
+
+# The amino-acid path on the large datasets with translations. No example config shows it, because a template names
+# the translations and the data index lists the input files of every per-command config
+[[ancestral]]
+variant = "translations"
+datasets = ["rsv/a/2000"]
+args = "--method-anc=marginal --translations=data/rsv/a/2000/translations/%GENE.fasta.xz --cds-selection=NS1,NS2,N,P,M,SH,G,F,M2-1,M2-2,L"
+
+[[ancestral]]
+variant = "translations"
+datasets = ["mpox/clade-ii/2000"]
+args = "--method-anc=marginal --translations=data/mpox/clade-ii/2000/translations/%GENE.fasta.xz --annotation={dataset}/annotation.gff3"
 
 # The amino-acid path with Fitch parsimony
 [[ancestral]]
@@ -491,7 +503,7 @@ skip.'mpox/clade-ii/500' = "dense needs 23 GB of profile arrays: kb/issues/N-anc
 skip.'mpox/clade-ii/1000' = "dense needs 48 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 skip.'mpox/clade-ii/2000' = "dense needs 100 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 skip.'sc2/2844' = "dense needs 17 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
-skip.'sc2/4500' = "dense needs 39 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
+skip.'sc2/5100' = "dense needs 39 GB of profile arrays: kb/issues/N-ancestral-dense-messages-fill-memory-through-first-touch-page-faults.md"
 
 [[optimize]]
 variant = "newton"
@@ -819,7 +831,7 @@ tier = "quick"
 
 [[timetree]]
 variant = "clock-filter-10"
-datasets = ["sc2/4500"]
+datasets = ["sc2/5100"]
 args = "--clock-filter=10"
 
 [[timetree]]
@@ -916,7 +928,7 @@ fail = "stops at the grid point limit: kb/decisions/distribution-grid-point-limi
 variant = "keep-root-fixed-clock"
 datasets = ["lassa/L/500"]
 args = "--keep-root --clock-rate=0.00078 --coalescent=opt"
-fail = "kb/issues/M-timetree-backward-message-nan-with-kept-root-and-fixed-rate.md"
+fail = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"
 
 
 # A Nexus input tree
@@ -982,6 +994,13 @@ subcommands = [
 [config]
 pattern = "*.yaml"
 
+[config.fail]
+"dengue/2000/mugration-serotype" = "a trait with one state: kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md"
+"lassa/L/500/pipeline-nextstrain" = "kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md"
+"lassa/L/20/timetree" = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
+"tb/149/ancestral-vcf" = "kb/issues/M-io-vcf-input-output-unimplemented.md"
+"zika/86/ancestral-phylip" = "kb/issues/M-io-phylip-alignment-input-unsupported.md"
+
 
 # Commands without a dataset, one row per invocation. `args` follows the binary. The printed text is compared with the
 # baseline; a `sandbox = true` row runs in a sandbox directory and its written files are compared instead.
@@ -1007,7 +1026,7 @@ args = "help-markdown"
 
 [[cli]]
 variant = "pipeline-dry-run"
-args = "pipeline --config={data}/zika/20/pipeline.yaml --dry-run --output-all=tmp/pipeline-dry-run"
+args = "pipeline --config={data}/zika/20/pipeline-dated-geography.yaml --dry-run --output-all=tmp/pipeline-dry-run"
 
 [[cli]]
 variant = "timetree-dry-run"
@@ -1023,7 +1042,7 @@ args = "schema write --for=all --output=tmp/schemas-dry-run --dry-run"
 
 [[cli]]
 variant = "pipeline-steps-timetree"
-args = "pipeline --config={data}/zika/20/pipeline.yaml --steps=timetree --output-all={out}"
+args = "pipeline --config={data}/zika/20/pipeline-dated-geography.yaml --steps=timetree --output-all={out}"
 sandbox = true
 
 [[cli]]

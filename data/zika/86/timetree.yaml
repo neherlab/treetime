@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Time tree with the default settings (zika/86).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/zika/86/timetree.yaml --output-all tmp/examples/zika/86/timetree
+#
+# `timetree` estimates the clock rate of 86 Zika virus genomes, reroots the tree, and
+# dates every node. `seed` makes the random order of the polytomy resolution
+# reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+alignment:
+  - "aln.fasta.xz"
+
+seed: 42

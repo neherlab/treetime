@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
+
+# Ancestral reconstruction from a PHYLIP alignment (zika/86).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime ancestral --config data/zika/86/ancestral-phylip.yaml --output-all tmp/examples/zika/86/ancestral-phylip
+#
+# `aln.phylip.xz` holds the sequences of `aln.fasta.xz` in the PHYLIP format, which
+# TreeTime 0.x reads. TreeTime v1 reads FASTA only today:
+# kb/issues/M-io-phylip-alignment-input-unsupported.md.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.phylip.xz"

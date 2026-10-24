@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json
+
+# Root-to-tip regression on the outgroup root of the Nextstrain hmpxv1 build (mpox/clade-ii/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime clock --config data/mpox/clade-ii/2000/clock-outgroup.yaml --output-all tmp/examples/mpox/clade-ii/2000/clock-outgroup
+#
+# The Nextstrain hmpxv1 build roots the tree on the two 2017-2018 Nigerian genomes
+# MK783032 and MK783030 instead of searching the root that maximizes the temporal
+# signal.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "accession"
+
+outgroup:
+  - "MK783032"
+  - "MK783030"

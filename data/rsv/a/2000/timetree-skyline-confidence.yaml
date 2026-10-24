@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# RSV-A time tree with a skyline coalescent and date intervals (rsv/a/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/rsv/a/2000/timetree-skyline-confidence.yaml --output-all tmp/examples/rsv/a/2000/timetree-skyline-confidence
+#
+# The skyline coalescent fits a piecewise-linear history of the coalescent time scale
+# Tc over seven decades of RSV-A sampling, and `confidence` writes the 90% interval of
+# every node date, including the uncertainty of the estimated rate.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "accession"
+alignment:
+  - "aln.fasta.xz"
+
+coalescent: "skyline"
+confidence: true
+seed: 42

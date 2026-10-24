@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
+
+# Ancestral reconstruction from the VCF of the Lee 2015 TB isolates (tb/149).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime ancestral --config data/tb/149/ancestral-vcf.yaml --output-all tmp/examples/tb/149/ancestral-vcf
+#
+# The ancestral tutorial of TreeTime 0.x reads the variants of `aln.vcf.xz` against
+# the 4411532-nt reference `reference.fasta.xz`, so the substitution model sees every
+# site of the genome. TreeTime v1 reads no VCF yet:
+# kb/issues/M-io-vcf-input-output-unimplemented.md.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.vcf.xz"

@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json
+
+# Ancestral region of 5100 SARS-CoV-2 genomes (sc2/5100).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime mugration --config data/sc2/5100/mugration-region.yaml --output-all tmp/examples/sc2/5100/mugration-region
+#
+# The trait of the Nextstrain ncov global builds: 6 regions instead of the 95 countries
+# of `data/sc2/5100/mugration-country.yaml`, with the same sampling-bias correction.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv.xz"
+attribute: "region"
+
+sampling_bias_correction: 2.5
+confidence: true

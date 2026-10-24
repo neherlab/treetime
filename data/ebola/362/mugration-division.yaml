@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json
+
+# Ancestral district of the 2014-2016 West African Ebola epidemic (ebola/362).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime mugration --config data/ebola/362/mugration-division.yaml --output-all tmp/examples/ebola/362/mugration-division
+#
+# The second trait of the Nextstrain ebola west-africa-2014 build: 35 districts of
+# Guinea, Liberia and Sierra Leone, a finer geography than the 3 countries of
+# `data/ebola/362/mugration-country.yaml`.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+attribute: "division"
+
+confidence: true

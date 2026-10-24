@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# All four analysis commands on 2000 clade II mpox genomes (mpox/clade-ii/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/mpox/clade-ii/2000/pipeline-full.yaml --output-all tmp/examples/mpox/clade-ii/2000/pipeline-full
+#
+# Preview the plan, or resume after a failure without recomputing earlier steps:
+#   treetime pipeline --config data/mpox/clade-ii/2000/pipeline-full.yaml --dry-run --output-all tmp/examples/mpox/clade-ii/2000/pipeline-full
+#   treetime pipeline --config data/mpox/clade-ii/2000/pipeline-full.yaml --steps timetree,mugration --output-all tmp/examples/mpox/clade-ii/2000/pipeline-full
+#
+# The heaviest example: 2000 clade II mpox genomes of 197 kb each. The first three
+# steps are the TreeTime rules of the nextstrain/mpox `WIP/new_tt` workflow
+# (`optimize` in place of `augur refine`, `ancestral`, `timetree`), with the
+# clock settings of the Nextstrain hmpxv1 build: divergence in absolute
+# mutations, a fixed clock rate of 5.7e-5 substitutions/site/year, and no indels in
+# the branch-length likelihood. The fourth step reconstructs the sampling country
+# (32 states) on the dated tree.
+
+vars:
+  clock_rate: 5.7e-5
+  clock_std_dev: 2e-5
+  metadata_id_columns:
+    - "accession"
+
+steps:
+  # 1. Optimize branch lengths and reroot on the minimum-divergence branch.
+  - name: "optimize"
+    optimize:
+      tree: "tree.nwk"
+      alignment:
+        - "aln.fasta.xz"
+      reroot: "min-dev"
+      divergence_units: "mutations"
+      no_indels: true
+
+  # 2. Reconstruct ancestral sequences and mutations on the optimized tree.
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+
+  # 3. Date the optimized tree with the fixed clock, keeping its root and polytomies.
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      alignment:
+        - "aln.fasta.xz"
+      clock_rate: "{{ vars.clock_rate }}"
+      clock_std_dev: "{{ vars.clock_std_dev }}"
+      keep_root: true
+      keep_polytomies: true
+      divergence_units: "mutations"
+      no_indels: true
+      confidence: true
+      max_iter: 3
+
+  # 4. Reconstruct the sampling country on the dated tree.
+  - name: "mugration"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "country"

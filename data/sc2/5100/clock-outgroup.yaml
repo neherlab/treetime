@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json
+
+# Root-to-tip regression on the Wuhan-Hu-1 root (sc2/5100).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime clock --config data/sc2/5100/clock-outgroup.yaml --output-all tmp/examples/sc2/5100/clock-outgroup
+#
+# The Nextstrain ncov builds root the tree on the reference genome Wuhan-Hu-1/2019
+# instead of searching the root that maximizes the temporal signal.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv.xz"
+
+outgroup:
+  - "Wuhan-Hu-1/2019"

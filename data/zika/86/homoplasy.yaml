@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json
+
+# Homoplasies with the default settings (zika/86).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime homoplasy --config data/zika/86/homoplasy.yaml --output-all tmp/examples/zika/86/homoplasy
+#
+# `homoplasy` reconstructs the ancestral sequences of 86 Zika virus genomes and
+# reports the mutations that arise more than once on the tree, a sign of
+# recombination, convergent evolution, or sequencing errors.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"

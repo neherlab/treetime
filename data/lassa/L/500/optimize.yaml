@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch-length optimization with the default settings (lassa/L/500).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/lassa/L/500/optimize.yaml --output-all tmp/examples/lassa/L/500/optimize
+#
+# `optimize` re-estimates every branch length of 414 Lassa virus L segments under an
+# inferred GTR model and keeps the root of the input tree.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"

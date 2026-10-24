@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain mpox hmpxv1 build, TreeTime part (mpox/clade-ii/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/mpox/clade-ii/2000/pipeline-nextstrain.yaml --output-all tmp/examples/mpox/clade-ii/2000/pipeline-nextstrain
+#
+# nextstrain/mpox@8495d7b, build hmpxv1: `augur refine --timetree --root MK783032
+# MK783030 --keep-polytomies --clock-rate 5.7e-5 --clock-std-dev 2e-5 --coalescent opt
+# --date-confidence --divergence-units mutations --clock-filter-iqd 0`, `augur ancestral
+# --inference joint`, then `augur translate` of every CDS. The build has no trait step.
+#
+# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
+# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
+# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
+# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
+# polytomy resolution where the run resolves polytomies.
+
+steps:
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      metadata_id_columns:
+        - "accession"
+      alignment:
+        - "aln.fasta.xz"
+      outgroup:
+        - "MK783032"
+        - "MK783030"
+      keep_polytomies: true
+      clock_rate: 5.7e-5
+      clock_std_dev: 2e-5
+      coalescent: "opt"
+      confidence: true
+      divergence_units: "mutations"
+      clock_filter: 0.0
+      no_indels: true
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+      annotation: "annotation.gff3"
+      translations: "translations/{cds}.fasta.xz"

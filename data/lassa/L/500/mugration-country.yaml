@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json
+
+# Ancestral sampling country (lassa/L/500).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime mugration --config data/lassa/L/500/mugration-country.yaml --output-all tmp/examples/lassa/L/500/mugration-country
+#
+# Discrete-trait reconstruction of the sampling country of Lassa virus in West Africa.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "accession"
+attribute: "country"

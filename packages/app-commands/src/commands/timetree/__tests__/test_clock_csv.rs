@@ -110,7 +110,11 @@ mod tests {
       .lines()
       .map(|line| {
         if line.starts_with(UNDATED_TIP) {
-          format!("{UNDATED_TIP}\t\tchina")
+          line
+            .split('\t')
+            .enumerate()
+            .map(|(column, field)| if column == 1 { "" } else { field })
+            .join("\t")
         } else {
           line.to_owned()
         }

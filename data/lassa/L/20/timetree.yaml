@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Lassa virus time tree with the default settings (lassa/L/20).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/lassa/L/20/timetree.yaml --output-all tmp/examples/lassa/L/20/timetree
+#
+# Twenty L segments sampled over 46 years give almost no temporal signal. The run keeps
+# the input branch lengths, the weak rate puts the root thousands of years back, and the
+# time grid of the month-precision tip dates exceeds the grid point limit today:
+# kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "accession"
+alignment:
+  - "aln.fasta.xz"
+
+seed: 42

@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Time tree with one substitution model per codon position (flu/h3n2/500).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/flu/h3n2/500/timetree-codon-partitions.yaml --output-all tmp/examples/flu/h3n2/500/timetree-codon-partitions
+#
+# The partitions of `data/flu/h3n2/500/optimize-codon-partitions.yaml` in the time
+# inference: every round fits the GTR model and the relative rate of each codon
+# position, and the branch lengths average over all sites.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+alignment:
+  - "aln.fasta.xz"
+
+partition:
+  - name: "codon-1"
+    sites: ['1-1407\3']
+  - name: "codon-2"
+    sites: ['2-1407\3']
+  - name: "codon-3"
+    sites: ['3-1407\3']
+partition_rates: "estimate"
+seed: 42

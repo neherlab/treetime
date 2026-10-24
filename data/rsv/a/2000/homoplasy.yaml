@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json
+
+# Homoplasies with the default settings (rsv/a/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime homoplasy --config data/rsv/a/2000/homoplasy.yaml --output-all tmp/examples/rsv/a/2000/homoplasy
+#
+# `homoplasy` reconstructs the ancestral sequences of 1999 RSV-A genomes and reports the
+# mutations that arise more than once on the tree, a sign of recombination,
+# convergent evolution, or sequencing errors.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"

@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json
+
+# Homoplasies of TB isolates from an informative-sites alignment (tb/149).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime homoplasy --config data/tb/149/homoplasy-constant-sites.yaml --output-all tmp/examples/tb/149/homoplasy-constant-sites
+#
+# The homoplasy tutorial of TreeTime 0.x on the Lee 2015 data: the alignment holds only
+# the 216 informative sites of the 4411532-nt genome, so `constant_sites` adds the other
+# sites back, and `rescale` turns the tree's branch lengths into substitutions per site
+# of the whole genome.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+
+constant_sites: 4411316
+rescale: 0.0000614

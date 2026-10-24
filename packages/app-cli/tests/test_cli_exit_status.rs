@@ -455,7 +455,7 @@ mod tests {
       &[
         "pipeline",
         "--config",
-        &data_path("zika/20/pipeline.yaml"),
+        &data_path("zika/20/pipeline-dated-geography.yaml"),
         "--dry-run",
         "-O",
         out.to_str().unwrap(),

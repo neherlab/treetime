@@ -17,10 +17,10 @@ mod tests {
     let index = index_of(
       &[
         "index.json",
-        "sc2/4500/tree.nwk",
-        "sc2/4500/metadata.tsv.xz",
-        "sc2/4500/aln.fasta.xz",
-        "sc2/4500/annotation.gff3",
+        "sc2/5100/tree.nwk",
+        "sc2/5100/metadata.tsv.xz",
+        "sc2/5100/aln.fasta.xz",
+        "sc2/5100/annotation.gff3",
         "zika/86/tree.nwk",
         "zika/86/zika.phylip.xz",
       ],
@@ -31,19 +31,19 @@ mod tests {
       DataIndex {
         files: vec![
           IndexedFile {
-            path: o!("sc2/4500/aln.fasta.xz"),
+            path: o!("sc2/5100/aln.fasta.xz"),
             size: 21,
           },
           IndexedFile {
-            path: o!("sc2/4500/annotation.gff3"),
+            path: o!("sc2/5100/annotation.gff3"),
             size: 24,
           },
           IndexedFile {
-            path: o!("sc2/4500/metadata.tsv.xz"),
+            path: o!("sc2/5100/metadata.tsv.xz"),
             size: 24,
           },
           IndexedFile {
-            path: o!("sc2/4500/tree.nwk"),
+            path: o!("sc2/5100/tree.nwk"),
             size: 17,
           },
           IndexedFile {
@@ -57,19 +57,19 @@ mod tests {
         ],
         datasets: vec![
           IndexedDataset {
-            name: o!("sc2/4500"),
+            name: o!("sc2/5100"),
             inputs: vec![
               IndexedInput {
                 kind: InputKind::Tree,
-                path: o!("sc2/4500/tree.nwk"),
+                path: o!("sc2/5100/tree.nwk"),
               },
               IndexedInput {
                 kind: InputKind::Alignment,
-                path: o!("sc2/4500/aln.fasta.xz"),
+                path: o!("sc2/5100/aln.fasta.xz"),
               },
               IndexedInput {
                 kind: InputKind::Metadata,
-                path: o!("sc2/4500/metadata.tsv.xz"),
+                path: o!("sc2/5100/metadata.tsv.xz"),
               },
             ],
           },

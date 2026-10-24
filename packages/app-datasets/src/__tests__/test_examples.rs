@@ -22,9 +22,9 @@ mod tests {
       "usher/.gitignore",
       "usher/global.pb",
       "tree.nwk",
-      "sc2/4500/tree.nwk",
-      "sc2/4500/metadata.tsv.xz",
-      "sc2/4500/translations/F.fasta.xz",
+      "sc2/5100/tree.nwk",
+      "sc2/5100/metadata.tsv.xz",
+      "sc2/5100/translations/F.fasta.xz",
     ];
     assert_eq!(
       vec![
@@ -33,7 +33,7 @@ mod tests {
           files: vec_of_owned!["README.md", "tree.nwk"],
         },
         DatasetFiles {
-          name: o!("sc2/4500"),
+          name: o!("sc2/5100"),
           files: vec_of_owned!["metadata.tsv.xz", "tree.nwk"],
         },
         DatasetFiles {

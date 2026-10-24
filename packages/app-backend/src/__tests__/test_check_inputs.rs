@@ -54,7 +54,12 @@ mod tests {
       (
         Some(MetadataFacts {
           rows: 86,
-          columns: vec!["name".to_owned(), "date".to_owned(), "country".to_owned()],
+          columns: vec![
+            "name".to_owned(),
+            "date".to_owned(),
+            "country".to_owned(),
+            "region".to_owned()
+          ],
           id_column: "name".to_owned(),
           date_column: Some("date".to_owned()),
           dates: Some(DateFacts {

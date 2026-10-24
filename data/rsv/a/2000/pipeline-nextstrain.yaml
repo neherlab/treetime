@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain rsv a genome build, TreeTime part (rsv/a/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/rsv/a/2000/pipeline-nextstrain.yaml --output-all tmp/examples/rsv/a/2000/pipeline-nextstrain
+#
+# nextstrain/rsv@7d91d8f, build a/genome: `augur refine --timetree --coalescent opt
+# --stochastic-resolve --clock-filter-iqd 4` (no date confidence), `augur ancestral
+# --inference joint --genes F`, `augur traits --columns country region --confidence`.
+#
+# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
+# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
+# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
+# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
+# polytomy resolution where the run resolves polytomies.
+
+vars:
+  metadata_id_columns:
+    - "accession"
+
+steps:
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      alignment:
+        - "aln.fasta.xz"
+      coalescent: "opt"
+      clock_filter: 4.0
+      no_indels: true
+      seed: 42
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+      translations: "translations/{cds}.fasta.xz"
+      cds_selection:
+        - "F"
+
+  - name: "mugration-country"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "country"
+      confidence: true
+
+  - name: "mugration-region"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "region"
+      confidence: true

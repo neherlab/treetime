@@ -507,7 +507,7 @@ pub(crate) mod tests {
     });
     let response = check_config(&CheckConfigRequest {
       command: AppCommand::Mugration,
-      text: include_str!("../../../../data/zika/20/mugration.yaml").to_owned(),
+      text: include_str!("../../../../data/zika/20/mugration-country-weights.yaml").to_owned(),
       inputs: SparseConfig::default(),
       input_facts: None,
       folder: None,

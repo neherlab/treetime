@@ -120,7 +120,7 @@ jobs:
         run: |
           chmod +x ".out/treetime-${{ matrix.target }}"
           ${{ matrix.script }} ".out/treetime-${{ matrix.target }}" \
-            pipeline --config data/zika/20/pipeline.yaml --output-all /tmp/zika
+            pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all /tmp/zika
 
   # Every Linux binary runs under QEMU on the oldest CPU of its baseline
   # (dev/lib/dist-flags.sh), with every compression format, so that an
@@ -208,8 +208,8 @@ jobs:
           test "$(uname -m)" = "${{ matrix.arch }}"
           chmod +x "${TREETIME}"
           "${TREETIME}" --help
-          "${TREETIME}" pipeline --config data/zika/20/pipeline.yaml --output-all out/zika
-          "${TREETIME}" pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all out/flu
+          "${TREETIME}" pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all out/zika
+          "${TREETIME}" pipeline --config data/flu/h3n2/500/pipeline-nextstrain.yaml --output-all out/flu
 
   compat-windows:
     name: "Compat test (Windows, ${{ matrix.name }})"
@@ -252,5 +252,5 @@ jobs:
           if ($env:PROCESSOR_ARCHITECTURE -ne "${{ matrix.arch }}") { throw "Runner architecture is $env:PROCESSOR_ARCHITECTURE" }
           & $env:TREETIME --help
           & $env:TREETIME ancestral --tree=data/flu/h3n2/20/tree.nwk --alignment=data/flu/h3n2/20/aln.fasta.xz --output-all=out/ancestral
-          & $env:TREETIME pipeline --config data/zika/20/pipeline.yaml --output-all out/zika
-          & $env:TREETIME pipeline --config data/flu/h3n2/500/pipeline.yaml --output-all out/flu
+          & $env:TREETIME pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all out/zika
+          & $env:TREETIME pipeline --config data/flu/h3n2/500/pipeline-nextstrain.yaml --output-all out/flu

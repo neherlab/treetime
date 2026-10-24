@@ -1,0 +1,70 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain seasonal-flu h3n2 NA build, TreeTime part (flu/h3n2/500).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/flu/h3n2/500/pipeline-nextstrain.yaml --output-all tmp/examples/flu/h3n2/500/pipeline-nextstrain
+#
+# nextstrain/seasonal-flu@2668477, segment na: the tree is rooted on the reference
+# A/Wisconsin/67/2005, which is then pruned; `augur refine --keep-root --timetree
+# --clock-rate 0.00267 --clock-std-dev 0.000534 --coalescent const --date-confidence
+# --clock-filter-iqd 4`, `augur ancestral --inference joint --genes NA`,
+# `augur traits --columns region --confidence`.
+#
+# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
+# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
+# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
+# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
+# polytomy resolution where the run resolves polytomies.
+
+vars:
+  reference: "A/Wisconsin/67/2005|EF541463|08/21/2005|USA||H3N2/1-1409"
+
+steps:
+  - name: "optimize"
+    optimize:
+      tree: "tree.nwk"
+      alignment:
+        - "aln.fasta.xz"
+      outgroup:
+        - "{{ vars.reference }}"
+      no_indels: true
+
+  - name: "prune"
+    prune:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      remove:
+        - "{{ vars.reference }}"
+
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.prune.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      alignment:
+        - "aln.fasta.xz"
+      keep_root: true
+      clock_rate: 0.00267
+      clock_std_dev: 0.000534
+      coalescent: "opt"
+      confidence: true
+      clock_filter: 4.0
+      no_indels: true
+      seed: 42
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+
+  - name: "mugration-region"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      attribute: "region"
+      confidence: true

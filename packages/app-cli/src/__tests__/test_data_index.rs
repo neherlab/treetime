@@ -38,7 +38,7 @@ mod tests {
 
   #[test]
   fn test_data_index_pipeline_steps_name_the_command_of_each_step() {
-    let steps = pipeline_steps(include_str!("../../../../data/zika/20/pipeline.yaml")).unwrap();
+    let steps = pipeline_steps(include_str!("../../../../data/zika/20/pipeline-dated-geography.yaml")).unwrap();
     assert_eq!(
       vec![
         IndexedStep {

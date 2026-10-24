@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json
+
+# Ancestral serotype of 1954 dengue genomes (dengue/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime mugration --config data/dengue/2000/mugration-serotype.yaml --output-all tmp/examples/dengue/2000/mugration-serotype
+#
+# The Nextstrain dengue builds reconstruct `serotype_genbank`. This dataset holds only
+# DENV2, so the trait has one state. TreeTime stops on such a trait, while augur gives
+# the state to every node:
+# kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "genbank_accession"
+attribute: "serotype_genbank"
+
+confidence: true

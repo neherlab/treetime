@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json
+
+# Ancestral cluster of Mycobacterium tuberculosis isolates (tb/149).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime mugration --config data/tb/149/mugration-cluster.yaml --output-all tmp/examples/tb/149/mugration-cluster
+#
+# A bacterial example. `mugration` reconstructs any discrete metadata column, not
+# only geography: here the `cluster` column (16 states) of the 149 isolates. The
+# alignment of this dataset holds only the 216 variable sites of the 4.4 Mb genome,
+# and this run does not use it.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+attribute: "cluster"
+
+# The default outputs, plus the probability of every cluster at every node.
+confidence: true

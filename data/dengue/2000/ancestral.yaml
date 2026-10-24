@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json
+
+# Ancestral sequences with the default settings (dengue/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime ancestral --config data/dengue/2000/ancestral.yaml --output-all tmp/examples/dengue/2000/ancestral
+#
+# Marginal reconstruction of 1954 DENV2 genomes: the run fits a GTR model from the data,
+# gives every node the most likely state at every site, and maps the mutations onto
+# the branches. The default sparse representation keeps only the variable sites.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"

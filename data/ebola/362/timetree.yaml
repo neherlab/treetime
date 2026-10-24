@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json
+
+# Time tree with the default settings (ebola/362).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime timetree --config data/ebola/362/timetree.yaml --output-all tmp/examples/ebola/362/timetree
+#
+# `timetree` estimates the clock rate of 362 Ebola virus genomes of the 2014-2016
+# epidemic, reroots the tree, and dates every node. `seed` makes the random order of
+# the polytomy resolution reproducible.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+alignment:
+  - "aln.fasta.xz"
+
+seed: 42

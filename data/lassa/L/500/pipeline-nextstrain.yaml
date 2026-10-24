@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain lassa L segment build, TreeTime part (lassa/L/500).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/lassa/L/500/pipeline-nextstrain.yaml --output-all tmp/examples/lassa/L/500/pipeline-nextstrain
+#
+# nextstrain/lassa@8bd66e3, segment l: `augur refine --timetree --coalescent opt
+# --date-confidence --root mid_point --clock-rate 0.00078` (no clock filter),
+# `augur ancestral --inference joint`, `augur traits --columns country --confidence`.
+# `reroot: midpoint` roots the tree at the middle of its longest tip-to-tip path, as
+# `--root mid_point` does. TreeTime resolves polytomies at random, so `seed` makes
+# the run reproducible; augur resolves them greedily. With the clock filter off, the
+# timetree step stops today on a backward time message that holds NaN:
+# kb/issues/M-timetree-backward-message-holds-nan-on-lassa-L-500.md.
+#
+# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
+# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
+# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
+# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
+# polytomy resolution where the run resolves polytomies.
+
+vars:
+  metadata_id_columns:
+    - "accession"
+
+steps:
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      alignment:
+        - "aln.fasta.xz"
+      reroot: "midpoint"
+      clock_rate: 0.00078
+      coalescent: "opt"
+      confidence: true
+      clock_filter: 0.0
+      no_indels: true
+      seed: 42
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+
+  - name: "mugration-country"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "country"
+      confidence: true

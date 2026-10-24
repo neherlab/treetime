@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Dengue build with a skyline coalescent and ancestral geography (dengue/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/dengue/2000/pipeline-full.yaml --output-all tmp/examples/dengue/2000/pipeline-full
+#
+# Preview the plan, or resume from a later step after a failure:
+#   treetime pipeline --config data/dengue/2000/pipeline-full.yaml --dry-run --output-all tmp/examples/dengue/2000/pipeline-full
+#   treetime pipeline --config data/dengue/2000/pipeline-full.yaml --steps timetree,mugration --output-all tmp/examples/dengue/2000/pipeline-full
+#
+# optimize -> ancestral -> timetree -> mugration on 2000 dengue genomes, a heavy
+# run of every TreeTime step. The clock rate is estimated from the data. The
+# skyline coalescent (`coalescent: skyline`) fits a piecewise-linear history of the
+# coalescent time scale Tc, which the run writes as the coalescent table.
+# `confidence` adds the 90% intervals of the node dates, including the uncertainty
+# of the estimated rate. `timetree` resolves polytomies by the node dates in random
+# order; `seed` makes the result reproducible. The last step reconstructs the
+# sampling country (68 states) on the dated tree. The taxon names are in the
+# `genbank_accession` column.
+
+vars:
+  metadata_id_columns:
+    - "genbank_accession"
+
+steps:
+  # 1. Optimize branch lengths and reroot on the minimum-divergence branch.
+  - name: "optimize"
+    optimize:
+      tree: "tree.nwk"
+      alignment:
+        - "aln.fasta.xz"
+      reroot: "min-dev"
+
+  # 2. Reconstruct ancestral sequences and mutations on the optimized tree.
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+
+  # 3. Date the optimized tree under a skyline coalescent prior.
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      alignment:
+        - "aln.fasta.xz"
+      coalescent: "skyline"
+      n_skyline: 20
+      confidence: true
+      max_iter: 3
+      seed: 42
+
+  # 4. Reconstruct the sampling country on the dated tree.
+  - name: "mugration"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "country"

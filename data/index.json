@@ -2,7 +2,7 @@
   "files": [
     {
       "path": "README.md",
-      "size": 11702
+      "size": 23208
     },
     {
       "path": "dengue/100/README.md",
@@ -33,10 +33,6 @@
       "size": 524588
     },
     {
-      "path": "dengue/1000/optimize-dense.yaml",
-      "size": 932
-    },
-    {
       "path": "dengue/1000/tree.nwk",
       "size": 32019
     },
@@ -61,12 +57,52 @@
       "size": 462648
     },
     {
+      "path": "dengue/2000/ancestral.yaml",
+      "size": 773
+    },
+    {
+      "path": "dengue/2000/clock.yaml",
+      "size": 750
+    },
+    {
+      "path": "dengue/2000/homoplasy.yaml",
+      "size": 722
+    },
+    {
       "path": "dengue/2000/metadata.tsv",
       "size": 1045874
     },
     {
-      "path": "dengue/2000/pipeline.yaml",
-      "size": 2617
+      "path": "dengue/2000/mugration-country.yaml",
+      "size": 664
+    },
+    {
+      "path": "dengue/2000/mugration-serotype.yaml",
+      "size": 888
+    },
+    {
+      "path": "dengue/2000/optimize-dense.yaml",
+      "size": 932
+    },
+    {
+      "path": "dengue/2000/optimize.yaml",
+      "size": 658
+    },
+    {
+      "path": "dengue/2000/pipeline-full.yaml",
+      "size": 2647
+    },
+    {
+      "path": "dengue/2000/pipeline-nextstrain.yaml",
+      "size": 2572
+    },
+    {
+      "path": "dengue/2000/prune-collapse.yaml",
+      "size": 840
+    },
+    {
+      "path": "dengue/2000/timetree.yaml",
+      "size": 761
     },
     {
       "path": "dengue/2000/tree.nwk",
@@ -121,6 +157,10 @@
       "size": 16
     },
     {
+      "path": "ebola/20/prune-remove.yaml",
+      "size": 636
+    },
+    {
       "path": "ebola/20/tree.nwk",
       "size": 772
     },
@@ -133,16 +173,48 @@
       "size": 28944
     },
     {
+      "path": "ebola/362/ancestral.yaml",
+      "size": 800
+    },
+    {
+      "path": "ebola/362/clock.yaml",
+      "size": 730
+    },
+    {
+      "path": "ebola/362/homoplasy.yaml",
+      "size": 747
+    },
+    {
       "path": "ebola/362/metadata.tsv",
       "size": 18485
     },
     {
-      "path": "ebola/362/pipeline.yaml",
-      "size": 1785
+      "path": "ebola/362/mugration-country.yaml",
+      "size": 682
+    },
+    {
+      "path": "ebola/362/mugration-division.yaml",
+      "size": 788
+    },
+    {
+      "path": "ebola/362/optimize.yaml",
+      "size": 683
+    },
+    {
+      "path": "ebola/362/pipeline-nextstrain.yaml",
+      "size": 1907
+    },
+    {
+      "path": "ebola/362/prune-collapse.yaml",
+      "size": 834
     },
     {
       "path": "ebola/362/timetree-dense.yaml",
       "size": 1188
+    },
+    {
+      "path": "ebola/362/timetree.yaml",
+      "size": 741
     },
     {
       "path": "ebola/362/tree.nwk",
@@ -161,8 +233,8 @@
       "size": 1449
     },
     {
-      "path": "flu/h3n2/20/optimize.yaml",
-      "size": 947
+      "path": "flu/h3n2/20/optimize-reroot-min-dev.yaml",
+      "size": 977
     },
     {
       "path": "flu/h3n2/20/tree.nex",
@@ -181,32 +253,80 @@
       "size": 15861
     },
     {
-      "path": "flu/h3n2/200/pipeline.yaml",
-      "size": 1370
+      "path": "flu/h3n2/200/pipeline-fixed-clock.yaml",
+      "size": 1400
     },
     {
-      "path": "flu/h3n2/200/timetree.yaml",
-      "size": 1371
+      "path": "flu/h3n2/200/timetree-fixed-clock.yaml",
+      "size": 1478
     },
     {
       "path": "flu/h3n2/200/tree.nwk",
       "size": 16913
     },
     {
+      "path": "flu/h3n2/500/README.md",
+      "size": 564
+    },
+    {
       "path": "flu/h3n2/500/aln.fasta.xz",
       "size": 15648
     },
     {
-      "path": "flu/h3n2/500/metadata.tsv",
-      "size": 39477
+      "path": "flu/h3n2/500/ancestral-codon-partitions.yaml",
+      "size": 898
     },
     {
-      "path": "flu/h3n2/500/pipeline.yaml",
-      "size": 1964
+      "path": "flu/h3n2/500/ancestral.yaml",
+      "size": 792
+    },
+    {
+      "path": "flu/h3n2/500/clock.yaml",
+      "size": 722
+    },
+    {
+      "path": "flu/h3n2/500/homoplasy.yaml",
+      "size": 739
+    },
+    {
+      "path": "flu/h3n2/500/metadata.tsv",
+      "size": 44908
+    },
+    {
+      "path": "flu/h3n2/500/mugration-location.yaml",
+      "size": 619
+    },
+    {
+      "path": "flu/h3n2/500/mugration-region.yaml",
+      "size": 634
+    },
+    {
+      "path": "flu/h3n2/500/optimize-codon-partitions.yaml",
+      "size": 1043
+    },
+    {
+      "path": "flu/h3n2/500/optimize.yaml",
+      "size": 675
+    },
+    {
+      "path": "flu/h3n2/500/pipeline-nextstrain.yaml",
+      "size": 2381
+    },
+    {
+      "path": "flu/h3n2/500/prune-collapse.yaml",
+      "size": 843
+    },
+    {
+      "path": "flu/h3n2/500/timetree-codon-partitions.yaml",
+      "size": 991
+    },
+    {
+      "path": "flu/h3n2/500/timetree-skyline-confidence.yaml",
+      "size": 1157
     },
     {
       "path": "flu/h3n2/500/timetree.yaml",
-      "size": 1110
+      "size": 733
     },
     {
       "path": "flu/h3n2/500/tree.nwk",
@@ -223,6 +343,10 @@
     {
       "path": "lassa/L/20/metadata.tsv",
       "size": 10060
+    },
+    {
+      "path": "lassa/L/20/timetree.yaml",
+      "size": 929
     },
     {
       "path": "lassa/L/20/tree.nwk",
@@ -257,12 +381,44 @@
       "size": 152256
     },
     {
+      "path": "lassa/L/500/ancestral.yaml",
+      "size": 783
+    },
+    {
+      "path": "lassa/L/500/clock.yaml",
+      "size": 750
+    },
+    {
+      "path": "lassa/L/500/homoplasy.yaml",
+      "size": 730
+    },
+    {
       "path": "lassa/L/500/metadata.tsv",
       "size": 275843
     },
     {
+      "path": "lassa/L/500/mugration-country.yaml",
+      "size": 656
+    },
+    {
+      "path": "lassa/L/500/optimize.yaml",
+      "size": 666
+    },
+    {
+      "path": "lassa/L/500/pipeline-nextstrain.yaml",
+      "size": 2345
+    },
+    {
+      "path": "lassa/L/500/prune-collapse.yaml",
+      "size": 840
+    },
+    {
+      "path": "lassa/L/500/timetree-relaxed-clock.yaml",
+      "size": 1316
+    },
+    {
       "path": "lassa/L/500/timetree.yaml",
-      "size": 1288
+      "size": 761
     },
     {
       "path": "lassa/L/500/tree.nwk",
@@ -301,14 +457,6 @@
       "size": 404491
     },
     {
-      "path": "mpox/clade-ii/1000/optimize.yaml",
-      "size": 1009
-    },
-    {
-      "path": "mpox/clade-ii/1000/pipeline.yaml",
-      "size": 2769
-    },
-    {
       "path": "mpox/clade-ii/1000/tree.nwk",
       "size": 31623
     },
@@ -341,16 +489,56 @@
       "size": 431188
     },
     {
+      "path": "mpox/clade-ii/2000/ancestral.yaml",
+      "size": 804
+    },
+    {
       "path": "mpox/clade-ii/2000/annotation.gff3",
       "size": 116892
+    },
+    {
+      "path": "mpox/clade-ii/2000/clock-outgroup.yaml",
+      "size": 819
+    },
+    {
+      "path": "mpox/clade-ii/2000/clock.yaml",
+      "size": 771
+    },
+    {
+      "path": "mpox/clade-ii/2000/homoplasy.yaml",
+      "size": 751
     },
     {
       "path": "mpox/clade-ii/2000/metadata.tsv",
       "size": 824934
     },
     {
-      "path": "mpox/clade-ii/2000/pipeline.yaml",
-      "size": 2774
+      "path": "mpox/clade-ii/2000/mugration-country.yaml",
+      "size": 658
+    },
+    {
+      "path": "mpox/clade-ii/2000/optimize.yaml",
+      "size": 687
+    },
+    {
+      "path": "mpox/clade-ii/2000/pipeline-full.yaml",
+      "size": 2794
+    },
+    {
+      "path": "mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml",
+      "size": 1805
+    },
+    {
+      "path": "mpox/clade-ii/2000/pipeline-nextstrain.yaml",
+      "size": 1970
+    },
+    {
+      "path": "mpox/clade-ii/2000/prune-collapse.yaml",
+      "size": 861
+    },
+    {
+      "path": "mpox/clade-ii/2000/timetree.yaml",
+      "size": 782
     },
     {
       "path": "mpox/clade-ii/2000/translations/OPG001.fasta.xz",
@@ -1125,8 +1313,8 @@
       "size": 39132
     },
     {
-      "path": "rsv/a/100/prune.yaml",
-      "size": 839
+      "path": "rsv/a/100/prune-collapse.yaml",
+      "size": 857
     },
     {
       "path": "rsv/a/100/tree.nwk",
@@ -1225,16 +1413,48 @@
       "size": 1014
     },
     {
+      "path": "rsv/a/2000/ancestral.yaml",
+      "size": 770
+    },
+    {
       "path": "rsv/a/2000/annotation.gff3",
       "size": 2019
+    },
+    {
+      "path": "rsv/a/2000/clock.yaml",
+      "size": 739
+    },
+    {
+      "path": "rsv/a/2000/homoplasy.yaml",
+      "size": 719
     },
     {
       "path": "rsv/a/2000/metadata.tsv",
       "size": 774967
     },
     {
-      "path": "rsv/a/2000/pipeline.yaml",
-      "size": 1968
+      "path": "rsv/a/2000/mugration-country.yaml",
+      "size": 632
+    },
+    {
+      "path": "rsv/a/2000/optimize.yaml",
+      "size": 655
+    },
+    {
+      "path": "rsv/a/2000/pipeline-nextstrain.yaml",
+      "size": 2198
+    },
+    {
+      "path": "rsv/a/2000/prune-collapse.yaml",
+      "size": 837
+    },
+    {
+      "path": "rsv/a/2000/timetree-skyline-confidence.yaml",
+      "size": 917
+    },
+    {
+      "path": "rsv/a/2000/timetree.yaml",
+      "size": 750
     },
     {
       "path": "rsv/a/2000/translations/F.fasta.xz",
@@ -1321,35 +1541,75 @@
       "size": 223464
     },
     {
-      "path": "sc2/2844/pipeline.yaml",
-      "size": 1433
+      "path": "sc2/2844/pipeline-undated.yaml",
+      "size": 1465
     },
     {
       "path": "sc2/2844/tree.nwk",
       "size": 120520
     },
     {
-      "path": "sc2/4500/aln.fasta.xz",
+      "path": "sc2/5100/aln.fasta.xz",
       "size": 486272
     },
     {
-      "path": "sc2/4500/annotation.gff3",
+      "path": "sc2/5100/ancestral.yaml",
+      "size": 771
+    },
+    {
+      "path": "sc2/5100/annotation.gff3",
       "size": 544
     },
     {
-      "path": "sc2/4500/metadata.tsv.xz",
+      "path": "sc2/5100/clock-outgroup.yaml",
+      "size": 694
+    },
+    {
+      "path": "sc2/5100/clock.yaml",
+      "size": 704
+    },
+    {
+      "path": "sc2/5100/homoplasy.yaml",
+      "size": 718
+    },
+    {
+      "path": "sc2/5100/metadata.tsv.xz",
       "size": 565792
     },
     {
-      "path": "sc2/4500/mugration.yaml",
-      "size": 1077
+      "path": "sc2/5100/mugration-country.yaml",
+      "size": 1131
     },
     {
-      "path": "sc2/4500/timetree.yaml",
-      "size": 1296
+      "path": "sc2/5100/mugration-region.yaml",
+      "size": 761
     },
     {
-      "path": "sc2/4500/tree.nwk",
+      "path": "sc2/5100/optimize.yaml",
+      "size": 654
+    },
+    {
+      "path": "sc2/5100/pipeline-nextstrain.yaml",
+      "size": 2047
+    },
+    {
+      "path": "sc2/5100/prune-collapse.yaml",
+      "size": 831
+    },
+    {
+      "path": "sc2/5100/timetree-input-branch-lengths.yaml",
+      "size": 931
+    },
+    {
+      "path": "sc2/5100/timetree-skyline-confidence.yaml",
+      "size": 1334
+    },
+    {
+      "path": "sc2/5100/timetree.yaml",
+      "size": 715
+    },
+    {
+      "path": "sc2/5100/tree.nwk",
       "size": 262532
     },
     {
@@ -1397,16 +1657,48 @@
       "size": 1470600
     },
     {
+      "path": "tb/149/ancestral-vcf.yaml",
+      "size": 804
+    },
+    {
+      "path": "tb/149/ancestral.yaml",
+      "size": 782
+    },
+    {
+      "path": "tb/149/clock.yaml",
+      "size": 712
+    },
+    {
+      "path": "tb/149/homoplasy-constant-sites.yaml",
+      "size": 883
+    },
+    {
+      "path": "tb/149/homoplasy.yaml",
+      "size": 729
+    },
+    {
       "path": "tb/149/metadata.tsv",
       "size": 31036
     },
     {
-      "path": "tb/149/mugration.yaml",
-      "size": 904
+      "path": "tb/149/mugration-cluster.yaml",
+      "size": 920
+    },
+    {
+      "path": "tb/149/optimize.yaml",
+      "size": 665
+    },
+    {
+      "path": "tb/149/prune-collapse.yaml",
+      "size": 825
     },
     {
       "path": "tb/149/reference.fasta.xz",
       "size": 1180556
+    },
+    {
+      "path": "tb/149/timetree.yaml",
+      "size": 723
     },
     {
       "path": "tb/149/tree.nwk",
@@ -1454,19 +1746,23 @@
     },
     {
       "path": "zika/20/metadata.tsv",
-      "size": 1284
+      "size": 1529
     },
     {
-      "path": "zika/20/mugration.yaml",
-      "size": 977
+      "path": "zika/20/mugration-country-weights.yaml",
+      "size": 1009
     },
     {
-      "path": "zika/20/pipeline.yaml",
-      "size": 1621
+      "path": "zika/20/pipeline-dated-geography.yaml",
+      "size": 1749
     },
     {
       "path": "zika/20/tree.nwk",
       "size": 1373
+    },
+    {
+      "path": "zika/86/README.md",
+      "size": 650
     },
     {
       "path": "zika/86/aln.fasta.xz",
@@ -1477,12 +1773,52 @@
       "size": 10840
     },
     {
-      "path": "zika/86/metadata.tsv",
-      "size": 5437
+      "path": "zika/86/ancestral-phylip.yaml",
+      "size": 723
     },
     {
-      "path": "zika/86/pipeline.yaml",
-      "size": 2198
+      "path": "zika/86/ancestral.yaml",
+      "size": 764
+    },
+    {
+      "path": "zika/86/clock.yaml",
+      "size": 696
+    },
+    {
+      "path": "zika/86/homoplasy.yaml",
+      "size": 713
+    },
+    {
+      "path": "zika/86/metadata.tsv",
+      "size": 6450
+    },
+    {
+      "path": "zika/86/mugration-country.yaml",
+      "size": 666
+    },
+    {
+      "path": "zika/86/mugration-region.yaml",
+      "size": 602
+    },
+    {
+      "path": "zika/86/optimize.yaml",
+      "size": 649
+    },
+    {
+      "path": "zika/86/pipeline-geography-map.yaml",
+      "size": 2282
+    },
+    {
+      "path": "zika/86/pipeline-nextstrain.yaml",
+      "size": 2242
+    },
+    {
+      "path": "zika/86/prune-collapse.yaml",
+      "size": 828
+    },
+    {
+      "path": "zika/86/timetree.yaml",
+      "size": 707
     },
     {
       "path": "zika/86/tree.nwk",
@@ -1941,19 +2277,19 @@
       ]
     },
     {
-      "name": "sc2/4500",
+      "name": "sc2/5100",
       "inputs": [
         {
           "kind": "tree",
-          "path": "sc2/4500/tree.nwk"
+          "path": "sc2/5100/tree.nwk"
         },
         {
           "kind": "alignment",
-          "path": "sc2/4500/aln.fasta.xz"
+          "path": "sc2/5100/aln.fasta.xz"
         },
         {
           "kind": "metadata",
-          "path": "sc2/4500/metadata.tsv.xz"
+          "path": "sc2/5100/metadata.tsv.xz"
         }
       ]
     },
@@ -2060,17 +2396,140 @@
       }
     },
     {
-      "path": "dengue/1000/optimize-dense.yaml",
-      "command": "optimize",
-      "title": "Branch-length optimization in the dense representation (dengue/1000).",
-      "folder": "dengue/1000",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization in the dense representation (dengue/1000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/dengue/1000/optimize-dense.yaml --output-all tmp/examples/dengue/1000/optimize-dense\n#\n# `optimize` alternates marginal reconstruction and per-branch length updates. In\n# the dense representation (`representation: dense`) every pass keeps the state\n# probabilities of all sites at all nodes, so each iteration costs much more than\n# in the sparse representation that the default chooses. The run reroots on the\n# minimum-divergence branch.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nrepresentation: \"dense\"\nreroot: \"min-dev\"\n",
+      "path": "dengue/2000/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/dengue/2000/ancestral.yaml --output-all tmp/examples/dengue/2000/ancestral\n#\n# Marginal reconstruction of 1954 DENV2 genomes: the run fits a GTR model from the data,\n# gives every node the most likely state at every site, and maps the mutations onto\n# the branches. The default sparse representation keeps only the variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
       "inputs": {
         "alignment": [
-          "dengue/1000/aln.fasta.xz"
+          "dengue/2000/aln.fasta.xz"
         ],
         "tree": [
-          "dengue/1000/tree.nwk"
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/dengue/2000/clock.yaml --output-all tmp/examples/dengue/2000/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 1954 DENV2 genomes, fits\n# the regression of root-to-tip divergence on the sampling dates, and marks the tips\n# that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\n",
+      "inputs": {
+        "metadata": [
+          "dengue/2000/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/dengue/2000/homoplasy.yaml --output-all tmp/examples/dengue/2000/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 1954 DENV2 genomes and reports the\n# mutations that arise more than once on the tree, a sign of recombination,\n# convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "dengue/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling country (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling country (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/dengue/2000/mugration-country.yaml --output-all tmp/examples/dengue/2000/mugration-country\n#\n# Discrete-trait reconstruction of the sampling country, 69 states, on the input tree.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\nattribute: \"country\"\n",
+      "inputs": {
+        "metadata": [
+          "dengue/2000/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/mugration-serotype.yaml",
+      "command": "mugration",
+      "title": "Ancestral serotype of 1954 dengue genomes (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral serotype of 1954 dengue genomes (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/dengue/2000/mugration-serotype.yaml --output-all tmp/examples/dengue/2000/mugration-serotype\n#\n# The Nextstrain dengue builds reconstruct `serotype_genbank`. This dataset holds only\n# DENV2, so the trait has one state. TreeTime stops on such a trait, while augur gives\n# the state to every node:\n# kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\nattribute: \"serotype_genbank\"\n\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "dengue/2000/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/optimize-dense.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization in the dense representation (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization in the dense representation (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/dengue/2000/optimize-dense.yaml --output-all tmp/examples/dengue/2000/optimize-dense\n#\n# `optimize` alternates marginal reconstruction and per-branch length updates. In\n# the dense representation (`representation: dense`) every pass keeps the state\n# probabilities of all sites at all nodes, so each iteration costs much more than\n# in the sparse representation that the default chooses. The run reroots on the\n# minimum-divergence branch.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nrepresentation: \"dense\"\nreroot: \"min-dev\"\n",
+      "inputs": {
+        "alignment": [
+          "dengue/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/dengue/2000/optimize.yaml --output-all tmp/examples/dengue/2000/optimize\n#\n# `optimize` re-estimates every branch length of 1954 DENV2 genomes under an inferred\n# GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "dengue/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/dengue/2000/prune-collapse.yaml --output-all tmp/examples/dengue/2000/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "dengue/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "dengue/2000/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (dengue/2000).",
+      "folder": "dengue/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (dengue/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/dengue/2000/timetree.yaml --output-all tmp/examples/dengue/2000/timetree\n#\n# `timetree` estimates the clock rate of 1954 DENV2 genomes, reroots the tree, and dates\n# every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"genbank_accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "dengue/2000/aln.fasta.xz"
+        ],
+        "metadata": [
+          "dengue/2000/metadata.tsv"
+        ],
+        "tree": [
+          "dengue/2000/tree.nwk"
         ]
       }
     },
@@ -2086,6 +2545,129 @@
         ],
         "tree": [
           "ebola/20/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/20/prune-remove.yaml",
+      "command": "prune",
+      "title": "Remove named tips from the tree (ebola/20).",
+      "folder": "ebola/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Remove named tips from the tree (ebola/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/ebola/20/prune-remove.yaml --output-all tmp/examples/ebola/20/prune-remove\n#\n# `prune-nodes.txt` lists one node name per line, here two tips. The run removes these\n# nodes from the tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nremove_file: \"prune-nodes.txt\"\n",
+      "inputs": {
+        "alignment": [
+          "ebola/20/aln.fasta.xz"
+        ],
+        "remove_file": [
+          "ebola/20/prune-nodes.txt"
+        ],
+        "tree": [
+          "ebola/20/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/ebola/362/ancestral.yaml --output-all tmp/examples/ebola/362/ancestral\n#\n# Marginal reconstruction of 362 Ebola virus genomes of the 2014-2016 epidemic: the\n# run fits a GTR model from the data, gives every node the most likely state at every\n# site, and maps the mutations onto the branches. The default sparse representation\n# keeps only the variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "ebola/362/aln.fasta.xz"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/ebola/362/clock.yaml --output-all tmp/examples/ebola/362/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 362 Ebola virus genomes\n# of the 2014-2016 epidemic, fits the regression of root-to-tip divergence on the\n# sampling dates, and marks the tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\n",
+      "inputs": {
+        "metadata": [
+          "ebola/362/metadata.tsv"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/ebola/362/homoplasy.yaml --output-all tmp/examples/ebola/362/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 362 Ebola virus genomes of the\n# 2014-2016 epidemic and reports the mutations that arise more than once on the tree,\n# a sign of recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "ebola/362/aln.fasta.xz"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral country of the 2014-2016 West African Ebola epidemic (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral country of the 2014-2016 West African Ebola epidemic (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/ebola/362/mugration-country.yaml --output-all tmp/examples/ebola/362/mugration-country\n#\n# The first trait of the Nextstrain ebola west-africa-2014 build: Guinea, Liberia and\n# Sierra Leone.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"country\"\n\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "ebola/362/metadata.tsv"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/mugration-division.yaml",
+      "command": "mugration",
+      "title": "Ancestral district of the 2014-2016 West African Ebola epidemic (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral district of the 2014-2016 West African Ebola epidemic (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/ebola/362/mugration-division.yaml --output-all tmp/examples/ebola/362/mugration-division\n#\n# The second trait of the Nextstrain ebola west-africa-2014 build: 35 districts of\n# Guinea, Liberia and Sierra Leone, a finer geography than the 3 countries of\n# `data/ebola/362/mugration-country.yaml`.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"division\"\n\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "ebola/362/metadata.tsv"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/ebola/362/optimize.yaml --output-all tmp/examples/ebola/362/optimize\n#\n# `optimize` re-estimates every branch length of 362 Ebola virus genomes of the\n# 2014-2016 epidemic under an inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "ebola/362/aln.fasta.xz"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "ebola/362/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/ebola/362/prune-collapse.yaml --output-all tmp/examples/ebola/362/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "ebola/362/aln.fasta.xz"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
         ]
       }
     },
@@ -2108,11 +2690,29 @@
       }
     },
     {
-      "path": "flu/h3n2/20/optimize.yaml",
+      "path": "ebola/362/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (ebola/362).",
+      "folder": "ebola/362",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (ebola/362).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/ebola/362/timetree.yaml --output-all tmp/examples/ebola/362/timetree\n#\n# `timetree` estimates the clock rate of 362 Ebola virus genomes of the 2014-2016\n# epidemic, reroots the tree, and dates every node. `seed` makes the random order of\n# the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "ebola/362/aln.fasta.xz"
+        ],
+        "metadata": [
+          "ebola/362/metadata.tsv"
+        ],
+        "tree": [
+          "ebola/362/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/20/optimize-reroot-min-dev.yaml",
       "command": "optimize",
       "title": "Branch-length optimization with divergence-based rerooting (flu/h3n2/20).",
       "folder": "flu/h3n2/20",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with divergence-based rerooting (flu/h3n2/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/20/optimize.yaml --output-all tmp/examples/flu/h3n2/20/optimize\n#\n# `optimize` re-estimates every branch length under the substitution model and\n# (here) reroots to minimize root-to-tip divergence variance. This is the\n# date-free step that replaces `augur refine` in a Nextstrain build.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\n# Per-edge optimizer: Brent's method in sqrt(t) space (the default, matches v0).\noptimizer: \"brent\"\n\n# Reroot by minimizing root-to-tip divergence variance (a date-free method).\nreroot: \"min-dev\"\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with divergence-based rerooting (flu/h3n2/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/20/optimize-reroot-min-dev.yaml --output-all tmp/examples/flu/h3n2/20/optimize-reroot-min-dev\n#\n# `optimize` re-estimates every branch length under the substitution model and\n# (here) reroots to minimize root-to-tip divergence variance. This is the\n# date-free step that replaces `augur refine` in a Nextstrain build.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\n# Per-edge optimizer: Brent's method in sqrt(t) space (the default, matches v0).\noptimizer: \"brent\"\n\n# Reroot by minimizing root-to-tip divergence variance (a date-free method).\nreroot: \"min-dev\"\n",
       "inputs": {
         "alignment": [
           "flu/h3n2/20/aln.fasta.xz"
@@ -2123,11 +2723,11 @@
       }
     },
     {
-      "path": "flu/h3n2/200/timetree.yaml",
+      "path": "flu/h3n2/200/timetree-fixed-clock.yaml",
       "command": "timetree",
       "title": "Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).",
       "folder": "flu/h3n2/200",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/200/timetree.yaml --output-all tmp/examples/flu/h3n2/200/timetree\n#\n# `timetree` turns divergence into calendar time. Fixing the clock rate\n# (`clock_rate`) skips rate estimation and is common for well-characterized\n# pathogens like seasonal influenza. `confidence` adds date confidence\n# intervals, which need a rate uncertainty (`clock_std_dev`) when the rate is\n# fixed; `coalescent: opt` fits a constant coalescent time scale analytically.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_rate: 0.003\nclock_std_dev: 0.0006\nconfidence: true\ncoalescent: \"opt\"\nmax_iter: 3\n\n# A fixed seed makes the random steps of the run, such as polytomy resolution, repeat exactly.\nseed: 42\n\n# The default outputs: with `confidence`, the node dates table holds the 90% intervals.\noutput_selection:\n  - \"nwk\"\n  - \"nexus\"\n  - \"auspice\"\n  - \"node-data\"\n  - \"model\"\n  - \"sequences\"\n  - \"clock-model\"\n  - \"coalescent\"\n  - \"dates\"\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time-scaled tree with a fixed clock rate and date confidence intervals (flu/h3n2/200).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/200/timetree-fixed-clock.yaml --output-all tmp/examples/flu/h3n2/200/timetree-fixed-clock\n#\n# `timetree` turns divergence into calendar time. Fixing the clock rate (`clock_rate`)\n# skips rate estimation and is common for well-characterized pathogens like seasonal\n# influenza. `confidence` adds date confidence intervals, which need a rate\n# uncertainty (`clock_std_dev`) when the rate is fixed; `coalescent: opt` fits a\n# constant coalescent time scale analytically. The rate and its uncertainty are those\n# of the Nextstrain h3n2 NA builds.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_rate: 0.00267\nclock_std_dev: 0.000534\nconfidence: true\ncoalescent: \"opt\"\nmax_iter: 3\n\n# A fixed seed makes the random steps of the run, such as polytomy resolution, repeat\n# exactly.\nseed: 42\n\n# The default outputs: with `confidence`, the node dates table holds the 90%\n# intervals.\noutput_selection:\n  - \"nwk\"\n  - \"nexus\"\n  - \"auspice\"\n  - \"node-data\"\n  - \"model\"\n  - \"sequences\"\n  - \"clock-model\"\n  - \"coalescent\"\n  - \"dates\"\n",
       "inputs": {
         "alignment": [
           "flu/h3n2/200/aln.fasta.xz"
@@ -2141,11 +2741,146 @@
       }
     },
     {
-      "path": "flu/h3n2/500/timetree.yaml",
-      "command": "timetree",
-      "title": "Influenza H3N2 time tree with an estimated clock and a skyline coalescent (flu/h3n2/500).",
+      "path": "flu/h3n2/500/ancestral-codon-partitions.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with one substitution model per codon position (flu/h3n2/500).",
       "folder": "flu/h3n2/500",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Influenza H3N2 time tree with an estimated clock and a skyline coalescent (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/500/timetree.yaml --output-all tmp/examples/flu/h3n2/500/timetree\n#\n# `data/flu/h3n2/500/pipeline.yaml` fixes the clock rate; this file estimates it\n# from 500 hemagglutinin sequences instead. The skyline coalescent\n# (`coalescent: skyline`) fits a piecewise-linear history of the coalescent time\n# scale Tc. `confidence` runs a final marginal round of the time inference and\n# writes the 90% interval of every node date, including the uncertainty of the\n# estimated rate. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncoalescent: \"skyline\"\nconfidence: true\nmax_iter: 3\nseed: 42\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with one substitution model per codon position (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/flu/h3n2/500/ancestral-codon-partitions.yaml --output-all tmp/examples/flu/h3n2/500/ancestral-codon-partitions\n#\n# The partitions of `data/flu/h3n2/500/optimize-codon-partitions.yaml`: each codon\n# position of the NA coding sequence has its own GTR model, fitted from the\n# reconstruction.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\npartition:\n  - name: \"codon-1\"\n    sites: ['1-1407\\3']\n  - name: \"codon-2\"\n    sites: ['2-1407\\3']\n  - name: \"codon-3\"\n    sites: ['3-1407\\3']\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/flu/h3n2/500/ancestral.yaml --output-all tmp/examples/flu/h3n2/500/ancestral\n#\n# Marginal reconstruction of 476 H3N2 neuraminidase sequences: the run fits a GTR\n# model from the data, gives every node the most likely state at every site, and maps\n# the mutations onto the branches. The default sparse representation keeps only the\n# variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/flu/h3n2/500/clock.yaml --output-all tmp/examples/flu/h3n2/500/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 476 H3N2 neuraminidase\n# sequences, fits the regression of root-to-tip divergence on the sampling dates, and\n# marks the tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/500/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/flu/h3n2/500/homoplasy.yaml --output-all tmp/examples/flu/h3n2/500/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 476 H3N2 neuraminidase sequences\n# and reports the mutations that arise more than once on the tree, a sign of\n# recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/mugration-location.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling country (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling country (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/flu/h3n2/500/mugration-location.yaml --output-all tmp/examples/flu/h3n2/500/mugration-location\n#\n# Discrete-trait reconstruction of the sampling country (`location`), 28 states.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"location\"\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/500/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/mugration-region.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling region (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling region (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/flu/h3n2/500/mugration-region.yaml --output-all tmp/examples/flu/h3n2/500/mugration-region\n#\n# The trait of the Nextstrain seasonal-flu builds: the influenza regions of the\n# countries, 8 states.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"region\"\n",
+      "inputs": {
+        "metadata": [
+          "flu/h3n2/500/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/optimize-codon-partitions.yaml",
+      "command": "optimize",
+      "title": "Branch lengths with one substitution model per codon position (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch lengths with one substitution model per codon position (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/500/optimize-codon-partitions.yaml --output-all tmp/examples/flu/h3n2/500/optimize-codon-partitions\n#\n# The NA alignment is one coding sequence, in frame from site 1. The three codon\n# positions evolve at different rates: the third position carries most synonymous\n# changes. Each position is a partition with its own GTR model, and\n# `partition_rates: estimate` fits the relative rate of each partition.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\npartition:\n  - name: \"codon-1\"\n    sites: ['1-1407\\3']\n  - name: \"codon-2\"\n    sites: ['2-1407\\3']\n  - name: \"codon-3\"\n    sites: ['3-1407\\3']\npartition_rates: \"estimate\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/flu/h3n2/500/optimize.yaml --output-all tmp/examples/flu/h3n2/500/optimize\n#\n# `optimize` re-estimates every branch length of 476 H3N2 neuraminidase sequences\n# under an inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/flu/h3n2/500/prune-collapse.yaml --output-all tmp/examples/flu/h3n2/500/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/timetree-codon-partitions.yaml",
+      "command": "timetree",
+      "title": "Time tree with one substitution model per codon position (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with one substitution model per codon position (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/500/timetree-codon-partitions.yaml --output-all tmp/examples/flu/h3n2/500/timetree-codon-partitions\n#\n# The partitions of `data/flu/h3n2/500/optimize-codon-partitions.yaml` in the time\n# inference: every round fits the GTR model and the relative rate of each codon\n# position, and the branch lengths average over all sites.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\npartition:\n  - name: \"codon-1\"\n    sites: ['1-1407\\3']\n  - name: \"codon-2\"\n    sites: ['2-1407\\3']\n  - name: \"codon-3\"\n    sites: ['3-1407\\3']\npartition_rates: \"estimate\"\nseed: 42\n",
       "inputs": {
         "alignment": [
           "flu/h3n2/500/aln.fasta.xz"
@@ -2159,11 +2894,155 @@
       }
     },
     {
-      "path": "lassa/L/500/timetree.yaml",
+      "path": "flu/h3n2/500/timetree-skyline-confidence.yaml",
+      "command": "timetree",
+      "title": "Influenza H3N2 time tree with an estimated clock and a skyline coalescent (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Influenza H3N2 time tree with an estimated clock and a skyline coalescent (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/500/timetree-skyline-confidence.yaml --output-all tmp/examples/flu/h3n2/500/timetree-skyline-confidence\n#\n# `data/flu/h3n2/500/pipeline-nextstrain.yaml` fixes the clock rate; this file\n# estimates it from 476 neuraminidase sequences instead. The skyline coalescent\n# (`coalescent: skyline`) fits a piecewise-linear history of the coalescent time scale\n# Tc. `confidence` runs a final marginal round of the time inference and writes the\n# 90% interval of every node date, including the uncertainty of the estimated rate.\n# `seed` makes the random order of the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncoalescent: \"skyline\"\nconfidence: true\nmax_iter: 3\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "metadata": [
+          "flu/h3n2/500/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "flu/h3n2/500/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (flu/h3n2/500).",
+      "folder": "flu/h3n2/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (flu/h3n2/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/flu/h3n2/500/timetree.yaml --output-all tmp/examples/flu/h3n2/500/timetree\n#\n# `timetree` estimates the clock rate of 476 H3N2 neuraminidase sequences, reroots the\n# tree, and dates every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "flu/h3n2/500/aln.fasta.xz"
+        ],
+        "metadata": [
+          "flu/h3n2/500/metadata.tsv"
+        ],
+        "tree": [
+          "flu/h3n2/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/20/timetree.yaml",
+      "command": "timetree",
+      "title": "Lassa virus time tree with the default settings (lassa/L/20).",
+      "folder": "lassa/L/20",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Lassa virus time tree with the default settings (lassa/L/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/lassa/L/20/timetree.yaml --output-all tmp/examples/lassa/L/20/timetree\n#\n# Twenty L segments sampled over 46 years give almost no temporal signal. The run keeps\n# the input branch lengths, the weak rate puts the root thousands of years back, and the\n# time grid of the month-precision tip dates exceeds the grid point limit today:\n# kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "lassa/L/20/aln.fasta.xz"
+        ],
+        "metadata": [
+          "lassa/L/20/metadata.tsv"
+        ],
+        "tree": [
+          "lassa/L/20/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/lassa/L/500/ancestral.yaml --output-all tmp/examples/lassa/L/500/ancestral\n#\n# Marginal reconstruction of 414 Lassa virus L segments: the run fits a GTR model from\n# the data, gives every node the most likely state at every site, and maps the\n# mutations onto the branches. The default sparse representation keeps only the\n# variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "lassa/L/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "lassa/L/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/lassa/L/500/clock.yaml --output-all tmp/examples/lassa/L/500/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 414 Lassa virus L\n# segments, fits the regression of root-to-tip divergence on the sampling dates, and\n# marks the tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\n",
+      "inputs": {
+        "metadata": [
+          "lassa/L/500/metadata.tsv"
+        ],
+        "tree": [
+          "lassa/L/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/lassa/L/500/homoplasy.yaml --output-all tmp/examples/lassa/L/500/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 414 Lassa virus L segments and\n# reports the mutations that arise more than once on the tree, a sign of\n# recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "lassa/L/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "lassa/L/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling country (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling country (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/lassa/L/500/mugration-country.yaml --output-all tmp/examples/lassa/L/500/mugration-country\n#\n# Discrete-trait reconstruction of the sampling country of Lassa virus in West Africa.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nattribute: \"country\"\n",
+      "inputs": {
+        "metadata": [
+          "lassa/L/500/metadata.tsv"
+        ],
+        "tree": [
+          "lassa/L/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/lassa/L/500/optimize.yaml --output-all tmp/examples/lassa/L/500/optimize\n#\n# `optimize` re-estimates every branch length of 414 Lassa virus L segments under an\n# inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "lassa/L/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "lassa/L/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/lassa/L/500/prune-collapse.yaml --output-all tmp/examples/lassa/L/500/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "lassa/L/500/aln.fasta.xz"
+        ],
+        "tree": [
+          "lassa/L/500/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "lassa/L/500/timetree-relaxed-clock.yaml",
       "command": "timetree",
       "title": "Lassa virus time tree with a relaxed clock (lassa/L/500).",
       "folder": "lassa/L/500",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Lassa virus time tree with a relaxed clock (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/lassa/L/500/timetree.yaml --output-all tmp/examples/lassa/L/500/timetree\n#\n# Lassa virus circulates in rodents across West Africa and its lineages are\n# centuries old, so the rate of evolution can differ between lineages. `relax`\n# lets every branch have its own rate around the mean clock rate: the first value\n# is the strength of the prior on the rate deviation of a branch, the second the\n# coupling between the rates of parent and child branches (0 gives an\n# uncorrelated clock). `coalescent: opt` fits a constant coalescent time scale, and\n# `seed` makes the random order of the polytomy resolution reproducible. The taxon\n# names are in the `accession` column; the 500 sequences are of the L segment.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nrelax:\n  - 1.0\n  - 0.5\ncoalescent: \"opt\"\nconfidence: true\nmax_iter: 3\nseed: 42\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Lassa virus time tree with a relaxed clock (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/lassa/L/500/timetree-relaxed-clock.yaml --output-all tmp/examples/lassa/L/500/timetree-relaxed-clock\n#\n# Lassa virus circulates in rodents across West Africa and its lineages are\n# centuries old, so the rate of evolution can differ between lineages. `relax`\n# lets every branch have its own rate around the mean clock rate: the first value\n# is the strength of the prior on the rate deviation of a branch, the second the\n# coupling between the rates of parent and child branches (0 gives an\n# uncorrelated clock). `coalescent: opt` fits a constant coalescent time scale, and\n# `seed` makes the random order of the polytomy resolution reproducible. The taxon\n# names are in the `accession` column; the 500 sequences are of the L segment.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nrelax:\n  - 1.0\n  - 0.5\ncoalescent: \"opt\"\nconfidence: true\nmax_iter: 3\nseed: 42\n",
       "inputs": {
         "alignment": [
           "lassa/L/500/aln.fasta.xz"
@@ -2177,26 +3056,152 @@
       }
     },
     {
-      "path": "mpox/clade-ii/1000/optimize.yaml",
-      "command": "optimize",
-      "title": "Branch-length optimization for a Nextstrain mpox build (mpox/clade-ii/1000).",
-      "folder": "mpox/clade-ii/1000",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization for a Nextstrain mpox build (mpox/clade-ii/1000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/mpox/clade-ii/1000/optimize.yaml --output-all tmp/examples/mpox/clade-ii/1000/optimize\n#\n# This is the date-free step that replaces `augur refine` in the nextstrain/mpox\n# `WIP/new_tt` workflow. It re-estimates every branch length and reroots on the\n# minimum-divergence branch. mpox divergence is counted in absolute mutations\n# (`divergence_units: mutations`), and indels are excluded from the branch-length\n# likelihood (`no_indels`), matching the pipeline's `treetime optimize` rule.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nreroot: \"min-dev\"\ndivergence_units: \"mutations\"\nno_indels: true\n",
+      "path": "lassa/L/500/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (lassa/L/500).",
+      "folder": "lassa/L/500",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (lassa/L/500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/lassa/L/500/timetree.yaml --output-all tmp/examples/lassa/L/500/timetree\n#\n# `timetree` estimates the clock rate of 414 Lassa virus L segments, reroots the tree,\n# and dates every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
       "inputs": {
         "alignment": [
-          "mpox/clade-ii/1000/aln.fasta.xz"
+          "lassa/L/500/aln.fasta.xz"
+        ],
+        "metadata": [
+          "lassa/L/500/metadata.tsv"
         ],
         "tree": [
-          "mpox/clade-ii/1000/tree.nwk"
+          "lassa/L/500/tree.nwk"
         ]
       }
     },
     {
-      "path": "rsv/a/100/prune.yaml",
+      "path": "mpox/clade-ii/2000/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/mpox/clade-ii/2000/ancestral.yaml --output-all tmp/examples/mpox/clade-ii/2000/ancestral\n#\n# Marginal reconstruction of 1989 clade II mpox genomes: the run fits a GTR model from\n# the data, gives every node the most likely state at every site, and maps the\n# mutations onto the branches. The default sparse representation keeps only the\n# variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "mpox/clade-ii/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/clock-outgroup.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression on the outgroup root of the Nextstrain hmpxv1 build (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression on the outgroup root of the Nextstrain hmpxv1 build (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/mpox/clade-ii/2000/clock-outgroup.yaml --output-all tmp/examples/mpox/clade-ii/2000/clock-outgroup\n#\n# The Nextstrain hmpxv1 build roots the tree on the two 2017-2018 Nigerian genomes\n# MK783032 and MK783030 instead of searching the root that maximizes the temporal\n# signal.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\n\noutgroup:\n  - \"MK783032\"\n  - \"MK783030\"\n",
+      "inputs": {
+        "metadata": [
+          "mpox/clade-ii/2000/metadata.tsv"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/mpox/clade-ii/2000/clock.yaml --output-all tmp/examples/mpox/clade-ii/2000/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 1989 clade II mpox\n# genomes, fits the regression of root-to-tip divergence on the sampling dates, and\n# marks the tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\n",
+      "inputs": {
+        "metadata": [
+          "mpox/clade-ii/2000/metadata.tsv"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/mpox/clade-ii/2000/homoplasy.yaml --output-all tmp/examples/mpox/clade-ii/2000/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 1989 clade II mpox genomes and\n# reports the mutations that arise more than once on the tree, a sign of\n# recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "mpox/clade-ii/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling country (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling country (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/mpox/clade-ii/2000/mugration-country.yaml --output-all tmp/examples/mpox/clade-ii/2000/mugration-country\n#\n# Discrete-trait reconstruction of the sampling country, 32 states.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nattribute: \"country\"\n",
+      "inputs": {
+        "metadata": [
+          "mpox/clade-ii/2000/metadata.tsv"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/mpox/clade-ii/2000/optimize.yaml --output-all tmp/examples/mpox/clade-ii/2000/optimize\n#\n# `optimize` re-estimates every branch length of 1989 clade II mpox genomes under an\n# inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "mpox/clade-ii/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/mpox/clade-ii/2000/prune-collapse.yaml --output-all tmp/examples/mpox/clade-ii/2000/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "mpox/clade-ii/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "mpox/clade-ii/2000/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (mpox/clade-ii/2000).",
+      "folder": "mpox/clade-ii/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (mpox/clade-ii/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/mpox/clade-ii/2000/timetree.yaml --output-all tmp/examples/mpox/clade-ii/2000/timetree\n#\n# `timetree` estimates the clock rate of 1989 clade II mpox genomes, reroots the tree,\n# and dates every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "mpox/clade-ii/2000/aln.fasta.xz"
+        ],
+        "metadata": [
+          "mpox/clade-ii/2000/metadata.tsv"
+        ],
+        "tree": [
+          "mpox/clade-ii/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/100/prune-collapse.yaml",
       "command": "prune",
       "title": "Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).",
       "folder": "rsv/a/100",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/rsv/a/100/prune.yaml --output-all tmp/examples/rsv/a/100/prune\n#\n# `prune` removes tree-builder artifacts before a downstream analysis: branches\n# shorter than a threshold, branches carrying no mutation, and sibling branches\n# in a polytomy that share identical mutations (regrouped under one edge).\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: drop short and uninformative branches, collapse shared mutations (rsv/a/100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/rsv/a/100/prune-collapse.yaml --output-all tmp/examples/rsv/a/100/prune-collapse\n#\n# `prune` removes tree-builder artifacts before a downstream analysis: branches\n# shorter than a threshold, branches carrying no mutation, and sibling branches\n# in a polytomy that share identical mutations (regrouped under one edge).\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
       "inputs": {
         "alignment": [
           "rsv/a/100/aln.fasta.xz"
@@ -2222,6 +3227,132 @@
       }
     },
     {
+      "path": "rsv/a/2000/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/rsv/a/2000/ancestral.yaml --output-all tmp/examples/rsv/a/2000/ancestral\n#\n# Marginal reconstruction of 1999 RSV-A genomes: the run fits a GTR model from the data,\n# gives every node the most likely state at every site, and maps the mutations onto\n# the branches. The default sparse representation keeps only the variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/rsv/a/2000/clock.yaml --output-all tmp/examples/rsv/a/2000/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 1999 RSV-A genomes, fits\n# the regression of root-to-tip divergence on the sampling dates, and marks the tips\n# that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\n",
+      "inputs": {
+        "metadata": [
+          "rsv/a/2000/metadata.tsv"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/rsv/a/2000/homoplasy.yaml --output-all tmp/examples/rsv/a/2000/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 1999 RSV-A genomes and reports the\n# mutations that arise more than once on the tree, a sign of recombination,\n# convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling country (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling country (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/rsv/a/2000/mugration-country.yaml --output-all tmp/examples/rsv/a/2000/mugration-country\n#\n# Discrete-trait reconstruction of the sampling country of RSV-A.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nattribute: \"country\"\n",
+      "inputs": {
+        "metadata": [
+          "rsv/a/2000/metadata.tsv"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/rsv/a/2000/optimize.yaml --output-all tmp/examples/rsv/a/2000/optimize\n#\n# `optimize` re-estimates every branch length of 1999 RSV-A genomes under an inferred\n# GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/rsv/a/2000/prune-collapse.yaml --output-all tmp/examples/rsv/a/2000/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/timetree-skyline-confidence.yaml",
+      "command": "timetree",
+      "title": "RSV-A time tree with a skyline coalescent and date intervals (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# RSV-A time tree with a skyline coalescent and date intervals (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/rsv/a/2000/timetree-skyline-confidence.yaml --output-all tmp/examples/rsv/a/2000/timetree-skyline-confidence\n#\n# The skyline coalescent fits a piecewise-linear history of the coalescent time scale\n# Tc over seven decades of RSV-A sampling, and `confidence` writes the 90% interval of\n# every node date, including the uncertainty of the estimated rate.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncoalescent: \"skyline\"\nconfidence: true\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "metadata": [
+          "rsv/a/2000/metadata.tsv"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "rsv/a/2000/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (rsv/a/2000).",
+      "folder": "rsv/a/2000",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (rsv/a/2000).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/rsv/a/2000/timetree.yaml --output-all tmp/examples/rsv/a/2000/timetree\n#\n# `timetree` estimates the clock rate of 1999 RSV-A genomes, reroots the tree, and dates\n# every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nmetadata_id_columns:\n  - \"accession\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "rsv/a/2000/aln.fasta.xz"
+        ],
+        "metadata": [
+          "rsv/a/2000/metadata.tsv"
+        ],
+        "tree": [
+          "rsv/a/2000/tree.nwk"
+        ]
+      }
+    },
+    {
       "path": "sc2/2844/ancestral.yaml",
       "command": "ancestral",
       "title": "Marginal ancestral reconstruction on 2504 SARS-CoV-2 genomes (sc2/2844).",
@@ -2237,45 +3368,306 @@
       }
     },
     {
-      "path": "sc2/4500/mugration.yaml",
-      "command": "mugration",
-      "title": "Ancestral geography over 95 countries on 4500 SARS-CoV-2 genomes (sc2/4500).",
-      "folder": "sc2/4500",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral geography over 95 countries on 4500 SARS-CoV-2 genomes (sc2/4500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/sc2/4500/mugration.yaml --output-all tmp/examples/sc2/4500/mugration\n#\n# The largest discrete-trait example. The cost of `mugration` grows with the\n# number of nodes and with the square of the number of states, and this run has\n# 4500 tips and 95 sampling countries. Sampling is very uneven between countries;\n# `sampling_bias_correction` gives a rough factor of how many more transitions an\n# even sample would show, and the run multiplies the fitted transition rate by it.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\nattribute: \"country\"\n\nsampling_bias_correction: 2.0\n\n# The default outputs, plus the probability of every country at every node.\nconfidence: true\n",
-      "inputs": {
-        "metadata": [
-          "sc2/4500/metadata.tsv.xz"
-        ],
-        "tree": [
-          "sc2/4500/tree.nwk"
-        ]
-      }
-    },
-    {
-      "path": "sc2/4500/timetree.yaml",
-      "command": "timetree",
-      "title": "SARS-CoV-2 time tree with a skyline coalescent, 4500 genomes (sc2/4500).",
-      "folder": "sc2/4500",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# SARS-CoV-2 time tree with a skyline coalescent, 4500 genomes (sc2/4500).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/sc2/4500/timetree.yaml --output-all tmp/examples/sc2/4500/timetree\n#\n# The largest tree among the examples: 4500 genomes of 30 kb each, with a\n# compressed metadata table. The clock filter (`clock_filter`) excludes from the\n# clock fit the tips whose root-to-tip distance is more than 3 interquartile\n# distances from the regression line, for example tips with a wrong date or a\n# contaminated sequence; this is stricter than the default of 4. The skyline\n# coalescent (`coalescent: skyline`) fits a piecewise-linear history of the\n# coalescent time scale Tc, and `confidence` adds the 90% intervals of the node\n# dates, including the uncertainty of the estimated clock rate. `seed` makes the\n# random order of the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_filter: 3.0\ncoalescent: \"skyline\"\nconfidence: true\nseed: 42\n",
+      "path": "sc2/5100/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/sc2/5100/ancestral.yaml --output-all tmp/examples/sc2/5100/ancestral\n#\n# Marginal reconstruction of 5100 SARS-CoV-2 genomes: the run fits a GTR model from\n# the data, gives every node the most likely state at every site, and maps the\n# mutations onto the branches. The default sparse representation keeps only the\n# variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
       "inputs": {
         "alignment": [
-          "sc2/4500/aln.fasta.xz"
-        ],
-        "metadata": [
-          "sc2/4500/metadata.tsv.xz"
+          "sc2/5100/aln.fasta.xz"
         ],
         "tree": [
-          "sc2/4500/tree.nwk"
+          "sc2/5100/tree.nwk"
         ]
       }
     },
     {
-      "path": "tb/149/mugration.yaml",
+      "path": "sc2/5100/clock-outgroup.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression on the Wuhan-Hu-1 root (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression on the Wuhan-Hu-1 root (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/sc2/5100/clock-outgroup.yaml --output-all tmp/examples/sc2/5100/clock-outgroup\n#\n# The Nextstrain ncov builds root the tree on the reference genome Wuhan-Hu-1/2019\n# instead of searching the root that maximizes the temporal signal.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\n\noutgroup:\n  - \"Wuhan-Hu-1/2019\"\n",
+      "inputs": {
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/sc2/5100/clock.yaml --output-all tmp/examples/sc2/5100/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 5100 SARS-CoV-2 genomes,\n# fits the regression of root-to-tip divergence on the sampling dates, and marks the\n# tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\n",
+      "inputs": {
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/sc2/5100/homoplasy.yaml --output-all tmp/examples/sc2/5100/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 5100 SARS-CoV-2 genomes and\n# reports the mutations that arise more than once on the tree, a sign of\n# recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "sc2/5100/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral geography over 95 countries on 5100 SARS-CoV-2 genomes (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral geography over 95 countries on 5100 SARS-CoV-2 genomes (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/sc2/5100/mugration-country.yaml --output-all tmp/examples/sc2/5100/mugration-country\n#\n# The largest discrete-trait example. The cost of `mugration` grows with the\n# number of nodes and with the square of the number of states, and this run has\n# 5100 tips and 95 sampling countries. Sampling is very uneven between countries;\n# `sampling_bias_correction` gives a rough factor of how many more transitions an\n# even sample would show, and the run multiplies the fitted transition rate by it.\n# The Nextstrain ncov builds use 2.5.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\nattribute: \"country\"\n\nsampling_bias_correction: 2.5\n\n# The default outputs, plus the probability of every country at every node.\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/mugration-region.yaml",
+      "command": "mugration",
+      "title": "Ancestral region of 5100 SARS-CoV-2 genomes (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral region of 5100 SARS-CoV-2 genomes (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/sc2/5100/mugration-region.yaml --output-all tmp/examples/sc2/5100/mugration-region\n#\n# The trait of the Nextstrain ncov global builds: 6 regions instead of the 95 countries\n# of `data/sc2/5100/mugration-country.yaml`, with the same sampling-bias correction.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\nattribute: \"region\"\n\nsampling_bias_correction: 2.5\nconfidence: true\n",
+      "inputs": {
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/sc2/5100/optimize.yaml --output-all tmp/examples/sc2/5100/optimize\n#\n# `optimize` re-estimates every branch length of 5100 SARS-CoV-2 genomes under an\n# inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "sc2/5100/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/sc2/5100/prune-collapse.yaml --output-all tmp/examples/sc2/5100/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "sc2/5100/aln.fasta.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/timetree-input-branch-lengths.yaml",
+      "command": "timetree",
+      "title": "Time tree from the input branch lengths, without sequences (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree from the input branch lengths, without sequences (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/sc2/5100/timetree-input-branch-lengths.yaml --output-all tmp/examples/sc2/5100/timetree-input-branch-lengths\n#\n# `branch_length_mode: input` keeps the branch lengths of the input tree and skips the\n# ancestral reconstruction of every round, the fastest way to date a large tree.\n# `sequence_length` turns the substitutions per site of the tree into the mutation\n# counts of the branch length likelihood.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\n\nbranch_length_mode: \"input\"\nsequence_length: 29903\ncoalescent: \"opt\"\nseed: 42\n",
+      "inputs": {
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/timetree-skyline-confidence.yaml",
+      "command": "timetree",
+      "title": "SARS-CoV-2 time tree with a skyline coalescent, 5100 genomes (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# SARS-CoV-2 time tree with a skyline coalescent, 5100 genomes (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/sc2/5100/timetree-skyline-confidence.yaml --output-all tmp/examples/sc2/5100/timetree-skyline-confidence\n#\n# The largest tree among the examples: 5100 genomes of 30 kb each, with a\n# compressed metadata table. The clock filter (`clock_filter`) excludes from the\n# clock fit the tips whose root-to-tip distance is more than 3 interquartile\n# distances from the regression line, for example tips with a wrong date or a\n# contaminated sequence; this is stricter than the default of 4. The skyline\n# coalescent (`coalescent: skyline`) fits a piecewise-linear history of the\n# coalescent time scale Tc, and `confidence` adds the 90% intervals of the node\n# dates, including the uncertainty of the estimated clock rate. `seed` makes the\n# random order of the polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\nalignment:\n  - \"aln.fasta.xz\"\n\nclock_filter: 3.0\ncoalescent: \"skyline\"\nconfidence: true\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "sc2/5100/aln.fasta.xz"
+        ],
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "sc2/5100/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (sc2/5100).",
+      "folder": "sc2/5100",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (sc2/5100).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/sc2/5100/timetree.yaml --output-all tmp/examples/sc2/5100/timetree\n#\n# `timetree` estimates the clock rate of 5100 SARS-CoV-2 genomes, reroots the tree,\n# and dates every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv.xz\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "sc2/5100/aln.fasta.xz"
+        ],
+        "metadata": [
+          "sc2/5100/metadata.tsv.xz"
+        ],
+        "tree": [
+          "sc2/5100/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/ancestral-vcf.yaml",
+      "command": "ancestral",
+      "title": "Ancestral reconstruction from the VCF of the Lee 2015 TB isolates (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral reconstruction from the VCF of the Lee 2015 TB isolates (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/tb/149/ancestral-vcf.yaml --output-all tmp/examples/tb/149/ancestral-vcf\n#\n# The ancestral tutorial of TreeTime 0.x reads the variants of `aln.vcf.xz` against\n# the 4411532-nt reference `reference.fasta.xz`, so the substitution model sees every\n# site of the genome. TreeTime v1 reads no VCF yet:\n# kb/issues/M-io-vcf-input-output-unimplemented.md.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.vcf.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.vcf.xz"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/tb/149/ancestral.yaml --output-all tmp/examples/tb/149/ancestral\n#\n# Marginal reconstruction of 149 TB isolates at 216 informative sites: the run fits a\n# GTR model from the data, gives every node the most likely state at every site, and\n# maps the mutations onto the branches. The default sparse representation keeps only\n# the variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.fasta.xz"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/tb/149/clock.yaml --output-all tmp/examples/tb/149/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 149 TB isolates at 216\n# informative sites, fits the regression of root-to-tip divergence on the sampling\n# dates, and marks the tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\n",
+      "inputs": {
+        "metadata": [
+          "tb/149/metadata.tsv"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/homoplasy-constant-sites.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies of TB isolates from an informative-sites alignment (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies of TB isolates from an informative-sites alignment (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/tb/149/homoplasy-constant-sites.yaml --output-all tmp/examples/tb/149/homoplasy-constant-sites\n#\n# The homoplasy tutorial of TreeTime 0.x on the Lee 2015 data: the alignment holds only\n# the 216 informative sites of the 4411532-nt genome, so `constant_sites` adds the other\n# sites back, and `rescale` turns the tree's branch lengths into substitutions per site\n# of the whole genome.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\nconstant_sites: 4411316\nrescale: 0.0000614\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.fasta.xz"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/tb/149/homoplasy.yaml --output-all tmp/examples/tb/149/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 149 TB isolates at 216\n# informative sites and reports the mutations that arise more than once on the tree, a\n# sign of recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.fasta.xz"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/mugration-cluster.yaml",
       "command": "mugration",
       "title": "Ancestral cluster of Mycobacterium tuberculosis isolates (tb/149).",
       "folder": "tb/149",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral cluster of Mycobacterium tuberculosis isolates (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/tb/149/mugration.yaml --output-all tmp/examples/tb/149/mugration\n#\n# A bacterial example. `mugration` reconstructs any discrete metadata column, not\n# only geography: here the `cluster` column (16 states) of the 149 isolates. The\n# alignment of this dataset holds only the 216 variable sites of the 4.4 Mb genome,\n# and this run does not use it.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"cluster\"\n\n# The default outputs, plus the probability of every cluster at every node.\nconfidence: true\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral cluster of Mycobacterium tuberculosis isolates (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/tb/149/mugration-cluster.yaml --output-all tmp/examples/tb/149/mugration-cluster\n#\n# A bacterial example. `mugration` reconstructs any discrete metadata column, not\n# only geography: here the `cluster` column (16 states) of the 149 isolates. The\n# alignment of this dataset holds only the 216 variable sites of the 4.4 Mb genome,\n# and this run does not use it.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"cluster\"\n\n# The default outputs, plus the probability of every cluster at every node.\nconfidence: true\n",
       "inputs": {
+        "metadata": [
+          "tb/149/metadata.tsv"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/tb/149/optimize.yaml --output-all tmp/examples/tb/149/optimize\n#\n# `optimize` re-estimates every branch length of 149 TB isolates at 216 informative\n# sites under an inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.fasta.xz"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/tb/149/prune-collapse.yaml --output-all tmp/examples/tb/149/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.fasta.xz"
+        ],
+        "tree": [
+          "tb/149/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "tb/149/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (tb/149).",
+      "folder": "tb/149",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (tb/149).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/tb/149/timetree.yaml --output-all tmp/examples/tb/149/timetree\n#\n# `timetree` estimates the clock rate of 149 TB isolates at 216 informative sites,\n# reroots the tree, and dates every node. `seed` makes the random order of the\n# polytomy resolution reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "tb/149/aln.fasta.xz"
+        ],
         "metadata": [
           "tb/149/metadata.tsv"
         ],
@@ -2300,11 +3692,11 @@
       }
     },
     {
-      "path": "zika/20/mugration.yaml",
+      "path": "zika/20/mugration-country-weights.yaml",
       "command": "mugration",
       "title": "Discrete ancestral geography (\"mugration\") over sampling country (zika/20).",
       "folder": "zika/20",
-      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Discrete ancestral geography (\"mugration\") over sampling country (zika/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/zika/20/mugration.yaml --output-all tmp/examples/zika/20/mugration\n#\n# `mugration` treats a discrete metadata column (here `country`) like a\n# sequence character and reconstructs it on internal nodes, inferring a GTR\n# model of transitions between states. `weights` supplies a prior on state\n# equilibrium frequencies; `pc` is the pseudo-count that flattens the model.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"country\"\n\nweights: \"../country_weights.csv\"\npc: 1.0\n\n# The default outputs, plus the probability of every state at every node.\nconfidence: true\n",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Discrete ancestral geography (\"mugration\") over sampling country (zika/20).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/zika/20/mugration-country-weights.yaml --output-all tmp/examples/zika/20/mugration-country-weights\n#\n# `mugration` treats a discrete metadata column (here `country`) like a\n# sequence character and reconstructs it on internal nodes, inferring a GTR\n# model of transitions between states. `weights` supplies a prior on state\n# equilibrium frequencies; `pc` is the pseudo-count that flattens the model.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"country\"\n\nweights: \"../country_weights.csv\"\npc: 1.0\n\n# The default outputs, plus the probability of every state at every node.\nconfidence: true\n",
       "inputs": {
         "metadata": [
           "zika/20/metadata.tsv"
@@ -2316,11 +3708,149 @@
           "zika/country_weights.csv"
         ]
       }
+    },
+    {
+      "path": "zika/86/ancestral-phylip.yaml",
+      "command": "ancestral",
+      "title": "Ancestral reconstruction from a PHYLIP alignment (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral reconstruction from a PHYLIP alignment (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/zika/86/ancestral-phylip.yaml --output-all tmp/examples/zika/86/ancestral-phylip\n#\n# `aln.phylip.xz` holds the sequences of `aln.fasta.xz` in the PHYLIP format, which\n# TreeTime 0.x reads. TreeTime v1 reads FASTA only today:\n# kb/issues/M-io-phylip-alignment-input-unsupported.md.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.phylip.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "zika/86/aln.phylip.xz"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/ancestral.yaml",
+      "command": "ancestral",
+      "title": "Ancestral sequences with the default settings (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-ancestral.schema.json\n\n# Ancestral sequences with the default settings (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime ancestral --config data/zika/86/ancestral.yaml --output-all tmp/examples/zika/86/ancestral\n#\n# Marginal reconstruction of 86 Zika virus genomes: the run fits a GTR model from the\n# data, gives every node the most likely state at every site, and maps the mutations\n# onto the branches. The default sparse representation keeps only the variable sites.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "zika/86/aln.fasta.xz"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/clock.yaml",
+      "command": "clock",
+      "title": "Root-to-tip regression with the default settings (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json\n\n# Root-to-tip regression with the default settings (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime clock --config data/zika/86/clock.yaml --output-all tmp/examples/zika/86/clock\n#\n# `clock` reroots the tree to maximize the temporal signal of 86 Zika virus genomes,\n# fits the regression of root-to-tip divergence on the sampling dates, and marks the\n# tips that do not follow the clock.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\n",
+      "inputs": {
+        "metadata": [
+          "zika/86/metadata.tsv"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/homoplasy.yaml",
+      "command": "homoplasy",
+      "title": "Homoplasies with the default settings (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-homoplasy.schema.json\n\n# Homoplasies with the default settings (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime homoplasy --config data/zika/86/homoplasy.yaml --output-all tmp/examples/zika/86/homoplasy\n#\n# `homoplasy` reconstructs the ancestral sequences of 86 Zika virus genomes and\n# reports the mutations that arise more than once on the tree, a sign of\n# recombination, convergent evolution, or sequencing errors.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "zika/86/aln.fasta.xz"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/mugration-country.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling country (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling country (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/zika/86/mugration-country.yaml --output-all tmp/examples/zika/86/mugration-country\n#\n# Discrete-trait reconstruction of the sampling country, 18 states, without the\n# prior weights of `data/zika/20/mugration-country-weights.yaml`.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"country\"\n",
+      "inputs": {
+        "metadata": [
+          "zika/86/metadata.tsv"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/mugration-region.yaml",
+      "command": "mugration",
+      "title": "Ancestral sampling region (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-mugration.schema.json\n\n# Ancestral sampling region (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime mugration --config data/zika/86/mugration-region.yaml --output-all tmp/examples/zika/86/mugration-region\n#\n# The first trait of the Nextstrain zika build: the region of each country, 4 states.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nattribute: \"region\"\n",
+      "inputs": {
+        "metadata": [
+          "zika/86/metadata.tsv"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/optimize.yaml",
+      "command": "optimize",
+      "title": "Branch-length optimization with the default settings (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json\n\n# Branch-length optimization with the default settings (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime optimize --config data/zika/86/optimize.yaml --output-all tmp/examples/zika/86/optimize\n#\n# `optimize` re-estimates every branch length of 86 Zika virus genomes under an\n# inferred GTR model and keeps the root of the input tree.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n",
+      "inputs": {
+        "alignment": [
+          "zika/86/aln.fasta.xz"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/prune-collapse.yaml",
+      "command": "prune",
+      "title": "Tree cleanup: short, empty, and shared-mutation branches (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-prune.schema.json\n\n# Tree cleanup: short, empty, and shared-mutation branches (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime prune --config data/zika/86/prune-collapse.yaml --output-all tmp/examples/zika/86/prune-collapse\n#\n# `prune` removes artifacts of the tree builder before a downstream analysis:\n# branches shorter than a threshold, branches without a mutation, and sibling\n# branches of a polytomy that share mutations, which move under one new edge.\n\ntree: \"tree.nwk\"\nalignment:\n  - \"aln.fasta.xz\"\n\ncollapse_short: 1.0e-6\ncollapse_empty: true\nmerge_shared_mutations: true\n",
+      "inputs": {
+        "alignment": [
+          "zika/86/aln.fasta.xz"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
+    },
+    {
+      "path": "zika/86/timetree.yaml",
+      "command": "timetree",
+      "title": "Time tree with the default settings (zika/86).",
+      "folder": "zika/86",
+      "content": "# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-timetree.schema.json\n\n# Time tree with the default settings (zika/86).\n#\n# Run from any folder; relative paths in this file resolve from its folder, and\n# `--output-all` chooses the output folder. From the repository root:\n#   treetime timetree --config data/zika/86/timetree.yaml --output-all tmp/examples/zika/86/timetree\n#\n# `timetree` estimates the clock rate of 86 Zika virus genomes, reroots the tree, and\n# dates every node. `seed` makes the random order of the polytomy resolution\n# reproducible.\n\ntree: \"tree.nwk\"\nmetadata: \"metadata.tsv\"\nalignment:\n  - \"aln.fasta.xz\"\n\nseed: 42\n",
+      "inputs": {
+        "alignment": [
+          "zika/86/aln.fasta.xz"
+        ],
+        "metadata": [
+          "zika/86/metadata.tsv"
+        ],
+        "tree": [
+          "zika/86/tree.nwk"
+        ]
+      }
     }
   ],
   "pipelines": [
     {
-      "path": "dengue/2000/pipeline.yaml",
+      "path": "dengue/2000/pipeline-full.yaml",
       "title": "Dengue build with a skyline coalescent and ancestral geography (dengue/2000).",
       "steps": [
         {
@@ -2342,25 +3872,51 @@
       ]
     },
     {
-      "path": "ebola/362/pipeline.yaml",
-      "title": "Full three-step build on a real epidemic dataset (ebola/362).",
+      "path": "dengue/2000/pipeline-nextstrain.yaml",
+      "title": "Nextstrain dengue denv2 genome build, TreeTime part (dengue/2000).",
       "steps": [
         {
-          "name": "optimize",
-          "command": "optimize"
+          "name": "timetree",
+          "command": "timetree"
         },
         {
           "name": "ancestral",
           "command": "ancestral"
         },
         {
-          "name": "timetree",
-          "command": "timetree"
+          "name": "mugration-country",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-region",
+          "command": "mugration"
         }
       ]
     },
     {
-      "path": "flu/h3n2/200/pipeline.yaml",
+      "path": "ebola/362/pipeline-nextstrain.yaml",
+      "title": "Nextstrain ebola west-africa-2014 build, TreeTime part (ebola/362).",
+      "steps": [
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-country",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-division",
+          "command": "mugration"
+        }
+      ]
+    },
+    {
+      "path": "flu/h3n2/200/pipeline-fixed-clock.yaml",
       "title": "Optimize then date, with a fixed clock rate defined once (flu/h3n2/200).",
       "steps": [
         {
@@ -2374,44 +3930,52 @@
       ]
     },
     {
-      "path": "flu/h3n2/500/pipeline.yaml",
-      "title": "Seasonal influenza H3N2 build: optimize, reconstruct, date (flu/h3n2/500).",
+      "path": "flu/h3n2/500/pipeline-nextstrain.yaml",
+      "title": "Nextstrain seasonal-flu h3n2 NA build, TreeTime part (flu/h3n2/500).",
       "steps": [
         {
           "name": "optimize",
           "command": "optimize"
         },
         {
-          "name": "ancestral",
-          "command": "ancestral"
+          "name": "prune",
+          "command": "prune"
         },
         {
           "name": "timetree",
           "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-region",
+          "command": "mugration"
         }
       ]
     },
     {
-      "path": "mpox/clade-ii/1000/pipeline.yaml",
-      "title": "Nextstrain mpox build (clade IIb, hmpxv1), TreeTime part in one file (mpox/clade-ii/1000).",
+      "path": "lassa/L/500/pipeline-nextstrain.yaml",
+      "title": "Nextstrain lassa L segment build, TreeTime part (lassa/L/500).",
       "steps": [
         {
-          "name": "optimize",
-          "command": "optimize"
+          "name": "timetree",
+          "command": "timetree"
         },
         {
           "name": "ancestral",
           "command": "ancestral"
         },
         {
-          "name": "timetree",
-          "command": "timetree"
+          "name": "mugration-country",
+          "command": "mugration"
         }
       ]
     },
     {
-      "path": "mpox/clade-ii/2000/pipeline.yaml",
-      "title": "Nextstrain mpox build with ancestral geography, 2000 genomes (mpox/clade-ii/2000).",
+      "path": "mpox/clade-ii/2000/pipeline-full.yaml",
+      "title": "All four analysis commands on 2000 clade II mpox genomes (mpox/clade-ii/2000).",
       "steps": [
         {
           "name": "optimize",
@@ -2432,21 +3996,61 @@
       ]
     },
     {
-      "path": "rsv/a/2000/pipeline.yaml",
-      "title": "RSV-A time tree with resolved polytomies, then ancestral geography (rsv/a/2000).",
+      "path": "mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml",
+      "title": "Nextstrain mpox WIP/new_tt build with TreeTime v1 (mpox/clade-ii/2000).",
+      "steps": [
+        {
+          "name": "optimize",
+          "command": "optimize"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "timetree",
+          "command": "timetree"
+        }
+      ]
+    },
+    {
+      "path": "mpox/clade-ii/2000/pipeline-nextstrain.yaml",
+      "title": "Nextstrain mpox hmpxv1 build, TreeTime part (mpox/clade-ii/2000).",
       "steps": [
         {
           "name": "timetree",
           "command": "timetree"
         },
         {
-          "name": "mugration",
+          "name": "ancestral",
+          "command": "ancestral"
+        }
+      ]
+    },
+    {
+      "path": "rsv/a/2000/pipeline-nextstrain.yaml",
+      "title": "Nextstrain rsv a genome build, TreeTime part (rsv/a/2000).",
+      "steps": [
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-country",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-region",
           "command": "mugration"
         }
       ]
     },
     {
-      "path": "sc2/2844/pipeline.yaml",
+      "path": "sc2/2844/pipeline-undated.yaml",
       "title": "SARS-CoV-2 branch-length optimization and ancestral reconstruction (sc2/2844).",
       "steps": [
         {
@@ -2460,7 +4064,25 @@
       ]
     },
     {
-      "path": "zika/20/pipeline.yaml",
+      "path": "sc2/5100/pipeline-nextstrain.yaml",
+      "title": "Nextstrain ncov global build, TreeTime part (sc2/5100).",
+      "steps": [
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-region",
+          "command": "mugration"
+        }
+      ]
+    },
+    {
+      "path": "zika/20/pipeline-dated-geography.yaml",
       "title": "Phylodynamics + phylogeography in one file: time tree, then ancestral geography (zika/20).",
       "steps": [
         {
@@ -2474,7 +4096,7 @@
       ]
     },
     {
-      "path": "zika/86/pipeline.yaml",
+      "path": "zika/86/pipeline-geography-map.yaml",
       "title": "Zika virus spread in the Americas: time tree, then weighted ancestral geography (zika/86).",
       "steps": [
         {
@@ -2483,6 +4105,28 @@
         },
         {
           "name": "mugration",
+          "command": "mugration"
+        }
+      ]
+    },
+    {
+      "path": "zika/86/pipeline-nextstrain.yaml",
+      "title": "Nextstrain zika build, TreeTime part (zika/86).",
+      "steps": [
+        {
+          "name": "timetree",
+          "command": "timetree"
+        },
+        {
+          "name": "ancestral",
+          "command": "ancestral"
+        },
+        {
+          "name": "mugration-region",
+          "command": "mugration"
+        },
+        {
+          "name": "mugration-country",
           "command": "mugration"
         }
       ]

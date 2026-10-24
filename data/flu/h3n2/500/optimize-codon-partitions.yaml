@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-optimize.schema.json
+
+# Branch lengths with one substitution model per codon position (flu/h3n2/500).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime optimize --config data/flu/h3n2/500/optimize-codon-partitions.yaml --output-all tmp/examples/flu/h3n2/500/optimize-codon-partitions
+#
+# The NA alignment is one coding sequence, in frame from site 1. The three codon
+# positions evolve at different rates: the third position carries most synonymous
+# changes. Each position is a partition with its own GTR model, and
+# `partition_rates: estimate` fits the relative rate of each partition.
+
+tree: "tree.nwk"
+alignment:
+  - "aln.fasta.xz"
+
+partition:
+  - name: "codon-1"
+    sites: ['1-1407\3']
+  - name: "codon-2"
+    sites: ['2-1407\3']
+  - name: "codon-3"
+    sites: ['3-1407\3']
+partition_rates: "estimate"

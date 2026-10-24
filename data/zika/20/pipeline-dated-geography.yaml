@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Phylodynamics + phylogeography in one file: time tree, then ancestral geography (zika/20).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/zika/20/pipeline-dated-geography.yaml --output-all tmp/examples/zika/20/pipeline-dated-geography
+#
+# Inspect the plan first, or rerun only the second step after editing it:
+#   treetime pipeline --config data/zika/20/pipeline-dated-geography.yaml --dry-run --output-all tmp/examples/zika/20/pipeline-dated-geography
+#   treetime pipeline --config data/zika/20/pipeline-dated-geography.yaml --steps timetree --output-all tmp/examples/zika/20/pipeline-dated-geography
+#   treetime pipeline --config data/zika/20/pipeline-dated-geography.yaml --steps mugration --output-all tmp/examples/zika/20/pipeline-dated-geography
+#
+# Step 1 dates the tree; step 2 reconstructs the sampling country on internal
+# nodes over that dated tree. The dated tree flows from step 1 to step 2 through
+# `{{ steps.timetree.outputs.nwk }}` with no hand-written path, and both steps
+# read the same metadata table.
+
+steps:
+  # Estimate a time-scaled tree and its clock model.
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      alignment:
+        - "aln.fasta.xz"
+      seed: 42
+
+  # Reconstruct ancestral sampling country on the dated tree from step 1.
+  - name: "mugration"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      attribute: "country"
+      pc: 1.0

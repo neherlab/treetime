@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-clock.schema.json
+
+# Root-to-tip regression with the default settings (mpox/clade-ii/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime clock --config data/mpox/clade-ii/2000/clock.yaml --output-all tmp/examples/mpox/clade-ii/2000/clock
+#
+# `clock` reroots the tree to maximize the temporal signal of 1989 clade II mpox
+# genomes, fits the regression of root-to-tip divergence on the sampling dates, and
+# marks the tips that do not follow the clock.
+
+tree: "tree.nwk"
+metadata: "metadata.tsv"
+metadata_id_columns:
+  - "accession"

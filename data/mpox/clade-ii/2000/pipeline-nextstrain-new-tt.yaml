@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain mpox WIP/new_tt build with TreeTime v1 (mpox/clade-ii/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/mpox/clade-ii/2000/pipeline-nextstrain-new-tt.yaml --output-all tmp/examples/mpox/clade-ii/2000/pipeline-nextstrain-new-tt
+#
+# nextstrain/mpox@cea6596 (`WIP/new_tt`) calls the TreeTime v1 CLI directly:
+# `treetime optimize --divergence-units mutations --no-indels` on a tree that
+# Bio.Phylo roots at its midpoint, then `treetime ancestral --annotation
+# --translations --ignore-missing-alns`. Here `reroot: midpoint` roots the tree in the
+# optimize step, on the branch lengths of its initial guess. The timetree step dates
+# the optimized tree with the fixed clock of the hmpxv1 build and keeps its root and
+# polytomies.
+
+steps:
+  - name: "optimize"
+    optimize:
+      tree: "tree.nwk"
+      alignment:
+        - "aln.fasta.xz"
+      divergence_units: "mutations"
+      no_indels: true
+      reroot: "midpoint"
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      annotation: "annotation.gff3"
+      translations: "translations/{cds}.fasta.xz"
+      allow_missing_sequences: true
+
+  - name: "timetree"
+    timetree:
+      tree: "{{ steps.optimize.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns:
+        - "accession"
+      alignment:
+        - "aln.fasta.xz"
+      clock_rate: 5.7e-5
+      keep_root: true
+      keep_polytomies: true
+      divergence_units: "mutations"
+      no_indels: true

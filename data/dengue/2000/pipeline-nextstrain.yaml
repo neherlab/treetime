@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain dengue denv2 genome build, TreeTime part (dengue/2000).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/dengue/2000/pipeline-nextstrain.yaml --output-all tmp/examples/dengue/2000/pipeline-nextstrain
+#
+# nextstrain/dengue@b31c2b5, build denv2/genome: `augur refine --timetree --clock-rate
+# 0.00078 --coalescent const --date-confidence --clock-filter-iqd 4`, `augur ancestral
+# --inference joint`, `augur traits --columns country region serotype_genbank
+# --confidence --sampling-bias-correction 3`. Every sequence is DENV2, so the serotype
+# has one state and has no trait step here: TreeTime stops on a trait with one state,
+# while augur gives it to every node (`data/dengue/2000/mugration-serotype.yaml`,
+# kb/issues/M-mugration-single-state-trait-stops-unlike-augur.md).
+#
+# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
+# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
+# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
+# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
+# polytomy resolution where the run resolves polytomies.
+
+vars:
+  metadata_id_columns:
+    - "genbank_accession"
+
+steps:
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      alignment:
+        - "aln.fasta.xz"
+      clock_rate: 0.00078
+      coalescent: "opt"
+      confidence: true
+      clock_filter: 4.0
+      no_indels: true
+      seed: 42
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+
+  - name: "mugration-country"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "country"
+      confidence: true
+      sampling_bias_correction: 3.0
+
+  - name: "mugration-region"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      metadata_id_columns: "{{ vars.metadata_id_columns }}"
+      attribute: "region"
+      confidence: true
+      sampling_bias_correction: 3.0

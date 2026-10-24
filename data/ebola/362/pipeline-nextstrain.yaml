@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/neherlab/treetime/rust/packages/schemas/input-config-pipeline.schema.json
+
+# Nextstrain ebola west-africa-2014 build, TreeTime part (ebola/362).
+#
+# Run from any folder; relative paths in this file resolve from its folder, and
+# `--output-all` chooses the output folder. From the repository root:
+#   treetime pipeline --config data/ebola/362/pipeline-nextstrain.yaml --output-all tmp/examples/ebola/362/pipeline-nextstrain
+#
+# nextstrain/ebola@cc08e16, build ebov/west-africa-2014: `augur refine --timetree
+# --coalescent skyline --date-confidence` (no clock filter), `augur ancestral
+# --inference joint`, `augur traits --columns country division --confidence`.
+#
+# Each setting of the build maps to a TreeTime v1 option: the joint reconstruction of
+# augur becomes marginal with imputed tips, `no_indels` leaves indels out of the
+# branch lengths as TreeTime 0.x does, `clock_filter` takes the value of the build
+# (TreeTime filters at 4 by default), and `seed` fixes the random order of the
+# polytomy resolution where the run resolves polytomies.
+
+steps:
+  - name: "timetree"
+    timetree:
+      tree: "tree.nwk"
+      metadata: "metadata.tsv"
+      alignment:
+        - "aln.fasta.xz"
+      coalescent: "skyline"
+      confidence: true
+      clock_filter: 0.0
+      no_indels: true
+      seed: 42
+
+  - name: "ancestral"
+    ancestral:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      alignment:
+        - "aln.fasta.xz"
+      method_anc: "marginal"
+      impute_missing_data: true
+
+  - name: "mugration-country"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      attribute: "country"
+      confidence: true
+
+  - name: "mugration-division"
+    mugration:
+      tree: "{{ steps.timetree.outputs.nwk }}"
+      metadata: "metadata.tsv"
+      attribute: "division"
+      confidence: true
