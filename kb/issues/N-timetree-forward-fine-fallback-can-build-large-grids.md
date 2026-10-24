@@ -4,12 +4,13 @@ The forward pass computes the message from the parent on a capped spacing and ch
 
 ## Evidence
 
-- `data/flu/h3n2/200` with `--clock-rate=3.058e-3 --keep-root`, forward-posterior trim at $10^{-9}$ and the spacing cap: the largest forward grid has 67 449 points (FFT length 147 456). The same run with neither trim nor cap has a largest forward grid of 7 876 points. The run still takes 1.2 s of CPU
+- `data/mpox/clade-ii/1000` at `--clock-rate=5e-4` (2026-10-24): at "Resolving spacing" the forward message of leaf `OP696840` resamples its whole 11.6-year window to 43 513 points, while its refined posterior has 301 points
+- An earlier example, `data/flu/h3n2/200` with `--clock-rate=3.058e-3 --keep-root` (67 449 points), is not evidence: that input tree is rooted on a 2007 tip, so `--keep-root` contradicts the 1968 to 1972 samples
 - The A6 measurements of [kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md) show no run time or memory cost of this size on the default runs of `data/sc2/5100`, `data/ebola/362`, `data/flu/h3n2/200` and the 36 validation runs
 - No run has reached the grid point limit through this path
 
 > [!IMPORTANT]
-> **Investigation required.** Which stage builds the 67 449-point grid (the resample at the posterior's resolution or the fine fallback), and why the window it resamples is so much wider than the windows of the untrimmed run, for example a window that stays at the full convolution support while the posterior is narrow. Record the stage counts and the largest forward grid per dataset across the smoke datasets and the validation runs, and check whether any input brings the forward pass near `MaxGridPoints`. A finding of that kind needs a bound on the resampled window, for example the posterior's mass window with a margin, instead of the full convolution window.
+> **Investigation required.** Which stage builds the 43 513-point grid of the mpox case (the resample at the posterior's resolution or the fine fallback), and why the window it resamples is so much wider than the windows of the untrimmed run, for example a window that stays at the full convolution support while the posterior is narrow. Record the stage counts and the largest forward grid per dataset across the smoke datasets and the validation runs, and check whether any input brings the forward pass near `MaxGridPoints`. A finding of that kind needs a bound on the resampled window, for example the posterior's mass window with a margin, instead of the full convolution window.
 
 ## Related
 

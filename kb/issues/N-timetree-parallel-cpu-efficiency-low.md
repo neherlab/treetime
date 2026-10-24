@@ -17,6 +17,10 @@ Host with 10 physical cores and 2 hardware threads per core (SMT on). User CPU t
 - The CPU profiles at 20 threads (`perf record`) show real-work symbols at the top: FFT planning with about 5 percent of the samples, interpolation, `exp`, and `sincos`. Idle and scheduler symbols have less than 0.3 percent
 - The limit of about 2.5 times for SMT and clock frequency is an estimate, not a measurement
 
+## Re-measurement on 2026-10-24
+
+On a host with 12 CPUs under heavy load from other jobs (load average 37 to 70), user CPU time at 1 and at 12 threads: `rsv/a/2000` 16.3 s and 17.4 s; `dengue/2000` with `--branch-length-mode marginal` 20.1 s and 23.0 s (system time 1.9 s and 5.0 s, wall time 22.1 s and 3.8 s). The ratio of 1.1 to 1.4 is far below the 5.5 to 9.5 above, and the code of the FFT plan cache is unchanged, so no commit explains the change. Spinning threads count for less CPU time on a loaded host, so the issue stays open until a measurement on an idle host with the method above confirms the ratio. The default run of `dengue/2000` now takes about 5 s instead of 120 s, because `--branch-length-mode auto` (9bc74ac83) resolves to input mode on its tree.
+
 ## FFT plan cache
 
 The time-grid convolutions call `fn convolve_fft()` in [packages/treetime-ops/src/convolution.rs#L71-L84](../../packages/treetime-ops/src/convolution.rs#L71-L84) (from `fn convolution_function_function_fine()` in [packages/treetime-distribution/src/distribution_ops/convolve.rs#L200](../../packages/treetime-distribution/src/distribution_ops/convolve.rs#L200)):

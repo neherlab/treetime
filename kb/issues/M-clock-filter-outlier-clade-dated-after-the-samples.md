@@ -25,13 +25,15 @@ where:
 
 ## Evidence
 
-- `data/mpox/clade-ii/1000` with `--clock-rate=5.7e-05` (default flags otherwise): the clock filter flags 112 tips.
-  42 tips lie outside their input date ranges, by up to 9.52 years; 91 internal nodes lie after the latest input
-  date 2024.62, by up to 5.63 years (the latest at 2030.25, above two tips sampled in 2023). `rust` flags 8 tips on
+- `data/mpox/clade-ii/1000` with `--clock-rate=5.7e-05` (default flags otherwise): the clock filter flags 112 tips
+  (97 on `rust` of 2026-10-24, with 55 branches that run backwards in time).
+  42 tips lie outside their input date ranges, by up to 9.52 years (9.40 on 2026-10-24); 91 internal nodes lie after the latest input
+  date 2024.62, by up to 5.63 years (5.43 on 2026-10-24) (the latest at 2030.25, above two tips sampled in 2023). `rust` flags 8 tips on
   the same run; `rust` with `--keep-root` flags 98 tips and gives the same dates
 - `data/ebola/362` with default flags: the clock filter flags 21 tips. 10 internal nodes of one clade of `EMLH`
   samples (sampled 2015.4 to 2015.6) lie after the latest input date 2016.25, by up to 0.96 years. The run also
-  reports 14 branches that run backwards in time
+  reports 14 branches that run backwards in time. On `rust` of 2026-10-24 the filter flags 18 tips, the run reports
+  10 backward branches, and no internal node lies after the latest input date
 - `data/flu/h3n2/200` with default flags: no date outside the input dates
 
 ## v0 behavior

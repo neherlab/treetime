@@ -45,13 +45,11 @@ solver can report:
 - sampling dates are rarely recorded finer than a day;
 - the biological replication cycle is itself a few days, so movement below that is not
   interpretable;
-- node times are quantized by the 300-point branch-length grid. Movements come out as integer
-  multiples of a per-dataset step — about 0.0026 y on `data/ebola/20`, about 0.016 y on
-  `data/mpox/clade-ii/1000`. A tolerance below the step makes runs exhaust `--max-iter` chasing
-  jitter that no longer changes the answer.
-
-A tolerance derived from the grid step rather than fixed is the obvious refinement; see
-[N-timetree-convergence-tolerance-vs-branch-grid.md](../issues/N-timetree-convergence-tolerance-vs-branch-grid.md).
+- node times were quantized by the 300-point branch-length grid when this tolerance was set: movements came out as integer
+  multiples of a per-dataset step, about 0.0026 y on `data/ebola/20` and about 0.016 y on
+  `data/mpox/clade-ii/1000`. On `rust` of 2026-10-24 that quantization is gone: on mpox (`tree_opt.nwk`,
+  `--clock-rate 5.7e-5 --keep-root --keep-polytomies --no-indels --max-iter 10`) the per-round
+  `max_time_change` is 2.76, 1.73, 0.40, 0.115, 0.076, 0.029, 0.033, 0.0093, and the run converges in round 8.
 
 ## Results
 
