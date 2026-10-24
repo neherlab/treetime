@@ -54,37 +54,28 @@ The centroid search computes the LBI on the MAT (branch length = number of subst
 
 The greedy walk is exact on tree-like data: the score decreases monotonically along the path to the best placement, and the perfect-phylogeny tests confirm it. Homoplasy and missing data create local minima, and the errors compound: a misplaced sample adds substitutions that attract later samples to the same wrong place. Seeding the branch-and-bound with the centroid placement reduced the visits on `sc2/4500` from 779,943 to 548,796 and was slower in wall time, because each start needs the full state of its node.
 
-## Reference regions
+## Search from reference nodes
 
-A second use of reference nodes separates their selection from the search, and does not depend on the root of the MAT:
+The selection of reference nodes is separate from the search that uses them, and neither depends on the root of the MAT. Two selections exist: the LBI peaks with the time scale $\tau = r / \ln n$, where $r$ is the radius of the tree in substitutions and $n$ the number of samples, and the node of least eccentricity in each component left after cutting the $k$ longest internal branches.
 
-- **Selection.** Either the LBI peaks with the time scale $\tau = r / \ln n$, where $r$ is the radius of the tree in substitutions and $n$ the number of samples, or the node of least eccentricity in each component left after cutting the $k$ longest internal branches
-- **Cells.** Every node belongs to the nearest reference by substitutions along the tree (Voronoi cells)
-- **Search.** The query is encoded relative to the nearest reference $c$, and the cell of $c$ is searched without regard to the root. The best placement in the cell, with cost $b$, is accepted when $b + d_{\mathrm{obs}}(q, c) + \lvert \mathrm{missing}(q) \cap P \rvert < m_c$, where $P$ is the set of polymorphic sites and $m_c$ the smallest distance from $c$ to a placement outside the cell. By the triangle inequality no outside placement can then match $b$. Otherwise the branch-and-bound runs with $b$ as its bound
+The branch-and-bound search starts at the reference nearest to the query and expands best-first in both directions. A move down to child $u$ is bounded by $c(u)$ minus the longest substitution path below $u$; a move up from $v$ to its parent $p$ by $c(p)$ minus the longest path from $p$ that avoids the subtree of $v$. Both lengths come from one pass over the frozen tree per batch. Every part of the tree is visited or pruned by a valid bound, so the result equals the exhaustive search from any start: the start changes how soon a tight upper bound is found, not the answer, and local minima cannot trap the search.
 
-The result equals the exhaustive search in all tests and on all datasets. Placement only, batches of 64:
+Placement only, batches of 64; the placement score equals that of the exhaustive search in every run:
 
-| Dataset | Search | Time (s) | Node visits | References per batch | Certified without full search | Mean differences per query, global / local frame |
-| --- | --- | --- | --- | --- | --- | --- |
-| `lassa/L/500` | branch-and-bound | 0.32 | 21,132 | | | 825 |
-| | LBI regions | 0.38 | 66,886 | 2 | 46% | 825 / 768 |
-| | 64 cut branches | 0.67 | 40,492 | 56 | 16% | 825 / 468 |
-| `dengue/2000` | branch-and-bound | 0.46 | 103,312 | | | 519 |
-| | LBI regions | 0.82 | 642,584 | 5 | 28% | 519 / 329 |
-| | 64 cut branches | 1.25 | 287,245 | 63 | 8% | 519 / 149 |
-| `mpox/clade-ii/2000` | branch-and-bound | 4.95 | 157,908 | | | 15 |
-| | LBI regions | 5.60 | 1,493,394 | 2 | 68% | 15 / 12 |
-| `sc2/4500` | branch-and-bound | 1.43 | 781,762 | | | 58 |
-| | LBI regions | 2.90 | 6,357,005 | 6 | 3% | 58 / 18 |
-| | 64 cut branches | 2.73 | 1,898,303 | 64 | 1% | 58 / 19 |
+| Dataset | Root start: node visits / time (s) | Nearest LBI peak: node visits / time (s) | Range over four reference selections, node visits |
+| --- | --- | --- | --- |
+| `lassa/L/500` | 21,132 / 0.23 | 18,298 / 0.24 | 18,196 to 18,298 |
+| `dengue/2000` | 103,312 / 0.31 | 87,062 / 0.44 | 86,771 to 87,124 |
+| `rsv/a/2000` | 251,909 / 0.23 | 199,660 / 0.34 | 199,336 to 199,891 |
+| `mpox/clade-ii/2000` | 157,908 / 3.16 | 146,825 / 3.28 | 146,825 to 147,005 |
+| `sc2/4500` | 781,762 / 0.77 | 549,692 / 1.53 | 549,692 to 549,925 |
 
-Observations:
+The four selections are LBI peaks with the default and with $\tau = 20$, and 16 and 64 cut branches. Observations:
 
-- The local frame shortens the difference lists by up to 3.5 times, but the cost of placement is set by the substitutions on the visited edges, not by these lists
-- The search inside a cell has no bound and visits the whole cell, and uncertified queries search again from the root. At these sizes, regions are slower than the branch-and-bound from the root
-- The certificate needs the query within about half the isolation of its reference. Few large cells (LBI) certify more queries but cost more per cell; many small cells (cut branches) are cheap to search but certify few
-- With $\tau = r / \ln n$ the LBI has 2 to 6 peaks per batch, fewer than the lineages of Lassa or dengue
-- The test of the idea at the scale it targets, 10^5 samples and more, and a bound inside the cells remain open
+- The reference start saves 7 to 30% of the node visits, and the saving hardly depends on which references are chosen
+- The visits that remain are the nodes whose lower bound does not exceed the optimal cost. That set depends on the query and the bound, not on the start, so the tightness of the bound sets the cost of the search. The current bound counts every substitution below a node, although the query can only gain at sites where it differs from that node
+- Wall time rose, because the bounds in both directions are recomputed for every batch and the nearest reference is found by comparing the query with every reference
+- An earlier version assigned each node to its nearest reference and accepted a placement inside that cell by the triangle inequality. It was exact as well, but slower, and certified only 1 to 68% of the queries
 
 ## Tree quality
 
@@ -163,4 +154,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=regions refs=lbi` or `search=regions refs=branches cuts=64` selects the region search; `order_file=<file>` places the listed names first, in the listed order.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order.
