@@ -31,6 +31,7 @@ The observed dates (3% of tips undated, 5% dated to the month only) turn a sligh
 Timetree `core` set of the suite, 10 tips per sample time, 240 sets per flavor, the six variants with estimated rate (1440 runs per flavor):
 
 - messy data: 4 failed runs, all `keep-*-est` on `const/rep03` at $L = 10^3$ (2 grid-limit errors, 2 panics)
+- 30 tips per sample time, messy data: 3 failed runs, `keep-{none,opt,skyline}-est` on `const/rep05` at $L = 10^3$, $\mu = 10^{-3}$, all from the start rate $1.24 \cdot 10^{-6}$ (grid limit). At 100 tips per sample time the failures have another cause ([M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md](M-timetree-clock-update-regresses-undated-tips-on-inferred-dates.md))
 - rate below half the true rate in completed runs: 22 on clean data, 19 on messy data, most at $L = 10^3$, $\mu = 3 \cdot 10^{-4}$ (about one substitution per genome over the four years of sampling), where weak signal is expected. `const/rep03` is the exception: on clean data `keep-none-est` underestimates by 78% at $\mu = 10^{-3}$ and by 51% at $\mu = 10^{-2}$
 
 ## v0

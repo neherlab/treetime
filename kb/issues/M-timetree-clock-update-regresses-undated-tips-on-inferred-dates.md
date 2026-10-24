@@ -10,10 +10,13 @@ The fits before the loop read the leaf dates through `fn given_times()` [package
 - **v1 decision text**: [kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md) states that the regression must see the date as given, because regressing on a date the tree inferred feeds the tree's own inference back into the clock it is fitted with. That rule holds for dated tips only; the fallback in `likely_times` bypasses it for undated ones
 - **Runtime**: the timetree clock regression table (`--output-rtt`) lists the points of the final fit. On `data/zika/20` with the date of one sample removed, the final table after refinement rounds gives that sample a date marked `inferred`, and the sample is not a clock-filter outlier, so it contributes to the fitted rate; with `--max-iter 0` the same sample has no date (test `test_timetree_clock_csv_marks_the_date_of_an_undated_tip` [packages/app-commands/src/commands/timetree/__tests__/test_clock_csv.rs#L99-L104](../../packages/app-commands/src/commands/timetree/__tests__/test_clock_csv.rs#L99-L104), which expects `ClockDateSource::Inferred` after two rounds)
 
+- **Validation**: on the messy data of the validation suite (`validation/degrade.py`, 3% of tips undated), 100 tips per sample time (4000 tips), $L = 10^3$, true rate $3 \cdot 10^{-4}$, all 8 failed timetree runs are `keep-none-est` or `reroot-none-est`, the variants whose in-loop rate comes from the regression (the variants with a coalescent prior take the marginal rate step); the clean counterparts complete. On `const/rep09` with `keep-none-est`, the clock rate of the three rounds is $3.3 \cdot 10^{-5}$, $6.4 \cdot 10^{-6}$, $8.8 \cdot 10^{-7}$, and the run stops at `--max-grid-points`. With the 126 undated tips given their true dates and the other observed dates unchanged it is $3.83 \cdot 10^{-5}$, $3.81 \cdot 10^{-5}$, $3.81 \cdot 10^{-5}$, as with all dates true; the remaining underestimate is the weak signal of this set
+
 ## Impact
 
 - Undated tips pull the fitted clock rate and intercept toward the tree's own time estimates, which diverges from v0 and double counts the tree's information
 - The effect grows with the share of undated tips; with every tip dated the fit is unchanged
+- At weak signal the feedback runs away: each round lowers the rate several-fold until the time grid exceeds `--max-grid-points` (see Validation above)
 
 ## Fix direction
 
