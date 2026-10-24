@@ -37,7 +37,7 @@ The claims refer to validation `const` sets ($T_c = 10$, 400 tips) with $L$ the 
   - Status: not measured. This is the target of [H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md), whose numbers predate the trapezoid rule
   - Evidence to settle it: $\log Z$ at 300, 600, 1200, 2400 and 4800 grid points on the sets of that issue with the current code
 - **The low-signal tilt came from the convolution.** The tilt of $\log Z$ toward slow rates at $L = 10^3$, $\mu = 3\cdot10^{-4}$ (about 77 per unit of $\ln \mu$), which [kb/decisions/timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#rate-window) attributes to the frozen prior, came mostly from the convolution error
-  - Status: not measured
+  - Status: not measured. Indirect evidence on the current code (trapezoid rule): a rate step without the interior window drifts at low signal over six rounds (median $\ln$ rate error $+0.32$ for `opt` against $+0.23$ with the window, $-1.12$ for `skyline` against $+0.15$; [kb/decisions/timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#shrinking-probe-window)), and in one traced run `log_lh_time` rose by 47 while the rate fell 3.3-fold. The `skyline` dates and $T_c$ drift over rounds even at the fixed true rate ([M-coalescent-skyline-dates-drift-over-rounds-at-low-signal.md](M-coalescent-skyline-dates-drift-over-rounds-at-low-signal.md)), so this does not isolate a tilt of $\log Z$
   - Evidence to settle it: the slope of $\log Z$ per unit of $\ln \mu$ over the rate probes on those sets, with both convolution rules
 
 ## Validation

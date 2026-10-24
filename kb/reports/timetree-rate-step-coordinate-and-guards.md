@@ -121,3 +121,7 @@ Branch `research/rate-step` (local), commits `0c2fe5ab5` (research build and pro
 
 - Profiles: `cargo test --release -p treetime --lib -- --ignored --nocapture --exact test_utils::__tests__::test_rate_profile::tests::research_rate_profile_shape > profile.tsv` (18 minutes on 4 threads), then keep the TSV lines and run `test_scripts/timetree_rate_step_shape.py`
 - Validation: environment of the research build, per variant: unset (current), `TREETIME_RATE_GUARD=none` (no window), with `TREETIME_RATE_COORD=sqrt` or `cbrt`, and `TREETIME_RATE_STEP=1` (full step); commands in the docstring of `test_scripts/timetree_rate_step_compare.py`
+
+## Follow-up
+
+The step now keeps the coordinate (log rate) and the gate, and halves the probe half-width after each step to a maximum between the probes, down to 1/8 of the start. That removes most of the high-signal offset without the parabola in the cube root, and without the gate the rate drifts at low signal over six rounds: [kb/decisions/timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#shrinking-probe-window).
