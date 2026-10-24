@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::build::insert::{Insertee, insert};
 use crate::build::mat::Mat;
+use crate::build::nj::{jc_distances, neighbor_joining};
 use crate::build::placement::{Placement, Target, place_exhaustive, place_from, place_greedy};
 use crate::build::query::Query;
 use crate::build::rebuild::{RebuildParams, RebuildStats, rebuild_round};
@@ -11,7 +12,8 @@ use crate::build::spr::{SprStats, spr_round};
 use crate::make_error;
 use eyre::Report;
 use itertools::{Itertools, izip};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rand::seq::SliceRandom;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
@@ -20,6 +22,7 @@ use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::remove_stem_root;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::cast::ToF64Exact;
+use treetime_utils::sync::random::get_random_number_generator;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SearchMode {
@@ -38,6 +41,8 @@ pub enum SearchMode {
 pub enum SampleOrder {
   Input,
   FewestMissingFirst,
+  Random { seed: u64 },
+  Scaffold { anchors: usize, seed: u64 },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,6 +56,22 @@ pub struct BuildParams {
   pub compare_exhaustive: bool,
   pub rebuild: Option<RebuildParams>,
   pub reprune: Option<RepruneParams>,
+  pub scaffold: Option<ScaffoldParams>,
+  pub initial: InitialTree,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum InitialTree {
+  #[default]
+  Placement,
+  NeighborJoining,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScaffoldParams {
+  pub size: usize,
+  pub restarts: usize,
+  pub seed: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -89,12 +110,64 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
   }
   let reference = consensus(seqs, alphabet)?;
   let queries = encode_queries(seqs, &reference, alphabet);
-  let order = sample_order(&queries, params.order);
-  let mut mat = Mat::new(reference);
+  let order = sample_order(&queries, &reference, params.order);
   let mut stats = BuildStats::default();
-  place_samples(&mut mat, &queries, &order, params, &mut stats)?;
+  if params.initial == InitialTree::NeighborJoining {
+    let distances = jc_distances(&queries, &reference, alphabet.n_canonical());
+    let (graph, samples) = neighbor_joining(&distances, seqs.len())?;
+    let mat = mat_from_tree(graph, samples, seqs, alphabet)?;
+    return refine_mat(mat, seqs, alphabet, params, stats);
+  }
+  let mat = match params.scaffold {
+    None => {
+      let mut mat = Mat::new(reference);
+      place_samples(&mut mat, &queries, &order, params, &mut stats)?;
+      mat
+    },
+    Some(scaffold) => {
+      let (core, rest) = order.split_at(scaffold.size.min(order.len()));
+      let mut mat = build_scaffold(seqs, alphabet, &reference, &queries, core, &scaffold, params)?;
+      let queries = encode_queries(seqs, mat.reference(), alphabet);
+      place_samples(&mut mat, &queries, rest, params, &mut stats)?;
+      mat
+    },
+  };
   stats.placement_parsimony = mat.parsimony();
   refine_mat(mat, seqs, alphabet, params, stats)
+}
+
+fn build_scaffold(
+  seqs: &[Seq],
+  alphabet: &Alphabet,
+  reference: &Seq,
+  queries: &[Query],
+  core: &[usize],
+  scaffold: &ScaffoldParams,
+  params: &BuildParams,
+) -> Result<Mat, Report> {
+  let core_params = BuildParams {
+    scaffold: None,
+    reprune: None,
+    ..params.clone()
+  };
+  let mut best: Option<Mat> = None;
+  let mut order = core.to_vec();
+  let mut rng = get_random_number_generator(scaffold.seed);
+  for restart in 0..scaffold.restarts.max(1) {
+    if restart > 0 {
+      order.shuffle(&mut rng);
+    }
+    let mut mat = Mat::new(reference.clone());
+    place_samples(&mut mat, queries, &order, &core_params, &mut BuildStats::default())?;
+    let built = refine_mat(mat, seqs, alphabet, &core_params, BuildStats::default())?;
+    if best
+      .as_ref()
+      .is_none_or(|best| built.mat.parsimony() < best.parsimony())
+    {
+      best = Some(built.mat);
+    }
+  }
+  best.ok_or_else(|| crate::make_internal_report!("The scaffold search produced no tree"))
 }
 
 pub(crate) fn place_samples(
@@ -104,11 +177,16 @@ pub(crate) fn place_samples(
   params: &BuildParams,
   stats: &mut BuildStats,
 ) -> Result<(), Report> {
-  let Some((&first, rest)) = order.split_first() else {
-    return make_error!("Cannot build a tree without sequences");
+  let rest = if mat.samples().is_empty() {
+    let Some((&first, rest)) = order.split_first() else {
+      return make_error!("Cannot build a tree without sequences");
+    };
+    let root = mat.root();
+    insert(mat, &queries[first], Target::Node(root), Insertee::Sample(first))?;
+    rest
+  } else {
+    order
   };
-  let root = mat.root();
-  insert(mat, &queries[first], Target::Node(root), Insertee::Sample(first))?;
 
   for batch in rest.chunks(params.batch_size) {
     let search = BatchSearch::new(mat, &params.search);
@@ -322,12 +400,43 @@ fn stale_starts(
   }
 }
 
-fn sample_order(queries: &[Query], order: SampleOrder) -> Vec<usize> {
+fn sample_order(queries: &[Query], reference: &Seq, order: SampleOrder) -> Vec<usize> {
   match order {
     SampleOrder::Input => (0..queries.len()).collect(),
     SampleOrder::FewestMissingFirst => (0..queries.len())
       .sorted_by_key(|&sample| (queries[sample].n_missing(), sample))
       .collect(),
+    SampleOrder::Random { seed } => {
+      let mut order = (0..queries.len()).collect_vec();
+      order.shuffle(&mut get_random_number_generator(seed));
+      order
+    },
+    SampleOrder::Scaffold { anchors, seed } => {
+      let mut rest = sample_order(queries, reference, SampleOrder::Random { seed });
+      let Some(first) = rest.pop() else {
+        return rest;
+      };
+      let mut order = vec![first];
+      let mut nearest: Vec<usize> = rest
+        .par_iter()
+        .map(|&sample| queries[sample].distance(&queries[first], reference))
+        .collect();
+      while order.len() < anchors && !rest.is_empty() {
+        let Some(index) = nearest.iter().position_max() else {
+          break;
+        };
+        let anchor = rest.swap_remove(index);
+        nearest.swap_remove(index);
+        order.push(anchor);
+        nearest = rest
+          .par_iter()
+          .zip(nearest)
+          .map(|(&sample, near)| near.min(queries[sample].distance(&queries[anchor], reference)))
+          .collect();
+      }
+      order.extend(rest);
+      order
+    },
   }
 }
 

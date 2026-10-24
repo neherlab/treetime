@@ -2,12 +2,12 @@ use crate::build::query::Query;
 use crate::make_internal_report;
 use crate::seq::mutation::{Sub, compose_substitutions};
 use eyre::Report;
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools};
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_primitives::{AsciiChar, Seq};
+use treetime_primitives::{AsciiChar, Seq, StateSet};
 
 #[derive(Clone, Debug)]
 pub struct Mat {
@@ -207,9 +207,9 @@ impl Mat {
       .iter()
       .merge_join_by(frame, |a, b| a.0.cmp(&b.0))
       .filter_map(|entry| match entry {
-        itertools::EitherOrBoth::Both(&(pos, own), &(_, other)) => (own != other).then_some((pos, own)),
-        itertools::EitherOrBoth::Left(&(pos, own)) => Some((pos, own)),
-        itertools::EitherOrBoth::Right(&(pos, _)) => Some((pos, self.reference[pos])),
+        EitherOrBoth::Both(&(pos, own), &(_, other)) => (own != other).then_some((pos, own)),
+        EitherOrBoth::Left(&(pos, own)) => Some((pos, own)),
+        EitherOrBoth::Right(&(pos, _)) => Some((pos, self.reference[pos])),
       })
       .collect()
   }
@@ -246,19 +246,89 @@ impl Mat {
 
   pub(crate) fn subs_to_query(&self, node_state: &[(usize, AsciiChar)], query: &Query) -> Result<Vec<Sub>, Report> {
     query
-      .diffs()
+      .entries()
       .iter()
       .merge_join_by(node_state, |a, b| a.0.cmp(&b.0))
       .filter_map(|entry| {
-        let (pos, from, to) = match entry {
-          itertools::EitherOrBoth::Both(&(pos, to), &(_, from)) => (pos, from, Some(to)),
-          itertools::EitherOrBoth::Left(&(pos, to)) => (pos, self.reference[pos], Some(to)),
-          itertools::EitherOrBoth::Right(&(pos, from)) => (pos, from, query.state(pos, &self.reference)),
+        let (pos, from, states) = match entry {
+          EitherOrBoth::Both(&(pos, states), &(_, from)) => (pos, from, Some(states)),
+          EitherOrBoth::Left(&(pos, states)) => (pos, self.reference[pos], Some(states)),
+          EitherOrBoth::Right(&(pos, from)) => (pos, from, query.states(pos, &self.reference)),
         };
-        let to = to?;
-        (from != to).then(|| Sub::new(from, pos, to))
+        let states = states?;
+        let to = states.iter().next()?;
+        (!states.contains(from)).then(|| Sub::new(from, pos, to))
       })
       .collect()
+  }
+
+  pub(crate) fn plurality_sets(&self, node: GraphNodeKey, state: &[(usize, AsciiChar)]) -> Vec<(usize, StateSet)> {
+    let own = |pos: usize| {
+      state
+        .binary_search_by_key(&pos, |&(p, _)| p)
+        .map_or(self.reference[pos], |index| state[index].1)
+    };
+    let edges = self.children(node).map(|(_, edge)| edge).collect_vec();
+    edges
+      .iter()
+      .flat_map(|&edge| self.edge_subs(edge).iter().map(Sub::pos))
+      .sorted_unstable()
+      .dedup()
+      .filter_map(|pos| {
+        let children = edges
+          .iter()
+          .map(|&edge| {
+            let subs = self.edge_subs(edge);
+            let child = subs
+              .binary_search_by_key(&pos, Sub::pos)
+              .map_or_else(|_| own(pos), |index| subs[index].qry());
+            StateSet::from_char(child)
+          })
+          .collect_vec();
+        let set = StateSet::from_plurality(&children);
+        (set != StateSet::from_char(own(pos))).then_some((pos, set))
+      })
+      .collect()
+  }
+
+  pub(crate) fn restate(
+    &mut self,
+    node: GraphNodeKey,
+    old_state: &[(usize, AsciiChar)],
+    allows: impl Fn(usize, usize, AsciiChar) -> bool,
+  ) -> Result<(), Report> {
+    let new_state = self.node_state(node);
+    let changes = old_state
+      .iter()
+      .merge_join_by(&new_state, |a, b| a.0.cmp(&b.0))
+      .filter_map(|entry| {
+        let (pos, old, new) = match entry {
+          EitherOrBoth::Both(&(pos, old), &(_, new)) => (pos, old, new),
+          EitherOrBoth::Left(&(pos, old)) => (pos, old, self.reference[pos]),
+          EitherOrBoth::Right(&(pos, new)) => (pos, self.reference[pos], new),
+        };
+        (old != new).then_some((pos, old, new))
+      })
+      .collect_vec();
+    if changes.is_empty() {
+      return Ok(());
+    }
+    for (child, edge) in self.children(node).collect_vec() {
+      let mut subs: BTreeMap<usize, Sub> = self.take_subs(edge).into_iter().map(|sub| (sub.pos(), sub)).collect();
+      let sample = self.sample_of(child);
+      for &(pos, old, new) in &changes {
+        let child_state = subs.remove(&pos).map_or(old, |sub| sub.qry());
+        let free = sample.is_some_and(|sample| allows(sample, pos, new));
+        if child_state != new && !free {
+          subs.insert(pos, Sub::new(new, pos, child_state)?);
+        }
+      }
+      let subs = subs.into_values().collect_vec();
+      let depth = self.depth_below(child) + subs.len();
+      self.set_subs(edge, subs);
+      self.raise_depth(node, depth);
+    }
+    Ok(())
   }
 
   fn set_subs(&mut self, edge: GraphEdgeKey, subs: Vec<Sub>) {

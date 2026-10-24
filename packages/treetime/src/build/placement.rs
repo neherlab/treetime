@@ -32,12 +32,15 @@ pub(crate) struct EdgeScore {
 pub(crate) fn score_edge(subs: &[Sub], query: &Query, reference: &Seq) -> EdgeScore {
   let mut score = EdgeScore { delta: 0, shared: 0 };
   for sub in subs {
-    match query.state(sub.pos(), reference) {
-      Some(state) if state == sub.qry() => {
+    let Some(states) = query.states(sub.pos(), reference) else {
+      continue;
+    };
+    match (states.contains(sub.qry()), states.contains(sub.reff())) {
+      (true, false) => {
         score.delta -= 1;
         score.shared += 1;
       },
-      Some(state) if state == sub.reff() => score.delta += 1,
+      (false, true) => score.delta += 1,
       _ => {},
     }
   }
@@ -47,7 +50,11 @@ pub(crate) fn score_edge(subs: &[Sub], query: &Query, reference: &Seq) -> EdgeSc
 pub(crate) fn shared_positions(subs: &[Sub], query: &Query, reference: &Seq) -> Vec<usize> {
   subs
     .iter()
-    .filter(|sub| query.state(sub.pos(), reference) == Some(sub.qry()))
+    .filter(|sub| {
+      query
+        .states(sub.pos(), reference)
+        .is_some_and(|states| states.contains(sub.qry()) && !states.contains(sub.reff()))
+    })
     .map(Sub::pos)
     .collect()
 }
@@ -131,7 +138,7 @@ pub fn place_exhaustive(
     best.n_best = 0;
   }
   let bound = |node: GraphNodeKey, cost: isize| cost - signed(mat.depth_below(node));
-  let mut stack = vec![(mat.root(), signed(query.diffs().len()))];
+  let mut stack = vec![(mat.root(), signed(query.root_cost(reference)))];
   let mut children = vec![];
   let mut visited = 0;
   while let Some((node, cost)) = stack.pop() {

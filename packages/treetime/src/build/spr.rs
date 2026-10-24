@@ -17,6 +17,12 @@ pub struct SprStats {
 
 pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) -> Result<SprStats, Report> {
   let mut stats = SprStats::default();
+  let reference = mat.reference().clone();
+  let allows = |sample: usize, pos: usize, state| {
+    queries[sample]
+      .states(pos, &reference)
+      .is_none_or(|states| states.contains(state))
+  };
   for node in mat.preorder().into_iter().rev() {
     if !mat.has_node(node) {
       continue;
@@ -27,9 +33,14 @@ pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) 
     if parent == mat.root() && mat.n_children(parent) == 1 {
       continue;
     }
+    let old_state = mat.node_state(node);
     let query = match mat.sample_of(node) {
       Some(sample) => Cow::Borrowed(&queries[sample]),
-      None => Cow::Owned(Query::from_diffs(mat.node_state(node))),
+      None => Cow::Owned(Query::from_state_and_sets(
+        &old_state,
+        &mat.plurality_sets(node, &old_state),
+        mat.reference(),
+      )),
     };
     let before = mat.parsimony();
     let detached = mat.detach(node)?;
@@ -46,6 +57,9 @@ pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) 
       None => place_exhaustive(mat, &query, prefer, None, true)?,
     };
     let inserted = insert(mat, &query, placement.target, Insertee::Subtree(node))?;
+    if mat.sample_of(node).is_none() {
+      mat.restate(node, &old_state, allows)?;
+    }
     if inserted.cost != placement.cost {
       return Err(crate::make_internal_report!(
         "SPR of node {node}: the placement scored {} but its insertion below {} costs {}",

@@ -1,6 +1,6 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::build::mat::Mat;
-use crate::build::pipeline::{BuildParams, BuildStats, SampleOrder, SearchMode, place_samples};
+use crate::build::pipeline::{BuildParams, BuildStats, InitialTree, SampleOrder, SearchMode, place_samples};
 use crate::build::query::Query;
 use crate::build::spr::spr_round;
 use eyre::Report;
@@ -104,7 +104,24 @@ pub(crate) fn rebuild_round(
     if local.parsimony() < before {
       stats.improved += 1;
       stats.gain += before - local.parsimony();
+      let old_states = ball
+        .leaves
+        .iter()
+        .filter(|&&leaf| !mat.is_leaf(leaf))
+        .map(|&leaf| (leaf, mat.node_state(leaf)))
+        .collect_vec();
       mat.splice(ball.top, &ball.members, &ball.interior, &local, &ball.leaves)?;
+      let allows = |sample: usize, pos: usize, state| {
+        let observed = seqs[sample][pos];
+        alphabet.is_unknown(observed)
+          || alphabet.is_gap(observed)
+          || alphabet
+            .canonical_states(observed)
+            .is_ok_and(|states| states.is_empty() || states.contains(state))
+      };
+      for (leaf, old_state) in &old_states {
+        mat.restate(*leaf, old_state, allows)?;
+      }
     }
   }
   Ok(stats)
@@ -126,9 +143,18 @@ fn best_local_tree(
   let queries = ball
     .leaves
     .iter()
-    .map(|&leaf| match mat.sample_of(leaf) {
-      Some(sample) => Query::from_seq(&seqs[sample], &frame, alphabet),
-      None => Query::from_diffs(mat.relative_state(&mat.node_state(leaf), &top_state)),
+    .map(|&leaf| {
+      mat.sample_of(leaf).map_or_else(
+        || {
+          let state = mat.node_state(leaf);
+          Query::from_state_and_sets(
+            &mat.relative_state(&state, &top_state),
+            &mat.plurality_sets(leaf, &state),
+            &frame,
+          )
+        },
+        |sample| Query::from_seq(&seqs[sample], &frame, alphabet),
+      )
     })
     .collect_vec();
   let params = BuildParams {
@@ -141,6 +167,8 @@ fn best_local_tree(
     compare_exhaustive: false,
     rebuild: None,
     reprune: None,
+    scaffold: None,
+    initial: InitialTree::Placement,
   };
   let mut rng = get_random_number_generator(usize_to_u64(center.as_usize()));
   let mut order = (0..queries.len()).collect_vec();

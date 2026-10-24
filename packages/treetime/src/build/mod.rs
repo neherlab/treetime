@@ -1,6 +1,7 @@
 pub mod evaluate;
 pub(crate) mod insert;
 pub mod mat;
+pub(crate) mod nj;
 pub mod pipeline;
 pub mod placement;
 pub mod query;

@@ -7,7 +7,8 @@ use treetime::build::evaluate::{
   MissedSplit, TreeWithCounts, compare_splits, fitch_edge_counts, fitch_edge_subs, missed_splits,
 };
 use treetime::build::pipeline::{
-  BuildParams, BuildStats, SampleOrder, SearchMode, build_mat, mat_from_tree, mat_to_tree, refine_mat,
+  BuildParams, BuildStats, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat, mat_from_tree, mat_to_tree,
+  refine_mat,
 };
 use treetime::build::rebuild::RebuildParams;
 use treetime::build::references::ReferenceSelection;
@@ -22,6 +23,7 @@ use treetime_utils::make_error;
 
 struct Args {
   aln: String,
+  sites_out: Option<String>,
   flags: BTreeSet<String>,
   order_file: Option<String>,
   tree: Option<String>,
@@ -40,7 +42,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [reprune=<batches>] [reprune_rounds=1]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [initial=placement|nj] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -64,15 +66,23 @@ fn parse_args() -> Result<Args, Report> {
     "references" => SearchMode::FromReferences { references },
     other => return make_error!("Unknown search mode '{other}'"),
   };
-  let order = match get("order", "missing").as_str() {
+  let order = match get("order", "random").as_str() {
     "input" => SampleOrder::Input,
     "missing" => SampleOrder::FewestMissingFirst,
+    "random" => SampleOrder::Random {
+      seed: get("seed", "0").parse()?,
+    },
+    "scaffold" => SampleOrder::Scaffold {
+      anchors: get("anchors", "50").parse()?,
+      seed: get("seed", "0").parse()?,
+    },
     other => return make_error!("Unknown order '{other}'"),
   };
   Ok(Args {
     aln,
     tree: options.get("tree").cloned(),
     order_file: options.get("order_file").cloned(),
+    sites_out: options.get("sites_out").cloned(),
     flags: options
       .iter()
       .filter(|(_, value)| value.as_str() == "true")
@@ -90,6 +100,21 @@ fn parse_args() -> Result<Args, Report> {
       },
       fitch_refresh: options.contains_key("refresh"),
       compare_exhaustive: options.contains_key("compare"),
+      initial: match get("initial", "placement").as_str() {
+        "placement" => InitialTree::Placement,
+        "nj" => InitialTree::NeighborJoining,
+        other => return make_error!("Unknown initial tree '{other}'"),
+      },
+      scaffold: options
+        .get("scaffold")
+        .map(|size| -> Result<ScaffoldParams, Report> {
+          Ok(ScaffoldParams {
+            size: size.parse()?,
+            restarts: get("scaffold_restarts", "5").parse()?,
+            seed: get("seed", "0").parse()?,
+          })
+        })
+        .transpose()?,
       reprune: options
         .get("reprune")
         .map(|batches| -> Result<RepruneParams, Report> {
@@ -181,17 +206,22 @@ fn site_counts(
 
 #[expect(clippy::print_stdout, reason = "the example reports its measurements on stdout")]
 fn report_sites(
-  built: &Graph,
-  built_names: &NodeNames,
-  reference: &Graph,
-  reference_names: &NodeNames,
+  built: &TreeWithCounts<'_>,
+  reference: &TreeWithCounts<'_>,
   named: &BTreeMap<&str, &Seq>,
   seqs: &[Seq],
   alphabet: &Alphabet,
+  out: Option<&str>,
 ) -> Result<(), Report> {
   let length = seqs.first().map_or(0, Seq::len);
-  let built_counts = site_counts(built, built_names, named, alphabet, length)?;
-  let reference_counts = site_counts(reference, reference_names, named, alphabet, length)?;
+  let built_counts = site_counts(built.graph, built.names, named, alphabet, length)?;
+  let reference_counts = site_counts(reference.graph, reference.names, named, alphabet, length)?;
+  if let Some(out) = out {
+    let table = std::iter::once("position\tbuilt\treference".to_owned())
+      .chain((0..length).map(|pos| format!("{}\t{}\t{}", pos + 1, built_counts[pos], reference_counts[pos])))
+      .join("\n");
+    std::fs::write(out, format!("{table}\n")).wrap_err_with(|| format!("When writing '{out}'"))?;
+  }
   let minor = |pos: usize| {
     let counts = seqs
       .iter()
@@ -408,13 +438,20 @@ fn main() -> Result<(), Report> {
     }
     if options_flag(&args, "sites") {
       report_sites(
-        &tree.graph,
-        &tree.names,
-        &reference.graph,
-        &reference.names,
+        &TreeWithCounts {
+          graph: &tree.graph,
+          names: &tree.names,
+          edge_counts: &built_counts,
+        },
+        &TreeWithCounts {
+          graph: &reference.graph,
+          names: &reference.names,
+          edge_counts: &reference_counts,
+        },
         &named,
         &seqs,
         &alphabet,
+        args.sites_out.as_deref(),
       )?;
     }
   }
