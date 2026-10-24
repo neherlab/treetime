@@ -304,6 +304,44 @@ mod tests {
     assert_eq!(BoundaryBehavior::Hard, f.right_extrap());
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::right_end_one_ulp_outside((2.0,              3.0_f64.next_up()), (BoundaryBehavior::Hard,  BoundaryBehavior::Hard))]
+  #[case::left_end_one_ulp_outside( (2.0_f64.next_down(), 3.0),            (BoundaryBehavior::Hard,  BoundaryBehavior::Hard))]
+  #[case::right_end_clearly_outside((2.0,              3.5),               (BoundaryBehavior::Hard,  BoundaryBehavior::Error))]
+  #[case::left_end_clearly_outside( (1.5,              3.0),               (BoundaryBehavior::Error, BoundaryBehavior::Hard))]
+  #[trace]
+  fn test_divide_function_by_function_coincident_hard_ends_bind_quotient(
+    #[case] dividend_bounds: (f64, f64),
+    #[case] expected_tails: (BoundaryBehavior, BoundaryBehavior),
+  ) {
+    let dividend = DistributionFunction::from_range_values(dividend_bounds, Array1::from_elem(11, 6.0))
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+    let divisor = DistributionFunction::from_range_values((2.0, 3.0), Array1::from_elem(11, 2.0))
+      .unwrap()
+      .with_left_extrap(BoundaryBehavior::Hard)
+      .unwrap()
+      .with_right_extrap(BoundaryBehavior::Hard)
+      .unwrap();
+
+    let actual = distribution_division(
+      &DistributionPlain::Function(dividend),
+      &DistributionPlain::Function(divisor),
+      MaxGridPoints::default(),
+    )
+    .unwrap();
+
+    let DistributionPlain::Function(q) = actual else {
+      panic!("expected a Function quotient, got {actual:?}");
+    };
+    assert_eq!((2.0, 3.0), (q.x_min(), q.x_max()));
+    assert_eq!(expected_tails, (q.left_extrap(), q.right_extrap()));
+  }
+
   #[test]
   fn test_divide_function_by_function_divisor_error_truncation_yields_error_tails() {
     let dividend =

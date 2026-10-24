@@ -11,7 +11,9 @@ use crate::policy::YAxisPolicy;
 use eyre::Report;
 use ndarray::{Array1, Zip};
 use std::cmp::Ordering;
-use treetime_grid::{BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, HardCell, MaxGridPoints, Side};
+use treetime_grid::{
+  BoundaryBehavior, DEFAULT_TAIL_FIT_POINTS, HardApproachLaw, HardCell, MaxGridPoints, Side, coordinates_coincide,
+};
 use treetime_utils::{make_error, make_internal_error};
 
 pub fn distribution_division<Y: YAxisPolicy>(
@@ -264,16 +266,17 @@ fn division_side_tail(side: Side, dividend: HardDomain, divisor: HardDomain) -> 
     (true, false) => DivisionSideTail::Fixed(BoundaryBehavior::Error),
     (false, true) => DivisionSideTail::Fixed(dividend_tail),
     (false, false) => {
-      let dividend_inner = match side {
-        Side::Left => side_bound(side, dividend) >= side_bound(side, divisor),
-        Side::Right => side_bound(side, dividend) <= side_bound(side, divisor),
+      let (dividend_bound, divisor_bound) = (side_bound(side, dividend), side_bound(side, divisor));
+      let dividend_inner = coordinates_coincide(
+        dividend_bound,
+        divisor_bound,
+        dividend_bound.abs().max(divisor_bound.abs()),
+      ) || match side {
+        Side::Left => dividend_bound >= divisor_bound,
+        Side::Right => dividend_bound <= divisor_bound,
       };
       if dividend_inner {
-        DivisionSideTail::Fixed(division_hard_tail(
-          dividend_tail,
-          side_bound(side, dividend),
-          divisor_tail,
-        )?)
+        DivisionSideTail::Fixed(division_hard_tail(dividend_tail, dividend_bound, divisor_tail)?)
       } else {
         DivisionSideTail::Fixed(BoundaryBehavior::Error)
       }
