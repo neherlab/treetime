@@ -196,6 +196,7 @@ GIB = 1024**3
 MIN_FREE_GIB = 20.0
 MAX_FILE_SIZE_GIB = 8.0
 DISK_POLL_S = 1.0
+MEMORY_POLL_S = 0.1
 COMPRESS_MIN_BYTES = 1 << 20
 COMPRESSED_SUFFIX = ".zst"
 OUTPUTS_FILE = "outputs.json"
@@ -972,8 +973,9 @@ def memory_estimate_kib(case: Case) -> int | None:
   None means the case runs alone. A case without a completed run has an unknown peak when it runs on a large dataset,
   or when an earlier run timed out or was stopped by a signal, for example by the out-of-memory killer.
   """
-  results = [json.loads(path.read_text()) for path in SNAPSHOTS_DIR.glob(f"*/cases/{case.id}/result.json")]
-  completed = [result["max_rss_kb"] for result in results if not result["timed_out"] and result["exit_code"] >= 0]
+  results = [result for path in SNAPSHOTS_DIR.glob(f"*/cases/{case.id}/result.json")
+             if "peak_rss_kib" in (result := json.loads(path.read_text()))]
+  completed = [result["peak_rss_kib"] for result in results if not result["timed_out"] and result["exit_code"] >= 0]
   if completed:
     return round(max(completed) * MEMORY_MARGIN)
   estimate_gib = MEMORY_ESTIMATE_GIB.get(case.size)
@@ -1078,7 +1080,7 @@ def run_case_task(task: dict, binary: Path, snapshot_dir: Path, check_determinis
       result = {
         "id": case.id, "status": status.value, "detail": detail, "exit_code": outcome.exit_code,
         "timed_out": outcome.timed_out, "timeout_s": case.timeout_s, "wall_s": round(outcome.wall_s, 3),
-        "cpu_s": round(outcome.cpu_s, 3), "max_rss_kb": outcome.max_rss_kb, "case_key": task["case_key"],
+        "cpu_s": round(outcome.cpu_s, 3), "peak_rss_kib": outcome.peak_rss_kib, "case_key": task["case_key"],
         "expect": case.expect.value, "determinism": None,
       }
     if check_determinism:
@@ -1224,8 +1226,9 @@ def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: f
 
   timer = threading.Timer(timeout_s, stop_on_timeout)
   timer.start()
-  # Wait without reaping first, so the timer can never signal a reused pid.
-  os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
+  # Wait without reaping first, so the timer and the memory sampler can never reach a reused pid.
+  with PeakMemory(process.pid) as peak:
+    os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT)
   with lock:
     state["exited"] = True
   timer.cancel()
@@ -1235,8 +1238,43 @@ def execute(argv: list[str], cwd: Path, stdout: Path, stderr: Path, timeout_s: f
   process.returncode = os.waitstatus_to_exitcode(wait_status)
   return RunOutcome(
     exit_code=None if state["timed_out"] else process.returncode, timed_out=state["timed_out"], wall_s=wall,
-    cpu_s=usage.ru_utime + usage.ru_stime, max_rss_kb=usage.ru_maxrss,
+    cpu_s=usage.ru_utime + usage.ru_stime, peak_rss_kib=peak.peak_kib,
   )
+
+
+class PeakMemory:
+  """Peak resident memory of a running process, sampled every MEMORY_POLL_S seconds from VmHWM of /proc/<pid>/status.
+
+  The resource usage of wait4 cannot serve: Linux carries the high-water mark of the parent across fork and exec into
+  the child, so every case would report at least the peak memory of this script. A process that exits before the
+  first sample reports 0.
+  """
+
+  def __init__(self, pid: int) -> None:
+    self.status = Path(f"/proc/{pid}/status")
+    self.peak_kib = 0
+    self.stop = threading.Event()
+    self.thread = threading.Thread(target=self.poll, daemon=True)
+
+  def __enter__(self) -> PeakMemory:
+    self.sample()
+    self.thread.start()
+    return self
+
+  def __exit__(self, *_: object) -> None:
+    self.stop.set()
+    self.thread.join()
+
+  def poll(self) -> None:
+    while not self.stop.wait(MEMORY_POLL_S):
+      self.sample()
+
+  def sample(self) -> None:
+    """Read VmHWM, the peak of the current memory map; an exited process has none."""
+    with contextlib.suppress(OSError):
+      for line in self.status.read_text().splitlines():
+        if line.startswith("VmHWM:"):
+          self.peak_kib = max(self.peak_kib, int(line.split()[1]))
 
 
 def missing_outputs(case: Case, run_dir: Path) -> list[str]:
@@ -1957,7 +1995,7 @@ class RunOutcome:
   timed_out: bool
   wall_s: float
   cpu_s: float
-  max_rss_kb: int
+  peak_rss_kib: int
 
 
 @dataclass
