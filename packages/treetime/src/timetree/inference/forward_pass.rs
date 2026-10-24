@@ -1,6 +1,8 @@
 use crate::clock::date_constraints::DateConstraints;
+use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_warn;
+use crate::timetree::inference::backward_pass::apply_own_coalescent_factor;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodeBackward, PosteriorView, TimeDistribution, likely_time_of_node,
 };
@@ -87,6 +89,7 @@ where
   ) -> Result<(ForwardOutput<S>, Posterior), Report> {
     let ForwardPassInputs {
       constraints,
+      coalescent,
       names,
       branches,
       max_points,
@@ -98,9 +101,13 @@ where
       msg_to_parent: to_parent.as_deref(),
     });
 
+    let own_factor = |distribution: Distribution<NegLog>| {
+      apply_own_coalescent_factor(coalescent, key, self.schedule.children(key).len(), distribution)
+    };
     let refinement = refine_distribution_from_parent(
       names,
       key,
+      own_factor,
       date_constraint.as_ref(),
       parent,
       parent_edge,
@@ -152,6 +159,7 @@ where
 
 pub(crate) struct ForwardPassInputs<'a> {
   pub constraints: &'a DateConstraints,
+  pub coalescent: Option<&'a CoalescentPrior>,
   pub names: &'a NodeNames,
   pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
   pub max_points: MaxGridPoints,
@@ -163,9 +171,14 @@ struct ForwardOutput<S> {
   contradicted: bool,
 }
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "the node, its own coalescent factor, its date, the parent posterior, the edge, the subtree and the grid limit are independent inputs of one forward step"
+)]
 fn refine_distribution_from_parent(
   names: &NodeNames,
   key: GraphNodeKey,
+  own_factor: impl Fn(Distribution<NegLog>) -> Result<Distribution<NegLog>, Report>,
   date_constraint: Option<&Arc<Distribution<NegLog>>>,
   parent: Option<&Posterior>,
   edge: Option<ParentEdge<'_>>,
@@ -186,7 +199,11 @@ fn refine_distribution_from_parent(
   let Some(subtree_dist) = subtree else {
     let forward = convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)?;
     let ForwardPosterior { posterior, spacing, .. } = forward
-      .resolve_posterior(TRIM_EPS, |message| Ok(message.clone()))?
+      .resolve_posterior(TRIM_EPS, |message| {
+        own_factor(message.clone())?
+          .normalize()
+          .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))
+      })?
       .into_untrimmed();
     log_refinement(names, key, parent_time_dist, &posterior, spacing, &posterior);
     return Ok(ForwardRefinement::Refined(posterior));

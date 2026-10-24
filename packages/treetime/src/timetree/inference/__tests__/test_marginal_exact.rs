@@ -209,6 +209,7 @@ mod tests {
       )?;
       let forward_inputs = ForwardPassInputs {
         constraints: &constraints,
+        coalescent: None,
         names: &names,
         branches: &branches,
         max_points: MaxGridPoints::default(),
@@ -338,6 +339,7 @@ mod tests {
       };
       let forward_inputs = ForwardPassInputs {
         constraints: &constraints,
+        coalescent: None,
         names: &names,
         branches: &branches,
         max_points: MaxGridPoints::default(),
