@@ -12,6 +12,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
 
 const PROBE_FACTOR: f64 = 1.25;
+const MIN_PROBE_SHRINK: f64 = 8.0;
 const MAX_TARGET_FACTOR: f64 = 2.0;
 pub(crate) const STEP_FRACTION: f64 = 2.0 / 3.0;
 
@@ -34,11 +35,13 @@ pub(crate) fn step_marginal_clock_rate(inputs: &MarginalRateInputs<'_>) -> Resul
       "Marginal clock rate step found no finite marginal likelihood at the reference rate {reference}"
     ));
   }
-  let target = log_rate_target(probe(1.0 / PROBE_FACTOR)?, log_lh, probe(PROBE_FACTOR)?, inputs.window);
+  let h = inputs.window.half_width;
+  let (target, window) = log_rate_target(probe((-h).exp())?, log_lh, probe(h.exp())?, inputs.window);
   Ok(MarginalRateStep {
     clock_rate: reference * (STEP_FRACTION * target).exp(),
     target_rate: reference * target.exp(),
     log_lh,
+    window,
   })
 }
 
@@ -47,6 +50,7 @@ pub(crate) struct MarginalRateStep {
   pub clock_rate: f64,
   pub target_rate: f64,
   pub log_lh: f64,
+  pub window: RateWindow,
 }
 
 pub(crate) fn marginal_log_lh_at_rate(inputs: &MarginalRateInputs<'_>, clock_rate: f64) -> Result<Option<f64>, Report> {
@@ -99,23 +103,47 @@ pub(crate) fn branches_at_rate(
     .collect()
 }
 
-fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow) -> f64 {
-  let h = PROBE_FACTOR.ln();
+fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow) -> (f64, RateWindow) {
+  let h = window.half_width;
   let bound = MAX_TARGET_FACTOR.ln();
   let curvature = above + below - 2.0 * at;
   let maximum = (curvature.is_finite() && curvature < 0.0).then(|| h * (below - above) / (2.0 * curvature));
-  match (window, maximum) {
-    (RateWindow::InteriorMaximum, Some(target)) if target.abs() <= h => target,
-    (RateWindow::InteriorMaximum, _) => 0.0,
-    (RateWindow::FollowSlope, Some(target)) => target.clamp(-bound, bound),
-    (RateWindow::FollowSlope, None) if above.max(below) <= at => 0.0,
-    (RateWindow::FollowSlope, None) if above > below => bound,
-    (RateWindow::FollowSlope, None) => -bound,
+  let held = RateWindow {
+    follow_slope: false,
+    ..window
+  };
+  match maximum {
+    Some(target) if target.abs() <= h => (target, held.shrunk()),
+    _ if !window.follow_slope => (0.0, held),
+    Some(target) => (target.clamp(-bound, bound), held),
+    None if above.max(below) <= at => (0.0, held),
+    None if above > below => (bound, held),
+    None => (-bound, held),
   }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum RateWindow {
-  FollowSlope,
-  InteriorMaximum,
+/// Probe window of the rate step in log rate. The first step follows the slope of log Z out of the window, up to the
+/// 2-fold bound, to correct a poor start rate; later steps move only to a maximum between the probes, and otherwise
+/// keep the rate. The half-width halves after each step to a maximum between the probes, down to 1/8 of the start:
+/// a parabola in log rate through probes at distance h stops h^2/6 below the maximum of a Poisson-shaped log Z.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct RateWindow {
+  pub half_width: f64,
+  pub follow_slope: bool,
+}
+
+impl RateWindow {
+  pub(crate) fn initial() -> Self {
+    Self {
+      half_width: PROBE_FACTOR.ln(),
+      follow_slope: true,
+    }
+  }
+
+  fn shrunk(self) -> Self {
+    Self {
+      half_width: (self.half_width / 2.0).max(PROBE_FACTOR.ln() / MIN_PROBE_SHRINK),
+      ..self
+    }
+  }
 }

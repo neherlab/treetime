@@ -438,7 +438,7 @@ mod tests {
         bad_branches: &state.time_inference.bad_branches,
         branches: &state.time_inference.branches,
         reference_rate,
-        window: RateWindow::FollowSlope,
+        window: RateWindow::initial(),
         max_points: MaxGridPoints::default(),
       })
       .map(|step| step.clock_rate)
@@ -759,7 +759,7 @@ mod tests {
         &inputs,
         Some(&merger_rate),
         prior,
-        RateWindow::FollowSlope,
+        RateWindow::initial(),
         state,
         &mut get_random_number_generator(ROUND_TEST_SEED),
         &NoopProgress,

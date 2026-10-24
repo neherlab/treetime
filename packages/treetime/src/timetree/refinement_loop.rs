@@ -34,6 +34,7 @@ pub(crate) fn run_refinement_loop(
 
   let mut rng = get_random_number_generator(params.seed);
   let mut current = current_expectation(&coalescent, &state)?;
+  let mut rate_window = RateWindow::initial();
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
@@ -49,17 +50,14 @@ pub(crate) fn run_refinement_loop(
       inputs,
       merger_rate.as_ref(),
       prior.as_ref(),
-      if i == 1 {
-        RateWindow::FollowSlope
-      } else {
-        RateWindow::InteriorMaximum
-      },
+      rate_window,
       state,
       &mut rng,
       log,
     )
     .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
+    rate_window = outcome.rate_window;
     current = current_expectation(&coalescent, &state)?;
     if let (Some(lineages), Some(current), true) = (&mut coalescent.lineages, &current, outcome.topology.changed()) {
       lineages.expectation = Arc::clone(current);
