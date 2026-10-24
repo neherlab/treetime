@@ -6,8 +6,8 @@ mod tests {
   use helpers::args_with;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use treetime::o;
+  use treetime::reroot::params::{RerootMethod, RerootSpec};
   use treetime_io::nwk::nwk_read;
 
   const TREE: &str = "(A:0.1,B:0.1,C:0.1)root;";

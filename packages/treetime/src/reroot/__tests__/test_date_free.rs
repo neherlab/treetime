@@ -2,9 +2,9 @@
 mod tests {
   use crate::branch_lengths::branch_length_or_zero;
   use crate::clock::divergence::root_to_node_divergences;
-  use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-  use crate::clock::reroot::reroot_undated;
   use crate::progress::NoopProgress;
+  use crate::reroot::date_free::reroot_undated;
+  use crate::reroot::params::{RerootMethod, RerootSpec};
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;

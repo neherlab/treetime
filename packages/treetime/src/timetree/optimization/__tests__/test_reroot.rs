@@ -4,8 +4,6 @@ mod tests {
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_regression::ClockFit;
   use crate::clock::date_constraints::DateConstraints;
-  use crate::clock::find_best_root::params::RerootSpec;
-  use crate::clock::reroot::RerootParams;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::o;
   use crate::partition::fitch::passes::create_fitch_partition;
@@ -15,6 +13,8 @@ mod tests {
   use crate::partition::set::PartitionSet;
   use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
   use crate::progress::NoopProgress;
+  use crate::reroot::params::RerootParams;
+  use crate::reroot::params::RerootSpec;
   use crate::seq::mutation::Sub;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{

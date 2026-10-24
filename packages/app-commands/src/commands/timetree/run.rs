@@ -21,13 +21,13 @@ use std::path::Path;
 use treetime::alphabet::alphabet::Alphabet;
 use treetime::cancel::Cancel;
 use treetime::clock::divergence::root_to_node_divergences;
-use treetime::clock::find_best_root::params::RerootSpec;
 use treetime::make_internal_error;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::partition::result::AlignmentSequences;
 use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
+use treetime::reroot::params::RerootSpec;
 use treetime::seq::mutation::Mutation;
 use treetime::seq::sink::{SeqItem, SeqSink, SeqTrack};
 use treetime::timetree::coalescent::CoalescentOutput;
@@ -94,7 +94,11 @@ pub fn run_timetree_estimation(
     (!args.dating.keep_polytomies).then_some("Polytomy resolution"),
     log,
   );
-  let reroot_spec = args.reroot.spec(&input_data.graph, &input_data.names)?;
+  let reroot_spec = args
+    .reroot
+    .as_ref()
+    .map(|reroot| reroot.spec(&input_data.graph, &input_data.names))
+    .transpose()?;
   let params = timetree_params(args, branch_length_mode, reroot_spec, sequence_outputs_requested, seed);
 
   let input = TimetreeInput {
@@ -152,7 +156,7 @@ pub fn run_timetree_estimation(
 fn timetree_params(
   args: &TreetimeTimetreeArgs,
   branch_length_mode: BranchLengthMode,
-  reroot_spec: RerootSpec,
+  reroot_spec: Option<RerootSpec>,
   sequence_outputs_requested: bool,
   seed: u64,
 ) -> TimetreeParams {
@@ -163,7 +167,6 @@ fn timetree_params(
     partition_rates: args.sequence_model.partition_rates,
     clock_rate: args.clock.clock_rate,
     clock_std_dev: args.clock.clock_std_dev,
-    keep_root: args.keep_root,
     reroot_spec,
     allow_negative_rate: args.clock.allow_negative_rate,
     clock_filter: args.clock.clock_filter,

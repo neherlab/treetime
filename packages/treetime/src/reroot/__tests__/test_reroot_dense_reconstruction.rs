@@ -2,14 +2,14 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
-  use crate::clock::find_best_root::params::RerootSpec;
-  use crate::clock::reroot::reroot_undated;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
   use crate::partition::marginal::reconstruction::DenseReconstruction;
   use crate::partition::set::PartitionSet;
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
+  use crate::reroot::date_free::reroot_undated;
+  use crate::reroot::params::RerootSpec;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{NUC_ALPHABET, find_node_key_by_name};
   use eyre::Report;

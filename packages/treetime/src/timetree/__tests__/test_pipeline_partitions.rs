@@ -76,6 +76,7 @@ mod tests {
     use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::partition_rates::PartitionRates;
     use crate::progress::NoopProgress;
+    use crate::reroot::params::RerootSpec;
     use crate::seq::alignment::SequenceSource;
     use crate::seq::mutation::Mutation;
     use crate::test_utils::{
@@ -176,7 +177,7 @@ mod tests {
       let params = TimetreeParams {
         dense: Some(dense),
         partition_rates,
-        keep_root: false,
+        reroot_spec: Some(RerootSpec::default()),
         max_iter: 1,
         resolve_polytomies,
         sequence_outputs_requested,

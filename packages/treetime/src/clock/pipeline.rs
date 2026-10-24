@@ -3,15 +3,15 @@ use crate::cancel::Cancel;
 use crate::clock::assign_dates::assign_dates;
 use crate::clock::clock_filter::clock_filter;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
+use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::find_best_root::params::RerootSpec;
-use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::{NoPositiveRateRoot, OperationError};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
+use crate::reroot::driver::reroot_at_best_root;
+use crate::reroot::params::{RerootParams, RerootSpec};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
@@ -95,23 +95,11 @@ fn estimate_clock_model_with_prefilter(
   names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
-  let reroot_spec = &params.reroot_spec;
-  let (keep_root, clock_filter_threshold, allow_negative_rate) =
-    (params.keep_root, params.clock_filter, params.allow_negative_rate);
-  let (tree, filter_outliers) = if clock_filter_threshold > 0.0 {
-    let (tree, result) = estimate_clock_model_with_reroot_policy(
-      tree,
-      &ClockFitParams {
-        outliers: &BTreeSet::new(),
-        clock_rate: None,
-        keep_root,
-        reroot_params: &RerootParams::new(reroot_spec.clone(), true),
-        prev_clock_rate: None,
-      },
-      names,
-      log,
-    )
-    .map_err(|report| {
+  let reroot_spec = params.reroot_spec.as_ref();
+  let (clock_filter_threshold, allow_negative_rate) = (params.clock_filter, params.allow_negative_rate);
+  let mut tree = tree;
+  let filter_outliers = if clock_filter_threshold > 0.0 {
+    let result = reroot_and_fit(&mut tree, reroot_spec, &BTreeSet::new(), true, names, log).map_err(|report| {
       if report.downcast_ref::<NoPositiveRateRoot>().is_some() {
         report.wrap_err(
           "The clock fit of the outlier filter requires a positive clock rate, also with --allow-negative-rate. Run \
@@ -141,12 +129,11 @@ fn estimate_clock_model_with_prefilter(
       clock_filter_threshold,
       log,
     )?;
-    (tree, Some(filtered.outliers))
+    Some(filtered.outliers)
   } else {
-    (tree, None)
+    None
   };
 
-  let reroot_params = RerootParams::new(reroot_spec.clone(), !allow_negative_rate);
   let no_outliers = BTreeSet::new();
   let outliers = filter_outliers.as_ref().unwrap_or(&no_outliers);
   let failure = if filter_outliers.is_some() {
@@ -154,25 +141,47 @@ fn estimate_clock_model_with_prefilter(
   } else {
     "Clock model estimation failed"
   };
-  let (tree, result) = estimate_clock_model_with_reroot_policy(
+  let result = reroot_and_fit(&mut tree, reroot_spec, outliers, !allow_negative_rate, names, log).wrap_err(failure)?;
+  Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
+}
+
+fn reroot_and_fit(
+  tree: &mut ClockTree,
+  reroot_spec: Option<&RerootSpec>,
+  outliers: &BTreeSet<GraphNodeKey>,
+  force_positive_rate: bool,
+  names: &mut NodeNames,
+  log: &dyn LogSink,
+) -> Result<ClockFitResult, Report> {
+  if let Some(spec) = reroot_spec {
+    let ClockTree {
+      graph,
+      branch_lengths,
+      inputs,
+    } = tree;
+    reroot_at_best_root(
+      graph,
+      branch_lengths,
+      inputs,
+      outliers,
+      &RerootParams::new(spec.clone(), force_positive_rate),
+      names,
+      log,
+    )?;
+  }
+  fit_clock_model(
     tree,
     &ClockFitParams {
       outliers,
       clock_rate: None,
-      keep_root,
-      reroot_params: &reroot_params,
       prev_clock_rate: None,
     },
-    names,
     log,
   )
-  .wrap_err(failure)?;
-  Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
 }
 
 pub struct ClockParams {
   pub clock_filter: f64,
-  pub keep_root: bool,
   pub allow_negative_rate: bool,
-  pub reroot_spec: RerootSpec,
+  pub reroot_spec: Option<RerootSpec>,
 }

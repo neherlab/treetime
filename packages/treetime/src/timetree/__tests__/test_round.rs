@@ -2,10 +2,9 @@
 mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::{branch_lengths_or_zero, one_mutation};
-  use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree, fit_clock_model};
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::clock::reroot::RerootParams;
   use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::partition::marginal::dense::partition::PartitionMarginalDense;
@@ -619,7 +618,7 @@ mod tests {
       mode: BranchLengthMode,
     ) -> Result<(RoundState, TimetreeContext), Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
-      let mut names = nwk_parsed.names.clone();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
@@ -645,31 +644,27 @@ mod tests {
 
       let times = given_times(&graph, &constraints)?;
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
-      let (
-        ClockTree {
-          graph, branch_lengths, ..
-        },
-        clock_reroot,
-      ) = estimate_clock_model_with_reroot_policy(
-        ClockTree {
-          graph,
-          branch_lengths,
-          inputs,
-        },
+      let tree = ClockTree {
+        graph,
+        branch_lengths,
+        inputs,
+      };
+      let clock_fit = fit_clock_model(
+        &tree,
         &ClockFitParams {
           outliers: &BTreeSet::new(),
           clock_rate: Some(clock_rate),
-          keep_root: true,
-          reroot_params: &RerootParams::default(),
           prev_clock_rate: None,
         },
-        &mut names,
         &NoopProgress,
       )?;
+      let ClockTree {
+        graph, branch_lengths, ..
+      } = tree;
       let ClockFit {
         model: clock_model,
         points: clock_points,
-      } = clock_reroot.into_clock_fit()?;
+      } = clock_fit.into_clock_fit()?;
       let gammas = unit_gammas(&graph);
       let time_inference = run_timetree(
         &TimeInferenceInputs {

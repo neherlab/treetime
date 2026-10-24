@@ -1,7 +1,7 @@
 use crate::clock::date_constraints::DateConstraints;
-use crate::clock::find_best_root::params::RerootSpec;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::partition_rates::PartitionRates;
+use crate::reroot::params::RerootSpec;
 use crate::timetree::coalescent_timescale::CoalescentMode;
 use std::fmt::Debug;
 use strum_macros::Display;
@@ -14,8 +14,7 @@ pub struct TimetreeParams {
   pub partition_rates: PartitionRates,
   pub clock_rate: Option<f64>,
   pub clock_std_dev: Option<f64>,
-  pub keep_root: bool,
-  pub reroot_spec: RerootSpec,
+  pub reroot_spec: Option<RerootSpec>,
   pub allow_negative_rate: bool,
   pub clock_filter: f64,
   pub max_iter: usize,

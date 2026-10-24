@@ -31,6 +31,7 @@ rayon = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]
+approx = { workspace = true }
 ctor = { workspace = true }
 maplit = { workspace = true }
 pretty_assertions = { workspace = true }

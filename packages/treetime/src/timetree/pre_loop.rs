@@ -3,7 +3,6 @@ use crate::cancel::Cancel;
 use crate::clock::clock_filter::{ClockFilterResult, clock_filter};
 use crate::clock::clock_regression::ClockFit;
 use crate::clock::clock_state::ClockInputs;
-use crate::clock::reroot::RerootParams;
 use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::indel::IndelPolicy;
 use crate::optimize::iteration::apply_damping;
@@ -13,6 +12,7 @@ use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::set::PartitionSet;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
+use crate::reroot::params::{RerootParams, RerootSpec};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
 use crate::timetree::optimization::outliers::report_outliers;
@@ -41,11 +41,12 @@ pub(crate) fn run_pre_loop(
   } else {
     state
   };
-  let state = if params.keep_root {
-    state
-  } else {
-    progress_info!(log, "First reroot (pre-ancestral)");
-    reroot(inputs, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")?
+  let state = match &params.reroot_spec {
+    None => state,
+    Some(spec) => {
+      progress_info!(log, "First reroot (pre-ancestral)");
+      reroot(inputs, spec, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")?
+    },
   };
   let state = if params.clock_filter > 0.0 {
     filter_clock_outliers(inputs, state, log)?
@@ -63,11 +64,11 @@ pub(crate) fn run_pre_loop(
   convergence.report(BranchOptMethod::Brent, log);
   cancel.check()?;
   stages.report("Initial timetree inference", 0.2, "");
-  if params.keep_root {
+  let Some(spec) = &params.reroot_spec else {
     return Ok(state);
-  }
+  };
   progress_info!(log, "Reroot (post-ancestral)");
-  reroot(inputs, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
+  reroot(inputs, spec, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
 fn ml_optimize(
@@ -110,6 +111,7 @@ fn ml_optimize(
 
 fn reroot(
   inputs: &PreLoopInputs<'_>,
+  spec: &RerootSpec,
   state: PreLoopState,
   outliers: RerootOutliers,
   log: &dyn LogSink,
@@ -141,7 +143,7 @@ fn reroot(
     &RerootFitParams {
       outliers,
       clock_rate: params.clock_rate,
-      reroot_params: &RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate),
+      reroot_params: &RerootParams::new(spec.clone(), !params.allow_negative_rate),
       prev_clock_rate: None,
     },
     &mut names,

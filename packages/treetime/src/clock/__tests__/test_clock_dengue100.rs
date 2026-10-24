@@ -99,13 +99,13 @@ mod tests {
     use crate::cancel::NoopCancel;
     use crate::clock::assign_dates::assign_dates;
     use crate::clock::clock_filter::clock_filter;
-    use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
+    use crate::clock::clock_regression::ClockTree;
     use crate::clock::clock_state::ClockInputs;
-    use crate::clock::find_best_root::params::RerootSpec;
     use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
-    use crate::clock::reroot::RerootParams;
     use crate::progress::NoopProgress;
-    use crate::test_utils::dates_by_node;
+    use crate::reroot::params::RerootParams;
+    use crate::reroot::params::RerootSpec;
+    use crate::test_utils::{dates_by_node, reroot_and_fit_clock};
     use eyre::Report;
     use itertools::Itertools;
     use std::collections::{BTreeMap, BTreeSet};
@@ -124,9 +124,8 @@ mod tests {
       let names = nwk_parsed.names.clone();
       let params = ClockParams {
         clock_filter,
-        keep_root,
         allow_negative_rate: false,
-        reroot_spec: RerootSpec::default(),
+        reroot_spec: (!keep_root).then(RerootSpec::default),
       };
       let input = ClockInput {
         graph: nwk_parsed.graph,
@@ -149,21 +148,17 @@ mod tests {
       let graph = nwk_parsed.graph;
       let mut inputs = ClockInputs::new(&graph);
       assign_dates(&graph, &dates, &mut inputs)?;
-      let (tree, result) = estimate_clock_model_with_reroot_policy(
-        ClockTree {
-          graph,
-          branch_lengths: nwk_parsed.branch_lengths,
-          inputs,
-        },
-        &ClockFitParams {
-          outliers: &BTreeSet::new(),
-          clock_rate: None,
-          keep_root: false,
-          reroot_params: &RerootParams::new(RerootSpec::default(), true),
-          prev_clock_rate: None,
-        },
+      let mut tree = ClockTree {
+        graph,
+        branch_lengths: nwk_parsed.branch_lengths,
+        inputs,
+      };
+      let (_, result) = reroot_and_fit_clock(
+        &mut tree,
+        &BTreeSet::new(),
+        None,
+        &RerootParams::new(RerootSpec::default(), true),
         &mut names,
-        &NoopProgress,
       )?;
       let filtered = clock_filter(
         &tree.graph,

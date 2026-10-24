@@ -10,6 +10,7 @@ pub mod reachability;
 pub mod reroot;
 pub mod schedule;
 pub mod schedule_scan;
+pub mod split_fraction;
 pub mod topology_order;
 
 #[cfg(test)]

@@ -1,11 +1,10 @@
-use crate::clock::clock_regression::{
-  ClockFit, ClockFitParams, ClockRerootResult, ClockTree, estimate_clock_model_with_reroot_policy,
-};
+use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
 use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
-use crate::clock::reroot::RerootParams;
 use crate::progress::LogSink;
 use crate::progress_info;
+use crate::reroot::driver::reroot_at_best_root;
+use crate::reroot::params::RerootParams;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
 use eyre::{Report, WrapErr};
@@ -14,6 +13,7 @@ use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
+use treetime_graph::reroot::RerootResult;
 
 pub(crate) fn reroot_tree(
   graph: Graph,
@@ -32,15 +32,24 @@ pub(crate) fn reroot_tree(
     params.reroot_params.force_positive_rate
   );
 
-  let (
-    ClockTree {
+  let DatedFit {
+    tree: ClockTree {
       graph, branch_lengths, ..
     },
-    clock_reroot_result,
-  ) = fit_clock_to_dates(graph, branch_lengths, constraints, &params.fit_params(), names, log)
-    .wrap_err("Failed to estimate clock model with reroot")?;
+    fit,
+    reroot,
+  } = reroot_and_fit_to_dates(
+    graph,
+    branch_lengths,
+    constraints,
+    Some(params.reroot_params),
+    &params.fit_params(),
+    names,
+    log,
+  )
+  .wrap_err("Failed to estimate clock model with reroot")?;
 
-  let branch_model = match clock_reroot_result.reroot_result() {
+  let branch_model = match &reroot {
     Some(reroot) => branch_model.apply_reroot(&graph, &branch_lengths, reroot, log)?,
     None => branch_model,
   };
@@ -49,7 +58,7 @@ pub(crate) fn reroot_tree(
     graph,
     branch_lengths,
     branch_model,
-    clock_fit: clock_reroot_result.into_clock_fit()?,
+    clock_fit: fit.into_clock_fit()?,
   })
 }
 
@@ -66,33 +75,54 @@ impl<'a> RerootFitParams<'a> {
     ClockFitParams {
       outliers: self.outliers,
       clock_rate: self.clock_rate,
-      keep_root: false,
-      reroot_params: self.reroot_params,
       prev_clock_rate: self.prev_clock_rate,
     }
   }
 }
 
-pub(crate) fn fit_clock_to_dates(
+pub(crate) fn reroot_and_fit_to_dates(
   graph: Graph,
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   constraints: &DateConstraints,
+  reroot_params: Option<&RerootParams>,
   params: &ClockFitParams<'_>,
   names: &mut NodeNames,
   log: &dyn LogSink,
-) -> Result<(ClockTree, ClockRerootResult), Report> {
+) -> Result<DatedFit, Report> {
   let times = given_times(&graph, constraints)?;
   let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
-  estimate_clock_model_with_reroot_policy(
-    ClockTree {
-      graph,
-      branch_lengths,
-      inputs,
+  let mut tree = ClockTree {
+    graph,
+    branch_lengths,
+    inputs,
+  };
+  let reroot = match reroot_params {
+    Some(reroot_params) => {
+      let ClockTree {
+        graph,
+        branch_lengths,
+        inputs,
+      } = &mut tree;
+      Some(reroot_at_best_root(
+        graph,
+        branch_lengths,
+        inputs,
+        params.outliers,
+        &reroot_params.clone().with_clock_rate(params.clock_rate),
+        names,
+        log,
+      )?)
     },
-    params,
-    names,
-    log,
-  )
+    None => None,
+  };
+  let fit = fit_clock_model(&tree, params, log)?;
+  Ok(DatedFit { tree, fit, reroot })
+}
+
+pub(crate) struct DatedFit {
+  pub tree: ClockTree,
+  pub fit: ClockFitResult,
+  pub reroot: Option<RerootResult>,
 }
 
 pub(crate) struct RerootedTree {

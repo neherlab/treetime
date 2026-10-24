@@ -8,6 +8,5 @@ mod test_date_constraints;
 mod test_divergence;
 mod test_gaussian;
 mod test_pipeline_errors;
-mod test_reroot;
-mod test_reroot_undated;
+mod test_pipeline_keep_root;
 mod test_rtt;

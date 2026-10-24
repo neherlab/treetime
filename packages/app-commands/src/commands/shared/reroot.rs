@@ -4,7 +4,7 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
+use treetime::reroot::params::{RerootMethod, RerootSpec};
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
@@ -58,6 +58,10 @@ pub enum RerootTarget {
 }
 
 impl RerootTarget {
+  pub fn unless_keep_root(keep_root: bool, reroot: Option<RerootMethod>, outgroup: Vec<String>) -> Option<Self> {
+    (!keep_root).then(|| Self::new(reroot, outgroup))
+  }
+
   pub fn new(reroot: Option<RerootMethod>, outgroup: Vec<String>) -> Self {
     if outgroup.is_empty() {
       Self::Method(reroot.unwrap_or_default())
@@ -106,8 +110,8 @@ mod tests {
   use crate::commands::shared::reroot::{RerootTarget, resolve_outgroup};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use treetime::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use treetime::o;
+  use treetime::reroot::params::{RerootMethod, RerootSpec};
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;

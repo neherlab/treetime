@@ -1,9 +1,8 @@
 #[cfg(test)]
-pub(crate) mod tests {
-  use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-  use crate::clock::reroot::RerootParams;
+mod tests {
   use crate::o;
   use crate::reroot::orchestrate::RerootTopologyParams;
+  use crate::reroot::params::{RerootMethod, RerootParams, RerootSpec};
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use helpers::setup_reroot_test_graph;
@@ -287,20 +286,6 @@ pub(crate) mod tests {
   }
 
   #[test]
-  fn test_reroot_keep_root_leaves_an_undated_stem_in_place() -> Result<(), Report> {
-    let fixture = helpers::setup_stem_graph(&helpers::leaf_dates())?;
-    let nodes_before = fixture.tree.graph.get_nodes().count();
-
-    let (tree, names, result) = helpers::estimate(fixture, true, &RerootParams::default())?;
-
-    assert!(result.is_none());
-    assert_eq!(nodes_before, tree.graph.get_nodes().count());
-    let root_key = tree.graph.get_exactly_one_root()?.key();
-    assert_eq!("STEM", &names[root_key]);
-    Ok(())
-  }
-
-  #[test]
   fn test_reroot_past_a_tip_roots_at_a_new_node_with_a_zero_length_branch_to_the_tip() -> Result<(), Report> {
     let fixture = helpers::setup_tip_past_optimum_graph()?;
 
@@ -340,13 +325,12 @@ pub(crate) mod tests {
     Ok(())
   }
 
-  pub(crate) mod helpers {
-    use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
+  mod helpers {
+    use crate::clock::clock_regression::ClockTree;
     use crate::clock::clock_state::ClockInputs;
-    use crate::clock::reroot::RerootParams;
     use crate::o;
-    use crate::progress::NoopProgress;
-    use crate::test_utils::find_node_key_by_name;
+    use crate::reroot::params::RerootParams;
+    use crate::test_utils::{find_node_key_by_name, reroot_and_fit_clock};
     use eyre::Report;
     use itertools::Itertools;
     use maplit::btreemap;
@@ -381,7 +365,7 @@ pub(crate) mod tests {
         .collect()
     }
 
-    pub(crate) fn leaf_dates() -> BTreeMap<String, f64> {
+    pub(super) fn leaf_dates() -> BTreeMap<String, f64> {
       btreemap! {
         o!("A") => 2013.0,
         o!("B") => 2022.0,
@@ -419,53 +403,24 @@ pub(crate) mod tests {
       fixture: RerootFixture,
       reroot_params: &RerootParams,
     ) -> Result<(ClockTree, NodeNames, RerootResult), Report> {
-      let RerootFixture { tree, mut names } = fixture;
-      let (tree, result) = estimate_clock_model_with_reroot_policy(
-        tree,
-        &ClockFitParams {
-          outliers: &BTreeSet::new(),
-          clock_rate: Some(TIP_PAST_OPTIMUM_RATE),
-          keep_root: false,
-          reroot_params,
-          prev_clock_rate: None,
-        },
+      let RerootFixture { mut tree, mut names } = fixture;
+      let (result, _) = reroot_and_fit_clock(
+        &mut tree,
+        &BTreeSet::new(),
+        Some(TIP_PAST_OPTIMUM_RATE),
+        reroot_params,
         &mut names,
-        &NoopProgress,
       )?;
-      Ok((
-        tree,
-        names,
-        result.reroot_result().cloned().expect("a reroot reports its result"),
-      ))
-    }
-
-    pub(super) fn estimate(
-      fixture: RerootFixture,
-      keep_root: bool,
-      reroot_params: &RerootParams,
-    ) -> Result<(ClockTree, NodeNames, Option<RerootResult>), Report> {
-      let RerootFixture { tree, mut names } = fixture;
-      let (tree, result) = estimate_clock_model_with_reroot_policy(
-        tree,
-        &ClockFitParams {
-          outliers: &BTreeSet::new(),
-          clock_rate: None,
-          keep_root,
-          reroot_params,
-          prev_clock_rate: None,
-        },
-        &mut names,
-        &NoopProgress,
-      )?;
-      Ok((tree, names, result.reroot_result().cloned()))
+      Ok((tree, names, result))
     }
 
     pub(super) fn reroot_with_result(
       fixture: RerootFixture,
       reroot_params: &RerootParams,
     ) -> Result<(ClockTree, NodeNames, RerootResult), Report> {
-      let (tree, names, result) = estimate(fixture, false, reroot_params)?;
-      Ok((tree, names, result.expect("a reroot reports its result")))
+      let RerootFixture { mut tree, mut names } = fixture;
+      let (result, _) = reroot_and_fit_clock(&mut tree, &BTreeSet::new(), None, reroot_params, &mut names)?;
+      Ok((tree, names, result))
     }
 
     pub(super) fn reroot(

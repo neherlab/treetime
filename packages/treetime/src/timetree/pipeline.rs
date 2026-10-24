@@ -7,7 +7,6 @@ use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockTree};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::reroot::RerootParams;
 use crate::clock::rtt::{ClockDateSource, ClockRegressionResult, clock_fit_regression_results};
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::coalescent::population_size::effective_population_size;
@@ -20,6 +19,7 @@ use crate::partition::result::{AlignmentOutcome, AlignmentResult, PartitionResul
 use crate::partition::set::build_partition_set;
 use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
+use crate::reroot::params::RerootParams;
 use crate::seq::sink::{SeqSink, SeqStream};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent::CoalescentOutput;
@@ -34,7 +34,7 @@ use crate::timetree::inference::input_branch_length::input_branch_model;
 use crate::timetree::inference::result::date_branch_lengths;
 use crate::timetree::inference::runner::timetree_branch_lengths;
 use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
-use crate::timetree::optimization::reroot::fit_clock_to_dates;
+use crate::timetree::optimization::reroot::{DatedFit, reroot_and_fit_to_dates};
 use crate::timetree::params::{BranchLengthMode, FinalSequences, TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
 use crate::timetree::refinement_loop::run_refinement_loop;
@@ -228,7 +228,8 @@ fn prepare_inputs(
 ) -> Result<TimetreeContext, OperationError> {
   debug!(
     "Branch length mode: {:?}, Keep root: {}",
-    params.branch_length_mode, params.keep_root
+    params.branch_length_mode,
+    params.reroot_spec.is_none()
   );
 
   let sequence_length = match sequences {
@@ -283,23 +284,33 @@ fn estimate_initial_clock(
   branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   log: &dyn LogSink,
 ) -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>, ClockFit), Report> {
-  let reroot_params = RerootParams::new(params.reroot_spec.clone(), !params.allow_negative_rate);
+  let reroot_params = params
+    .reroot_spec
+    .as_ref()
+    .map(|spec| RerootParams::new(spec.clone(), !params.allow_negative_rate));
   let fit = ClockFitParams {
     outliers: &BTreeSet::new(),
     clock_rate: params.clock_rate,
-    keep_root: params.keep_root,
-    reroot_params: &reroot_params,
     prev_clock_rate: None,
   };
-  let (
-    ClockTree {
+  let DatedFit {
+    tree: ClockTree {
       graph, branch_lengths, ..
     },
-    clock_reroot,
-  ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, log)
-    .wrap_err("Failed to infer clock model")?;
+    fit,
+    ..
+  } = reroot_and_fit_to_dates(
+    graph,
+    branch_lengths,
+    &context.date_constraints,
+    reroot_params.as_ref(),
+    &fit,
+    names,
+    log,
+  )
+  .wrap_err("Failed to infer clock model")?;
   let clock_fit =
-    clock_reroot.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), log))?;
+    fit.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), log))?;
   Ok((graph, branch_lengths, clock_fit))
 }
 

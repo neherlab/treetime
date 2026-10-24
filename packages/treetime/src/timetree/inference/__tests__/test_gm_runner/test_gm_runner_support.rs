@@ -3,10 +3,9 @@ pub(super) mod support {
   use crate::alphabet::alphabet::Alphabet;
   use crate::branch_lengths::branch_lengths_or_zero;
   use crate::clock::clock_model::ClockModel;
-  use crate::clock::clock_regression::{ClockFitParams, ClockTree, estimate_clock_model_with_reroot_policy};
+  use crate::clock::clock_regression::{ClockFitParams, ClockTree, fit_clock_model};
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::date_constraints::{DateConstraints, load_date_constraints};
-  use crate::clock::reroot::RerootParams;
   use crate::coalescent::mean_field::CoalescentPrior;
   use crate::gtr::get_gtr::{JC69Params, jc69};
   use crate::optimize::indel::IndelPolicy;
@@ -175,7 +174,7 @@ pub(super) mod support {
     let case = &OUTPUTS[dataset];
 
     let nwk_parsed = nwk_read(case.rerooted_tree_nwk().as_bytes())?;
-    let mut names = nwk_parsed.names.clone();
+    let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let branch_lengths = nwk_parsed.branch_lengths;
 
@@ -191,28 +190,24 @@ pub(super) mod support {
 
     let times = given_times(&graph, &constraints)?;
     let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
-    let (
-      ClockTree {
-        graph, branch_lengths, ..
-      },
-      clock_reroot,
-    ) = estimate_clock_model_with_reroot_policy(
-      ClockTree {
-        graph,
-        branch_lengths,
-        inputs: clock_estimate_inputs,
-      },
+    let tree = ClockTree {
+      graph,
+      branch_lengths,
+      inputs: clock_estimate_inputs,
+    };
+    let clock_fit = fit_clock_model(
+      &tree,
       &ClockFitParams {
         outliers: &BTreeSet::new(),
         clock_rate: Some(case.clock_rate()),
-        keep_root: true,
-        reroot_params: &RerootParams::default(),
         prev_clock_rate: None,
       },
-      &mut names,
       &NoopProgress,
     )?;
-    let clock_model = clock_reroot.into_clock_fit()?.model;
+    let ClockTree {
+      graph, branch_lengths, ..
+    } = tree;
+    let clock_model = clock_fit.into_clock_fit()?.model;
 
     Ok(MarginalSetup {
       graph,

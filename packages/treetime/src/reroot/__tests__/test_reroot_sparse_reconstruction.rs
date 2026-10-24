@@ -111,6 +111,7 @@ mod tests {
     use crate::partition::marginal::reconstruction::SparseReconstruction;
     use crate::partition::marginal::sparse::reconstruct::parsimony_seq;
     use crate::partition::set::PartitionSet;
+    use crate::reroot::find_root::EdgePoint;
     use crate::reroot::orchestrate::{RerootTopologyParams, apply_root_at_edge};
     use crate::test_utils::{find_edge_key, leaf_seq_inputs};
     use eyre::Report;
@@ -121,6 +122,7 @@ mod tests {
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::reroot::RerootResult;
     use treetime_graph::schedule::GraphSchedule;
+    use treetime_graph::split_fraction::SplitFraction;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, Seq};
 
@@ -162,8 +164,10 @@ mod tests {
         let edge_key = find_edge_key(&self.graph, &self.names, source, target).expect("the tree has the edge");
         let changes = apply_root_at_edge(
           &mut self.graph,
-          Some(edge_key),
-          split,
+          Some(EdgePoint {
+            edge: edge_key,
+            split: SplitFraction::new(split)?,
+          }),
           RerootTopologyParams::default(),
           &mut self.branch_lengths,
           None,

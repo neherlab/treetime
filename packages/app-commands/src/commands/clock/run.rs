@@ -45,9 +45,12 @@ pub fn run_clock(
 
   let params = ClockParams {
     clock_filter: clock_args.clock_filter,
-    keep_root: clock_args.keep_root,
     allow_negative_rate: clock_args.allow_negative_rate,
-    reroot_spec: clock_args.reroot.spec(&graph, &names)?,
+    reroot_spec: clock_args
+      .reroot
+      .as_ref()
+      .map(|reroot| reroot.spec(&graph, &names))
+      .transpose()?,
   };
 
   let input = ClockInput {

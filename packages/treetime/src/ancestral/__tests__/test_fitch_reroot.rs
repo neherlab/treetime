@@ -20,6 +20,7 @@ mod tests {
   use treetime_graph::reroot::{
     RerootResult, apply_reroot_topology, record_split, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
+  use treetime_graph::split_fraction::SplitFraction;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar};
@@ -109,7 +110,7 @@ mod tests {
       &mut graph,
       &mut names,
       edge_ab_a_key,
-      0.5,
+      SplitFraction::MIDDLE,
       branch_lengths[&edge_ab_a_key],
     )?;
     let new_root_key = split_info.new_node_key;
@@ -303,7 +304,7 @@ mod tests {
       &mut graph,
       &mut names,
       edge_ab_a_key,
-      0.5,
+      SplitFraction::MIDDLE,
       branch_lengths[&edge_ab_a_key],
     )?;
     let new_root_key = split_info.new_node_key;
@@ -412,7 +413,7 @@ mod tests {
       &mut graph,
       &mut names,
       edge_ab_a_key,
-      0.5,
+      SplitFraction::MIDDLE,
       branch_lengths[&edge_ab_a_key],
     )?;
     record_split(&mut branch_lengths, &split_info);

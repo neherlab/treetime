@@ -1,10 +1,7 @@
 use crate::branch_lengths::one_mutation;
 use crate::clock::clock_model::ClockModel;
-use crate::clock::clock_regression::{
-  ClockFit, ClockFitParams, ClockRegressionPoint, ClockTree, estimate_clock_model_with_reroot_policy,
-};
+use crate::clock::clock_regression::{ClockFit, ClockFitParams, ClockRegressionPoint, ClockTree, fit_clock_model};
 use crate::clock::clock_state::ClockInputs;
-use crate::clock::reroot::RerootParams;
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_info;
@@ -279,35 +276,28 @@ fn update_clock_model(
   let times = likely_times(&state.graph, &inputs.context.date_constraints, &state.time_inference)?;
   let clock_inputs = ClockInputs::from_times(&state.graph, &times, &edge_inputs);
   let previous_clock_rate = state.clock_model.clock_rate();
-  let keep_root = true;
-  let mut names = state.names;
-  let (
-    ClockTree {
-      graph, branch_lengths, ..
-    },
-    clock_reroot,
-  ) = estimate_clock_model_with_reroot_policy(
-    ClockTree {
-      graph: state.graph,
-      branch_lengths: state.branch_lengths,
-      inputs: clock_inputs,
-    },
+  let tree = ClockTree {
+    graph: state.graph,
+    branch_lengths: state.branch_lengths,
+    inputs: clock_inputs,
+  };
+  let fit = fit_clock_model(
+    &tree,
     &ClockFitParams {
       outliers: inputs.outliers,
       clock_rate,
-      keep_root,
-      reroot_params: &RerootParams::default(),
       prev_clock_rate: Some(previous_clock_rate),
     },
-    &mut names,
     log,
   )
   .wrap_err("Failed to update clock model")?;
-  let ClockFit { model, points } = clock_reroot
-    .into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, log))?;
+  let ClockTree {
+    graph, branch_lengths, ..
+  } = tree;
+  let ClockFit { model, points } =
+    fit.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, log))?;
   Ok(RoundState {
     graph,
-    names,
     branch_lengths,
     clock_model: model,
     clock_points: points,

@@ -7,6 +7,7 @@ mod tests {
     apply_reroot_topology, record_merge, remove_node_if_trivial, split_edge, trivial_node_branch_lengths,
   };
   use treetime_graph::schedule::GraphSchedule;
+  use treetime_graph::split_fraction::SplitFraction;
   use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -26,10 +27,16 @@ mod tests {
       .map(|e| e.key())
       .unwrap();
 
-    let info = split_edge(&mut graph, &mut names, edge_key, 0.25, branch_lengths[&edge_key])?;
+    let info = split_edge(
+      &mut graph,
+      &mut names,
+      edge_key,
+      SplitFraction::new(0.25)?,
+      branch_lengths[&edge_key],
+    )?;
 
     assert_eq!(info.old_edge_key, edge_key);
-    pretty_assert_abs_diff_eq!(info.split_position, 0.25, epsilon = 1e-7);
+    pretty_assert_abs_diff_eq!(info.split_position.value(), 0.25, epsilon = 1e-7);
 
     let parent_bl = info.parent_side_length.unwrap();
     pretty_assert_abs_diff_eq!(parent_bl, 0.15, epsilon = 1e-7);
@@ -60,7 +67,13 @@ mod tests {
       .map(|e| e.key())
       .unwrap();
 
-    let info = split_edge(&mut graph, &mut names, edge_key, 0.5, branch_lengths[&edge_key])?;
+    let info = split_edge(
+      &mut graph,
+      &mut names,
+      edge_key,
+      SplitFraction::MIDDLE,
+      branch_lengths[&edge_key],
+    )?;
 
     let parent_bl = info.parent_side_length.unwrap();
     pretty_assert_abs_diff_eq!(parent_bl, 1.0, epsilon = 1e-7);

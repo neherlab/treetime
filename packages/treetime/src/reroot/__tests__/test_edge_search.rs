@@ -1,12 +1,11 @@
 #[cfg(test)]
 mod tests {
-  use crate::o;
   use crate::pretty_assert_abs_diff_eq;
   use crate::test_utils::half_residual_sum_of_squares;
   use eyre::Report;
   use helpers::{
     NEGATIVE_RATE_DATES, OPTIMAL_ROOT_CD_SPLIT, POSITIVE_RATE_DATES, dates_negative_rate, dates_positive_rate,
-    divs_on_root_ab_edge, divs_on_root_cd_edge, search_root,
+    divs_on_root_ab_edge, divs_on_root_cd_edge, edge_names, search_root,
   };
   use pretty_assertions::assert_eq;
   use treetime_utils::assert_error;
@@ -19,7 +18,7 @@ mod tests {
 
     let search = search_root(&dates_positive_rate(), true, None)?;
 
-    assert_eq!(Some((o!("root"), o!("CD"))), search.split_edge);
+    assert_eq!(Some(edge_names("root", "CD")), search.split_edge);
     pretty_assert_abs_diff_eq!(OPTIMAL_ROOT_CD_SPLIT, search.split, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(
       expected_chisq,
@@ -36,9 +35,9 @@ mod tests {
     let fixed = search_root(&dates_positive_rate(), true, Some(rate))?;
     let estimated = search_root(&dates_positive_rate(), true, None)?;
 
-    assert_eq!(Some((o!("root"), o!("AB"))), fixed.split_edge);
+    assert_eq!(Some(edge_names("root", "AB")), fixed.split_edge);
     pretty_assert_abs_diff_eq!(0.1675, fixed.split, epsilon = 1e-12);
-    assert_eq!(Some((o!("root"), o!("CD"))), estimated.split_edge);
+    assert_eq!(Some(edge_names("root", "CD")), estimated.split_edge);
     let intercept = (0.92 - rate * 8057.0) / 4.0;
     pretty_assert_abs_diff_eq!(
       intercept,
@@ -72,7 +71,7 @@ mod tests {
       "rate should be negative for this test graph, got {:.6e}",
       regression.clock_rate()
     );
-    assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
+    assert_eq!(Some(edge_names("root", "AB")), search.split_edge);
     pretty_assert_abs_diff_eq!(expected_split, search.split, epsilon = 1e-12);
     pretty_assert_abs_diff_eq!(expected_chisq, regression.chisq(), epsilon = 1e-12);
     Ok(())
@@ -84,7 +83,7 @@ mod tests {
 
     let search = search_root(&dates_negative_rate(), true, Some(rate))?;
 
-    assert_eq!(Some((o!("root"), o!("AB"))), search.split_edge);
+    assert_eq!(Some(edge_names("root", "AB")), search.split_edge);
     pretty_assert_abs_diff_eq!(0.225, search.split, epsilon = 1e-12);
     let fit = search.result.into_clock_fit()?;
     let intercept = (0.92 - rate * 8054.0) / 4.0;
@@ -100,13 +99,11 @@ mod tests {
   }
 
   mod helpers {
-    use crate::clock::clock_regression::{
-      ClockFitParams, ClockRerootResult, ClockTree, estimate_clock_model_with_reroot_policy,
-    };
+    use crate::clock::clock_regression::{ClockFitResult, ClockTree};
     use crate::clock::clock_state::ClockInputs;
-    use crate::clock::reroot::RerootParams;
     use crate::o;
-    use crate::progress::NoopProgress;
+    use crate::reroot::params::RerootParams;
+    use crate::test_utils::reroot_and_fit_clock;
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
     use treetime_io::nwk::nwk_read;
@@ -126,9 +123,22 @@ mod tests {
     const ROOT_CD_LENGTH: f64 = 0.05;
 
     pub(super) struct RootSearch {
-      pub result: ClockRerootResult,
-      pub split_edge: Option<(String, String)>,
+      pub result: ClockFitResult,
+      pub split_edge: Option<EdgeNames>,
       pub split: f64,
+    }
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    pub(super) struct EdgeNames {
+      parent: String,
+      child: String,
+    }
+
+    pub(super) fn edge_names(parent: &str, child: &str) -> EdgeNames {
+      EdgeNames {
+        parent: o!(parent),
+        child: o!(child),
+      }
     }
 
     pub(super) fn dates_positive_rate() -> BTreeMap<String, f64> {
@@ -159,12 +169,9 @@ mod tests {
         .get_leaves()
         .map(|node| (node.key(), dates.get(&names[node.key()]).copied()))
         .collect();
-      let edge_names: BTreeMap<_, _> = graph
+      let edge_names_by_key: BTreeMap<_, _> = graph
         .get_edges()
-        .map(|edge| {
-          let name = |key| names[key].to_owned();
-          (edge.key(), (name(edge.source()), name(edge.target())))
-        })
+        .map(|edge| (edge.key(), edge_names(&names[edge.source()], &names[edge.target()])))
         .collect();
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
       let reroot_params = RerootParams {
@@ -172,26 +179,16 @@ mod tests {
         ..RerootParams::default()
       };
 
-      let (_, result) = estimate_clock_model_with_reroot_policy(
-        ClockTree {
-          graph,
-          branch_lengths: nwk_parsed.branch_lengths,
-          inputs,
-        },
-        &ClockFitParams {
-          outliers: &BTreeSet::new(),
-          clock_rate,
-          keep_root: false,
-          reroot_params: &reroot_params,
-          prev_clock_rate: None,
-        },
-        &mut names,
-        &NoopProgress,
-      )?;
-      let edge_split = result.reroot_result().and_then(|reroot| reroot.edge_split.as_ref());
-      let split_edge = edge_split.map(|split| edge_names[&split.old_edge_key].clone());
+      let mut tree = ClockTree {
+        graph,
+        branch_lengths: nwk_parsed.branch_lengths,
+        inputs,
+      };
+      let (reroot, result) = reroot_and_fit_clock(&mut tree, &BTreeSet::new(), clock_rate, &reroot_params, &mut names)?;
+      let edge_split = reroot.edge_split.as_ref();
+      let split_edge = edge_split.map(|split| edge_names_by_key[&split.old_edge_key].clone());
       let split = edge_split
-        .map(|split| split.split_position)
+        .map(|split| split.split_position.value())
         .expect("the root search splits a branch");
       Ok(RootSearch {
         result,

@@ -3,8 +3,6 @@ use crate::clock::clock_model::{ClockModel, ClockRegression};
 use crate::clock::clock_set::ClockSet;
 use crate::clock::clock_state::{ClockEdgeState, ClockInputs, ClockState};
 use crate::clock::divergence::root_to_node_divergences;
-use crate::clock::find_best_root::params::RootObjective;
-use crate::clock::reroot::{RerootParams, reroot_at_best_root};
 use crate::progress::LogSink;
 use crate::progress_info;
 use eyre::Report;
@@ -16,59 +14,25 @@ use std::mem;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
-use treetime_graph::node_names::NodeNames;
-use treetime_graph::reroot::RerootResult;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_utils::make_internal_report;
 
-pub(crate) fn estimate_clock_model_with_reroot_policy(
-  tree: ClockTree,
+pub(crate) fn fit_clock_model(
+  tree: &ClockTree,
   params: &ClockFitParams<'_>,
-  names: &mut NodeNames,
   log: &dyn LogSink,
-) -> Result<(ClockTree, ClockRerootResult), Report> {
+) -> Result<ClockFitResult, Report> {
   let ClockFitParams {
     outliers,
     clock_rate,
-    keep_root,
     prev_clock_rate,
-    ..
   } = *params;
   if let Some(rate) = clock_rate {
-    progress_info!(
-      log,
-      "## Estimating clock model with fixed rate {rate:.6e} (keep_root={keep_root})"
-    );
+    progress_info!(log, "## Estimating clock model with fixed rate {rate:.6e}");
   } else {
-    progress_info!(log, "## Estimating clock model (keep_root={keep_root})");
+    progress_info!(log, "## Estimating clock model");
   }
-
-  let mut tree = tree;
-  let reroot_result = if keep_root {
-    progress_info!(log, "### Keeping original root (--keep-root enabled)");
-    None
-  } else {
-    progress_info!(log, "### Finding best root and rerooting tree");
-    let reroot_params = clock_rate.map_or_else(
-      || params.reroot_params.clone(),
-      |rate| params.reroot_params.with_objective(RootObjective::FixedRate(rate)),
-    );
-    let ClockTree {
-      graph,
-      branch_lengths,
-      inputs,
-    } = &mut tree;
-    Some(reroot_at_best_root(
-      graph,
-      branch_lengths,
-      inputs,
-      outliers,
-      &reroot_params,
-      names,
-      log,
-    )?)
-  };
 
   progress_info!(log, "### Running backward regression");
   let state = clock_regression_backward(
@@ -111,35 +75,28 @@ pub(crate) fn estimate_clock_model_with_reroot_policy(
     progress_info!(log, "**χ²:** {:.4}", reg.chisq());
   }
 
-  Ok((
-    tree,
-    ClockRerootResult {
-      estimate,
-      reroot_result,
-      points,
-      root_clock_set,
-    },
-  ))
+  Ok(ClockFitResult {
+    estimate,
+    points,
+    root_clock_set,
+  })
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct ClockFitParams<'a> {
   pub outliers: &'a BTreeSet<GraphNodeKey>,
   pub clock_rate: Option<f64>,
-  pub keep_root: bool,
-  pub reroot_params: &'a RerootParams,
   pub prev_clock_rate: Option<f64>,
 }
 
 #[derive(Clone, Debug)]
-pub struct ClockRerootResult {
+pub struct ClockFitResult {
   estimate: ClockEstimate,
-  reroot_result: Option<RerootResult>,
   points: Vec<ClockRegressionPoint>,
   root_clock_set: ClockSet,
 }
 
-impl ClockRerootResult {
+impl ClockFitResult {
   pub(crate) fn into_clock_fit(mut self) -> Result<ClockFit, Report> {
     let points = mem::take(&mut self.points);
     Ok(ClockFit {
@@ -180,10 +137,6 @@ impl ClockRerootResult {
       ClockEstimate::Estimated(regression) => Some(regression),
       ClockEstimate::Fixed(_) => None,
     }
-  }
-
-  pub(crate) fn reroot_result(&self) -> Option<&RerootResult> {
-    self.reroot_result.as_ref()
   }
 }
 

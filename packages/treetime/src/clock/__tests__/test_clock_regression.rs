@@ -1,17 +1,15 @@
 #[cfg(test)]
 mod tests {
-  use crate::clock::__tests__::test_reroot::tests::helpers::leaf_dates;
   use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{
-    ClockFitParams, ClockRerootResult, ClockTree, estimate_clock_model_with_reroot_policy,
-  };
+  use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
   use crate::clock::clock_set::ClockSet;
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::divergence::root_to_node_divergences;
-  use crate::clock::reroot::RerootParams;
   use crate::o;
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
+  use crate::reroot::params::RerootParams;
+  use crate::test_utils::reroot_and_fit_clock;
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -87,7 +85,7 @@ mod tests {
     pretty_assert_abs_diff_eq!(rate, model.clock_rate(), epsilon = 1e-15);
     pretty_assert_abs_diff_eq!(expected_intercept, model.intercept(), epsilon = 1e-10);
 
-    let positive = helpers::root_fit(TREE_4, &leaf_dates())?;
+    let positive = helpers::root_fit(TREE_4, &helpers::leaf_dates())?;
     let regression_rate = positive.regression().unwrap().clock_rate();
     let model = positive
       .into_clock_fit_or(|| panic!("the fallback must not be asked for"))?
@@ -113,8 +111,14 @@ mod tests {
 
   #[test]
   fn test_clock_regression_reads_a_missing_branch_length_as_zero() -> Result<(), Report> {
-    let expected = helpers::root_regression("((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &leaf_dates())?;
-    let actual = helpers::root_regression("((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;", &leaf_dates())?;
+    let expected = helpers::root_regression(
+      "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
+      &helpers::leaf_dates(),
+    )?;
+    let actual = helpers::root_regression(
+      "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
+      &helpers::leaf_dates(),
+    )?;
 
     assert_eq!(helpers::regression_bits(&expected), helpers::regression_bits(&actual));
     Ok(())
@@ -124,14 +128,14 @@ mod tests {
   fn test_clock_regression_reroot_reads_a_missing_branch_length_as_zero() -> Result<(), Report> {
     let (_, expected) = helpers::fit(
       "((A:0,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &leaf_dates(),
+      &helpers::leaf_dates(),
       &[],
       false,
       None,
     )?;
     let (_, actual) = helpers::fit(
       "((A,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;",
-      &leaf_dates(),
+      &helpers::leaf_dates(),
       &[],
       false,
       None,
@@ -143,7 +147,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_points_are_root_to_tip_distances_of_the_leaves() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_4, &leaf_dates(), &[], true, None)?;
+    let (_, points) = helpers::fit(TREE_4, &helpers::leaf_dates(), &[], true, None)?;
 
     let expected_rows = vec![
       (o!("A"), Some(2013.0), false),
@@ -159,7 +163,7 @@ mod tests {
 
   #[test]
   fn test_clock_regression_points_use_clock_lengths_when_the_previous_rate_is_given() -> Result<(), Report> {
-    let (_, points) = helpers::fit(TREE_4, &leaf_dates(), &[], true, Some(0.01))?;
+    let (_, points) = helpers::fit(TREE_4, &helpers::leaf_dates(), &[], true, Some(0.01))?;
 
     let (_, divs) = helpers::rows_and_divs(&points);
     pretty_assert_abs_diff_eq!(array![0.6, 0.9, 0.75, 0.51], divs, epsilon = 1e-12);
@@ -211,7 +215,7 @@ mod tests {
   #[test]
   fn test_clock_regression_outliers_are_left_out_of_the_fit() -> Result<(), Report> {
     let (model, _) = helpers::fit(TREE_5, &dates_5(), &["E"], true, None)?;
-    let (model_without_e_date, _) = helpers::fit(TREE_5, &leaf_dates(), &[], true, None)?;
+    let (model_without_e_date, _) = helpers::fit(TREE_5, &helpers::leaf_dates(), &[], true, None)?;
 
     pretty_assert_abs_diff_eq!(model_without_e_date.clock_rate(), model.clock_rate(), epsilon = 1e-12);
     Ok(())
@@ -233,6 +237,15 @@ mod tests {
 
   mod helpers {
     use super::*;
+
+    pub(super) fn leaf_dates() -> BTreeMap<String, f64> {
+      btreemap! {
+        o!("A") => 2013.0,
+        o!("B") => 2022.0,
+        o!("C") => 2017.0,
+        o!("D") => 2005.0,
+      }
+    }
 
     pub(super) fn fit(
       tree: &str,
@@ -256,22 +269,24 @@ mod tests {
         .map(|node| node.key())
         .filter(|key| outlier_names.contains(&&names[*key]))
         .collect();
-      let (_, result) = estimate_clock_model_with_reroot_policy(
-        ClockTree {
-          graph,
-          branch_lengths,
-          inputs,
-        },
-        &ClockFitParams {
-          outliers: &outliers,
-          clock_rate: None,
-          keep_root,
-          reroot_params: &RerootParams::default(),
-          prev_clock_rate,
-        },
-        &mut names,
-        &NoopProgress,
-      )?;
+      let mut tree = ClockTree {
+        graph,
+        branch_lengths,
+        inputs,
+      };
+      let result = if keep_root {
+        fit_clock_model(
+          &tree,
+          &ClockFitParams {
+            outliers: &outliers,
+            clock_rate: None,
+            prev_clock_rate,
+          },
+          &NoopProgress,
+        )?
+      } else {
+        reroot_and_fit_clock(&mut tree, &outliers, None, &RerootParams::default(), &mut names)?.1
+      };
       let fit = result.into_clock_fit()?;
       let points = fit
         .points
@@ -303,14 +318,14 @@ mod tests {
       Ok(root_fit(tree, dates)?.regression().unwrap().clone())
     }
 
-    pub(super) fn root_fit(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRerootResult, Report> {
+    pub(super) fn root_fit(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockFitResult, Report> {
       let nwk_parsed = nwk_read(tree.as_bytes())?;
-      let mut names = nwk_parsed.names.clone();
+      let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
       let times = leaf_times(&names, &graph, dates);
       let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
-      let (_, result) = estimate_clock_model_with_reroot_policy(
-        ClockTree {
+      fit_clock_model(
+        &ClockTree {
           graph,
           branch_lengths: nwk_parsed.branch_lengths,
           inputs,
@@ -318,14 +333,10 @@ mod tests {
         &ClockFitParams {
           outliers: &BTreeSet::new(),
           clock_rate: None,
-          keep_root: true,
-          reroot_params: &RerootParams::default(),
           prev_clock_rate: None,
         },
-        &mut names,
         &NoopProgress,
-      )?;
-      Ok(result)
+      )
     }
 
     pub(super) fn rows_and_divs(

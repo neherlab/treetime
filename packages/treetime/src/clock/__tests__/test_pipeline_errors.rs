@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
   use crate::cancel::NoopCancel;
-  use crate::clock::find_best_root::params::RerootSpec;
   use crate::clock::pipeline::{self, ClockInput, ClockOutput, ClockParams};
   use crate::error::OperationError;
   use crate::progress::NoopProgress;
+  use crate::reroot::params::RerootSpec;
   use crate::test_utils::dates_by_node;
   use eyre::Report;
   use maplit::btreemap;
@@ -34,9 +34,8 @@ mod tests {
     );
     let params = ClockParams {
       clock_filter: 3.0,
-      keep_root: true,
       allow_negative_rate: false,
-      reroot_spec: RerootSpec::default(),
+      reroot_spec: None,
     };
     let input = ClockInput {
       graph: parsed.graph,
@@ -99,9 +98,8 @@ mod tests {
       };
       let params = ClockParams {
         clock_filter,
-        keep_root: false,
         allow_negative_rate: true,
-        reroot_spec: RerootSpec::default(),
+        reroot_spec: Some(RerootSpec::default()),
       };
       let input = ClockInput {
         dates: dates_by_node(dates, &parsed.graph, &names),

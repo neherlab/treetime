@@ -2,6 +2,7 @@ use crate::edge::{GraphEdgeKey, invert_edge};
 use crate::graph::Graph;
 use crate::node::GraphNodeKey;
 use crate::node_names::NodeNames;
+use crate::split_fraction::SplitFraction;
 use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_utils::make_internal_report;
@@ -52,20 +53,20 @@ pub fn split_edge(
   graph: &mut Graph,
   names: &mut NodeNames,
   edge_key: GraphEdgeKey,
-  split_position: f64,
+  split_position: SplitFraction,
   branch_length: Option<f64>,
 ) -> Result<EdgeSplitInfo, Report> {
-  let new_node_key = graph.add_node();
-  names.name_new_node(new_node_key);
-
   let (source_key, target_key) = {
     let edge = &graph[edge_key];
     (edge.source(), edge.target())
   };
 
-  let length = branch_length.unwrap_or_default();
-  let parent_side_length = Some(split_position * length);
-  let child_side_length = Some((1.0 - split_position) * length);
+  let new_node_key = graph.add_node();
+  names.name_new_node(new_node_key);
+
+  let lengths = split_position.lengths(branch_length.unwrap_or_default());
+  let parent_side_length = Some(lengths.parent_side);
+  let child_side_length = Some(lengths.child_side);
 
   let parent_side_edge_key = graph.add_edge(source_key, new_node_key)?;
   let child_side_edge_key = graph.add_edge(new_node_key, target_key)?;
@@ -167,7 +168,7 @@ pub struct EdgeSplitInfo {
   pub child_side_edge_key: GraphEdgeKey,
   pub parent_side_length: Option<f64>,
   pub child_side_length: Option<f64>,
-  pub split_position: f64,
+  pub split_position: SplitFraction,
 }
 
 pub fn record_merge(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, info: &EdgeMergeInfo) {

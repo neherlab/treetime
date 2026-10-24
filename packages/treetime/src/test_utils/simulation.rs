@@ -66,7 +66,6 @@ pub(crate) fn timetree_cell(seed: u64) -> Result<CaseSpec, Report> {
 
 pub(crate) fn timetree_cell_params() -> TimetreeParams {
   TimetreeParams {
-    keep_root: true,
     clock_filter: 0.0,
     max_iter: 2,
     confidence: true,

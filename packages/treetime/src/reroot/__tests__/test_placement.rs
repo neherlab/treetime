@@ -1,11 +1,13 @@
 #[cfg(test)]
 mod tests {
+  use crate::reroot::find_root::EdgePoint;
   use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves, root_moves};
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use helpers::{Expected, edge_fixture, terminal_edge_fixture};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_graph::split_fraction::SplitFraction;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -29,9 +31,10 @@ mod tests {
     #[case] expected: Expected,
   ) -> Result<(), Report> {
     let (graph, edge_key, source_key, target_key) = edge_fixture()?;
+    let split = SplitFraction::new(split)?;
     let expected = expected.root_target(edge_key, source_key, target_key, split);
 
-    let actual = RootTarget::on_edge(&graph, edge_key, split, split_edge)?;
+    let actual = RootTarget::on_edge(&graph, EdgePoint { edge: edge_key, split }, split_edge)?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -54,9 +57,10 @@ mod tests {
     #[case] expected: Expected,
   ) -> Result<(), Report> {
     let (graph, edge_key, source_key, target_key) = terminal_edge_fixture()?;
+    let split = SplitFraction::new(split)?;
     let expected = expected.root_target(edge_key, source_key, target_key, split);
 
-    let actual = RootTarget::on_edge(&graph, edge_key, split, split_edge)?;
+    let actual = RootTarget::on_edge(&graph, EdgePoint { edge: edge_key, split }, split_edge)?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -77,7 +81,12 @@ mod tests {
   ) -> Result<(), Report> {
     let (graph, edge_key, _, _) = edge_fixture()?;
 
-    let actual = root_moves(&graph, Some(edge_key), split, split_edge)?;
+    let point = EdgePoint {
+      edge: edge_key,
+      split: SplitFraction::new(split)?,
+    };
+
+    let actual = root_moves(&graph, Some(point), split_edge)?;
 
     assert_eq!(expected, actual);
     Ok(())
@@ -87,7 +96,7 @@ mod tests {
   fn test_root_moves_without_an_edge_is_false() -> Result<(), Report> {
     let (graph, _, _, _) = edge_fixture()?;
 
-    let actual = root_moves(&graph, None, 0.5, true)?;
+    let actual = root_moves(&graph, None, true)?;
 
     assert!(!actual);
     Ok(())
@@ -141,6 +150,7 @@ mod tests {
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::split_fraction::SplitFraction;
     use treetime_io::nwk::nwk_read;
 
     #[derive(Debug, Clone, Copy)]
@@ -157,13 +167,16 @@ mod tests {
         edge_key: GraphEdgeKey,
         source_key: GraphNodeKey,
         target_key: GraphNodeKey,
-        split: f64,
+        split: SplitFraction,
       ) -> RootTarget {
         match self {
           Self::Source => RootTarget::Node(source_key),
           Self::Target => RootTarget::Node(target_key),
           Self::Split => RootTarget::Split { edge_key, split },
-          Self::LeafEndSplit => RootTarget::Split { edge_key, split: 1.0 },
+          Self::LeafEndSplit => RootTarget::Split {
+            edge_key,
+            split: SplitFraction::CHILD_END,
+          },
         }
       }
     }

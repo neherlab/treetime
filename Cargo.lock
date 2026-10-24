@@ -5273,6 +5273,7 @@ dependencies = [
 name = "treetime-graph"
 version = "1.0.0"
 dependencies = [
+ "approx",
  "ctor",
  "derive_more",
  "deser",

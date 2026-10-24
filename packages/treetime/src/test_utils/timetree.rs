@@ -1,5 +1,4 @@
 use crate::clock::date_constraints::DateConstraints;
-use crate::clock::find_best_root::params::RerootSpec;
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::gtr::get_gtr::{GtrModel, JC69Params};
 use crate::optimize::indel::IndelPolicy;
@@ -82,8 +81,7 @@ pub(crate) fn marginal_timetree_params() -> TimetreeParams {
     partition_rates: PartitionRates::Estimate,
     clock_rate: None,
     clock_std_dev: None,
-    keep_root: true,
-    reroot_spec: RerootSpec::default(),
+    reroot_spec: None,
     allow_negative_rate: false,
     clock_filter: 0.0,
     max_iter: 1,

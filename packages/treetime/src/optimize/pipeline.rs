@@ -1,7 +1,5 @@
 use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
-use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
-use crate::clock::reroot::reroot_undated;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
 use crate::optimize::dispatch::optimize_edge_lengths;
@@ -22,6 +20,8 @@ use crate::partition::result::{
 use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
+use crate::reroot::date_free::reroot_undated;
+use crate::reroot::params::{RerootMethod, RerootSpec};
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
 use eyre::Report;

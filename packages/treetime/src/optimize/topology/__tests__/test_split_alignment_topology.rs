@@ -5,6 +5,7 @@ mod tests {
   use crate::optimize::topology::hoist_reversions::hoist_reverting_child;
   use crate::optimize::topology::merge_shared_mutations::merge_shared_mutation_branches;
   use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
+  use crate::reroot::find_root::EdgePoint;
   use crate::reroot::orchestrate::{RerootTopologyParams, apply_root_at_edge};
   use crate::seq::indel::InDel;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
@@ -13,6 +14,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::reroot::{record_merge, remove_node_if_trivial};
+  use treetime_graph::split_fraction::SplitFraction;
   use treetime_utils::cast::ToF64Exact;
 
   #[test]
@@ -126,8 +128,10 @@ mod tests {
       let edge_key = find_edge_key(&side.graph, &side.names, "X", "A").expect("the tree has the edge");
       let changes = apply_root_at_edge(
         &mut side.graph,
-        Some(edge_key),
-        0.5,
+        Some(EdgePoint {
+          edge: edge_key,
+          split: SplitFraction::MIDDLE,
+        }),
         RerootTopologyParams::default(),
         &mut side.branch_lengths,
         None,
@@ -182,8 +186,10 @@ mod tests {
       let edge_key = find_edge_key(&side.graph, &side.names, "root", "X").expect("the tree has the edge");
       let changes = apply_root_at_edge(
         &mut side.graph,
-        Some(edge_key),
-        1.0,
+        Some(EdgePoint {
+          edge: edge_key,
+          split: SplitFraction::CHILD_END,
+        }),
         RerootTopologyParams::default(),
         &mut side.branch_lengths,
         None,

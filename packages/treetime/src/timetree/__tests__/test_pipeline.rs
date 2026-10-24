@@ -8,6 +8,7 @@ mod tests {
   use crate::partition::result::{AlignmentResult, AlignmentSequences};
   use crate::partition::split::SequenceInput;
   use crate::progress::{NoopProgress, RunWarning, RunWarningKind, StageSink};
+  use crate::reroot::params::RerootSpec;
   use crate::seq::sink::SeqSink;
   use crate::test_utils::{
     RecordingLog, RecordingSeqSink, TestDataset, dates_by_node, find_node_key_by_name, leaf_seq_inputs,
@@ -202,7 +203,7 @@ mod tests {
     let input = helpers::zika_input(&helpers::zika_newick_with_stem()?, helpers::zika_dates()?, false)?;
     let params = TimetreeParams {
       branch_length_mode: BranchLengthMode::Input,
-      keep_root: false,
+      reroot_spec: Some(RerootSpec::default()),
       clock_filter: CLOCK_FILTER_IQD,
       ..marginal_timetree_params()
     };
@@ -223,7 +224,7 @@ mod tests {
   fn test_pipeline_reroot_past_a_tip_dates_the_tip_at_its_input_date() -> Result<(), Report> {
     let params = TimetreeParams {
       branch_length_mode: BranchLengthMode::Input,
-      keep_root: false,
+      reroot_spec: Some(RerootSpec::default()),
       clock_rate: Some(TIP_PAST_OPTIMUM_RATE),
       ..marginal_timetree_params()
     };
@@ -413,7 +414,7 @@ mod tests {
     let sample_names = helpers::leaf_names(&samples.graph, &samples.names);
     let input = helpers::zika_input(&newick, helpers::zika_dates()?, true)?;
     let params = TimetreeParams {
-      keep_root: false,
+      reroot_spec: Some(RerootSpec::default()),
       clock_filter: CLOCK_FILTER_IQD,
       ..marginal_timetree_params()
     };

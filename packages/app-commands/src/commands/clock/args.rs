@@ -36,8 +36,7 @@ pub struct TreetimeClockArgs {
   pub(crate) dates: DatesInput,
   pub(crate) clock_filter: f64,
   pub(crate) allow_negative_rate: bool,
-  pub(crate) reroot: RerootTarget,
-  pub(crate) keep_root: bool,
+  pub(crate) reroot: Option<RerootTarget>,
   pub(crate) topology_order: TopologyOrder,
   pub(crate) outputs: OutputRequest,
 }
@@ -101,8 +100,7 @@ impl TryFrom<TreetimeClockArgsRaw> for TreetimeClockArgs {
       },
       clock_filter,
       allow_negative_rate,
-      reroot: RerootTarget::new(reroot.map(Into::into), outgroup),
-      keep_root,
+      reroot: RerootTarget::unless_keep_root(keep_root, reroot.map(Into::into), outgroup),
       topology_order: clock_topology_order(topology_order)?,
       outputs: clock_outputs(output, output_selection, clock_output, output_rtt_chart),
     })

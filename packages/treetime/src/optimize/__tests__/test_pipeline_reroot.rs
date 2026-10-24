@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
   use crate::cancel::NoopCancel;
-  use crate::clock::find_best_root::params::{RerootMethod, RerootSpec};
   use crate::optimize::pipeline::{OptimizeInput, run};
   use crate::progress::NoopProgress;
+  use crate::reroot::params::{RerootMethod, RerootSpec};
   use crate::test_utils::sequence_source;
   use eyre::Report;
   use helpers::{
@@ -160,7 +160,6 @@ mod tests {
 
   mod helpers {
     use crate::alphabet::alphabet::Alphabet;
-    use crate::clock::find_best_root::params::RerootSpec;
     use crate::gtr::get_gtr::{GtrModel, JC69Params};
     use crate::optimize::indel::IndelPolicy;
     use crate::optimize::params::OptimizeLoopSettings;
@@ -168,6 +167,7 @@ mod tests {
     use crate::optimize::partition_rates::PartitionRates;
     use crate::optimize::pipeline::OptimizeParams;
     use crate::partition::split::SequenceInput;
+    use crate::reroot::params::RerootSpec;
     use crate::seq::alignment::{NodeSeqInput, SequenceSource};
     use crate::test_utils::{TestDataset, leaf_seq_inputs};
     use eyre::Report;

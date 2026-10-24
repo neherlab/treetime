@@ -31,7 +31,6 @@
 "reimplemented_helper:packages/treetime/src/optimize/__tests__/test_initial_guess_gaps.rs" = 2
 "reimplemented_helper:packages/treetime/src/optimize/__tests__/test_newton_convergence/test_newton_convergence_support.rs" = 1
 "reimplemented_helper:packages/treetime/src/prune/__tests__/test_prune.rs" = 1
-"tuple_wants_struct:packages/treetime/src/clock/find_best_root/__tests__/test_find_best_root.rs" = 1
 "tuple_wants_struct:packages/treetime/src/coalescent/coalescent.rs" = 1
 "tuple_wants_struct:packages/treetime/src/gtr/__tests__/test_gm_gtr_site_specific.rs" = 1
 "tuple_wants_struct:packages/treetime/src/optimize/method_brent.rs" = 1
