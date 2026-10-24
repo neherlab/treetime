@@ -3,17 +3,22 @@ use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 use treetime::alphabet::alphabet::Alphabet;
-use treetime::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts};
-use treetime::build::pipeline::{BuildParams, SampleOrder, SearchMode, build_mat, mat_to_tree};
+use treetime::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts, fitch_edge_subs};
+use treetime::build::pipeline::{
+  BuildParams, BuildStats, SampleOrder, SearchMode, build_mat, mat_from_tree, mat_to_tree, refine_mat,
+};
 use treetime::build::references::ReferenceSelection;
+use treetime_graph::graph::Graph;
+use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read_file, nwk_write_file};
-use treetime_primitives::Seq;
+use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::make_error;
 
 struct Args {
   aln: String,
+  flags: BTreeSet<String>,
   order_file: Option<String>,
   tree: Option<String>,
   out: Option<String>,
@@ -31,7 +36,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -64,6 +69,11 @@ fn parse_args() -> Result<Args, Report> {
     aln,
     tree: options.get("tree").cloned(),
     order_file: options.get("order_file").cloned(),
+    flags: options
+      .iter()
+      .filter(|(_, value)| value.as_str() == "true")
+      .map(|(key, _)| key.clone())
+      .collect(),
     out: options.get("out").cloned(),
     params: BuildParams {
       search,
@@ -78,6 +88,100 @@ fn parse_args() -> Result<Args, Report> {
       compare_exhaustive: options.contains_key("compare"),
     },
   })
+}
+
+fn is_nucleotide(state: AsciiChar) -> bool {
+  matches!(u8::from(state), b'A' | b'C' | b'G' | b'T')
+}
+
+fn options_flag(args: &Args, key: &str) -> bool {
+  args.flags.contains(key)
+}
+
+fn site_counts(
+  graph: &Graph,
+  names: &NodeNames,
+  named: &BTreeMap<&str, &Seq>,
+  alphabet: &Alphabet,
+  length: usize,
+) -> Result<Vec<usize>, Report> {
+  let mut counts = vec![0; length];
+  for sub in fitch_edge_subs(graph, names, named, alphabet)?.values().flatten() {
+    counts[sub.pos()] += 1;
+  }
+  Ok(counts)
+}
+
+#[expect(clippy::print_stdout, reason = "the example reports its measurements on stdout")]
+fn report_sites(
+  built: &Graph,
+  built_names: &NodeNames,
+  reference: &Graph,
+  reference_names: &NodeNames,
+  named: &BTreeMap<&str, &Seq>,
+  seqs: &[Seq],
+  alphabet: &Alphabet,
+) -> Result<(), Report> {
+  let length = seqs.first().map_or(0, Seq::len);
+  let built_counts = site_counts(built, built_names, named, alphabet, length)?;
+  let reference_counts = site_counts(reference, reference_names, named, alphabet, length)?;
+  let minor = |pos: usize| {
+    let counts = seqs
+      .iter()
+      .map(|seq| seq[pos])
+      .filter(|&state| is_nucleotide(state))
+      .counts();
+    let total: usize = counts.values().sum();
+    total - counts.values().max().copied().unwrap_or(0)
+  };
+  let missing = |pos: usize| seqs.iter().filter(|seq| !is_nucleotide(seq[pos])).count();
+  let diffs = (0..length)
+    .map(|pos| {
+      (
+        built_counts[pos].cast_signed() - reference_counts[pos].cast_signed(),
+        pos,
+      )
+    })
+    .filter(|&(diff, _)| diff != 0)
+    .collect_vec();
+  let excess: isize = diffs.iter().filter(|(d, _)| *d > 0).map(|(d, _)| d).sum();
+  let deficit: isize = diffs.iter().filter(|(d, _)| *d < 0).map(|(d, _)| -d).sum();
+  println!(
+    "sites_built_more={} excess={excess} sites_reference_more={} deficit={deficit}",
+    diffs.iter().filter(|(d, _)| *d > 0).count(),
+    diffs.iter().filter(|(d, _)| *d < 0).count()
+  );
+  let histogram = diffs.iter().map(|&(d, _)| d.clamp(-3, 3)).counts();
+  println!(
+    "site_difference_histogram={}",
+    histogram.iter().sorted().map(|(d, n)| format!("{d}:{n}")).join(",")
+  );
+  for &(diff, pos) in diffs
+    .iter()
+    .sorted_by_key(|&&(d, p)| (std::cmp::Reverse(d), p))
+    .take(12)
+  {
+    println!(
+      "site={} built={} reference={} diff={diff} minor_allele_count={} missing={}",
+      pos + 1,
+      built_counts[pos],
+      reference_counts[pos],
+      minor(pos),
+      missing(pos)
+    );
+  }
+  let excess_minor: Vec<usize> = diffs.iter().filter(|(d, _)| *d > 0).map(|&(_, p)| minor(p)).collect();
+  let all_minor: Vec<usize> = (0..length).map(minor).filter(|&m| m > 0).collect();
+  let median = |mut values: Vec<usize>| {
+    values.sort_unstable();
+    values.get(values.len().div_euclid(2)).copied().unwrap_or(0)
+  };
+  println!(
+    "median_minor_allele_count excess_sites={} all_variable_sites={}",
+    median(excess_minor),
+    median(all_minor)
+  );
+  Ok(())
 }
 
 fn options_order(args: &Args) -> Result<Option<Vec<String>>, Report> {
@@ -123,7 +227,20 @@ fn main() -> Result<(), Report> {
   println!("samples={} length={}", seqs.len(), seqs.first().map_or(0, Seq::len));
 
   let start = Instant::now();
-  let built = build_mat(&seqs, &alphabet, &args.params)?;
+  let built = match (&args.tree, options_flag(&args, "start_from_reference")) {
+    (Some(path), true) => {
+      let parse = nwk_read_file(path)?;
+      let index: BTreeMap<&str, usize> = names.iter().map(String::as_str).zip(0..).collect();
+      let samples = parse
+        .graph
+        .get_leaves()
+        .map(|leaf| (leaf.key(), index[&parse.names[leaf.key()]]))
+        .collect();
+      let mat = mat_from_tree(parse.graph, samples, &seqs, &alphabet)?;
+      refine_mat(mat, &seqs, &alphabet, &args.params, BuildStats::default())?
+    },
+    _ => build_mat(&seqs, &alphabet, &args.params)?,
+  };
   let elapsed = start.elapsed().as_secs_f64();
   let stats = &built.stats;
   println!(
@@ -190,6 +307,17 @@ fn main() -> Result<(), Report> {
       "reference_fitch_parsimony={reference_fitch} splits_shared={} only_built={} only_reference={}",
       splits.shared, splits.only_first, splits.only_second
     );
+    if options_flag(&args, "sites") {
+      report_sites(
+        &tree.graph,
+        &tree.names,
+        &reference.graph,
+        &reference.names,
+        &named,
+        &seqs,
+        &alphabet,
+      )?;
+    }
   }
   Ok(())
 }

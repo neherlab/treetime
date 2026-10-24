@@ -2,6 +2,7 @@ use crate::alphabet::alphabet::Alphabet;
 use crate::make_error;
 use crate::partition::fitch::passes::create_fitch_partition;
 use crate::seq::alignment::NodeSeqInput;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,6 +18,20 @@ pub fn fitch_edge_counts(
   seqs: &BTreeMap<&str, &Seq>,
   alphabet: &Alphabet,
 ) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
+  Ok(
+    fitch_edge_subs(graph, names, seqs, alphabet)?
+      .into_iter()
+      .map(|(edge, subs)| (edge, subs.len()))
+      .collect(),
+  )
+}
+
+pub fn fitch_edge_subs(
+  graph: &Graph,
+  names: &NodeNames,
+  seqs: &BTreeMap<&str, &Seq>,
+  alphabet: &Alphabet,
+) -> Result<BTreeMap<GraphEdgeKey, Vec<Sub>>, Report> {
   let inputs = graph
     .get_leaves()
     .map(|leaf| {
@@ -38,7 +53,7 @@ pub fn fitch_edge_counts(
     fitch
       .edges
       .iter()
-      .map(|(&edge, obs)| (edge, obs.fitch_subs().len()))
+      .map(|(&edge, obs)| (edge, obs.fitch_subs().to_vec()))
       .collect(),
   )
 }

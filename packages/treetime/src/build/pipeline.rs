@@ -82,7 +82,7 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
     return make_error!("The placement batch size must be positive");
   }
   let reference = consensus(seqs, alphabet)?;
-  let mut queries = encode_queries(seqs, &reference, alphabet);
+  let queries = encode_queries(seqs, &reference, alphabet);
   let order = sample_order(&queries, params.order);
   let mut mat = Mat::new(reference);
   let mut stats = BuildStats::default();
@@ -136,7 +136,31 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
     }
   }
   stats.placement_parsimony = mat.parsimony();
+  refine_mat(mat, seqs, alphabet, params, stats)
+}
 
+pub fn mat_from_tree(
+  graph: Graph,
+  samples: BTreeMap<GraphNodeKey, usize>,
+  seqs: &[Seq],
+  alphabet: &Alphabet,
+) -> Result<Mat, Report> {
+  let root = graph.root_key()?;
+  let reference = consensus(seqs, alphabet)?;
+  fitch_refresh(Mat::from_parts(graph, root, reference, vec![], samples), seqs, alphabet)
+}
+
+pub fn refine_mat(
+  mut mat: Mat,
+  seqs: &[Seq],
+  alphabet: &Alphabet,
+  params: &BuildParams,
+  mut stats: BuildStats,
+) -> Result<BuiltMat, Report> {
+  let mut queries = encode_queries(seqs, mat.reference(), alphabet);
+  if stats.placement_parsimony == 0 {
+    stats.placement_parsimony = mat.parsimony();
+  }
   for _ in 0..params.spr_rounds {
     if params.fitch_refresh {
       mat = fitch_refresh(mat, seqs, alphabet)?;
