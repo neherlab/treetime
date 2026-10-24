@@ -10,7 +10,7 @@ use treetime_utils::{make_error, make_internal_report, make_report};
   reason = "split across files by concern; see graph.rs for the primary impl"
 )]
 impl Graph {
-  pub(crate) fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
+  pub fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
     let node = self
       .get_node(node_key)
       .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))?;
@@ -116,8 +116,8 @@ impl Graph {
   }
 
   pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge, Report> {
-    let (source_key, target_key) = self.edge_endpoints(edge_key)?;
-    for node_key in [source_key, target_key] {
+    let endpoints: [GraphNodeKey; 2] = self.edge_endpoints(edge_key)?.into();
+    for node_key in endpoints {
       if let Some(node) = self.get_node_mut(node_key) {
         node.outbound_mut().retain(|&e| e != edge_key);
         node.inbound_mut().retain(|&e| e != edge_key);
