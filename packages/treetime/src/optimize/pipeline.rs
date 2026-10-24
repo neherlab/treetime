@@ -2,15 +2,11 @@ use crate::branch_lengths::branch_lengths_or_zero;
 use crate::cancel::Cancel;
 use crate::error::OperationError;
 use crate::gtr::get_gtr::GtrModelName;
-use crate::optimize::dispatch::optimize_edge_lengths;
 use crate::optimize::gather::InitialGuessEvidence;
-use crate::optimize::indel::IndelPolicy;
-use crate::optimize::iteration::apply_damping;
+use crate::optimize::params::InitialGuessMode;
 use crate::optimize::params::OptimizeLoopSettings;
-use crate::optimize::params::{BranchOptMethod, InitialGuessMode};
 use crate::optimize::partition_rates::{fix_equal_rates, normalize_partition_rates};
 use crate::optimize::run_loop::{apply_initial_guess_mode, run_optimize_loop};
-use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::alignment_sequences::assemble_sequence_mutations;
 use crate::partition::create::Representation;
 use crate::partition::marginal::reconstruction::ReconstructionRef;
@@ -20,8 +16,8 @@ use crate::partition::result::{
 use crate::partition::set::{PartitionSet, build_partition_set};
 use crate::partition::split::{AlignmentInfo, SequenceInput, SplitInput};
 use crate::progress::{LogSink, StageSink};
-use crate::reroot::date_free::reroot_undated;
-use crate::reroot::params::{RerootMethod, RerootSpec};
+use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
+use crate::reroot::params::RerootSpec;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use crate::{progress_info, progress_warn};
 use eyre::Report;
@@ -30,9 +26,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
-use treetime_utils::{make_internal_error, make_report};
-
-const PRE_REROOT_DAMPING: f64 = 0.75;
+use treetime_utils::make_report;
 
 pub fn run(
   params: &OptimizeParams,
@@ -56,21 +50,10 @@ pub fn run(
   apply_initial_guess(params, &graph, &partitions, &mut branch_lengths, &names, log)
     .map_err(OperationError::classify)?;
 
-  let mut convergence = ConvergenceSummary::default();
   let partitions = match &params.reroot_spec {
     Some(spec) => {
       progress_info!(log, "Rerooting before optimization: {spec:?}");
       stages.report("Rerooting", 0.2, "");
-      let partitions = pre_reroot_optimize(
-        &graph,
-        partitions,
-        params.loop_settings.opt_method,
-        params.loop_settings.indel_policy,
-        &mut branch_lengths,
-        &names,
-        &mut convergence,
-      )
-      .map_err(OperationError::classify)?;
       reroot_optimize(&mut graph, &mut names, spec, partitions, &mut branch_lengths, log)
         .map_err(OperationError::classify)?
     },
@@ -88,8 +71,7 @@ pub fn run(
     log,
   )
   .map_err(OperationError::classify)?;
-  convergence.merge(loop_result.convergence);
-  convergence.report(params.loop_settings.opt_method, log);
+  loop_result.convergence.report(params.loop_settings.opt_method, log);
   let branch_lengths = loop_result.branch_lengths;
 
   progress_info!(log, "Re-running marginal to populate subs_ml after optimization loop");
@@ -135,8 +117,8 @@ fn check_params(params: &OptimizeParams, sequences: &SequenceInput) -> Result<()
     )));
   }
 
-  if let Some(RerootSpec::Method(method)) = &params.reroot_spec
-    && *method != RerootMethod::MinDev
+  if let Some(spec @ RerootSpec::Method(method)) = &params.reroot_spec
+    && spec.uses_dates()
   {
     return Err(OperationError::InvalidParams(make_report!(
       "optimize cannot reroot with a date-dependent method: {method:?}"
@@ -301,36 +283,6 @@ fn partition_mutations(
   })
 }
 
-fn pre_reroot_optimize(
-  graph: &Graph,
-  partitions: PartitionSet,
-  opt_method: BranchOptMethod,
-  indel_policy: IndelPolicy,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-  names: &NodeNames,
-  convergence: &mut ConvergenceSummary,
-) -> Result<PartitionSet, Report> {
-  let old_branch_lengths = branch_lengths.clone();
-
-  let indels = indel_policy.edge_indels(graph, &partitions, branch_lengths)?;
-  let unconverged = optimize_edge_lengths(
-    graph,
-    partitions.total_length(),
-    &partitions,
-    &indels,
-    opt_method,
-    branch_lengths,
-  )?;
-  convergence.record(&unconverged, graph, names);
-
-  apply_damping(branch_lengths, &old_branch_lengths, PRE_REROOT_DAMPING, 0);
-  Ok(
-    partitions
-      .marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?
-      .0,
-  )
-}
-
 fn reroot_optimize(
   graph: &mut Graph,
   names: &mut NodeNames,
@@ -339,10 +291,15 @@ fn reroot_optimize(
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
-  if let RerootSpec::Method(method @ (RerootMethod::LeastSquares | RerootMethod::Oldest)) = spec {
-    return make_internal_error!("optimize cannot reroot with a date-dependent method: {method:?}");
-  }
-  let reroot_result = reroot_undated(graph, names, branch_lengths, spec, log)?;
+  let reroot_result = reroot_date_free(
+    graph,
+    branch_lengths,
+    spec,
+    &|_| false,
+    LengthsAdvice::InitialBranchLengths,
+    names,
+    log,
+  )?;
 
   let partitions = partitions.apply_reroot(&reroot_result)?;
   Ok(

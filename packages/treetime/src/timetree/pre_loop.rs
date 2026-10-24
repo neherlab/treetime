@@ -44,7 +44,7 @@ pub(crate) fn run_pre_loop(
   let state = match &params.reroot_spec {
     None => state,
     Some(spec) => {
-      progress_info!(log, "First reroot (pre-ancestral)");
+      progress_info!(log, "{} (pre-ancestral)", step_label(spec, "First reroot"));
       reroot(inputs, spec, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")?
     },
   };
@@ -67,7 +67,7 @@ pub(crate) fn run_pre_loop(
   let Some(spec) = &params.reroot_spec else {
     return Ok(state);
   };
-  progress_info!(log, "Reroot (post-ancestral)");
+  progress_info!(log, "{} (post-ancestral)", step_label(spec, "Reroot"));
   reroot(inputs, spec, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
@@ -125,6 +125,9 @@ fn reroot(
     outliers: filtered_outliers,
     ..
   } = state;
+  let reroot_params = spec
+    .uses_dates()
+    .then(|| RerootParams::new(spec.clone(), !params.allow_negative_rate));
   let no_outliers = BTreeSet::new();
   let outliers = match outliers {
     RerootOutliers::None => &no_outliers,
@@ -143,7 +146,7 @@ fn reroot(
     &RerootFitParams {
       outliers,
       clock_rate: params.clock_rate,
-      reroot_params: &RerootParams::new(spec.clone(), !params.allow_negative_rate),
+      reroot_params: reroot_params.as_ref(),
       prev_clock_rate: None,
     },
     &mut names,
@@ -157,6 +160,14 @@ fn reroot(
     clock_fit,
     outliers: filtered_outliers,
   })
+}
+
+fn step_label(spec: &RerootSpec, reroot: &'static str) -> &'static str {
+  if spec.uses_dates() {
+    reroot
+  } else {
+    "Clock refit on the root of the date-free method"
+  }
 }
 
 #[derive(Clone, Copy)]

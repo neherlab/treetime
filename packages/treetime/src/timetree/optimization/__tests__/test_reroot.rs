@@ -122,7 +122,7 @@ mod tests {
       &RerootFitParams {
         outliers: &BTreeSet::new(),
         clock_rate: None,
-        reroot_params: &RerootParams::new(RerootSpec::default(), true),
+        reroot_params: Some(&RerootParams::new(RerootSpec::default(), true)),
         prev_clock_rate: None,
       },
       &mut names,
@@ -500,7 +500,7 @@ mod tests {
       &RerootFitParams {
         outliers: &BTreeSet::new(),
         clock_rate: None,
-        reroot_params: &RerootParams::new(RerootSpec::default(), true),
+        reroot_params: Some(&RerootParams::new(RerootSpec::default(), true)),
         prev_clock_rate: None,
       },
       &mut names,
@@ -530,7 +530,7 @@ mod tests {
       &RerootFitParams {
         outliers: &BTreeSet::new(),
         clock_rate: Some(clock_model_1.clock_rate()),
-        reroot_params: &RerootParams::new(RerootSpec::default(), true),
+        reroot_params: Some(&RerootParams::new(RerootSpec::default(), true)),
         prev_clock_rate: None,
       },
       &mut names,

@@ -10,7 +10,8 @@ use crate::clock::rtt::{ClockRegressionResult, gather_clock_regression_results};
 use crate::error::{NoPositiveRateRoot, OperationError};
 use crate::progress::{LogSink, StageSink};
 use crate::progress_warn;
-use crate::reroot::driver::reroot_at_best_root;
+use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
+use crate::reroot::driver::{reroot_at_best_root, update_clock_inputs};
 use crate::reroot::params::{RerootParams, RerootSpec};
 use eyre::{Report, WrapErr};
 use std::collections::{BTreeMap, BTreeSet};
@@ -95,9 +96,12 @@ fn estimate_clock_model_with_prefilter(
   names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<(ClockTree, ClockModel, Option<BTreeSet<GraphNodeKey>>), Report> {
-  let reroot_spec = params.reroot_spec.as_ref();
   let (clock_filter_threshold, allow_negative_rate) = (params.clock_filter, params.allow_negative_rate);
   let mut tree = tree;
+  if let Some(spec) = params.reroot_spec.as_ref().filter(|spec| !spec.uses_dates()) {
+    reroot_clock_tree_date_free(&mut tree, spec, names, log)?;
+  }
+  let reroot_spec = params.reroot_spec.as_ref().filter(|spec| spec.uses_dates());
   let filter_outliers = if clock_filter_threshold > 0.0 {
     let result = reroot_and_fit(&mut tree, reroot_spec, &BTreeSet::new(), true, names, log).map_err(|report| {
       if report.downcast_ref::<NoPositiveRateRoot>().is_some() {
@@ -143,6 +147,30 @@ fn estimate_clock_model_with_prefilter(
   };
   let result = reroot_and_fit(&mut tree, reroot_spec, outliers, !allow_negative_rate, names, log).wrap_err(failure)?;
   Ok((tree, result.into_clock_model_allow_negative(log), filter_outliers))
+}
+
+fn reroot_clock_tree_date_free(
+  tree: &mut ClockTree,
+  spec: &RerootSpec,
+  names: &mut NodeNames,
+  log: &dyn LogSink,
+) -> Result<(), Report> {
+  let ClockTree {
+    graph,
+    branch_lengths,
+    inputs,
+  } = tree;
+  let result = reroot_date_free(
+    graph,
+    branch_lengths,
+    spec,
+    &|key| inputs.likely_time(key).is_some(),
+    LengthsAdvice::OptimizeTheTree,
+    names,
+    log,
+  )?;
+  update_clock_inputs(inputs, &result);
+  Ok(())
 }
 
 fn reroot_and_fit(

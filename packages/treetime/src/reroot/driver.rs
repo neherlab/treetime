@@ -42,12 +42,16 @@ pub(crate) fn reroot_at_best_root(
     |key| inputs.likely_time(key).is_some(),
     names,
   )?;
-  apply_reroot_to_inputs(inputs, &result);
+  update_clock_inputs(inputs, &result);
   progress_info!(log, "Rerooted to {}", &names[result.new_root_key]);
   Ok(result)
 }
 
-fn apply_reroot_to_inputs(inputs: &mut ClockInputs, result: &RerootResult) {
+pub(crate) fn update_clock_inputs(inputs: &mut ClockInputs, result: &RerootResult) {
+  if let Some(stem) = &result.stem_removal {
+    inputs.nodes.remove(&stem.removed_node_key);
+    inputs.edges.remove(&stem.removed_edge_key);
+  }
   if let Some(split) = &result.edge_split {
     inputs.edges.remove(&split.old_edge_key);
     inputs

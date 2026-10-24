@@ -17,8 +17,8 @@ mod tests {
     let nwk_parsed = nwk_read(TREE_NEWICK.as_bytes())?;
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
-    let mut pre_reroot = ConvergenceSummary::default();
-    pre_reroot.record(
+    let mut summary = ConvergenceSummary::default();
+    summary.record(
       &UnconvergedEdges {
         iteration_limit: edges_into(&graph, &names, &["AB", "A"]),
         search_bound: edges_into(&graph, &names, &["C"]),
@@ -26,9 +26,8 @@ mod tests {
       &graph,
       &names,
     );
-    let mut rounds = ConvergenceSummary::default();
-    rounds.record(&UnconvergedEdges::default(), &graph, &names);
-    rounds.record(
+    summary.record(&UnconvergedEdges::default(), &graph, &names);
+    summary.record(
       &UnconvergedEdges {
         iteration_limit: edges_into(&graph, &names, &["A"]),
         search_bound: vec![],
@@ -36,10 +35,9 @@ mod tests {
       &graph,
       &names,
     );
-    pre_reroot.merge(rounds);
     let log = RecordingLog::default();
 
-    pre_reroot.report(BranchOptMethod::Newton, &log);
+    summary.report(BranchOptMethod::Newton, &log);
 
     let expected = vec![RunWarning {
       kind: RunWarningKind::BranchLengthsNotConverged,

@@ -27,13 +27,6 @@ impl ConvergenceSummary {
     self.search_bound.extend(round.search_bound.iter().map(label));
   }
 
-  pub(crate) fn merge(&mut self, other: Self) {
-    self.rounds += other.rounds;
-    self.unconverged_rounds += other.unconverged_rounds;
-    self.iteration_limit.extend(other.iteration_limit);
-    self.search_bound.extend(other.search_bound);
-  }
-
   pub(crate) fn report(&self, method: BranchOptMethod, log: &dyn LogSink) {
     if self.unconverged_rounds == 0 {
       return;

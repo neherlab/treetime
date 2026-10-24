@@ -3,7 +3,7 @@ mod tests {
   use crate::branch_lengths::branch_length_or_zero;
   use crate::clock::divergence::root_to_node_divergences;
   use crate::progress::NoopProgress;
-  use crate::reroot::date_free::reroot_undated;
+  use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
   use crate::reroot::params::{RerootMethod, RerootSpec};
   use eyre::Report;
   use pretty_assertions::assert_eq;
@@ -21,17 +21,19 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_undated_min_dev_roots_a_cherry_at_equal_distances() -> Result<(), Report> {
+  fn test_date_free_min_dev_roots_a_cherry_at_equal_distances() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:0.1,B:0.3)root;".as_slice())?;
     let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    reroot_undated(
+    reroot_date_free(
       &mut graph,
-      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
+      &|_| false,
+      LengthsAdvice::InitialBranchLengths,
+      &mut names,
       &NoopProgress,
     )?;
 
@@ -43,17 +45,19 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_undated_min_dev_places_the_root_at_the_analytic_minimum_of_the_variance() -> Result<(), Report> {
+  fn test_date_free_min_dev_places_the_root_at_the_analytic_minimum_of_the_variance() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:2,C:6)R;".as_slice())?;
     let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    reroot_undated(
+    reroot_date_free(
       &mut graph,
-      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
+      &|_| false,
+      LengthsAdvice::InitialBranchLengths,
+      &mut names,
       &NoopProgress,
     )?;
 
@@ -63,17 +67,19 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_undated_min_dev_keeps_the_root_when_the_optimum_is_within_the_edge_end_band() -> Result<(), Report> {
+  fn test_date_free_min_dev_keeps_the_root_when_the_optimum_is_within_the_edge_end_band() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1,B:1,C:1.000012)R;".as_slice())?;
     let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
     let mut branch_lengths = nwk_parsed.branch_lengths;
 
-    let result = reroot_undated(
+    let result = reroot_date_free(
       &mut graph,
-      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
+      &|_| false,
+      LengthsAdvice::InitialBranchLengths,
+      &mut names,
       &NoopProgress,
     )?;
 
@@ -85,7 +91,7 @@ mod tests {
   }
 
   #[test]
-  fn test_reroot_undated_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
+  fn test_date_free_min_dev_removes_an_undated_stem_before_the_root_search() -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(((A:0.1,B:0.3)X:0.05,C:0.4)R:0.7)STEM;".as_slice())?;
     let mut names = nwk_parsed.names.clone();
     let mut graph = nwk_parsed.graph;
@@ -95,18 +101,22 @@ mod tests {
     let mut unstemmed_graph = unstemmed.graph;
     let mut unstemmed_branch_lengths = unstemmed.branch_lengths;
 
-    let result = reroot_undated(
+    let result = reroot_date_free(
       &mut graph,
-      &mut names,
       &mut branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
+      &|_| false,
+      LengthsAdvice::InitialBranchLengths,
+      &mut names,
       &NoopProgress,
     )?;
-    reroot_undated(
+    reroot_date_free(
       &mut unstemmed_graph,
-      &mut unstemmed_names,
       &mut unstemmed_branch_lengths,
       &RerootSpec::Method(RerootMethod::MinDev),
+      &|_| false,
+      LengthsAdvice::InitialBranchLengths,
+      &mut unstemmed_names,
       &NoopProgress,
     )?;
 

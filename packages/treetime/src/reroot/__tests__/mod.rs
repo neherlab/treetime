@@ -1,4 +1,5 @@
 mod test_date_free;
+mod test_date_free_commands;
 mod test_driver;
 mod test_edge_search;
 mod test_named_node;

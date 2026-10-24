@@ -8,7 +8,7 @@ mod tests {
   use crate::partition::set::PartitionSet;
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
-  use crate::reroot::date_free::reroot_undated;
+  use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
   use crate::reroot::params::RerootSpec;
   use crate::test_utils::leaf_seq_inputs;
   use crate::test_utils::{NUC_ALPHABET, find_node_key_by_name};
@@ -50,11 +50,13 @@ mod tests {
       reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
     let tips = ["A", "B"].map(|name| find_node_key_by_name(&graph, &names, name).expect("tip exists"));
 
-    let reroot = reroot_undated(
+    let reroot = reroot_date_free(
       &mut graph,
-      &mut names,
       &mut branch_lengths,
       &RerootSpec::Tips(tips.to_vec()),
+      &|_| false,
+      LengthsAdvice::InitialBranchLengths,
+      &mut names,
       &NoopProgress,
     )?;
     let (_, log_lh_rerooted) = reconstruction

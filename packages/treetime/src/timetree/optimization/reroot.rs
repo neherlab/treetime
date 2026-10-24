@@ -3,7 +3,8 @@ use crate::clock::clock_state::ClockInputs;
 use crate::clock::date_constraints::DateConstraints;
 use crate::progress::LogSink;
 use crate::progress_info;
-use crate::reroot::driver::reroot_at_best_root;
+use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
+use crate::reroot::driver::{reroot_at_best_root, update_clock_inputs};
 use crate::reroot::params::RerootParams;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
@@ -24,13 +25,15 @@ pub(crate) fn reroot_tree(
   names: &mut NodeNames,
   log: &dyn LogSink,
 ) -> Result<RerootedTree, Report> {
-  progress_info!(
-    log,
-    "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={}",
-    params.reroot_params.topology.split_edge,
-    params.reroot_params.topology.remove_trivial_root,
-    params.reroot_params.force_positive_rate
-  );
+  if let Some(reroot_params) = params.reroot_params {
+    progress_info!(
+      log,
+      "Reroot params: split_edge={}, remove_trivial_root={}, force_positive_rate={}",
+      reroot_params.topology.split_edge,
+      reroot_params.topology.remove_trivial_root,
+      reroot_params.force_positive_rate
+    );
+  }
 
   let DatedFit {
     tree: ClockTree {
@@ -42,7 +45,7 @@ pub(crate) fn reroot_tree(
     graph,
     branch_lengths,
     constraints,
-    Some(params.reroot_params),
+    params.reroot_params,
     &params.fit_params(),
     names,
     log,
@@ -66,7 +69,7 @@ pub(crate) fn reroot_tree(
 pub(crate) struct RerootFitParams<'a> {
   pub outliers: &'a BTreeSet<GraphNodeKey>,
   pub clock_rate: Option<f64>,
-  pub reroot_params: &'a RerootParams,
+  pub reroot_params: Option<&'a RerootParams>,
   pub prev_clock_rate: Option<f64>,
 }
 
@@ -96,22 +99,33 @@ pub(crate) fn reroot_and_fit_to_dates(
     branch_lengths,
     inputs,
   };
+  let ClockTree {
+    graph,
+    branch_lengths,
+    inputs,
+  } = &mut tree;
   let reroot = match reroot_params {
+    Some(reroot_params) if reroot_params.spec.uses_dates() => Some(reroot_at_best_root(
+      graph,
+      branch_lengths,
+      inputs,
+      params.outliers,
+      &reroot_params.clone().with_clock_rate(params.clock_rate),
+      names,
+      log,
+    )?),
     Some(reroot_params) => {
-      let ClockTree {
+      let result = reroot_date_free(
         graph,
         branch_lengths,
-        inputs,
-      } = &mut tree;
-      Some(reroot_at_best_root(
-        graph,
-        branch_lengths,
-        inputs,
-        params.outliers,
-        &reroot_params.clone().with_clock_rate(params.clock_rate),
+        &reroot_params.spec,
+        &|key| inputs.likely_time(key).is_some(),
+        LengthsAdvice::OptimizeTheTree,
         names,
         log,
-      )?)
+      )?;
+      update_clock_inputs(inputs, &result);
+      Some(result)
     },
     None => None,
   };

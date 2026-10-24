@@ -2,6 +2,7 @@ use crate::clock::clock_set::ClockSet;
 use crate::reroot::orchestrate::RerootTopologyParams;
 use crate::reroot::placement::Placement;
 use smart_default::SmartDefault;
+use strum_macros::Display;
 use treetime_graph::node::GraphNodeKey;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -11,6 +12,10 @@ pub enum RerootSpec {
 }
 
 impl RerootSpec {
+  pub(crate) fn uses_dates(&self) -> bool {
+    matches!(self, Self::Method(RerootMethod::LeastSquares | RerootMethod::Oldest))
+  }
+
   pub(crate) fn placement(&self) -> Placement {
     match self {
       Self::Method(RerootMethod::LeastSquares | RerootMethod::MinDev) => Placement::EdgeEndBand,
@@ -25,7 +30,8 @@ impl Default for RerootSpec {
   }
 }
 
-#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SmartDefault, Display)]
+#[strum(serialize_all = "kebab-case")]
 pub enum RerootMethod {
   #[default]
   LeastSquares,

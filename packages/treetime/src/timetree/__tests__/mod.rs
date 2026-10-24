@@ -6,6 +6,7 @@ mod test_dates_outside_input;
 mod test_max_posterior_region;
 mod test_pipeline;
 mod test_pipeline_partitions;
+mod test_pipeline_reroot;
 mod test_posterior_edge_cell;
 mod test_posterior_statistics;
 mod test_pre_loop;
