@@ -134,7 +134,7 @@ mod tests {
 
   #[test]
   fn test_time_passes_tip_with_a_date_range_carries_its_coalescent_factor_in_its_posterior() -> Result<(), Report> {
-    let tip = helpers::CoalescentTip::new(Distribution::range(TIP_RANGE, 0.0))?;
+    let tip = helpers::CoalescentTip::new(Some(Distribution::range(TIP_RANGE, 0.0)))?;
 
     let posterior = tip.posterior()?;
 
@@ -151,8 +151,25 @@ mod tests {
   }
 
   #[test]
+  fn test_time_passes_undated_tip_carries_its_coalescent_factor_in_its_posterior() -> Result<(), Report> {
+    let tip = helpers::CoalescentTip::new(None)?;
+
+    let posterior = tip.posterior()?;
+
+    let distribution = posterior.distribution.as_deref().expect("A must have a posterior");
+    let start = distribution.time_bounds().expect("A must have a support").0;
+    let offset = distribution.eval(start)? - tip.oracle_neglog_density(start)?;
+    for time in distribution.t() {
+      let actual = distribution.eval(time)?;
+      let expected = tip.oracle_neglog_density(time)? + offset;
+      pretty_assert_abs_diff_eq!(expected, actual, epsilon = 1e-9);
+    }
+    Ok(())
+  }
+
+  #[test]
   fn test_time_passes_tip_with_an_exact_date_keeps_a_point_posterior_under_a_coalescent_prior() -> Result<(), Report> {
-    let tip = helpers::CoalescentTip::new(Distribution::point(TIP_DATE, 0.0))?;
+    let tip = helpers::CoalescentTip::new(Some(Distribution::point(TIP_DATE, 0.0)))?;
 
     let posterior = tip.posterior()?;
 
@@ -266,13 +283,15 @@ mod tests {
     }
 
     impl CoalescentTip {
-      pub(super) fn new(tip_constraint: Distribution<NegLog>) -> Result<Self, Report> {
+      pub(super) fn new(tip_constraint: Option<Distribution<NegLog>>) -> Result<Self, Report> {
         let nwk_parsed = nwk_read(b"(A:9,B:7)root;".as_slice())?;
         let names = nwk_parsed.names.clone();
         let graph = nwk_parsed.graph;
         let mut constraints = point_date_constraints(&graph, &names, &[("B", SIBLING_DATE), ("root", ROOT_DATE)]);
         let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");
-        constraints.by_node.insert(key("A"), Some(Arc::new(tip_constraint)));
+        if let Some(tip_constraint) = tip_constraint {
+          constraints.by_node.insert(key("A"), Some(Arc::new(tip_constraint)));
+        }
         let tip_t = Array1::linspace(0.0, 20.0, 2001);
         let tip_y = tip_t.mapv(|t| TIP_BRANCH_DECAY * t);
         let branches = btreemap! {
@@ -305,7 +324,11 @@ mod tests {
       }
 
       pub(super) fn posterior(&self) -> Result<FullPosterior, Report> {
-        let bad_branches = self.graph.get_nodes().map(|node| (node.key(), false)).collect();
+        let bad_branches = derive_bad_branches(
+          &self.graph,
+          &self.constraints,
+          &bad_leaves(&self.graph, &self.constraints, &BTreeSet::new()),
+        )?;
         let backward = propagate_distributions_backward(
           &self.graph,
           &self.constraints,
