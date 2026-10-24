@@ -185,7 +185,6 @@ The stored extension is expensive because its length is the distance from the cr
 
 ## Related
 
-- [H-timetree-backward-messages-too-heavy-far-below-their-peak.md](../issues/H-timetree-backward-messages-too-heavy-far-below-their-peak.md): backward messages far below their peak break the loss bound of the trim
 - [M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md): node dates at the grid argmax move when a grid changes by one point
 - [M-timetree-near-flat-soft-tail-stretches-the-time-grid.md](../issues/M-timetree-near-flat-soft-tail-stretches-the-time-grid.md): a soft tail with a slope near zero puts a mass quantile far outside the grid
 - [M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](../issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md): a narrow branch distribution passes its spacing to the forward product, which then needs millions of points
