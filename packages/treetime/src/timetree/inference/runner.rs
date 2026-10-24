@@ -122,7 +122,7 @@ fn infer_times(
     graph,
     &forward_inputs,
     backward,
-    |key, view| NodePosterior::summarize(key, view, posterior_summaries, bad_branches[&key]),
+    |key, view| NodePosterior::summarize(key, view, posterior_summaries),
     log,
   )?;
 

@@ -112,7 +112,6 @@ impl NodePosterior {
     key: GraphNodeKey,
     view: PosteriorView<'_>,
     summaries: PosteriorSummaries,
-    bad_branch: bool,
   ) -> Result<Self, Report> {
     let distribution = view.distribution.map(Arc::as_ref);
     let region = match (distribution, view.time) {
@@ -121,7 +120,7 @@ impl NodePosterior {
       _ => None,
     };
     let survival = match distribution {
-      Some(distribution) if summaries.lineage_survival && !bad_branch => NodeSurvival::of_posterior(distribution)
+      Some(distribution) if summaries.lineage_survival => NodeSurvival::of_posterior(distribution)
         .wrap_err_with(|| format!("When computing the survival function of node {key}"))?
         .map(Arc::new),
       _ => None,
