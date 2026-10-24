@@ -13,6 +13,7 @@ mod tests {
   use crate::test_utils::dates_by_node;
   use crate::test_utils::find_node_key_by_name;
   use crate::test_utils::leaf_seq_inputs;
+  use crate::test_utils::parent_edge_key;
   use crate::timetree::branch_model::BranchModel;
   use crate::timetree::inference::bad_branches::bad_leaves;
   use crate::timetree::inference::result::PosteriorSummaries;
@@ -38,13 +39,21 @@ mod tests {
     #![proptest_config(ProptestConfig::with_cases(24))]
 
     #[test]
-    fn test_prop_runner_leaf_bad_branch_flags_and_exact_dates_pass_through(case in gen_timetree_case()) {
+    fn test_prop_runner_good_leaves_keep_exact_dates_and_bad_leaves_follow_their_parent(case in gen_timetree_case()) {
       let leaves = run_once(&case).unwrap();
 
       for (name, leaf) in &leaves {
         prop_assert_eq!(leaf.expected_bad, leaf.bad, "bad-branch flag of leaf {}", name);
-        if let Some(date) = leaf.date {
-          prop_assert_eq!(Some(date), leaf.time, "posterior time of exactly dated leaf {}", name);
+        if leaf.bad {
+          prop_assert!(
+            leaf.time >= leaf.parent_time,
+            "bad leaf {} at {:?} must not be dated before its parent at {:?}",
+            name,
+            leaf.time,
+            leaf.parent_time
+          );
+        } else {
+          prop_assert_eq!(leaf.date, leaf.time, "posterior time of exactly dated leaf {}", name);
         }
       }
     }
@@ -129,6 +138,7 @@ mod tests {
       pub bad: bool,
       pub date: Option<f64>,
       pub time: Option<f64>,
+      pub parent_time: Option<f64>,
     }
 
     pub(super) fn run_once(case: &TimetreeCase) -> Result<BTreeMap<String, LeafOutcome>, Report> {
@@ -201,6 +211,7 @@ mod tests {
               bad: inference.bad_branches[&key],
               date: given_dates[&name],
               time: inference.posterior[&key].time,
+              parent_time: inference.posterior[&graph[parent_edge_key(&graph, key)].source()].time,
             };
             (name, outcome)
           })

@@ -12,16 +12,16 @@ mod tests {
   use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
   use crate::timetree::inference::result::{BranchLikelihood, NodeBackward};
   use eyre::Report;
-  use treetime_graph::key_map::NodeMap;
-
+  use maplit::btreeset;
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
-
+  use rstest::rstest;
   use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::NodeMap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
@@ -68,6 +68,35 @@ mod tests {
       subtree_support: None,
     };
     assert_eq!(expected, posterior[&fixture.key("N")]);
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::exact_date(Distribution::point(2003.0, 0.0))]
+  #[case::date_range(Distribution::range((2003.0, 2004.0), 0.0))]
+  #[trace]
+  fn test_time_passes_flagged_tip_takes_the_parent_message_instead_of_its_date(
+    #[case] flagged_date: Distribution<NegLog>,
+  ) -> Result<(), Report> {
+    let mut fixture = helpers::Fixture::new()?;
+    fixture.set_point_branch("B", BRANCH_MEAN);
+    let mut constraints = fixture.dated(&[("A", 2011.0), ("C", 2010.5), ("P", 2008.0)]);
+    constraints.by_node.insert(fixture.key("B"), Some(Arc::new(flagged_date)));
+    let outliers = btreeset! { fixture.key("B") };
+
+    let (bad_branches, backward, posterior) = fixture.run_with_outliers(&constraints, None, &outliers)?;
+
+    assert!(bad_branches[&fixture.key("B")], "a flagged tip is a bad branch");
+    assert_eq!(None, backward[&fixture.key("B")].subtree);
+    let expected = FullPosterior {
+      distribution: Some(Arc::new(Distribution::point(2008.0 + BRANCH_MEAN, 0.0))),
+      likely_time: Some(2008.0 + BRANCH_MEAN),
+      time: Some(2008.0 + BRANCH_MEAN),
+      contradicted: false,
+      subtree_support: None,
+    };
+    assert_eq!(expected, posterior[&fixture.key("B")]);
     Ok(())
   }
 
@@ -211,6 +240,8 @@ mod tests {
     use treetime_graph::keymap;
     use treetime_graph::node_names::NodeNames;
 
+    pub(super) type PassOutputs = (NodeMap<bool>, NodeMap<NodeBackward>, NodeMap<FullPosterior>);
+
     pub(super) struct Fixture {
       pub(super) graph: Graph,
       pub(super) names: NodeNames,
@@ -259,11 +290,20 @@ mod tests {
         &self,
         constraints: &DateConstraints,
         coalescent: Option<&CoalescentPrior>,
-      ) -> Result<(NodeMap<bool>, NodeMap<NodeBackward>, NodeMap<FullPosterior>), Report> {
+      ) -> Result<PassOutputs, Report> {
+        self.run_with_outliers(constraints, coalescent, &BTreeSet::new())
+      }
+
+      pub(super) fn run_with_outliers(
+        &self,
+        constraints: &DateConstraints,
+        coalescent: Option<&CoalescentPrior>,
+        outliers: &BTreeSet<GraphNodeKey>,
+      ) -> Result<PassOutputs, Report> {
         let bad_branches = derive_bad_branches(
           &self.graph,
           constraints,
-          &bad_leaves(&self.graph, constraints, &BTreeSet::new()),
+          &bad_leaves(&self.graph, constraints, outliers),
         )?;
         let backward = propagate_distributions_backward(
           &self.graph,
@@ -276,6 +316,7 @@ mod tests {
         let forward_inputs = ForwardPassInputs {
           constraints,
           coalescent,
+          bad_branches: &bad_branches,
           names: &self.names,
           branches: &self.branches,
           max_points: MaxGridPoints::default(),
@@ -357,6 +398,7 @@ mod tests {
         let forward_inputs = ForwardPassInputs {
           constraints: &self.constraints,
           coalescent: Some(&self.prior),
+          bad_branches: &bad_branches,
           names: &self.names,
           branches: &self.branches,
           max_points: MaxGridPoints::default(),

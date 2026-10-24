@@ -2,6 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_warn;
+use crate::timetree::inference::bad_branches::applied_date_constraint;
 use crate::timetree::inference::coalescent_factor::apply_leaf_coalescent_factor;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodeBackward, PosteriorView, TimeDistribution, likely_time_of_node,
@@ -89,11 +90,12 @@ where
     let ForwardPassInputs {
       constraints,
       coalescent,
+      bad_branches,
       names,
       branches,
       max_points,
     } = *self.inputs;
-    let date_constraint = constraints.date_constraint(key);
+    let date_constraint = applied_date_constraint(constraints, key, bad_branches[&key]);
     let NodeBackward { subtree, to_parent } = backward;
     let parent_edge = self.schedule.parents(key).first().map(|&(_, edge_key)| ParentEdge {
       branch: &branches[&edge_key],
@@ -156,6 +158,7 @@ where
 pub(crate) struct ForwardPassInputs<'a> {
   pub constraints: &'a DateConstraints,
   pub coalescent: Option<&'a CoalescentPrior>,
+  pub bad_branches: &'a NodeMap<bool>,
   pub names: &'a NodeNames,
   pub branches: &'a EdgeMap<BranchLikelihood>,
   pub max_points: MaxGridPoints,

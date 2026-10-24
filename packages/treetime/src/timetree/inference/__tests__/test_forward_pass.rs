@@ -771,6 +771,7 @@ mod tests {
 
     pub(super) struct ForwardInputs {
       pub constraints: DateConstraints,
+      pub bad_branches: NodeMap<bool>,
       pub branches: EdgeMap<BranchLikelihood>,
       pub backward: NodeMap<NodeBackward>,
     }
@@ -779,6 +780,7 @@ mod tests {
       pub(super) fn new(graph: &Graph) -> Self {
         Self {
           constraints: DateConstraints::default(),
+          bad_branches: graph.get_nodes().map(|node| (node.key(), false)).collect(),
           branches: unknown_branches(graph),
           backward: graph
             .get_nodes()
@@ -830,6 +832,7 @@ mod tests {
       ForwardPassInputs {
         constraints: &inputs.constraints,
         coalescent: None,
+        bad_branches: &inputs.bad_branches,
         names,
         branches: &inputs.branches,
         max_points: MaxGridPoints::default(),

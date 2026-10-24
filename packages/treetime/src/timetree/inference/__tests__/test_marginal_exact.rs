@@ -211,6 +211,7 @@ mod tests {
       let forward_inputs = ForwardPassInputs {
         constraints: &constraints,
         coalescent: None,
+        bad_branches: &bad_branches,
         names: &names,
         branches: &branches,
         max_points: MaxGridPoints::default(),
@@ -341,6 +342,7 @@ mod tests {
       let forward_inputs = ForwardPassInputs {
         constraints: &constraints,
         coalescent: None,
+        bad_branches: &bad_branches,
         names: &names,
         branches: &branches,
         max_points: MaxGridPoints::default(),

@@ -113,6 +113,7 @@ fn infer_times(
   progress_info!(log, "## Propagating distributions forward");
   let forward_inputs = ForwardPassInputs {
     constraints: date_constraints,
+    bad_branches: &bad_branches,
     coalescent,
     names,
     branches: &branches,

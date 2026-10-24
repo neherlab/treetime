@@ -1,5 +1,6 @@
 use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::mean_field::CoalescentPrior;
+use crate::timetree::inference::bad_branches::applied_date_constraint;
 use crate::timetree::inference::coalescent_factor::{apply_coalescent_prior, apply_leaf_coalescent_factor};
 use crate::timetree::inference::result::{BranchLikelihood, NodeBackward, TimeDistribution};
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
@@ -65,7 +66,7 @@ impl BackwardPass<'_> {
       branches,
       max_points,
     } = *self;
-    let date_constraint = constraints.date_constraint(key);
+    let date_constraint = applied_date_constraint(constraints, key, bad_branch);
     let n_children = schedule.children(key).len();
     let messages = messages.into_iter().flatten().collect_vec();
     let distribution = combine_child_messages(&messages, max_points)?;

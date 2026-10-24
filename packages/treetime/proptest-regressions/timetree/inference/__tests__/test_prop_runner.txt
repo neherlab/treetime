@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d1c674a47c571acdb6c9fc26709e0e605fd028526efe2e83115eefe24b1ffb7a # shrinks to case = TimetreeCase { newick: "((L5:0.018476555979256834,((L0:0.016752475241825028,L1:0.006333013407162375):0.01556470484968168,L3:0.005108126079030679):0.0028224854060706437):0.013721204512213788,(L4:0.019993295532796225,L2:0.010966686598174607):0.003859925376190785)root;", fasta: ">L0\nCATTCGGAGTGGCACTTCGTAGTT\n>L1\nCCTGATAATTCCTCCCTTGGGTGT\n>L2\nTTCGATAAAGGGTTGAATGCAAAG\n>L3\nATCTGCGCTGGGGCCATGTGAATG\n>L4\nATATTGATAAGCTGAGACTATGGG\n>L5\nGTGGAGTTCCGAGCTCAGCGGAGG\n", dates: [("L0", Some(2005.6430443305846)), ("L1", Some(2011.6625506154571)), ("L2", Some(2007.9646610937564)), ("L3", None), ("L4", Some(2009.4280793904325)), ("L5", None)], outliers: ["L3", "L4", "L5"] }
