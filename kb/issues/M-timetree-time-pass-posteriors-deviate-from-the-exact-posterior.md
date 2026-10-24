@@ -1,4 +1,4 @@
-# Time-pass posteriors deviate from the exact posterior by up to 2.9e-3 in CDF
+# Time-pass posteriors on long branches keep a CDF error of 2.5e-4 that more grid points do not remove
 
 Without a coalescent prior, the marginal time inference is exact message passing on a tree, so its node posteriors should match the exact posterior up to the discretization of the passes. `test_marginal_exact_time_passes_match_the_integrated_posterior_without_a_prior` [packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L36-L70) compares them on `((A,B)X,C)R` with tips at 2012, 2010 and 2011, JC69 branches of 1000 sites with known substitution counts, and an oracle that integrates the exact joint density on a 0.005-year grid. Each case asserts its own limit per node.
 
@@ -21,17 +21,22 @@ Largest CDF difference per case and node to the oracle of the test, with the tra
 
 The trapezoid rule makes no case worse: it removes most of the error at node R with mixed counts and with zero counts near the tips, and lowers node R with both tips at zero from $3.7 \cdot 10^{-3}$ to $2.9 \cdot 10^{-3}$. The limits of node R with mixed counts and with zero counts near the tips fail with rectangle sums.
 
+Refining the message grid (`GRID_POINTS` 300, 600, 900; 2026-10-24) separates two kinds of difference:
+
+| Case | Node | 300 | 600 | 900 |
+| --- | --- | --- | --- | --- |
+| both tips at zero | R | $2.93 \cdot 10^{-3}$ | $5.5 \cdot 10^{-4}$ | $2.65 \cdot 10^{-4}$ |
+| long branches | X | $2.2 \cdot 10^{-4}$ | $1.5 \cdot 10^{-4}$ | $1.4 \cdot 10^{-4}$ |
+| long branches | R | $2.5 \cdot 10^{-4}$ | $2.5 \cdot 10^{-4}$ | $2.5 \cdot 10^{-4}$ |
+
+- **Both tips at zero**: the difference falls by 5.3 and 11 times, at least the factors 4 and 9 of second order. This is the accepted second-order error of the default grid ([discretization error of the default grid](../decisions/distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid))
+- **Long branches**: the difference stays at about $2.5 \cdot 10^{-4}$ at node R. A narrower mass window (`EPS` $5 \cdot 10^{-4}$ to $5 \cdot 10^{-5}$) does not lower it either ($3.1 \cdot 10^{-4}$)
+
 > [!IMPORTANT]
-> **Investigation required.** Which part of the discretization of the time passes causes the remaining differences, the largest at node R with both tips at zero ($2.9 \cdot 10^{-3}$), where both tip branches have zero counts and the subtree density of X jumps from zero to its maximum at the date of B. Candidates:
->
-> - the end cells of the trapezoid convolution at the hard edges of zero-count branch distributions, which jump from zero to their peak at length 0
-> - the 300-point messages and their mass windows (their error in the log marginal likelihood is second order: [discretization error of the default grid](../decisions/distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid))
-> - the uniform branch grid ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md))
->
-> Refine one at a time and record how the difference to the converged oracle changes.
+> **Investigation required.** The source of the floor of about $2.5 \cdot 10^{-4}$ on the long-branch case, which neither the message grid nor the mass window sets. Candidates: the range or the uniform spacing of the branch grid ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md)), and the end cells of the trapezoid convolution at hard edges ([M-distribution-fft-convolution-hard-edge-first-order-error.md](M-distribution-fft-convolution-hard-edge-first-order-error.md)). Refine the branch grid alone and record how the difference changes.
 
 The mean-field test of the same file ([packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112](../../packages/treetime/src/timetree/inference/__tests__/test_marginal_exact.rs#L77-L112)) measures up to $1.62 \cdot 10^{-2}$ against the exact Kingman posterior (node X, overlapping clades, strong prior). Halving the step of its 0.02-year oracle changes the oracle CDFs by $1.1 \cdot 10^{-5}$ to $7.1 \cdot 10^{-4}$, and the differences change by less than $5 \cdot 10^{-4}$ against the finer oracle, so the oracle does not explain them. They are the error of the mean-field approximation together with the discretization ([M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md](M-timetree-marginal-node-posteriors-miscalibrated-at-low-signal.md)).
 
 ## Validation
 
-Each remaining difference falls below `1e-4` against the second-order oracle of the test, and the test passes with a limit of `1e-4` on every case and node. Then its `TODO` lines go away.
+The long-branch difference falls with the grid at second order, or its source is found and accepted. The limits of the test then follow the second-order error of the default grid, and its `TODO` lines go away.

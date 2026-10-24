@@ -1,4 +1,4 @@
-# Node data `date` string can differ by one day at year-fraction boundaries
+# Node data `date` string can differ by one day at year-fraction boundaries (IO)
 
 The per-node `date` field in timetree node data JSON is the `"YYYY-MM-DD"` string produced from each node's `numdate` by `year_fraction_to_datestring()` [packages/app-output/src/augur_node_data_refine.rs#L128](../../packages/app-output/src/augur_node_data_refine.rs#L128). At year-fraction values just below a day boundary $k/365$ (or $k/366$), the conversion gives the day before the one that v0, and therefore augur, reports from the same `numdate`.
 

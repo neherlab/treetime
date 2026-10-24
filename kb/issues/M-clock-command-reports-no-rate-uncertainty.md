@@ -9,7 +9,7 @@
 jq '.stats' tmp/clock/flu/h3n2/20/clock.clock-model.json
 ```
 
-The statistics hold `chisq` and `r_val` only. `treetime timetree` on the same data with `--alignment` writes `stats.estimated.rate_std` (2.91e-4). Giving `clock` the alignment changes nothing, because `clock` does not read it.
+The statistics hold `chisq` and `r_val` only. `treetime timetree` on the same data with `--alignment` writes `stats.estimated.rate_std` (2.91e-4). `clock` has no `--alignment` flag.
 
 ## v0
 
@@ -20,7 +20,7 @@ The statistics hold `chisq` and `r_val` only. `treetime timetree` on the same da
 
 - The clock model of a regression carries no standard deviation: `fn ClockModel::from_regression_unchecked()` sets `rate_std: None` ([packages/treetime/src/clock/clock_model.rs#L73-L83](../../packages/treetime/src/clock/clock_model.rs#L73-L83))
 - Only `timetree` runs the Gaussian timetree and attaches its standard deviation to the clock model ([packages/treetime/src/timetree/pipeline.rs#L375-L379](../../packages/treetime/src/timetree/pipeline.rs#L375-L379))
-- The Gaussian timetree needs the sequence length (`fn GaussianTree::new()` [packages/treetime/src/clock/gaussian.rs#L32-L41](../../packages/treetime/src/clock/gaussian.rs#L32-L41)). `clock` has none: `--sequence-length` was removed together with `--covariation`, and `clock` accepts `--alignment` without reading it ([packages/app-commands/src/commands/shared/alignment.rs#L33-L37](../../packages/app-commands/src/commands/shared/alignment.rs#L33-L37); `fn run_clock()` [packages/app-commands/src/commands/clock/run.rs#L24-L93](../../packages/app-commands/src/commands/clock/run.rs#L24-L93))
+- The Gaussian timetree needs the sequence length (`fn GaussianTree::new()` [packages/treetime/src/clock/gaussian.rs#L32-L41](../../packages/treetime/src/clock/gaussian.rs#L32-L41)). `clock` has none: `--sequence-length` was removed together with `--covariation`, and `clock` has no `--alignment` flag (`fn run_clock()` [packages/app-commands/src/commands/clock/run.rs#L24-L93](../../packages/app-commands/src/commands/clock/run.rs#L24-L93))
 - Decision text without the restriction to `timetree`: [kb/decisions/clock-ordinary-least-squares-regression.md#L3-L5](../decisions/clock-ordinary-least-squares-regression.md#L3-L5) and the v0 divergence "Rate uncertainty" ([kb/decisions/clock-ordinary-least-squares-regression.md#L166-L167](../decisions/clock-ordinary-least-squares-regression.md#L166-L167)). The paragraph "Rate uncertainty" ([kb/decisions/clock-ordinary-least-squares-regression.md#L49-L57](../decisions/clock-ordinary-least-squares-regression.md#L49-L57)) ties the value to an estimated rate and to `--confidence`, which only `timetree` has
 
 > [!IMPORTANT]

@@ -1,4 +1,7 @@
-# Timetree panics on negative numdate during date-string conversion
+# Date-string output panics on a negative numdate (IO, not inference)
+
+This is an output defect: time inference completes and the numeric dates are valid; only their conversion to calendar strings fails.
+
 
 `year_fraction_to_date()` panics when `year_fraction` is negative (dates before 1 CE). The function uses `f64::fract()`, which preserves the sign, and feeds the result into `std::time::Duration::from_secs_f64()`, which rejects negative values.
 
@@ -13,14 +16,9 @@ treetime timetree --tree=data/zika/20/tree.nwk --metadata=data/zika/20/metadata.
   --alignment=data/zika/20/aln.fasta.xz --clock-rate=1e-6 --output-all=<dir>
 ```
 
-The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command. Without a fixed rate, the `timetree/lassa/L/200/basic` case panics the same way:
+The `timetree/zika/20/clock-rate-1e-6` row of `dev/smoke.toml` runs this command (it still panics on `rust` of 2026-10-24).
 
-```bash
-treetime timetree --tree=data/lassa/L/200/tree.nwk --metadata=data/lassa/L/200/metadata.tsv \
-  --alignment=data/lassa/L/200/aln.fasta.xz --metadata-id-columns=accession --output-all=<dir>
-```
-
-The clock filter marks 7 tips dated 2009 to 2017 as outliers, with apparent dates between 1589 and 1758. The written clock model has rate $1.18 \cdot 10^{-4}$ and intercept $0.119$, so the regression line reaches zero divergence near the year $-1000$, and the panic comes from the augur node data writer (`fn refine_dates()` calling `year_fraction_to_datestring()`).
+An earlier reproduction without a fixed rate, the default run of `data/lassa/L/200` (root near the year $-1000$), no longer reaches the writer with a negative date: `--branch-length-mode auto` (9bc74ac83) now resolves to input mode on that tree, and the run completes with the root at 1081.78.
 
 Panics with: `cannot convert float seconds to Duration: value is negative`
 
@@ -65,8 +63,8 @@ The `date` field is cosmetic -- `augur export v2` reads the numeric `numdate`, n
 
 ### C -- separate question (not the crash)
 
-Whether a root near the year $-1000$ for `lassa/L/200` is faithful to the clock inference of v0 or a v1 clock or extrapolation parity defect. Needs a separate comparison. The crash fix must not mask this.
+Whether the root near the year $-1000$ that `lassa/L/200` had in marginal mode is faithful to the clock inference of v0 or a v1 clock or extrapolation parity defect. Needs a separate comparison. The crash fix must not mask this.
 
 ## Related issues
 
-- [N-timetree-node-data-date-string-fp-boundary.md](N-timetree-node-data-date-string-fp-boundary.md) -- ±1-day rounding in the same `date` field (distinct from this panic)
+- [N-io-node-data-date-string-fp-boundary.md](N-io-node-data-date-string-fp-boundary.md) -- ±1-day rounding in the same `date` field (distinct from this panic)

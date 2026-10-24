@@ -13,6 +13,9 @@ v0 and v1 apply the skyline coalescent prior at different points of the refineme
 - No skyline step runs after the loop
 - The early convergence exit applies in skyline mode as in every other mode (`fn TimetreeOptimizer::next_iter()` [packages/treetime/src/timetree/convergence/optimizer.rs#L35](../../packages/treetime/src/timetree/convergence/optimizer.rs#L35)), so a skyline run can stop before `max_iter` with a skyline fitted to times that v0 would have refined further
 
+- Smoothing strength: the skyline objective adds a penalty on $z_i = \ln T_{c,i}$ with stiffness $s$ (default 2 in both versions), $\frac{s}{2} \sum_i (z_{i+1} - z_i)^2$ in v1 (`fn skyline_cost()` in `packages/treetime/src/coalescent/skyline.rs`) and $s \sum_i (z_{i+1} - z_i)^2$ in v0 ([packages/legacy/treetime/treetime/merger_models.py#L312](../../packages/legacy/treetime/treetime/merger_models.py#L312)), so v1 smooths half as strongly at the same default. [kb/decisions/coalescent-skyline-convex-log-tc.md](../decisions/coalescent-skyline-convex-log-tc.md) does not record the factor. On simulated data with known $T_c$ the v1 skyline is nearly unbiased (`keep-skyline-fixed`, $L = 10^4$, 30 runs on 2026-10-24: mean log bias +0.023, band coverage 0.97)
+- Shape of $T_c$: v1 is piecewise constant on equal-width segments; v0 interpolates between evenly spaced points ([packages/legacy/treetime/treetime/merger_models.py#L305](../../packages/legacy/treetime/treetime/merger_models.py#L305))
+
 ## Impact
 
 For datasets where the skyline shape deviates from a constant $T_c$, the intermediate node times differ from v0 because each v1 round already conditions on the skyline. A skyline run that converges early performs fewer iterations than v0, so final node times and the fitted skyline may differ.
