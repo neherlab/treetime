@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts};
+  use crate::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts, missed_splits};
   use crate::build::mat::Mat;
   use crate::build::pipeline::{BuildParams, BuiltMat, SampleOrder, SearchMode, build_mat, mat_to_tree};
   use crate::build::query::Query;
@@ -325,6 +325,39 @@ mod tests {
     assert_eq!(
       (eccentricity[&root], eccentricity[&long], eccentricity[&short]),
       (2, 3, 3)
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_missed_splits_report_one_tip_moved_by_one_branch() -> Result<(), Report> {
+    let reference = treetime_io::nwk::nwk_read(b"((((A,B),C),D),(E,F));".as_slice())?;
+    let built = treetime_io::nwk::nwk_read(b"((((A,C),B),D),(E,F));".as_slice())?;
+    let ones = |graph: &Graph| {
+      graph
+        .get_edges()
+        .map(|edge| (edge.key(), 1))
+        .collect::<BTreeMap<_, _>>()
+    };
+    let (reference_counts, built_counts) = (ones(&reference.graph), ones(&built.graph));
+    let missed = missed_splits(
+      &TreeWithCounts {
+        graph: &built.graph,
+        names: &built.names,
+        edge_counts: &built_counts,
+      },
+      &TreeWithCounts {
+        graph: &reference.graph,
+        names: &reference.names,
+        edge_counts: &reference_counts,
+      },
+    )?;
+    assert_eq!(missed.len(), 1);
+    assert!(missed[0].conflicting);
+    assert_eq!(missed[0].side, 2);
+    assert_eq!(
+      missed[0].misplaced.iter().map(|tip| tip.branches).collect_vec(),
+      vec![1]
     );
     Ok(())
   }
