@@ -108,6 +108,50 @@ Observations:
 - The MAT treats ambiguity codes as missing data and Fitch treats them as state sets, so an SPR move that gains one substitution on the MAT can be undone by the next refresh. The loop stops when a round brings no net gain
 - The remaining excess over the reference trees, and the lower number of informative splits than the reference trees, point to missing moves of sibling groups that share substitutions. The `optimize` command's shared-mutation merge (`fn merge_shared_mutation_branches()`) does such moves on the sparse reconstruction
 
+## Why the maximum-likelihood trees were more parsimonious
+
+Two diagnostics on the real datasets:
+
+- **The builder's SPR started from the reference tree** (`start_from_reference`) improves the Fitch score by at most 12 substitutions (`sc2/4500`: 26,175 to 26,163; `flu/h3n2/500` and `lassa/L/500`: no change). The reference trees are local optima of the builder's moves, and the built trees are worse local optima: the difference comes from the search, not from the objective
+- **Per site** (`sites`), the extra substitutions of the built trees sit at sites that already change often: the median minor-allele count of these sites is 36 against 2 for all variable sites on `sc2/4500`, and 124 against 8 on `rsv/a/2000`. On `lassa/L/500` the excess is spread over 2207 sites with 1 to 3 substitutions each, the signature of a different arrangement deep in the tree
+
+The two moves of the `optimize` command, merging siblings that share a substitution and hoisting a child that reverts its parent edge, are single-subtree moves that the exhaustive SPR already finds. What single-subtree SPR cannot do is to change several subtrees and their internal states at once.
+
+## Local rebuilds
+
+For every internal node, the ball of radius $r$ branches is cut out of the MAT. Its uppermost node becomes the local root; the nodes at distance $r$ and the samples inside the ball become pseudo-leaves with their current states; the interior is rebuilt by exhaustive placement in 4 orders, each followed by SPR, and replaces the old interior when it needs fewer substitutions. Balls with more than 24 pseudo-leaves (48 for $r = 5$) are skipped.
+
+### Simulated data with a known tree
+
+The data of `validation/` (v0 simulator: Kingman coalescent, random GTR without rate variation among sites, 10,000 sites, replicates 0 and 1 of the constant-size schedule). `data` has 400 tips, `data_n30` 1200; the messy sets add gaps, ambiguity codes, and runs of N. The divergence from the consensus is 0.6, 2.0, 5.7, and 15.6% for $\mu$ = 0.0003, 0.001, 0.003, and 0.01. Recall and precision are those of the informative splits of the true tree (internal edges with at least one Fitch substitution); the score difference is that of the Fitch scores of the built and the true tree.
+
+| Set | $\mu$ | Without rebuild: score difference / recall / precision | Rebuild $r = 3$: score difference / recall / precision / time (s) |
+| --- | --- | --- | --- |
+| `data` | 0.0003 | 0.00% / 1.000 / 1.000 | 0.00% / 1.000 / 1.000 / 0.3 |
+| `data` | 0.003 | +1.57% / 0.991 / 0.991 | −0.01% / 1.000 / 0.997 / 1.2 |
+| `data` | 0.01 | +0.18% / 0.980 / 0.979 | 0.00% / 0.989 / 0.983 / 2.7 |
+| `data_messy` | 0.003 | +0.16% / 0.985 / 0.991 | −0.01% / 0.999 / 0.994 / 1.3 |
+| `data_messy` | 0.01 | +0.60% / 0.950 / 0.968 | +0.02% / 0.988 / 0.984 / 2.6 |
+| `data_n30` | 0.01 | +0.03% / 0.993 / 0.992 | −0.01% / 0.995 / 0.993 / 4.9 |
+| `data_n30_messy` | 0.01 | +0.55% / 0.962 / 0.980 | −0.01% / 0.994 / 0.992 / 5.8 |
+
+With rebuilds of radius 3, the built trees reach the score of the true tree within 0.05% in all 16 sets (the others are not shown). The outlier without rebuild (`data`, $\mu$ = 0.003, replicate 0) had only 4 and 6 differing splits but 248 extra substitutions, a misplaced large clade. Radius 5 gives the same results at 2 to 4 times the time.
+
+### Real data
+
+| Dataset | Reference tree | Without rebuild | Rebuild $r = 3$ (time, s) | Rebuild $r = 5$ (time, s) |
+| --- | --- | --- | --- | --- |
+| `flu/h3n2/500` | 1507 | 1515 (+0.5%) | 1507 (0.0%, 0.1) | |
+| `rsv/a/2000` | 42,268 | 42,470 (+0.5%) | 42,279 (+0.03%, 10) | |
+| `dengue/2000` | 55,018 | 55,673 (+1.2%) | 55,114 (+0.17%, 22) | |
+| `sc2/4500` | 26,175 | 26,342 (+0.6%) | 26,268 (+0.36%, 26) | 26,247 (+0.28%, 39) |
+| `mpox/clade-ii/2000` | 5562 | 5599 (+0.7%) | 5592 (+0.5%, 32) | 5578 (+0.29%, 37) |
+| `lassa/L/500` | 75,263 | 78,478 (+4.3%) | 77,525 (+3.0%, 18) | 77,231 (+2.6%, 94) |
+
+On `sc2/4500` and `mpox/clade-ii/2000` about a third of the balls of radius 5 exceed the size limit because of large polytomies. On `lassa/L/500`, five insertion orders end between 76,853 and 77,810, all 2 to 3.4% above the reference tree: every start reaches a different local optimum of similar quality.
+
+The simulations reach the true tree even at 15.6% divergence, while `lassa/L/500` does not reach the reference tree. Neither the v0 nor the v1 simulator varies the substitution rate among sites. Rate variation concentrates homoplasy at fast sites and makes the parsimony landscape rough, so simulated data with gamma-distributed site rates is needed to test the builder on Lassa-like data.
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -134,7 +178,7 @@ Consequences:
 - **No separate initial-topology method.** Placement starts from the root and one sample, so the statement "Placement cannot build the first tree" of [feat-tree-infer.md](feat-tree-infer.md) does not hold for a MAT rooted at a reference sequence
 - **Exact placement first, heuristics later.** Branch-and-bound makes exact placement affordable at 10^3 to 10^4 samples. Centroid starts belong to a later stage for 10^5 samples and more, as a seed of the bound and with a fallback, not as a replacement of the exact search
 - **Fitch refresh as a pipeline step.** The existing Fitch pass improves the builder's internal states and should run between rearrangement rounds; its full-sequence memory cost makes the mutation-first representation a prerequisite for large genomes
-- **Stronger SPR.** Subtree moves need state sets at the subtree root, moves of sibling groups, and a treatment of ambiguity codes that agrees with Fitch
+- **Local rebuilds.** Rebuilding balls of radius 3 reaches the score of the true tree on simulated data and closes most of the gap to the reference trees on real data, except Lassa. Subtree moves with state sets at the subtree root and a treatment of ambiguity codes that agrees with Fitch remain to be tried
 - **Dating in the acceptance criteria.** Parsimony and split agreement do not detect the backbone differences that change the clock estimates
 - **Graph operations.** `fn Graph.remove_edge()` and `fn Graph.remove_node()` scanned all nodes or edges and now take time proportional to the degree. `fn Graph.add_edge()` still checks all children of the source for a duplicate edge, which is linear in the size of a polytomy
 
@@ -154,4 +198,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site.
