@@ -254,6 +254,8 @@ The built Newick trees run through `treetime clock` and `treetime timetree` unch
 
 (`treetime clock` without the clock filter.) With the same outgroup root, the median root-to-tip distance of a tip differs from that in the reference tree by +24 substitutions when the samples with the fewest missing sites are placed first, and by −12 substitutions when the oldest samples are placed first. The parsimony scores of the two built trees differ by 9 substitutions. In the first order, most placed samples are from 2025 and 2026, and the early lineages join a backbone built around them; pairs of substitution and reversion on that backbone lengthen every root-to-tip path through it at almost no parsimony cost. Least-squares rerooting then picks a different root.
 
+With the later builder (state sets, random insertion order, rebuilds of radius 3; Fitch score 26,250), the outgroup-rooted estimates agree with the reference tree: clock rate 9.95e-4, root date 2019.80, r = 0.962, and a median root-to-tip difference of −2 substitutions, although 1364 of 5100 tips differ by more than 5. Least-squares rerooting still gives 7.4e-4 and 2019.01. Collapsing the branches without mutations of the reference tree (`treetime prune --collapse-empty`) leaves its least-squares estimate unchanged (9.1e-4, 2019.81), so the polytomies of the built tree do not explain the difference; the least-squares root responds to the tips whose root-to-tip distances differ.
+
 Consequences:
 
 - Insertion order changes the dating more than it changes the parsimony score. Date order, which [feat-tree-infer.md](feat-tree-infer.md) proposes, is the better default, but it did not reproduce the reference clock estimates either
