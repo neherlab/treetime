@@ -1,24 +1,13 @@
 #[cfg(test)]
 mod tests {
-  use crate::branch_lengths::branch_length_or_zero;
-  use crate::clock::divergence::root_to_node_divergences;
   use crate::progress::NoopProgress;
   use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
   use crate::reroot::params::{RerootMethod, RerootSpec};
   use eyre::Report;
+  use helpers::root_to_tip_distances;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_abs_diff_eq;
-
-  fn root_to_tip_distances(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
-    let divergences = root_to_node_divergences(graph, |key| branch_length_or_zero(branch_lengths, key)).unwrap();
-    let mut distances: Vec<f64> = graph.get_leaves().map(|leaf| divergences[&leaf.key()]).collect();
-    distances.sort_by(f64::total_cmp);
-    distances
-  }
 
   #[test]
   fn test_date_free_min_dev_roots_a_cherry_at_equal_distances() -> Result<(), Report> {
@@ -126,5 +115,27 @@ mod tests {
     let actual = root_to_tip_distances(&graph, &branch_lengths);
     pretty_assert_abs_diff_eq!(expected.as_slice(), actual.as_slice(), epsilon = 1e-12);
     Ok(())
+  }
+
+  mod helpers {
+    use crate::branch_lengths::branch_length_or_zero;
+    use crate::clock::divergence::root_to_node_divergences;
+    use itertools::Itertools;
+    use ordered_float::OrderedFloat;
+    use std::collections::BTreeMap;
+    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::graph::Graph;
+
+    pub(super) fn root_to_tip_distances(
+      graph: &Graph,
+      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    ) -> Vec<f64> {
+      let divergences = root_to_node_divergences(graph, |key| branch_length_or_zero(branch_lengths, key)).unwrap();
+      graph
+        .get_leaves()
+        .map(|leaf| divergences[&leaf.key()])
+        .sorted_by_key(|&distance| OrderedFloat(distance))
+        .collect()
+    }
   }
 }
