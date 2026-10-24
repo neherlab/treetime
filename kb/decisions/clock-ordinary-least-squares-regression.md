@@ -26,7 +26,7 @@ following an unpublished derivation and reference scripts of the maintainers (`r
 - Gaussian timetree: `struct GaussianTree` [packages/treetime/src/clock/gaussian.rs#L16-L29](../../packages/treetime/src/clock/gaussian.rs#L16-L29), built by `fn GaussianTree::new()`
   [packages/treetime/src/clock/gaussian.rs#L32-L103](../../packages/treetime/src/clock/gaussian.rs#L32-L103); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L105-L133](../../packages/treetime/src/clock/gaussian.rs#L105-L133);
   closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L135-L142](../../packages/treetime/src/clock/gaussian.rs#L135-L142); callers `fn timetree_gaussian_clock()`
-  [packages/treetime/src/timetree/init.rs#L139-L167](../../packages/treetime/src/timetree/init.rs#L139-L167) and `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L169-L185](../../packages/treetime/src/timetree/init.rs#L169-L185)
+  [packages/treetime/src/timetree/init.rs#L156-L184](../../packages/treetime/src/timetree/init.rs#L156-L184) and `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L186-L210](../../packages/treetime/src/timetree/init.rs#L186-L210)
 
 ## Decision
 
@@ -62,7 +62,8 @@ final clock line.
 The Gaussian timetree approximates the time inference of TreeTime <a id="cite-1"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[1](#ref-1)]
 at a given clock rate by Gaussian <a id="gloss-use-1"></a>messages <sup>[1](#gloss-1)</sup>. v1 uses it for the rate and
 root-time uncertainty, for the internal-node marginals that start the timetree loop, and for a start rate when the
-root-to-tip regression gives no positive rate. The formulas follow the unpublished derivation of the maintainers.
+root-to-tip regression gives no positive rate or one below a tenth of the mean root-to-tip divergence per year of
+sampling ([timetree-start-rate-falls-back-below-a-divergence-floor.md](timetree-start-rate-falls-back-below-a-divergence-floor.md)). The formulas follow the unpublished derivation of the maintainers.
 Like the least-squares dating of LSD <a id="cite-2"></a>[To et al. 2016](https://doi.org/10.1093/sysbio/syv068) [[2](#ref-2)], it is a normal
 approximation of the Poisson molecular clock of <a id="cite-3"></a>[Langley and Fitch 1974](https://doi.org/10.1007/BF01797451) [[3](#ref-3)]. LSD
 puts the normal error on the branch length, with variance $(b + c/L)/L$ for a branch length $b$ and a smoothing
