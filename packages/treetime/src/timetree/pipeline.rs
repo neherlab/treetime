@@ -298,8 +298,10 @@ fn estimate_initial_clock(
     clock_reroot,
   ) = fit_clock_to_dates(graph, branch_lengths, &context.date_constraints, &fit, names, log)
     .wrap_err("Failed to infer clock model")?;
-  let clock_fit =
-    clock_reroot.into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), log))?;
+  let floor = clock_reroot.signal_rate_floor();
+  let clock_fit = clock_reroot.into_clock_fit_or(floor, || {
+    gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), floor, log)
+  })?;
   Ok((graph, branch_lengths, clock_fit))
 }
 

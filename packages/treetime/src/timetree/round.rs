@@ -303,8 +303,9 @@ fn update_clock_model(
     log,
   )
   .wrap_err("Failed to update clock model")?;
-  let ClockFit { model, points } = clock_reroot
-    .into_clock_fit_or(|| gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, log))?;
+  let ClockFit { model, points } = clock_reroot.into_clock_fit_or(0.0, || {
+    gaussian_start_rate(&graph, &branch_lengths, inputs.context, inputs.outliers, 0.0, log)
+  })?;
   Ok(RoundState {
     graph,
     names,

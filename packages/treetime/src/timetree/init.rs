@@ -188,15 +188,23 @@ pub(crate) fn gaussian_start_rate(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   context: &TimetreeContext,
   outliers: &BTreeSet<GraphNodeKey>,
+  min_rate: f64,
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
+  let regression = if min_rate > 0.0 {
+    format!(
+      "The root-to-tip regression gives a clock rate of at most {min_rate:.6e}, a tenth of the mean root-to-tip divergence per year of sampling"
+    )
+  } else {
+    "The root-to-tip regression gives no positive clock rate".to_owned()
+  };
   let excluded = bad_leaves(graph, &context.date_constraints, outliers);
   let rate = gaussian_tree(graph, branch_lengths, context, &excluded)
     .and_then(|tree| tree.rate())
-    .wrap_err("The root-to-tip regression gives no positive clock rate, and the Gaussian timetree none either")?;
+    .wrap_err_with(|| format!("{regression}, and the Gaussian timetree gives no positive rate either"))?;
   progress_warn!(
     log,
-    "The root-to-tip regression gives no positive clock rate; starting from the rate of the Gaussian timetree, {rate:.6e}"
+    "{regression}; starting from the rate of the Gaussian timetree, {rate:.6e}"
   );
   Ok(rate)
 }
