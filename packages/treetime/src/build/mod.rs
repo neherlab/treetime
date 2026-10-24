@@ -6,7 +6,6 @@ pub mod placement;
 pub mod query;
 pub mod references;
 pub(crate) mod refresh;
-pub(crate) mod regions;
 pub mod spr;
 
 #[cfg(test)]

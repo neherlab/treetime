@@ -42,43 +42,71 @@ pub fn default_lbi_tau(mat: &Mat) -> f64 {
   radius.max(1).to_f64_exact() / mat.samples().len().to_f64_exact().ln().max(1.0)
 }
 
-pub fn eccentricities(mat: &Mat, blocked: &BTreeSet<GraphEdgeKey>) -> BTreeMap<GraphNodeKey, usize> {
-  let preorder = mat.preorder();
-  let open_children = |node: GraphNodeKey| {
-    mat
-      .children(node)
-      .filter(|(_, edge)| !blocked.contains(edge))
-      .map(|(child, edge)| (child, mat.edge_subs(edge).len()))
-  };
-  let mut down: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
-  for &node in preorder.iter().rev() {
-    let depth = open_children(node)
-      .map(|(child, length)| length + down[&child])
-      .max()
-      .unwrap_or(0);
-    down.insert(node, depth);
-  }
-  let mut up: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
-  up.insert(mat.root(), 0);
-  for &node in &preorder {
-    let branches = open_children(node)
-      .map(|(child, length)| (length + down[&child], child))
-      .sorted_by_key(|&(reach, child)| (Reverse(reach), child))
-      .collect_vec();
-    for (child, edge) in mat.children(node) {
-      let reach = if blocked.contains(&edge) {
-        0
-      } else {
-        let sibling = branches
-          .iter()
-          .find(|&&(_, other)| other != child)
-          .map_or(0, |&(reach, _)| reach);
-        mat.edge_subs(edge).len() + up[&node].max(sibling)
-      };
-      up.insert(child, reach);
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Reaches {
+  down: BTreeMap<GraphNodeKey, usize>,
+  up: BTreeMap<GraphNodeKey, usize>,
+}
+
+impl Reaches {
+  pub fn new(mat: &Mat, blocked: &BTreeSet<GraphEdgeKey>) -> Self {
+    let preorder = mat.preorder();
+    let open_children = |node: GraphNodeKey| {
+      mat
+        .children(node)
+        .filter(|(_, edge)| !blocked.contains(edge))
+        .map(|(child, edge)| (child, mat.edge_subs(edge).len()))
+    };
+    let mut down: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
+    for &node in preorder.iter().rev() {
+      let depth = open_children(node)
+        .map(|(child, length)| length + down[&child])
+        .max()
+        .unwrap_or(0);
+      down.insert(node, depth);
     }
+    let mut up: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
+    up.insert(mat.root(), 0);
+    for &node in &preorder {
+      let branches = open_children(node)
+        .map(|(child, length)| (length + down[&child], child))
+        .sorted_by_key(|&(reach, child)| (Reverse(reach), child))
+        .collect_vec();
+      for (child, edge) in mat.children(node) {
+        let reach = if blocked.contains(&edge) {
+          0
+        } else {
+          let sibling = branches
+            .iter()
+            .find(|&&(_, other)| other != child)
+            .map_or(0, |&(reach, _)| reach);
+          mat.edge_subs(edge).len() + up[&node].max(sibling)
+        };
+        up.insert(child, reach);
+      }
+    }
+    Self { down, up }
   }
-  preorder.iter().map(|node| (*node, down[node].max(up[node]))).collect()
+
+  pub fn below(&self, node: GraphNodeKey) -> Option<usize> {
+    self.down.get(&node).copied()
+  }
+
+  pub fn above(&self, node: GraphNodeKey) -> Option<usize> {
+    self.up.get(&node).copied()
+  }
+
+  pub fn eccentricities(&self) -> BTreeMap<GraphNodeKey, usize> {
+    self
+      .down
+      .iter()
+      .map(|(&node, &down)| (node, down.max(self.up.get(&node).copied().unwrap_or(0))))
+      .collect()
+  }
+}
+
+pub fn eccentricities(mat: &Mat, blocked: &BTreeSet<GraphEdgeKey>) -> BTreeMap<GraphNodeKey, usize> {
+  Reaches::new(mat, blocked).eccentricities()
 }
 
 fn long_branch_centers(mat: &Mat, cuts: usize) -> Vec<GraphNodeKey> {

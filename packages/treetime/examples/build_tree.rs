@@ -10,7 +10,6 @@ use treetime_graph::schedule::GraphSchedule;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read_file, nwk_write_file};
 use treetime_primitives::Seq;
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
 
 struct Args {
@@ -32,7 +31,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|regions] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -53,7 +52,7 @@ fn parse_args() -> Result<Args, Report> {
       slack: get("slack", "1").parse()?,
       exact: options.contains_key("exact"),
     },
-    "regions" => SearchMode::Regions { references },
+    "references" => SearchMode::FromReferences { references },
     other => return make_error!("Unknown search mode '{other}'"),
   };
   let order = match get("order", "missing").as_str() {
@@ -128,19 +127,13 @@ fn main() -> Result<(), Report> {
   let elapsed = start.elapsed().as_secs_f64();
   let stats = &built.stats;
   println!(
-    "build_seconds={elapsed:.2} placement_parsimony={} final_parsimony={} replaced_in_batch={} visited={} references={} certified={} collapsed={}",
+    "build_seconds={elapsed:.2} placement_parsimony={} final_parsimony={} replaced_in_batch={} visited={} references={} collapsed={}",
     stats.placement_parsimony,
     stats.final_parsimony,
     stats.replaced_in_batch,
     stats.visited,
     stats.references,
-    stats.certified,
     stats.collapsed_edges
-  );
-  println!(
-    "mean_global_diffs={:.1} mean_local_diffs={:.1}",
-    stats.global_diffs.to_f64_exact() / seqs.len().max(1).to_f64_exact(),
-    stats.local_diffs.to_f64_exact() / seqs.len().max(1).to_f64_exact()
   );
   for (round, spr) in stats.spr.iter().enumerate() {
     println!(

@@ -1,11 +1,10 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::build::insert::{Insertee, insert};
 use crate::build::mat::Mat;
-use crate::build::placement::{Placement, Target, place_exhaustive, place_greedy};
+use crate::build::placement::{Placement, Target, place_exhaustive, place_from, place_greedy};
 use crate::build::query::Query;
-use crate::build::references::{ReferenceSelection, select_references};
+use crate::build::references::{Reaches, ReferenceSelection, select_references};
 use crate::build::refresh::fitch_refresh;
-use crate::build::regions::Regions;
 use crate::build::spr::{SprStats, spr_round};
 use crate::make_error;
 use eyre::Report;
@@ -28,7 +27,7 @@ pub enum SearchMode {
     slack: usize,
     exact: bool,
   },
-  Regions {
+  FromReferences {
     references: ReferenceSelection,
   },
 }
@@ -67,9 +66,6 @@ pub struct BuildStats {
   pub replaced_in_batch: usize,
   pub visited: usize,
   pub references: usize,
-  pub certified: usize,
-  pub global_diffs: usize,
-  pub local_diffs: usize,
   pub comparison: Option<ExhaustiveComparison>,
   pub spr: Vec<SprStats>,
   pub collapsed_edges: usize,
@@ -86,7 +82,6 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
     return make_error!("The placement batch size must be positive");
   }
   let reference = consensus(seqs, alphabet)?;
-  let polymorphic = polymorphic_sites(seqs, alphabet);
   let mut queries = encode_queries(seqs, &reference, alphabet);
   let order = sample_order(&queries, params.order);
   let mut mat = Mat::new(reference);
@@ -98,29 +93,19 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
   insert(&mut mat, &queries[first], Target::Node(root), Insertee::Sample(first))?;
 
   for batch in rest.chunks(params.batch_size) {
-    let search = BatchSearch::new(&mat, &params.search)?;
+    let search = BatchSearch::new(&mat, &params.search);
     stats.references += search.n_references();
-    let context = PlacementContext {
-      mat: &mat,
-      seqs,
-      queries: &queries,
-      alphabet,
-      polymorphic: &polymorphic,
-    };
     let placements = batch
       .par_iter()
-      .map(|&sample| search.place(&context, sample))
+      .map(|&sample| search.place(&mat, &queries[sample]))
       .collect::<Result<Vec<_>, Report>>()?;
-    stats.certified += placements.iter().filter(|(_, placed)| placed.certified).count();
-    stats.local_diffs += placements.iter().map(|(_, placed)| placed.local_diffs).sum::<usize>();
-    stats.global_diffs += batch.iter().map(|&sample| queries[sample].diffs().len()).sum::<usize>();
     if params.compare_exhaustive {
       let exhaustive = batch
         .par_iter()
         .map(|&sample| place_exhaustive(&mat, &queries[sample], None, None, false))
         .collect::<Result<Vec<_>, Report>>()?;
       let comparison = stats.comparison.get_or_insert_default();
-      for ((search, _), oracle) in izip!(&placements, &exhaustive) {
+      for (search, oracle) in izip!(&placements, &exhaustive) {
         let excess = search.cost - oracle.cost;
         comparison.placed += 1;
         comparison.worse += usize::from(excess > 0);
@@ -133,7 +118,7 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
 
     let mut touched: BTreeSet<GraphNodeKey> = BTreeSet::new();
     let mut split_into: BTreeMap<GraphEdgeKey, GraphNodeKey> = BTreeMap::new();
-    for (&sample, (placement, _)) in izip!(batch, placements) {
+    for (&sample, placement) in izip!(batch, placements) {
       let query = &queries[sample];
       let placement = match stale_starts(&mat, placement.target, &touched, &split_into) {
         None => placement,
@@ -183,28 +168,6 @@ fn encode_queries(seqs: &[Seq], reference: &Seq, alphabet: &Alphabet) -> Vec<Que
     .collect()
 }
 
-struct Located {
-  certified: bool,
-  local_diffs: usize,
-}
-
-impl Located {
-  fn global(query: &Query) -> Self {
-    Self {
-      certified: false,
-      local_diffs: query.diffs().len(),
-    }
-  }
-}
-
-struct PlacementContext<'a> {
-  mat: &'a Mat,
-  seqs: &'a [Seq],
-  queries: &'a [Query],
-  alphabet: &'a Alphabet,
-  polymorphic: &'a [usize],
-}
-
 enum BatchSearch {
   Exhaustive,
   Walk {
@@ -212,12 +175,15 @@ enum BatchSearch {
     slack: usize,
     exact: bool,
   },
-  Regions(Regions),
+  FromReferences {
+    starts: Vec<(GraphNodeKey, Vec<(usize, AsciiChar)>)>,
+    reaches: Reaches,
+  },
 }
 
 impl BatchSearch {
-  fn new(mat: &Mat, search: &SearchMode) -> Result<Self, Report> {
-    Ok(match search {
+  fn new(mat: &Mat, search: &SearchMode) -> Self {
+    match search {
       SearchMode::Exhaustive => Self::Exhaustive,
       SearchMode::Walk {
         references,
@@ -232,44 +198,38 @@ impl BatchSearch {
           exact: *exact,
         }
       },
-      SearchMode::Regions { references } => Self::Regions(Regions::new(mat, &select_references(mat, references))?),
-    })
+      SearchMode::FromReferences { references } => {
+        let starts = select_references(mat, references)
+          .into_iter()
+          .chain([mat.root()])
+          .map(|node| (node, mat.node_state(node)))
+          .collect();
+        Self::FromReferences {
+          starts,
+          reaches: Reaches::new(mat, &BTreeSet::new()),
+        }
+      },
+    }
   }
 
   fn n_references(&self) -> usize {
     match self {
       Self::Exhaustive => 0,
       Self::Walk { starts, .. } => starts.len(),
-      Self::Regions(regions) => regions.len(),
+      Self::FromReferences { starts, .. } => starts.len(),
     }
   }
 
-  fn place(&self, context: &PlacementContext<'_>, sample: usize) -> Result<(Placement, Located), Report> {
-    let query = &context.queries[sample];
+  fn place(&self, mat: &Mat, query: &Query) -> Result<Placement, Report> {
     match self {
-      Self::Exhaustive => Ok((
-        place_exhaustive(context.mat, query, None, None, true)?,
-        Located::global(query),
-      )),
-      Self::Walk { starts, slack, exact } => Ok((
-        walk(context.mat, query, starts, *slack, *exact)?,
-        Located::global(query),
-      )),
-      Self::Regions(regions) => {
-        let placed = regions.place(
-          context.mat,
-          &context.seqs[sample],
-          query,
-          context.alphabet,
-          context.polymorphic,
-        )?;
-        Ok((
-          placed.placement,
-          Located {
-            certified: placed.certified,
-            local_diffs: placed.local_diffs,
-          },
-        ))
+      Self::Exhaustive => place_exhaustive(mat, query, None, None, true),
+      Self::Walk { starts, slack, exact } => walk(mat, query, starts, *slack, *exact),
+      Self::FromReferences { starts, reaches } => {
+        let start = starts
+          .iter()
+          .min_by_key(|(node, state)| (query.cost_against(state, mat.reference()), *node))
+          .map_or_else(|| mat.root(), |&(node, _)| node);
+        place_from(mat, query, start, reaches)
       },
     }
   }
@@ -280,7 +240,7 @@ impl BatchSearch {
         let starts = local.into_iter().chain(starts.iter().copied()).collect_vec();
         walk(mat, query, &starts, *slack, *exact)
       },
-      Self::Exhaustive | Self::Regions(..) => place_exhaustive(mat, query, None, None, true),
+      Self::Exhaustive | Self::FromReferences { .. } => place_exhaustive(mat, query, None, None, true),
     }
   }
 }
@@ -295,24 +255,6 @@ fn walk(mat: &Mat, query: &Query, starts: &[GraphNodeKey], slack: usize, exact: 
     visited: greedy.visited + exact.visited,
     ..exact
   })
-}
-
-fn polymorphic_sites(seqs: &[Seq], alphabet: &Alphabet) -> Vec<usize> {
-  let length = seqs.first().map_or(0, Seq::len);
-  let mut first: Vec<Option<AsciiChar>> = vec![None; length];
-  let mut polymorphic = vec![false; length];
-  for seq in seqs {
-    for (pos, &state) in seq.as_slice().iter().enumerate() {
-      if alphabet.is_canonical(state) {
-        match first[pos] {
-          None => first[pos] = Some(state),
-          Some(seen) if seen != state => polymorphic[pos] = true,
-          Some(_) => {},
-        }
-      }
-    }
-  }
-  polymorphic.iter().positions(|&flag| flag).collect()
 }
 
 fn stale_starts(

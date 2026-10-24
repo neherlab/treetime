@@ -1,9 +1,10 @@
 use crate::build::mat::Mat;
 use crate::build::query::Query;
+use crate::build::references::Reaches;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use std::cmp::Reverse;
-use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
+use std::collections::{BTreeMap, BinaryHeap};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
@@ -51,29 +52,24 @@ pub(crate) fn shared_positions(subs: &[Sub], query: &Query, reference: &Seq) -> 
     .collect()
 }
 
-struct Best<F> {
+struct Best {
   target: Option<Target>,
   cost: isize,
   n_best: usize,
   prefer: Option<Target>,
-  allow: F,
 }
 
-impl<F: Fn(Target) -> bool> Best<F> {
-  fn new(prefer: Option<Target>, allow: F) -> Self {
+impl Best {
+  fn new(prefer: Option<Target>) -> Self {
     Self {
       target: None,
       cost: isize::MAX,
       n_best: 0,
       prefer,
-      allow,
     }
   }
 
   fn offer(&mut self, target: Target, cost: isize) {
-    if !(self.allow)(target) {
-      return;
-    }
     let rank = |t: Target| (Some(t) != self.prefer, matches!(t, Target::Edge(_)), t);
     if cost < self.cost {
       self.cost = cost;
@@ -100,19 +96,13 @@ impl<F: Fn(Target) -> bool> Best<F> {
   }
 }
 
-fn offer_node<F: Fn(Target) -> bool>(mat: &Mat, best: &mut Best<F>, node: GraphNodeKey, cost: isize) {
+fn offer_node(mat: &Mat, best: &mut Best, node: GraphNodeKey, cost: isize) {
   if !mat.is_leaf(node) {
     best.offer(Target::Node(node), cost);
   }
 }
 
-fn offer_edge<F: Fn(Target) -> bool>(
-  mat: &Mat,
-  best: &mut Best<F>,
-  edge: GraphEdgeKey,
-  parent_cost: isize,
-  score: EdgeScore,
-) {
+fn offer_edge(mat: &Mat, best: &mut Best, edge: GraphEdgeKey, parent_cost: isize, score: EdgeScore) {
   if score.shared > 0 && score.shared < mat.edge_subs(edge).len() {
     best.offer(Target::Edge(edge), parent_cost - signed(score.shared));
   } else if score.shared > 0 {
@@ -134,19 +124,8 @@ pub fn place_exhaustive(
   seed: Option<Placement>,
   prune: bool,
 ) -> Result<Placement, Report> {
-  place_exhaustive_where(mat, query, prefer, seed, prune, |_| true)
-}
-
-pub(crate) fn place_exhaustive_where(
-  mat: &Mat,
-  query: &Query,
-  prefer: Option<Target>,
-  seed: Option<Placement>,
-  prune: bool,
-  allow: impl Fn(Target) -> bool,
-) -> Result<Placement, Report> {
   let reference = mat.reference();
-  let mut best = Best::new(prefer, allow);
+  let mut best = Best::new(prefer);
   if let Some(seed) = seed {
     best.offer(seed.target, signed(seed.cost));
     best.n_best = 0;
@@ -185,7 +164,7 @@ pub fn place_greedy(
 ) -> Result<Placement, Report> {
   let reference = mat.reference();
   let slack = signed(slack);
-  let mut best = Best::new(prefer, |_| true);
+  let mut best = Best::new(prefer);
   let mut costs: BTreeMap<GraphNodeKey, isize> = BTreeMap::new();
   let mut heap = BinaryHeap::new();
   for &start in starts {
@@ -225,33 +204,43 @@ pub fn place_greedy(
   best.finish(visited)
 }
 
-pub(crate) fn place_in_region(
-  mat: &Mat,
-  query: &Query,
-  frame: &Seq,
-  start: GraphNodeKey,
-  in_region: impl Fn(GraphNodeKey) -> bool,
-) -> Result<Placement, Report> {
-  let mut best = Best::new(None, |_| true);
-  let mut stack = vec![(start, signed(query.diffs().len()))];
-  let mut seen = BTreeSet::from([start]);
+pub fn place_from(mat: &Mat, query: &Query, start: GraphNodeKey, reaches: &Reaches) -> Result<Placement, Report> {
+  let reference = mat.reference();
+  let mut best = Best::new(None);
+  let reach = |value: Option<usize>| signed(value.unwrap_or(usize::MAX));
+  let start_cost = signed(query.cost_against(&mat.node_state(start), reference));
+  let mut heap = BinaryHeap::from([Reverse((isize::MIN, start, start_cost, None))]);
   let mut visited = 0;
-  while let Some((node, cost)) = stack.pop() {
+  while let Some(Reverse((bound, node, cost, came_from))) = heap.pop() {
+    if bound > best.cost {
+      break;
+    }
     visited += 1;
     offer_node(mat, &mut best, node, cost);
     for (child, edge) in mat.children(node) {
-      let score = score_edge(mat.edge_subs(edge), query, frame);
+      if Some(child) == came_from {
+        continue;
+      }
+      let score = score_edge(mat.edge_subs(edge), query, reference);
       offer_edge(mat, &mut best, edge, cost, score);
-      if in_region(child) && seen.insert(child) {
-        stack.push((child, cost + score.delta));
+      let child_cost = cost + score.delta;
+      let child_bound = child_cost.saturating_sub(reach(reaches.below(child)));
+      if child_bound <= best.cost {
+        heap.push(Reverse((child_bound, child, child_cost, Some(node))));
       }
     }
     if let Some((parent, edge)) = mat.parent(node) {
-      let score = score_edge(mat.edge_subs(edge), query, frame);
-      let parent_cost = cost - score.delta;
-      offer_edge(mat, &mut best, edge, parent_cost, score);
-      if in_region(parent) && seen.insert(parent) {
-        stack.push((parent, parent_cost));
+      if Some(parent) != came_from {
+        let score = score_edge(mat.edge_subs(edge), query, reference);
+        let parent_cost = cost - score.delta;
+        offer_edge(mat, &mut best, edge, parent_cost, score);
+        let beyond = reaches
+          .above(node)
+          .map(|above| above.saturating_sub(mat.edge_subs(edge).len()));
+        let parent_bound = parent_cost.saturating_sub(reach(beyond));
+        if parent_bound <= best.cost {
+          heap.push(Reverse((parent_bound, parent, parent_cost, Some(node))));
+        }
       }
     }
   }
