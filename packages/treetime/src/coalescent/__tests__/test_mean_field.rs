@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+  use crate::clock::gaussian::NodeTimeGaussian;
   use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation, NodeSurvival, SegmentStatistics};
   use crate::test_utils::{empty_time_inference, find_node_key_by_name, point_coalescent_prior};
   use crate::timetree::inference::result::{NodePosterior, PosteriorSummaries, TimeInference};
@@ -340,6 +341,28 @@ mod tests {
   }
 
   #[test]
+  fn test_mean_field_gaussian_seed_counts_an_undated_tip_by_its_marginal() -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
+    let names = parsed.names.clone();
+    let graph = parsed.graph;
+    let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+    let marginals = BTreeMap::from([
+      (key("root"), NodeTimeGaussian { mean: 2000.0, std: 0.5 }),
+      (key("B"), NodeTimeGaussian { mean: 2006.0, std: 0.2 }),
+    ]);
+    let tip_times = BTreeMap::from([(key("A"), Some(2010.0)), (key("B"), None), (key("root"), None)]);
+
+    let expectation = LineageExpectation::from_gaussian(&graph, &marginals, &tip_times, &BTreeMap::new())?;
+
+    let SegmentStatistics { pair_integral, .. } =
+      expectation.segment_statistics(&[1990.0, 2002.0, 2005.0, 2008.0, 2010.0]);
+    pretty_assert_abs_diff_eq!(2.0, pair_integral[0], epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(3.0, pair_integral[1], epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(0.0, pair_integral[3], epsilon = 1e-5);
+    Ok(())
+  }
+
+  #[test]
   fn test_mean_field_own_share_is_removed_at_its_weight_in_the_expectation() -> Result<(), Report> {
     let parsed = nwk_read(b"(A:1,B:1,C:1)root;".as_slice())?;
     let names = parsed.names.clone();
@@ -406,6 +429,55 @@ mod tests {
   }
 
   #[test]
+  fn test_mean_field_of_inference_counts_undated_tips_by_their_posterior() -> Result<(), Report> {
+    let parsed = nwk_read(b"(A:1,B:1,C:1,D:1)root;".as_slice())?;
+    let names = parsed.names.clone();
+    let graph = parsed.graph;
+    let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
+    let dated = NodePosterior {
+      time: Some(2015.0),
+      ..NodePosterior::default()
+    };
+    let flat = |from: f64, to: f64| -> Result<NodePosterior, Report> {
+      let distribution = Distribution::function(Array1::linspace(from, to, 201), Array1::zeros(201))?;
+      Ok(NodePosterior {
+        survival: NodeSurvival::of_posterior(&distribution)?.map(Arc::new),
+        ..NodePosterior::default()
+      })
+    };
+    let inference = TimeInference {
+      bad_branches: BTreeMap::from([
+        (key("A"), false),
+        (key("B"), false),
+        (key("C"), true),
+        (key("D"), true),
+        (key("root"), false),
+      ]),
+      posterior: BTreeMap::from([
+        (key("A"), dated.clone()),
+        (key("B"), dated),
+        (key("C"), flat(2006.0, 2008.0)?),
+        (key("D"), flat(2006.0, 2008.0)?),
+        (key("root"), flat(2000.0, 2004.0)?),
+      ]),
+      posterior_summaries: PosteriorSummaries {
+        regions: false,
+        lineage_survival: true,
+      },
+      ..empty_time_inference(&graph)
+    };
+
+    let expectation = LineageExpectation::of_inference(&graph, &inference)?;
+
+    let SegmentStatistics { pair_integral, .. } =
+      expectation.segment_statistics(&[2000.0, 2004.0, 2006.0, 2008.0, 2015.0]);
+    pretty_assert_abs_diff_eq!(12.0, pair_integral[0], epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(12.0, pair_integral[1], epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(7.0, pair_integral[3], epsilon = 1e-5);
+    Ok(())
+  }
+
+  #[test]
   fn test_mean_field_of_inference_rejects_an_inference_without_survival_functions() -> Result<(), Report> {
     let graph = nwk_read(b"(A:1,B:1)root;".as_slice())?.graph;
     let dated = NodePosterior {
@@ -451,7 +523,6 @@ mod tests {
   }
 
   mod helpers {
-    use crate::clock::gaussian::NodeTimeGaussian;
 
     pub(super) fn gaussian_cherry(
       mean: f64,

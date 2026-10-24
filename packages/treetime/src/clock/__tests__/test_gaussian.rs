@@ -200,6 +200,22 @@ mod tests {
   }
 
   #[test]
+  fn test_gaussian_clock_undated_tip_marginal_extends_its_parent_by_the_branch() -> Result<(), Report> {
+    let full = "((A:0.010,B:0.020)X:0.015,(C:0.030,D:0.010)Y:0.020)R;";
+    let dates = [("A", 2020.0), ("B", 2015.0), ("C", 2022.0)];
+    let substitutions = [0.010, 0.020, 0.015, 0.030, 0.020].iter().sum::<f64>() * SEQUENCE_LENGTH.to_f64_exact();
+    let eta = RATE * SEQUENCE_LENGTH.to_f64_exact() * (substitutions + 5.0) / substitutions;
+    let nu_d = 0.010 * SEQUENCE_LENGTH.to_f64_exact() + 1.0;
+
+    let (_, times) = run(full, &dates, &[])?;
+
+    let ((mean_y, std_y), (mean_d, std_d)) = (times["Y"], times["D"]);
+    pretty_assert_relative_eq!(mean_d, mean_y + nu_d / eta, max_relative = 1e-12);
+    pretty_assert_relative_eq!(std_d, (std_y.powi(2) + nu_d / eta.powi(2)).sqrt(), max_relative = 1e-12);
+    Ok(())
+  }
+
+  #[test]
   fn test_gaussian_clock_rejects_tree_without_dated_tips() {
     assert_error!(
       run(TREE_3, &[], &[]),
