@@ -7,6 +7,7 @@ use treetime::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_count
 use treetime::build::pipeline::{
   BuildParams, BuildStats, SampleOrder, SearchMode, build_mat, mat_from_tree, mat_to_tree, refine_mat,
 };
+use treetime::build::rebuild::RebuildParams;
 use treetime::build::references::ReferenceSelection;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
@@ -36,7 +37,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -86,6 +87,16 @@ fn parse_args() -> Result<Args, Report> {
       },
       fitch_refresh: options.contains_key("refresh"),
       compare_exhaustive: options.contains_key("compare"),
+      rebuild: options
+        .get("rebuild")
+        .map(|radius| -> Result<RebuildParams, Report> {
+          Ok(RebuildParams {
+            radius: radius.parse()?,
+            max_leaves: get("rebuild_leaves", "24").parse()?,
+            orders: get("rebuild_orders", "4").parse()?,
+          })
+        })
+        .transpose()?,
     },
   })
 }
@@ -256,6 +267,12 @@ fn main() -> Result<(), Report> {
     println!(
       "spr_round={round} tried={} moves={} gain={} visited={} parsimony_before={} parsimony_after={}",
       spr.tried, spr.moves, spr.gain, spr.visited, spr.parsimony_before, spr.parsimony_after
+    );
+  }
+  for (round, rebuild) in stats.rebuild.iter().enumerate() {
+    println!(
+      "rebuild_round={round} tried={} improved={} gain={} too_large={}",
+      rebuild.tried, rebuild.improved, rebuild.gain, rebuild.too_large
     );
   }
   if let Some(comparison) = &stats.comparison {

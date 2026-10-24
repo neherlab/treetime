@@ -3,6 +3,7 @@ use crate::build::insert::{Insertee, insert};
 use crate::build::mat::Mat;
 use crate::build::placement::{Placement, Target, place_exhaustive, place_from, place_greedy};
 use crate::build::query::Query;
+use crate::build::rebuild::{RebuildParams, RebuildStats, rebuild_round};
 use crate::build::references::{Reaches, ReferenceSelection, select_references};
 use crate::build::refresh::fitch_refresh;
 use crate::build::spr::{SprStats, spr_round};
@@ -47,6 +48,7 @@ pub struct BuildParams {
   pub spr_slack: Option<usize>,
   pub fitch_refresh: bool,
   pub compare_exhaustive: bool,
+  pub rebuild: Option<RebuildParams>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -68,6 +70,7 @@ pub struct BuildStats {
   pub references: usize,
   pub comparison: Option<ExhaustiveComparison>,
   pub spr: Vec<SprStats>,
+  pub rebuild: Vec<RebuildStats>,
   pub collapsed_edges: usize,
 }
 
@@ -86,23 +89,35 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
   let order = sample_order(&queries, params.order);
   let mut mat = Mat::new(reference);
   let mut stats = BuildStats::default();
+  place_samples(&mut mat, &queries, &order, params, &mut stats)?;
+  stats.placement_parsimony = mat.parsimony();
+  refine_mat(mat, seqs, alphabet, params, stats)
+}
+
+pub(crate) fn place_samples(
+  mat: &mut Mat,
+  queries: &[Query],
+  order: &[usize],
+  params: &BuildParams,
+  stats: &mut BuildStats,
+) -> Result<(), Report> {
   let Some((&first, rest)) = order.split_first() else {
     return make_error!("Cannot build a tree without sequences");
   };
   let root = mat.root();
-  insert(&mut mat, &queries[first], Target::Node(root), Insertee::Sample(first))?;
+  insert(mat, &queries[first], Target::Node(root), Insertee::Sample(first))?;
 
   for batch in rest.chunks(params.batch_size) {
-    let search = BatchSearch::new(&mat, &params.search);
+    let search = BatchSearch::new(mat, &params.search);
     stats.references += search.n_references();
     let placements = batch
       .par_iter()
-      .map(|&sample| search.place(&mat, &queries[sample]))
+      .map(|&sample| search.place(mat, &queries[sample]))
       .collect::<Result<Vec<_>, Report>>()?;
     if params.compare_exhaustive {
       let exhaustive = batch
         .par_iter()
-        .map(|&sample| place_exhaustive(&mat, &queries[sample], None, None, false))
+        .map(|&sample| place_exhaustive(mat, &queries[sample], None, None, false))
         .collect::<Result<Vec<_>, Report>>()?;
       let comparison = stats.comparison.get_or_insert_default();
       for (search, oracle) in izip!(&placements, &exhaustive) {
@@ -120,23 +135,22 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
     let mut split_into: BTreeMap<GraphEdgeKey, GraphNodeKey> = BTreeMap::new();
     for (&sample, placement) in izip!(batch, placements) {
       let query = &queries[sample];
-      let placement = match stale_starts(&mat, placement.target, &touched, &split_into) {
+      let placement = match stale_starts(mat, placement.target, &touched, &split_into) {
         None => placement,
         Some(local) => {
           stats.replaced_in_batch += 1;
-          search.replace(&mat, query, local)?
+          search.replace(mat, query, local)?
         },
       };
       stats.visited += placement.visited;
-      let inserted = insert(&mut mat, query, placement.target, Insertee::Sample(sample))?;
+      let inserted = insert(mat, query, placement.target, Insertee::Sample(sample))?;
       touched.extend(inserted.touched);
       if let (Target::Edge(edge), Some(node)) = (placement.target, inserted.created) {
         split_into.insert(edge, node);
       }
     }
   }
-  stats.placement_parsimony = mat.parsimony();
-  refine_mat(mat, seqs, alphabet, params, stats)
+  Ok(())
 }
 
 pub fn mat_from_tree(
@@ -167,6 +181,9 @@ pub fn refine_mat(
       queries = encode_queries(seqs, mat.reference(), alphabet);
     }
     let mut round = spr_round(&mut mat, &queries, params.spr_slack)?;
+    if let Some(rebuild) = &params.rebuild {
+      stats.rebuild.push(rebuild_round(&mut mat, seqs, alphabet, rebuild)?);
+    }
     round.parsimony_before = stats
       .spr
       .last()

@@ -198,6 +198,52 @@ impl Mat {
     }
   }
 
+  pub(crate) fn relative_state(
+    &self,
+    state: &[(usize, AsciiChar)],
+    frame: &[(usize, AsciiChar)],
+  ) -> Vec<(usize, AsciiChar)> {
+    state
+      .iter()
+      .merge_join_by(frame, |a, b| a.0.cmp(&b.0))
+      .filter_map(|entry| match entry {
+        itertools::EitherOrBoth::Both(&(pos, own), &(_, other)) => (own != other).then_some((pos, own)),
+        itertools::EitherOrBoth::Left(&(pos, own)) => Some((pos, own)),
+        itertools::EitherOrBoth::Right(&(pos, _)) => Some((pos, self.reference[pos])),
+      })
+      .collect()
+  }
+
+  pub(crate) fn splice(
+    &mut self,
+    top: GraphNodeKey,
+    members: &[GraphNodeKey],
+    interior: &[GraphNodeKey],
+    local: &Self,
+    leaves: &[GraphNodeKey],
+  ) -> Result<(), Report> {
+    for &member in members {
+      if let Some((_, edge)) = self.parent(member) {
+        self.take_subs(edge);
+        self.graph.remove_edge(edge)?;
+      }
+    }
+    for &node in interior {
+      self.graph.remove_node(node)?;
+    }
+    let mut map: BTreeMap<GraphNodeKey, GraphNodeKey> = BTreeMap::from([(local.root, top)]);
+    for (&leaf, &index) in &local.samples {
+      map.insert(leaf, leaves[index]);
+    }
+    for node in local.preorder() {
+      let target = *map.entry(node).or_insert_with(|| self.graph.add_node());
+      if let Some((parent, edge)) = local.parent(node) {
+        self.connect(map[&parent], target, local.edge_subs(edge).to_vec())?;
+      }
+    }
+    Ok(())
+  }
+
   pub(crate) fn subs_to_query(&self, node_state: &[(usize, AsciiChar)], query: &Query) -> Result<Vec<Sub>, Report> {
     query
       .diffs()
