@@ -205,6 +205,40 @@ The v1 simulator now draws gamma-distributed site rates (`fn gamma_site_rates()`
 - Refined from the true tree, the builder's moves lower its score by 5 substitutions while changing 2 to 3 splits: the parsimony optimum lies next to the true tree, and the remaining gap of the built trees is a search failure
 - The remaining 8 to 9 conflicting splits move 1 or 2 tips each, about 180 substitutions away, and one clade of more than 20 tips per replicate. Moving a subtree, or a pseudo-leaf of a rebuild, keeps the state of its root fixed; moves that need a different root state are not found
 
+## State sets, insertion order, and starting trees
+
+**State sets.** Queries now hold a set of states per site. Ambiguity codes are scored as their sets, as Fitch does, instead of as missing data. SPR moves an internal subtree with the plurality set of its children at every site where they disagree, and rebuilds treat internal pseudo-leaves the same way. After a move, the subtree root takes a state from its set and the substitutions on its child edges are rewritten (`fn Mat.restate()`).
+
+**Insertion order.** Comparing the two versions exposed a large effect of the insertion order. On the simulation with $\mu = 0.01$ and $\alpha = 0.3$ (true tree 23,321):
+
+| Order | Score after placement | Final score (SPR and Fitch refresh) |
+| --- | --- | --- |
+| Fewest missing sites first | 28,142 | 24,427 |
+| Input order (sampling time, most recent first) | 28,144 | 24,360 |
+| Random, 3 seeds | 25,957 to 26,172 | 23,740 to 23,934 |
+| Farthest-first scaffold of 20 to 200 anchors, then random | 27,261 to 28,027 | 23,936 to 24,235 |
+
+Orders that group similar samples, by sampling time or by completeness, build a poor early backbone; farthest-first anchors start with outliers and do no better. The example program now uses random order by default.
+
+**Starting trees.** Two alternatives to placing all samples one by one: a scaffold (`scaffold=<size>`), in which a random subset is built from several orders with full refinement and the rest is placed onto the best result; and neighbor joining (`initial=nj`) on Jukes-Cantor distances over the sites observed in both samples, converted to a MAT by the Fitch refresh.
+
+On the rate-variation simulations, placement in random order with rebuilds of radius 3 and neighbor joining with rebuilds of radius 3 both end within 0.02% of the true tree's score in all settings ($\mu = 0.01$, $\alpha = 0.3$: +0.02% and 7 conflicting splits, and −0.02% and 8.5).
+
+Real data, Fitch score relative to the reference tree, all with state sets and rebuilds of radius 3 (conflicting splits in parentheses):
+
+| Dataset | Placement, random order | Neighbor joining | Neighbor joining and batch re-placement |
+| --- | --- | --- | --- |
+| `flu/h3n2/500` | −0.07% (9) | −0.07% (9) | |
+| `rsv/a/2000` | −0.01% (80) | +0.14% (130) | +0.14% (130) |
+| `dengue/2000` | +0.05% (92) | +0.12% (88) | +0.08% (91) |
+| `mpox/clade-ii/2000` | +0.16% (82) | +0.31% (98) | |
+| `sc2/4500` | +0.29% (291) | not run: $O(n^3)$ | |
+| `lassa/L/500` | +3.09% (128) | +0.96% (93) | +0.58% (84) |
+
+- On `lassa/L/500`, scaffolds of 30 to 120 samples brought placement only to +2.2%. Neighbor joining sees all pairwise distances at once and gets the deep structure that sequential placement misses. The excess of the placement trees is spread evenly along the genome (100 to 200 extra substitutions per 500 sites), which argues against recombination as its cause
+- On the other datasets, placement in random order is as good as or better than neighbor joining; the built trees of `flu/h3n2/500` and `rsv/a/2000` score slightly below the reference trees
+- State sets made the rebuilds 2 to 4 times slower (the plurality sets of every pseudo-leaf), for example 85 s on `sc2/4500`
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -231,7 +265,8 @@ Consequences:
 - **No separate initial-topology method.** Placement starts from the root and one sample, so the statement "Placement cannot build the first tree" of [feat-tree-infer.md](feat-tree-infer.md) does not hold for a MAT rooted at a reference sequence
 - **Exact placement first, heuristics later.** Branch-and-bound makes exact placement affordable at 10^3 to 10^4 samples. Centroid starts belong to a later stage for 10^5 samples and more, as a seed of the bound and with a fallback, not as a replacement of the exact search
 - **Fitch refresh as a pipeline step.** The existing Fitch pass improves the builder's internal states and should run between rearrangement rounds; its full-sequence memory cost makes the mutation-first representation a prerequisite for large genomes
-- **Local rebuilds.** Rebuilding balls of radius 3 reaches the score of the true tree on simulated data and closes most of the gap to the reference trees on real data, except Lassa. Subtree moves with state sets at the subtree root and a treatment of ambiguity codes that agrees with Fitch remain to be tried
+- **Local rebuilds.** Rebuilding balls of radius 3 reaches the score of the true tree on simulated data and closes most of the gap to the reference trees on real data
+- **Random insertion order, and neighbor joining for divergent data.** Sorted insertion orders build poor backbones. For data as divergent as Lassa, a neighbor-joining start followed by the same refinement beats every placement-based start; for low-divergence data, placement in random order is as good or better and scales to large $n$
 - **Dating in the acceptance criteria.** Parsimony and split agreement do not detect the backbone differences that change the clock estimates
 - **Graph operations.** `fn Graph.remove_edge()` and `fn Graph.remove_node()` scanned all nodes or edges and now take time proportional to the degree. `fn Graph.add_edge()` still checks all children of the source for a duplicate edge, which is linear in the size of a polytomy
 
@@ -251,4 +286,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts. `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.
