@@ -42,6 +42,16 @@ mod tests {
   }
 
   #[test]
+  fn test_augur_node_data_timetree_flagged_tip_with_an_exact_date_has_an_inferred_date() {
+    let case = helpers::sample_case();
+    let data = case.write_and_read_with_excluded(&["leaf_a"]);
+
+    let leaf_a = &data.nodes["leaf_a"];
+    assert_eq!(leaf_a.date_inferred, Some(true));
+    assert_eq!(leaf_a.raw_date.as_deref(), Some("2005"));
+  }
+
+  #[test]
   fn test_augur_node_data_timetree_branch_length_equals_clock_length() {
     let case = helpers::sample_case();
     let data = case.write_and_read();
@@ -140,6 +150,7 @@ mod tests {
     use treetime_graph::keymap;
 
     use treetime_graph::graph::Graph;
+    use treetime_graph::node::GraphNodeKey;
 
     use treetime_graph::node_names::NodeNames;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
@@ -158,7 +169,17 @@ mod tests {
 
     impl SampleCase {
       pub(crate) fn write_json(&self) -> String {
-        json_write_str(&self.build(None), JsonPretty(true)).unwrap()
+        json_write_str(&self.build(None, &BTreeSet::new()), JsonPretty(true)).unwrap()
+      }
+
+      pub(crate) fn write_and_read_with_excluded(&self, names: &[&str]) -> AugurNodeDataJsonRefine {
+        let excluded: BTreeSet<GraphNodeKey> = self
+          .graph
+          .get_nodes()
+          .map(|node| node.key())
+          .filter(|&key| names.contains(&&self.names[key]))
+          .collect();
+        json_read_str(json_write_str(&self.build(None, &excluded), JsonPretty(true)).unwrap()).unwrap()
       }
 
       pub(crate) fn write_and_read(&self) -> AugurNodeDataJsonRefine {
@@ -171,17 +192,20 @@ mod tests {
           .iter()
           .map(|&(idx, count)| (edges[idx].key(), count))
           .collect();
-        json_read_str(json_write_str(&self.build(Some(&counts)), JsonPretty(true)).unwrap()).unwrap()
+        json_read_str(json_write_str(&self.build(Some(&counts), &BTreeSet::new()), JsonPretty(true)).unwrap()).unwrap()
       }
 
-      fn build(&self, mutation_counts: Option<&EdgeMap<usize>>) -> AugurNodeDataJsonRefine {
+      fn build(
+        &self,
+        mutation_counts: Option<&EdgeMap<usize>>,
+        excluded: &BTreeSet<GraphNodeKey>,
+      ) -> AugurNodeDataJsonRefine {
         let time_lengths = time_lengths(&self.graph, &self.times);
         let confidence: NodeMap<[f64; 2]> = self
           .intervals
           .iter()
           .map(|interval| (interval.key, [interval.lower, interval.upper]))
           .collect();
-        let excluded = BTreeSet::new();
         let annotated = AnnotatedGraph {
           graph: &self.graph,
           names: &self.names,
@@ -192,7 +216,7 @@ mod tests {
           dates: Some(TreeDates {
             num_date: &self.times,
             confidence: Some(&confidence),
-            excluded: &excluded,
+            excluded,
             input_dates: Some(&self.dates),
           }),
           traits: None,

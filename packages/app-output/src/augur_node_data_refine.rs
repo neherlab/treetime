@@ -126,7 +126,7 @@ fn refine_dates(dates: &TreeDates<'_>, key: GraphNodeKey, is_leaf: bool) -> Refi
     numdate,
     date: numdate.map(year_fraction_to_datestring),
     num_date_confidence: dates.confidence.and_then(|confidence| confidence.get(key).copied()),
-    date_inferred: Some(!constraint.is_some_and(DateConstraint::is_exact)),
+    date_inferred: Some(dates.excluded.contains(&key) || !constraint.is_some_and(DateConstraint::is_exact)),
     raw_date: constraint.filter(|_| is_leaf).map(|constraint| constraint.raw.clone()),
   }
 }
