@@ -41,3 +41,4 @@
 - [x] Confidence CSV output (`--confidence`)
 - [x] `--pc` pseudo-counts
 - [x] Optional ambiguity report in the traits table, augur node data, and Auspice JSON (`--ambiguity-threshold`, `--ambiguity-outputs`; new in v1, [kb/decisions/ambiguity-report-of-plausible-states.md](../decisions/ambiguity-report-of-plausible-states.md))
+- [x] Map of the trait values in the Auspice JSON (`--lat-longs`, augur's coordinates format; `meta.geo_resolutions` and the `map` panel, a run warning names the values without coordinates; new in v1)
