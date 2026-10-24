@@ -131,6 +131,8 @@ selection = "nwk,nexus,auspice,graph-json,dot,node-data,model,sequences,clock-mo
 #   fail        the case is expected to exit with an error: a reason for every dataset of the row, or a table of
 #               reasons keyed by dataset. A reason names the kb entry that explains the failure
 #   hang        the case is expected to exceed its timeout, in the same form as `fail`
+#   skip        datasets of the row that do not run, as a table of reasons keyed by dataset, for a case whose result
+#               depends on the host, such as a memory need above the budget of smaller hosts
 
 [[ancestral]]
 variant = "parsimony"
@@ -954,6 +956,10 @@ subcommands = [
 # resolve from its folder, and the outputs go to the case. Files elsewhere, such as the fixtures in `data/smoke/`, are
 # not examples. The command is `pipeline` for `pipeline.yaml`,
 # otherwise the file name up to the first `-` (`ancestral-parsimony.yaml` runs `ancestral`).
+#
+# An example config that fails or hangs today stays where a user looks for it. `[config.fail]` and `[config.hang]`
+# declare it, keyed by `<dataset>/<file stem>` (`"lassa/L/20/timetree"`), with the kb entry that explains the failure.
+# A key that names no config is an error.
 [config]
 pattern = "*.yaml"
 

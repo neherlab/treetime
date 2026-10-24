@@ -241,7 +241,7 @@ RUN_DIR_PLACEHOLDER = b"{run}"
 
 
 ROW_KEYS = frozenset({"variant", "datasets", "args", "selection", "standalone", "outputs", "tier", "timeout",
-                      "fail", "hang"})
+                      "fail", "hang", "skip"})
 CLI_ROW_KEYS = frozenset({"variant", "args", "sandbox", "fail"})
 JOBS_COMMANDS = frozenset({"timetree", "ancestral", "clock", "mugration", "homoplasy", "optimize", "prune", "pipeline"})
 RUNTIME_PLACEHOLDERS = frozenset({"{bin}", "{data}", "{out}"})
@@ -438,7 +438,7 @@ def load_case_spec(path: Path) -> CaseSpec:
     raise SmokeError(f"[sizes] lacks the size classes {', '.join(missing)}")
   families = {name: parse_family(name, table) for name, table in raw.pop("families", {}).items()}
   help_table = check_keys(raw.pop("help", {}), {"subcommands"}, "[help]")
-  config_table = check_keys(raw.pop("config", {}), {"pattern"}, "[config]")
+  config_table = check_keys(raw.pop("config", {}), {"pattern", "fail", "hang"}, "[config]")
   cli_rows = [check_keys(row, CLI_ROW_KEYS, "[[cli]]") for row in raw.pop("cli", [])]
   if unknown := sorted(raw.keys() - commands.keys()):
     raise SmokeError(f"The case file has rows for commands without a [commands.<name>] template: {', '.join(unknown)}")
@@ -447,7 +447,18 @@ def load_case_spec(path: Path) -> CaseSpec:
     if missing := [index for index, row in enumerate(command_rows) if "variant" not in row]:
       raise SmokeError(f"[[{command}]] row {missing[0] + 1} has no `variant`")
   return CaseSpec(sizes, families, commands, rows, tuple(help_table.get("subcommands", ())), cli_rows,
-                  config_table.get("pattern"))
+                  config_table.get("pattern"), config_expectations(config_table))
+
+
+def config_expectations(table: dict) -> dict[str, tuple[Expect, str]]:
+  """Expected failures of example configs from `[config.fail]` and `[config.hang]`, keyed by `<dataset>/<stem>`."""
+  tables = {"fail": (Expect.FAIL, table.get("fail", {})), "hang": (Expect.TIMEOUT, table.get("hang", {}))}
+  for key, (_, reasons) in tables.items():
+    if not isinstance(reasons, dict) or not all(isinstance(reason, str) for reason in reasons.values()):
+      raise SmokeError(f"[config.{key}] must map config names to reasons, not {reasons!r}")
+  if both := sorted(tables["fail"][1].keys() & tables["hang"][1].keys()):
+    raise SmokeError(f"[config] declares both `fail` and `hang` for {', '.join(both)}")
+  return {name: (expect, reason) for expect, reasons in tables.values() for name, reason in reasons.items()}
 
 
 def check_keys(table: dict, allowed: set[str] | frozenset[str], where: str) -> dict:
@@ -506,6 +517,10 @@ def read_tsv_header(path: Path) -> frozenset[str]:
 def row_cases(command: str, row: dict, spec: CaseSpec, datasets: dict[str, Dataset]) -> list[Case]:
   template_args, args, where = row_arguments(command, row, spec)
   selected = select_datasets(row.get("datasets", "all"), shlex.join(template_args + args), datasets, where)
+  if not isinstance(row.get("skip", {}), dict):
+    raise SmokeError(f"{where} `skip` must be a table of reasons keyed by dataset")
+  skipped = expected_reasons(row.get("skip"), selected, f"{where} `skip`")
+  selected = [dataset for dataset in selected if dataset.name not in skipped]
   expectations = {expect: expected_reasons(row.get(key), selected, f"{where} `{key}`")
                   for key, expect in (("fail", Expect.FAIL), ("hang", Expect.TIMEOUT))}
   if both := expectations[Expect.FAIL].keys() & expectations[Expect.TIMEOUT].keys():
@@ -618,12 +633,15 @@ def config_cases(root: Path, spec: CaseSpec, datasets: dict[str, Dataset]) -> li
   for dataset, config in configs:
     command = "pipeline" if config.stem == "pipeline" else config.stem.split("-")[0]
     size = spec.sizes[dataset.size]
+    expect, reason = spec.config_expectations.get(f"{dataset.name}/{config.stem}", (Expect.PASS, None))
     cases.append(Case(
       id=f"config/{dataset.name}/{config.stem}", command="config", dataset=dataset.name, size=dataset.size,
       tier=size.tier, timeout_s=size.timeout_s * dataset.family.timeout_factor,
       argv=("{bin}", command, f"--config={dataset.path}/{config.name}", "--output-all={out}"),
-      cwd_mode=CwdMode.SANDBOX,
+      expect=expect, reason=reason, cwd_mode=CwdMode.SANDBOX,
     ))
+  if unknown := sorted(spec.config_expectations.keys() - {case.id.removeprefix("config/") for case in cases}):
+    raise SmokeError(f"[config] declares expectations for configs that do not exist: {', '.join(unknown)}")
   return cases
 
 
@@ -1790,6 +1808,7 @@ class CaseSpec:
   help_subcommands: tuple[str, ...]
   cli_rows: list[dict]
   config_pattern: str | None
+  config_expectations: dict[str, tuple[Expect, str]]
 
 
 @dataclass(frozen=True)
