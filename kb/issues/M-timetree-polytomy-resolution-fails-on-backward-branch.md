@@ -23,7 +23,7 @@ Error:
 ## Location
 
 - `fn validate_plan()` in [packages/treetime/src/timetree/optimization/polytomy/apply.rs#L43-L60](../../packages/treetime/src/timetree/optimization/polytomy/apply.rs#L43-L60) rejects a child whose time is older than the time of the polytomy node (`child.time < parent_time`), without a tolerance
-- The node times come from `state.time_inference.node_times()` in [packages/treetime/src/timetree/round.rs#L143-L162](../../packages/treetime/src/timetree/round.rs#L143-L162). A child with an observed or exact date keeps that date when it conflicts with the fitted clock, so it can be older than its parent
+- The node times come from `state.time_inference.node_times()` in [packages/treetime/src/timetree/round.rs#L143-L162](../../packages/treetime/src/timetree/round.rs#L143-L162). A child with an exact date keeps that date when it conflicts with the fitted clock, so it can be older than its parent. A tip that the clock filter flags does not keep its date: the time inference dates it from its parent ([kb/decisions/timetree-uncertain-leaf-dates-are-inferred.md](../decisions/timetree-uncertain-leaf-dates-are-inferred.md))
 
 > [!IMPORTANT]
 > **Investigation required.** Confirm that the rejected child is the branch that runs backwards in time (an observed leaf date or an exact date older than the parent), or a rounding difference between equal times (both print as `2.004783e3`). Then decide how polytomy resolution treats such a child: clamp its time to the parent, keep it out of the mergers, or reject the plan before validation with a user-facing message.

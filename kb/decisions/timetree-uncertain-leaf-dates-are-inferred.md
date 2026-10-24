@@ -6,13 +6,20 @@ message coming down from its parent; a leaf given no date at all is placed by th
 node given an exact date is left at that date: not refined, and not projected onto its parent's
 committed time.
 
+A tip that the clock filter flags is a bad branch, and neither pass applies its date, exact or
+range: it is placed by the message from its parent alone, like an undated leaf. v0 does the same: it
+applies a date constraint only to nodes that are not bad branches
+([packages/legacy/treetime/treetime/clock_tree.py#L792](../../packages/legacy/treetime/treetime/clock_tree.py#L792)).
+Both passes take the date of a node from `fn applied_date_constraint()` in
+[packages/treetime/src/timetree/inference/bad_branches.rs](../../packages/treetime/src/timetree/inference/bad_branches.rs).
+
 **Type**: v0 parity for uncertain leaves (v0 `ClockTree._ml_t_marginal()` skips only `Delta`-
 constrained leaves). New in v1 for undated leaves, which v0 leaves undated.
 
 **v1 location**:
 [`refine_distribution_from_parent`](../../packages/treetime/src/timetree/inference/forward_pass.rs)
 and the constraint lift in
-[`propagate_distributions_backward_slot`](../../packages/treetime/src/timetree/inference/backward_pass.rs).
+[`apply_date_constraint`](../../packages/treetime/src/timetree/inference/backward_pass.rs).
 The input date is stored by
 [`load_date_constraints`](../../packages/treetime/src/clock/date_constraints.rs).
 
@@ -44,7 +51,7 @@ building the message to the parent.
 
 Without that, a refined leaf distribution would be sent back up to its parent on the next round as
 if it were an independent observation, counting the parent's own message toward the leaf a second
-time — an echo that tightens every round while looking like convergence.
+time -- an echo that tightens every round while looking like convergence.
 
 `ClockNode::likely_time()`, which the clock regression and the clock filter read for each leaf,
 reads the constraint in preference to the time distribution. The regression must see the date as
@@ -68,8 +75,8 @@ within that year. With every date exact, the output is byte-identical to before.
 
 An undated leaf is the limiting case of the same rule: on the run above with `V633`'s date also
 removed, it is now dated 2014.55 from its parent and branch-length distribution (true date 2014.61),
-where it was previously left undated with a zero-length branch. It stays a bad branch throughout —
-it sends no message to its parent — so it still contributes nothing to the fit. Its lineage enters
+where it was previously left undated with a zero-length branch. It stays a bad branch throughout --
+it sends no message to its parent -- so it still contributes nothing to the fit. Its lineage enters
 the coalescent lineage counts by its posterior
 ([timetree-undated-leaves-enter-lineage-counts-by-posterior.md](timetree-undated-leaves-enter-lineage-counts-by-posterior.md)).
 
@@ -156,10 +163,10 @@ branch grid already imposes on node times, and below the 1e-2 y the loop calls c
 ## Related
 
 - [M-timetree-marginal-node-times-can-violate-topology.md](../issues/M-timetree-marginal-node-times-can-violate-topology.md)
-  — the projection this rule selects nodes for
+  -- the projection this rule selects nodes for
 - [N-clock-date-interval-collapsed-to-mean.md](../issues/N-clock-date-interval-collapsed-to-mean.md)
-  — the clock regression still weights an interval as if it were its midpoint
+  -- the clock regression still weights an interval as if it were its midpoint
 - [distribution-tails-and-arithmetic.md](distribution-tails-and-arithmetic.md)
-  — the tail policy the forward message carries into the leaf's posterior
+  -- the tail policy the forward message carries into the leaf's posterior
 - [M-timetree-branch-grid-uniform-resolution.md](../issues/M-timetree-branch-grid-uniform-resolution.md)
-  — the grid sizes the reachable window works around rather than fixes
+  -- the grid sizes the reachable window works around rather than fixes
