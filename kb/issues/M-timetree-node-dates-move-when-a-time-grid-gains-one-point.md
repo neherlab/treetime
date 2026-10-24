@@ -27,4 +27,4 @@ The same sensitivity appears without any change of a point count. A change of th
 
 ## Related
 
-- [H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md)
+- [discretization error of the default grid](../decisions/distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid)

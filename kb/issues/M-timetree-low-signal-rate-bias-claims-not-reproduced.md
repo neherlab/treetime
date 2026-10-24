@@ -33,9 +33,6 @@ The claims refer to validation `const` sets ($T_c = 10$, 400 tips) with $L$ the 
     `log_lh_coal` changes by at most 1.1 and `log_lh_seq` by at most 1.1 nats. `log_lh_time` rises by 147 to 2506 nats, mostly from its normalization, so its values before and after are not comparable
   - Evidence to settle the rest: the timetree validation suite and the calibration runs before and after the survival levels alone (date RMSE, date bias, rate error, 90% coverage)
 
-- **$\log Z$ at 300 grid points.** $\log Z$ lies 5 to 32 nats above its converged value at 300 grid points, and the gap halves with each doubling of the points (first order)
-  - Status: not measured. This is the target of [H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md), whose numbers predate the trapezoid rule
-  - Evidence to settle it: $\log Z$ at 300, 600, 1200, 2400 and 4800 grid points on the sets of that issue with the current code
 - **The low-signal tilt came from the convolution.** The tilt of $\log Z$ toward slow rates at $L = 10^3$, $\mu = 3\cdot10^{-4}$ (about 77 per unit of $\ln \mu$), which [kb/decisions/timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md#rate-window) attributes to the frozen prior, came mostly from the convolution error
   - Status: not measured
   - Evidence to settle it: the slope of $\log Z$ per unit of $\ln \mu$ over the rate probes on those sets, with both convolution rules

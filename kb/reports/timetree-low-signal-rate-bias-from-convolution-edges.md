@@ -16,7 +16,7 @@ The cause was not the model or the coalescent approximation. It was the FFT conv
 - A branch without substitutions has its maximum at zero length
 - The coalescent prior factor rises toward the tips (about 2 per year here), so an internal node's subtree distribution peaks at the date of its earliest child
 
-Grid spacings scale with $1/\mu$, so the error per internal node scales with $1/\mu$ as well. With the prior, it was about 0.3 nats per node at $\mu=10^{-4}$ and 0.15 at $3\cdot10^{-4}$. This is one source of the bias in [H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](../issues/H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md). The error is set by the spacing of the branch grids, so more message grid points did not reduce it.
+Grid spacings scale with $1/\mu$, so the error per internal node scales with $1/\mu$ as well. With the prior, it was about 0.3 nats per node at $\mu=10^{-4}$ and 0.15 at $3\cdot10^{-4}$. This was the first-order part of the error at 300 grid points; the second-order rest is accepted ([discretization error of the default grid](../decisions/distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid)). The error is set by the spacing of the branch grids, so more message grid points did not reduce it.
 
 ## Evidence
 

@@ -25,7 +25,7 @@ The trapezoid rule makes no case worse: it removes most of the error at node R w
 > **Investigation required.** Which part of the discretization of the time passes causes the remaining differences, the largest at node R with both tips at zero ($2.9 \cdot 10^{-3}$), where both tip branches have zero counts and the subtree density of X jumps from zero to its maximum at the date of B. Candidates:
 >
 > - the end cells of the trapezoid convolution at the hard edges of zero-count branch distributions, which jump from zero to their peak at length 0
-> - the 300-point messages and their mass windows ([H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md) shows a first-order bias of the same messages)
+> - the 300-point messages and their mass windows (their error in the log marginal likelihood is second order: [discretization error of the default grid](../decisions/distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid))
 > - the uniform branch grid ([M-timetree-branch-grid-uniform-resolution.md](M-timetree-branch-grid-uniform-resolution.md))
 >
 > Refine one at a time and record how the difference to the converged oracle changes.

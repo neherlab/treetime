@@ -92,7 +92,7 @@ The maintainers approved the divergence from v0 on the condition that the improv
 
 - [timetree-posterior-statistics-count-tail-mass.md](timetree-posterior-statistics-count-tail-mass.md): the mass model, whose trapezoid cells match the quadrature of the convolution
 - [kb/issues/H-timetree-sparse-dense-node-times-differ.md](../issues/H-timetree-sparse-dense-node-times-differ.md): the effect of the trapezoid rule on the dense-to-sparse difference of node times
-- [kb/issues/H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](../issues/H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md)
+- [discretization error of the default grid](distribution-tails-and-arithmetic.md#discretization-error-of-the-default-grid): the log marginal likelihood at 300 grid points after this change
 
 ## References
 

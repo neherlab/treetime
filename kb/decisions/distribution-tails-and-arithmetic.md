@@ -87,8 +87,27 @@ The log marginal likelihood is a quadrature of the backward messages, with these
 - **Mass windows**: each backward message is resampled onto the window that drops $\epsilon = 5 \cdot 10^{-4}$ of its mass per side, and the soft tail law fitted at the window edge carries the cut mass. On the test fixtures, raising the message grid from 300 to 900 points and lowering $\epsilon$ to $10^{-9}$ changes no digit of the log marginal likelihood
 - **Trapezoid quadrature**: the trapezoid rule of the grid samples has an error of second order in the spacing. Against exact piecewise integration of a three-tip tree with 2001-point branch distributions, the gap is $4.8 \cdot 10^{-6}$ to $8.2 \cdot 10^{-6}$, and $5.4 \cdot 10^{-7}$ to $9.2 \cdot 10^{-7}$ at 6001 points; a coalescent prior adds the second-order error of its kinks between grid points (a factor 4.09 per doubling). The tests of the marginal likelihood and of the clock rate step assert agreement with their closed-form oracles at $10^{-6}$ or tighter
 - **Log-linear resampling**: products and FFT operands resample their operands log-linearly, which undercounts a Gaussian of standard deviation $\sigma$ by about $\Delta t^2 / (12\,\sigma^2)$ relative per resampling at the spacing $\Delta t$, an estimated $4 \cdot 10^{-5}$ on 300-point grids; this is not measured on real runs
-- **Grid size of real runs**: with 300-point messages, the first-step log marginal likelihood on simulated data misses its converged value by 5 to 32 nats ([kb/issues/H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md](../issues/H-timetree-marginal-likelihood-of-node-times-biased-at-300-grid-points.md))
+- **Grid size of real runs**: the error of the log marginal likelihood at the default `GRID_POINTS` $= 300$ is second order in the spacing and is accepted ([discretization error of the default grid](#discretization-error-of-the-default-grid))
 - **Tails below the FFT trust floor**: below `CONV_TRUST_FRACTION` $= 10^{-13}$ of its peak, a backward message is an extrapolated tail law, not the convolution, and can be hundreds of nats too heavy there. This is accepted: a posterior reads that region only when the data contradict the tree, as on `data/flu/h3n2/200` at `--keep-root`, whose input root splits off 2007 tips above the 1968 to 1972 samples. Rerooted, the same data give dates at 300 points within 0.02 of their 90% width of the 9600-point run
+
+#### Discretization error of the default grid
+
+The time passes discretize with second-order error, and TreeTime accepts that error at the default grid. More precision needs more grid points (`GRID_POINTS` in [packages/treetime/src/timetree/inference/runner.rs](../../packages/treetime/src/timetree/inference/runner.rs)), not a change of method. With 600 points, a run takes about twice the time and 1.3 times the memory of a 300-point run.
+
+Measurement: log marginal likelihood of node times (`log_lh_time`, first evaluation; for an estimated rate, at the regression rate of the first rate step) on simulated `const` sets (400 tips, realized trees, flags of `validation/run.py`), at 300 to 9600 points:
+
+| Set | 300 | 600 | 1200 | 2400 | 4800 | 9600 | 300 minus 9600 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| $L = 10^4$, $\mu = 3 \cdot 10^{-4}$ rep 0, keep root, fixed rate | -774.94 | -774.64 | -774.58 | -774.53 | -774.50 | -774.49 | -0.45 |
+| $L = 10^4$, $\mu = 3 \cdot 10^{-4}$ rep 1, keep root, fixed rate | -779.19 | -778.83 | -778.62 | -778.71 | -778.67 | -778.66 | -0.53 |
+| $L = 10^3$, $\mu = 10^{-3}$ rep 1, reroot, fixed rate | -486.70 | -485.92 | -485.83 | -485.73 | -485.77 | -485.81 | -0.89 |
+| $L = 10^4$, $\mu = 3 \cdot 10^{-4}$ rep 0, `keep-opt-est` | -2213.03 | -2211.87 | -2211.55 | -2211.42 | -2211.39 | -2211.37 | -1.66 |
+| $L = 10^4$, $\mu = 3 \cdot 10^{-4}$ rep 1, `keep-opt-est` | -2219.36 | -2219.69 | -2219.43 | -2219.47 | -2219.40 | -2219.38 | +0.02 |
+| $L = 10^3$, $\mu = 10^{-3}$ rep 1, `reroot-opt-est` | -2033.30 | -2031.29 | -2030.34 | -2030.44 | -2030.35 | -2030.39 | -2.91 |
+
+- **Order**: under second-order error the gap from 300 points to the converged value is $4/3$ of the step from 300 to 600 points, under first-order error 2 times that step. The measured ratios are 1.5, 1.1, 1.4 and 1.45 on the four sets with a gap above 0.4 nats. Beyond 1200 points the steps fall to a jitter of about $\pm 0.1$ nats with alternating sign
+- **Rate**: the first rate-step target at 300 points lies 0.1% to 2.2% from the 9600-point target, and the final rate within 0.9% of the 9600-point rate. Final rates scatter by about 1% between grid sizes without a trend
+- **Before the trapezoid convolution** ([distribution-convolution-trapezoid-rule.md](distribution-convolution-trapezoid-rule.md)): the rectangle sum at hard grid ends added a first-order error, and the same sets missed by 5 to 32 nats with rate errors of 1% to 14%
 
 The backward pass combines child messages with a single product and re-peaking: the product composes the result tails (see [multiplication tails](#multiplication)) and re-peaking preserves them, so the folded result keeps its fitted `Linear` left tail and can still extend to reach a child with a disjoint finite grid. The child fold is `fn distribution_product()` (treetime-distribution), which co-locates the `Function` messages on one common grid and composes the summed left tail in closed form from the operands' own tails (`fn compose_multiplication_tail()`), so no tail is re-fit from the combined grid.
 
