@@ -121,16 +121,6 @@ fn combine_child_messages(
   distribution_product(&factors, max_points)
 }
 
-pub(super) fn apply_own_coalescent_factor(
-  coalescent_model: Option<&CoalescentPrior>,
-  key: GraphNodeKey,
-  n_children: usize,
-  distribution: Distribution<NegLog>,
-) -> Result<Distribution<NegLog>, Report> {
-  let distribution = apply_coalescent_prior(coalescent_model, key, n_children, distribution)?;
-  apply_leaf_coalescent_factor(coalescent_model.filter(|_| n_children == 0), key, distribution)
-}
-
 fn apply_coalescent_prior(
   coalescent_model: Option<&CoalescentPrior>,
   key: GraphNodeKey,
@@ -164,7 +154,7 @@ fn apply_date_constraint(
   distribution_multiplication(&distribution, constraint, max_points)
 }
 
-fn apply_leaf_coalescent_factor(
+pub(super) fn apply_leaf_coalescent_factor(
   coalescent_model: Option<&CoalescentPrior>,
   key: GraphNodeKey,
   distribution: Distribution<NegLog>,
