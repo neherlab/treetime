@@ -24,10 +24,21 @@ const AUSPICE_TIMERS = /[\\/]auspice[\\/]src[\\/]util[\\/]perf\.js(?:\?.*)?$/u;
 
 const AUSPICE_TIMERS_STUB = "export const timerStart = () => {};\nexport const timerEnd = () => {};\n";
 
+const LEAFLET_PLUGIN =
+  /[\\/]node_modules[\\/](?:\.bun[\\/][^\\/]+[\\/]node_modules[\\/])?leaflet-gesture-handling[\\/]dist[\\/][^\\/?]+\.js(?:\?.*)?$/u;
+
 const AUSPICE_TRANSFORM = {
-  filter: { id: AUSPICE_SOURCE },
-  handler: transformAuspiceSource,
+  filter: { id: [AUSPICE_SOURCE, LEAFLET_PLUGIN] },
+  handler: transformAuspiceModule,
 } satisfies Plugin["transform"];
+
+export async function transformAuspiceModule(code: string, id: string) {
+  return LEAFLET_PLUGIN.test(id) ? requireLeafletFirst(code) : transformAuspiceSource(code, id);
+}
+
+export function requireLeafletFirst(code: string) {
+  return { code: `require("leaflet");\n${code}`, map: null };
+}
 
 export async function transformAuspiceSource(code: string, id: string) {
   if (AUSPICE_TIMERS.test(id)) {

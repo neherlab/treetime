@@ -1,4 +1,4 @@
-import { auspiceEntries, transformAuspiceSource } from "../auspice-vite";
+import { auspiceEntries, transformAuspiceModule, transformAuspiceSource } from "../auspice-vite";
 
 const AUSPICE_ROOT = "/repo/node_modules/.bun/auspice@3.1.0+ee1ed944166f6889/node_modules/auspice";
 
@@ -83,6 +83,17 @@ describe("auspice module entries", () => {
     expect(auspiceEntries(["components", "components/tree", "README.md", "reducers/tree/index.d.ts"])).toStrictEqual([
       "auspice/src/reducers/tree",
     ]);
+  });
+});
+
+describe("leaflet plugins of the auspice map", () => {
+  test("the gesture plugin loads leaflet first, because it reads the global that leaflet sets", async () => {
+    const id =
+      "/repo/node_modules/.bun/leaflet-gesture-handling@1.2.1/node_modules/leaflet-gesture-handling/dist/leaflet-gesture-handling.min.js";
+
+    const { code } = await transformAuspiceModule("L.Map.mergeOptions({});", id);
+
+    expect(code).toBe('require("leaflet");\nL.Map.mergeOptions({});');
   });
 });
 
