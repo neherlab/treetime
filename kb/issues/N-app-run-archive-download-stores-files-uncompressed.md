@@ -1,6 +1,6 @@
 # The downloaded run archive stores its files uncompressed
 
-The web apps download the archive of a run's outputs through `GET /api/runs/{id}/archive`, which streams a zip whose entries are stored without compression. The server compresses the response on the wire, but the browser saves the decompressed zip, so the saved file is as large as the outputs. The `sc2/4500` timetree archive of web2 is 158 MB, most of it the reconstructed alignment. The desktop app writes the archive to a path with deflated entries instead.
+The web apps download the archive of a run's outputs through `GET /api/runs/{id}/archive`, which streams a zip whose entries are stored without compression. The server compresses the response on the wire, but the browser saves the decompressed zip, so the saved file is as large as the outputs. The `sc2/5100` timetree archive of web2 is 158 MB, most of it the reconstructed alignment. The desktop app writes the archive to a path with deflated entries instead.
 
 ## Evidence
 

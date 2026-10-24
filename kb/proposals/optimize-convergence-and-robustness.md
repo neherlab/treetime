@@ -79,6 +79,9 @@ Two methods via `--optimizer`: Brent and Newton in $\sqrt{t}$ space. Default `br
 - Cons: makes the sparse approximation history-dependent -- which positions are treated individually depends on early iterations, not only on the current posterior. The ~14 oscillating positions are genuinely ambiguous (near-equal posterior for two states), so promoting them to individual evaluation is the more accurate classification. After 1-2 iterations the set stabilizes.
 - Note: this is a model change, not a neutral fix. The immediate bug fix in M-optimize-sparse-em-2-cycle (resolved) addresses convergence through loop robustness instead, without changing the sparse model.
 
+> [!WARNING]
+> **Needs review.** The `sc2/2844` figures here come from an earlier version of that dataset: a tree with branch lengths in years and an alignment with 340 sequences without a tip. The dataset now holds 2504 genomes on a tree with branch lengths in substitutions per site (`data/sc2/2844/README.md`). Measure the figures again before relying on them.
+
 **P2. Transparent variable/fixed boundary.** Ensure that a position's eigendecomposition coefficient is numerically identical regardless of whether it is evaluated via the variable path (individual posterior) or the fixed path (bucketed canonical profile).
 
 - Addresses: the fundamental source of the discontinuity. If both paths produce the same coefficient, reclassification is harmless.

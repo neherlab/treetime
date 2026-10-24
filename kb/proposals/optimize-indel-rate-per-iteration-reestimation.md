@@ -32,6 +32,9 @@ The fact that `gtr.mu` is currently fixed is itself a known missing feature docu
 
 On sc2/2844, $\hat\mu \approx 12{,}000$ oscillates proportionally with total branch length across iterations. Per-iteration re-estimation amplifies this 2-cycle, but the root cause is the sparse variable/fixed position boundary discontinuity (P1-P3 in the convergence proposal), not the indel rate re-estimation itself. The clean fix is to address the boundary discontinuity, which eliminates the 2-cycle without freezing a parameter that should be free.
 
+> [!WARNING]
+> **Needs review.** The `sc2/2844` figures here come from an earlier version of that dataset: a tree with branch lengths in years and an alignment with 340 sequences without a tip. The dataset now holds 2504 genomes on a tree with branch lengths in substitutions per site (`data/sc2/2844/README.md`). Measure the figures again before relying on them.
+
 ## Implementation
 
 Restore `estimate_indel_rate()` inside the loop body of `run_optimize_loop()`, computing a fresh $\hat\mu$ each iteration after `update_marginal()` and before `optimize_edge_lengths()`. `--no-indels` selects `IndelPolicy::Exclude`, which leaves the indel term out of the objective, so the re-estimation applies to `IndelPolicy::Include` only.

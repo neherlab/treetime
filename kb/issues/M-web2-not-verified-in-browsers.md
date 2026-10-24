@@ -5,7 +5,7 @@ The WebAssembly back end of web2 has run in Node, Bun, and Chrome. The page, the
 ## Evidence
 
 - `just test-wasm` and `just test-wasm-mt` run the smoke test in Bun and Node; TypeScript tests of the project run without browsers by project rule
-- Chrome on Linux runs the production build and the dev server of web2: the page is cross-origin isolated, an example dataset loads from the examples panel and from "Example files", a `sc2/4500` timetree run shows live progress and finishes in about 11 s on the threaded module and 23 s with `?jobs=1`, Stop ends a run as cancelled, a run file and the run archive download, and a page over plain HTTP on the LAN, which is not isolated, finishes runs on the single-threaded module
+- Chrome on Linux runs the production build and the dev server of web2: the page is cross-origin isolated, an example dataset loads from the examples panel and from "Example files", a `sc2/5100` timetree run shows live progress and finishes in about 11 s on the threaded module and 23 s with `?jobs=1`, Stop ends a run as cancelled, a run file and the run archive download, and a page over plain HTTP on the LAN, which is not isolated, finishes runs on the single-threaded module
 - Browser behavior that Node does not show: the content security policy of the page (`'wasm-unsafe-eval'`), cross-origin isolation and shared memory, the memory limit per page (iOS Safari allows much less than 4 GiB, [emscripten#19144](https://github.com/emscripten-core/emscripten/issues/19144)), and transfer of large response chunks over the message port
 
 > [!IMPORTANT]

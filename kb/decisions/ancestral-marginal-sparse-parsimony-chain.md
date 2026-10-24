@@ -32,7 +32,7 @@ Zero-length branches are clamped to `MIN_BRANCH_LENGTH_FRACTION / seq_length` (`
 
 The same routine re-applied deletions _last_, to stop a posterior from resurrecting a residue at a deleted site - but only the deletions recorded on the node's own parent edge. A node whose gap was inherited from further up carries no indel on its own edge, so nothing masked the position again and the posterior's residue stood.
 
-On `data/sc2/4500` position 28369 (4332 of 5100 tips deleted), the old reconstruction emitted `A` at 5014 internal nodes. Dense reports 4555 gaps and 544 `A`. At position 23009 it emitted `A` at 864 nodes that dense reports as gaps. Both are now fixed.
+On `data/sc2/5100` position 28369 (4332 of 5100 tips deleted), the old reconstruction emitted `A` at 5014 internal nodes. Dense reports 4555 gaps and 544 `A`. At position 23009 it emitted `A` at 864 nodes that dense reports as gaps. Both are now fixed.
 
 Parsimony reconstruction and `--representation dense` were never affected by either defect: neither chains a node's sequence off its parent this way.
 
@@ -59,10 +59,10 @@ Because the stored sequence is no longer the emitted one, every reader must go t
 
 Internal-node sequences change at two classes of position: where an ancestor's most likely state deviates from parsimony and the node itself resolved the position, and where a node inherited a deletion. Per-edge `ml_subs` follow, since they are derived from the corrected sequences, and the `parent + mutations == child` invariant continues to hold. Posteriors, the marginal log-likelihood, the inferred GTR, tip sequences, and the dense backend are unchanged.
 
-Sparse and dense now agree byte-for-byte on the 676-tip dataset at 1000, 1500, 3000, and the full 29903 columns (950 nodes each). On `data/sc2/4500` the two backends place every gap and unknown character at the same positions since [kb/decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md](ancestral-dense-gap-rule-observed-leaf-gaps.md); the remaining differences in reconstructed residues are tracked in [kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](../issues/H-ancestral-sparse-dense-internal-residues-diverge.md).
+Sparse and dense now agree byte-for-byte on the 676-tip dataset at 1000, 1500, 3000, and the full 29903 columns (950 nodes each). On `data/sc2/5100` the two backends place every gap and unknown character at the same positions since [kb/decisions/ancestral-dense-gap-rule-observed-leaf-gaps.md](ancestral-dense-gap-rule-observed-leaf-gaps.md); the remaining differences in reconstructed residues are tracked in [kb/issues/H-ancestral-sparse-dense-internal-residues-diverge.md](../issues/H-ancestral-sparse-dense-internal-residues-diverge.md).
 
 ## Test coverage
 
 `test_marginal_map_deviation_does_not_leak_into_subtree` (`packages/treetime/src/ancestral/__tests__/test_marginal_map_deviation.rs`) builds an 8-taxon tree reproducing the first defect in miniature: a single `T` tip on a zero-length branch drives its parent's argmax to `T` at `P ~ 0.99`, while a tight bundle of `C` tips below keeps every node in that clade at `C` with `P > 1 - EPS`, so all of them resolve the position out of `variable`. It asserts the deviation stays on the node that owns it and that the whole reconstruction matches dense.
 
-`test_marginal_map_deviation_keeps_inherited_deletions` guards the second defect's invariant but does **not** reproduce it: on that topology the deleted clade's nodes carry no posterior at the position, so it passes on the pre-parsimony-chain reconstruction too. A faithful regression test needs a node that is `non_char` at a position its own upward message still reports as variable, as at the `data/sc2/4500` positions above. This is outstanding.
+`test_marginal_map_deviation_keeps_inherited_deletions` guards the second defect's invariant but does **not** reproduce it: on that topology the deleted clade's nodes carry no posterior at the position, so it passes on the pre-parsimony-chain reconstruction too. A faithful regression test needs a node that is `non_char` at a position its own upward message still reports as variable, as at the `data/sc2/5100` positions above. This is outstanding.

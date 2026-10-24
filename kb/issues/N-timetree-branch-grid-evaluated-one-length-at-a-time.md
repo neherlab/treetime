@@ -23,4 +23,4 @@ The results stay bit-identical when, for each grid point, the sites are still ad
 ## Validation
 
 - Outputs of dense and sparse timetree runs are bit-identical before and after the change
-- Timing of dense and sparse timetree on large datasets (for example `sc2/4500`, `dengue/2000`) against the one-point-at-a-time loop, with the forward pass trimmed and untrimmed
+- Timing of dense and sparse timetree on large datasets (for example `sc2/5100`, `dengue/2000`) against the one-point-at-a-time loop, with the forward pass trimmed and untrimmed

@@ -12,7 +12,7 @@ In the server and the desktop app, the files stay on disk until the run manager 
 - web2 keeps runs in the memory of the tab: [kb/decisions/app-web2-wasm-worker-back-end.md](../decisions/app-web2-wasm-worker-back-end.md)
 
 > [!IMPORTANT]
-> **Investigation required.** Measure the memory of the web2 back-end worker after several resets that each follow an upload of a large alignment (for example `sc2/4500`), to find whether the kept uploads can approach the 4 GiB limit of the module.
+> **Investigation required.** Measure the memory of the web2 back-end worker after several resets that each follow an upload of a large alignment (for example `sc2/5100`), to find whether the kept uploads can approach the 4 GiB limit of the module.
 
 ## Fix direction
 

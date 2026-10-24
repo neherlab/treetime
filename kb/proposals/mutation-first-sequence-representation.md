@@ -10,7 +10,7 @@ The sparse backend exists to avoid `O(N * L)` storage of probability vectors. It
 
 ## Evidence
 
-Measured on `data/sc2/4500` (10199 nodes, L = 29903, mean 2.6 substitutions per edge):
+Measured on `data/sc2/5100` (10199 nodes, L = 29903, mean 2.6 substitutions per edge):
 
 | Component                                    | Size    |
 | -------------------------------------------- | ------- |
@@ -84,7 +84,7 @@ If a sequence is _defined_ as root plus path, `parent + mutations == child` beco
 
 ## Expected impact
 
-- Peak memory on `data/sc2/4500` drops by roughly 450 MB for the ancestral path.
+- Peak memory on `data/sc2/5100` drops by roughly 450 MB for the ancestral path.
 - `capture_ancestral_states` ([timetree/convergence/sequence_changes.rs](../../packages/treetime/src/timetree/convergence/sequence_changes.rs)) shares the node sequences and stores only the states inferred at variable positions, so the convergence check adds no second set of sequences. Comparing per-node mutation sets would still give a more direct convergence signal.
 - Dense is unaffected; it stores `(L, K)` profiles per node regardless, and per-node sequences are not its dominant term.
 - No output changes if the streaming traversal produces byte-identical sequences, which is the acceptance criterion below.
@@ -100,11 +100,11 @@ Each step stands alone and is independently revertable:
 
 ## Validation plan
 
-- Byte-identical reconstructed FASTA, augur node-data JSON, auspice, and nexus against the current implementation on `wrong_reconstruction/subset` (676 tips, 29903 columns) and `data/sc2/4500`.
+- Byte-identical reconstructed FASTA, augur node-data JSON, auspice, and nexus against the current implementation on `wrong_reconstruction/subset` (676 tips, 29903 columns) and `data/sc2/5100`.
 - Byte-identical output under `--impute-missing-data`, `--sample-from-profile root --seed 42` and `--sample-from-profile all --seed 42`.
 - Sparse still byte-identical to dense on the four `wrong_reconstruction` alignments.
 - `optimize` and `timetree` tree and node-data unchanged, except where step 1 deliberately changes the convergence metric, which should be reported as an iteration-count difference rather than an output difference.
-- Peak RSS measured before and after on `data/sc2/4500`.
+- Peak RSS measured before and after on `data/sc2/5100`.
 
 ## Related issues
 

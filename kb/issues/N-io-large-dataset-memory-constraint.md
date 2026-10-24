@@ -15,7 +15,7 @@ All records of a file must fit in memory, and the paired sequences of every file
 ## Memory characteristics
 
 > [!IMPORTANT]
-> **Investigation required.** The peak of twice the sequence data (FASTA records plus partition copies) is an estimate from the code structure, not a measurement. Measure the peak resident memory of a run on a large dataset (for example `data/sc2/4500` or `data/mpox/clade-ii/2000`) against the size of the decompressed alignment, for dense and sparse partitions.
+> **Investigation required.** The peak of twice the sequence data (FASTA records plus partition copies) is an estimate from the code structure, not a measurement. Measure the peak resident memory of a run on a large dataset (for example `data/sc2/5100` or `data/mpox/clade-ii/2000`) against the size of the decompressed alignment, for dense and sparse partitions.
 
 1. Peak memory: estimated at 2x sequence data (FASTA records + partition copies)
 2. Post-attachment: original `Vec<FastaRecord>` is dropped, partitions remain

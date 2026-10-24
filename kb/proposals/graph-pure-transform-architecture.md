@@ -210,7 +210,7 @@ The design must account for result-application cost, stage-specific types, and p
 
 Before implementation, resolve the open design choices and approve a behavior-preserving target. Validation must cover:
 
-- **Runtime and memory**: measure payload access, keyed lookup, allocation, and peak memory on `sc2/4500` and `dengue/2000`. Compare balanced and unbalanced trees across thread counts
+- **Runtime and memory**: measure payload access, keyed lookup, allocation, and peak memory on `sc2/5100` and `dengue/2000`. Compare balanced and unbalanced trees across thread counts
 - **Storage and topology**: test stable keys, removed entries, changed connections, and invalidation of dependent results
 - **Callback contracts**: compare clock regression, which uses moment accumulation and subtraction, with marginal and dating passes, which also require normalization and contribution removal
 - **Shared driver suitability**: retain separate numerical callbacks where their contracts differ. Share dependency scheduling independently of numerical operations

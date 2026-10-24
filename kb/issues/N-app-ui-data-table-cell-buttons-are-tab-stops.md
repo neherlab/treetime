@@ -4,7 +4,7 @@ The result tables (`DataTable` in `packages/app-ui/src/components/DataTable.tsx`
 
 ## Evidence
 
-Homoplasy run on `data/sc2/4500` in the dev app: the recurrent-mutation grid renders about 20 rows, and 19 of its buttons have a non-negative `tabIndex`. Tab walks through them one by one before it leaves the table. The WAI-ARIA grid pattern keeps one tab stop per grid and moves within it by arrow keys.
+Homoplasy run on `data/sc2/5100` in the dev app: the recurrent-mutation grid renders about 20 rows, and 19 of its buttons have a non-negative `tabIndex`. Tab walks through them one by one before it leaves the table. The WAI-ARIA grid pattern keeps one tab stop per grid and moves within it by arrow keys.
 
 ## Fix direction
 

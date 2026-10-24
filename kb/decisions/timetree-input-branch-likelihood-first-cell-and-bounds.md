@@ -71,7 +71,7 @@ The law changes the grid values of no input-mode distribution: the grid points h
 
 Function-function convolution reads the edge cell by its grid values only and ends its result with a plain `Hard` side ([kb/issues/N-distribution-fft-convolution-ignores-edge-cell-law.md](../issues/N-distribution-fft-convolution-ignores-edge-cell-law.md)).
 
-Measured with `treetime timetree --branch-length-mode=input --seed=1` (dev build, `--confidence` except for `data/rsv/a/20` and `data/sc2/4500`), before and after the law. "Shift" is the largest change of a node date; "of interval" divides each node's shift by the width of its 90% interval and reports the largest ratio:
+Measured with `treetime timetree --branch-length-mode=input --seed=1` (dev build, `--confidence` except for `data/rsv/a/20` and `data/sc2/5100`), before and after the law. "Shift" is the largest change of a node date; "of interval" divides each node's shift by the width of its 90% interval and reports the largest ratio:
 
 | Dataset | Leaf dates | Changed nodes | Shift | Of interval | Log marginal likelihood of node times |
 | --- | --- | --- | --- | --- | --- |
@@ -80,11 +80,11 @@ Measured with `treetime timetree --branch-length-mode=input --seed=1` (dev build
 | `data/mpox/clade-ii/20` | 8 month or year ranges | 19 of 39 | 1.25 days | 0.023 | -69.0920 to -69.0281 |
 | `data/mpox/clade-ii/100` | month or year ranges | 101 of 199 | 1.94 days | 0.049 | -415.1942 to -415.1923 |
 | `data/rsv/a/20` | month ranges | 0 of 38 | 0 | 0 | -18.9681, unchanged |
-| `data/sc2/4500` | exact | 4416 of 9561 (46 by more than 1 day, mean 0.08 days) | 1.66 days | not measured | -24510.9914 to -24511.4726 |
+| `data/sc2/5100` | exact | 4416 of 9561 (46 by more than 1 day, mean 0.08 days) | 1.66 days | not measured | -24510.9914 to -24511.4726 |
 
 - **Clock rate**: unchanged in every case
 - **Marginal mode**: outputs identical byte for byte before the law reached leaf messages (`data/flu/h3n2/20`, `data/ebola/20`); the golden masters of the marginal runner stay unchanged with it
-- **Channels separated**: a build that ignores the law only in the convolution window gave outputs identical byte for byte to the run before the law on `data/flu/h3n2/20` and `data/ebola/20` while leaf messages ended with a plain hard edge. Its shifts, up to 1.3% of the interval, come from the placement of the resampling grid, not from the model ([kb/issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md)). The leaf messages then moved dates on these datasets by less than 0.01 days, on `data/mpox/clade-ii/20` and `data/mpox/clade-ii/100` by up to 1.58 days (4.8% of the interval), and on `data/sc2/4500` by up to 1.35 days; the log marginal likelihood rose by 0.07 nats on `data/mpox/clade-ii/20` and by 1.8 nats on `data/sc2/4500`. Short branches with fewer than one mutation have the minimum of their cost inside the first cell, where a straight cell misses mass
+- **Channels separated**: a build that ignores the law only in the convolution window gave outputs identical byte for byte to the run before the law on `data/flu/h3n2/20` and `data/ebola/20` while leaf messages ended with a plain hard edge. Its shifts, up to 1.3% of the interval, come from the placement of the resampling grid, not from the model ([kb/issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md)). The leaf messages then moved dates on these datasets by less than 0.01 days, on `data/mpox/clade-ii/20` and `data/mpox/clade-ii/100` by up to 1.58 days (4.8% of the interval), and on `data/sc2/5100` by up to 1.35 days; the log marginal likelihood rose by 0.07 nats on `data/mpox/clade-ii/20` and by 1.8 nats on `data/sc2/5100`. Short branches with fewer than one mutation have the minimum of their cost inside the first cell, where a straight cell misses mass
 - **`data/lassa/L/20`** fails in input mode with and without the law at the grid point limit ([kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](../issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md))
 
 ## Tests

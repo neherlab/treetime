@@ -1,7 +1,7 @@
 # FFT convolution integrates an edge cell from its grid values only
 
 > [!IMPORTANT]
-> **Investigation required.** The change of timetree results from an exact edge cell in function-function convolution is not measured. Measure it on input-mode runs with short branches (`data/mpox/clade-ii/100`, `data/sc2/4500`): node dates against their 90% intervals and the log marginal likelihood of node times, with the exact cell mass in convolution against the grid-value quadrature.
+> **Investigation required.** The change of timetree results from an exact edge cell in function-function convolution is not measured. Measure it on input-mode runs with short branches (`data/mpox/clade-ii/100`, `data/sc2/5100`): node dates against their 90% intervals and the log marginal likelihood of node times, with the exact cell mass in convolution against the grid-value quadrature.
 
 A distribution with a `BoundaryBehavior::HardEdgeCell` side follows `EdgeCellLaw` in its outermost cell: a power law in the distance to an origin beyond the grid edge ([kb/decisions/timetree-input-branch-likelihood-first-cell-and-bounds.md](../decisions/timetree-input-branch-likelihood-first-cell-and-bounds.md)). The input-mode Poisson branch likelihood uses it for its first cell, where the cost $x/\mu - k \ln(x + c)$ curves on the scale $c = 10^{-3}\mu$, far below the grid step.
 

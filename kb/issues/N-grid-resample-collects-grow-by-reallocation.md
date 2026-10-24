@@ -5,7 +5,7 @@
 Resampling runs on every regrid of the time inference, with grids of up to millions of points.
 
 > [!IMPORTANT]
-> **Investigation required.** Whether these collects reallocate in the release build, and their share of the run time and of the peak memory on `data/sc2/4500` and `data/mpox/clade-ii/1000`.
+> **Investigation required.** Whether these collects reallocate in the release build, and their share of the run time and of the peak memory on `data/sc2/5100` and `data/mpox/clade-ii/1000`.
 
 ## Fix direction
 
@@ -13,4 +13,4 @@ Allocate the result once at its known length, for example with `Array1::from_sha
 
 ## Validation
 
-The resampling tests of `treetime-grid` pass; a profile of `data/sc2/4500` shows no reallocation in these functions.
+The resampling tests of `treetime-grid` pass; a profile of `data/sc2/5100` shows no reallocation in these functions.

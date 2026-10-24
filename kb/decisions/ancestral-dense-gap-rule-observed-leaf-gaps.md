@@ -31,7 +31,7 @@ Before this rule, the forward pass copied the root gap at columns 2-3 into X and
 ## Why
 
 - A pass that depends on the output of the previous pass is not a function of the data. Its result changes with the pass count, which differs between commands
-- The rule is the one sparse already uses, so the two representations agree on gaps. On `data/sc2/4500` and `data/rsv/a/20` the dense and sparse reconstructions now place every gap and unknown character at the same positions
+- The rule is the one sparse already uses, so the two representations agree on gaps. On `data/sc2/5100` and `data/rsv/a/20` the dense and sparse reconstructions now place every gap and unknown character at the same positions
 - The alternative, the fixed point of repeated passes, would also change amino-acid and deep-tree nucleotide output, and it has no single-pass definition
 
 v0 is not a reference for this case: it models the gap as a fifth state of the `nuc` alphabet, which is a different model.

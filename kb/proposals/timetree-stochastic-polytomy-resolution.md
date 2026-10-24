@@ -284,7 +284,7 @@ Surgery and integration:
 - end-to-end refinement on a tree with a large polytomy: a seeded run is reproducible,
   converges, and leaves a sane node count
 
-Datasets: ebola/20 and sc2/4500. Compare against v0 `--stochastic-resolve` distributionally
+Datasets: ebola/20 and sc2/5100. Compare against v0 `--stochastic-resolve` distributionally
 over replicates -- resulting child-count distribution per polytomy, tree-shape summaries,
 final likelihood -- and against the current greedy implementation on the same trees to
 characterise the change in resolved topology.

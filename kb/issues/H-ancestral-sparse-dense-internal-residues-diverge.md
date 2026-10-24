@@ -7,9 +7,9 @@ For the same tree and alignment, the sparse and dense marginal backends reconstr
 | Dataset         | Internal nodes | Nodes that differ | Positions that differ |
 | --------------- | -------------- | ----------------- | --------------------- |
 | `data/rsv/a/20` | 18             | 6                 | 19                    |
-| `data/sc2/4500` | 5099           | 467               | 658                   |
+| `data/sc2/5100` | 5099           | 467               | 658                   |
 
-Examples on `data/rsv/a/20` (sparse, dense; positions are 0-based alignment columns): `NODE_0000002` position 5437 `C`, `G` and positions 5444, 5458, 5467, 5479, 5488 `C`, `T`; `NODE_0000016` position 6391 `A`, `G`. Examples on `data/sc2/4500`: position 29866 `A`, `T` on `NODE_0000030` to `NODE_0000034`; position 25701 `T`, `C` on `NODE_0000040`.
+Examples on `data/rsv/a/20` (sparse, dense; positions are 0-based alignment columns): `NODE_0000002` position 5437 `C`, `G` and positions 5444, 5458, 5467, 5479, 5488 `C`, `T`; `NODE_0000016` position 6391 `A`, `G`. Examples on `data/sc2/5100`: position 29866 `A`, `T` on `NODE_0000030` to `NODE_0000034`; position 25701 `T`, `C` on `NODE_0000040`.
 
 The differences are canonical states at positions where both backends agree on gaps and unknown characters, so the dense gap rule does not cause them.
 

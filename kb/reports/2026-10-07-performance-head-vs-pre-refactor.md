@@ -22,10 +22,10 @@ Negative change = `head` is better. Each table is sorted by the `base` value, la
 | ancestral dense `rsv/a/2000` | 10.4 s | 3.1 s | **-71%** |
 | timetree `rsv/a/2000` | 10.0 s | 9.3 s | **-7%** |
 | optimize dense `dengue/500` | 5.9 s | 3.9 s | **-34%** |
-| timetree `sc2/4500` | 4.8 s | 3.5 s | **-29%** |
+| timetree `sc2/5100` | 4.8 s | 3.5 s | **-29%** |
 | timetree `mpox/clade-ii/2000` | 3.7 s | 2.3 s | **-37%** |
 | mugration `dengue/2000` | 2.9 s | 2.7 s | **-8%** |
-| ancestral sparse `sc2/4500` | 1.54 s | 0.92 s | **-40%** |
+| ancestral sparse `sc2/5100` | 1.54 s | 0.92 s | **-40%** |
 | optimize sparse `dengue/2000` | 1.06 s | 0.76 s | **-28%** |
 | timetree `mpox/clade-ii/500` | 0.83 s | 0.53 s | **-36%** |
 | ancestral sparse `dengue/2000` | 0.35 s | 0.24 s | **-31%** |
@@ -40,10 +40,10 @@ Negative change = `head` is better. Each table is sorted by the `base` value, la
 | optimize dense `rsv/a/2000` | 7985 MB | 7731 MB | **-3%** |
 | timetree `mpox/clade-ii/2000` | 2308 MB | 1258 MB | **-46%** |
 | timetree `dengue/2000` | 1784 MB | 1740 MB | **-2%** |
-| timetree `sc2/4500` | 1658 MB | 1343 MB | **-19%** |
+| timetree `sc2/5100` | 1658 MB | 1343 MB | **-19%** |
 | optimize dense `dengue/500` | 1422 MB | 1293 MB | **-9%** |
 | timetree `rsv/a/2000` | 1170 MB | 1060 MB | **-9%** |
-| ancestral sparse `sc2/4500` | 1145 MB | 919 MB | **-20%** |
+| ancestral sparse `sc2/5100` | 1145 MB | 919 MB | **-20%** |
 | timetree `mpox/clade-ii/500` | 568 MB | 324 MB | **-43%** |
 | ancestral sparse `dengue/2000` | 295 MB | 245 MB | **-17%** |
 | optimize sparse `dengue/2000` | 289 MB | 248 MB | **-14%** |
@@ -65,7 +65,7 @@ Some results differ between `base` and `head`, so this comparison is close but n
 
 - Timetree values differ slightly (clock rate about 1e-10 relative on `mpox/500`, 1e-4 on `dengue/2000`)
 - Dense optimize on `rsv/a/2000` writes different trees
-- Ancestral now also reports mutations to ambiguous characters (e.g. `C7536M` on `sc2/4500`), so `head` writes more output there
+- Ancestral now also reports mutations to ambiguous characters (e.g. `C7536M` on `sc2/5100`), so `head` writes more output there
 - Sparse optimize, mugration, prune, and clock give the same results
 
 ## Details
@@ -93,10 +93,10 @@ Every case also has `--output-all=<dir>`. Timetree cases also have `--output-sel
 | ancestral dense `rsv/a/2000`   | `ancestral --tree=data/rsv/a/2000/tree.nwk --aln=data/rsv/a/2000/aln.fasta.xz --method-anc=marginal --dense=true --model=jc69`                                              |
 | timetree `rsv/a/2000`          | `timetree --tree=data/rsv/a/2000/tree.nwk --dates=data/rsv/a/2000/metadata.tsv --aln=data/rsv/a/2000/aln.fasta.xz --name-column=accession --seed=1`                         |
 | optimize dense `dengue/500`    | `optimize --tree=data/dengue/500/tree.nwk --aln=data/dengue/500/aln.fasta.xz --dense=true`                                                                                  |
-| timetree `sc2/4500`            | `timetree --tree=data/sc2/4500/tree.nwk --dates=data/sc2/4500/metadata.tsv.xz --aln=data/sc2/4500/aln.fasta.xz --name-column=strain --seed=1`                               |
+| timetree `sc2/5100`            | `timetree --tree=data/sc2/5100/tree.nwk --dates=data/sc2/5100/metadata.tsv.xz --aln=data/sc2/5100/aln.fasta.xz --name-column=strain --seed=1`                               |
 | timetree `mpox/clade-ii/2000`  | `timetree --tree=data/mpox/clade-ii/2000/tree.nwk --dates=data/mpox/clade-ii/2000/metadata.tsv --aln=data/mpox/clade-ii/2000/aln.fasta.xz --name-column=accession --seed=1` |
 | mugration `dengue/2000`        | `mugration --tree=data/dengue/2000/tree.nwk --metadata=data/dengue/2000/metadata.tsv --attribute=country --metadata-id-columns=genbank_accession`                           |
-| ancestral sparse `sc2/4500`    | `ancestral --tree=data/sc2/4500/tree.nwk --aln=data/sc2/4500/aln.fasta.xz --method-anc=marginal --dense=false`                                                              |
+| ancestral sparse `sc2/5100`    | `ancestral --tree=data/sc2/5100/tree.nwk --aln=data/sc2/5100/aln.fasta.xz --method-anc=marginal --dense=false`                                                              |
 | optimize sparse `dengue/2000`  | `optimize --tree=data/dengue/2000/tree.nwk --aln=data/dengue/2000/aln.fasta.xz --dense=false`                                                                               |
 | timetree `mpox/clade-ii/500`   | `timetree --tree=data/mpox/clade-ii/500/tree.nwk --dates=data/mpox/clade-ii/500/metadata.tsv --aln=data/mpox/clade-ii/500/aln.fasta.xz --name-column=accession --seed=1`    |
 | ancestral sparse `dengue/2000` | `ancestral --tree=data/dengue/2000/tree.nwk --aln=data/dengue/2000/aln.fasta.xz --method-anc=marginal --dense=false`                                                        |
@@ -108,7 +108,7 @@ Every case also has `--output-all=<dir>`. Timetree cases also have `--output-sel
 Build each commit as above, then run each case with both binaries from the repository root and wrap every run in `/usr/bin/time`, for example:
 
 ```bash
-/usr/bin/time -f '%e s %M KB' .out/treetime-x86_64-unknown-linux-gnu timetree --tree=data/sc2/4500/tree.nwk --dates=data/sc2/4500/metadata.tsv.xz --aln=data/sc2/4500/aln.fasta.xz --name-column=strain --seed=1 --output-selection=nwk,nexus,auspice,augur-node-data,clock-model,gtr --output-all=tmp/bench/timetree-sc2-4500
+/usr/bin/time -f '%e s %M KB' .out/treetime-x86_64-unknown-linux-gnu timetree --tree=data/sc2/5100/tree.nwk --dates=data/sc2/5100/metadata.tsv.xz --aln=data/sc2/5100/aln.fasta.xz --name-column=strain --seed=1 --output-selection=nwk,nexus,auspice,augur-node-data,clock-model,gtr --output-all=tmp/bench/timetree-sc2-4500
 ```
 
 ## Open items

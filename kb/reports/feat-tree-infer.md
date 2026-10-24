@@ -145,7 +145,7 @@ To estimate which datasets fit low-divergence methods, the following test applie
 | `dengue/2000`                  |     1,954 |  10,723 |            0.0487 |           0.1753 |          0.0494 |         0.1811 | no          |
 | `lassa/L/500`                  |       414 |  10,402 |            0.0994 |           0.2212 |          0.1213 |         0.3013 | no          |
 | `mpox/clade-ii/2000`           |     1,989 | 197,209 |            0.0003 |           0.0101 |          0.0001 |         0.0035 | yes         |
-| `sc2/4500`                     |     5,100 |  29,903 |            0.0024 |           0.0294 |          0.0020 |         0.0065 | yes         |
+| `sc2/5100`                     |     5,100 |  29,903 |            0.0024 |           0.0294 |          0.0020 |         0.0065 | yes         |
 
 The result divides the datasets into two groups:
 

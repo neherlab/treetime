@@ -30,6 +30,9 @@ The indel rate $\hat{\mu} = \sum_e k_e / \sum_e t_e$ is estimated once at the st
 
 A rate recomputed in every iteration would amplify a 2-cycle caused by the sparse variable/fixed position boundary. On sc2/2844, $\hat{\mu} \approx 12{,}000$ (3751 indels / 0.31 total BL), and a 0.06% BL oscillation shifts $\hat{\mu}$ proportionally across all edges. Computing $\hat{\mu}$ once before the loop avoids this. See [optimize-convergence-and-robustness](../proposals/optimize-convergence-and-robustness.md) P4.
 
+> [!WARNING]
+> **Needs review.** The `sc2/2844` figures here come from an earlier version of that dataset: a tree with branch lengths in years and an alignment with 340 sequences without a tip. The dataset now holds 2504 genomes on a tree with branch lengths in substitutions per site (`data/sc2/2844/README.md`). Measure the figures again before relying on them.
+
 ## Double-counting caveat
 
 The indel rate estimator and per-edge count in `optimize_edge_lengths()` sum `edge_indel_count()` across all partitions. When dense and sparse partitions represent the same alignment, this produces the correct count only if one partition type has zero indels. Currently, Fitch reconstruction populates indels on sparse partitions only. If indel detection is added for dense partitions, partition-aware deduplication is needed to avoid doubling the count and the Poisson curvature.

@@ -5,7 +5,7 @@ The forward pass computes the message from the parent on a capped spacing and ch
 ## Evidence
 
 - `data/flu/h3n2/200` with `--clock-rate=3.058e-3 --keep-root`, forward-posterior trim at $10^{-9}$ and the spacing cap: the largest forward grid has 67 449 points (FFT length 147 456). The same run with neither trim nor cap has a largest forward grid of 7 876 points. The run still takes 1.2 s of CPU
-- The A6 measurements of [kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md) show no run time or memory cost of this size on the default runs of `data/sc2/4500`, `data/ebola/362`, `data/flu/h3n2/200` and the 36 validation runs
+- The A6 measurements of [kb/decisions/timetree-forward-posterior-trimming.md](../decisions/timetree-forward-posterior-trimming.md) show no run time or memory cost of this size on the default runs of `data/sc2/5100`, `data/ebola/362`, `data/flu/h3n2/200` and the 36 validation runs
 - No run has reached the grid point limit through this path
 
 > [!IMPORTANT]

@@ -78,7 +78,7 @@ Auspice offers a node attribute in its Color By menu only when `meta.colorings` 
   - Measured: with values keyed by node, `treetime optimize --reroot=min-dev` on `data/flu/h3n2/20` places 7 of 14 values on the wrong split, each moved one step along the reroot path
 - **Meaning of the Auspice `confidence` attribute**: v0 writes the mutation-based value, augur writes the input support. v1 must choose what the key holds and whether both values are written
 - **Visibility in Auspice**: every written support value needs a `meta.colorings` entry
-- **Chained runs**: v1 Newick and Nexus outputs carry no support, so a run that reads the tree of an earlier run never sees the input values. `data/ebola/362/pipeline.yaml` passes the Newick output of `optimize` to `ancestral` and `timetree`
+- **Chained runs**: v1 Newick and Nexus outputs carry no support, so a run that reads the tree of an earlier run never sees the input values. `data/ebola/362/pipeline-nextstrain.yaml` passes the Newick output of `timetree` to `ancestral` and `mugration`
 - **Label traps**: combined labels such as `80.5/95` become node names, and `inf` or `nan` labels are read as support
 
 ## Decided placement rules

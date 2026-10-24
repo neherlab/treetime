@@ -14,7 +14,7 @@ Caterpillar trees (each internal node has one leaf and one internal child), read
 | 30,000     | not measured                   | parse succeeds, drop overflows                  |
 | 50,000     | not measured                   | parse and compact write succeed, drop overflows |
 
-The depths up to 30,000 were measured with the earlier serde_json reader, whose drop behavior is the same, because `Drop` of the tree types did not change. The process aborts with `thread has overflowed its stack`. The trees of the example datasets are much shallower: 157 for `sc2/4500`, 73 for `rsv/a/2000`, 33 for `mpox/clade-ii/500`.
+The depths up to 30,000 were measured with the earlier serde_json reader, whose drop behavior is the same, because `Drop` of the tree types did not change. The process aborts with `thread has overflowed its stack`. The trees of the example datasets are much shallower: 157 for `sc2/5100`, 73 for `rsv/a/2000`, 33 for `mpox/clade-ii/500`.
 
 ## Other recursive operations
 

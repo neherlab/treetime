@@ -82,7 +82,7 @@ where:
 
 A value passes a run when (1) the run succeeds, dates every node that the untrimmed 300-point run dates, and violates no parent-child edge that the untrimmed run does not violate, and (2) the 99th percentile of $e$ is at most that of the untrimmed run plus 0.01 and the largest $e$ at most the untrimmed largest plus 0.05.
 
-Runs: `data/ebola/362`, `data/mpox/clade-ii/500`, `data/sc2/4500` and `data/flu/h3n2/200` at the fixed rate that a default run estimates, with `--keep-root --time-marginal always --seed=1`; the simulated sets `const/rep00/L1000_mu0.0003` at its true rate (val-lo) and with `--coalescent opt` and an estimated rate (val-lo-est). val-lo-est is judged by its fixed-rate twin, because its rate changes with the setting.
+Runs: `data/ebola/362`, `data/mpox/clade-ii/500`, `data/sc2/5100` and `data/flu/h3n2/200` at the fixed rate that a default run estimates, with `--keep-root --time-marginal always --seed=1`; the simulated sets `const/rep00/L1000_mu0.0003` at its true rate (val-lo) and with `--coalescent opt` and an estimated rate (val-lo-est). val-lo-est is judged by its fixed-rate twin, because its rate changes with the setting.
 
 ### Outcome at $\epsilon_\text{trim} = 10^{-9}$
 
@@ -93,24 +93,24 @@ Runs: `data/ebola/362`, `data/mpox/clade-ii/500`, `data/sc2/4500` and `data/flu/
 | val-lo-est | 287 of 399 | 0.5208 / 0.5979 | 0.3989 / 0.5037 | pass |
 | mpox/clade-ii/500 | 594 of 618 | 0.0209 / 0.0383 | 0.0209 / 0.0435 | pass |
 | flu/h3n2/200 | 32 of 196 | 0.4408 / 0.5207 | 0.3807 / 0.4402 | pass |
-| sc2/4500, reference at 2400 points | 4825 of 5099 | 0.1009 / 0.3155 | 0.1101 / 0.3412 | pass |
-| sc2/4500, reference at 4800 points | 4825 of 5099 | 0.1032 / 0.3210 | 0.1152 / 0.3448 | fails p99 by 0.0020 |
+| sc2/5100, reference at 2400 points | 4825 of 5099 | 0.1009 / 0.3155 | 0.1101 / 0.3412 | pass |
+| sc2/5100, reference at 4800 points | 4825 of 5099 | 0.1032 / 0.3210 | 0.1152 / 0.3448 | fails p99 by 0.0020 |
 
 Every run meets rule (1): it succeeds, dates every node that the untrimmed run dates, and violates no new parent-child edge. The maintainers accepted $10^{-9}$ with the sc2 residual on 2026-10-20: the p99 of $e$ exceeds its limit by 0.0020 against the 4800-point reference and passes against the 2400-point reference, while the two references differ from each other by a p99 of 0.032. No sc2 reference at 9600 points exists, so the converged nodes of sc2 are those that agree between 2400 and 4800 points. $10^{-7}$ passes sc2 against both references and fails flu by 0.008.
 
 Flu passes because the posterior check of the spacing cap gives under-resolved posteriors a finer message (see above); its largest forward grid is 67 449 points (FFT of 147 456) against 7 876 points untrimmed, and the run still takes 1.2 s of CPU. With the cap off and the trim kept, flu fails (p99 0.504); with the trim off and the cap kept, flu (p99 0.554) and val-lo-est fail.
 
-Cost on one host, CPU time and peak memory: `data/sc2/4500` untrimmed 73.3 s and 953 MB, at $10^{-9}$ 21.7 s and 885 MB, at $10^{-7}$ 21.4 s and 868 MB; with `--coalescent opt` 78.3 s and 1004 MB untrimmed, 26.2 s and 995 MB at $10^{-9}$; the simulated set `const/rep00/L10000_mu0.01` 56.2 s and 188 MB untrimmed, 9.0 s and 171 MB at $10^{-9}$.
+Cost on one host, CPU time and peak memory: `data/sc2/5100` untrimmed 73.3 s and 953 MB, at $10^{-9}$ 21.7 s and 885 MB, at $10^{-7}$ 21.4 s and 868 MB; with `--coalescent opt` 78.3 s and 1004 MB untrimmed, 26.2 s and 995 MB at $10^{-9}$; the simulated set `const/rep00/L10000_mu0.01` 56.2 s and 188 MB untrimmed, 9.0 s and 171 MB at $10^{-9}$.
 
 ## Results
 
-The measurements of this file come from outputs equal to those of commit `6868c7087`. A later correction of the mass model (each cell takes the width between its rounded end coordinates) moves dates of the measured ebola, flu and zika runs by at most $2.3 \cdot 10^{-10}$ of a 90% width, and on `data/sc2/4500` by up to 0.042 of a width: the first difference is a one-ulp move of the parent of `USA/MN-MDH-48906/2025`, and the later rounds spread it ([kb/issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md)).
+The measurements of this file come from outputs equal to those of commit `6868c7087`. A later correction of the mass model (each cell takes the width between its rounded end coordinates) moves dates of the measured ebola, flu and zika runs by at most $2.3 \cdot 10^{-10}$ of a 90% width, and on `data/sc2/5100` by up to 0.042 of a width: the first difference is a one-ulp move of the parent of `USA/MN-MDH-48906/2025`, and the later rounds spread it ([kb/issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md)).
 
 Release builds on one host, one thread, CPU time (user plus system) and peak resident memory, medians of three alternating rounds, against a release build of `rust` `d86d3eb65` (before this change and the mass model of [timetree-posterior-statistics-count-tail-mass.md](timetree-posterior-statistics-count-tail-mass.md)), measured on the final code including the later mass-model correction:
 
 | Run | CPU time | CPU ratio | Peak memory | Memory ratio |
 | --- | --- | --- | --- | --- |
-| `data/sc2/4500` | 48.64 to 19.30 s | 0.397 | 665 to 622 MB | 0.936 |
+| `data/sc2/5100` | 48.64 to 19.30 s | 0.397 | 665 to 622 MB | 0.936 |
 | `data/ebola/362` | 1.17 to 1.13 s | 0.966 | 56 to 52 MB | 0.927 |
 | `data/flu/h3n2/200` | 1.94 to 0.70 s | 0.361 | 35 to 33 MB | 0.940 |
 | 36-run validation subset | 351.1 to 122.5 s (total) | 0.349 | 123 to 133 MB (largest run) | 1.084 |

@@ -8,19 +8,19 @@ Measured with the release profile of the single-threaded module in Node 24, befo
 
 | Run                            | web2   | CLI, 1 thread | CLI, 16 threads | web2 memory | CLI peak RSS |
 | ------------------------------ | ------ | ------------- | --------------- | ----------- | ------------ |
-| `sc2/4500` ancestral           | 5.6 s  | 3.2 s         | 1.8 s           | 1215 MiB    | 875 MiB      |
-| `sc2/4500` timetree            | 46.1 s | 42.8 s        | 6.7 s           | 1227 MiB    | 1054 MiB     |
+| `sc2/5100` ancestral           | 5.6 s  | 3.2 s         | 1.8 s           | 1215 MiB    | 875 MiB      |
+| `sc2/5100` timetree            | 46.1 s | 42.8 s        | 6.7 s           | 1227 MiB    | 1054 MiB     |
 | `mpox/clade-ii/2000` ancestral | 11.3 s | 6.2 s         | 3.5 s           | 1695 MiB    | 1700 MiB     |
 | `mpox/clade-ii/2000` timetree  | 23.4 s | 20.8 s        | 4.7 s           | 1476 MiB    | 1062 MiB     |
 
 - web2 memory is the size of the linear memory of the module after the run; it never shrinks, so it is the peak. The Node process that ran the module peaked at 1.8 to 2.7 GiB, because the in-memory file system of Emscripten keeps the input and output files in JavaScript memory outside the linear memory
 - On one thread, web2 took 1.1 times the time of the CLI for `timetree` and 1.8 times for `ancestral`; against the CLI on 16 threads it took 3 to 7 times as long
 - The run outputs of `mpox/clade-ii/2000` ancestral are 1.1 GB, among them `ancestral.node-data.json` with 785 MB. A job worker holds them in its file system until it has sent them, and the back-end worker holds them for the rest of the page session
-- A trial of the threaded module in Chrome measured `sc2/4500` timetree at 15.8 s with threads against 1 min 44 s single-threaded
+- A trial of the threaded module in Chrome measured `sc2/5100` timetree at 15.8 s with threads against 1 min 44 s single-threaded
 
-Times and peak linear memory of the job module by the URL parameter `jobs` (`jobs=1` is the single-threaded module), measured with the dist builds under Node, compute time only, in a container limited to 20 CPUs on a machine that other jobs loaded with 20 to 36 busy threads, so the times are noisy. On the same machine without load, the single-threaded module computed `sc2/4500` timetree in 18.7 s:
+Times and peak linear memory of the job module by the URL parameter `jobs` (`jobs=1` is the single-threaded module), measured with the dist builds under Node, compute time only, in a container limited to 20 CPUs on a machine that other jobs loaded with 20 to 36 busy threads, so the times are noisy. On the same machine without load, the single-threaded module computed `sc2/5100` timetree in 18.7 s:
 
-| `jobs` | `sc2/4500` timetree | `mpox/clade-ii/2000` ancestral |
+| `jobs` | `sc2/5100` timetree | `mpox/clade-ii/2000` ancestral |
 | ------ | ------------------- | ------------------------------ |
 | 1      | 45.5 s, 611 MiB     | 13.3 s, 1685 MiB               |
 | 2      | 39.5 s, 611 MiB     | 12.7 s, 1634 MiB               |
@@ -28,7 +28,7 @@ Times and peak linear memory of the job module by the URL parameter `jobs` (`job
 | 8      | 24.1 s, 611 MiB     | 14.6 s, 1668 MiB               |
 | 16     | 18.2 s, 611 MiB     | 14.7 s, 1681 MiB               |
 
-- At 16 threads, `sc2/4500` timetree is 2.5 times as fast as on one thread, and `mpox/clade-ii/2000` ancestral is not faster. Threads do not change the peak linear memory of a run
+- At 16 threads, `sc2/5100` timetree is 2.5 times as fast as on one thread, and `mpox/clade-ii/2000` ancestral is not faster. Threads do not change the peak linear memory of a run
 - In the threaded module every allocation takes the global lock of dlmalloc, the default allocator of Emscripten. The hot paths still allocate on every call: one `expQt` matrix per call and `.t().to_owned()` copies in [packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169](../../packages/treetime/src/partition/marginal/sparse/message.rs#L145-L169), two `dot` results and a `GTR` clone per edge in [packages/treetime/src/partition/optimize/dense.rs#L10-L11](../../packages/treetime/src/partition/optimize/dense.rs#L10-L11), `Vec`s per edge in `packages/treetime/src/partition/optimize/sparse.rs`, and the `map_collect` of `divide_out` in `packages/treetime/src/partition/marginal/shared/normalize.rs`
 
 > [!IMPORTANT]

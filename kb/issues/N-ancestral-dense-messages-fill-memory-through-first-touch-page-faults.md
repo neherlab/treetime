@@ -47,9 +47,9 @@ The same count, one L-by-s array of 8-byte values per node and three per edge wi
 | `mpox/clade-ii/1000` | 1916 | 197209 | 48.3 GB |
 | `mpox/clade-ii/2000` | 3976 | 197209 | 100.3 GB |
 | `sc2/2844` | 4455 | 29903 | 17.0 GB |
-| `sc2/4500` | 10199 | 29903 | 39.0 GB |
+| `sc2/5100` | 10199 | 29903 | 39.0 GB |
 
-On the build host, dense `ancestral` and `optimize` stop with an allocation failure on `mpox/clade-ii/{500,1000,2000}` and `sc2/{2844,4500}`, at 14 to 16 GB of resident memory, when the smoke test limits each process to 18.5 GiB of data segment. `dev/smoke.toml` skips these datasets in its dense rows, because whether they fit depends on the memory of the host.
+On the build host, dense `ancestral` and `optimize` stop with an allocation failure on `mpox/clade-ii/{500,1000,2000}` and `sc2/{2844,5100}`, at 14 to 16 GB of resident memory, when the smoke test limits each process to 18.5 GiB of data segment. `dev/smoke.toml` skips these datasets in its dense rows, because whether they fit depends on the memory of the host.
 
 ## Fix direction
 

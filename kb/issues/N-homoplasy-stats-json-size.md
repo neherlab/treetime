@@ -8,14 +8,14 @@
 `treetime homoplasy --output-all` with default settings writes a statistics file of:
 
 - 0.4 MB for `data/flu/h3n2/500`
-- 123 MB for `data/sc2/4500`
+- 123 MB for `data/sc2/5100`
 - 221 MB for `data/mpox/clade-ii/2000`
 
-The ranked list of ambiguous changes (`ambiguous.all.ranked`, each entry with the name of every branch it occurs on) is 72 MB with 31,571 entries for `sc2/4500` and 97 MB with 189,389 entries for `mpox/clade-ii/2000`. The substitution lists are 0.1 to 1.3 MB, `taxa` is at most 0.65 MB, and `ambiguous.sites` has up to 188,636 rows (mpox).
+The ranked list of ambiguous changes (`ambiguous.all.ranked`, each entry with the name of every branch it occurs on) is 72 MB with 31,571 entries for `sc2/5100` and 97 MB with 189,389 entries for `mpox/clade-ii/2000`. The substitution lists are 0.1 to 1.3 MB, `taxa` is at most 0.65 MB, and `ambiguous.sites` has up to 188,636 rows (mpox).
 
 Most of the ambiguous changes are the sequence ends that gap filling turns into `N` ([N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md](N-homoplasy-filled-overhangs-dominate-ambiguous-changes.md)).
 
-The web and desktop apps read the file with `json_read_file()` into `struct HomoplasyStatsFile` ([packages/app-backend/src/results/outputs.rs#L73](../../packages/app-backend/src/results/outputs.rs#L73)), and `fn homoplasy_statistics()` builds the results page from it ([packages/app-backend/src/results/homoplasy.rs#L20](../../packages/app-backend/src/results/homoplasy.rs#L20)). `struct AmbiguousStats` has no field for `ambiguous.all.ranked` ([packages/app-backend/src/results/homoplasy.rs#L76-L94](../../packages/app-backend/src/results/homoplasy.rs#L76-L94)), so deserialization skips the list. This avoids allocating its entries but not reading and scanning its bytes. Without whitespace, the list is 72.8 MB of the 77.3 MB of the `sc2/4500` file and 100.3 MB of the 107.9 MB of the `mpox/clade-ii/2000` file. With `json_read_file()` in the dev profile, the `sc2/4500` file takes 0.28 s to read as written into the type of the results page, and the `mpox/clade-ii/2000` file takes 0.61 s.
+The web and desktop apps read the file with `json_read_file()` into `struct HomoplasyStatsFile` ([packages/app-backend/src/results/outputs.rs#L73](../../packages/app-backend/src/results/outputs.rs#L73)), and `fn homoplasy_statistics()` builds the results page from it ([packages/app-backend/src/results/homoplasy.rs#L20](../../packages/app-backend/src/results/homoplasy.rs#L20)). `struct AmbiguousStats` has no field for `ambiguous.all.ranked` ([packages/app-backend/src/results/homoplasy.rs#L76-L94](../../packages/app-backend/src/results/homoplasy.rs#L76-L94)), so deserialization skips the list. This avoids allocating its entries but not reading and scanning its bytes. Without whitespace, the list is 72.8 MB of the 77.3 MB of the `sc2/5100` file and 100.3 MB of the 107.9 MB of the `mpox/clade-ii/2000` file. With `json_read_file()` in the dev profile, the `sc2/5100` file takes 0.28 s to read as written into the type of the results page, and the `mpox/clade-ii/2000` file takes 0.61 s.
 
 ## Options
 

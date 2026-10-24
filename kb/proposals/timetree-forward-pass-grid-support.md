@@ -10,7 +10,7 @@ Most of the timetree run time goes to grid points that carry no probability. In 
 
 ## Measurements
 
-Base `94f921f8e7`, release build, `--jobs 1`, one JSON record per distribution operation at the call sites in `backward_pass.rs`, `forward_pass.rs` and `branch_length_likelihood.rs`. Mass core: the interval holding all but $10^{-3}$ of the grid mass ($5 \cdot 10^{-4}$ per side). Datasets: `data/mpox/clade-ii/1000` (fixed clock `5.7e-5`), `data/sc2/4500`, `data/ebola/362`, and the validation suite's `const/rep00/L10000_mu0.01` (400 tips, fixed clock, `--keep-root`).
+Base `94f921f8e7`, release build, `--jobs 1`, one JSON record per distribution operation at the call sites in `backward_pass.rs`, `forward_pass.rs` and `branch_length_likelihood.rs`. Mass core: the interval holding all but $10^{-3}$ of the grid mass ($5 \cdot 10^{-4}$ per side). Datasets: `data/mpox/clade-ii/1000` (fixed clock `5.7e-5`), `data/sc2/5100`, `data/ebola/362`, and the validation suite's `const/rep00/L10000_mu0.01` (400 tips, fixed clock, `--keep-root`).
 
 Share of distribution-operation time:
 
@@ -69,7 +69,7 @@ Maximum after trimming on the finer spacing: 52 732 (mpox), 26 636 (simulated).
 
 - **`Linear` tail fitted at the new edge.** Support becomes unbounded on that side; under the empty invariant ([kb/decisions/distribution-tails-and-arithmetic.md](../decisions/distribution-tails-and-arithmetic.md#empty-invariant)) a soft side bridges gaps, so trimming cannot make two messages disjoint. Drops the hard bound, which at the measured edges has density below $10^{-50}$.
 - **`Linear` tail truncated at the original bound.** Keeps the exact support. Needs a new `BoundaryBehavior` variant and its handling in multiplication, division, mass and tail composition.
-- **`Hard` at the trimmed edge.** Moves a hard bound inward. A prototype that shifted a hard edge inward produced a node with an empty posterior on `data/sc2/4500` (disjoint supports).
+- **`Hard` at the trimmed edge.** Moves a hard bound inward. A prototype that shifted a hard edge inward produced a node with an empty posterior on `data/sc2/5100` (disjoint supports).
 
 ### Output spacing
 
@@ -96,7 +96,7 @@ Prototype in the `experiment(...)` commit `6d06d211a` on branch `claude-grid-tri
 
 | variant | what is trimmed by mass, hard sides included | result |
 | --- | --- | --- |
-| c | forward convolution output and forward posterior | `data/mpox/clade-ii/1000`: 152 internal nodes without a date (empty posterior), tips with uncertain dates moved by up to 6 years; `data/sc2/4500`: some intervals at 3% of base |
+| c | forward convolution output and forward posterior | `data/mpox/clade-ii/1000`: 152 internal nodes without a date (empty posterior), tips with uncertain dates moved by up to 6 years; `data/sc2/5100`: some intervals at 3% of base |
 | p | forward posterior only | consistent with base on all datasets (below); without the spacing cap, `mpox` exceeds `--max-grid-points` |
 | p + coarse | as p, convolution output spacing at most the coarser operand's | below |
 
@@ -109,7 +109,7 @@ Trimming and the spacing cap have to land together, not in the order of the [iss
 | dataset | wall time base | p + coarse | forward pass, one round | peak memory |
 | --- | --- | --- | --- | --- |
 | validation `const/rep00/L10000_mu0.01`, fixed clock, 3 passes | 36.3 s | 5.9 s | 8.7 s to 0.3 s | 398 to 123 MB |
-| `data/sc2/4500` | 47.3 s | 14.9 s | 9.8 s to 1.05 s | 1070 to 695 MB |
+| `data/sc2/5100` | 47.3 s | 14.9 s | 9.8 s to 1.05 s | 1070 to 695 MB |
 | `data/mpox/clade-ii/1000`, fixed clock | 5.6 s | 5.3 s | 0.33 s to 0.24 s | 414 to 410 MB |
 | `data/ebola/362` | 1.0 s | 0.9 s | 0.08 s to 0.06 s | 60 MB |
 
@@ -157,7 +157,7 @@ Release builds on the host, `-j 1`, run time by commit of the stack:
 - **The v0 spacing rule** (`00a2d21da`): `ebola/362` 1.1 s to 2.1 s
 - **The hard side of a cropped FFT result stored at the FFT spacing out to the operand ends** (`13fa8ddb0`): `flu/h3n2/200` 1.45 s to 3.6 s, with 3 to 6 times the memory on cases of the validation suite
 - **Soft operand tails sampled past the effective support by the larger support width** (`38a325f2b`): `ebola/362` 3.2 s to 5.9 s
-- **The whole stack**: 5.9 s (`ebola/362`), 10.2 s (`flu/h3n2/200`), 175 s and 2.15 GB (`sc2/4500`), against 1.0 s, 1.3 s, 33 s and 1.0 GB on `rust` of 2026-10-19. 7 of 36 runs of a validation subset failed, 6 of them on the grid point limit; on the bisected cases all failures appear with the node regrid, and without it one failure remains (a backward message gridded over \[1080.26, 2024.7\] at spacing $4.7 \cdot 10^{-4}$, 2.0 million points)
+- **The whole stack**: 5.9 s (`ebola/362`), 10.2 s (`flu/h3n2/200`), 175 s and 2.15 GB (`sc2/5100`), against 1.0 s, 1.3 s, 33 s and 1.0 GB on `rust` of 2026-10-19. 7 of 36 runs of a validation subset failed, 6 of them on the grid point limit; on the bisected cases all failures appear with the node regrid, and without it one failure remains (a backward message gridded over \[1080.26, 2024.7\] at spacing $4.7 \cdot 10^{-4}$, 2.0 million points)
 
 The stored extension is expensive because its length is the distance from the crop point to the physical hard end of the result, the sum of the operands' hard ends. In the forward pass that end is inherited from the root (see [Mechanism](#mechanism)), so the extension spans the whole inherited support at the FFT spacing. v0 represents the same extension with 9 points between the crop point and its bound, whatever the distance [packages/legacy/treetime/treetime/node_interpolator.py#L251-L254](../../packages/legacy/treetime/treetime/node_interpolator.py#L251-L254). A representation of constant size avoids this cost.
 
