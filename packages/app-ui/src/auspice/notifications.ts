@@ -9,21 +9,15 @@ export function useNotificationToasts(store: AuspiceStore): void {
   const toasts = useToastManager();
 
   useEffect(() => {
-    let moving = false;
-
     const move = () => {
-      if (moving) {
+      const [first] = store.getState().notifications.stack;
+
+      if (first === undefined) {
         return;
       }
 
-      moving = true;
-
-      for (const notification of store.getState().notifications.stack) {
-        toasts.add(notificationToast(notification));
-        store.dispatch({ type: REMOVE_NOTIFICATION, id: notification.id });
-      }
-
-      moving = false;
+      toasts.add(notificationToast(first));
+      store.dispatch({ type: REMOVE_NOTIFICATION, id: first.id });
     };
 
     move();

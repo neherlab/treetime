@@ -43,18 +43,26 @@ describe("auspice messages", () => {
     ]).toStrictEqual([expect.any(HTMLElement), expect.any(HTMLElement), []]);
   });
 
-  test("a message from before the viewer opened shows once", async () => {
+  test("messages from before the viewer opened show once each", async () => {
     const store = createAuspiceStore();
 
     store.dispatch({ type: "ADD_NOTIFICATION", id: 1, notificationType: "info", message: "Tree written", details: "" });
+    store.dispatch({
+      type: "ADD_NOTIFICATION",
+      id: 2,
+      notificationType: "warning",
+      message: "Map skipped",
+      details: "",
+    });
     await render(store);
 
     const page = within(document.body);
 
-    expect([await page.findAllByText("Tree written"), store.getState().notifications.stack]).toStrictEqual([
-      [expect.any(HTMLElement)],
-      [],
-    ]);
+    expect([
+      await page.findAllByText("Tree written"),
+      await page.findAllByText("Map skipped"),
+      store.getState().notifications.stack,
+    ]).toStrictEqual([[expect.any(HTMLElement)], [expect.any(HTMLElement)], []]);
   });
 });
 
