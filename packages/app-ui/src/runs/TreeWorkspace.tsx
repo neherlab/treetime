@@ -43,7 +43,13 @@ export function TreeWorkspace({
 
   return (
     <div className="@container grid min-w-0 gap-4">
-      <div className="grid min-w-0 grid-cols-1 gap-4 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]">
+      <div
+        className={
+          aside === undefined
+            ? "grid min-w-0 grid-cols-1 gap-4"
+            : "grid min-w-0 grid-cols-1 gap-4 @min-[100rem]:grid-cols-[minmax(0,1fr)_28rem]"
+        }
+      >
         <ErrorBoundary FallbackComponent={TreeFailure}>
           <AuspiceTree store={store} runs={runs} version={version?.version} entropy={entropy} />
         </ErrorBoundary>
