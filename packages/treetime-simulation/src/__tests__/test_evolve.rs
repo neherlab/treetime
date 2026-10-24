@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_support::tests::helpers::three_tip_tree;
-  use crate::evolve::{SiteEvolution, evolve_sequences, evolve_site};
+  use crate::evolve::{SiteEvolution, evolve_sequences, evolve_sequences_with_rates, evolve_site, gamma_site_rates};
   use crate::substitution_model::SubstitutionModel;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
@@ -10,6 +10,8 @@ mod tests {
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
+  use treetime_utils::cast::ToF64Exact;
+  use treetime_utils::pretty_assert_abs_diff_eq;
   use treetime_utils::sync::random::get_random_number_generator;
 
   #[rustfmt::skip]
@@ -50,6 +52,58 @@ mod tests {
       simulated.substitutions.clone(),
     );
     assert_eq!(expected, actual);
+  }
+
+  #[test]
+  fn test_evolve_sequences_with_unit_rates_reproduces_evolve_sequences() {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(1.0).unwrap();
+    let durations = btreemap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
+    let plain = evolve_sequences(&tree.graph, &durations, &model, 50, &mut get_random_number_generator(8)).unwrap();
+    let rated = evolve_sequences_with_rates(
+      &tree.graph,
+      &durations,
+      &model,
+      &[1.0; 50],
+      &mut get_random_number_generator(8),
+    )
+    .unwrap();
+    assert_eq!(plain, rated);
+  }
+
+  #[test]
+  fn test_evolve_sequences_with_rates_keeps_sites_of_zero_rate() {
+    let tree = three_tip_tree();
+    let model = SubstitutionModel::jc69(1.0).unwrap();
+    let durations = btreemap! { tree.root_inner => 5.0, tree.root_c => 5.0, tree.inner_a => 5.0, tree.inner_b => 5.0 };
+    let rates = (0..100)
+      .map(|site| if site % 2 == 0 { 0.0 } else { 1.0 })
+      .collect::<Vec<_>>();
+    let simulated = evolve_sequences_with_rates(
+      &tree.graph,
+      &durations,
+      &model,
+      &rates,
+      &mut get_random_number_generator(9),
+    )
+    .unwrap();
+    let root = &simulated.sequences[&tree.root];
+    for sequence in simulated.sequences.values() {
+      for site in (0..100).step_by(2) {
+        assert_eq!(sequence[site], root[site], "site {site}");
+      }
+    }
+  }
+
+  #[test]
+  fn test_gamma_site_rates_have_mean_one_and_shape_variance() {
+    let alpha = 0.5;
+    let rates = gamma_site_rates(alpha, 200_000, &mut get_random_number_generator(10)).unwrap();
+    let n = rates.len().to_f64_exact();
+    let mean = rates.iter().sum::<f64>() / n;
+    let variance = rates.iter().map(|rate| (rate - mean).powi(2)).sum::<f64>() / n;
+    pretty_assert_abs_diff_eq!(mean, 1.0, epsilon = 0.01);
+    pretty_assert_abs_diff_eq!(variance, 1.0 / alpha, epsilon = 0.05);
   }
 
   #[test]
