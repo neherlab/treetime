@@ -188,6 +188,13 @@ Library hooks cover the behavior around the components: `@tanstack/react-hotkeys
 
 Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_API_PORT`, `TREETIME_WEB_PORT`, and `TREETIME_SERVE_PORT` override them.
 
+A route launcher on the host can publish the web dev server through a local HTTPS proxy, such as [portless](https://github.com/vercel-labs/portless), under a hostname such as `https://treetime.localhost`. The launcher starts `just up` as its child process, assigns the hostnames, and removes the route when the command ends. The checkout and the launcher exchange two files in `tmp/portless/`:
+
+- `web.hostnames.json`: `{"hostnames": [...], "urls": [...]}`, written by the launcher before it starts the command. `just status` prints the URLs. Without this file, the server has no public hostname
+- `web.json`: `{"port": <n>}`, written by `just up` after the web server answers, through a temporary file and a rename, so the launcher never reads a partial file. `just up` writes it also when no launcher runs
+
+The checkout never reads or writes the state of the proxy itself. The Vite server accepts every `*.localhost` hostname, so each assigned name works without configuration.
+
 #### Storage
 
 The web app has no database. The server keeps each run in its own folder `<runs-dir>/<run-id>/`: the run record `run.json`, the event log `events.jsonl`, the uploaded files in `inputs/`, and the results in `out/`. The browser keeps the sidebar width in `localStorage` under the key `treetime-preferences`, so every tab shares it, and the unfinished form in `sessionStorage` under the key `treetime-draft`, so each tab keeps its own form through a reload. The theme stays with `next-themes`, which stores it in `localStorage` under the key `theme` and applies a change in one tab to the other tabs at once. The server reads run inputs only from the `inputs/` folders of the runs; the web app uploads a chosen example file into the run like a user file (see [Example data](#example-data)).
@@ -206,7 +213,7 @@ A deployment passes `--runs-dir` to `treetime-server` itself.
 
 The web app follows changes through server-sent event streams: `GET /api/events` for changes to any run, and `GET /api/runs/{id}/events` for each run it follows. Every open stream holds one connection. Over HTTP/1.1, browsers allow at most 6 connections per host, shared by all tabs, so more open streams stall every further request to the server. Over HTTP/2, all requests share one connection.
 
-The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TLS. A deployment therefore puts a reverse proxy in front of the server that terminates TLS and serves HTTP/2 to the browser, for example nginx with `listen 443 ssl; http2 on;`. In development, the portless proxy (`https://treetime.localhost`) does this by default. Without such a proxy, at most 6 streams stay open per host across all tabs.
+The API server speaks HTTP/1.1 without TLS, and browsers use HTTP/2 only over TLS. A deployment therefore puts a reverse proxy in front of the server that terminates TLS and serves HTTP/2 to the browser, for example nginx with `listen 443 ssl; http2 on;`. In development, the HTTPS proxy of a route launcher (see [Web app](#web-app)) does this. Without such a proxy, at most 6 streams stay open per host across all tabs.
 
 #### Caching, compression, and allowed hosts
 

@@ -36,6 +36,13 @@
 #   tmp/app/web-dev/runs    runs of the development servers (up)
 #   tmp/app/web-prod/runs   runs of the production server (serve)
 #
+# A route launcher on the host can publish the web development server through an
+# HTTPS proxy. The launcher writes the assigned hostnames to
+# tmp/portless/web.hostnames.json as {"hostnames": [...], "urls": [...]} and then
+# starts `up`, which writes the port of the web server to tmp/portless/web.json
+# as {"port": <n>} once the server answers. `status` prints the URLs. Without a
+# launcher, nobody reads web.json and the server has no public hostname.
+#
 set -euo pipefail
 shopt -s inherit_errexit
 
@@ -45,6 +52,7 @@ cd "${root}"
 web_dev_dir="tmp/app/web-dev"
 web_prod_dir="tmp/app/web-prod"
 state_dir="${root}/${web_dev_dir}/servers"
+route_dir="${root}/tmp/portless"
 
 api_base_port=3100
 web_base_port=5173
@@ -90,6 +98,18 @@ wait_ready() {
 write_state() {
   mkdir -p "${state_dir}"
   jq -n --arg url "${2}" --arg commit "$(commit)" '{url: $url, commit: $commit}' >"${state_dir}/${1}.json"
+}
+
+# Rename into place, so a launcher that watches the folder never reads a partial file.
+write_route_request() {
+  local tmp
+  mkdir -p "${route_dir}"
+  tmp="$(mktemp "${route_dir}/.${1}.json.XXXXXX")"
+  jq -n --argjson port "${2}" '{port: $port}' >"${tmp}" || {
+    rm -f -- "${tmp}"
+    return 1
+  }
+  mv -f -- "${tmp}" "${route_dir}/${1}.json"
 }
 
 prefix() {
@@ -146,6 +166,7 @@ up() {
     return 1
   }
   write_state web "${web_url}"
+  write_route_request web "${TREETIME_WEB_PORT}"
 
   printf 'Ready: %s (Ctrl-C to stop)\n' "${web_url}" >&2
   wait -n "${pids[@]}"
@@ -200,6 +221,11 @@ status() {
   printf 'web2 serve port %s\n' "${TREETIME_WEB2_SERVE_PORT}"
   printf 'docs  port %s\n' "${TREETIME_DOCS_PORT}"
   printf 'docs serve port %s\n' "${TREETIME_DOCS_SERVE_PORT}"
+  if [[ -f "${route_dir}/web.hostnames.json" ]]; then
+    jq -r '.urls[] | "web   public URL \(.)"' "${route_dir}/web.hostnames.json"
+  else
+    printf 'web   no public hostname\n'
+  fi
   printf 'checkout HEAD %s\n' "$(commit)"
   local svc
   for svc in api web; do
