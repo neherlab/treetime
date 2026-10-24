@@ -18,6 +18,18 @@ pub struct Graph {
   schedule: OnceLock<ScheduleIndex>,
 }
 
+impl Clone for Graph {
+  fn clone(&self) -> Self {
+    Self {
+      nodes: self.nodes.clone(),
+      edges: self.edges.clone(),
+      roots: self.roots.clone(),
+      leaves: self.leaves.clone(),
+      schedule: OnceLock::new(),
+    }
+  }
+}
+
 impl Graph {
   pub fn new() -> Self {
     Self {
