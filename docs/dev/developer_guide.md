@@ -186,7 +186,7 @@ Library hooks cover the behavior around the components: `@tanstack/react-hotkeys
 
 `just serve` builds the web app and the API server for production and runs the server in the foreground until Ctrl-C. The server serves the built web app (`packages/app-web/dist`, through the `STATIC_DIR` environment variable) and the API from one port.
 
-Each checkout resolves its own ports, so worktrees run side by side; `TREETIME_API_PORT`, `TREETIME_WEB_PORT`, and `TREETIME_SERVE_PORT` override them.
+Each checkout takes its ports from its port slot, a group of 10 ports in the block 14000-14999, so worktrees run side by side. The main checkout holds slot 0 (ports 14000-14007). A linked worktree claims the lowest slot that no other checkout of the repository holds and whose ports have no listener, and keeps it until the worktree is removed; the claims are files in the git common directory (`dev/lib/ports.sh`). `just status` prints the slot and its ports. `TREETIME_API_PORT`, `TREETIME_WEB_PORT`, `TREETIME_SERVE_PORT`, and the other `TREETIME_*_PORT` variables override single ports.
 
 A route launcher on the host can publish the web dev server through a local HTTPS proxy, such as [portless](https://github.com/vercel-labs/portless), under a hostname such as `https://treetime.localhost`. The launcher starts `just up` as its child process, assigns the hostnames, and removes the route when the command ends. The checkout and the launcher exchange two files in `tmp/portless/`:
 
@@ -263,7 +263,7 @@ The docs site (`packages/app-docs`) is a prerendered multi-page site in the look
 | Build the docs as published and serve the build like the docs host         | `just docs-prod`  |
 | Build into `packages/app-docs/dist/` and `packages/app-docs/dist-root/`    | `just build-docs` |
 
-`just docs` runs in the `sess` session `tt-dev-docs` and `just docs-prod` in `tt-dev-docs-prod`. The dev server serves `http://127.0.0.1:<port>/dev` on port 6100 plus the offset of the checkout and reloads pages and styles as they change; it runs no post-build step, so search and the version list are missing there. `just docs-prod` builds the site and serves it on port 6700 plus the offset with the file layout of the docs host: the site root files (`versions.json`, the page that leads to the preferred version) at `/`, the build at `/dev`, pages without their `.html` extension, and the not-found page of the locale for a missing page (`packages/app-docs/src/preview/serve-site.ts`). `TREETIME_DOCS_PORT` and `TREETIME_DOCS_SERVE_PORT` override the ports, and `just status` prints them.
+`just docs` runs in the `sess` session `tt-dev-docs` and `just docs-prod` in `tt-dev-docs-prod`. The dev server serves `http://127.0.0.1:<port>/dev` on the docs port of the checkout (14005 in the main checkout) and reloads pages and styles as they change; it runs no post-build step, so search and the version list are missing there. `just docs-prod` builds the site and serves it on the docs serve port (14006 in the main checkout) with the file layout of the docs host: the site root files (`versions.json`, the page that leads to the preferred version) at `/`, the build at `/dev`, pages without their `.html` extension, and the not-found page of the locale for a missing page (`packages/app-docs/src/preview/serve-site.ts`). `TREETIME_DOCS_PORT` and `TREETIME_DOCS_SERVE_PORT` override the ports, and `just status` prints them.
 
 The app and the docs share three layers, and each surface wires the rest itself:
 
@@ -292,7 +292,7 @@ The UI strings of the shared parts, the docs, and (in English) the app are Parag
 
 ### Desktop app
 
-`just desktop` starts the Electron app in development mode. `just desktop-prod` builds the desktop app for production (the Node addon in the `dist` profile and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
+`just desktop` starts the Electron app in development mode, with the Vite server of its renderer on the desktop port of the checkout (14007 in the main checkout, `TREETIME_DESKTOP_PORT` overrides it). `just desktop-prod` builds the desktop app for production (the Node addon in the `dist` profile and the bundled renderer) and starts that build from the checkout. In the container both need the host display: `TREETIME_DOCKER_X11=1 ./dev/docker/run just desktop`.
 
 The Node addon (`packages/app-napi`, a Rust `cdylib`) is built by cargo, like the CLI, and copied to `packages/app-napi/app-napi.node`, the `main` file of the package: `just build-napi` builds the `dev` profile for `just desktop`, and `just build-napi dist` the `dist` profile for `just build-desktop` and `just desktop-prod`. `just gen napi-types` generates its TypeScript types (`index.d.ts`).
 

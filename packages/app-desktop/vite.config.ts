@@ -21,6 +21,8 @@ const restartElectron = restartChain();
 
 const electronArgs = process.env["ELECTRON_DISABLE_SANDBOX"] === "1" ? ["--no-sandbox"] : [];
 
+const devPort = Number(process.env["TREETIME_DESKTOP_PORT"] ?? "5173");
+
 export default defineConfig({
   root: "renderer",
   base: "/",
@@ -67,6 +69,10 @@ export default defineConfig({
     react(),
   ],
   clearScreen: false,
+  server: {
+    port: devPort,
+    strictPort: true,
+  },
   build: {
     outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,

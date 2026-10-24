@@ -652,7 +652,7 @@ docs-prod: _js
 # Start the desktop app in development mode, with the Node addon of the dev profile (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]
 desktop: _js (build-napi "dev")
-    bun run --silent dev:desktop
+    dev/app desktop
 
 # Build the desktop app for production (Node addon of the dist profile) and start it from the checkout (in the container: TREETIME_DOCKER_X11=1)
 [group("app")]

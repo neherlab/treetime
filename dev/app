@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Usage: $0 <up|serve|health|status|up-web2|serve-web2|docs|docs-prod>
+# Usage: $0 <up|serve|health|status|up-web2|serve-web2|docs|docs-prod|desktop>
 #
 # Servers of the web app: the API server (treetime-server), and in development
 # the Vite dev server, which proxies /api to it. The web2 app needs no API
@@ -25,11 +25,16 @@
 #   docs-prod   Build the docs site as published and serve the build with the file
 #               layout of the docs host (the site root files at /, the build at
 #               /<version>, pages without their extension) in the foreground until Ctrl-C
+#   desktop     Start the desktop app in development mode with its renderer dev
+#               server, in the foreground until Ctrl-C
 #
-# Each checkout resolves its own ports from its path, so worktrees run side by
-# side. TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT,
-# TREETIME_WEB2_PORT, TREETIME_WEB2_SERVE_PORT, TREETIME_DOCS_PORT and
-# TREETIME_DOCS_SERVE_PORT override the resolved ports.
+# Each checkout takes its ports from its port slot (dev/lib/ports.sh), so
+# worktrees run side by side: the main checkout uses 14000-14007, and a linked
+# worktree the ports of the slot it claims. TREETIME_PORT_SLOT selects the slot,
+# which dev/docker/run claims on the host and passes into the container.
+# TREETIME_API_PORT, TREETIME_WEB_PORT, TREETIME_SERVE_PORT, TREETIME_WEB2_PORT,
+# TREETIME_WEB2_SERVE_PORT, TREETIME_DOCS_PORT, TREETIME_DOCS_SERVE_PORT and
+# TREETIME_DESKTOP_PORT override single ports.
 #
 # Each mode keeps its runs in its own directory of the checkout:
 #
@@ -48,31 +53,31 @@ shopt -s inherit_errexit
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "${root}"
+# shellcheck source=lib/ports.sh
+source "${root}/dev/lib/ports.sh"
 
 web_dev_dir="tmp/app/web-dev"
 web_prod_dir="tmp/app/web-prod"
 state_dir="${root}/${web_dev_dir}/servers"
 route_dir="${root}/tmp/portless"
 
-api_base_port=3100
-web_base_port=5173
-serve_base_port=4100
-web2_base_port=4620
-web2_serve_base_port=2580
-docs_base_port=6100
-docs_serve_base_port=6700
-
 resolve() {
-  local toplevel offset
-  toplevel="$(git rev-parse --show-toplevel)"
-  offset="$(($(printf '%s' "${toplevel}" | cksum | cut -d' ' -f1) % 512))"
-  export TREETIME_API_PORT="${TREETIME_API_PORT:-$((api_base_port + offset))}"
-  export TREETIME_WEB_PORT="${TREETIME_WEB_PORT:-$((web_base_port + offset))}"
-  export TREETIME_SERVE_PORT="${TREETIME_SERVE_PORT:-$((serve_base_port + offset))}"
-  export TREETIME_WEB2_PORT="${TREETIME_WEB2_PORT:-$((web2_base_port + offset))}"
-  export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$((web2_serve_base_port + offset))}"
-  export TREETIME_DOCS_PORT="${TREETIME_DOCS_PORT:-$((docs_base_port + offset))}"
-  export TREETIME_DOCS_SERVE_PORT="${TREETIME_DOCS_SERVE_PORT:-$((docs_serve_base_port + offset))}"
+  if [[ -z "${TREETIME_PORT_SLOT:-}" ]]; then
+    TREETIME_PORT_SLOT="$(port_slot "${root}")"
+  fi
+  if ! [[ "${TREETIME_PORT_SLOT}" =~ ^[0-9]+$ ]] || ((TREETIME_PORT_SLOT >= port_slot_count)); then
+    printf 'TREETIME_PORT_SLOT must be a slot number from 0 to %s, got: %s\n' "$((port_slot_count - 1))" "${TREETIME_PORT_SLOT}" >&2
+    return 1
+  fi
+  export TREETIME_PORT_SLOT
+  export TREETIME_API_PORT="${TREETIME_API_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 0)}"
+  export TREETIME_WEB_PORT="${TREETIME_WEB_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 1)}"
+  export TREETIME_SERVE_PORT="${TREETIME_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 2)}"
+  export TREETIME_WEB2_PORT="${TREETIME_WEB2_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 3)}"
+  export TREETIME_WEB2_SERVE_PORT="${TREETIME_WEB2_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 4)}"
+  export TREETIME_DOCS_PORT="${TREETIME_DOCS_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 5)}"
+  export TREETIME_DOCS_SERVE_PORT="${TREETIME_DOCS_SERVE_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 6)}"
+  export TREETIME_DESKTOP_PORT="${TREETIME_DESKTOP_PORT:-$(port_of_slot "${TREETIME_PORT_SLOT}" 7)}"
 }
 
 commit() {
@@ -214,6 +219,7 @@ health() {
 
 status() {
   resolve
+  printf 'port slot %s\n' "${TREETIME_PORT_SLOT}"
   printf 'api   port %s\n' "${TREETIME_API_PORT}"
   printf 'web   port %s\n' "${TREETIME_WEB_PORT}"
   printf 'serve port %s\n' "${TREETIME_SERVE_PORT}"
@@ -221,6 +227,7 @@ status() {
   printf 'web2 serve port %s\n' "${TREETIME_WEB2_SERVE_PORT}"
   printf 'docs  port %s\n' "${TREETIME_DOCS_PORT}"
   printf 'docs serve port %s\n' "${TREETIME_DOCS_SERVE_PORT}"
+  printf 'desktop port %s\n' "${TREETIME_DESKTOP_PORT}"
   if [[ -f "${route_dir}/web.hostnames.json" ]]; then
     jq -r '.urls[] | "web   public URL \(.)"' "${route_dir}/web.hostnames.json"
   else
@@ -262,8 +269,13 @@ docs_prod() {
   exec bun run --cwd packages/app-docs serve
 }
 
+desktop() {
+  resolve
+  exec bun run --silent dev:desktop
+}
+
 case "${1:-}" in
-up | serve | health | status) "${1}" ;;
+up | serve | health | status | desktop) "${1}" ;;
 up-web2 | serve-web2 | docs | docs-prod) "${1//-/_}" ;;
 *)
   sed -n '2,${/^#/!q; s/^# \?//p}' "${BASH_SOURCE[0]}" | sed "s|\$0|${0##*/}|g" >&2
