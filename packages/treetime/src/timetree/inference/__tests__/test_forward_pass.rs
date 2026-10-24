@@ -826,6 +826,7 @@ mod tests {
     pub(super) fn forward_inputs<'a>(inputs: &'a ForwardInputs, names: &'a NodeNames) -> ForwardPassInputs<'a> {
       ForwardPassInputs {
         constraints: &inputs.constraints,
+        coalescent: None,
         names,
         branches: &inputs.branches,
         max_points: MaxGridPoints::default(),
