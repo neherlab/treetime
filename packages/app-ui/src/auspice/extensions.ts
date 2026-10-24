@@ -23,7 +23,7 @@ function basemapStyle() {
     version: 8,
     glyphs: `${base}fonts/{fontstack}/{range}.pbf`,
     sources: {
-      countries: { type: "geojson", data: `${base}countries.json` },
+      countries: { type: "geojson", data: `${base}countries.json`, attribution: ATTRIBUTION },
       borders: { type: "geojson", data: `${base}borders.json` },
       labels: { type: "geojson", data: `${base}labels.json` },
     },
