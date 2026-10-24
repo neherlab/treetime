@@ -129,9 +129,9 @@ mod tests {
     }
   }
 
-  fn region_params(batch_size: usize, references: ReferenceSelection) -> BuildParams {
+  fn reference_params(batch_size: usize, references: ReferenceSelection) -> BuildParams {
     BuildParams {
-      search: SearchMode::Regions { references },
+      search: SearchMode::FromReferences { references },
       ..walk_params(batch_size, 0, false)
     }
   }
@@ -170,8 +170,8 @@ mod tests {
   #[case::walk_one_by_one(walk_params(1, 0, false))]
   #[case::walk_batches(walk_params(8, 0, false))]
   #[case::seeded(walk_params(8, 0, true))]
-  #[case::lbi_regions(region_params(8, lbi_references()))]
-  #[case::long_branch_regions(region_params(8, ReferenceSelection::LongBranches { cuts: 4 }))]
+  #[case::lbi_references(reference_params(8, lbi_references()))]
+  #[case::long_branch_references(reference_params(8, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(8))]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
     let alphabet = Alphabet::default();
@@ -214,8 +214,8 @@ mod tests {
   #[case::exhaustive(exhaustive_params(4))]
   #[case::walk(walk_params(4, 1, false))]
   #[case::seeded(walk_params(4, 0, true))]
-  #[case::lbi_regions(region_params(4, lbi_references()))]
-  #[case::long_branch_regions(region_params(4, ReferenceSelection::LongBranches { cuts: 4 }))]
+  #[case::lbi_references(reference_params(4, lbi_references()))]
+  #[case::long_branch_references(reference_params(4, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(4))]
   fn test_build_keeps_mat_consistent_with_homoplasy_and_missing_data(
     #[case] params: BuildParams,
@@ -255,7 +255,7 @@ mod tests {
       assert!(built.stats.final_parsimony <= built.stats.placement_parsimony);
       let exact = matches!(
         params.search,
-        SearchMode::Exhaustive | SearchMode::Walk { exact: true, .. } | SearchMode::Regions { .. }
+        SearchMode::Exhaustive | SearchMode::Walk { exact: true, .. } | SearchMode::FromReferences { .. }
       );
       if exact {
         assert_eq!(built.stats.comparison.unwrap_or_default().worse, 0, "seed {seed}");
