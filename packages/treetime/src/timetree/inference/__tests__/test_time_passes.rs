@@ -55,7 +55,7 @@ mod tests {
     fixture.set_point_branch("N", BRANCH_MEAN);
     let constraints = fixture.dated(&[("A", 2011.0), ("B", 2010.0), ("C", 2010.5), ("P", 2008.0)]);
 
-    let (bad_branches, backward, posterior) = fixture.run(&constraints)?;
+    let (bad_branches, backward, posterior) = fixture.run(&constraints, None)?;
 
     assert!(bad_branches[&fixture.key("N")], "N has only undated leaves below it");
     assert_eq!(None, backward[&fixture.key("N")].subtree);
@@ -71,11 +71,31 @@ mod tests {
   }
 
   #[test]
+  fn test_time_passes_node_with_only_undated_leaves_carries_no_coalescent_factor() -> Result<(), Report> {
+    let fixture = helpers::Fixture::new()?;
+    let dates = [("A", 2011.0), ("B", 2010.0), ("C", 2010.5), ("P", 2008.0)];
+    let constraints = fixture.dated(&dates);
+    let times = [
+      dates.as_slice(),
+      &[("U1", 2011.0), ("U2", 2011.0), ("N", 2010.0), ("root", 2006.0)],
+    ]
+    .concat();
+    let prior = point_coalescent_prior(&fixture.graph, &fixture.names, &times, COALESCENT_TC)?;
+
+    let (_, _, without_prior) = fixture.run(&constraints, None)?;
+    let (_, _, with_prior) = fixture.run(&constraints, Some(&prior))?;
+
+    let n = fixture.key("N");
+    assert_eq!(without_prior[&n].distribution, with_prior[&n].distribution);
+    Ok(())
+  }
+
+  #[test]
   fn test_time_passes_internal_node_with_its_own_date_keeps_the_date() -> Result<(), Report> {
     let fixture = helpers::Fixture::new()?;
     let constraints = fixture.dated(&[("A", 2011.0), ("B", 2010.0), ("C", 2010.5), ("N", 2008.0)]);
 
-    let (bad_branches, backward, posterior) = fixture.run(&constraints)?;
+    let (bad_branches, backward, posterior) = fixture.run(&constraints, None)?;
 
     assert!(
       !bad_branches[&fixture.key("N")],
@@ -105,8 +125,8 @@ mod tests {
     let mean_of_b_and_c_messages = f64::midpoint(2010.0, 2010.5) - BRANCH_MEAN;
     let mean_of_b_c_and_n_messages = (2010.0 + 2010.5 + 2008.0) / 3.0 - BRANCH_MEAN;
 
-    let (_, with_backward, _) = fixture.run(&with_date_of_n)?;
-    let (_, without_backward, _) = fixture.run(&without_date_of_n)?;
+    let (_, with_backward, _) = fixture.run(&with_date_of_n, None)?;
+    let (_, without_backward, _) = fixture.run(&without_date_of_n, None)?;
 
     let peak_of = |backward: &BTreeMap<GraphNodeKey, NodeBackward>| -> Result<f64, Report> {
       let subtree = backward[&fixture.key("P")]
@@ -189,8 +209,8 @@ mod tests {
     use treetime_graph::node_names::NodeNames;
 
     pub(super) struct Fixture {
-      graph: Graph,
-      names: NodeNames,
+      pub(super) graph: Graph,
+      pub(super) names: NodeNames,
       branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
     }
 
@@ -235,6 +255,7 @@ mod tests {
       pub(super) fn run(
         &self,
         constraints: &DateConstraints,
+        coalescent: Option<&CoalescentPrior>,
       ) -> Result<
         (
           BTreeMap<GraphNodeKey, bool>,
@@ -251,14 +272,14 @@ mod tests {
         let backward = propagate_distributions_backward(
           &self.graph,
           constraints,
-          None,
+          coalescent,
           &bad_branches,
           &self.branches,
           MaxGridPoints::default(),
         )?;
         let forward_inputs = ForwardPassInputs {
           constraints,
-          coalescent: None,
+          coalescent,
           names: &self.names,
           branches: &self.branches,
           max_points: MaxGridPoints::default(),
