@@ -113,11 +113,12 @@ function Viewer({
       style={VIEWER_STYLE}
       className="light-scope relative min-w-0 overflow-hidden rounded-lg border bg-white"
     >
-      {docked ? (
+      {docked && (
         <DockedSidebar store={store} open={open} onOpenChange={setOpen} sidebarId={sidebarId} entropy={entropy}>
           {panels}
         </DockedSidebar>
-      ) : (
+      )}
+      {viewerWidth > 0 && !docked && (
         <OverlaySidebar
           store={store}
           open={open}
@@ -167,7 +168,7 @@ function DockedSidebar({
       </CollapsibleContent>
       <div
         data-open={open ? "" : undefined}
-        className="relative left-0 transition-[left] duration-300 ease-out data-open:left-(--auspice-sidebar-width) motion-reduce:transition-none"
+        className="relative isolate transition-[margin-left] duration-300 ease-out data-open:ml-(--auspice-sidebar-width) motion-reduce:transition-none"
       >
         {!open && <CollapsibleTrigger render={<ShowControlsTab ref={tabRef} />} />}
         {children}
@@ -187,7 +188,7 @@ function OverlaySidebar({
 }: SidebarProps & { viewerRef: RefObject<HTMLDivElement | null>; children: ReactNode }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange} modal="trap-focus">
-      <div className="relative">
+      <div className="relative isolate">
         <Dialog.Trigger render={<ShowControlsTab />} />
         {children}
       </div>
