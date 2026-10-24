@@ -4,7 +4,6 @@ use crate::build::placement::{Target, place_exhaustive, place_greedy};
 use crate::build::query::Query;
 use eyre::Report;
 use std::borrow::Cow;
-use treetime_graph::node::GraphNodeKey;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SprStats {
@@ -18,7 +17,7 @@ pub struct SprStats {
 
 pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) -> Result<SprStats, Report> {
   let mut stats = SprStats::default();
-  for node in postorder(mat) {
+  for node in mat.preorder().into_iter().rev() {
     if !mat.has_node(node) {
       continue;
     }
@@ -68,15 +67,4 @@ pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) 
     }
   }
   Ok(stats)
-}
-
-fn postorder(mat: &Mat) -> Vec<GraphNodeKey> {
-  let mut preorder = vec![];
-  let mut stack = vec![mat.root()];
-  while let Some(node) = stack.pop() {
-    preorder.push(node);
-    stack.extend(mat.children(node).map(|(child, _)| child));
-  }
-  preorder.reverse();
-  preorder
 }

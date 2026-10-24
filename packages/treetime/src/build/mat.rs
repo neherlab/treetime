@@ -60,13 +60,7 @@ impl Mat {
       parsimony,
       depth: vec![],
     };
-    let mut preorder = vec![];
-    let mut stack = vec![root];
-    while let Some(node) = stack.pop() {
-      preorder.push(node);
-      stack.extend(mat.children(node).map(|(child, _)| child));
-    }
-    for &node in preorder.iter().rev() {
+    for node in mat.preorder().into_iter().rev() {
       let depth = mat
         .children(node)
         .map(|(child, edge)| mat.depth_below(child) + mat.edge_subs(edge).len())
@@ -75,6 +69,16 @@ impl Mat {
       mat.set_depth(node, depth);
     }
     mat
+  }
+
+  pub(crate) fn preorder(&self) -> Vec<GraphNodeKey> {
+    let mut preorder = vec![];
+    let mut stack = vec![self.root];
+    while let Some(node) = stack.pop() {
+      preorder.push(node);
+      stack.extend(self.children(node).map(|(child, _)| child));
+    }
+    preorder
   }
 
   pub(crate) fn depth_below(&self, node: GraphNodeKey) -> usize {

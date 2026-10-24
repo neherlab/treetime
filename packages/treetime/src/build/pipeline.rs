@@ -1,10 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
-use crate::build::centroids::lbi_peaks;
 use crate::build::insert::{Insertee, insert};
 use crate::build::mat::Mat;
 use crate::build::placement::{Placement, Target, place_exhaustive, place_greedy};
 use crate::build::query::Query;
+use crate::build::references::{ReferenceSelection, select_references};
 use crate::build::refresh::fitch_refresh;
+use crate::build::regions::Regions;
 use crate::build::spr::{SprStats, spr_round};
 use crate::make_error;
 use eyre::Report;
@@ -16,18 +17,19 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::remove_stem_root;
-use treetime_primitives::Seq;
+use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::cast::ToF64Exact;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SearchMode {
   Exhaustive,
-  Centroids {
-    max_centroids: usize,
+  Walk {
+    references: ReferenceSelection,
     slack: usize,
-    lbi_tau: f64,
-    pseudo_length: f64,
     exact: bool,
+  },
+  Regions {
+    references: ReferenceSelection,
   },
 }
 
@@ -64,6 +66,10 @@ pub struct BuildStats {
   pub final_parsimony: usize,
   pub replaced_in_batch: usize,
   pub visited: usize,
+  pub references: usize,
+  pub certified: usize,
+  pub global_diffs: usize,
+  pub local_diffs: usize,
   pub comparison: Option<ExhaustiveComparison>,
   pub spr: Vec<SprStats>,
   pub collapsed_edges: usize,
@@ -80,6 +86,7 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
     return make_error!("The placement batch size must be positive");
   }
   let reference = consensus(seqs, alphabet)?;
+  let polymorphic = polymorphic_sites(seqs, alphabet);
   let mut queries = encode_queries(seqs, &reference, alphabet);
   let order = sample_order(&queries, params.order);
   let mut mat = Mat::new(reference);
@@ -91,30 +98,29 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
   insert(&mut mat, &queries[first], Target::Node(root), Insertee::Sample(first))?;
 
   for batch in rest.chunks(params.batch_size) {
-    let starts = match &params.search {
-      SearchMode::Exhaustive => vec![],
-      SearchMode::Centroids {
-        max_centroids,
-        lbi_tau,
-        pseudo_length,
-        ..
-      } => {
-        let mut starts = lbi_peaks(&mat, *lbi_tau, *pseudo_length, *max_centroids);
-        starts.push(mat.root());
-        starts
-      },
+    let search = BatchSearch::new(&mat, &params.search)?;
+    stats.references += search.n_references();
+    let context = PlacementContext {
+      mat: &mat,
+      seqs,
+      queries: &queries,
+      alphabet,
+      polymorphic: &polymorphic,
     };
     let placements = batch
       .par_iter()
-      .map(|&sample| place(&mat, &queries[sample], &params.search, &starts))
+      .map(|&sample| search.place(&context, sample))
       .collect::<Result<Vec<_>, Report>>()?;
+    stats.certified += placements.iter().filter(|(_, placed)| placed.certified).count();
+    stats.local_diffs += placements.iter().map(|(_, placed)| placed.local_diffs).sum::<usize>();
+    stats.global_diffs += batch.iter().map(|&sample| queries[sample].diffs().len()).sum::<usize>();
     if params.compare_exhaustive {
       let exhaustive = batch
         .par_iter()
         .map(|&sample| place_exhaustive(&mat, &queries[sample], None, None, false))
         .collect::<Result<Vec<_>, Report>>()?;
       let comparison = stats.comparison.get_or_insert_default();
-      for (search, oracle) in izip!(&placements, &exhaustive) {
+      for ((search, _), oracle) in izip!(&placements, &exhaustive) {
         let excess = search.cost - oracle.cost;
         comparison.placed += 1;
         comparison.worse += usize::from(excess > 0);
@@ -127,14 +133,13 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
 
     let mut touched: BTreeSet<GraphNodeKey> = BTreeSet::new();
     let mut split_into: BTreeMap<GraphEdgeKey, GraphNodeKey> = BTreeMap::new();
-    for (&sample, placement) in izip!(batch, placements) {
+    for (&sample, (placement, _)) in izip!(batch, placements) {
       let query = &queries[sample];
       let placement = match stale_starts(&mat, placement.target, &touched, &split_into) {
         None => placement,
         Some(local) => {
           stats.replaced_in_batch += 1;
-          let starts = local.into_iter().chain(starts.iter().copied()).collect_vec();
-          place(&mat, query, &params.search, &starts)?
+          search.replace(&mat, query, local)?
         },
       };
       stats.visited += placement.visited;
@@ -178,22 +183,136 @@ fn encode_queries(seqs: &[Seq], reference: &Seq, alphabet: &Alphabet) -> Vec<Que
     .collect()
 }
 
-fn place(mat: &Mat, query: &Query, search: &SearchMode, starts: &[GraphNodeKey]) -> Result<Placement, Report> {
-  match search {
-    SearchMode::Exhaustive => place_exhaustive(mat, query, None, None, true),
-    SearchMode::Centroids { slack, exact, .. } => {
-      let greedy = place_greedy(mat, query, starts, *slack, None)?;
-      if *exact {
-        let exact = place_exhaustive(mat, query, None, Some(greedy), true)?;
-        Ok(Placement {
-          visited: greedy.visited + exact.visited,
-          ..exact
-        })
-      } else {
-        Ok(greedy)
-      }
-    },
+struct Located {
+  certified: bool,
+  local_diffs: usize,
+}
+
+impl Located {
+  fn global(query: &Query) -> Self {
+    Self {
+      certified: false,
+      local_diffs: query.diffs().len(),
+    }
   }
+}
+
+struct PlacementContext<'a> {
+  mat: &'a Mat,
+  seqs: &'a [Seq],
+  queries: &'a [Query],
+  alphabet: &'a Alphabet,
+  polymorphic: &'a [usize],
+}
+
+enum BatchSearch {
+  Exhaustive,
+  Walk {
+    starts: Vec<GraphNodeKey>,
+    slack: usize,
+    exact: bool,
+  },
+  Regions(Regions),
+}
+
+impl BatchSearch {
+  fn new(mat: &Mat, search: &SearchMode) -> Result<Self, Report> {
+    Ok(match search {
+      SearchMode::Exhaustive => Self::Exhaustive,
+      SearchMode::Walk {
+        references,
+        slack,
+        exact,
+      } => {
+        let mut starts = select_references(mat, references);
+        starts.push(mat.root());
+        Self::Walk {
+          starts,
+          slack: *slack,
+          exact: *exact,
+        }
+      },
+      SearchMode::Regions { references } => Self::Regions(Regions::new(mat, &select_references(mat, references))?),
+    })
+  }
+
+  fn n_references(&self) -> usize {
+    match self {
+      Self::Exhaustive => 0,
+      Self::Walk { starts, .. } => starts.len(),
+      Self::Regions(regions) => regions.len(),
+    }
+  }
+
+  fn place(&self, context: &PlacementContext<'_>, sample: usize) -> Result<(Placement, Located), Report> {
+    let query = &context.queries[sample];
+    match self {
+      Self::Exhaustive => Ok((
+        place_exhaustive(context.mat, query, None, None, true)?,
+        Located::global(query),
+      )),
+      Self::Walk { starts, slack, exact } => Ok((
+        walk(context.mat, query, starts, *slack, *exact)?,
+        Located::global(query),
+      )),
+      Self::Regions(regions) => {
+        let placed = regions.place(
+          context.mat,
+          &context.seqs[sample],
+          query,
+          context.alphabet,
+          context.polymorphic,
+        )?;
+        Ok((
+          placed.placement,
+          Located {
+            certified: placed.certified,
+            local_diffs: placed.local_diffs,
+          },
+        ))
+      },
+    }
+  }
+
+  fn replace(&self, mat: &Mat, query: &Query, local: Vec<GraphNodeKey>) -> Result<Placement, Report> {
+    match self {
+      Self::Walk { starts, slack, exact } => {
+        let starts = local.into_iter().chain(starts.iter().copied()).collect_vec();
+        walk(mat, query, &starts, *slack, *exact)
+      },
+      Self::Exhaustive | Self::Regions(..) => place_exhaustive(mat, query, None, None, true),
+    }
+  }
+}
+
+fn walk(mat: &Mat, query: &Query, starts: &[GraphNodeKey], slack: usize, exact: bool) -> Result<Placement, Report> {
+  let greedy = place_greedy(mat, query, starts, slack, None)?;
+  if !exact {
+    return Ok(greedy);
+  }
+  let exact = place_exhaustive(mat, query, None, Some(greedy), true)?;
+  Ok(Placement {
+    visited: greedy.visited + exact.visited,
+    ..exact
+  })
+}
+
+fn polymorphic_sites(seqs: &[Seq], alphabet: &Alphabet) -> Vec<usize> {
+  let length = seqs.first().map_or(0, Seq::len);
+  let mut first: Vec<Option<AsciiChar>> = vec![None; length];
+  let mut polymorphic = vec![false; length];
+  for seq in seqs {
+    for (pos, &state) in seq.as_slice().iter().enumerate() {
+      if alphabet.is_canonical(state) {
+        match first[pos] {
+          None => first[pos] = Some(state),
+          Some(seen) if seen != state => polymorphic[pos] = true,
+          Some(_) => {},
+        }
+      }
+    }
+  }
+  polymorphic.iter().positions(|&flag| flag).collect()
 }
 
 fn stale_starts(

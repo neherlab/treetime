@@ -43,6 +43,14 @@ impl Query {
     (!self.is_missing(pos)).then(|| reference[pos])
   }
 
+  pub(crate) fn n_missing_in(&self, positions: &[usize]) -> usize {
+    self
+      .missing
+      .iter()
+      .map(|&(start, end)| positions.partition_point(|&pos| pos < end) - positions.partition_point(|&pos| pos < start))
+      .sum()
+  }
+
   pub fn n_missing(&self) -> usize {
     self.missing.iter().map(|(start, end)| end - start).sum()
   }

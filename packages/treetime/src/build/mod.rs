@@ -1,11 +1,12 @@
-pub mod centroids;
 pub mod evaluate;
 pub(crate) mod insert;
 pub mod mat;
 pub mod pipeline;
 pub mod placement;
 pub mod query;
+pub mod references;
 pub(crate) mod refresh;
+pub(crate) mod regions;
 pub mod spr;
 
 #[cfg(test)]
