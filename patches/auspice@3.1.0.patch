@@ -301,6 +301,34 @@ index 42a8effb51dcff822e7a5399a2372c05ad3de0e2..8e5ef846efcb5a79c6d1e06aca3de568
        </span>
      </HeaderContainer>
    );
+diff --git a/src/components/controls/slider.js b/src/components/controls/slider.js
+index e5583e03481faba1ca576d2b2b7a47698940c85f..68d4c183499674b922a72b22bf481ac2bb072cc2 100644
+--- a/src/components/controls/slider.js
++++ b/src/components/controls/slider.js
+@@ -674,7 +674,6 @@ const Slider = createReactClass({
+ 
+     return (
+       <div
+-        ref={'handle' + i}
+         key={'handle' + i}
+         className={className}
+         style={{ ...styles.handle, ...style }}
+@@ -732,7 +731,6 @@ const Slider = createReactClass({
+     return (
+       <div
+         key={'bar' + i}
+-        ref={'bar' + i}
+         className={className}
+         style={{ ...styles.bar, ...barStyle }}
+       />
+@@ -801,7 +799,6 @@ const Slider = createReactClass({
+ 
+     return (
+       <div
+-        ref="slider"
+         style={{ ...styles.base, ...orientation }}
+         onMouseDown={this._onSliderMouseDown}
+         onClick={this._onSliderClick}
 diff --git a/src/components/controls/toggle.js b/src/components/controls/toggle.js
 index a73fe7bf478e18e97a194de0243718e9d2cb53bf..a969f919f0f2ecbfa74727f33351733d4884d3e5 100644
 --- a/src/components/controls/toggle.js
