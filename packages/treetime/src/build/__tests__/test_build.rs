@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
-  use crate::build::centroids::local_branching_index;
   use crate::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts};
   use crate::build::mat::Mat;
   use crate::build::pipeline::{BuildParams, BuiltMat, SampleOrder, SearchMode, build_mat, mat_to_tree};
   use crate::build::query::Query;
+  use crate::build::references::{ReferenceSelection, eccentricities, local_branching_index};
   use crate::seq::mutation::Sub;
   use crate::test_utils::{CaseSpec, ModelFamily};
   use eyre::Report;
@@ -13,7 +13,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rand::RngExt;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -98,14 +98,20 @@ mod tests {
     tips.iter().copied().zip(names.iter().cloned().map(Some)).collect()
   }
 
-  fn centroid_params(batch_size: usize, slack: usize) -> BuildParams {
+  fn lbi_references() -> ReferenceSelection {
+    ReferenceSelection::Lbi {
+      max_references: 4,
+      tau: None,
+      pseudo_length: 0.5,
+    }
+  }
+
+  fn walk_params(batch_size: usize, slack: usize, exact: bool) -> BuildParams {
     BuildParams {
-      search: SearchMode::Centroids {
-        max_centroids: 4,
+      search: SearchMode::Walk {
+        references: lbi_references(),
         slack,
-        lbi_tau: 1.0,
-        pseudo_length: 0.5,
-        exact: false,
+        exact,
       },
       batch_size,
       order: SampleOrder::Input,
@@ -119,16 +125,15 @@ mod tests {
   fn exhaustive_params(batch_size: usize) -> BuildParams {
     BuildParams {
       search: SearchMode::Exhaustive,
-      ..centroid_params(batch_size, 0)
+      ..walk_params(batch_size, 0, false)
     }
   }
 
-  fn seeded_params(batch_size: usize) -> BuildParams {
-    let mut params = centroid_params(batch_size, 0);
-    if let SearchMode::Centroids { exact, .. } = &mut params.search {
-      *exact = true;
+  fn region_params(batch_size: usize, references: ReferenceSelection) -> BuildParams {
+    BuildParams {
+      search: SearchMode::Regions { references },
+      ..walk_params(batch_size, 0, false)
     }
-    params
   }
 
   fn refreshing_params(batch_size: usize) -> BuildParams {
@@ -162,9 +167,11 @@ mod tests {
   #[rstest]
   #[case::exhaustive_one_by_one(exhaustive_params(1))]
   #[case::exhaustive_batches(exhaustive_params(8))]
-  #[case::centroids_one_by_one(centroid_params(1, 0))]
-  #[case::centroids_batches(centroid_params(8, 0))]
-  #[case::seeded(seeded_params(8))]
+  #[case::walk_one_by_one(walk_params(1, 0, false))]
+  #[case::walk_batches(walk_params(8, 0, false))]
+  #[case::seeded(walk_params(8, 0, true))]
+  #[case::lbi_regions(region_params(8, lbi_references()))]
+  #[case::long_branch_regions(region_params(8, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(8))]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
     let alphabet = Alphabet::default();
@@ -205,8 +212,10 @@ mod tests {
 
   #[rstest]
   #[case::exhaustive(exhaustive_params(4))]
-  #[case::centroids(centroid_params(4, 1))]
-  #[case::seeded(seeded_params(4))]
+  #[case::walk(walk_params(4, 1, false))]
+  #[case::seeded(walk_params(4, 0, true))]
+  #[case::lbi_regions(region_params(4, lbi_references()))]
+  #[case::long_branch_regions(region_params(4, ReferenceSelection::LongBranches { cuts: 4 }))]
   #[case::refreshing(refreshing_params(4))]
   fn test_build_keeps_mat_consistent_with_homoplasy_and_missing_data(
     #[case] params: BuildParams,
@@ -246,7 +255,7 @@ mod tests {
       assert!(built.stats.final_parsimony <= built.stats.placement_parsimony);
       let exact = matches!(
         params.search,
-        SearchMode::Exhaustive | SearchMode::Centroids { exact: true, .. }
+        SearchMode::Exhaustive | SearchMode::Walk { exact: true, .. } | SearchMode::Regions { .. }
       );
       if exact {
         assert_eq!(built.stats.comparison.unwrap_or_default().worse, 0, "seed {seed}");
@@ -286,6 +295,21 @@ mod tests {
       lbi[&short],
       integral(1.0) + (-1.0 / tau).exp() * integral(2.0),
       epsilon = 1e-12
+    );
+    Ok(())
+  }
+
+  #[test]
+  fn test_eccentricities_of_a_cherry_are_its_longest_paths() -> Result<(), Report> {
+    let reference: Seq = std::iter::repeat_n(A, 4).collect();
+    let mut mat = Mat::new(reference);
+    let root = mat.root();
+    let long = mat.add_sample(root, vec![Sub::new(A, 0_usize, C)?, Sub::new(A, 1_usize, C)?], 0)?;
+    let short = mat.add_sample(root, vec![Sub::new(A, 2_usize, C)?], 1)?;
+    let eccentricity = eccentricities(&mat, &BTreeSet::new());
+    assert_eq!(
+      (eccentricity[&root], eccentricity[&long], eccentricity[&short]),
+      (2, 3, 3)
     );
     Ok(())
   }
