@@ -7,3 +7,6 @@ pub mod placement;
 pub mod query;
 pub(crate) mod refresh;
 pub mod spr;
+
+#[cfg(test)]
+mod __tests__;
