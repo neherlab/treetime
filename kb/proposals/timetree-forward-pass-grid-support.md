@@ -188,5 +188,4 @@ The stored extension is expensive because its length is the distance from the cr
 - [M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md](../issues/M-timetree-node-dates-move-when-a-time-grid-gains-one-point.md): node dates at the grid argmax move when a grid changes by one point
 - [M-timetree-near-flat-soft-tail-stretches-the-time-grid.md](../issues/M-timetree-near-flat-soft-tail-stretches-the-time-grid.md): a soft tail with a slope near zero puts a mass quantile far outside the grid
 - [M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md](../issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md): a narrow branch distribution passes its spacing to the forward product, which then needs millions of points
-- [M-distribution-fft-convolution-hard-edge-first-order-error.md](../issues/M-distribution-fft-convolution-hard-edge-first-order-error.md): first-order error of the FFT convolution at a hard edge
 - [exponential-branch-length-tails.md](exponential-branch-length-tails.md)
