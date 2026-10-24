@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-  use crate::optimize::branch_length::{is_valid_branch_length, is_valid_branch_length_value};
+  use crate::branch_lengths::{is_valid_branch_length, is_valid_branch_length_value};
   use crate::optimize::eval::evaluate_site_contributions;
   use crate::optimize::indel::poisson_indel_log_lh;
   use ndarray::array;

@@ -1,5 +1,6 @@
+use crate::branch_lengths::is_valid_branch_length_value;
 use crate::branch_lengths::one_mutation;
-use crate::optimize::branch_length::{is_valid_branch_length_value, validate_branch_length_value};
+use crate::optimize::branch_length::validate_branch_length_value;
 use crate::optimize::gather::{EdgeContributions, InitialGuessEvidence};
 use crate::optimize::indel::{EdgeIndels, IndelTerm};
 use crate::optimize::method_brent::solve_brent;

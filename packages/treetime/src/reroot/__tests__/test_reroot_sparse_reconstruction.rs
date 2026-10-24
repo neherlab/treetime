@@ -113,6 +113,7 @@ mod tests {
     use crate::partition::set::PartitionSet;
     use crate::reroot::find_root::EdgePoint;
     use crate::reroot::orchestrate::{RerootTopologyParams, apply_root_at_edge};
+    use crate::reroot::placement::Placement;
     use crate::test_utils::{find_edge_key, leaf_seq_inputs};
     use eyre::Report;
     use std::collections::BTreeMap;
@@ -168,6 +169,7 @@ mod tests {
             edge: edge_key,
             split: SplitFraction::new(split)?,
           }),
+          Placement::EdgeEndBand,
           RerootTopologyParams::default(),
           &mut self.branch_lengths,
           None,

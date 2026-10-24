@@ -2,8 +2,8 @@
 pub(super) mod tests {
   use crate::alphabet::alphabet::{Alphabet, AlphabetName};
   use crate::branch_lengths::branch_lengths_or_zero;
+  use crate::branch_lengths::invalid_branch_length_descriptions;
   use crate::gtr::get_gtr::{JC69Params, jc69};
-  use crate::optimize::branch_length::invalid_branch_length_descriptions;
   use crate::optimize::dispatch::guess_initial_branch_lengths;
   use crate::optimize::gather::InitialGuessEvidence;
   use crate::optimize::indel::IndelPolicy;

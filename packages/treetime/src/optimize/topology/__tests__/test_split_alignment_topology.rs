@@ -7,6 +7,7 @@ mod tests {
   use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
   use crate::reroot::find_root::EdgePoint;
   use crate::reroot::orchestrate::{RerootTopologyParams, apply_root_at_edge};
+  use crate::reroot::placement::Placement;
   use crate::seq::indel::InDel;
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
@@ -132,6 +133,7 @@ mod tests {
           edge: edge_key,
           split: SplitFraction::MIDDLE,
         }),
+        Placement::EdgeEndBand,
         RerootTopologyParams::default(),
         &mut side.branch_lengths,
         None,
@@ -190,6 +192,7 @@ mod tests {
           edge: edge_key,
           split: SplitFraction::CHILD_END,
         }),
+        Placement::EdgeEndBand,
         RerootTopologyParams::default(),
         &mut side.branch_lengths,
         None,

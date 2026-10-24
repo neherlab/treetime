@@ -23,9 +23,10 @@ pub(crate) fn reroot_at_best_root(
   log: &dyn LogSink,
 ) -> Result<RerootResult, Report> {
   let split_edge = reroot_params.topology.split_edge;
+  let placement = reroot_params.spec.placement();
   let mut point = find_root(graph, branch_lengths, inputs, outliers, reroot_params, log)?;
   let mut stem_removal = None;
-  if root_moves(graph, point, split_edge)? {
+  if root_moves(graph, branch_lengths, point, placement, split_edge)? {
     stem_removal = remove_undated_stem(graph, branch_lengths, inputs)?;
     if stem_removal.is_some() {
       point = find_root(graph, branch_lengths, inputs, outliers, reroot_params, log)?;
@@ -34,6 +35,7 @@ pub(crate) fn reroot_at_best_root(
   let result = apply_root_at_edge(
     graph,
     point,
+    placement,
     reroot_params.topology,
     branch_lengths,
     stem_removal,

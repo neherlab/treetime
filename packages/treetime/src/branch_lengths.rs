@@ -1,5 +1,8 @@
+use eyre::Report;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::graph::Graph;
+use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
 
 pub fn branch_lengths_or_zero(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
@@ -18,4 +21,33 @@ pub(crate) fn branch_length_or_zero(
 
 pub(crate) fn one_mutation(sequence_length: usize) -> f64 {
   1.0 / sequence_length.to_f64_exact()
+}
+
+pub(crate) fn invalid_branch_length_descriptions(
+  graph: &Graph,
+  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  names: &NodeNames,
+) -> Result<Vec<String>, Report> {
+  graph
+    .get_edges()
+    .filter_map(|edge_ref| {
+      let edge = edge_ref;
+      let branch_length = branch_lengths[&edge.key()];
+      (!is_valid_branch_length(branch_length)).then_some((edge.source(), edge.target(), branch_length))
+    })
+    .map(|(source, target, branch_length)| {
+      let source = &names[source];
+      let target = &names[target];
+      let branch_length = branch_length.map_or_else(|| "missing".to_owned(), |value| value.to_string());
+      Ok(format!("{source} -> {target}: {branch_length}"))
+    })
+    .collect()
+}
+
+pub(crate) fn is_valid_branch_length(branch_length: Option<f64>) -> bool {
+  branch_length.is_some_and(is_valid_branch_length_value)
+}
+
+pub(crate) fn is_valid_branch_length_value(branch_length: f64) -> bool {
+  branch_length.is_finite() && branch_length >= 0.0
 }

@@ -235,9 +235,9 @@ mod tests {
       vec![o!("A"), o!("B"), o!("C"), o!("D")],
       helpers::leaf_names(&tree, &names)
     );
-    let expected = btreemap! { o!("AB") => 0.05, o!("CD") => 0.1 };
+    let middle_of_the_unrooted_ab_cd_branch = btreemap! { o!("AB") => 0.075, o!("CD") => 0.075 };
     let actual = helpers::root_child_lengths(&tree, &names, result.new_root_key)?;
-    pretty_assert_map_abs_diff_eq!(expected, actual, epsilon = 1e-12);
+    pretty_assert_map_abs_diff_eq!(middle_of_the_unrooted_ab_cd_branch, actual, epsilon = 1e-12);
     Ok(())
   }
 

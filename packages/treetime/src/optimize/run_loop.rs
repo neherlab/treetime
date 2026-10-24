@@ -1,5 +1,5 @@
 use crate::branch_lengths::branch_lengths_or_zero;
-use crate::optimize::branch_length::invalid_branch_length_descriptions;
+use crate::branch_lengths::invalid_branch_length_descriptions;
 use crate::optimize::dispatch::{guess_initial_branch_lengths, optimize_edge_lengths};
 use crate::optimize::gather::InitialGuessEvidence;
 use crate::optimize::indel::EdgeIndels;

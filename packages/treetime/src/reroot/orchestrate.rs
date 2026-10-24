@@ -1,6 +1,6 @@
 use crate::make_internal_error;
 use crate::reroot::find_root::EdgePoint;
-use crate::reroot::placement::{RootTarget, leaf_keys, require_dated_new_leaves};
+use crate::reroot::placement::{Placement, RootTarget, leaf_keys, require_dated_new_leaves};
 use eyre::Report;
 use smart_default::SmartDefault;
 use std::collections::BTreeMap;
@@ -13,9 +13,14 @@ use treetime_graph::reroot::{
   trivial_node_branch_lengths,
 };
 
+#[expect(
+  clippy::too_many_arguments,
+  reason = "each argument is an independent input of the move; a parameter struct would be built only for this call"
+)]
 pub(crate) fn apply_root_at_edge(
   graph: &mut Graph,
   point: Option<EdgePoint>,
+  placement: Placement,
   topo: RerootTopologyParams,
   branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
   stem_removal: Option<StemRemovalInfo>,
@@ -30,7 +35,7 @@ pub(crate) fn apply_root_at_edge(
   let Some(point) = point else {
     return Ok(unchanged);
   };
-  let target = RootTarget::on_edge(graph, point, topo.split_edge)?;
+  let target = RootTarget::on_edge(graph, branch_lengths, point, placement, topo.split_edge)?;
   if target == RootTarget::Node(old_root_key) {
     return Ok(unchanged);
   }

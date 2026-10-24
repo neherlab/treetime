@@ -1,5 +1,6 @@
 use crate::clock::clock_set::ClockSet;
 use crate::reroot::orchestrate::RerootTopologyParams;
+use crate::reroot::placement::Placement;
 use smart_default::SmartDefault;
 use treetime_graph::node::GraphNodeKey;
 
@@ -7,6 +8,15 @@ use treetime_graph::node::GraphNodeKey;
 pub enum RerootSpec {
   Method(RerootMethod),
   Tips(Vec<GraphNodeKey>),
+}
+
+impl RerootSpec {
+  pub(crate) fn placement(&self) -> Placement {
+    match self {
+      Self::Method(RerootMethod::LeastSquares | RerootMethod::MinDev) => Placement::EdgeEndBand,
+      Self::Method(RerootMethod::Oldest) | Self::Tips(_) => Placement::Exact,
+    }
+  }
 }
 
 impl Default for RerootSpec {
