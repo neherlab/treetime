@@ -655,13 +655,11 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::not_requested(false, false, false)]
-  #[case::requested(    true,  false, true )]
-  #[case::bad_branch(   true,  true,  false)]
+  #[case::not_requested(false, false)]
+  #[case::requested(    true,  true )]
   #[trace]
-  fn test_forward_pass_summary_stores_the_survival_only_when_requested_outside_bad_branches(
+  fn test_forward_pass_summary_stores_the_survival_only_when_requested(
     #[case] lineage_survival: bool,
-    #[case] bad_branch: bool,
     #[case] stored: bool,
   ) -> Result<(), Report> {
     let nwk_parsed = nwk_read(b"(A:1.0)root;".as_slice())?;
@@ -680,7 +678,7 @@ mod tests {
       ..PosteriorSummaries::default()
     };
 
-    let posterior = NodePosterior::summarize(leaf_key, view, summaries, bad_branch)?;
+    let posterior = NodePosterior::summarize(leaf_key, view, summaries)?;
 
     let expected = if stored {
       NodeSurvival::of_posterior(&distribution)?.map(Arc::new)
@@ -820,7 +818,7 @@ mod tests {
         graph,
         &forward_inputs(inputs, names),
         inputs.backward.clone(),
-        |key, view| NodePosterior::summarize(key, view, summaries, false),
+        |key, view| NodePosterior::summarize(key, view, summaries),
         &NoopProgress,
       )
     }

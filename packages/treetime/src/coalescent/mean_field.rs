@@ -292,19 +292,15 @@ impl LineageExpectation {
         "The time inference holds no survival functions, so it cannot give expected lineage counts"
       );
     }
-    Self::from_posterior(graph, &time_inference.posterior, &time_inference.bad_branches)
+    Self::from_posterior(graph, &time_inference.posterior)
       .wrap_err("Failed to compute the expected coalescent lineage counts")
   }
 
   pub(crate) fn from_posterior(
     graph: &Graph,
     posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
-    bad_branches: &BTreeMap<GraphNodeKey, bool>,
   ) -> Result<Arc<Self>, Report> {
     Self::from_survivals(graph, |key| {
-      if bad_branches.get(&key).copied().unwrap_or(false) {
-        return Ok(None);
-      }
       let entry = posterior.get(&key);
       Ok(
         match (entry.and_then(|p| p.survival.as_ref()), entry.and_then(|p| p.time)) {
@@ -345,14 +341,11 @@ impl LineageExpectation {
     }
     Self::from_survivals(graph, |key| {
       let is_leaf = graph.get_node(key).is_some_and(Node::is_leaf);
-      let survival = if is_leaf {
-        tip_time(key).map(NodeSurvival::point)
-      } else {
+      let survival = tip_time(key).filter(|_| is_leaf).map(NodeSurvival::point).or_else(|| {
         marginals
           .get(&key)
-          .filter(|_| earliest_tip[&key].is_finite())
           .map(|marginal| NodeSurvival::truncated_normal(marginal.mean, marginal.std, earliest_tip[&key]))
-      };
+      });
       Ok(survival.map(Arc::new))
     })
   }

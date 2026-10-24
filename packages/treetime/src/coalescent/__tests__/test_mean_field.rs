@@ -383,12 +383,11 @@ mod tests {
     let full: BTreeMap<GraphNodeKey, NodePosterior> = times.iter().map(|(n, t)| (key(n), point(*t))).collect();
     let mut without_n = full.clone();
     without_n.remove(&key("N"));
-    let bad_branches = BTreeMap::new();
     let tc = Distribution::constant(3.0);
 
-    let extended = LineageExpectation::from_posterior(&graph, &without_n, &bad_branches)?
+    let extended = LineageExpectation::from_posterior(&graph, &without_n)?
       .with_topology(&graph, &BTreeMap::from([(key("N"), 2005.0)]))?;
-    let fresh = LineageExpectation::from_posterior(&graph, &full, &bad_branches)?;
+    let fresh = LineageExpectation::from_posterior(&graph, &full)?;
     let (extended, fresh) = (
       CoalescentPrior::new(&extended, &tc)?,
       CoalescentPrior::new(&fresh, &tc)?,
@@ -535,8 +534,7 @@ mod tests {
           (key(name), entry)
         }))
         .collect();
-      let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
-      LineageExpectation::from_posterior(graph, &posterior, &bad_branches)
+      LineageExpectation::from_posterior(graph, &posterior)
     }
   }
 }

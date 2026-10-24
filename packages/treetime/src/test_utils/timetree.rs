@@ -8,7 +8,6 @@ use crate::seq::alignment::SequenceSource;
 use crate::test_utils::find_node_key_by_name;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::coalescent_timescale::CoalescentMode;
-use crate::timetree::inference::bad_branches::{bad_leaves, derive_bad_branches};
 use crate::timetree::inference::input_branch_length::InputBranchModel;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodePosterior, PosteriorSummaries, PosteriorView, TimeDistribution, TimeInference, given_times,
@@ -16,7 +15,7 @@ use crate::timetree::inference::result::{
 use crate::timetree::params::{BranchLengthMode, TimetreeParams};
 use crate::timetree::pipeline::TimetreeSequences;
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
@@ -45,7 +44,6 @@ pub(crate) fn constraint_expectation(
   graph: &Graph,
   constraints: &DateConstraints,
 ) -> Result<Arc<LineageExpectation>, Report> {
-  let bad_branches = derive_bad_branches(graph, constraints, &bad_leaves(graph, constraints, &BTreeSet::new()))?;
   let posterior = given_times(graph, constraints)?
     .into_iter()
     .map(|(key, time)| {
@@ -57,7 +55,7 @@ pub(crate) fn constraint_expectation(
       (key, entry)
     })
     .collect();
-  LineageExpectation::from_posterior(graph, &posterior, &bad_branches)
+  LineageExpectation::from_posterior(graph, &posterior)
 }
 
 pub(crate) fn empty_time_inference(graph: &Graph) -> TimeInference {
@@ -185,7 +183,6 @@ pub(crate) fn point_coalescent_prior_by_key(
       (key, entry)
     })
     .collect();
-  let bad_branches = graph.get_nodes().map(|node| (node.key(), false)).collect();
-  let expectation = LineageExpectation::from_posterior(graph, &posterior, &bad_branches)?;
+  let expectation = LineageExpectation::from_posterior(graph, &posterior)?;
   CoalescentPrior::new(&expectation, &Distribution::constant(tc))
 }
