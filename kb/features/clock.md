@@ -18,12 +18,14 @@
 - [x] Reroot rejects candidates with non-positive inferred clock rate
 - [x] `--keep-root` (disable rerooting; v0 still reroots in its clock filter, see [kb/v0-errata/clock-keep-root-ignored-by-clock-filter.md](../v0-errata/clock-keep-root-ignored-by-clock-filter.md))
 
-## Reroot Modes (4 modes)
+## Reroot Modes (5 modes)
 
 - [x] Least-squares (minimize RTT regression residuals)
 - [x] Min-dev (fixed-zero-rate least squares; minimize RTT variance independently of sampling-date values; see [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md))
-- [x] Oldest (root at oldest node)
-- [x] Tip/MRCA mode (`--outgroup`)
+- [x] Oldest (root at the middle of the unrooted branch above the oldest dated tip)
+- [x] Tip/MRCA mode (`--outgroup`; root at the middle of the unrooted branch above the MRCA, [kb/decisions/reroot-named-node-at-unrooted-branch-middle.md](../decisions/reroot-named-node-at-unrooted-branch-middle.md))
+- [x] `--reroot=midpoint` (middle of the longest tip-to-tip path, as `augur refine --root mid_point`; new in v1)
+- [x] Date-free methods (min-dev, `--outgroup`, midpoint) root once, before the first clock fit, and count every tip ([kb/decisions/reroot-date-free-methods-root-once.md](../decisions/reroot-date-free-methods-root-once.md))
 
 ## Edge Split Optimization
 
@@ -61,7 +63,7 @@
 ## CLI Options
 
 - [x] `--clock-rate` (fixed rate bypasses estimation)
-- [x] `--allow-negative-rate` (for midpoint rooting)
+- [x] `--allow-negative-rate`
 - [ ] `--tip-slack`, `--covariation`, `--sequence-length`: removed in v1; the CLI stops at `--tip-slack` and `--covariation` with a message, and drops `--sequence-length` with its value ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] `--reroot` / `--outgroup` / `--keep-root`
 - [ ] `--aln`, `--gtr`, `--gtr-params`, `--vcf-reference`, `--branch-length-mode`, `--method-anc`, `--prune-short`: removed in v1, because the regression uses the branch lengths of the input tree and v0 reads the alignment only for `--covariation` ([kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)). The CLI drops the 0.x `--aln` with its value and stops at `--vcf-reference` with a message

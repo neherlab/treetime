@@ -6,7 +6,7 @@ Clock `min-dev` ranks candidate roots with weighted least squares at a fixed clo
 
 **v0 erratum**: [kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md).
 
-**v1 location**: `fn select_root()` dispatches `RerootMethod::MinDev` to `RootObjective::FixedRate(0.0)` [packages/treetime/src/clock/reroot.rs#L74-L100](../../packages/treetime/src/clock/reroot.rs#L74-L100).
+**v1 location**: `fn find_root()` dispatches `RerootMethod::MinDev` to `RootObjective::FixedRate(0.0)` [packages/treetime/src/reroot/find_root.rs#L25](../../packages/treetime/src/reroot/find_root.rs#L25), and `fn reroot_date_free()` runs the search with every tip [packages/treetime/src/reroot/date_free.rs#L15](../../packages/treetime/src/reroot/date_free.rs#L15).
 
 ## Decision
 
@@ -19,7 +19,7 @@ $$
 
 Here, $J_0(r)$ is the fixed-zero-rate objective, $\alpha$ is the fitted intercept, $W=\sum_i w_i$ is total precision, $n$ is the number of contributing tips, $w_i$ is tip $i$'s precision, $d_i(r)$ is its distance from candidate root $r$, $S_d(r)=\sum_i w_i d_i(r)$, and $S_{dd}(r)=\sum_i w_i d_i(r)^2$.
 
-This objective minimizes weighted root-to-tip variance, the minimum-variance rooting criterion described by <a id="cite-1"></a>[Mai et al. 2017](https://doi.org/10.1371/journal.pone.0182238) [[1](#ref-1)]. Sampling-date values are absent, so changing dates cannot alter the selected root when the contributing tips and variance model remain unchanged.
+This objective minimizes weighted root-to-tip variance, the minimum-variance rooting criterion described by <a id="cite-1"></a>[Mai et al. 2017](https://doi.org/10.1371/journal.pone.0182238) [[1](#ref-1)]. Sampling-date values are absent, and every tip contributes, dated or not, with no clock-filter outlier left out ([kb/decisions/reroot-date-free-methods-root-once.md](reroot-date-free-methods-root-once.md)), so the dates cannot alter the selected root.
 
 Clock `least-squares` remains the temporal-rooting mode. It estimates the clock rate and minimizes residuals around a root-to-tip regression, consistent with the methods described by <a id="cite-2"></a>[Rambaut et al. 2016](https://doi.org/10.1093/ve/vew007) [[2](#ref-2)] and <a id="cite-3"></a>[Sagulenko et al. 2018](https://doi.org/10.1093/ve/vex042) [[3](#ref-3)]. The two modes therefore answer distinct questions: uniformity of tip depths for `min-dev`, and temporal clock fit for `least-squares`.
 

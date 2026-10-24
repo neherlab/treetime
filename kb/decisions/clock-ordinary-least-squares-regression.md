@@ -18,10 +18,11 @@ following an unpublished derivation and reference scripts of the maintainers (`r
   [packages/treetime/src/clock/clock_set.rs](../../packages/treetime/src/clock/clock_set.rs)
 - backward and forward passes: `fn clock_regression()`
   [packages/treetime/src/clock/clock_regression.rs](../../packages/treetime/src/clock/clock_regression.rs)
-- root search: `fn find_best_root()` and `fn optimize_exact()`
-  [packages/treetime/src/clock/find_best_root/](../../packages/treetime/src/clock/find_best_root/)
-- reroot driver of every command, and its date-free entry for `optimize`: `fn reroot_at_best_root()`,
-  `fn reroot_undated()` [packages/treetime/src/clock/reroot.rs](../../packages/treetime/src/clock/reroot.rs)
+- root search: `fn search_edges()` and `fn optimize_exact()`
+  [packages/treetime/src/reroot/edge_search.rs](../../packages/treetime/src/reroot/edge_search.rs)
+- reroot driver of every command, and its entry for the date-free methods: `fn reroot_at_best_root()`
+  [packages/treetime/src/reroot/driver.rs](../../packages/treetime/src/reroot/driver.rs), `fn reroot_date_free()`
+  [packages/treetime/src/reroot/date_free.rs](../../packages/treetime/src/reroot/date_free.rs)
 - Gaussian timetree: `struct GaussianTree` [packages/treetime/src/clock/gaussian.rs#L16-L29](../../packages/treetime/src/clock/gaussian.rs#L16-L29), built by `fn GaussianTree::new()`
   [packages/treetime/src/clock/gaussian.rs#L32-L103](../../packages/treetime/src/clock/gaussian.rs#L32-L103); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L105-L133](../../packages/treetime/src/clock/gaussian.rs#L105-L133);
   closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L135-L142](../../packages/treetime/src/clock/gaussian.rs#L135-L142); callers `fn timetree_gaussian_clock()`

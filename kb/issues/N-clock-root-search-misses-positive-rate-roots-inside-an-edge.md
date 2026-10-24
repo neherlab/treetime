@@ -13,11 +13,11 @@ Tree `(A:3,B:2,C:1)R;` with dates A 0, B 1, C 2.
 - Root on the edge to B: the rate is $-1$ for every $x$
 - Root on the edge to C: the rate is $-1 - x$ for every $x$
 
-Every edge optimum is R with rate $-1$, so the search rejects all of them. A run of `estimate_clock_model_with_reroot_policy()` on this tree returns the error "Clock rate is negative for all root positions. The data may lack temporal signal. Please specify --clock-rate explicitly." with `force_positive_rate = true`, and keeps R with rate $-1$ with `force_positive_rate = false`.
+Every edge optimum is R with rate $-1$, so the search rejects all of them. A run of the least-squares root search (`fn reroot_at_best_root()`) on this tree returns the error "Clock rate is negative for all root positions. The data may lack temporal signal. Please specify --clock-rate explicitly." with `force_positive_rate = true`, and keeps R with rate $-1$ with `force_positive_rate = false`.
 
 ## Locations
 
-- v1: `fn find_best_root()` [packages/treetime/src/clock/find_best_root/find_best_root.rs#L16](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L16) optimizes each edge with `fn optimize_exact()` and rejects a negative-rate optimum at [#L54-L57](../../packages/treetime/src/clock/find_best_root/find_best_root.rs#L54-L57)
+- v1: `fn search_edges()` [packages/treetime/src/reroot/edge_search.rs#L19](../../packages/treetime/src/reroot/edge_search.rs#L19) optimizes each edge with `fn optimize_exact()` and rejects a negative-rate optimum at [packages/treetime/src/reroot/edge_search.rs#L56-L58](../../packages/treetime/src/reroot/edge_search.rs#L56-L58)
 - v0: `fn TreeRegression.find_best_root()` [packages/legacy/treetime/treetime/treeregression.py#L321-L352](../../packages/legacy/treetime/treetime/treeregression.py#L321-L352) keeps the optimum of a branch from `_optimal_root_along_branch()` only when its slope is non-negative ([#L347](../../packages/legacy/treetime/treetime/treeregression.py#L347)), so v1 has the same behavior as v0
 - [kb/algo/clock.md](../algo/clock.md), "Best Root Search", documents the v1 rule: the rate is checked on the optimum, not imposed as a constraint
 

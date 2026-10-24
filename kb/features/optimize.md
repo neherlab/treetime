@@ -19,11 +19,12 @@ v0 has no standalone optimize command. `TreeAnc.optimize_tree()` and `optimize_t
 
 The optimize command has no sampling dates, so only date-free rooting policies are available. Rerooting is opt-in; the input root is kept by default.
 
-- [x] `--reroot=min-dev`: minimize the variance of root-to-tip distances with the clock root search at a fixed rate of zero, every tip at the same date ([kb/algo/reroot.md](../algo/reroot.md)). This implements v0's documented fixed-zero-slope meaning; actual v0 candidate scoring retains an estimated-rate term ([kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md)).
-- [x] `--outgroup=A,B,...`: root on the branch leading to the MRCA of the named tips (midpoint), no scoring.
+- [x] `--reroot=min-dev`: minimize the variance of root-to-tip distances with the edge search at a fixed rate of zero, every tip counted ([kb/algo/reroot.md](../algo/reroot.md)). This implements v0's documented fixed-zero-slope meaning; actual v0 candidate scoring retains an estimated-rate term ([kb/v0-errata/clock-min-dev-fixed-slope-score.md](../v0-errata/clock-min-dev-fixed-slope-score.md)).
+- [x] `--reroot=midpoint`: root at the middle of the longest tip-to-tip path, as `augur refine --root mid_point` (Biopython `Tree.root_at_midpoint()`) does ([kb/algo/reroot.md](../algo/reroot.md), "Midpoint Rooting")
+- [x] `--outgroup=A,B,...`: root at the middle of the branch above the MRCA of the named tips in the unrooted tree, no scoring; a repeated reroot keeps the root ([kb/decisions/reroot-named-node-at-unrooted-branch-middle.md](../decisions/reroot-named-node-at-unrooted-branch-middle.md)).
 - [x] `--keep-root`: explicit form of the default (keep the input root); mutually exclusive with the reroot options.
 - [x] Date-dependent methods (`least-squares`, `oldest`, `clock-filter`) rejected at argument validation
-- [x] Two-phase pipeline: damped pre-reroot branch-length pass, reroot, partition reconciliation, then re-optimization in the main loop (mirrors the timetree pipeline)
+- [x] Reroot once right after the initial guess, on the starting branch lengths, then partition reconciliation and branch-length optimization in the main loop ([kb/decisions/reroot-date-free-methods-root-once.md](../decisions/reroot-date-free-methods-root-once.md))
 
 ## Per-Edge Likelihood (v0 parity via different method)
 

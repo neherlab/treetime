@@ -1,6 +1,6 @@
 # Reroot support for optimize command
 
-Add `--reroot`, `--outgroup`, and `--keep-root` to the `optimize` command. Uses the clock root search at a fixed rate of zero, with every tip at the same date (divergence-only, no dates required; [kb/algo/reroot.md](../algo/reroot.md)). Implements a two-phase branch-length optimization pattern around the reroot step, matching timetree's pipeline structure.
+Add `--reroot`, `--outgroup`, and `--keep-root` to the `optimize` command. Uses the date-free root search, which needs no dates and counts every tip ([kb/algo/reroot.md](../algo/reroot.md)), once on the branch lengths after the initial guess.
 
 ## Available methods
 
@@ -9,7 +9,8 @@ The optimize command has no date information. Only divergence-based rooting meth
 | Method              | Valid                | Scoring                                                  |
 | ------------------- | -------------------- | -------------------------------------------------------- |
 | `MinDev`            | yes                  | rate-zero least squares -- minimize variance of root-to-tip distances |
-| `--outgroup=A,B` | yes                  | topology-only -- root at MRCA of named tips              |
+| `Midpoint`          | yes                  | middle of the longest tip-to-tip path                    |
+| `--outgroup=A,B` | yes                  | topology-only -- root at the middle of the branch above the MRCA of named tips |
 | `LeastSquares`      | no -- requires dates | --                                                       |
 | `Oldest`            | no -- requires dates | --                                                       |
 
@@ -46,17 +47,15 @@ New pipeline when `--reroot` is set and `--keep-root` is not:
 2. Initialize + update marginal
 3. Normalize rates
 4. Apply initial guess
-5. Pre-reroot BL optimization pass (single `optimize_edge_lengths` with damping 0.75)
-6. Compute the regression sums on every edge (two-pass traversal over branch lengths)
-7. `reroot_undated` (`clock/reroot.rs`): the clock reroot driver at rate zero with every tip at the same date
-8. Apply reroot changes to partitions (`PartitionRerootOps::apply_reroot`)
-9. Re-run `update_marginal` (root position changed, messages invalidated)
-10. `run_optimize_loop` (main convergence loop)
-11. Final `update_marginal`
+5. `reroot_date_free` (`reroot/date_free.rs`): the date-free reroot driver, on the branch lengths after the initial guess, with every tip counted
+6. Apply reroot changes to partitions (`PartitionRerootOps::apply_reroot`)
+7. Re-run `update_marginal` (root position changed, messages invalidated)
+8. `run_optimize_loop` (main convergence loop)
+9. Final `update_marginal`
 
-Steps 5-9 mirror timetree's two-phase pattern (`timetree/pipeline.rs:172-209`): optimize branch lengths first (so the root search uses reasonable distances), then reroot, then re-optimize (because the root position changes the optimization landscape).
+The reroot uses the starting branch lengths, as the date-free methods do in every command ([kb/decisions/reroot-date-free-methods-root-once.md](../decisions/reroot-date-free-methods-root-once.md)), and the main loop then optimizes the branch lengths on the rooted tree.
 
-When no reroot flags are given, steps 5-9 are skipped and behavior is identical to the current pipeline.
+When no reroot flags are given, steps 5-7 are skipped and behavior is identical to the current pipeline.
 
 ## Validation
 

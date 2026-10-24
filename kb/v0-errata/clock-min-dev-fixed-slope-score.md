@@ -66,7 +66,7 @@ The erratum is supported independently by:
 
 ## v1 status
 
-Corrected. `fn select_root()` dispatches `RerootMethod::MinDev` to `RootObjective::FixedRate(0.0)` [packages/treetime/src/clock/reroot.rs#L145-L177](../../packages/treetime/src/clock/reroot.rs#L145-L177). Regression tests verify that the public reroot operation selects the same edge and split as a direct fixed-zero-rate search and that changing sampling-date values does not change a `min-dev` result [packages/treetime/src/clock/__tests__/test_reroot.rs#L77-L132](../../packages/treetime/src/clock/__tests__/test_reroot.rs#L77-L132).
+Corrected. `fn find_root()` dispatches `RerootMethod::MinDev` to `RootObjective::FixedRate(0.0)` [packages/treetime/src/reroot/find_root.rs#L25](../../packages/treetime/src/reroot/find_root.rs#L25). Regression tests verify that the `min-dev` root places the root at the analytic minimum of the variance [packages/treetime/src/reroot/__tests__/test_date_free.rs](../../packages/treetime/src/reroot/__tests__/test_date_free.rs) and that changing sampling-date values does not change a `min-dev` result [packages/treetime/src/reroot/__tests__/test_driver.rs](../../packages/treetime/src/reroot/__tests__/test_driver.rs).
 
 This is an intentional correction of a v0 defect, not behavioral parity with v0's executed score. The `least-squares` mode preserves the estimated-rate temporal objective.
 

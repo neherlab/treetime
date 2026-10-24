@@ -131,6 +131,8 @@ v1 has no `--time-marginal`: every round runs marginal time inference ([kb/decis
 - [x] Rate susceptibility activated via `--confidence`, with `--clock-std-dev` or the Gaussian rate standard deviation of an estimated rate (v0: `--clock-std-dev` or `--covariation`; see [kb/decisions/clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md))
 - [x] Clock rate stepped toward the maximum of the marginal likelihood of the node times in each refinement round when a coalescent prior is active - new in v1, see [timetree-clock-rate-by-marginal-likelihood.md](../decisions/timetree-clock-rate-by-marginal-likelihood.md)
 - [x] Reroot method and tip/MRCA selection passed into clock rerooting
+- [x] `--reroot=midpoint` (middle of the longest tip-to-tip path, as `augur refine --root mid_point`; new in v1)
+- [x] Date-free methods (min-dev, `--outgroup`, midpoint) root once, before the first clock fit, and keep both clock refits of the pre-loop ([kb/decisions/reroot-date-free-methods-root-once.md](../decisions/reroot-date-free-methods-root-once.md))
 
 ## Output
 

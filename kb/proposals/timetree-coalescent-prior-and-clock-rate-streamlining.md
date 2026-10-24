@@ -128,7 +128,7 @@ both are easy to adapt later, and keeping them limits the change surface.
   instead of the WLS Hessian); the augur `rate_std` becomes a real standard error. The app (results, the
   covariation switch, contracts, JSON schemas) follows; that part is the engineer's.
 - Tests: the frozen-value dengue/100 clock golden master and every clock and covariation snapshot in `dev/smoke.toml`
-  change; the v0 runner golden masters (`test_gm_runner/`) call `estimate_clock_model_with_reroot_policy` at a fixed
+  change; the v0 runner golden masters (`test_gm_runner/`) call `fit_clock_model` at a fixed
   v0 rate and keep the root, so they move to the new API with unchanged expectations.
 - kb: resolves or obsoletes M-clock-covariation-variance-diverges-from-v0,
   M-clock-filter-regression-uses-covariation, M-timetree-covariation-tip-slack-default-differs-from-v0,
@@ -370,9 +370,8 @@ over seven passes) where the peak run converged, the same slow rate drift as in 
 - Issues: 0a to 3 done (branch `claude-clock-exact-root`, decision
   [clock-ordinary-least-squares-regression.md](../decisions/clock-ordinary-least-squares-regression.md)),
   [M-timetree-rate-step-window-and-rate-uncertainty.md](../issues/M-timetree-rate-step-window-and-rate-uncertainty.md) (4).
-- Module layout: the rerooting code spans `clock/reroot.rs`, `clock/find_best_root/` and `reroot/`; where it should
-  live is left for the engineer
-  ([N-reroot-modules-split-between-clock-and-reroot.md](../issues/N-reroot-modules-split-between-clock-and-reroot.md)).
+- Module layout: the rerooting code lives in the top-level `reroot/` module, and the clock fit no longer reroots
+  ([kb/algo/reroot.md](../algo/reroot.md)).
 
 ## Related
 
