@@ -62,6 +62,14 @@ mod tests {
   }
 
   #[test]
+  fn test_gridfn_resample_range_dx_clamped_anchored_right_keeps_the_right_end_on_a_grid_point() -> Result<(), Report> {
+    let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
+    let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.4, Side::Right, MaxGridPoints::default())?;
+    pretty_assert_abs_diff_eq!(clamped.y(), &array![0.0, 2.0, 6.0, 10.0], epsilon = 1e-12);
+    Ok(())
+  }
+
+  #[test]
   fn test_gridfn_resample_range_dx_clamped_interpolates_within_support() -> Result<(), Report> {
     let grid_fn = GridFn::from_range_values((0.0, 1.0), array![0.0, 10.0])?;
     let clamped = grid_fn.resample_range_dx_clamped((0.0, 1.0), 0.5, Side::Left, MaxGridPoints::default())?;

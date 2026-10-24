@@ -291,6 +291,48 @@ mod tests {
     Ok(())
   }
 
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::mass(   None)]
+  #[case::falling(Some(1.0))]
+  #[case::tail(   Some(2.5))]
+  #[trace]
+  fn test_convolution_keeps_the_dense_hard_end_of_a_resampled_operand_at_second_order(
+    #[case] s: Option<f64>,
+  ) -> Result<(), Report> {
+    let (a, b) = (1.5_f64, 4.0_f64);
+    let errors: Vec<f64> = [(128, 64, 1.0 / 32.0), (256, 128, 1.0 / 64.0), (512, 256, 1.0 / 128.0), (1024, 512, 1.0 / 256.0)]
+      .iter()
+      .map(|&(cells, branch_cells, h)| {
+        let l_end = 4.0 + 0.3 * h;
+        let subtree = function_on((-4.0, 0.0), cells + 1, |t| -a * t - a.ln())?
+          .with_left_extrap(BoundaryBehavior::Hard)?
+          .with_right_extrap(BoundaryBehavior::Hard)?;
+        let branch = function_on((0.0, l_end), branch_cells + 1, |l| b * l - b.ln())?
+          .with_left_extrap(BoundaryBehavior::Hard)?
+          .with_right_extrap(BoundaryBehavior::Hard)?;
+        let actual = distribution_convolution(
+          &DistributionNegLog::Function(subtree),
+          &DistributionNegLog::Function(branch).negate()?,
+          MaxGridPoints::default(),
+        )?;
+        let DistributionNegLog::Function(conv) = &actual else {
+          panic!("expected a Function result, got {actual:?}");
+        };
+        Ok(match s {
+          None => {
+            let density = conv.values().mapv(|v| (-v).exp());
+            let trapezoid_mass = conv.dx() * (density.sum() - f64::midpoint(density[0], density[density.len() - 1]));
+            trapezoid_mass - (1.0 - (-a * 4.0).exp()) * (1.0 - (-b * l_end).exp())
+          },
+          Some(s) => (-actual.eval(-s)?).exp() - a * b / (b - a) * ((-a * s).exp() - (-b * s).exp()),
+        })
+      })
+      .try_collect::<_, _, Report>()?;
+    assert_second_order(&errors);
+    Ok(())
+  }
+
   #[test]
   fn test_convolution_range_function_carries_both_amplitudes() -> Result<(), Report> {
     let f = function_on((0.0, 3.0), 7, |t| t)?

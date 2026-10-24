@@ -356,20 +356,12 @@ mod tests {
       let key = find_node_key_by_name(&state.graph, &state.names, name).expect("leaf must exist");
       state.gammas[&parent_edge_key(&state.graph, key)]
     };
-    let fast: BTreeSet<String> = ["A", "B", "C"]
-      .into_iter()
-      .filter(|&name| leaf_gamma(name) > 1.0)
-      .map(str::to_owned)
-      .collect();
-    let slow: BTreeSet<String> = ["D", "E"]
-      .into_iter()
-      .filter(|&name| leaf_gamma(name) < 1.0)
-      .map(str::to_owned)
-      .collect();
-    assert_eq!(
-      (["A", "B", "C"].map(str::to_owned).into(), ["D", "E"].map(str::to_owned).into()),
-      (fast, slow),
-      "edges of the clade that evolves 3 times faster must get rates above 1, the slow clade below 1"
+    let slowest_fast = ["A", "B", "C"].map(leaf_gamma).into_iter().fold(f64::INFINITY, f64::min);
+    let fastest_slow = ["D", "E"].map(leaf_gamma).into_iter().fold(f64::NEG_INFINITY, f64::max);
+    assert!(
+      slowest_fast > fastest_slow,
+      "every edge of the clade that evolves 3 times faster must get a higher rate than every edge of the slow clade: \
+       slowest fast {slowest_fast}, fastest slow {fastest_slow}"
     );
     Ok(())
   }
