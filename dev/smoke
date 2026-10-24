@@ -38,7 +38,8 @@ Options:
     --against REF_OR_ID     baseline: an existing snapshot id, or a git ref, resolved to the tree of its
                             commit (default: the base branch rust)
     --no-compare            run the current snapshot only and report statuses
-    --jobs N                number of cases that run at the same time (default: CPU count)
+    --jobs N                number of cases that run at the same time (default: the CPUs of the container, by
+                            its CPU quota)
     --timeout-scale X       multiply every case timeout by X
     --memory-budget GIB     memory the running cases may use together (default: 75% of the memory available at
                             start). Each case reserves the largest peak of its earlier completed runs plus 25%, or
@@ -330,7 +331,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--overview", action="store_true")
   parser.add_argument("--against", metavar="REF_OR_ID", default=BASE_BRANCH)
   parser.add_argument("--no-compare", action="store_true")
-  parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
+  parser.add_argument("--jobs", type=int)
   parser.add_argument("--timeout-scale", type=float, default=1.0)
   parser.add_argument("--memory-budget", metavar="GIB", type=float)
   parser.add_argument("--min-free", metavar="GIB", type=float,
@@ -345,7 +346,7 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument("--snapshot", help=argparse.SUPPRESS)
   parser.add_argument("--cases", help=argparse.SUPPRESS)
   args = parser.parse_args()
-  if args.jobs < 1:
+  if args.jobs is not None and args.jobs < 1:
     parser.error("--jobs must be at least 1")
   if args.memory_budget is not None and args.memory_budget <= 0:
     parser.error("--memory-budget must be positive")
@@ -965,8 +966,10 @@ def run_snapshot(snapshot: Snapshot, cases: list[Case], args: argparse.Namespace
     cases_file = snapshot.dir / "pending-cases.json"
     write_json(cases_file, pending)
     command = [*WRAPPER, "python3", SELF, "--run-cases", "--bin", str(snapshot.binary), "--snapshot", str(snapshot.dir),
-               "--cases", str(cases_file), "--jobs", str(args.jobs), "--min-free", str(args.min_free),
+               "--cases", str(cases_file), "--min-free", str(args.min_free),
                "--max-file-size", str(args.max_file_size)]
+    if args.jobs is not None:
+      command += ["--jobs", str(args.jobs)]
     if args.memory_budget is not None:
       command += ["--memory-budget", str(args.memory_budget)]
     if check_determinism:
@@ -1039,7 +1042,7 @@ def run_cases_mode(args: argparse.Namespace) -> int:
   tasks = json.loads(Path(args.cases).read_text())
   binary = Path(args.bin).resolve()
   snapshot_dir = Path(args.snapshot).resolve()
-  jobs = max(1, args.jobs)
+  jobs = args.jobs or default_jobs()
   budget_kib = round(args.memory_budget * 1024 * 1024) if args.memory_budget else default_memory_budget_kib()
   memory = MemoryBudget(budget_kib)
   max_file_bytes = round(args.max_file_size * GIB)
@@ -1071,6 +1074,16 @@ def run_cases_mode(args: argparse.Namespace) -> int:
               disk.low_free_bytes / GIB, args.min_free, len(tasks) - done, len(tasks))
     return 2
   return 0
+
+
+def default_jobs() -> int:
+  """The CPUs the cases may use together: the CPU quota of the container, at most the CPUs it may run on."""
+  cpus = len(os.sched_getaffinity(0))
+  with contextlib.suppress(FileNotFoundError):
+    quota, period = Path("/sys/fs/cgroup/cpu.max").read_text().split()
+    if quota != "max":
+      cpus = min(cpus, int(quota) // int(period))
+  return max(1, cpus)
 
 
 def default_memory_budget_kib() -> int:
