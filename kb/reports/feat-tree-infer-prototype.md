@@ -173,6 +173,38 @@ The simulations reach the true tree even at 15.6% divergence, while `lassa/L/500
 - In substitutions the distances scale with the divergence of the data. In branches most misplaced tips lie within 5 branches, except on `sc2/4500`, where 41% lie more than 10 branches away but only 11 substitutions (median) away: long chains of branches with one substitution each make a radius in branches a poor measure of a neighbourhood
 - The rebuilds remove 38% of the conflicting splits on `rsv/a/2000` (149 to 92) and 52% on `dengue/2000` (216 to 103), but 18% on `lassa/L/500` (149 to 122) and 3 to 10% on `sc2/4500`, `mpox/clade-ii/2000`, and `flu/h3n2/500`, where the remaining score gap to the reference tree is 0 to 0.4%
 
+## Batch re-placement
+
+Single tips are already pruned and re-placed by the exhaustive SPR. Batch re-placement (`reprune=<batches>`) splits the samples into random batches; for each batch it removes the tips, refreshes the rest of the tree with Fitch, places the tips again, refreshes, and keeps the result if the score drops. Unlike SPR, the backbone's internal states are re-optimized without the removed tips before they are placed.
+
+| Dataset (Fitch score vs reference tree) | Base | 10 batches × 3 rounds | Rebuild $r = 3$ | Rebuild + 10 × 3 batches |
+| --- | --- | --- | --- | --- |
+| `flu/h3n2/500` | +0.53% | +0.20% | 0.00% | 0.00% |
+| `rsv/a/2000` | +0.48% | +0.43% | +0.03% | +0.03% (no batch accepted) |
+| `dengue/2000` | +1.19% | +0.94% | +0.17% | +0.17% (no batch accepted) |
+| `sc2/4500` | +0.64% | +0.64% | +0.36% | +0.36% (no batch accepted) |
+| `lassa/L/500` | +4.27% | +2.43% | +3.00% | +2.02% |
+
+On `lassa/L/500`, 10 rounds of 10 batches reach +2.06% and smaller batches do no better. Each batch needs two Fitch refreshes, which dominates the time (96 s on `sc2/4500`). On the simulated data without rate variation, batch re-placement does not repair the misplaced clade that rebuilds of radius 3 repair.
+
+## Rate variation among sites
+
+The v1 simulator now draws gamma-distributed site rates (`fn gamma_site_rates()`, `fn evolve_sequences_with_rates()`), and `examples/simulate_dataset.rs` writes datasets in the layout of `validation/`: 40 sampling times 0.1 years apart with 10 tips each, constant $T_c = 10$ years, random GTR, 10,000 sites, messy observation, 2 replicates per setting. Fitch score relative to the true tree, conflicting splits of the true tree, and recall of its informative splits:
+
+| $\mu$ | Shape $\alpha$ | Base | Rebuild $r = 3$ | Batch re-placement | Both |
+| --- | --- | --- | --- | --- | --- |
+| 0.003 | equal rates | +0.32%, 1.0, 0.975 | 0.00%, 0.5, 0.994 | +0.21%, 1.0, 0.982 | 0.00%, 0.5, 0.994 |
+| 0.003 | 1.0 | +0.32%, 1.5, 0.964 | −0.02%, 0.5, 0.997 | +0.24%, 1.5, 0.979 | −0.02%, 0.5, 0.997 |
+| 0.003 | 0.3 | +1.34%, 15.5, 0.930 | −0.01%, 1.5, 0.992 | +0.92%, 13.5, 0.948 | −0.01%, 1.5, 0.992 |
+| 0.01 | equal rates | +1.08%, 14.0, 0.927 | 0.00%, 1.0, 0.993 | +0.55%, 10.0, 0.962 | 0.00%, 1.0, 0.993 |
+| 0.01 | 1.0 | +1.32%, 20.5, 0.916 | +0.07%, 4.5, 0.987 | +1.04%, 15.5, 0.942 | +0.07%, 4.5, 0.987 |
+| 0.01 | 0.3 | +2.54%, 45.5, 0.861 | +0.23%, 12.0, 0.961 | +2.05%, 36.5, 0.889 | +0.22%, 11.5, 0.964 |
+
+- Strong rate variation reproduces the behavior of `lassa/L/500`: without rebuilds the score ends 2.5% above the true tree with 45 conflicting splits
+- At $\mu = 0.01$, $\alpha = 0.3$, rebuilds of radius 4 end +0.19% and +0.07% above the true tree; radius 5 and 6 end higher (+0.36%, +0.34%), because the rebuild of a large ball is itself a heuristic
+- Refined from the true tree, the builder's moves lower its score by 5 substitutions while changing 2 to 3 splits: the parsimony optimum lies next to the true tree, and the remaining gap of the built trees is a search failure
+- The remaining 8 to 9 conflicting splits move 1 or 2 tips each, about 180 substitutions away, and one clade of more than 20 tips per replicate. Moving a subtree, or a pseudo-leaf of a rebuild, keeps the state of its root fixed; moves that need a different root state are not found
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -219,4 +251,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement.
