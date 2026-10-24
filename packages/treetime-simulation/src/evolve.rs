@@ -2,7 +2,7 @@ use crate::substitution_model::{NUCLEOTIDES, SubstitutionModel};
 use eyre::Report;
 use itertools::Itertools;
 use rand::Rng;
-use rand_distr::{Distribution, Exp1};
+use rand_distr::{Distribution, Exp1, Gamma};
 use std::collections::BTreeMap;
 use std::iter::repeat_with;
 use treetime_graph::edge::GraphEdgeKey;
@@ -42,8 +42,30 @@ pub fn evolve_sequences(
   length: usize,
   rng: &mut impl Rng,
 ) -> Result<SimulatedSequences, Report> {
+  evolve_sequences_with_rates(graph, durations, model, &vec![1.0; length], rng)
+}
+
+pub fn gamma_site_rates(alpha: f64, length: usize, rng: &mut impl Rng) -> Result<Vec<f64>, Report> {
+  if !(alpha.is_finite() && alpha > 0.0) {
+    return make_error!("The shape of the site-rate distribution must be finite and positive, got {alpha}");
+  }
+  let gamma = Gamma::new(alpha, 1.0 / alpha)?;
+  Ok(repeat_with(|| gamma.sample(rng)).take(length).collect())
+}
+
+pub fn evolve_sequences_with_rates(
+  graph: &Graph,
+  durations: &BTreeMap<GraphEdgeKey, f64>,
+  model: &SubstitutionModel,
+  site_rates: &[f64],
+  rng: &mut impl Rng,
+) -> Result<SimulatedSequences, Report> {
+  let length = site_rates.len();
   if length == 0 {
     return make_error!("Sequence length must be positive, got 0");
+  }
+  if let Some(rate) = site_rates.iter().find(|rate| !(rate.is_finite() && **rate >= 0.0)) {
+    return make_error!("Site rates must be finite and non-negative, got {rate}");
   }
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
@@ -64,7 +86,8 @@ pub fn evolve_sequences(
         let duration = durations[edge];
         let evolutions = states[parent]
           .iter()
-          .map(|&state| jump_process(state, duration, model, rng))
+          .zip(site_rates)
+          .map(|(&state, &rate)| jump_process(state, duration * rate, model, rng))
           .collect_vec();
         substitutions.insert(*edge, evolutions.iter().map(|evolution| evolution.jumps).sum());
         evolutions.iter().map(|evolution| evolution.state).collect_vec()
