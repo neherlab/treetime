@@ -66,7 +66,7 @@ export interface AuspiceControlsState {
   panelLayout: AuspicePanelLayout;
   canTogglePanelLayout: boolean;
   sidebarOpen: boolean;
-  showTreeToo: string | undefined;
+  showTreeToo: string | false;
   explodeAttr: string | undefined;
   panelsAvailable: readonly string[];
   panelsToDisplay: readonly string[];

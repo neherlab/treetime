@@ -131,7 +131,7 @@ function selectEntropyAvailable(state: AuspiceState): boolean {
 }
 
 function selectMapAvailable(state: AuspiceState): boolean {
-  return state.controls.panelsAvailable.includes("map") && state.controls.showTreeToo === undefined;
+  return state.controls.panelsAvailable.includes("map") && state.controls.showTreeToo === false;
 }
 
 function selectCanTogglePanelLayout(state: AuspiceState): boolean {
