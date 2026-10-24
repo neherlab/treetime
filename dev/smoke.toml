@@ -639,7 +639,6 @@ args = "--remove-file={dataset}/prune-nodes.txt"
 [[timetree]]
 variant = "basic"
 fail.'lassa/L/20' = "stops at the grid point limit: kb/issues/M-timetree-narrow-branch-distribution-forces-millions-of-grid-points.md"
-fail.'lassa/L/200' = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]
 variant = "fixed-clock"
@@ -714,7 +713,7 @@ args = "--tree={data}/smoke/flu-h3n2-20-tree-single-child-polytomy.nwk"
 variant = "clock-rate-1e-6"
 datasets = ["zika/20"]
 args = "--clock-rate=1e-6"
-fail = "kb/issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md"
+fail = "kb/issues/H-io-negative-numdate-panics-in-date-string-conversion.md"
 
 [[timetree]]
 variant = "coalescent"
