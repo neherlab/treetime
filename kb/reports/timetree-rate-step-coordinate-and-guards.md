@@ -9,7 +9,7 @@ With a coalescent prior and an estimated rate, each refinement round moves the c
 - In log rate, the fixed point of the step is not the maximum of $\log Z$: it lies $h^2 f'''/(6 f'')$ below it ($h = \ln 1.25$), which for the Poisson shape of $\log Z$ is $-h^2/6 = -0.8\%$ of the rate. The validation runs show this bias at high signal ($-1.1\%$ to $-1.3\%$, standard error $0.1\%$ to $0.2\%$), and a parabola in the cube root or square root of the rate removes most of it
 - On profiles of $\log Z$, the cube root is the most nearly quadratic coordinate near the maximum, the square root next; log rate is skewed the other way, and the rate itself most. This is the order that a Poisson likelihood predicts
 - Dropping the interior window (following the parabola maximum in every round, within the 2-fold cap) changes no run at high signal and lowers the median rate error at low signal ($L=10^3$, $\mu=3\cdot10^{-4}$) from 0.30 to 0.25
-- A cube-root parabola with the full step gives the lowest rate error overall (median $\lvert\ln\rvert$ error 0.026 against 0.033), except at the lowest signal, where more runs end beyond 2-fold of the true rate (15% against 11%)
+- A cube-root parabola with the full step gives the lowest rate error overall (median $\lvert\ln\rvert$ error 0.026 against 0.033 on 400 tips, 0.022 against 0.029 on 1200 tips). At the lowest signal on 400 tips more runs end beyond 2-fold of the true rate (15% against 11%); on 1200 tips fewer do (12.5% against 28%)
 - At low signal $\log Z$ jumps by several nats between neighboring rates, which limits every three-probe step whatever its coordinate
 - No variant of the step recovers a start rate that is far off: on the case of [kb/issues/M-timetree-start-rate-accepts-near-zero-regression-slope.md](../issues/M-timetree-start-rate-accepts-near-zero-regression-slope.md) the coalescent timescale fits the stretched tree, and $\log Z$ under that prior peaks near the wrong rate
 
@@ -93,8 +93,16 @@ Other measures, all 960 runs per row:
 
 No run failed in any variant. The node date RMSE barely moves: at these rate errors the dates are limited by other errors.
 
-> [!IMPORTANT]
-> **Investigation required.** The same comparison on the 30-tip set (`data_n30`, 1200 tips) is running; its numbers are not in this report yet.
+The same comparison with 30 tips per sample time (`data_n30`, 1200 tips; no run failed):
+
+| step | median $\lvert\ln\rvert$ rate error, all | signed bias at $10^4$, $3\cdot10^{-3}$ / $10^{-2}$ | beyond 2-fold at $10^3$, $3\cdot10^{-4}$ | smaller / larger rate error than current | median date RMSE (years) |
+| --- | --- | --- | --- | --- | --- |
+| log, window, 2/3 (current) | 0.029 | -0.0130 / -0.0111 | 0.283 | | 0.076 |
+| sqrt, no window, 2/3 | 0.029 | -0.0032 / -0.0009 | 0.150 | 0.57 / 0.43 | 0.077 |
+| cbrt, no window, 2/3 | 0.028 | -0.0064 / -0.0043 | 0.150 | 0.58 / 0.42 | 0.076 |
+| cbrt, no window, full step | 0.022 | -0.0041 / -0.0033 | 0.125 | 0.63 / 0.37 | 0.075 |
+
+The high-signal bias and its removal repeat. At the lowest signal, dropping the window halves the share of runs beyond 2-fold, and here the full step does not raise it.
 
 ## Far-off start
 
@@ -104,7 +112,7 @@ On messy data, `keep-opt-est` on `const/rep03` at $L=10^3$, $\mu=3\cdot10^{-3}$ 
 
 - **Coordinate:** fit the parabola in the cube root or the square root of the rate. Both remove most of the high-signal bias; the cube root fits better near the maximum, the square root over wide windows at the highest signal and removes more of the bias in the runs
 - **Window:** drop `RateWindow::InteriorMaximum`. It changes nothing where the signal is clear and was the cause of a worse rate at low signal
-- **Step fraction:** the full step converges in fewer rounds at medium and high signal, but at the lowest signal more runs end beyond 2-fold of the true rate than with 2/3
+- **Step fraction:** the full step converges in fewer rounds at medium and high signal; at the lowest signal it ends more runs beyond 2-fold of the true rate than 2/3 on 400 tips, and fewer on 1200 tips
 - **Low-signal noise:** a least-squares parabola over more probes, or wider probes, would average the grid noise of $\log Z$; this is the option already listed for the flat top of $\log Z$ in [kb/reports/timetree-low-signal-rate-bias-from-convolution-edges.md](timetree-low-signal-rate-bias-from-convolution-edges.md)
 
 ## Reproduction
