@@ -150,6 +150,7 @@ mod tests {
         radius: 3,
         max_leaves: 16,
         orders: 3,
+        neighbor_joining: true,
       }),
       ..refreshing_params(batch_size)
     }
@@ -184,9 +185,9 @@ mod tests {
     }
   }
 
-  fn nj_params() -> BuildParams {
+  fn nj_params(top_hits: Option<usize>) -> BuildParams {
     BuildParams {
-      initial: InitialTree::NeighborJoining,
+      initial: InitialTree::NeighborJoining { top_hits },
       ..refreshing_params(8)
     }
   }
@@ -233,7 +234,8 @@ mod tests {
   #[case::random_order(ordered_params(SampleOrder::Random { seed: 3 }))]
   #[case::scaffold_order(ordered_params(SampleOrder::Scaffold { anchors: 10, seed: 3 }))]
   #[case::scaffold(scaffold_params())]
-  #[case::neighbor_joining(nj_params())]
+  #[case::neighbor_joining(nj_params(None))]
+  #[case::neighbor_joining_full_top_hits(nj_params(Some(1000)))]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
     let alphabet = Alphabet::default();
     for seed in 0..5 {
@@ -428,8 +430,12 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_neighbor_joining_recovers_the_splits_of_an_additive_metric() -> Result<(), Report> {
+  #[rstest]
+  #[case::exhaustive(None)]
+  #[case::top_hits(Some(3))]
+  fn test_neighbor_joining_recovers_the_splits_of_an_additive_metric(
+    #[case] top_hits: Option<usize>,
+  ) -> Result<(), Report> {
     let truth = treetime_io::nwk::nwk_read(b"(((t0:1,t1:2):3,t2:1):2,(t3:2,(t4:1,t5:1):4):1);".as_slice())?;
     let tips = (0..6).map(|i| format!("t{i}")).collect_vec();
     let key = |name: &str| {
@@ -464,7 +470,7 @@ mod tests {
         distances[i * 6 + j] = total(&pa) + total(&pb) - 2.0 * shared;
       }
     }
-    let (graph, samples) = crate::build::nj::neighbor_joining(&distances, 6)?;
+    let (graph, samples) = crate::build::nj::neighbor_joining(&distances, 6, top_hits)?;
     let names = NodeNames::from_input(
       samples
         .iter()
