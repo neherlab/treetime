@@ -1,4 +1,5 @@
 use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
+use crate::clock::clock_state::ClockInputs;
 use crate::progress::NoopProgress;
 use crate::reroot::driver::reroot_at_best_root;
 use crate::reroot::params::RerootParams;
@@ -9,6 +10,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_graph::reroot::RerootResult;
+use treetime_io::nwk::nwk_read;
 use treetime_primitives::date::DateConstraint;
 use treetime_utils::least_squares::LineFit;
 
@@ -65,4 +67,39 @@ pub(crate) fn reroot_and_fit_clock(
     &NoopProgress,
   )?;
   Ok((reroot, fit))
+}
+
+pub(crate) fn root_clock_fit(newick: &str, dates: &BTreeMap<String, f64>) -> Result<ClockFitResult, Report> {
+  let nwk_parsed = nwk_read(newick.as_bytes())?;
+  let names = nwk_parsed.names.clone();
+  let graph = nwk_parsed.graph;
+  let times = leaf_times(&names, &graph, dates);
+  let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+  fit_clock_model(
+    &ClockTree {
+      graph,
+      branch_lengths: nwk_parsed.branch_lengths,
+      inputs,
+    },
+    &ClockFitParams {
+      outliers: &BTreeSet::new(),
+      clock_rate: None,
+      prev_clock_rate: None,
+    },
+    &NoopProgress,
+  )
+}
+
+pub(crate) fn leaf_times(
+  names: &NodeNames,
+  graph: &Graph,
+  dates: &BTreeMap<String, f64>,
+) -> BTreeMap<GraphNodeKey, Option<f64>> {
+  graph
+    .get_leaves()
+    .map(|node| {
+      let name = names[node.key()].to_owned();
+      (node.key(), dates.get(&name).copied())
+    })
+    .collect()
 }

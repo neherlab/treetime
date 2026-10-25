@@ -16,10 +16,7 @@ use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
-use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_internal_report;
-
-const SIGNAL_RATE_FLOOR_FRACTION: f64 = 0.1;
 
 pub(crate) fn fit_clock_model(
   tree: &ClockTree,
@@ -125,26 +122,6 @@ impl ClockFitResult {
     }
   }
 
-  pub(crate) fn signal_rate_floor(&self) -> f64 {
-    let dated: Vec<(f64, f64)> = self
-      .points
-      .iter()
-      .filter(|point| !point.is_outlier)
-      .filter_map(|point| point.date.map(|date| (date, point.div)))
-      .collect();
-    let (first, last) = dated
-      .iter()
-      .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), &(date, _)| {
-        (lo.min(date), hi.max(date))
-      });
-    let span = last - first;
-    if span <= 0.0 {
-      return 0.0;
-    }
-    let mean_div = dated.iter().map(|&(_, div)| div).sum::<f64>() / dated.len().to_f64_exact();
-    SIGNAL_RATE_FLOOR_FRACTION * mean_div / span
-  }
-
   fn into_clock_model(self) -> Result<ClockModel, Report> {
     match self.estimate {
       ClockEstimate::Estimated(regression) => ClockModel::from_regression(&regression),
@@ -157,6 +134,10 @@ impl ClockFitResult {
       ClockEstimate::Estimated(regression) => ClockModel::from_regression_allow_negative(&regression, log),
       ClockEstimate::Fixed(model) => model,
     }
+  }
+
+  pub(crate) fn points(&self) -> &[ClockRegressionPoint] {
+    &self.points
   }
 
   pub(crate) fn regression(&self) -> Option<&ClockRegression> {

@@ -3,6 +3,7 @@ mod test_confidence_combine;
 mod test_confidence_extract;
 mod test_confidence_rate;
 mod test_dates_outside_input;
+mod test_init;
 mod test_max_posterior_region;
 mod test_pipeline;
 mod test_pipeline_partitions;

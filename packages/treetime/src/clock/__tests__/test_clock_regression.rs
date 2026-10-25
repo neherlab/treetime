@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
   use crate::clock::clock_model::{ClockModel, ClockRegression};
-  use crate::clock::clock_regression::{ClockFitParams, ClockFitResult, ClockTree, fit_clock_model};
+  use crate::clock::clock_regression::{ClockFitParams, ClockTree, fit_clock_model};
   use crate::clock::clock_set::ClockSet;
   use crate::clock::clock_state::ClockInputs;
   use crate::clock::divergence::root_to_node_divergences;
@@ -9,7 +9,7 @@ mod tests {
   use crate::pretty_assert_abs_diff_eq;
   use crate::progress::NoopProgress;
   use crate::reroot::params::RerootParams;
-  use crate::test_utils::reroot_and_fit_clock;
+  use crate::test_utils::{leaf_times, reroot_and_fit_clock, root_clock_fit};
   use eyre::Report;
   use itertools::Itertools;
   use maplit::btreemap;
@@ -17,9 +17,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
-  use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
 
@@ -77,7 +75,7 @@ mod tests {
       .collect();
     let rate = 1e-3;
 
-    let negative = helpers::root_fit(TREE_4, &falling)?;
+    let negative = root_clock_fit(TREE_4, &falling)?;
     assert!(negative.regression().unwrap().clock_rate() < 0.0);
     let model = negative.into_clock_fit_or(0.0, || Ok(rate))?.model;
     let n = divs.len().to_f64_exact();
@@ -85,7 +83,7 @@ mod tests {
     pretty_assert_abs_diff_eq!(rate, model.clock_rate(), epsilon = 1e-15);
     pretty_assert_abs_diff_eq!(expected_intercept, model.intercept(), epsilon = 1e-10);
 
-    let positive = helpers::root_fit(TREE_4, &helpers::leaf_dates())?;
+    let positive = root_clock_fit(TREE_4, &helpers::leaf_dates())?;
     let regression_rate = positive.regression().unwrap().clock_rate();
     let model = positive
       .into_clock_fit_or(0.0, || panic!("the fallback must not be asked for"))?
@@ -104,7 +102,7 @@ mod tests {
     #[case] falls_back: bool,
   ) -> Result<(), Report> {
     let fallback_rate = 1e-3;
-    let positive = helpers::root_fit(TREE_4, &helpers::leaf_dates())?;
+    let positive = root_clock_fit(TREE_4, &helpers::leaf_dates())?;
     let regression_rate = positive.regression().unwrap().clock_rate();
     assert!(regression_rate > 0.0);
 
@@ -114,41 +112,6 @@ mod tests {
 
     let expected = if falls_back { fallback_rate } else { regression_rate };
     pretty_assert_abs_diff_eq!(expected, model.clock_rate(), epsilon = 0.0);
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::all_tips_dated(&[])]
-  #[case::one_tip_undated(&["D"])]
-  #[trace]
-  fn test_clock_regression_signal_rate_floor_is_a_tenth_of_the_mean_divergence_per_year_of_sampling(
-    #[case] undated: &[&str],
-  ) -> Result<(), Report> {
-    let nwk_parsed = nwk_read(TREE_4.as_bytes())?;
-    let names = nwk_parsed.names.clone();
-    let branch_lengths = nwk_parsed.branch_lengths;
-    let divergences = root_to_node_divergences(&nwk_parsed.graph, |edge_key| {
-      branch_lengths[&edge_key].unwrap_or_default()
-    })?;
-    let divs: BTreeMap<String, f64> = nwk_parsed
-      .graph
-      .get_leaves()
-      .map(|leaf| (names[leaf.key()].to_owned(), divergences[&leaf.key()]))
-      .collect();
-    let dates: BTreeMap<String, f64> = helpers::leaf_dates()
-      .into_iter()
-      .filter(|(name, _)| !undated.contains(&name.as_str()))
-      .collect();
-
-    let fit = helpers::root_fit(TREE_4, &dates)?;
-
-    let mean_div = dates.keys().map(|name| divs[name]).sum::<f64>() / dates.len().to_f64_exact();
-    let (first, last) = dates.values().copied().minmax().into_option().expect("dated tips");
-    pretty_assert_abs_diff_eq!(
-      0.1 * mean_div / (last - first),
-      fit.signal_rate_floor(),
-      epsilon = 1e-15
-    );
     Ok(())
   }
 
@@ -358,43 +321,8 @@ mod tests {
       Ok((fit.model, points))
     }
 
-    pub(super) fn leaf_times(
-      names: &NodeNames,
-      graph: &Graph,
-      dates: &BTreeMap<String, f64>,
-    ) -> BTreeMap<GraphNodeKey, Option<f64>> {
-      graph
-        .get_leaves()
-        .map(|node| {
-          let name = names[node.key()].to_owned();
-          (node.key(), dates.get(&name).copied())
-        })
-        .collect()
-    }
-
     pub(super) fn root_regression(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockRegression, Report> {
-      Ok(root_fit(tree, dates)?.regression().unwrap().clone())
-    }
-
-    pub(super) fn root_fit(tree: &str, dates: &BTreeMap<String, f64>) -> Result<ClockFitResult, Report> {
-      let nwk_parsed = nwk_read(tree.as_bytes())?;
-      let names = nwk_parsed.names.clone();
-      let graph = nwk_parsed.graph;
-      let times = leaf_times(&names, &graph, dates);
-      let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
-      fit_clock_model(
-        &ClockTree {
-          graph,
-          branch_lengths: nwk_parsed.branch_lengths,
-          inputs,
-        },
-        &ClockFitParams {
-          outliers: &BTreeSet::new(),
-          clock_rate: None,
-          prev_clock_rate: None,
-        },
-        &NoopProgress,
-      )
+      Ok(root_clock_fit(tree, dates)?.regression().unwrap().clone())
     }
 
     pub(super) fn rows_and_divs(

@@ -33,7 +33,7 @@ use crate::timetree::dates_outside_input::dates_outside_input_dates;
 use crate::timetree::inference::input_branch_length::input_branch_model;
 use crate::timetree::inference::result::date_branch_lengths;
 use crate::timetree::inference::runner::timetree_branch_lengths;
-use crate::timetree::init::{gaussian_start_rate, initialize, timetree_gaussian_clock};
+use crate::timetree::init::{StartRateFloor, gaussian_start_rate, initialize, timetree_gaussian_clock};
 use crate::timetree::optimization::reroot::{DatedFit, reroot_and_fit_to_dates};
 use crate::timetree::params::{BranchLengthMode, FinalSequences, TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::{PreLoopInputs, PreLoopState, run_pre_loop};
@@ -309,8 +309,8 @@ fn estimate_initial_clock(
     log,
   )
   .wrap_err("Failed to infer clock model")?;
-  let floor = fit.signal_rate_floor();
-  let clock_fit = fit.into_clock_fit_or(floor, || {
+  let floor = StartRateFloor::of_fit(&fit);
+  let clock_fit = fit.into_clock_fit_or(floor.threshold(), || {
     gaussian_start_rate(&graph, &branch_lengths, context, &BTreeSet::new(), floor, log)
   })?;
   Ok((graph, branch_lengths, clock_fit))

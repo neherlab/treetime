@@ -1,4 +1,4 @@
-use crate::clock::clock_regression::ClockFit;
+use crate::clock::clock_regression::{ClockFit, ClockFitResult};
 use crate::clock::gaussian::{GaussianClock, GaussianTree};
 use crate::coalescent::mean_field::{CoalescentPrior, LineageExpectation};
 use crate::coalescent::skyline::SkylineParams;
@@ -13,11 +13,15 @@ use crate::timetree::pre_loop::PreLoopState;
 use crate::timetree::round::{RoundInputs, RoundState};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
+use itertools::{Itertools, MinMaxResult};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node::GraphNodeKey;
+use treetime_utils::cast::ToF64Exact;
+
+const SIGNAL_RATE_FLOOR_FRACTION: f64 = 0.1;
 
 pub(crate) fn initialize(
   params: &TimetreeParams,
@@ -188,16 +192,10 @@ pub(crate) fn gaussian_start_rate(
   branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
   context: &TimetreeContext,
   outliers: &BTreeSet<GraphNodeKey>,
-  min_rate: f64,
+  floor: StartRateFloor,
   log: &dyn LogSink,
 ) -> Result<f64, Report> {
-  let regression = if min_rate > 0.0 {
-    format!(
-      "The root-to-tip regression gives a clock rate of at most {min_rate:.6e}, a tenth of the mean root-to-tip divergence per year of sampling"
-    )
-  } else {
-    "The root-to-tip regression gives no positive clock rate".to_owned()
-  };
+  let regression = floor.regression_text();
   let excluded = bad_leaves(graph, &context.date_constraints, outliers);
   let rate = gaussian_tree(graph, branch_lengths, context, &excluded)
     .and_then(|tree| tree.rate())
@@ -207,6 +205,51 @@ pub(crate) fn gaussian_start_rate(
     "{regression}; starting from the rate of the Gaussian timetree, {rate:.6e}"
   );
   Ok(rate)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum StartRateFloor {
+  Positive,
+  Signal(f64),
+}
+
+impl StartRateFloor {
+  pub(crate) fn of_fit(fit: &ClockFitResult) -> Self {
+    let (dates, divs): (Vec<f64>, Vec<f64>) = fit
+      .points()
+      .iter()
+      .filter(|point| !point.is_outlier)
+      .filter_map(|point| point.date.map(|date| (date, point.div)))
+      .unzip();
+    match dates.iter().copied().minmax() {
+      MinMaxResult::MinMax(first, last) if last > first => {
+        let mean_div = divs.iter().sum::<f64>() / divs.len().to_f64_exact();
+        let floor = SIGNAL_RATE_FLOOR_FRACTION * mean_div / (last - first);
+        if floor > 0.0 {
+          Self::Signal(floor)
+        } else {
+          Self::Positive
+        }
+      },
+      MinMaxResult::NoElements | MinMaxResult::OneElement(_) | MinMaxResult::MinMax(..) => Self::Positive,
+    }
+  }
+
+  pub(crate) fn threshold(self) -> f64 {
+    match self {
+      Self::Positive => 0.0,
+      Self::Signal(floor) => floor,
+    }
+  }
+
+  fn regression_text(self) -> String {
+    match self {
+      Self::Positive => "The root-to-tip regression gives no positive clock rate".to_owned(),
+      Self::Signal(floor) => format!(
+        "The root-to-tip regression gives a clock rate of at most {floor:.6e}, a tenth of the mean root-to-tip divergence per year of sampling"
+      ),
+    }
+  }
 }
 
 fn gaussian_tree<'g>(
