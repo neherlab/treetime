@@ -26,10 +26,12 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::NodeMap;
+  use treetime_graph::keymap;
   use treetime_graph::node_names::NodeNames;
 
   use treetime_graph::reroot::RerootResult;
@@ -54,7 +56,7 @@ mod tests {
       o!("D") => 2005.0,
     };
 
-    let mut date_constraints = BTreeMap::new();
+    let mut date_constraints = NodeMap::new();
     for n in graph.get_leaves() {
       let date = dates[&names[n.key()]];
       date_constraints.insert(n.key(), Some(Arc::new(Distribution::point(date, 1.0))));
@@ -202,15 +204,15 @@ mod tests {
       length: 16,
       total_length: 16,
       root_sequence: seq![AsciiChar::from_byte_unchecked(b'A'); 16],
-      obs_nodes: btreemap! {
+      obs_nodes: keymap! {
         root_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
         a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 16], &alphabet),
       },
-      obs_edges: btreemap! {
+      obs_edges: keymap! {
         edge_to_a_key => sparse_edge_obs(vec![sub_original], vec![indel_original]),
       },
     };
-    let node_states = btreemap! {
+    let node_states = keymap! {
       root_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
       a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 16]),
     };
@@ -273,15 +275,15 @@ mod tests {
       length: 8,
       total_length: 8,
       root_sequence: root_seq.clone(),
-      obs_nodes: btreemap! {
+      obs_nodes: keymap! {
         root_key => SparseNodeObs::new(&root_seq, &alphabet),
         a_key => SparseNodeObs::new(&seq![AsciiChar::from_byte_unchecked(b'A'); 8], &alphabet),
       },
-      obs_edges: btreemap! {
+      obs_edges: keymap! {
         edge_to_a_key => fitch_edge_obs(vec![sub]),
       },
     };
-    let node_states = btreemap! {
+    let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
       a_key => SparseNodeState::leaf(&seq![AsciiChar::from_byte_unchecked(b'A'); 8]),
     };
@@ -349,15 +351,15 @@ mod tests {
       length: 8,
       total_length: 8,
       root_sequence: root_seq.clone(),
-      obs_nodes: btreemap! {
+      obs_nodes: keymap! {
         root_key => SparseNodeObs::new(&root_seq, &alphabet),
         a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
       },
-      obs_edges: btreemap! {
+      obs_edges: keymap! {
         edge_to_a_key => sparse_edge_obs(vec![], vec![indel]),
       },
     };
-    let node_states = btreemap! {
+    let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
       a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
     };
@@ -417,17 +419,17 @@ mod tests {
       length: 8,
       total_length: 8,
       root_sequence: root_seq.clone(),
-      obs_nodes: btreemap! {
+      obs_nodes: keymap! {
         root_key => SparseNodeObs::new(&root_seq, &alphabet),
         ab_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
         a_key => SparseNodeObs::new(&seq![c(b'A'); 8], &alphabet),
       },
-      obs_edges: btreemap! {
+      obs_edges: keymap! {
         edge_root_ab => fitch_edge_obs(vec![sub1]),
         edge_ab_a => fitch_edge_obs(vec![sub2, sub3]),
       },
     };
-    let node_states = btreemap! {
+    let node_states = keymap! {
       root_key => SparseNodeState::leaf(&root_seq),
       ab_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),
       a_key => SparseNodeState::leaf(&seq![c(b'A'); 8]),

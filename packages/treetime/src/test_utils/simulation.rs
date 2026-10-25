@@ -19,10 +19,9 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use statrs::distribution::{ContinuousCDF, StudentsT};
 use statrs::stats_tests::ttest_onesample::ttest_onesample;
 use statrs::stats_tests::{Alternative, NaNPolicy};
-use std::collections::BTreeMap;
 use treetime_graph::clades::{TipIds, first_node_by_key, graph_clade_keys};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::DateConstraint;
@@ -145,13 +144,10 @@ pub(crate) fn gtr_from_model(model: &SubstitutionModel, mu: f64) -> Result<GTR, 
     .build()
 }
 
-pub(crate) fn first_columns(
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
-  count: usize,
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+pub(crate) fn first_columns(sequences: &NodeMap<Seq>, count: usize) -> Result<NodeMap<Seq>, Report> {
   sequences
     .iter()
-    .map(|(&node, seq)| {
+    .map(|(node, seq)| {
       if count == 0 || count > seq.len() {
         return make_error!(
           "Cannot take the first {count} columns of the sequence of node {node}, which has {} columns",
@@ -166,12 +162,12 @@ pub(crate) fn first_columns(
 pub(crate) fn simulated_sequence_source(
   graph: &Graph,
   names: &NodeNames,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
+  sequences: &NodeMap<Seq>,
 ) -> Result<SequenceSource, Report> {
   let records = graph
     .get_leaves()
     .map(|leaf| {
-      let Some(seq) = sequences.get(&leaf.key()) else {
+      let Some(seq) = sequences.get(leaf.key()) else {
         return make_error!("Leaf {} has no simulated sequence", &names[leaf.key()]);
       };
       Ok(AlignmentRecord {
@@ -183,7 +179,7 @@ pub(crate) fn simulated_sequence_source(
   sequence_source(Alphabet::default(), leaf_seq_inputs(graph, names, records))
 }
 
-pub(crate) fn exact_tip_dates(tree: &SimulatedTree) -> BTreeMap<GraphNodeKey, DateConstraint> {
+pub(crate) fn exact_tip_dates(tree: &SimulatedTree) -> NodeMap<DateConstraint> {
   tree
     .graph
     .get_leaves()
@@ -193,8 +189,8 @@ pub(crate) fn exact_tip_dates(tree: &SimulatedTree) -> BTreeMap<GraphNodeKey, Da
 
 pub(crate) fn timetree_input(
   tree: &SimulatedTree,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  sequences: &NodeMap<Seq>,
+  branch_lengths: &EdgeMap<f64>,
   model: &GtrModel,
 ) -> Result<TimetreeInput, Report> {
   Ok(TimetreeInput {
@@ -208,8 +204,8 @@ pub(crate) fn timetree_input(
 
 pub(crate) fn optimize_input(
   tree: &SimulatedTree,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  sequences: &NodeMap<Seq>,
+  branch_lengths: &EdgeMap<f64>,
   model: &GtrModel,
 ) -> Result<OptimizeInput, Report> {
   Ok(OptimizeInput {
@@ -222,8 +218,8 @@ pub(crate) fn optimize_input(
 
 pub(crate) fn ancestral_input(
   tree: &SimulatedTree,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  sequences: &NodeMap<Seq>,
+  branch_lengths: &EdgeMap<f64>,
   model: &GtrModel,
 ) -> Result<AncestralInput, Report> {
   Ok(AncestralInput {
@@ -238,7 +234,7 @@ pub(crate) fn ancestral_input(
 
 fn simulated_sequence_input(
   tree: &SimulatedTree,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
+  sequences: &NodeMap<Seq>,
   model: &GtrModel,
 ) -> Result<SequenceInput, Report> {
   SequenceInput::whole_alignments(
@@ -251,7 +247,7 @@ pub(crate) fn match_internal_nodes(
   truth: &SimulatedTree,
   graph: &Graph,
   names: &NodeNames,
-) -> Result<BTreeMap<GraphNodeKey, GraphNodeKey>, Report> {
+) -> Result<NodeMap<GraphNodeKey>, Report> {
   let mut ids = TipIds::default();
   let true_keys = graph_clade_keys(&truth.graph, &truth.names, &mut ids)?;
   let keys = graph_clade_keys(graph, names, &mut ids)?;
@@ -427,14 +423,11 @@ fn copy_graph(graph: &Graph) -> Result<Graph, Report> {
   Ok(copy)
 }
 
-fn edge_lengths(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
+fn edge_lengths(graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<EdgeMap<Option<f64>>, Report> {
   graph
     .get_edges()
     .map(|edge| {
-      let Some(&length) = branch_lengths.get(&edge.key()) else {
+      let Some(&length) = branch_lengths.get(edge.key()) else {
         return make_error!("Edge {} has no branch length", edge.key());
       };
       Ok((edge.key(), Some(length)))
@@ -549,7 +542,10 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use std::iter::repeat_n;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::keymap;
+
   use treetime_primitives::Seq;
   use treetime_primitives::date::DateConstraint;
   use treetime_simulation::branch_lengths::{exact, realized};
@@ -598,7 +594,7 @@ mod tests {
     let expected = realized(&case.tree.graph, &first)?
       .into_iter()
       .map(|(edge, length)| (edge, Some(length)))
-      .collect::<BTreeMap<_, _>>();
+      .collect::<EdgeMap<_>>();
     assert_eq!(expected, input.branch_lengths);
     assert_eq!(Some(exact_tip_dates(&case.tree)), input.dates);
     assert_eq!(
@@ -628,7 +624,7 @@ mod tests {
     let expected = lengths
       .into_iter()
       .map(|(edge, length)| (edge, Some(length)))
-      .collect::<BTreeMap<_, _>>();
+      .collect::<EdgeMap<_>>();
     let leaf_counts = [
       timetree_alignments(&timetree),
       optimize.sequences.alignments.as_slice(),
@@ -683,16 +679,18 @@ mod tests {
 
   #[test]
   fn test_simulation_first_columns_keeps_the_leading_columns() -> Result<(), Report> {
-    let sequences = btreemap! {
-      GraphNodeKey(0) => Seq::try_from_str("ACGT")?,
-      GraphNodeKey(1) => Seq::try_from_str("TTGA")?,
+    let mut graph = Graph::new();
+    let (a, b) = (graph.add_node(), graph.add_node());
+    let sequences = keymap! {
+      a => Seq::try_from_str("ACGT")?,
+      b => Seq::try_from_str("TTGA")?,
     };
 
     let actual = first_columns(&sequences, 2)?;
 
-    let expected = btreemap! {
-      GraphNodeKey(0) => Seq::try_from_str("AC")?,
-      GraphNodeKey(1) => Seq::try_from_str("TT")?,
+    let expected = keymap! {
+      a => Seq::try_from_str("AC")?,
+      b => Seq::try_from_str("TT")?,
     };
     assert_eq!(expected, actual);
     Ok(())
@@ -707,7 +705,8 @@ mod tests {
     #[case] count: usize,
     #[case] expected: &str,
   ) -> Result<(), Report> {
-    let sequences = btreemap! { GraphNodeKey(0) => Seq::try_from_str("ACGT")? };
+    let mut graph = Graph::new();
+    let sequences = keymap! { graph.add_node() => Seq::try_from_str("ACGT")? };
 
     assert_error!(first_columns(&sequences, count), expected);
     Ok(())
@@ -918,7 +917,8 @@ mod tests {
     use crate::test_utils::{MeanCheck, recovery_check, upper_recovery_check};
     use crate::timetree::pipeline::{TimetreeInput, TimetreeSequences};
     use eyre::Report;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::NodeMap;
+
     use treetime_io::nwk::nwk_read;
     use treetime_simulation::coalescent::SimulatedTree;
 
@@ -953,7 +953,7 @@ mod tests {
       Ok(SimulatedTree {
         graph: parse.graph,
         names: parse.names,
-        tau: BTreeMap::new(),
+        tau: NodeMap::new(),
       })
     }
   }

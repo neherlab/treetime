@@ -11,7 +11,8 @@ mod tests {
   use eyre::Report;
   use helpers::c;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use treetime_graph::reroot::{RerootResult, remove_stem_root};
   use treetime_io::nwk::nwk_read;
@@ -34,13 +35,13 @@ mod tests {
       length: 8,
       total_length: 8,
       root_sequence: stem_seq.clone(),
-      obs_nodes: btreemap! {
+      obs_nodes: keymap! {
         stem_key => SparseNodeObs::new(&stem_seq, &alphabet),
         r_key => SparseNodeObs::new(&r_seq, &alphabet),
         a_key => SparseNodeObs::new(&r_seq, &alphabet),
         b_key => SparseNodeObs::new(&r_seq, &alphabet),
       },
-      obs_edges: btreemap! {
+      obs_edges: keymap! {
         stem_edge => sparse_edge_obs(
           vec![Sub::new(c(b'G'), 2_usize, c(b'T'))?],
           vec![deletion((5, 7), Seq::try_from_slice(b"CG")?)],
@@ -49,7 +50,7 @@ mod tests {
         r_b_edge => SparseEdgeObs::default(),
       },
     };
-    let node_states = btreemap! {
+    let node_states = keymap! {
       stem_key => SparseNodeState::leaf(&stem_seq),
       r_key => SparseNodeState::leaf(&r_seq),
       a_key => SparseNodeState::leaf(&r_seq),
@@ -74,15 +75,15 @@ mod tests {
     assert_eq!(r_seq, recon.partition.root_sequence);
     assert_eq!(
       vec![r_key, a_key, b_key].into_iter().sorted().collect_vec(),
-      recon.partition.obs_nodes.keys().copied().collect_vec()
+      recon.partition.obs_nodes.keys().collect_vec()
     );
     assert_eq!(
       vec![r_a_edge, r_b_edge].into_iter().sorted().collect_vec(),
-      recon.partition.obs_edges.keys().copied().collect_vec()
+      recon.partition.obs_edges.keys().collect_vec()
     );
     assert_eq!(
       vec![r_key, a_key, b_key].into_iter().sorted().collect_vec(),
-      recon.node_states.keys().copied().collect_vec()
+      recon.node_states.keys().collect_vec()
     );
     Ok(())
   }

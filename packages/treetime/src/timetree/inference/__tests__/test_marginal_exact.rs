@@ -17,7 +17,7 @@ mod tests {
   use eyre::Report;
   use ndarray::Array2;
   use rstest::rstest;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, MassProfile, NegLog, TailMass};
   use treetime_grid::MaxGridPoints;
@@ -112,6 +112,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
 
     fn transition_probabilities(gtr: &GTR, b: f64) -> (f64, f64) {
       let eigvals = gtr.rate_eigvals();
@@ -180,7 +181,7 @@ mod tests {
       let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
-      let branches: BTreeMap<_, _> = ["A", "B", "X", "C"]
+      let branches: EdgeMap<_> = ["A", "B", "X", "C"]
         .iter()
         .zip(counts)
         .map(|(name, k)| {
@@ -308,7 +309,7 @@ mod tests {
       let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
-      let branches: BTreeMap<_, _> = ["A", "B", "C", "D", "X", "Y"]
+      let branches: EdgeMap<_> = ["A", "B", "C", "D", "X", "Y"]
         .iter()
         .zip(counts)
         .map(|(name, k)| {

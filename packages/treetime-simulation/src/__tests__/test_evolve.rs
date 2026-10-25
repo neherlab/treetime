@@ -3,11 +3,12 @@ mod tests {
   use crate::__tests__::test_support::tests::helpers::three_tip_tree;
   use crate::evolve::{SiteEvolution, evolve_sequences, evolve_site};
   use crate::substitution_model::SubstitutionModel;
-  use maplit::btreemap;
+  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_primitives::AlignmentRecord;
   use treetime_utils::assert_error;
   use treetime_utils::sync::random::get_random_number_generator;
@@ -30,7 +31,7 @@ mod tests {
   fn test_evolve_sequences_without_rate_copies_root_sequence() {
     let tree = three_tip_tree();
     let model = SubstitutionModel::random(0.0, &mut get_random_number_generator(5)).unwrap();
-    let durations = btreemap! { tree.root_inner => 1.0, tree.root_c => 2.0, tree.inner_a => 3.0, tree.inner_b => 4.0 };
+    let durations = keymap! { tree.root_inner => 1.0, tree.root_c => 2.0, tree.inner_a => 3.0, tree.inner_b => 4.0 };
     let simulated = evolve_sequences(
       &tree.graph,
       &durations,
@@ -43,7 +44,7 @@ mod tests {
     let root_sequence = &simulated.sequences[&tree.root];
     let expected = (
       vec![root_sequence; 5],
-      btreemap! { tree.root_inner => 0, tree.root_c => 0, tree.inner_a => 0, tree.inner_b => 0 },
+      keymap! { tree.root_inner => 0, tree.root_c => 0, tree.inner_a => 0, tree.inner_b => 0 },
     );
     let actual = (
       simulated.sequences.values().collect::<Vec<_>>(),
@@ -56,7 +57,7 @@ mod tests {
   fn test_evolve_sequences_leaf_records_name_leaf_sequences() {
     let tree = three_tip_tree();
     let model = SubstitutionModel::jc69(1.0).unwrap();
-    let durations = btreemap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
+    let durations = keymap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
     let simulated = evolve_sequences(&tree.graph, &durations, &model, 20, &mut get_random_number_generator(7)).unwrap();
 
     let expected = vec![
@@ -105,8 +106,8 @@ mod tests {
   ) {
     let tree = three_tip_tree();
     let model = SubstitutionModel::jc69(1.0).unwrap();
-    let mut durations: BTreeMap<GraphEdgeKey, f64> =
-      btreemap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3 };
+    let mut durations: EdgeMap<f64> =
+      keymap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3 };
     if let Some(duration) = last_duration {
       durations.insert(tree.inner_b, duration);
     }

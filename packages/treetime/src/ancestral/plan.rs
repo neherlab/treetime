@@ -22,10 +22,8 @@ use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use rand::Rng;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_utils::{make_internal_report, make_report};
 
 pub(crate) fn resolve_plan(params: &AncestralParams) -> Result<ReconstructionMethod, OperationError> {
@@ -52,7 +50,7 @@ pub(crate) fn reconstruct_partitions(
   graph: &Graph,
   method: ReconstructionMethod,
   input: SplitInput,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   options: &ReconstructionOptions,
   rng: &mut dyn Rng,
   cancel: &dyn Cancel,
@@ -120,8 +118,8 @@ fn build_alignment_partitions(
   representation: Representation,
   alignments: &[AlignmentInfo],
   heads: &[(PartitionLayout, GtrModel)],
-  inputs: Vec<(Alphabet, BTreeMap<GraphNodeKey, NodeSeqInput>)>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  inputs: Vec<(Alphabet, NodeMap<NodeSeqInput>)>,
+  branch_lengths: &EdgeMap<f64>,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
   log: &dyn LogSink,
@@ -185,8 +183,8 @@ pub(crate) fn reconstruct_partition(
   model: &GtrModel,
   rate: InferredRate,
   alphabet: Alphabet,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  node_inputs: NodeMap<NodeSeqInput>,
+  branch_lengths: &EdgeMap<f64>,
   options: &ReconstructionOptions,
   rng: &mut dyn Rng,
   cancel: &dyn Cancel,
@@ -230,7 +228,7 @@ pub(crate) enum ReconstructionMethod {
 
 fn reconstruct_fitch(
   graph: &Graph,
-  inputs: Vec<(Alphabet, BTreeMap<GraphNodeKey, NodeSeqInput>)>,
+  inputs: Vec<(Alphabet, NodeMap<NodeSeqInput>)>,
   impute: bool,
   cancel: &dyn Cancel,
   stages: &dyn StageSink,
@@ -261,7 +259,7 @@ fn reconstruct_fitch(
 pub(crate) fn reconstruct_marginal(
   graph: &Graph,
   reconstruction: MarginalReconstruction,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   options: &ReconstructionOptions,
   rng: &mut dyn Rng,
   cancel: &dyn Cancel,
@@ -292,7 +290,7 @@ impl ReconstructionOptions {
 fn fit_reconstruction(
   reconstruction: MarginalReconstruction,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<MarginalReconstruction, Report> {
   Ok(match reconstruction {
     MarginalReconstruction::Sparse(SparseReconstruction {

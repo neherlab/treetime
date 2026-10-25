@@ -13,10 +13,9 @@ use eyre::Report;
 use itertools::izip;
 use ndarray::aview_mut1;
 use smallvec::smallvec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -28,8 +27,8 @@ pub(crate) fn process_backward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+  branch_lengths: &EdgeMap<f64>,
+  node_states: &NodeMap<SparseNodeState>,
 ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
@@ -39,8 +38,8 @@ pub(crate) fn process_backward_indexed(
     gtr,
     branch_lengths,
   };
-  let nodes = node_states.iter().map(|(&key, node)| (key, node)).collect();
-  let edges = partition.obs_edges.iter().map(|(&key, edge)| (key, edge)).collect();
+  let nodes = node_states.iter().collect();
+  let edges = partition.obs_edges.iter().collect();
   let outputs = schedule.scan_up(
     schedule.join_parent_edges(nodes, edges)?,
     |key, (node, mut edge_obs), children| pass.node(key, node, edge_obs.pop(), &children),
@@ -56,7 +55,7 @@ struct SparseBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   partition: &'a PartitionMarginalSparse,
   gtr: &'a GTR,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &'a EdgeMap<f64>,
 }
 
 impl SparseBackwardPass<'_> {

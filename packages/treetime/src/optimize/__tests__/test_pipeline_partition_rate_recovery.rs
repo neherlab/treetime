@@ -50,9 +50,10 @@ mod tests {
     use crate::test_utils::{TestDataset, simulated_sequence_source};
     use eyre::Report;
     use itertools::Itertools;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use std::path::PathBuf;
-    use treetime_graph::edge::GraphEdgeKey;
+
     use treetime_io::nwk::nwk_read;
     use treetime_simulation::evolve::evolve_sequences;
     use treetime_simulation::substitution_model::SubstitutionModel;
@@ -68,10 +69,10 @@ mod tests {
 
     pub(super) fn replicate_rates(seed: u64) -> Result<Vec<f64>, Report> {
       let parse = nwk_read(TestDataset::Zika86.tree().as_bytes())?;
-      let durations: BTreeMap<GraphEdgeKey, f64> = parse
+      let durations: EdgeMap<f64> = parse
         .branch_lengths
         .iter()
-        .map(|(&edge, &length)| {
+        .map(|(edge, &length)| {
           length
             .map(|length| (edge, length))
             .ok_or_else(|| make_report!("Edge {edge} of the Zika tree has no branch length"))

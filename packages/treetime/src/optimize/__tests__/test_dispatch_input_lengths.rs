@@ -6,7 +6,8 @@ mod tests {
   use eyre::Report;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -31,7 +32,7 @@ mod tests {
     let result = optimize_edge_lengths(
       &graph,
       10,
-      &BTreeMap::new(),
+      &EdgeMap::new(),
       &EdgeIndels::Excluded,
       BranchOptMethod::Brent,
       &mut branch_lengths,

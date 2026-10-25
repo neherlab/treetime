@@ -6,10 +6,10 @@ use crate::partition::storage::sparse::{
 };
 use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 
@@ -17,20 +17,20 @@ use treetime_primitives::{Seq, seq};
 pub struct PartitionFitch {
   pub alphabet: Alphabet,
   pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, FitchNodeData>,
-  pub edges: BTreeMap<GraphEdgeKey, SparseEdgeObs>,
+  pub nodes: NodeMap<FitchNodeData>,
+  pub edges: EdgeMap<SparseEdgeObs>,
 }
 
 impl PartitionFitch {
   pub fn into_marginal_sparse(
     self,
     graph: &Graph,
-  ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
+  ) -> Result<(PartitionMarginalSparse, NodeMap<SparseNodeState>), Report> {
     let root_key = graph.get_exactly_one_root()?.key();
     let root_sequence = self.nodes[&root_key].seq.sequence.clone();
 
-    let mut obs_nodes = BTreeMap::new();
-    let mut node_states = BTreeMap::new();
+    let mut obs_nodes = NodeMap::new();
+    let mut node_states = NodeMap::new();
     for (key, node_data) in self.nodes {
       let keep_sequence = key == root_key || graph.is_leaf(key);
       let sequence = if keep_sequence { node_data.seq.sequence } else { seq![] };
@@ -67,7 +67,7 @@ impl PartitionFitch {
   pub(crate) fn into_marginal_dense(
     self,
     graph: &Graph,
-    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
+    node_inputs: &NodeMap<NodeSeqInput>,
   ) -> Result<PartitionMarginalDense, Report> {
     PartitionMarginalDense::new(self.alphabet, graph, node_inputs)
   }

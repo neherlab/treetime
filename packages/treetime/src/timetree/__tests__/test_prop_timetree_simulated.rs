@@ -68,7 +68,7 @@ mod tests {
         .get_nodes()
         .filter_map(|node| {
           let name = &output.names[node.key()];
-          match output.node_dates.get(&node.key()).copied().flatten() {
+          match output.node_dates.get(node.key()).copied().flatten() {
             None => Some(format!("{name} has no date")),
             Some(date) if !date.is_finite() => Some(format!("{name} has the date {date}")),
             Some(_) => None,

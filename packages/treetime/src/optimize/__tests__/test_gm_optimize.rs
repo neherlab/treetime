@@ -39,7 +39,7 @@ mod tests {
     let v1_total_bl: f64 = result
       .graph
       .get_edges()
-      .map(|e| result.branch_lengths.get(&e.key()).copied().flatten().unwrap_or(0.0))
+      .map(|e| result.branch_lengths.get(e.key()).copied().flatten().unwrap_or(0.0))
       .sum();
 
     pretty_assert_relative_eq!(v1_total_bl, expected.final_total_branch_length, max_relative = 0.05);
@@ -68,7 +68,7 @@ mod tests {
       .get_edges()
       .filter_map(|e| {
         let edge = e;
-        let bl = result.branch_lengths.get(&edge.key()).copied().flatten()?;
+        let bl = result.branch_lengths.get(edge.key()).copied().flatten()?;
         let target_key = edge.target();
         let node = result.graph.get_node(target_key)?;
         let name = result.names[node.key()].to_owned();
@@ -154,6 +154,7 @@ mod tests {
   mod helpers {
     use crate::optimize::partition_rates::PartitionRates;
     use crate::progress::NoopProgress;
+    use treetime_graph::key_map::EdgeMap;
     use treetime_graph::node_names::NodeNames;
 
     use crate::alphabet::alphabet::Alphabet;
@@ -176,7 +177,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::fs::read_to_string;
     use std::path::Path;
-    use treetime_graph::edge::GraphEdgeKey;
+
     use treetime_graph::graph::Graph;
 
     use treetime_io::fasta::fasta_read_file;
@@ -202,7 +203,7 @@ mod tests {
     pub(super) struct OptimizeResult {
       pub(crate) graph: Graph,
       pub(crate) names: NodeNames,
-      pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(crate) branch_lengths: EdgeMap<Option<f64>>,
       pub(crate) lh_history: Vec<f64>,
       pub(crate) stopped_at: Option<(usize, crate::optimize::run_loop::ConvergenceReason)>,
     }

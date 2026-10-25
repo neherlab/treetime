@@ -1,3 +1,4 @@
+use crate::key_map::NodeMap;
 use crate::node::GraphNodeKey;
 use crate::node_names::NodeNames;
 use indexmap::IndexMap;
@@ -30,7 +31,7 @@ pub fn pair_by_name<T: Clone>(
     }
   }
 
-  let mut by_node = BTreeMap::new();
+  let mut by_node = NodeMap::new();
   let mut unmatched = vec![];
   for ((name, value), keys) in izip!(by_name, keys_by_entry) {
     let Some((last, others)) = keys.split_last() else {
@@ -57,7 +58,7 @@ pub fn key_by_name(
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NamePairing<T> {
-  pub by_node: BTreeMap<GraphNodeKey, T>,
+  pub by_node: NodeMap<T>,
   pub unmatched: Vec<(String, T)>,
   pub duplicate_entry_names: Vec<String>,
 }

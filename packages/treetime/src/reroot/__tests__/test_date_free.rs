@@ -122,14 +122,11 @@ mod tests {
     use crate::clock::divergence::root_to_node_divergences;
     use itertools::Itertools;
     use ordered_float::OrderedFloat;
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::graph::Graph;
 
-    pub(super) fn root_to_tip_distances(
-      graph: &Graph,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> Vec<f64> {
+    pub(super) fn root_to_tip_distances(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Vec<f64> {
       let divergences = root_to_node_divergences(graph, |key| branch_length_or_zero(branch_lengths, key)).unwrap();
       graph
         .get_leaves()

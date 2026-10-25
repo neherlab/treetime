@@ -1,8 +1,8 @@
 use crate::progress::{RunWarning, RunWarningKind};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::{DateConstraint, DateRange, DateValue};
@@ -11,8 +11,8 @@ use treetime_utils::fmt::string::{counted, name_list};
 pub(crate) fn dates_outside_input_dates(
   graph: &Graph,
   names: &NodeNames,
-  dates: &BTreeMap<GraphNodeKey, DateConstraint>,
-  node_dates: &BTreeMap<GraphNodeKey, Option<f64>>,
+  dates: &NodeMap<DateConstraint>,
+  node_dates: &NodeMap<Option<f64>>,
 ) -> Option<RunWarning> {
   let latest_input_date = dates.values().map(|date| OrderedFloat(date_range(date).end)).max()?.0;
   let name = |key: GraphNodeKey| names[key].to_owned();
@@ -20,7 +20,7 @@ pub(crate) fn dates_outside_input_dates(
   let tips = graph
     .get_leaves()
     .filter_map(|leaf| {
-      let range = date_range(dates.get(&leaf.key())?);
+      let range = date_range(dates.get(leaf.key())?);
       let date = node_dates[&leaf.key()]?;
       let excess = (range.start - date).max(date - range.end);
       (excess > 0.0).then(|| (name(leaf.key()), excess))

@@ -22,9 +22,9 @@ use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::{AmbiguousSites, SeqStream, SeqTrack};
 use eyre::Report;
 use rand::Rng;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
 use treetime_primitives::{LogLh, Seq};
@@ -85,7 +85,7 @@ impl MarginalReconstruction {
     graph: &Graph,
     sample_mode: SampleMode,
     rng: &mut dyn Rng,
-  ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+  ) -> Result<NodeMap<Seq>, Report> {
     each_kind!(self, |reconstruction| reconstruction.partition.sample_sequences(
       graph,
       &reconstruction.node_states,
@@ -269,7 +269,7 @@ impl<'a> ReconstructionRef<'a> {
   pub(crate) fn edge_sub_count(self, graph: &Graph, edge_key: GraphEdgeKey) -> Result<Option<usize>, Report> {
     match self {
       Self::Dense(_) => Ok(Some(self.edge_subs(graph, edge_key)?.len())),
-      Self::Sparse(reconstruction) => Ok(reconstruction.edges.estimates.get(&edge_key).map(Vec::len)),
+      Self::Sparse(reconstruction) => Ok(reconstruction.edges.estimates.get(edge_key).map(Vec::len)),
     }
   }
 
@@ -325,7 +325,7 @@ impl<'a> ReconstructionRef<'a> {
       Self::Sparse(reconstruction) => reconstruction
         .partition
         .obs_edges
-        .get(&edge_key)
+        .get(edge_key)
         .is_some_and(|edge| !edge.fitch_subs().is_empty() || !edge.indels.is_empty()),
     }
   }
@@ -344,17 +344,13 @@ impl<'a> ReconstructionRef<'a> {
 pub struct SparseReconstruction {
   pub(crate) partition: PartitionMarginalSparse,
   pub(crate) gtr: GTR,
-  pub(crate) node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+  pub(crate) node_states: NodeMap<SparseNodeState>,
   pub(crate) edges: SparseMarginalEdges,
   pub(crate) layout: Option<PartitionLayout>,
 }
 
 impl SparseReconstruction {
-  pub(crate) fn seeded(
-    partition: PartitionMarginalSparse,
-    gtr: GTR,
-    node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
-  ) -> Self {
+  pub(crate) fn seeded(partition: PartitionMarginalSparse, gtr: GTR, node_states: NodeMap<SparseNodeState>) -> Self {
     Self {
       partition,
       gtr,
@@ -376,11 +372,7 @@ impl SparseReconstruction {
     self.layout.as_ref()
   }
 
-  pub(crate) fn marginal_update(
-    self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<(Self, LogLh), Report> {
+  pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<(Self, LogLh), Report> {
     let Self {
       partition,
       gtr,
@@ -417,7 +409,7 @@ impl SparseReconstruction {
   pub(crate) fn with_estimated_rate(
     self,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    branch_lengths: &EdgeMap<f64>,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {
     let (gtr, _, _) = optimize_gtr_rate(
@@ -466,7 +458,7 @@ impl SparseReconstruction {
 pub struct DenseReconstruction {
   pub(crate) partition: PartitionMarginalDense,
   pub(crate) gtr: GTR,
-  pub(crate) node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
+  pub(crate) node_states: NodeMap<DenseNodeState>,
   pub(crate) edges: DenseMarginalEdges,
   pub(crate) layout: Option<PartitionLayout>,
 }
@@ -476,7 +468,7 @@ impl DenseReconstruction {
     Self {
       partition,
       gtr,
-      node_states: BTreeMap::new(),
+      node_states: NodeMap::new(),
       edges: DenseMarginalEdges::default(),
       layout: None,
     }
@@ -513,7 +505,7 @@ impl DenseReconstruction {
   pub(crate) fn with_estimated_rate(
     self,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    branch_lengths: &EdgeMap<f64>,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {
     let (gtr, _, _) = optimize_gtr_rate(
@@ -531,11 +523,7 @@ impl DenseReconstruction {
     })
   }
 
-  pub(crate) fn marginal_update(
-    self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<(Self, LogLh), Report> {
+  pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<(Self, LogLh), Report> {
     let Self {
       partition,
       gtr,

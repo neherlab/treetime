@@ -16,10 +16,9 @@ use eyre::Report;
 use itertools::{Itertools, izip};
 use ndarray::Array2;
 use smallvec::smallvec;
-use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -34,17 +33,17 @@ impl<P: IndexedPartition> MarginalPasses for P {
   type Forward = DenseEdgeForward;
   type Estimate = DenseEdgeEstimate;
 
-  fn backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> &Self::BackwardInput {
+  fn backward_input(_node_states: &NodeMap<DenseNodeState>) -> &Self::BackwardInput {
     &()
   }
 
-  fn fresh_backward_input(_node_states: &BTreeMap<GraphNodeKey, DenseNodeState>) -> Self::BackwardInput {}
+  fn fresh_backward_input(_node_states: &NodeMap<DenseNodeState>) -> Self::BackwardInput {}
 
   fn marginal_backward(
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    branch_lengths: &EdgeMap<f64>,
     (): &(),
   ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
     let kind = self.indexed_kind();
@@ -56,9 +55,9 @@ impl<P: IndexedPartition> MarginalPasses for P {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+    branch_lengths: &EdgeMap<f64>,
+    node_states: NodeMap<DenseNodeState>,
+    backward: &EdgeMap<DenseEdgeBackward>,
   ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
     let kind = self.indexed_kind();
     gtr.check_site_count(kind.site_count())?;
@@ -71,10 +70,10 @@ impl<P: IndexedPartition> TransitionCounts for P {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-    forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+    branch_lengths: &EdgeMap<f64>,
+    node_states: &NodeMap<DenseNodeState>,
+    backward: &EdgeMap<DenseEdgeBackward>,
+    forward: &EdgeMap<DenseEdgeForward>,
   ) -> Result<MutationCounts, Report> {
     count_transitions_dense(
       self.inputs(),
@@ -93,7 +92,7 @@ pub(crate) fn indexed_backward(
   gtr: &GTR,
   kind: IndexedKind<'_>,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<MarginalBackward<DenseNodeState, DenseEdgeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
@@ -136,16 +135,16 @@ pub(crate) fn indexed_backward(
 
 fn leaf_inputs<'a, L>(
   schedule: &'a GraphSchedule<'_>,
-  leaves: &'a BTreeMap<GraphNodeKey, L>,
+  leaves: &'a NodeMap<L>,
 ) -> impl Iterator<Item = (GraphNodeKey, Option<&'a L>)> {
-  schedule.preorder().iter().map(|&key| (key, leaves.get(&key)))
+  schedule.preorder().iter().map(|&key| (key, leaves.get(key)))
 }
 
 struct IndexedBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   gtr: &'a GTR,
   min_branch_length: f64,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &'a EdgeMap<f64>,
 }
 
 impl IndexedBackwardPass<'_> {
@@ -262,9 +261,9 @@ pub(crate) fn indexed_forward(
   gtr: &GTR,
   kind: IndexedKind<'_>,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_states: BTreeMap<GraphNodeKey, DenseNodeState>,
-  backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+  branch_lengths: &EdgeMap<f64>,
+  node_states: NodeMap<DenseNodeState>,
+  backward: &EdgeMap<DenseEdgeBackward>,
 ) -> Result<MarginalForward<DenseNodeState, DenseEdgeForward, DenseEdgeEstimate>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
@@ -275,7 +274,7 @@ pub(crate) fn indexed_forward(
     kind,
     branch_lengths,
   };
-  let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
+  let backward = backward.iter().collect();
   let outputs = schedule.scan_down(
     schedule.join_parent_edges(node_states, backward)?,
     |key, (node, mut backward), parents: PerEdge<IndexedForwardOutput>| {
@@ -284,8 +283,8 @@ pub(crate) fn indexed_forward(
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
 
-  let mut forward = BTreeMap::new();
-  let mut estimates = BTreeMap::new();
+  let mut forward = EdgeMap::new();
+  let mut estimates = EdgeMap::new();
   for (edge_key, out) in edges {
     forward.insert(
       edge_key,
@@ -307,7 +306,7 @@ struct IndexedForwardPass<'a> {
   gtr: &'a GTR,
   min_branch_length: f64,
   kind: IndexedKind<'a>,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &'a EdgeMap<f64>,
 }
 
 impl IndexedForwardPass<'_> {
@@ -413,10 +412,10 @@ pub(crate) enum IndexedKind<'a> {
   Dense {
     alphabet: &'a Alphabet,
     length: usize,
-    leaves: &'a BTreeMap<GraphNodeKey, DenseLeafObs>,
+    leaves: &'a NodeMap<DenseLeafObs>,
   },
   Discrete {
-    leaves: &'a BTreeMap<GraphNodeKey, Array2<f64>>,
+    leaves: &'a NodeMap<Array2<f64>>,
   },
 }
 

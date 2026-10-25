@@ -136,7 +136,8 @@ pub(crate) mod tests {
     use itertools::Itertools;
     use std::collections::{BTreeMap, BTreeSet};
     use treetime_graph::common_ancestor::common_ancestor;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
@@ -208,7 +209,7 @@ pub(crate) mod tests {
       })
     }
 
-    pub(crate) fn diameter(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Result<f64, Report> {
+    pub(crate) fn diameter(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Result<f64, Report> {
       let divergences = root_to_node_divergences(graph, |edge_key| branch_length_or_zero(branch_lengths, edge_key))?;
       let leaves = graph.get_leaves().map(|leaf| leaf.key()).collect_vec();
       leaves

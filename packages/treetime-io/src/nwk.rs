@@ -1,11 +1,11 @@
 use eyre::{Report, WrapErr};
 use log::warn;
 use smart_default::SmartDefault;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::io::{Read, Write};
 use std::path::Path;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::{InputNodeNames, NodeNames};
 use treetime_graph::schedule::TreeSchedule;
@@ -50,8 +50,8 @@ pub(crate) fn graph_from_newick(nwk_graph: &NewickGraph) -> Result<NwkParse, Rep
   let mut graph = Graph::new();
 
   let mut node_keys: Vec<GraphNodeKey> = Vec::with_capacity(nwk_graph.node_count());
-  let mut input_names: BTreeMap<GraphNodeKey, Option<String>> = BTreeMap::new();
-  let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = BTreeMap::new();
+  let mut input_names: NodeMap<Option<String>> = NodeMap::new();
+  let mut branch_lengths: EdgeMap<Option<f64>> = EdgeMap::new();
   for (_, nwk_node) in nwk_graph.nodes() {
     let key = graph.add_node();
     input_names.insert(key, nwk_node.name().map(ToOwned::to_owned));
@@ -114,7 +114,7 @@ pub struct NwkParse {
   pub graph: Graph,
   pub names: NodeNames,
   pub unnamed_nodes: BTreeSet<GraphNodeKey>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub duplicate_names: Vec<String>,
 }
 
@@ -122,7 +122,7 @@ pub fn nwk_write_file(
   filepath: impl AsRef<Path>,
   tree: &TreeSchedule<'_>,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<(), Report> {
@@ -136,7 +136,7 @@ pub fn nwk_write_file(
 pub fn nwk_write_str(
   tree: &TreeSchedule<'_>,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<String, Report> {
@@ -149,7 +149,7 @@ pub fn nwk_write(
   mut writer: impl Write,
   tree: &TreeSchedule<'_>,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
   options: &NwkWriteOptions,
   comments: &NwkNodeComments,
 ) -> Result<(), Report> {
@@ -161,13 +161,13 @@ pub fn nwk_write(
 pub(crate) fn newick_graph(
   tree: &TreeSchedule<'_>,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
   comments: &NwkNodeComments,
   style: NwkStyle,
 ) -> Result<NewickGraph, Report> {
   let node_data = |key: GraphNodeKey| {
     let data = NewickNodeData::new().with_name(names[key].to_owned());
-    match (style, comments.get(&key)) {
+    match (style, comments.get(key)) {
       (NwkStyle::Beast, Some(pairs)) if !pairs.is_empty() => data.with_comment(NodeComment::new(
         LabelSide::AfterLabel,
         NewickComment::Beast(pairs.clone()),
@@ -180,7 +180,7 @@ pub(crate) fn newick_graph(
     }
   };
   let mut graph = NewickGraph::new(node_data(tree.root()));
-  let mut indices: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
+  let mut indices: NodeMap<usize> = NodeMap::new();
   indices.insert(tree.root(), graph.root());
   for &key in tree.preorder() {
     let parent = indices[&key];
@@ -196,7 +196,7 @@ pub(crate) fn newick_graph(
   Ok(graph)
 }
 
-pub type NwkNodeComments = BTreeMap<GraphNodeKey, Vec<(String, NewickValue)>>;
+pub type NwkNodeComments = NodeMap<Vec<(String, NewickValue)>>;
 
 pub(crate) fn newick_write_options(options: &NwkWriteOptions) -> NewickWriteOptions {
   NewickWriteOptions {

@@ -16,8 +16,9 @@ use maplit::btreemap;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
+use treetime_graph::keymap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -27,14 +28,14 @@ use treetime_utils::interval::range_union::range_union;
 pub fn create_fitch_partition(
   graph: &Graph,
   alphabet: Alphabet,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  node_inputs: NodeMap<NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
   let length = get_common_length_of_node_inputs(&node_inputs)?;
   let partition = PartitionFitch {
     alphabet,
     length,
-    nodes: btreemap! {},
-    edges: btreemap! {},
+    nodes: keymap! {},
+    edges: keymap! {},
   };
   compress_sequences(graph, partition, node_inputs)
 }
@@ -42,7 +43,7 @@ pub fn create_fitch_partition(
 pub(crate) fn compress_sequences(
   graph: &Graph,
   partition: PartitionFitch,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  node_inputs: NodeMap<NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
   let partition = attach_seqs_to_graph(graph, partition, node_inputs)?;
   let partition = fitch_backward(graph, partition)?;
@@ -53,14 +54,14 @@ pub(crate) fn compress_sequences(
 pub(crate) fn attach_seqs_to_graph(
   graph: &Graph,
   mut partition: PartitionFitch,
-  mut node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  mut node_inputs: NodeMap<NodeSeqInput>,
 ) -> Result<PartitionFitch, Report> {
   let leaf_records = graph
     .get_leaves()
     .map(|leaf| -> Result<_, Report> {
       let leaf_key = leaf.key();
       let node = node_inputs
-        .get_mut(&leaf_key)
+        .get_mut(leaf_key)
         .ok_or_else(|| make_internal_report!("Leaf {leaf_key} has no sequence input"))?;
       let seq = node
         .seq
@@ -94,12 +95,12 @@ pub(crate) fn fitch_backward(graph: &Graph, partition: PartitionFitch) -> Result
   } = partition;
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
-  if let Some(key) = nodes.keys().find(|&&key| !schedule.contains(key)) {
+  if let Some(key) = nodes.keys().find(|&key| !schedule.contains(key)) {
     return Err(make_internal_report!(
       "Partition node {key} is not in the tree before the Fitch backward pass"
     ));
   }
-  let inputs = schedule.preorder().iter().map(|&key| (key, nodes.remove(&key)));
+  let inputs = schedule.preorder().iter().map(|&key| (key, nodes.remove(key)));
   let pass = FitchBackwardPass {
     schedule: &schedule,
     alphabet: &alphabet,
@@ -122,7 +123,7 @@ struct FitchBackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   alphabet: &'a Alphabet,
   length: usize,
-  edges: &'a BTreeMap<GraphEdgeKey, SparseEdgeObs>,
+  edges: &'a EdgeMap<SparseEdgeObs>,
 }
 
 impl FitchBackwardPass<'_> {
@@ -306,7 +307,7 @@ type FitchForwardOutput = Arc<(FitchNodeData, PerEdge<SparseEdgeObs>)>;
 
 fn fitch_cleanup(graph: &Graph, mut partition: PartitionFitch) -> PartitionFitch {
   for (key, node) in &mut partition.nodes {
-    if !graph.is_leaf(*key) {
+    if !graph.is_leaf(key) {
       node.seq.fitch.variable = btreemap! {};
     }
   }

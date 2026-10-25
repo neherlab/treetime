@@ -19,8 +19,8 @@ mod tests {
     #[case] zero_based: bool,
     #[case] ((substitution, substitution_position), (indel, indel_position), ambiguous_site): ((&str, usize), (&str, usize), usize),
   ) -> Result<(), Report> {
-    let names = names()?;
-    let result = homoplasy_result(&output()?, &ResultContext { names: &names, drms: None, zero_based });
+    let (names, taxa) = names()?;
+    let result = homoplasy_result(&output(taxa)?, &ResultContext { names: &names, drms: None, zero_based });
     let first_substitution = &result.substitutions.all.ranked[0];
     let first_indel = &result.indels.all.ranked[0];
 
@@ -37,7 +37,7 @@ mod tests {
 
   #[test]
   fn test_summary_homoplasy_names_branches_and_annotates_drms() -> Result<(), Report> {
-    let names = names()?;
+    let (names, taxa) = names()?;
     let drms = DrmTable::from_rows(vec![DrmRow {
       genomic_position: 10,
       alt_base: o!("A"),
@@ -46,7 +46,7 @@ mod tests {
       substitution: o!("M41L"),
     }])?;
     let result = homoplasy_result(
-      &output()?,
+      &output(taxa)?,
       &ResultContext {
         names: &names,
         drms: Some(&drms),
@@ -72,7 +72,7 @@ mod tests {
 
   #[test]
   fn test_summary_homoplasy_orders_taxa_by_homoplasic_count_then_name() -> Result<(), Report> {
-    let names = names()?;
+    let (names, taxa) = names()?;
     let drms = DrmTable::from_rows(vec![DrmRow {
       genomic_position: 10,
       alt_base: o!("T"),
@@ -81,7 +81,7 @@ mod tests {
       substitution: o!("M41L"),
     }])?;
     let result = homoplasy_result(
-      &output()?,
+      &output(taxa)?,
       &ResultContext {
         names: &names,
         drms: Some(&drms),
@@ -118,7 +118,8 @@ mod tests {
 
   mod helpers {
     use eyre::Report;
-    use maplit::btreemap;
+    use treetime_graph::keymap;
+
     use std::collections::BTreeMap;
     use std::str::FromStr;
     use treetime::homoplasy::pipeline::{AmbiguousStats, HomoplasyOutput, IndelKey, IndelStats, SubstitutionStats};
@@ -133,30 +134,34 @@ mod tests {
     use treetime_graph::node_names::NodeNames;
     use treetime_primitives::Seq;
 
-    const A: GraphNodeKey = GraphNodeKey(1);
-    const UNNAMED: GraphNodeKey = GraphNodeKey(2);
-    const B: GraphNodeKey = GraphNodeKey(3);
-    const C: GraphNodeKey = GraphNodeKey(4);
+    #[derive(Clone, Copy)]
+    pub(super) struct Taxa {
+      a: GraphNodeKey,
+      unnamed: GraphNodeKey,
+      b: GraphNodeKey,
+      c: GraphNodeKey,
+    }
 
-    pub(super) fn names() -> Result<NodeNames, Report> {
+    pub(super) fn names() -> Result<(NodeNames, Taxa), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
-      for _ in [A, UNNAMED, B, C] {
-        let child = graph.add_node();
+      let [a, unnamed, b, c] = [(); 4].map(|()| graph.add_node());
+      for child in [a, unnamed, b, c] {
         graph.add_edge(root, child)?;
       }
       graph.build()?;
-      let input = btreemap! {
+      let input = keymap! {
         root => Some(o!("root")),
-        A => Some(o!("A")),
-        UNNAMED => None,
-        B => Some(o!("B")),
-        C => Some(o!("C")),
+        a => Some(o!("A")),
+        unnamed => None,
+        b => Some(o!("B")),
+        c => Some(o!("C")),
       };
-      Ok(NodeNames::from_input(input, &graph)?.names)
+      Ok((NodeNames::from_input(input, &graph)?.names, Taxa { a, unnamed, b, c }))
     }
 
-    pub(super) fn output() -> Result<HomoplasyOutput, Report> {
+    pub(super) fn output(taxa: Taxa) -> Result<HomoplasyOutput, Report> {
+      let Taxa { a, unnamed, b, c } = taxa;
       let recurrent = IndelKey {
         kind: InDelKind::Deletion,
         range: (2, 4),
@@ -167,12 +172,12 @@ mod tests {
           total_branch_length: 1.0,
           terminal_branch_length: 0.5,
           all: table(vec![
-            (Sub::from_str("G10A")?, vec![A, UNNAMED]),
-            (Sub::from_str("C20T")?, vec![B]),
+            (Sub::from_str("G10A")?, vec![a, unnamed]),
+            (Sub::from_str("C20T")?, vec![b]),
           ]),
           terminal: table(vec![
-            (Sub::from_str("G10A")?, vec![A]),
-            (Sub::from_str("C20T")?, vec![B]),
+            (Sub::from_str("G10A")?, vec![a]),
+            (Sub::from_str("C20T")?, vec![b]),
           ]),
           sites: SiteHistogram {
             genome_length: 30,
@@ -183,23 +188,23 @@ mod tests {
             }],
             log_likelihood_difference: 0.0,
           },
-          leaves: btreemap! {
-            A => vec![Sub::from_str("G10A")?],
-            B => vec![Sub::from_str("C20T")?],
+          leaves: keymap! {
+            a => vec![Sub::from_str("G10A")?],
+            b => vec![Sub::from_str("C20T")?],
           },
         },
         ambiguous: AmbiguousStats {
-          all: table(vec![(Sub::from_str("G5R")?, vec![B, C])]),
+          all: table(vec![(Sub::from_str("G5R")?, vec![b, c])]),
           sites: vec![SiteBranches {
             position: 4,
             branches: 2,
           }],
-          leaves: btreemap! {B => 2, C => 1},
+          leaves: keymap! {b => 2, c => 1},
         },
         indels: IndelStats {
-          all: table(vec![(recurrent.clone(), vec![A, UNNAMED])]),
-          terminal: table(vec![(recurrent, vec![A])]),
-          leaves: btreemap! {A => 1},
+          all: table(vec![(recurrent.clone(), vec![a, unnamed])]),
+          terminal: table(vec![(recurrent, vec![a])]),
+          leaves: keymap! {a => 1},
         },
       })
     }

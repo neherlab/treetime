@@ -25,6 +25,8 @@ pub(crate) mod tests {
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::{EdgeMap, NodeMap};
+  use treetime_graph::keymap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::auspice_types::{AuspiceTree, AuspiceTreeNode};
@@ -58,13 +60,13 @@ pub(crate) mod tests {
   pub(crate) struct Topology {
     pub(crate) graph: Graph,
     pub(crate) names: NodeNames,
-    pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+    pub(crate) branch_lengths: EdgeMap<Option<f64>>,
   }
 
   pub(crate) struct AncestralSetup {
     pub(crate) topology: Topology,
     pub(crate) root_sequence: Seq,
-    pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+    pub(crate) edge_mutations: EdgeMap<Vec<Mutation>>,
     pub(crate) aa_node_data: Option<AaNodeData>,
     pub(crate) aa_annotations: BTreeMap<String, AugurNodeDataJsonAnnotationEntry>,
   }
@@ -72,15 +74,15 @@ pub(crate) mod tests {
   pub(crate) struct MugrationSetup {
     pub(crate) topology: Topology,
     pub(crate) states: StateAlphabet,
-    pub(crate) posteriors: BTreeMap<GraphNodeKey, StatePosterior>,
+    pub(crate) posteriors: NodeMap<StatePosterior>,
   }
 
   pub(crate) struct DatedSetup {
     pub(crate) topology: Topology,
-    pub(crate) div: BTreeMap<GraphNodeKey, f64>,
-    pub(crate) num_date: BTreeMap<GraphNodeKey, Option<f64>>,
+    pub(crate) div: NodeMap<f64>,
+    pub(crate) num_date: NodeMap<Option<f64>>,
     pub(crate) excluded: BTreeSet<GraphNodeKey>,
-    pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+    pub(crate) edge_mutations: EdgeMap<Vec<Mutation>>,
   }
 
   pub(crate) fn topology() -> Result<Topology, Report> {
@@ -117,11 +119,11 @@ pub(crate) mod tests {
     Ok(mat_tree(&AnnotatedTreeView::new(graph)?)?.tree)
   }
 
-  pub(crate) fn no_mutations(topology: &Topology) -> BTreeMap<GraphEdgeKey, Vec<Mutation>> {
+  pub(crate) fn no_mutations(topology: &Topology) -> EdgeMap<Vec<Mutation>> {
     topology.graph.get_edges().map(|edge| (edge.key(), vec![])).collect()
   }
 
-  pub(crate) fn mutation_on(topology: &Topology, name: &str) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
+  pub(crate) fn mutation_on(topology: &Topology, name: &str) -> Result<EdgeMap<Vec<Mutation>>, Report> {
     let mut edge_mutations = no_mutations(topology);
     edge_mutations.insert(parent_edge(topology, name)?, vec![substitution(b'A', 0, b'T')?]);
     Ok(edge_mutations)
@@ -181,7 +183,7 @@ pub(crate) mod tests {
     Ok(AncestralSetup {
       topology,
       root_sequence: Seq::try_from_str("ACG")?,
-      edge_mutations: btreemap! { a_edge => a_mutations, b_edge => vec![] },
+      edge_mutations: keymap! { a_edge => a_mutations, b_edge => vec![] },
       aa_node_data,
       aa_annotations,
     })
@@ -206,7 +208,7 @@ pub(crate) mod tests {
   pub(crate) fn optimize_graph<'a>(
     topology: &'a Topology,
     root_sequence: &'a Seq,
-    edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+    edge_mutations: &'a EdgeMap<Vec<Mutation>>,
   ) -> AnnotatedGraph<'a> {
     AnnotatedGraph {
       sequences: Some(TreeSequences {
@@ -226,7 +228,7 @@ pub(crate) mod tests {
     mugration_setup_from(topology, &["CH", "US"], &values)
   }
 
-  pub(crate) fn alternating_trait_values(topology: &Topology) -> BTreeMap<GraphNodeKey, &'static str> {
+  pub(crate) fn alternating_trait_values(topology: &Topology) -> NodeMap<&'static str> {
     topology
       .graph
       .get_nodes()
@@ -238,12 +240,12 @@ pub(crate) mod tests {
   pub(crate) fn mugration_setup_from(
     topology: Topology,
     state_names: &[&str],
-    values: &BTreeMap<GraphNodeKey, &str>,
+    values: &NodeMap<&str>,
   ) -> Result<MugrationSetup, Report> {
     let states = StateAlphabet::new(state_names.iter().copied())?;
     let posteriors = values
       .iter()
-      .map(|(&key, value)| {
+      .map(|(key, value)| {
         let index = states
           .index_of(value)
           .ok_or_else(|| make_report!("'{value}' is not one of the trait states"))?;

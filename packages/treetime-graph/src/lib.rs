@@ -3,6 +3,7 @@ pub mod common_ancestor;
 pub mod edge;
 pub mod graph;
 pub mod graph_ops;
+pub mod key_map;
 pub mod node;
 pub mod node_names;
 pub mod pair_by_name;

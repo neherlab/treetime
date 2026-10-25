@@ -2,20 +2,16 @@ use crate::branch_lengths::branch_length_or_zero;
 use crate::reroot::find_root::EdgePoint;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use std::iter::successors;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::split_fraction::SplitFraction;
 use treetime_grid::grid::coordinates_coincide;
 use treetime_utils::make_internal_report;
 
-pub(crate) fn midpoint_root(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<Option<EdgePoint>, Report> {
+pub(crate) fn midpoint_root(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Result<Option<EdgePoint>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   match longest_path(&schedule, branch_lengths) {
@@ -24,11 +20,8 @@ pub(crate) fn midpoint_root(
   }
 }
 
-fn longest_path(
-  schedule: &GraphSchedule<'_>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Option<LongestPath> {
-  let mut deepest: BTreeMap<GraphNodeKey, Arm> = BTreeMap::new();
+fn longest_path(schedule: &GraphSchedule<'_>, branch_lengths: &EdgeMap<Option<f64>>) -> Option<LongestPath> {
+  let mut deepest: NodeMap<Arm> = NodeMap::new();
   let mut longest: Option<LongestPath> = None;
   for &key in schedule.postorder() {
     let arms = schedule
@@ -89,7 +82,7 @@ fn first_longest(arms: impl IntoIterator<Item = Arm>) -> Option<Arm> {
 
 fn middle_of_path(
   schedule: &GraphSchedule<'_>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   path: &LongestPath,
 ) -> Result<EdgePoint, Report> {
   let half = path.length / 2.0;

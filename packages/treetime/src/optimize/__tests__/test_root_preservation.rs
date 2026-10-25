@@ -283,6 +283,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::EdgeMap;
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
@@ -290,7 +291,7 @@ mod tests {
     pub(super) struct DenseSetup {
       pub(super) graph: Graph,
       pub(super) reconstruction: PartitionSet,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(super) branch_lengths: EdgeMap<Option<f64>>,
       pub(super) edges_by_child_name: BTreeMap<String, GraphEdgeKey>,
     }
 
@@ -325,9 +326,8 @@ mod tests {
         self.branch_lengths[&self.edges_by_child_name[child_name]].unwrap()
       }
 
-      pub(super) fn indel_counts(&self, counts_by_child_name: &[(&str, usize)]) -> BTreeMap<GraphEdgeKey, usize> {
-        let mut indel_counts: BTreeMap<GraphEdgeKey, usize> =
-          self.graph.get_edges().map(|edge| (edge.key(), 0)).collect();
+      pub(super) fn indel_counts(&self, counts_by_child_name: &[(&str, usize)]) -> EdgeMap<usize> {
+        let mut indel_counts: EdgeMap<usize> = self.graph.get_edges().map(|edge| (edge.key(), 0)).collect();
         for (name, count) in counts_by_child_name {
           indel_counts.insert(self.edges_by_child_name[*name], *count);
         }
@@ -337,7 +337,7 @@ mod tests {
 
     pub(super) fn optimize_once(
       setup: &mut DenseSetup,
-      indel_counts: &BTreeMap<GraphEdgeKey, usize>,
+      indel_counts: &EdgeMap<usize>,
       indel_rate: f64,
     ) -> Result<(), Report> {
       let contributions = gather_edge_contributions(&setup.graph, &setup.reconstruction)?;
@@ -355,10 +355,7 @@ mod tests {
       Ok(())
     }
 
-    pub(super) fn root_edge_branch_lengths(
-      graph: &Graph,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-    ) -> (f64, f64) {
+    pub(super) fn root_edge_branch_lengths(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> (f64, f64) {
       let root = graph.get_exactly_one_root().unwrap();
       let children = graph.children_of(root).collect::<Vec<_>>();
       assert_eq!(2, children.len());

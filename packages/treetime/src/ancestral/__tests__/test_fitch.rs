@@ -17,6 +17,7 @@ pub(super) mod tests {
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
   use treetime_graph::graph::Graph;
+  use treetime_graph::keymap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
@@ -71,8 +72,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
@@ -146,8 +147,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let mut partitions_parsimony = [partition];
@@ -196,8 +197,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
     let actual = get_internal_sequences(&graph, &names, &partition);
@@ -242,8 +243,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -305,8 +306,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -372,8 +373,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -435,8 +436,8 @@ pub(super) mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
 
     let partition = attach_seqs_to_graph(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;

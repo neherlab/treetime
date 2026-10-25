@@ -21,6 +21,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::EdgeMap;
   use treetime_graph::node_names::NodeNames;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -244,7 +245,7 @@ mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
@@ -263,7 +264,7 @@ mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
@@ -280,7 +281,7 @@ mod tests {
   fn branch_lengths_by_child_name(
     graph: &Graph,
     names: &NodeNames,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<BTreeMap<String, f64>, Report> {
     graph
       .get_edges()

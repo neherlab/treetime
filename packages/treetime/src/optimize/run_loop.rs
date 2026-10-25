@@ -20,6 +20,7 @@ use log::debug;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::LogLh;
 use treetime_utils::fmt::float::float_to_significant_digits;
@@ -29,7 +30,7 @@ pub(crate) fn run_optimize_loop(
   graph: &mut Graph,
   mut partitions: PartitionSet,
   settings: &OptimizeLoopSettings,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   names: NodeNames,
   log: &dyn LogSink,
 ) -> Result<OptimizeLoopResult, Report> {
@@ -119,7 +120,7 @@ pub(crate) struct OptimizeLoopResult {
 
   pub indel_rates: BTreeMap<usize, f64>,
 
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 
   pub names: NodeNames,
 
@@ -136,7 +137,7 @@ pub(super) fn record_if_best(
   best: &mut Option<BestIteration>,
   iteration: usize,
   log_lh: LogLh,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   partitions: &PartitionSet,
   indels: &EdgeIndels,
 ) {
@@ -154,7 +155,7 @@ pub(super) fn record_if_best(
 pub(super) struct BestIteration {
   iteration: usize,
   log_lh: LogLh,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   rates: Vec<f64>,
   indels: EdgeIndels,
 }
@@ -164,7 +165,7 @@ impl BestIteration {
     self,
     graph: &Graph,
     mut partitions: PartitionSet,
-    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &mut EdgeMap<Option<f64>>,
     indels: &mut EdgeIndels,
   ) -> Result<PartitionSet, Report> {
     debug!(
@@ -273,7 +274,7 @@ fn update_branch_lengths(
 }
 
 struct LoopState {
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   names: NodeNames,
   convergence: ConvergenceSummary,
 }
@@ -291,7 +292,7 @@ fn log_iteration_likelihood(iteration_number: usize, likelihood: &OptimizeIterat
 
 fn compute_iteration(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   partitions: PartitionSet,
   indels: &EdgeIndels,
 ) -> Result<OptimizeIteration, Report> {
@@ -334,7 +335,7 @@ struct OptimizeIterationLikelihood {
 pub(crate) fn find_zero_optimal_internal_edges(
   graph: &Graph,
   partitions: &PartitionSet,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
 ) -> Vec<GraphEdgeKey> {
   graph
     .get_edges()
@@ -357,7 +358,7 @@ pub(crate) fn prune_and_merge_in_loop(
   mut partitions: PartitionSet,
   zero_optimal_edges: &[GraphEdgeKey],
   topology_ops: TopologyOps,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   names: &mut NodeNames,
 ) -> Result<TopologyCleanup, Report> {
   let sparse = partitions.sparse_mut();
@@ -366,7 +367,7 @@ pub(crate) fn prune_and_merge_in_loop(
 
   if !zero_optimal_edges.is_empty() {
     for &edge_key in zero_optimal_edges {
-      if branch_lengths.contains_key(&edge_key) {
+      if branch_lengths.contains_key(edge_key) {
         branch_lengths.insert(edge_key, Some(0.0));
       }
     }
@@ -416,7 +417,7 @@ pub(crate) fn apply_initial_guess_mode(
   indels: &EdgeIndels,
   evidence: &InitialGuessEvidence,
   mode: InitialGuessMode,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<(), Report> {

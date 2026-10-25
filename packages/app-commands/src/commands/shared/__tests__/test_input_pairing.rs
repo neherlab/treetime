@@ -7,7 +7,8 @@ mod tests {
   use crate::commands::shared::topology_order_args::target_positions;
   use crate::commands::shared::tree_input::read_input_tree;
   use helpers::{leaf_keys, warning};
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use std::fs;
   use std::path::Path;
@@ -64,7 +65,7 @@ mod tests {
     assert_eq!(
       (
         [Some(o!("ACGT")), Some(o!("ACGT")), Some(o!("GGGG"))],
-        btreemap! { a1 => Some(o!("first")), a2 => Some(o!("first")), b => None },
+        keymap! { a1 => Some(o!("first")), a2 => Some(o!("first")), b => None },
         vec![(o!("Z"), Seq::try_from_str("CCCC").unwrap())],
         vec![warning(
           RunWarningKind::DuplicateSequenceNames,
@@ -106,7 +107,7 @@ mod tests {
     };
     assert_eq!(
       (
-        btreemap! { a1 => date("2001"), a2 => date("2001"), b => date("2002") },
+        keymap! { a1 => date("2001"), a2 => date("2001"), b => date("2002") },
         vec![warning(
           RunWarningKind::DuplicateMetadataNames,
           &format!(
@@ -128,7 +129,7 @@ mod tests {
     let [a1, a2] = leaf_keys(&tree, "A")[..] else {
       panic!("the tree has two leaves named A")
     };
-    assert_eq!(btreemap! { leaf_keys(&tree, "B")[0] => 0, a1 => 1, a2 => 1 }, actual);
+    assert_eq!(keymap! { leaf_keys(&tree, "B")[0] => 0, a1 => 1, a2 => 1 }, actual);
   }
 
   mod helpers {

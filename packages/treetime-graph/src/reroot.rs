@@ -1,10 +1,10 @@
 use crate::edge::{GraphEdgeKey, invert_edge};
 use crate::graph::Graph;
+use crate::key_map::EdgeMap;
 use crate::node::GraphNodeKey;
 use crate::node_names::NodeNames;
 use crate::split_fraction::SplitFraction;
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_utils::make_internal_report;
 
 #[derive(Clone, Debug)]
@@ -143,19 +143,19 @@ pub fn remove_node_if_trivial(
 pub fn trivial_node_branch_lengths(
   graph: &Graph,
   node_key: GraphNodeKey,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
 ) -> (Option<f64>, Option<f64>) {
   let node = &graph[node_key];
   if node.inbound().len() != 1 || node.outbound().len() != 1 {
     return (None, None);
   }
-  let parent = branch_lengths.get(&node.inbound()[0]).copied().flatten();
-  let child = branch_lengths.get(&node.outbound()[0]).copied().flatten();
+  let parent = branch_lengths.get(node.inbound()[0]).copied().flatten();
+  let child = branch_lengths.get(node.outbound()[0]).copied().flatten();
   (parent, child)
 }
 
-pub fn record_split(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, info: &EdgeSplitInfo) {
-  branch_lengths.remove(&info.old_edge_key);
+pub fn record_split(branch_lengths: &mut EdgeMap<Option<f64>>, info: &EdgeSplitInfo) {
+  branch_lengths.remove(info.old_edge_key);
   branch_lengths.insert(info.parent_side_edge_key, info.parent_side_length);
   branch_lengths.insert(info.child_side_edge_key, info.child_side_length);
 }
@@ -171,9 +171,9 @@ pub struct EdgeSplitInfo {
   pub split_position: SplitFraction,
 }
 
-pub fn record_merge(branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>, info: &EdgeMergeInfo) {
-  branch_lengths.remove(&info.parent_edge_key);
-  branch_lengths.remove(&info.child_edge_key);
+pub fn record_merge(branch_lengths: &mut EdgeMap<Option<f64>>, info: &EdgeMergeInfo) {
+  branch_lengths.remove(info.parent_edge_key);
+  branch_lengths.remove(info.child_edge_key);
   branch_lengths.insert(info.merged_edge_key, info.merged_branch_length);
 }
 

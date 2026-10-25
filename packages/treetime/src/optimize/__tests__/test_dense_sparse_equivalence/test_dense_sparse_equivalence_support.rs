@@ -10,9 +10,10 @@ pub(super) mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -49,7 +50,7 @@ pub(super) mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
@@ -67,7 +68,7 @@ pub(super) mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let fitch = create_fitch_partition(graph, alphabet, leaf_seq_inputs(graph, names, aln.to_vec()))?;
@@ -82,7 +83,7 @@ pub(super) mod tests {
     Ok(reconstruction)
   }
 
-  pub(crate) fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  pub(crate) fn get_branch_lengths(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .map(|edge| branch_lengths[&edge.key()].unwrap_or(0.0))

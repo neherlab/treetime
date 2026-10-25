@@ -14,6 +14,7 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
+  use treetime_graph::keymap;
   use treetime_graph::node_names::NodeNames;
 
   use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
@@ -105,7 +106,7 @@ mod tests {
     graph.add_edge(internal, shared)?;
     graph.add_edge(internal, leaf)?;
     graph.build()?;
-    let dates = btreemap! {
+    let dates = keymap! {
       shared => DateConstraint::exact(2020.0),
       leaf => DateConstraint::exact(2021.0),
     };

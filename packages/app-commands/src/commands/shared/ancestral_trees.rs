@@ -11,8 +11,8 @@ use treetime::ancestral::aa::AaNodeData;
 use treetime::progress::LogSink;
 use treetime::progress_info;
 use treetime::seq::mutation::{Mutation, PositionBase};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::Seq;
 use treetime_utils::make_internal_error;
@@ -73,7 +73,7 @@ pub(crate) fn write_ancestral_trees(
 pub(crate) struct AncestralTrees<'a> {
   pub(crate) graph: &'a Graph,
   pub(crate) names: &'a NodeNames,
-  pub(crate) branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub(crate) branch_lengths: &'a EdgeMap<Option<f64>>,
   pub(crate) amino_acids: Option<&'a (AaNodeData, BTreeMap<String, AugurNodeDataJsonAnnotationEntry>)>,
   pub(crate) comment_positions: PositionBase,
 }
@@ -87,5 +87,5 @@ pub(crate) struct AncestralAlignmentTrees<'a> {
 
 pub(crate) struct AncestralOutputMaps {
   pub(crate) root_sequence: Seq,
-  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub(crate) edge_mutations: EdgeMap<Vec<Mutation>>,
 }

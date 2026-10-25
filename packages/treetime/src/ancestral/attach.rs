@@ -5,15 +5,14 @@ use crate::seq::alignment::NodeSeqInput;
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_primitives::{AlphabetLike, Seq, seq};
 use treetime_utils::cast::ToF64Exact;
 
 pub fn complete_alignment_for_leaves(
   graph: &Graph,
-  nodes: &mut BTreeMap<GraphNodeKey, NodeSeqInput>,
+  nodes: &mut NodeMap<NodeSeqInput>,
   alignment_length: usize,
   alphabet: &Alphabet,
   limit: MissingLeafLimit,
@@ -47,7 +46,7 @@ pub fn complete_alignment_for_leaves(
   let unknown = alphabet.unknown();
   for key in missing {
     let node = nodes
-      .get_mut(&key)
+      .get_mut(key)
       .ok_or_else(|| make_internal_report!("Leaf {key} has no sequence input"))?;
     node.seq = Some(seq![unknown; alignment_length]);
   }

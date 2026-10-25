@@ -86,18 +86,18 @@ mod tests {
     use crate::timetree::params::TimetreeParams;
     use crate::timetree::pipeline::{TimetreeInput, TimetreeSequences, run};
     use eyre::Report;
-    use std::collections::{BTreeMap, BTreeSet};
-    use treetime_graph::edge::GraphEdgeKey;
-    use treetime_graph::node::GraphNodeKey;
+    use std::collections::BTreeSet;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, LogLh, Seq};
 
     pub(super) struct Timetree {
       pub(super) edges: BTreeSet<(String, String)>,
-      pub(super) node_dates: BTreeMap<GraphNodeKey, f64>,
+      pub(super) node_dates: NodeMap<f64>,
       pub(super) total_length: usize,
       pub(super) numbers: Vec<usize>,
-      pub(super) sequences: Vec<Option<(Seq, BTreeMap<GraphEdgeKey, Vec<Mutation>>)>>,
+      pub(super) sequences: Vec<Option<(Seq, EdgeMap<Vec<Mutation>>)>>,
       pub(super) indel_rates: Vec<Option<f64>>,
       pub(super) log_lh: f64,
     }

@@ -1,14 +1,14 @@
 use crate::clock::clock_set::ClockSet;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ClockInputs {
-  pub(crate) nodes: BTreeMap<GraphNodeKey, ClockNodeInput>,
-  pub(crate) edges: BTreeMap<GraphEdgeKey, ClockEdgeInput>,
+  pub(crate) nodes: NodeMap<ClockNodeInput>,
+  pub(crate) edges: EdgeMap<ClockEdgeInput>,
 }
 
 impl ClockInputs {
@@ -26,8 +26,8 @@ impl ClockInputs {
 
   pub(crate) fn from_times(
     graph: &Graph,
-    times: &BTreeMap<GraphNodeKey, Option<f64>>,
-    edge_inputs: &BTreeMap<GraphEdgeKey, (Option<f64>, f64)>,
+    times: &NodeMap<Option<f64>>,
+    edge_inputs: &EdgeMap<(Option<f64>, f64)>,
   ) -> Self {
     let nodes = graph
       .get_nodes()
@@ -36,7 +36,7 @@ impl ClockInputs {
         (
           key,
           ClockNodeInput {
-            time: times.get(&key).copied().flatten(),
+            time: times.get(key).copied().flatten(),
             bad_branch: false,
           },
         )
@@ -46,7 +46,7 @@ impl ClockInputs {
       .get_edges()
       .map(|edge| {
         let key = edge.key();
-        let (time_length, gamma) = edge_inputs.get(&key).copied().unwrap_or((None, 1.0));
+        let (time_length, gamma) = edge_inputs.get(key).copied().unwrap_or((None, 1.0));
         (key, ClockEdgeInput { time_length, gamma })
       })
       .collect();
@@ -58,7 +58,7 @@ impl ClockInputs {
   pub fn node(&self, key: GraphNodeKey) -> &ClockNodeInput {
     self
       .nodes
-      .get(&key)
+      .get(key)
       .unwrap_or_else(|| panic!("Clock inputs are missing node {key}"))
   }
 
@@ -67,7 +67,7 @@ impl ClockInputs {
   pub(crate) fn node_mut(&mut self, key: GraphNodeKey) -> &mut ClockNodeInput {
     self
       .nodes
-      .get_mut(&key)
+      .get_mut(key)
       .unwrap_or_else(|| panic!("Clock inputs are missing node {key}"))
   }
 
@@ -76,7 +76,7 @@ impl ClockInputs {
   pub(crate) fn edge(&self, key: GraphEdgeKey) -> &ClockEdgeInput {
     self
       .edges
-      .get(&key)
+      .get(key)
       .unwrap_or_else(|| panic!("Clock inputs are missing edge {key}"))
   }
 
@@ -101,8 +101,8 @@ pub struct ClockEdgeInput {
 
 #[derive(Debug)]
 pub(crate) struct ClockState {
-  pub(crate) nodes: BTreeMap<GraphNodeKey, ClockSet>,
-  pub(crate) edges: BTreeMap<GraphEdgeKey, ClockEdgeState>,
+  pub(crate) nodes: NodeMap<ClockSet>,
+  pub(crate) edges: EdgeMap<ClockEdgeState>,
 }
 
 impl ClockState {
@@ -113,7 +113,7 @@ impl ClockState {
   pub(crate) fn node(&self, key: GraphNodeKey) -> &ClockSet {
     self
       .nodes
-      .get(&key)
+      .get(key)
       .unwrap_or_else(|| panic!("Clock state is missing node {key}"))
   }
 
@@ -122,7 +122,7 @@ impl ClockState {
   pub(crate) fn edge(&self, key: GraphEdgeKey) -> &ClockEdgeState {
     self
       .edges
-      .get(&key)
+      .get(key)
       .unwrap_or_else(|| panic!("Clock state is missing edge {key}"))
   }
 }

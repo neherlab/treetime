@@ -59,7 +59,8 @@ mod tests {
     use proptest::prelude::any;
     use proptest::strategy::Strategy;
     use std::collections::BTreeMap;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::key_map::NodeMap;
+
     use treetime_primitives::Seq;
     use treetime_simulation::branch_lengths::exact;
     use treetime_simulation::gaps::{GAP, GapEvent, apply_gap_events, disjoint_gap_events};
@@ -83,7 +84,7 @@ mod tests {
 
     pub(super) struct GapCase {
       case: SimulatedCase,
-      sequences: BTreeMap<GraphNodeKey, Seq>,
+      sequences: NodeMap<Seq>,
       pub(super) events: Vec<GapEvent>,
     }
 
@@ -146,7 +147,7 @@ mod tests {
           &NoopProgress,
           &NoopProgress,
         )?;
-        let emitted: BTreeMap<GraphNodeKey, Seq> = sink
+        let emitted: NodeMap<Seq> = sink
           .items
           .into_iter()
           .filter(|(_, emitted, _)| *emitted)
@@ -158,7 +159,7 @@ mod tests {
           .map(|node| {
             let name = &tree.names[node.key()];
             let seq = emitted
-              .get(&node.key())
+              .get(node.key())
               .ok_or_else(|| make_report!("The reconstruction emitted no sequence for node {name}"))?;
             Ok((name.to_owned(), gap_ranges(seq)))
           })

@@ -93,7 +93,7 @@ pub(crate) fn assemble_sequence_mutations(
     .ok_or_else(no_partitions)?
     .edge_mutations
     .keys()
-    .map(|&edge_key| -> Result<_, Report> {
+    .map(|edge_key| -> Result<_, Report> {
       let substitutions = mutations
         .iter()
         .map(|mutations| edge_substitutions(mutations, edge_key))
@@ -226,7 +226,7 @@ fn no_partitions() -> Report {
 }
 
 fn edge_substitutions(mutations: &SequenceMutations, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
-  let Some(edge_mutations) = mutations.edge_mutations.get(&edge_key) else {
+  let Some(edge_mutations) = mutations.edge_mutations.get(edge_key) else {
     return make_internal_error!("A partition of the alignment has no mutations on edge {edge_key}");
   };
   Ok(

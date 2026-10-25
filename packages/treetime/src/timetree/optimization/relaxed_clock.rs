@@ -1,8 +1,6 @@
 use eyre::Report;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::reroot::EdgeMergeInfo;
 use treetime_graph::schedule::GraphSchedule;
 
@@ -12,12 +10,12 @@ const UNIT_GAMMA: f64 = 1.0;
 
 pub(crate) fn apply_relaxed_clock(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   params: &[f64],
   one_mutation: f64,
   clock_rate: f64,
-  date_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+  date_branch_lengths: &EdgeMap<Option<f64>>,
+) -> Result<EdgeMap<f64>, Report> {
   let RelaxedClockPrior { slack, coupling } = RelaxedClockPrior::of(params);
 
   let c = 1.0 / one_mutation;
@@ -25,7 +23,7 @@ pub(crate) fn apply_relaxed_clock(
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
 
-  let mut coeffs: BTreeMap<GraphNodeKey, RelaxedClockCoeffs> = BTreeMap::new();
+  let mut coeffs: NodeMap<RelaxedClockCoeffs> = NodeMap::new();
 
   for &key in schedule.postorder() {
     let mut node_coeffs = RelaxedClockCoeffs::default();
@@ -59,10 +57,10 @@ pub(crate) fn apply_relaxed_clock(
     coeffs.insert(key, node_coeffs);
   }
 
-  let mut gammas: BTreeMap<GraphNodeKey, f64> = BTreeMap::new();
+  let mut gammas: NodeMap<f64> = NodeMap::new();
 
   for &key in schedule.preorder() {
-    let node_coeffs = coeffs.get(&key).cloned().unwrap_or_default();
+    let node_coeffs = coeffs.get(key).cloned().unwrap_or_default();
 
     let gamma = match schedule.parents(key).first() {
       None => {
@@ -115,24 +113,20 @@ struct RelaxedClockCoeffs {
 }
 
 #[must_use]
-pub(crate) fn unit_gammas(graph: &Graph) -> BTreeMap<GraphEdgeKey, f64> {
+pub(crate) fn unit_gammas(graph: &Graph) -> EdgeMap<f64> {
   graph.get_edges().map(|edge| (edge.key(), UNIT_GAMMA)).collect()
 }
 
 #[must_use]
-pub(crate) fn reconcile_gammas(
-  graph: &Graph,
-  mut gammas: BTreeMap<GraphEdgeKey, f64>,
-  merges: &[EdgeMergeInfo],
-) -> BTreeMap<GraphEdgeKey, f64> {
+pub(crate) fn reconcile_gammas(graph: &Graph, mut gammas: EdgeMap<f64>, merges: &[EdgeMergeInfo]) -> EdgeMap<f64> {
   for merge in merges {
-    gammas.remove(&merge.parent_edge_key);
-    if let Some(child_gamma) = gammas.remove(&merge.child_edge_key) {
+    gammas.remove(merge.parent_edge_key);
+    if let Some(child_gamma) = gammas.remove(merge.child_edge_key) {
       gammas.insert(merge.merged_edge_key, child_gamma);
     }
   }
   graph
     .get_edges()
-    .map(|edge| (edge.key(), gammas.get(&edge.key()).copied().unwrap_or(UNIT_GAMMA)))
+    .map(|edge| (edge.key(), gammas.get(edge.key()).copied().unwrap_or(UNIT_GAMMA)))
     .collect()
 }

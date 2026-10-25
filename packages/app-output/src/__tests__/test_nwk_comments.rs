@@ -321,7 +321,7 @@ mod tests {
         ..annotated(&topology)
       };
       let mut comments = nwk_node_comments(&AnnotatedTreeView::new(&graph)?)?;
-      Ok(comments.remove(&node_key(&topology, "A")).unwrap_or_default())
+      Ok(comments.remove(node_key(&topology, "A")).unwrap_or_default())
     }
   }
 }

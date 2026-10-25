@@ -15,11 +15,11 @@ use crate::timetree::inference::result::{
 use crate::timetree::params::{BranchLengthMode, TimetreeParams};
 use crate::timetree::pipeline::TimetreeSequences;
 use eyre::Report;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::MaxGridPoints;
@@ -119,7 +119,7 @@ pub(crate) struct FullPosterior {
   pub subtree_support: Option<(f64, f64)>,
 }
 
-pub(crate) fn unknown_branches(graph: &Graph) -> BTreeMap<GraphEdgeKey, BranchLikelihood> {
+pub(crate) fn unknown_branches(graph: &Graph) -> EdgeMap<BranchLikelihood> {
   graph
     .get_edges()
     .map(|edge| {
@@ -169,12 +169,12 @@ pub(crate) fn point_coalescent_prior(
 
 pub(crate) fn point_coalescent_prior_by_key(
   graph: &Graph,
-  times: &BTreeMap<GraphNodeKey, f64>,
+  times: &NodeMap<f64>,
   tc: f64,
 ) -> Result<CoalescentPrior, Report> {
   let posterior = times
     .iter()
-    .map(|(&key, &time)| {
+    .map(|(key, &time)| {
       let entry = NodePosterior {
         likely_time: Some(time),
         time: Some(time),

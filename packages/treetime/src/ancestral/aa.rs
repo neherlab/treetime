@@ -16,16 +16,15 @@ use crate::seq::sink::{SeqStream, SeqTrack};
 use crate::{make_error, make_internal_report};
 use eyre::Report;
 use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::sync::random::get_random_number_generator;
 use util_augur_node_data_json::AugurNodeDataJsonAnnotationEntry;
 
 pub fn reconstruct_aa(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   params: &AaParams,
   cdses: Vec<CdsInput>,
   mut seq_stream: Option<SeqStream<'_>>,
@@ -131,7 +130,7 @@ fn validate_cds_length(
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AaNodeData {
   pub reference: BTreeMap<String, String>,
-  pub node_aa_mutations: BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>,
+  pub node_aa_mutations: NodeMap<BTreeMap<String, Vec<MutationEvent>>>,
   pub root_aa_sequences: BTreeMap<String, String>,
 }
 
@@ -170,7 +169,7 @@ pub(crate) fn collect_aa_cds_node_data(
     );
   }
 
-  let mut node_mutations = BTreeMap::new();
+  let mut node_mutations = NodeMap::new();
   for node in graph.get_nodes() {
     let node_key = node.key();
     let mutations = match graph.node_parent(node_key)? {
@@ -179,7 +178,7 @@ pub(crate) fn collect_aa_cds_node_data(
         .map(MutationEvent::Substitution)
         .collect(),
       Some((_parent_key, edge_key)) => edge_mutations
-        .remove(&edge_key)
+        .remove(edge_key)
         .ok_or_else(|| {
           make_internal_report!("No mutations were derived for the edge above node {node_key} in CDS '{cds}'")
         })?
@@ -201,7 +200,7 @@ pub(crate) fn collect_aa_cds_node_data(
 pub struct AaCdsNodeData {
   pub reference: String,
   pub root_sequence: String,
-  pub node_mutations: BTreeMap<GraphNodeKey, Vec<MutationEvent>>,
+  pub node_mutations: NodeMap<Vec<MutationEvent>>,
 }
 
 pub(super) fn diff_sequences(reference: &Seq, query: &Seq, unknown: AsciiChar) -> Result<Vec<Sub>, Report> {

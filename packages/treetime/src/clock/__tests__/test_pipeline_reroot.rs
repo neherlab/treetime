@@ -58,9 +58,10 @@ mod tests {
     use crate::test_utils::dates_by_node;
     use eyre::Report;
     use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::nwk_read;
@@ -147,7 +148,7 @@ mod tests {
         &mut graph,
         &mut branch_lengths,
         spec,
-        &|key| dated.contains_key(&key),
+        &|key| dated.contains_key(key),
         LengthsAdvice::OptimizeTheTree,
         &mut names,
         &NoopProgress,
@@ -159,7 +160,7 @@ mod tests {
       child_lengths(&output.graph, &output.names, &output.branch_lengths)
     }
 
-    fn node_dates(dates: &[(&str, f64)], graph: &Graph, names: &NodeNames) -> BTreeMap<GraphNodeKey, DateConstraint> {
+    fn node_dates(dates: &[(&str, f64)], graph: &Graph, names: &NodeNames) -> NodeMap<DateConstraint> {
       let dates = dates
         .iter()
         .map(|&(name, date)| (name.to_owned(), Some(DateConstraint::exact(date))));
@@ -169,7 +170,7 @@ mod tests {
     fn child_lengths(
       graph: &Graph,
       names: &NodeNames,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &EdgeMap<Option<f64>>,
     ) -> Result<BTreeMap<String, f64>, Report> {
       let schedule = GraphSchedule::new(graph)?;
       let root_key = graph.get_exactly_one_root()?.key();

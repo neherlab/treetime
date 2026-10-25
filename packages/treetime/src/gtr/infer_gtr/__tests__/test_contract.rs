@@ -18,9 +18,10 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -40,7 +41,7 @@ mod tests {
   fn setup_dense(
     tree_nwk: &str,
     aln: &[AlignmentRecord],
-  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, EdgeMap<Option<f64>>), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
@@ -60,7 +61,7 @@ mod tests {
   fn setup_sparse(
     tree_nwk: &str,
     aln: &[AlignmentRecord],
-  ) -> Result<(Graph, PartitionFitch, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, PartitionFitch, EdgeMap<Option<f64>>), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;

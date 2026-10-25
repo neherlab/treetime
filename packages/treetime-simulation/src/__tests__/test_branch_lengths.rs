@@ -3,7 +3,8 @@ mod tests {
   use crate::__tests__::test_support::tests::helpers::three_tip_tree;
   use crate::branch_lengths::{exact, perturbed, realized};
   use crate::substitution_model::SubstitutionModel;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_primitives::Seq;
@@ -14,9 +15,8 @@ mod tests {
   fn test_branch_lengths_exact_is_rate_times_duration() {
     let tree = three_tip_tree();
     let model = SubstitutionModel::jc69(0.5).unwrap();
-    let durations = btreemap! { tree.root_inner => 0.25, tree.root_c => 1.5, tree.inner_a => 0.0, tree.inner_b => 3.0 };
-    let expected =
-      btreemap! { tree.root_inner => 0.125, tree.root_c => 0.75, tree.inner_a => 0.0, tree.inner_b => 1.5 };
+    let durations = keymap! { tree.root_inner => 0.25, tree.root_c => 1.5, tree.inner_a => 0.0, tree.inner_b => 3.0 };
+    let expected = keymap! { tree.root_inner => 0.125, tree.root_c => 0.75, tree.inner_a => 0.0, tree.inner_b => 1.5 };
     let actual = exact(&durations, &model).unwrap();
     assert_eq!(expected, actual);
   }
@@ -30,7 +30,7 @@ mod tests {
   fn test_branch_lengths_exact_rejects_invalid_durations(#[case] duration: f64, #[case] expected: &str) {
     let tree = three_tip_tree();
     let model = SubstitutionModel::jc69(0.5).unwrap();
-    let durations = btreemap! { tree.root_inner => 0.25, tree.root_c => duration, tree.inner_a => 0.0, tree.inner_b => 3.0 };
+    let durations = keymap! { tree.root_inner => 0.25, tree.root_c => duration, tree.inner_a => 0.0, tree.inner_b => 3.0 };
     let result = exact(&durations, &model);
     assert_error!(result, expected);
   }
@@ -40,7 +40,7 @@ mod tests {
     let tree = three_tip_tree();
     let model = SubstitutionModel::jc69(2.0).unwrap();
     let durations =
-      btreemap! { tree.root_inner => 0.25, tree.root_c => f64::MAX, tree.inner_a => 0.0, tree.inner_b => 3.0 };
+      keymap! { tree.root_inner => 0.25, tree.root_c => f64::MAX, tree.inner_a => 0.0, tree.inner_b => 3.0 };
     let result = exact(&durations, &model);
     assert_error!(
       result,
@@ -51,14 +51,14 @@ mod tests {
   #[test]
   fn test_branch_lengths_realized_counts_differing_sites_per_site() {
     let tree = three_tip_tree();
-    let sequences = btreemap! {
+    let sequences = keymap! {
       tree.root  => Seq::try_from_str("ACGT").unwrap(),
       tree.inner => Seq::try_from_str("ACGA").unwrap(),
       tree.tip_c => Seq::try_from_str("TCGT").unwrap(),
       tree.tip_a => Seq::try_from_str("ACGA").unwrap(),
       tree.tip_b => Seq::try_from_str("GCTA").unwrap(),
     };
-    let expected = btreemap! { tree.root_inner => 0.25, tree.root_c => 0.25, tree.inner_a => 0.0, tree.inner_b => 0.5 };
+    let expected = keymap! { tree.root_inner => 0.25, tree.root_c => 0.25, tree.inner_a => 0.0, tree.inner_b => 0.5 };
     let actual = realized(&tree.graph, &sequences).unwrap();
     assert_eq!(expected, actual);
   }
@@ -66,15 +66,14 @@ mod tests {
   #[test]
   fn test_branch_lengths_realized_does_not_count_sites_with_a_gap() {
     let tree = three_tip_tree();
-    let sequences = btreemap! {
+    let sequences = keymap! {
       tree.root  => Seq::try_from_str("ACGT").unwrap(),
       tree.inner => Seq::try_from_str("A--A").unwrap(),
       tree.tip_c => Seq::try_from_str("TCGT").unwrap(),
       tree.tip_a => Seq::try_from_str("A---").unwrap(),
       tree.tip_b => Seq::try_from_str("G--A").unwrap(),
     };
-    let expected =
-      btreemap! { tree.root_inner => 0.25, tree.root_c => 0.25, tree.inner_a => 0.0, tree.inner_b => 0.25 };
+    let expected = keymap! { tree.root_inner => 0.25, tree.root_c => 0.25, tree.inner_a => 0.0, tree.inner_b => 0.25 };
     let actual = realized(&tree.graph, &sequences).unwrap();
     assert_eq!(expected, actual);
   }
@@ -91,7 +90,7 @@ mod tests {
   ) {
     let tree = three_tip_tree();
     let other = Seq::try_from_str(others).unwrap();
-    let sequences = btreemap! {
+    let sequences = keymap! {
       tree.root  => Seq::try_from_str(root).unwrap(),
       tree.inner => other.clone(),
       tree.tip_c => other.clone(),
@@ -105,7 +104,7 @@ mod tests {
   #[test]
   fn test_branch_lengths_perturbed_without_noise_keeps_lengths() {
     let tree = three_tip_tree();
-    let lengths = btreemap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
+    let lengths = keymap! { tree.root_inner => 0.1, tree.root_c => 0.2, tree.inner_a => 0.3, tree.inner_b => 0.4 };
     let actual = perturbed(&lengths, 0.0, &mut get_random_number_generator(8)).unwrap();
     assert_eq!(lengths, actual);
   }
@@ -118,7 +117,7 @@ mod tests {
   #[trace]
   fn test_branch_lengths_perturbed_rejects_invalid_sigma(#[case] sigma: f64, #[case] expected: &str) {
     let tree = three_tip_tree();
-    let lengths = btreemap! { tree.root_inner => 0.1 };
+    let lengths = keymap! { tree.root_inner => 0.1 };
     let result = perturbed(&lengths, sigma, &mut get_random_number_generator(0));
     assert_error!(result, expected);
   }

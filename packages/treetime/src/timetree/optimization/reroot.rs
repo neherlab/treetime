@@ -9,16 +9,16 @@ use crate::reroot::params::RerootParams;
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
 use eyre::{Report, WrapErr};
-use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::RerootResult;
 
 pub(crate) fn reroot_tree(
   graph: Graph,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   branch_model: BranchModel,
   constraints: &DateConstraints,
   params: &RerootFitParams<'_>,
@@ -85,7 +85,7 @@ impl<'a> RerootFitParams<'a> {
 
 pub(crate) fn reroot_and_fit_to_dates(
   graph: Graph,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   constraints: &DateConstraints,
   reroot_params: Option<&RerootParams>,
   params: &ClockFitParams<'_>,
@@ -93,7 +93,7 @@ pub(crate) fn reroot_and_fit_to_dates(
   log: &dyn LogSink,
 ) -> Result<DatedFit, Report> {
   let times = given_times(&graph, constraints)?;
-  let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+  let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
   let mut tree = ClockTree {
     graph,
     branch_lengths,
@@ -141,7 +141,7 @@ pub(crate) struct DatedFit {
 
 pub(crate) struct RerootedTree {
   pub graph: Graph,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub branch_model: BranchModel,
   pub fit: ClockFitResult,
 }

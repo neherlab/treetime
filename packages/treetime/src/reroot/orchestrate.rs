@@ -3,9 +3,8 @@ use crate::reroot::find_root::EdgePoint;
 use crate::reroot::placement::{Placement, RootTarget, leaf_keys, require_dated_new_leaves};
 use eyre::Report;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::{
@@ -22,7 +21,7 @@ pub(crate) fn apply_root_at_edge(
   point: Option<EdgePoint>,
   placement: Placement,
   topo: RerootTopologyParams,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   stem_removal: Option<StemRemovalInfo>,
   is_dated: impl Fn(GraphNodeKey) -> bool,
   names: &mut NodeNames,
@@ -47,7 +46,7 @@ pub(crate) fn apply_root_at_edge(
     },
     RootTarget::Node(key) => (key, None),
     RootTarget::Split { edge_key, split } => {
-      let length = branch_lengths.get(&edge_key).copied().flatten();
+      let length = branch_lengths.get(edge_key).copied().flatten();
       let info = split_edge(graph, names, edge_key, split, length)?;
       record_split(branch_lengths, &info);
       (info.new_node_key, Some(info))

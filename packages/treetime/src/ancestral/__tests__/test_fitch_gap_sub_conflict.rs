@@ -8,7 +8,8 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -29,8 +30,8 @@ mod tests {
     let partition = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let partition = compress_sequences(&graph, partition, leaf_seq_inputs(&graph, &names, aln))?;
 

@@ -6,6 +6,8 @@ use crate::reroot::params::RerootParams;
 use eyre::Report;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
@@ -28,7 +30,7 @@ pub(crate) fn dates_by_node(
   dates: impl IntoIterator<Item = (String, Option<DateConstraint>)>,
   graph: &Graph,
   names: &NodeNames,
-) -> BTreeMap<GraphNodeKey, DateConstraint> {
+) -> NodeMap<DateConstraint> {
   pair_by_name(graph.get_nodes().map(|node| node.key()), names, dates)
     .by_node
     .into_iter()
@@ -74,7 +76,7 @@ pub(crate) fn root_clock_fit(newick: &str, dates: &BTreeMap<String, f64>) -> Res
   let names = nwk_parsed.names.clone();
   let graph = nwk_parsed.graph;
   let times = leaf_times(&names, &graph, dates);
-  let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+  let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
   fit_clock_model(
     &ClockTree {
       graph,
@@ -90,11 +92,7 @@ pub(crate) fn root_clock_fit(newick: &str, dates: &BTreeMap<String, f64>) -> Res
   )
 }
 
-pub(crate) fn leaf_times(
-  names: &NodeNames,
-  graph: &Graph,
-  dates: &BTreeMap<String, f64>,
-) -> BTreeMap<GraphNodeKey, Option<f64>> {
+pub(crate) fn leaf_times(names: &NodeNames, graph: &Graph, dates: &BTreeMap<String, f64>) -> NodeMap<Option<f64>> {
   graph
     .get_leaves()
     .map(|node| {

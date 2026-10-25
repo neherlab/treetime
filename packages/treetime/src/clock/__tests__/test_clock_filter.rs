@@ -13,7 +13,8 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_utils::assert_error;
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_map_abs_diff_eq};
 
@@ -22,7 +23,7 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_graph(OUTLIER_TREE, &outlier_dates())?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert_eq!(vec![o!("G"), o!("H")], outlier_names(&names, &result.outliers));
@@ -39,7 +40,7 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_graph(OUTLIER_TREE, &outlier_dates())?;
     let clock_model = ClockModel::for_testing(-0.005, 10.5);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert_eq!(vec![o!("G"), o!("H")], outlier_names(&names, &result.outliers));
@@ -63,7 +64,7 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_graph(IQD_TREE, &iqd_dates())?;
     let clock_model = ClockModel::for_testing(1.0, -2000.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, threshold, &NoopProgress)?;
 
     pretty_assert_abs_diff_eq!(2.0, result.iqd, epsilon = 1e-15);
@@ -83,7 +84,7 @@ mod tests {
     let (graph, names, times, branch_lengths) = setup_graph("((A:1,B:1,C:1)X:1,(D:1,E:1)Y:1)root;", &dates)?;
     let clock_model = ClockModel::for_testing(1.0, -2000.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     pretty_assert_abs_diff_eq!(0.0, result.iqd, epsilon = 1e-15);
@@ -96,7 +97,7 @@ mod tests {
     let (graph, times, branch_lengths) = setup_low_cardinality_graph(0)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress);
 
     assert_error!(result, "Clock filtering requires at least one dated leaf");
@@ -113,7 +114,7 @@ mod tests {
     let (graph, times, branch_lengths) = setup_low_cardinality_graph(dated_leaf_count)?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.iqd.is_finite());
@@ -125,7 +126,7 @@ mod tests {
     let (graph, _, times, branch_lengths) = setup_graph(helpers::FOUR_LEAF_TREE, &helpers::four_leaf_dates(2010.0))?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.outliers.is_empty(), "No outliers expected for clean data");
@@ -140,7 +141,7 @@ mod tests {
       setup_graph(helpers::FOUR_LEAF_TREE, &helpers::four_leaf_dates(1900.0))?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let result = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 3.0, &NoopProgress)?;
 
     assert!(result.iqd > 0.0, "IQD should be positive with varying dates");
@@ -156,7 +157,7 @@ mod tests {
     let (graph, _, times, branch_lengths) = setup_graph(helpers::FOUR_LEAF_TREE, &helpers::four_leaf_dates(1980.0))?;
     let clock_model = ClockModel::for_testing(0.01, -20.0);
 
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let outliers_low_threshold = clock_filter(&graph, &inputs, &clock_model, &branch_lengths, 1.0, &NoopProgress)?
       .outliers
       .len();
@@ -177,7 +178,8 @@ mod tests {
     use itertools::Itertools;
     use maplit::btreemap;
     use std::collections::{BTreeMap, BTreeSet};
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
@@ -189,12 +191,7 @@ mod tests {
 
     pub(super) const FOUR_LEAF_TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
 
-    pub(super) type GraphSetup = (
-      Graph,
-      NodeNames,
-      BTreeMap<GraphNodeKey, Option<f64>>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    );
+    pub(super) type GraphSetup = (Graph, NodeNames, NodeMap<Option<f64>>, EdgeMap<Option<f64>>);
 
     pub(super) fn outlier_dates() -> BTreeMap<String, f64> {
       btreemap! {
@@ -268,14 +265,7 @@ mod tests {
 
     pub(super) fn setup_low_cardinality_graph(
       dated_leaf_count: usize,
-    ) -> Result<
-      (
-        Graph,
-        BTreeMap<GraphNodeKey, Option<f64>>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    ) -> Result<(Graph, NodeMap<Option<f64>>, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.2,C:0.3)root;".as_slice())?;
       let graph = nwk_parsed.graph;
       let times = graph
@@ -291,13 +281,10 @@ mod tests {
       outliers.iter().map(|key| names[*key].to_owned()).sorted().collect()
     }
 
-    pub(super) fn divergences_by_name(
-      names: &NodeNames,
-      divergences: &BTreeMap<GraphNodeKey, f64>,
-    ) -> BTreeMap<String, f64> {
+    pub(super) fn divergences_by_name(names: &NodeNames, divergences: &NodeMap<f64>) -> BTreeMap<String, f64> {
       divergences
         .iter()
-        .map(|(key, div)| (names[*key].to_owned(), *div))
+        .map(|(key, div)| (names[key].to_owned(), *div))
         .collect()
     }
   }

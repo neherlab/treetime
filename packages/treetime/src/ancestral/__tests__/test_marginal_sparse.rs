@@ -24,7 +24,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -453,7 +454,7 @@ mod tests {
           let actual = recon.view().edge_subs(&graph, edge_key)?;
           Ok((edge_key, actual))
         })
-        .collect::<Result<BTreeMap<_, _>, Report>>()?
+        .collect::<Result<EdgeMap<_>, Report>>()?
     };
 
     let seqs_by_name = graph
@@ -484,6 +485,7 @@ mod tests {
   mod helpers {
     use super::*;
     use rayon::ThreadPoolBuilder;
+    use treetime_graph::key_map::EdgeMap;
 
     pub(super) fn run_thread_determinism_case(threads: usize) -> Result<(u64, String, String), Report> {
       let newick = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -547,7 +549,7 @@ mod tests {
       names: &NodeNames,
       partition: &PartitionMarginalSparse,
       seqs_by_name: &BTreeMap<String, Seq>,
-    ) -> Result<BTreeMap<GraphEdgeKey, Vec<Sub>>, Report> {
+    ) -> Result<EdgeMap<Vec<Sub>>, Report> {
       graph
         .get_edges()
         .map(|edge| {

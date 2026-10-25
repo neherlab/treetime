@@ -1,7 +1,7 @@
 use crate::partition::marginal::sample::SampleMode;
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::Seq;
@@ -10,7 +10,7 @@ pub(crate) fn sample_internal_sequences(
   graph: &Graph,
   sample_mode: SampleMode,
   mut sample: impl FnMut(GraphNodeKey) -> Seq,
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+) -> Result<NodeMap<Seq>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   let sampled = schedule
     .preorder()

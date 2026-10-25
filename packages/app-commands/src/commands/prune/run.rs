@@ -16,8 +16,8 @@ use treetime::partition::result::AlignmentSequences;
 use treetime::progress::{LogSink, StageSink};
 use treetime::prune::pipeline::{self, PruneInput, PruneParams};
 use treetime::seq::mutation::Mutation;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::key_by_name;
@@ -95,7 +95,7 @@ pub fn run_prune(
   topology_order.apply(&mut graph, &names, &branch_lengths_opt)?;
   stages.report("Writing output", 0.8, "");
 
-  let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph
+  let branch_lengths: EdgeMap<Option<f64>> = graph
     .get_edges()
     .map(|edge| (edge.key(), branch_lengths_opt[&edge.key()]))
     .collect();
@@ -123,7 +123,7 @@ pub fn run_prune(
 fn write_prune_trees(
   graph: &Graph,
   names: &NodeNames,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   sequences: &BTreeMap<usize, TreeSequences<'_>>,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
@@ -155,7 +155,7 @@ fn prune_output_maps(
 
 struct PruneOutputMaps {
   root_sequence: Seq,
-  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  edge_mutations: EdgeMap<Vec<Mutation>>,
 }
 
 fn node_names_to_remove(remove: &[String], remove_file: Option<&Path>) -> Result<BTreeSet<String>, Report> {

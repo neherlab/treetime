@@ -4,11 +4,9 @@ use crate::make_report;
 use crate::timetree::inference::backward_pass::propagate_distributions_backward;
 use crate::timetree::inference::result::{BranchLikelihood, log_marginal_likelihood};
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_grid::MaxGridPoints;
 
 const PROBE_FACTOR: f64 = 1.25;
@@ -70,22 +68,22 @@ pub(crate) struct MarginalRateInputs<'a> {
   pub graph: &'a Graph,
   pub date_constraints: &'a DateConstraints,
   pub coalescent: Option<&'a CoalescentPrior>,
-  pub bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  pub bad_branches: &'a NodeMap<bool>,
+  pub branches: &'a EdgeMap<BranchLikelihood>,
   pub reference_rate: f64,
   pub window: RateWindow,
   pub max_points: MaxGridPoints,
 }
 
 pub(crate) fn branches_at_rate(
-  branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  branches: &EdgeMap<BranchLikelihood>,
   reference_rate: f64,
   clock_rate: f64,
-) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
+) -> Result<EdgeMap<BranchLikelihood>, Report> {
   let factor = reference_rate / clock_rate;
   branches
     .iter()
-    .map(|(&key, branch)| {
+    .map(|(key, branch)| {
       let distribution = branch
         .distribution
         .as_deref()

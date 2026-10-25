@@ -21,8 +21,8 @@ mod tests {
       let mut graph = build_tree(&parents).unwrap();
       let edge = graph.get_edges().nth(collapsed).unwrap().clone();
       let mut expected = children_by_node(&graph);
-      let target_children = expected.remove(&edge.target()).unwrap();
-      let source_children = expected.get_mut(&edge.source()).unwrap();
+      let target_children = expected.remove(edge.target()).unwrap();
+      let source_children = expected.get_mut(edge.source()).unwrap();
       source_children.retain(|child| *child != edge.target());
       source_children.extend(target_children);
 
@@ -46,12 +46,12 @@ mod tests {
   mod helpers {
     use crate::edge::GraphEdgeKey;
     use crate::graph::Graph;
+    use crate::key_map::NodeMap;
     use crate::node::GraphNodeKey;
     use eyre::Report;
     use itertools::Itertools;
-    use std::collections::BTreeMap;
 
-    type Adjacency = BTreeMap<GraphNodeKey, (Vec<GraphEdgeKey>, Vec<GraphEdgeKey>)>;
+    type Adjacency = NodeMap<(Vec<GraphEdgeKey>, Vec<GraphEdgeKey>)>;
 
     pub(super) fn build_tree(parents: &[usize]) -> Result<Graph, Report> {
       let mut graph = Graph::new();
@@ -85,7 +85,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn children_by_node(graph: &Graph) -> BTreeMap<GraphNodeKey, Vec<GraphNodeKey>> {
+    pub(super) fn children_by_node(graph: &Graph) -> NodeMap<Vec<GraphNodeKey>> {
       graph
         .get_nodes()
         .map(|node| {

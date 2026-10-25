@@ -12,6 +12,7 @@ use treetime::clock::divergence::root_to_node_divergences_where_known;
 use treetime::homoplasy::classify::MutationClass;
 use treetime::homoplasy::site_branches::sites_by_branch_count;
 use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, mutation_event_strings};
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::auspice_types::{
   AuspiceColoring, AuspiceDisplayDefaults, AuspiceGenomeAnnotationCds, AuspiceGenomeAnnotationNuc,
@@ -37,9 +38,9 @@ pub(crate) fn auspice_tree(
     Divergence::CumulativeBranchLength => {
       root_to_node_divergences_where_known(tree.tree().schedule(), tree.graph().divergence_branch_lengths)?
     },
-    Divergence::Values(values) => values.iter().map(|(&key, &div)| (key, Some(div))).collect(),
+    Divergence::Values(values) => values.iter().map(|(key, &div)| (key, Some(div))).collect(),
   };
-  let mut nodes: BTreeMap<GraphNodeKey, AuspiceTreeNode> = BTreeMap::new();
+  let mut nodes: NodeMap<AuspiceTreeNode> = NodeMap::new();
   let mut has_mutations = false;
   for &key in tree.tree().preorder().iter().rev() {
     let mut node = auspice_node(tree, key, divergences[&key])?;
@@ -58,7 +59,7 @@ pub(crate) fn auspice_tree(
   }
   let root_key = tree.tree().root();
   let root = nodes
-    .remove(&root_key)
+    .remove(root_key)
     .ok_or_else(|| make_internal_report!("Auspice root node {root_key} was not converted"))?;
   Ok(AuspiceTree {
     data: auspice_data(tree, command, updated, has_mutations)?,
@@ -218,7 +219,7 @@ fn auspice_node(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey, div: Option<f64
   let num_date_confidence = graph
     .dates
     .as_ref()
-    .and_then(|dates| dates.confidence?.get(&key))
+    .and_then(|dates| dates.confidence?.get(key))
     .map(|&interval| date_confidence(interval, &name))
     .transpose()?;
   let (traits, labels) = match &graph.traits {
@@ -277,7 +278,7 @@ fn node_mutations(tree: &AnnotatedTreeView<'_>, key: GraphNodeKey) -> Result<BTr
   if let Some(tracks) = sequences
     .amino_acids
     .as_ref()
-    .and_then(|amino_acids| amino_acids.node_data.node_aa_mutations.get(&key))
+    .and_then(|amino_acids| amino_acids.node_data.node_aa_mutations.get(key))
   {
     for (track, events) in tracks.iter().filter(|(_, events)| !events.is_empty()) {
       let strings = grouped.entry(auspice_track_name(track)?.to_owned()).or_default();

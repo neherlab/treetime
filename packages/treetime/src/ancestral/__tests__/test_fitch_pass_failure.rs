@@ -23,7 +23,7 @@ mod tests {
     let FitchInput { graph, names, partition, node_inputs } = fitch_input()?;
     let mut partition = attach_seqs_to_graph(&graph, partition, node_inputs)?;
     let leaf = find_node_key_by_name(&graph, &names, failing_leaf).expect("leaf exists");
-    partition.nodes.remove(&leaf);
+    partition.nodes.remove(leaf);
 
     let result = run_in_pool(threads, || fitch_backward(&graph, partition));
 

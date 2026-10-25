@@ -45,7 +45,7 @@ fn run_fitch_reconstruction(
 
     let node_data = partition
       .nodes
-      .get_mut(&key)
+      .get_mut(key)
       .ok_or_else(|| make_internal_report!("Node {key} has no Fitch data"))?;
     let seq = &mut node_data.seq;
 

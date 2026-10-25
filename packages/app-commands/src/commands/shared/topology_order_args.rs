@@ -7,9 +7,9 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
@@ -113,7 +113,7 @@ impl TopologyOrder {
     let target_order = if self.preset.is_target_order() {
       self.target_order(graph, names, input_order, tree_dialect)?
     } else {
-      BTreeMap::new()
+      NodeMap::new()
     };
     Ok(TopologyOrderSpec {
       preset: self.preset,
@@ -128,7 +128,7 @@ impl TopologyOrder {
     names: &NodeNames,
     input_order: Option<Vec<GraphNodeKey>>,
     tree_dialect: NewickDialect,
-  ) -> Result<BTreeMap<GraphNodeKey, usize>, Report> {
+  ) -> Result<NodeMap<usize>, Report> {
     let target_names = match &self.target {
       TargetOrderSource::Tree(path) => {
         let nwk_parsed = tree_read_file(path, tree_dialect).wrap_err("When reading the topology order tree")?;
@@ -160,11 +160,7 @@ enum TargetOrderSource {
   List(PathBuf),
 }
 
-pub(crate) fn target_positions(
-  target_names: Vec<String>,
-  graph: &Graph,
-  names: &NodeNames,
-) -> BTreeMap<GraphNodeKey, usize> {
+pub(crate) fn target_positions(target_names: Vec<String>, graph: &Graph, names: &NodeNames) -> NodeMap<usize> {
   let positions = target_names
     .into_iter()
     .enumerate()

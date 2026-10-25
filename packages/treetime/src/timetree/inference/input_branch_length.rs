@@ -12,11 +12,10 @@ use argmin::solver::brent::BrentRoot;
 use eyre::Report;
 use log::debug;
 use ndarray::Array1;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, DistributionFunction, NegLog};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_grid::{BoundaryBehavior, EdgeCellLaw, GridFn, MaxGridPoints, SoftTailLaw};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_internal_error, make_internal_report, make_report};
@@ -36,7 +35,7 @@ const GRID_POINTS_PER_WIDTH: f64 = 10.0;
 pub(crate) fn input_branch_model(
   sequence_length: usize,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   sequences: TimetreeSequences,
   log: &dyn LogSink,
 ) -> Result<InputBranchModel, Report> {
@@ -271,7 +270,7 @@ impl CostFunction for PoissonLevel {
 
 fn partitions_saturated_difference(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   input: SequenceInput,
   log: &dyn LogSink,
 ) -> Result<f64, Report> {

@@ -137,10 +137,10 @@ mod tests {
     use crate::seq::alignment::NodeSeqInput;
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, Seq};
 
@@ -148,8 +148,8 @@ mod tests {
 
     pub(super) struct Input {
       pub(super) graph: Graph,
-      pub(super) node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+      pub(super) node_inputs: NodeMap<NodeSeqInput>,
+      pub(super) branch_lengths: EdgeMap<f64>,
     }
 
     impl Input {

@@ -106,6 +106,7 @@ mod tests {
     use crate::test_utils::reroot_and_fit_clock;
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
+    use treetime_graph::key_map::EdgeMap;
     use treetime_io::nwk::nwk_read;
 
     pub(super) const LEAF_NAMES: [&str; 4] = ["A", "B", "C", "D"];
@@ -173,7 +174,7 @@ mod tests {
         .get_edges()
         .map(|edge| (edge.key(), edge_names(&names[edge.source()], &names[edge.target()])))
         .collect();
-      let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+      let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
       let reroot_params = RerootParams {
         force_positive_rate,
         ..RerootParams::default()

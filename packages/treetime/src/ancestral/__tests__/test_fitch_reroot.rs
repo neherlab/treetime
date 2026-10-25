@@ -14,7 +14,8 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
   use treetime_graph::reroot::{
@@ -56,8 +57,8 @@ mod tests {
     let fitch = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -250,8 +251,8 @@ mod tests {
     let fitch = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 
@@ -332,7 +333,7 @@ mod tests {
     );
 
     assert!(
-      !recon.partition.obs_nodes.contains_key(&old_root_key),
+      !recon.partition.obs_nodes.contains_key(old_root_key),
       "old root node should be removed from partition after trivial root removal"
     );
 
@@ -384,8 +385,8 @@ mod tests {
     let fitch = PartitionFitch {
       alphabet,
       length: get_common_length(&aln)?,
-      nodes: btreemap! {},
-      edges: btreemap! {},
+      nodes: keymap! {},
+      edges: keymap! {},
     };
     let fitch = compress_sequences(&graph, fitch, leaf_seq_inputs(&graph, &names, aln))?;
 

@@ -25,8 +25,8 @@ use ndarray::array;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::LazyLock;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read;
@@ -37,7 +37,7 @@ pub(crate) static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::def
 
 pub(crate) fn run_dense_marginal(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   names: &NodeNames,
   aln: &[AlignmentRecord],
   gtr: GTR,
@@ -51,7 +51,7 @@ pub(crate) fn run_dense_marginal(
 
 pub(crate) fn run_sparse_marginal(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   names: &NodeNames,
   aln: &[AlignmentRecord],
   gtr: GTR,
@@ -112,7 +112,7 @@ fn nuc_records(aln_str: &str) -> Result<Vec<AlignmentRecord>, Report> {
 pub(crate) fn marginal_update_reconstruction(
   reconstruction: MarginalReconstruction,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<(MarginalReconstruction, LogLh), Report> {
   Ok(match reconstruction {
     MarginalReconstruction::Dense(reconstruction) => {
@@ -149,7 +149,7 @@ pub(crate) fn node_keys(graph: &Graph) -> Vec<GraphNodeKey> {
 pub(crate) fn emitted_sequences_by_name(
   names: &NodeNames,
   emitted_nodes: &[GraphNodeKey],
-  sampled: &BTreeMap<GraphNodeKey, Seq>,
+  sampled: &NodeMap<Seq>,
   node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
 ) -> Result<BTreeMap<String, Seq>, Report> {
   emitted_nodes
@@ -260,16 +260,12 @@ pub(crate) fn dense_partition_with_constant_leaves(
   PartitionMarginalDense::new(alphabet, graph, &node_inputs)
 }
 
-pub(crate) fn leaf_seq_inputs(
-  graph: &Graph,
-  names: &NodeNames,
-  aln: Vec<AlignmentRecord>,
-) -> BTreeMap<GraphNodeKey, NodeSeqInput> {
+pub(crate) fn leaf_seq_inputs(graph: &Graph, names: &NodeNames, aln: Vec<AlignmentRecord>) -> NodeMap<NodeSeqInput> {
   pair_leaf_sequences(graph, names, aln).sequences.nodes
 }
 
 pub(crate) struct CompletedSequences {
-  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub(crate) nodes: NodeMap<NodeSeqInput>,
   pub(crate) mask: Vec<bool>,
 }
 
@@ -290,10 +286,7 @@ pub(crate) fn complete_sequence_source(
   })
 }
 
-pub(crate) fn sequence_source(
-  alphabet: Alphabet,
-  nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<SequenceSource, Report> {
+pub(crate) fn sequence_source(alphabet: Alphabet, nodes: NodeMap<NodeSeqInput>) -> Result<SequenceSource, Report> {
   let length = get_common_length_of_node_inputs(&nodes)?;
   let mask = create_mask(nodes.values().filter_map(|node| node.seq.as_ref()), length, &alphabet);
   Ok(SequenceSource {
@@ -326,7 +319,7 @@ pub(crate) fn whole_alignment_set(
   model: &GtrModel,
   graph: &Graph,
   sources: Vec<SequenceSource>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<PartitionSet, Report> {
   let SplitInput { partitions, .. } = SequenceInput::whole_alignments(sources, model)?.split()?;
   build_partition_set(representation, graph, partitions, branch_lengths, &NoopProgress)
@@ -368,13 +361,13 @@ impl From<MarginalReconstruction> for PartitionSet {
 pub(crate) fn sparse_topology_partitions(partitions: Vec<PartitionMarginalSparse>) -> Vec<SparseReconstruction> {
   partitions
     .into_iter()
-    .map(|partition| sparse_topology_partition(partition, BTreeMap::new()))
+    .map(|partition| sparse_topology_partition(partition, NodeMap::new()))
     .collect()
 }
 
 pub(crate) fn sparse_topology_partition(
   partition: PartitionMarginalSparse,
-  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
+  node_states: NodeMap<SparseNodeState>,
 ) -> SparseReconstruction {
   SparseReconstruction::seeded(
     partition,

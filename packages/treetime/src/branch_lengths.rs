@@ -1,21 +1,18 @@
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
 
-pub fn branch_lengths_or_zero(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, f64> {
+pub fn branch_lengths_or_zero(branch_lengths: &EdgeMap<Option<f64>>) -> EdgeMap<f64> {
   branch_lengths
     .iter()
-    .map(|(key, raw)| (*key, raw.unwrap_or(0.0)))
+    .map(|(key, raw)| (key, raw.unwrap_or(0.0)))
     .collect()
 }
 
-pub(crate) fn branch_length_or_zero(
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  edge_key: GraphEdgeKey,
-) -> f64 {
+pub(crate) fn branch_length_or_zero(branch_lengths: &EdgeMap<Option<f64>>, edge_key: GraphEdgeKey) -> f64 {
   branch_lengths[&edge_key].unwrap_or(0.0)
 }
 
@@ -25,7 +22,7 @@ pub(crate) fn one_mutation(sequence_length: usize) -> f64 {
 
 pub(crate) fn invalid_branch_length_descriptions(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   names: &NodeNames,
 ) -> Result<Vec<String>, Report> {
   graph

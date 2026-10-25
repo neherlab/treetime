@@ -37,11 +37,12 @@ mod tests {
   mod helpers {
     use super::super::super::test_graph_support::tests::helpers::NamedGraph;
     use crate::edge::invert_edge;
+    use crate::key_map::EdgeMap;
+    use crate::key_map::NodeMap;
     use crate::node_names::NodeNames;
     use crate::schedule::GraphSchedule;
     use crate::topology_order::TopologyOrderSpec;
     use eyre::Report;
-    use std::collections::BTreeMap;
 
     #[derive(Clone, Copy, Debug)]
     pub(super) enum TopologyChange {
@@ -94,8 +95,8 @@ mod tests {
     }
 
     fn order_by_descendant_count(tree: &mut NamedGraph) -> Result<(), Report> {
-      let names = NodeNames::from_input(BTreeMap::new(), &tree.graph)?.names;
-      TopologyOrderSpec::default().apply(&mut tree.graph, &names, &BTreeMap::new())
+      let names = NodeNames::from_input(NodeMap::new(), &tree.graph)?.names;
+      TopologyOrderSpec::default().apply(&mut tree.graph, &names, &EdgeMap::new())
     }
   }
 }

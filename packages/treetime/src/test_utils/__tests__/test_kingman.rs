@@ -5,7 +5,8 @@ mod tests {
   };
   use eyre::Report;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
@@ -28,7 +29,7 @@ mod tests {
     #[case] expected: f64,
   ) -> Result<(), Report> {
     let parsed = nwk_read(tree.as_bytes())?;
-    let dates: BTreeMap<_, _> = times
+    let dates: NodeMap<_> = times
       .iter()
       .map(|&(name, date)| {
         let key = find_node_key_by_name(&parsed.graph, &parsed.names, name).expect("node must exist");

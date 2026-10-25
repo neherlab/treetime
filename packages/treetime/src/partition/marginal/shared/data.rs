@@ -7,19 +7,17 @@ use crate::partition::marginal::posterior_states::most_likely_state;
 use crate::partition::storage::dense::{DenseEdgeBackward, DenseEdgeForward, DenseNodeState};
 use eyre::Report;
 use ndarray::prelude::*;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 
 pub(crate) fn count_transitions_dense(
   inputs: &DenseInputs,
   gtr: &GTR,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-  backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-  forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+  branch_lengths: &EdgeMap<f64>,
+  node_states: &NodeMap<DenseNodeState>,
+  backward: &EdgeMap<DenseEdgeBackward>,
+  forward: &EdgeMap<DenseEdgeForward>,
 ) -> Result<MutationCounts, Report> {
   let n_states = gtr.pi().len();
   let mut nij = Array2::zeros((n_states, n_states));

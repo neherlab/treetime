@@ -3,11 +3,10 @@ use eyre::Report;
 use itertools::Itertools;
 use rand::Rng;
 use rand_distr::{Distribution, Exp1};
-use std::collections::BTreeMap;
 use std::iter::repeat_with;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::{AlignmentRecord, Seq};
@@ -37,7 +36,7 @@ pub struct SiteEvolution {
 
 pub fn evolve_sequences(
   graph: &Graph,
-  durations: &BTreeMap<GraphEdgeKey, f64>,
+  durations: &EdgeMap<f64>,
   model: &SubstitutionModel,
   length: usize,
   rng: &mut impl Rng,
@@ -49,14 +48,14 @@ pub fn evolve_sequences(
   schedule.require_tree()?;
   for edge in graph.get_edges() {
     let key = edge.key();
-    let Some(&duration) = durations.get(&key) else {
+    let Some(&duration) = durations.get(key) else {
       return make_error!("Edge {key} has no duration");
     };
     validate_edge_duration(key, duration)?;
   }
 
-  let mut states: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
-  let mut substitutions = BTreeMap::new();
+  let mut states: NodeMap<Vec<usize>> = NodeMap::new();
+  let mut substitutions = EdgeMap::new();
   for &node in schedule.preorder() {
     let node_states = match schedule.parents(node) {
       [] => repeat_with(|| model.sample_state(rng)).take(length).collect_vec(),
@@ -88,8 +87,8 @@ pub fn evolve_sequences(
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SimulatedSequences {
-  pub sequences: BTreeMap<GraphNodeKey, Seq>,
-  pub substitutions: BTreeMap<GraphEdgeKey, usize>,
+  pub sequences: NodeMap<Seq>,
+  pub substitutions: EdgeMap<usize>,
 }
 
 impl SimulatedSequences {
@@ -98,7 +97,7 @@ impl SimulatedSequences {
   }
 }
 
-pub fn leaf_records(graph: &Graph, names: &NodeNames, sequences: &BTreeMap<GraphNodeKey, Seq>) -> Vec<AlignmentRecord> {
+pub fn leaf_records(graph: &Graph, names: &NodeNames, sequences: &NodeMap<Seq>) -> Vec<AlignmentRecord> {
   graph
     .get_leaves()
     .map(|leaf| AlignmentRecord {

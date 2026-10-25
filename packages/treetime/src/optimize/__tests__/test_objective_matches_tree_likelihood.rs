@@ -94,7 +94,8 @@ mod tests {
     use eyre::Report;
     use indoc::indoc;
     use ndarray::array;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_io::fasta::fasta_read;
@@ -103,7 +104,7 @@ mod tests {
 
     pub(super) struct SkewedPiTree {
       pub(super) graph: Graph,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+      pub(super) branch_lengths: EdgeMap<f64>,
       pub(super) reconstruction: PartitionSet,
       pub(super) log_lh_0: f64,
     }
@@ -126,10 +127,10 @@ mod tests {
       let parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;".as_slice())?;
       let names = parsed.names.clone();
       let graph = parsed.graph;
-      let branch_lengths: BTreeMap<GraphEdgeKey, f64> = parsed
+      let branch_lengths: EdgeMap<f64> = parsed
         .branch_lengths
         .iter()
-        .map(|(&k, v)| (k, v.unwrap_or(0.0)))
+        .map(|(k, v)| (k, v.unwrap_or(0.0)))
         .collect();
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = fasta_read(

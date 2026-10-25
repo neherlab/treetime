@@ -2,7 +2,8 @@
 pub(crate) mod tests {
   pub(crate) mod helpers {
     use itertools::Itertools;
-    use maplit::btreemap;
+    use treetime_graph::keymap;
+
     use statrs::stats_tests::chisquare::chisquare;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
@@ -36,7 +37,7 @@ pub(crate) mod tests {
       let inner_a = graph.add_edge(inner, tip_a).unwrap();
       let inner_b = graph.add_edge(inner, tip_b).unwrap();
       graph.build().unwrap();
-      let input = btreemap! {
+      let input = keymap! {
         root => Some("root".to_owned()),
         inner => Some("inner".to_owned()),
         tip_a => Some("A".to_owned()),

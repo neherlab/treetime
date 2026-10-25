@@ -2,8 +2,9 @@ use eyre::Report;
 use std::collections::BTreeMap;
 use treetime::ancestral::aa::AaNodeData;
 use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, Sub};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::AsciiChar;
@@ -29,18 +30,18 @@ impl UnknownMutationFilter {
   pub fn reported_edge_mutations(
     self,
     graph: &Graph,
-    mut edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
+    mut edge_mutations: EdgeMap<Vec<Mutation>>,
+  ) -> Result<EdgeMap<Vec<Mutation>>, Report> {
     if self.report_unknown {
       return Ok(edge_mutations);
     }
     let schedule = GraphSchedule::new(graph)?;
     schedule.require_tree()?;
     let mut bridge = UnknownBridge::new(self.unknown);
-    let mut reported = BTreeMap::new();
+    let mut reported = EdgeMap::new();
     for &key in schedule.preorder() {
       if let &[(parent_key, edge_key)] = schedule.parents(key) {
-        let mutations = edge_mutations.remove(&edge_key);
+        let mutations = edge_mutations.remove(edge_key);
         let present = mutations.is_some();
         let mutations = bridge.bridge_edge(
           parent_key,
@@ -68,9 +69,9 @@ impl UnknownMutationFilter {
     let schedule = GraphSchedule::new(graph)?;
     schedule.require_tree()?;
     let mut bridge = UnknownBridge::new(self.unknown);
-    let mut reported = BTreeMap::new();
+    let mut reported = NodeMap::new();
     for &key in schedule.preorder() {
-      let cds_events = node_aa_mutations.remove(&key);
+      let cds_events = node_aa_mutations.remove(key);
       let &[(parent_key, _)] = schedule.parents(key) else {
         if let Some(cds_events) = cds_events {
           reported.insert(key, cds_events);
@@ -149,7 +150,7 @@ impl UnknownBridge {
         reported.push(mutation);
       }
     }
-    if child_count > 0 && !hidden.is_empty() {
+    if !hidden.is_empty() {
       self.hidden.insert(
         node_key,
         HiddenStates {

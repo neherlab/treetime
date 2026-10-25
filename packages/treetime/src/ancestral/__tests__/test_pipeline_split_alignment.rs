@@ -112,10 +112,10 @@ mod tests {
     use eyre::Report;
     use itertools::Itertools;
     use ndarray::{Array1, Array2};
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use std::str::FromStr;
-    use treetime_graph::edge::GraphEdgeKey;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AlignmentRecord, LogLh, Seq};
     use treetime_utils::sync::random::get_random_number_generator;
@@ -123,10 +123,10 @@ mod tests {
     const AMBIGUITY_THRESHOLD: f64 = 0.2;
 
     pub(super) struct Reconstructed {
-      pub(super) emitted: BTreeMap<GraphNodeKey, EmittedSequence>,
+      pub(super) emitted: NodeMap<EmittedSequence>,
       pub(super) root_sequence: Seq,
-      pub(super) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-      pub(super) edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
+      pub(super) edge_mutations: EdgeMap<Vec<Mutation>>,
+      pub(super) edge_mutation_counts: EdgeMap<usize>,
       pub(super) models: Vec<Model>,
       pub(super) log_lh: Vec<f64>,
     }
@@ -332,19 +332,16 @@ mod tests {
         emitted: sink.emitted,
         root_sequence: mutations.root_sequence,
         edge_mutations: mutations.edge_mutations,
-        edge_mutation_counts: BTreeMap::new(),
+        edge_mutation_counts: EdgeMap::new(),
         models: vec![model_of(partition.gtr().expect("a marginal run fits a model"))],
         log_lh: vec![log_lh.value()],
       })
     }
 
-    pub(super) fn columns(
-      emitted: &BTreeMap<GraphNodeKey, EmittedSequence>,
-      columns_of: &[usize],
-    ) -> BTreeMap<GraphNodeKey, EmittedSequence> {
+    pub(super) fn columns(emitted: &NodeMap<EmittedSequence>, columns_of: &[usize]) -> NodeMap<EmittedSequence> {
       emitted
         .iter()
-        .map(|(&key, sequence)| {
+        .map(|(key, sequence)| {
           let ambiguous_sites = columns_of
             .iter()
             .enumerate()
@@ -371,14 +368,14 @@ mod tests {
 
     struct AmbiguitySink {
       threshold: AmbiguityThreshold,
-      emitted: BTreeMap<GraphNodeKey, EmittedSequence>,
+      emitted: NodeMap<EmittedSequence>,
     }
 
     impl AmbiguitySink {
       fn new() -> Result<Self, Report> {
         Ok(Self {
           threshold: AmbiguityThreshold::new(AMBIGUITY_THRESHOLD)?,
-          emitted: BTreeMap::new(),
+          emitted: NodeMap::new(),
         })
       }
     }

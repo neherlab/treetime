@@ -8,8 +8,8 @@ use treetime::ancestral::aa::AaNodeData;
 use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
 use treetime::partition::marginal::posterior_states::AmbiguityThreshold;
 use treetime::seq::mutation::{Mutation, PositionBase};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::{GraphSchedule, TreeSchedule};
@@ -45,8 +45,8 @@ impl<'a> AnnotatedTreeView<'a> {
 pub struct AnnotatedGraph<'a> {
   pub graph: &'a Graph,
   pub names: &'a NodeNames,
-  pub divergence_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub time_branch_lengths: Option<&'a BTreeMap<GraphEdgeKey, Option<f64>>>,
+  pub divergence_branch_lengths: &'a EdgeMap<Option<f64>>,
+  pub time_branch_lengths: Option<&'a EdgeMap<Option<f64>>>,
   pub divergence: Divergence<'a>,
   pub sequences: Option<TreeSequences<'a>>,
   pub dates: Option<TreeDates<'a>>,
@@ -54,7 +54,7 @@ pub struct AnnotatedGraph<'a> {
 }
 
 impl AnnotatedGraph<'_> {
-  pub fn tree_branch_lengths(&self) -> &BTreeMap<GraphEdgeKey, Option<f64>> {
+  pub fn tree_branch_lengths(&self) -> &EdgeMap<Option<f64>> {
     self.time_branch_lengths.unwrap_or(self.divergence_branch_lengths)
   }
 }
@@ -62,14 +62,14 @@ impl AnnotatedGraph<'_> {
 #[derive(Clone, Copy)]
 pub enum Divergence<'a> {
   CumulativeBranchLength,
-  Values(&'a BTreeMap<GraphNodeKey, f64>),
+  Values(&'a NodeMap<f64>),
 }
 
 #[derive(Clone, Copy)]
 pub struct TreeSequences<'a> {
   pub alphabet: &'a Alphabet,
   pub root_sequence: &'a Seq,
-  pub edge_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub edge_mutations: &'a EdgeMap<Vec<Mutation>>,
   pub amino_acids: Option<TreeAminoAcids<'a>>,
   pub comment_positions: PositionBase,
 }
@@ -82,17 +82,17 @@ pub struct TreeAminoAcids<'a> {
 
 #[derive(Clone, Copy)]
 pub struct TreeDates<'a> {
-  pub num_date: &'a BTreeMap<GraphNodeKey, Option<f64>>,
-  pub confidence: Option<&'a BTreeMap<GraphNodeKey, [f64; 2]>>,
+  pub num_date: &'a NodeMap<Option<f64>>,
+  pub confidence: Option<&'a NodeMap<[f64; 2]>>,
   pub excluded: &'a BTreeSet<GraphNodeKey>,
-  pub input_dates: Option<&'a BTreeMap<GraphNodeKey, DateConstraint>>,
+  pub input_dates: Option<&'a NodeMap<DateConstraint>>,
 }
 
 #[derive(Clone, Copy)]
 pub struct TreeTraits<'a> {
   pub attribute: &'a str,
   pub states: &'a StateAlphabet,
-  pub posteriors: &'a BTreeMap<GraphNodeKey, StatePosterior>,
+  pub posteriors: &'a NodeMap<StatePosterior>,
   pub ambiguity: Option<&'a AmbiguityOutputs>,
   pub demes: Option<&'a BTreeMap<String, Coordinates>>,
 }

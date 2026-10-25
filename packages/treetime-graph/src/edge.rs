@@ -50,7 +50,7 @@ pub fn invert_edge(graph: &mut Graph, edge_key: GraphEdgeKey) {
 }
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
-pub struct GraphEdgeKey(pub usize);
+pub struct GraphEdgeKey(pub(crate) usize);
 
 impl GraphEdgeKey {
   pub(crate) const fn as_usize(self) -> usize {

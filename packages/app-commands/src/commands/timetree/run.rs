@@ -34,8 +34,8 @@ use treetime::timetree::coalescent::CoalescentOutput;
 use treetime::timetree::confidence::NodeConfidenceInterval;
 use treetime::timetree::params::{BranchLengthMode, TimetreeParams};
 use treetime::timetree::pipeline::{self, SequenceLength, TimetreeInput, TimetreeOutput, TimetreeSequences};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::dates_csv::DateConstraint;
@@ -326,7 +326,7 @@ fn write_timetree_trees(
     .mutation_counts
     .map(|counts| mutation_divergences(trees.graph, counts))
     .transpose()?;
-  let date_confidence: Option<BTreeMap<GraphNodeKey, [f64; 2]>> = trees.confidence_intervals.map(|intervals| {
+  let date_confidence: Option<NodeMap<[f64; 2]>> = trees.confidence_intervals.map(|intervals| {
     intervals
       .iter()
       .map(|interval| (interval.key, [interval.lower, interval.upper]))
@@ -368,25 +368,22 @@ fn write_timetree_trees(
 struct TimetreeTrees<'a> {
   graph: &'a Graph,
   names: &'a NodeNames,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  date_branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
-  divergences: &'a BTreeMap<GraphNodeKey, f64>,
+  branch_lengths: &'a EdgeMap<Option<f64>>,
+  date_branch_lengths: &'a EdgeMap<Option<f64>>,
+  divergences: &'a NodeMap<f64>,
   sequences: &'a BTreeMap<usize, TreeSequences<'a>>,
-  mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
-  node_dates: &'a BTreeMap<GraphNodeKey, Option<f64>>,
+  mutation_counts: Option<&'a EdgeMap<usize>>,
+  node_dates: &'a NodeMap<Option<f64>>,
   confidence_intervals: Option<&'a [NodeConfidenceInterval]>,
   outliers: &'a BTreeSet<GraphNodeKey>,
-  bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  input_dates: Option<&'a BTreeMap<GraphNodeKey, DateConstraint>>,
+  bad_branches: &'a NodeMap<bool>,
+  input_dates: Option<&'a NodeMap<DateConstraint>>,
 }
 
-fn mutation_divergences(
-  graph: &Graph,
-  mutation_counts: &BTreeMap<GraphEdgeKey, usize>,
-) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+fn mutation_divergences(graph: &Graph, mutation_counts: &EdgeMap<usize>) -> Result<NodeMap<f64>, Report> {
   root_to_node_divergences(graph, |edge_key| {
     mutation_counts
-      .get(&edge_key)
+      .get(edge_key)
       .copied()
       .unwrap_or_default()
       .to_f64_exact()
@@ -445,6 +442,6 @@ fn sequence_outputs_requested(resolved: &ResolvedOutputs, mutation_units: bool, 
 
 struct TimetreeOutputMaps {
   root_sequence: Seq,
-  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
+  edge_mutations: EdgeMap<Vec<Mutation>>,
+  edge_mutation_counts: EdgeMap<usize>,
 }

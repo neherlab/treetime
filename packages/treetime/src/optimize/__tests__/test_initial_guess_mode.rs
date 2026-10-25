@@ -20,8 +20,7 @@ pub(super) mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -380,8 +379,9 @@ pub(super) mod tests {
 
   pub(crate) mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
 
-    pub(crate) fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+    pub(crate) fn get_branch_lengths(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Vec<f64> {
       graph
         .get_edges()
         .map(|e| branch_lengths[&e.key()].unwrap_or(f64::NAN))
@@ -390,7 +390,7 @@ pub(super) mod tests {
 
     pub(crate) fn set_first_branch_length(
       graph: &Graph,
-      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &mut EdgeMap<Option<f64>>,
       branch_length: f64,
     ) {
       let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
@@ -400,7 +400,7 @@ pub(super) mod tests {
     pub(crate) fn set_branch_length_by_target_name(
       names: &NodeNames,
       graph: &Graph,
-      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &mut EdgeMap<Option<f64>>,
       target_name: &str,
       branch_length: f64,
     ) {
@@ -423,7 +423,7 @@ pub(super) mod tests {
       dense_reconstruction_mut(reconstruction)
         .edges
         .estimates
-        .get_mut(&edge_key)
+        .get_mut(edge_key)
         .unwrap()
         .indels = vec![deletion((4, 7), Seq::try_from_str("ACG")?)];
       Ok(())
@@ -431,7 +431,7 @@ pub(super) mod tests {
 
     pub(crate) fn setup_dense_with_marginal(
       newick: &str,
-    ) -> Result<(Graph, NodeNames, PartitionSet, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    ) -> Result<(Graph, NodeNames, PartitionSet, EdgeMap<Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = test_alignment()?.into_iter().map(AlignmentRecord::from).collect();
       let nwk_parsed = nwk_read(newick.as_bytes())?;

@@ -10,10 +10,10 @@ use getset::CopyGetters;
 use itertools::Itertools;
 use regex::regex;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use std::str::FromStr;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::AsciiChar;
@@ -38,9 +38,9 @@ pub(crate) fn stream_sequence_mutations(
   let schedule = GraphSchedule::new(graph).map_err(OperationError::classify)?;
   schedule.require_tree().map_err(OperationError::classify)?;
   let track = seq_track.mutation_track();
-  let mut pending_parents: BTreeMap<GraphNodeKey, (Seq, usize)> = BTreeMap::new();
+  let mut pending_parents: NodeMap<(Seq, usize)> = NodeMap::new();
   let mut root_sequence = None;
-  let mut edge_mutations = BTreeMap::new();
+  let mut edge_mutations = EdgeMap::new();
   for &key in schedule.preorder() {
     let seq = node_sequence(key).map_err(OperationError::classify)?;
     let child_count = schedule.children(key).len();
@@ -57,7 +57,7 @@ pub(crate) fn stream_sequence_mutations(
     match schedule.parents(key).first() {
       None => root_sequence = Some(seq.clone()),
       Some(&(parent_key, edge_key)) => {
-        let (parent_seq, pending_children) = pending_parents.get_mut(&parent_key).ok_or_else(|| {
+        let (parent_seq, pending_children) = pending_parents.get_mut(parent_key).ok_or_else(|| {
           OperationError::InferenceFailed(make_internal_report!(
             "Parent {parent_key} of node {key} was not visited first"
           ))
@@ -66,7 +66,7 @@ pub(crate) fn stream_sequence_mutations(
         let subs = sequence_subs(parent_seq, &seq, alphabet, skip_unknown).map_err(OperationError::classify)?;
         *pending_children -= 1;
         if *pending_children == 0 {
-          pending_parents.remove(&parent_key);
+          pending_parents.remove(parent_key);
         }
         let mutations =
           combine_edge_mutations(subs, &edge_indels(edge_key), &track).map_err(OperationError::classify)?;
@@ -88,7 +88,7 @@ pub(crate) fn stream_sequence_mutations(
 #[derive(Clone, Debug)]
 pub(crate) struct SequenceMutations {
   pub(crate) root_sequence: Seq,
-  pub(crate) edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  pub(crate) edge_mutations: EdgeMap<Vec<Mutation>>,
 }
 
 pub(crate) fn emit_sequences(
@@ -153,12 +153,12 @@ pub(crate) fn sequence_subs(
 }
 
 pub fn edge_state_change_counts(
-  edge_mutations: &BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  edge_mutations: &EdgeMap<Vec<Mutation>>,
   alphabet: &Alphabet,
-) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
+) -> Result<EdgeMap<usize>, Report> {
   edge_mutations
     .iter()
-    .map(|(&edge_key, mutations)| {
+    .map(|(edge_key, mutations)| {
       let changes = mutations
         .iter()
         .map(|mutation| match &mutation.event {

@@ -9,9 +9,9 @@ use crate::reroot::params::RootObjective;
 use eyre::Report;
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::split_fraction::SplitFraction;
 
 const FLAT_CURVATURE: f64 = 1e-12;
@@ -19,7 +19,7 @@ const FLAT_CURVATURE: f64 = 1e-12;
 pub(crate) fn search_edges(
   graph: &Graph,
   state: &ClockState,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   force_positive: bool,
   objective: RootObjective,
   log: &dyn LogSink,
@@ -131,7 +131,7 @@ impl BranchPointCostFunction {
   fn new(
     state: &ClockState,
     edge: GraphEdgeKey,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     objective: RootObjective,
   ) -> Self {
     let edge_state = state.edge(edge);

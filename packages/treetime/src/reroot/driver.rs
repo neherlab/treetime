@@ -6,16 +6,16 @@ use crate::reroot::orchestrate::apply_root_at_edge;
 use crate::reroot::params::RerootParams;
 use crate::reroot::placement::root_moves;
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::{RerootResult, StemRemovalInfo, remove_stem_root};
 
 pub(crate) fn reroot_at_best_root(
   graph: &mut Graph,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   inputs: &mut ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
   reroot_params: &RerootParams,
@@ -49,11 +49,11 @@ pub(crate) fn reroot_at_best_root(
 
 pub(crate) fn update_clock_inputs(inputs: &mut ClockInputs, result: &RerootResult) {
   if let Some(stem) = &result.stem_removal {
-    inputs.nodes.remove(&stem.removed_node_key);
-    inputs.edges.remove(&stem.removed_edge_key);
+    inputs.nodes.remove(stem.removed_node_key);
+    inputs.edges.remove(stem.removed_edge_key);
   }
   if let Some(split) = &result.edge_split {
-    inputs.edges.remove(&split.old_edge_key);
+    inputs.edges.remove(split.old_edge_key);
     inputs
       .edges
       .insert(split.parent_side_edge_key, ClockEdgeInput::default());
@@ -63,16 +63,16 @@ pub(crate) fn update_clock_inputs(inputs: &mut ClockInputs, result: &RerootResul
     inputs.nodes.insert(split.new_node_key, ClockNodeInput::default());
   }
   if let Some(merge) = &result.edge_merge {
-    inputs.nodes.remove(&merge.removed_node_key);
-    inputs.edges.remove(&merge.parent_edge_key);
-    inputs.edges.remove(&merge.child_edge_key);
+    inputs.nodes.remove(merge.removed_node_key);
+    inputs.edges.remove(merge.parent_edge_key);
+    inputs.edges.remove(merge.child_edge_key);
     inputs.edges.insert(merge.merged_edge_key, ClockEdgeInput::default());
   }
 }
 
 fn remove_undated_stem(
   graph: &mut Graph,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   inputs: &mut ClockInputs,
 ) -> Result<Option<StemRemovalInfo>, Report> {
   let root_key = graph.root_key()?;
@@ -82,8 +82,8 @@ fn remove_undated_stem(
   let Some(stem) = remove_stem_root(graph, root_key)? else {
     return Ok(None);
   };
-  branch_lengths.remove(&stem.removed_edge_key);
-  inputs.nodes.remove(&stem.removed_node_key);
-  inputs.edges.remove(&stem.removed_edge_key);
+  branch_lengths.remove(stem.removed_edge_key);
+  inputs.nodes.remove(stem.removed_node_key);
+  inputs.edges.remove(stem.removed_edge_key);
   Ok(Some(stem))
 }

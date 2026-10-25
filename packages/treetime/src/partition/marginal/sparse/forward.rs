@@ -18,10 +18,10 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::aview_mut1;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -34,9 +34,9 @@ pub(crate) fn process_forward_indexed(
   partition: &PartitionMarginalSparse,
   gtr: &GTR,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
-  backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+  branch_lengths: &EdgeMap<f64>,
+  node_states: NodeMap<SparseNodeState>,
+  backward: &EdgeMap<SparseEdgeBackward>,
 ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
@@ -46,7 +46,7 @@ pub(crate) fn process_forward_indexed(
     gtr,
     branch_lengths,
   };
-  let backward = backward.iter().map(|(&edge_key, edge)| (edge_key, edge)).collect();
+  let backward = backward.iter().collect();
   let outputs = schedule.scan_down(
     schedule.join_parent_edges(node_states, backward)?,
     |key, (node, mut backward), parents: PerEdge<SparseForwardOutput>| {
@@ -55,8 +55,8 @@ pub(crate) fn process_forward_indexed(
   )?;
   let NodeEdgeMaps { nodes, edges } = outputs.unwrap_shared().split_parent_edges()?;
 
-  let mut forward = BTreeMap::new();
-  let mut estimates = BTreeMap::new();
+  let mut forward = EdgeMap::new();
+  let mut estimates = EdgeMap::new();
   for (edge_key, out) in edges {
     forward.insert(
       edge_key,
@@ -78,7 +78,7 @@ struct SparseForwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   partition: &'a PartitionMarginalSparse,
   gtr: &'a GTR,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &'a EdgeMap<f64>,
 }
 
 impl SparseForwardPass<'_> {

@@ -18,9 +18,8 @@ use itertools::Itertools;
 use ndarray::Array1;
 use statrs::statistics::Statistics;
 use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
 
@@ -157,11 +156,11 @@ pub struct MugrationParams {
 
 pub struct MugrationInput {
   pub graph: Graph,
-  pub traits: BTreeMap<GraphNodeKey, String>,
+  pub traits: NodeMap<String>,
   pub traits_source: String,
   pub observed_values: BTreeSet<String>,
   pub weights: Option<BTreeMap<String, f64>>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 #[derive(Debug)]
@@ -169,7 +168,7 @@ pub struct MugrationOutput {
   pub graph: Graph,
   pub gtr: GTR,
   pub states: StateAlphabet,
-  pub posteriors: BTreeMap<GraphNodeKey, StatePosterior>,
+  pub posteriors: NodeMap<StatePosterior>,
 }
 
 pub(crate) fn validate_weight_coverage(

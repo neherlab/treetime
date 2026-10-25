@@ -181,7 +181,7 @@ mod tests {
     fn length_of(output: &OptimizeOutput, edge: GraphEdgeKey) -> Result<f64, Report> {
       output
         .branch_lengths
-        .get(&edge)
+        .get(edge)
         .copied()
         .flatten()
         .ok_or_else(|| make_report!("Edge {edge} has no optimized branch length"))

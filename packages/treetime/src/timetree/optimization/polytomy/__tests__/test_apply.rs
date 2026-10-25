@@ -4,9 +4,11 @@ mod tests {
   use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
   use crate::timetree::optimization::polytomy::sweep::{Merger, SubtreePlan};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -22,7 +24,7 @@ mod tests {
       GraphNodeKey,
       Vec<ChildRef>,
       Vec<GraphNodeKey>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
+      EdgeMap<Option<f64>>,
     ),
     Report,
   > {
@@ -86,7 +88,7 @@ mod tests {
       &mut branch_lengths,
     )?;
 
-    let actual: Vec<&str> = created.keys().map(|&key| &names[key]).collect();
+    let actual: Vec<&str> = created.keys().map(|key| &names[key]).collect();
     assert_eq!(vec!["NODE_0000000", "NODE_0000001"], actual);
     Ok(())
   }
@@ -125,7 +127,7 @@ mod tests {
     }
 
     for (child, expected) in children.iter().zip([0.3, 0.4, 0.5]) {
-      let mutation_length = branch_lengths.get(&child.edge_key).copied().flatten();
+      let mutation_length = branch_lengths.get(child.edge_key).copied().flatten();
       pretty_assert_abs_diff_eq!(
         mutation_length.expect("observed mutation length must survive reparenting"),
         expected,
@@ -181,7 +183,7 @@ mod tests {
       "a 3-way polytomy with one merger becomes a bifurcation"
     );
 
-    let expected_times = btreemap! { merger_key => 2010.0 };
+    let expected_times = keymap! { merger_key => 2010.0 };
     assert_eq!(expected_times, merger_times);
 
     Ok(())
@@ -211,7 +213,7 @@ mod tests {
 
     let merger_key = parent_of(&graph, child_nodes[0]);
     let merger_edge = child_edge_of(&graph, merger_key);
-    let mutation_length = branch_lengths.get(&merger_edge).copied().flatten();
+    let mutation_length = branch_lengths.get(merger_edge).copied().flatten();
 
     pretty_assert_abs_diff_eq!(
       mutation_length.expect("a new branch must have an explicit mutation length"),
@@ -252,7 +254,7 @@ mod tests {
     )?;
     let inner = parent_of(&graph, child_nodes[0]);
     let outer = parent_of(&graph, inner);
-    let expected_times = btreemap! { inner => 2012.0, outer => 2005.0 };
+    let expected_times = keymap! { inner => 2012.0, outer => 2005.0 };
     assert_eq!(expected_times, created);
     assert_eq!(parent_of(&graph, child_nodes[1]), inner);
     assert_eq!(parent_of(&graph, child_nodes[2]), outer);

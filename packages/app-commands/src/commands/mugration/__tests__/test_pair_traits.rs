@@ -3,11 +3,12 @@ mod tests {
   use crate::__tests__::test_support::tests::RecordingLog;
   use crate::commands::mugration::run::pair_traits;
   use itertools::Itertools;
-  use maplit::{btreemap, btreeset};
+  use maplit::btreeset;
   use pretty_assertions::assert_eq;
   use std::path::Path;
   use treetime::mugration::trait_pairing::TraitPairing;
   use treetime::progress::{RunWarning, RunWarningKind};
+  use treetime_graph::keymap;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::o;
 
@@ -40,7 +41,7 @@ mod tests {
     assert_eq!(
       (
         TraitPairing {
-          traits: btreemap! { a1 => o!("usa"), a2 => o!("usa"), leaf_keys("B")[0] => o!("uk") },
+          traits: keymap! { a1 => o!("usa"), a2 => o!("usa"), leaf_keys("B")[0] => o!("uk") },
           observed_values: btreeset! { o!("germany"), o!("uk"), o!("usa") },
           duplicate_names: vec![o!("A")],
           unmatched: vec![(o!("Z"), o!("germany"))],

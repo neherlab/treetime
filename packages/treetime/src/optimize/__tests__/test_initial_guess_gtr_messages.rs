@@ -15,8 +15,8 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use ndarray::array;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -48,7 +48,7 @@ mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let alphabet = Alphabet::default();
     let partition = PartitionMarginalDense::new(alphabet, graph, &leaf_seq_inputs(graph, names, aln.to_vec()))?;
@@ -60,7 +60,7 @@ mod tests {
     Ok(reconstruction)
   }
 
-  fn get_branch_lengths(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Vec<f64> {
+  fn get_branch_lengths(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Vec<f64> {
     graph
       .get_edges()
       .map(|edge| branch_lengths[&edge.key()].unwrap_or(0.0))

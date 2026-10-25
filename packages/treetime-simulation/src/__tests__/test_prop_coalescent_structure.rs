@@ -4,8 +4,8 @@ mod tests {
   use generators::{gen_sampling, gen_schedule};
   use itertools::Itertools;
   use proptest::{prop_assert_eq, proptest};
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_utils::sync::random::get_random_number_generator;
 
   proptest! {
@@ -58,7 +58,7 @@ mod tests {
       let tree = simulate_coalescent(&schedule, &sampling, &mut get_random_number_generator(seed)).unwrap();
 
       let durations = tree.edge_durations();
-      let tau_differences: BTreeMap<GraphEdgeKey, f64> = tree
+      let tau_differences: EdgeMap<f64> = tree
         .graph
         .get_edges()
         .map(|edge| (edge.key(), tree.tau[&edge.source()] - tree.tau[&edge.target()]))
@@ -66,7 +66,7 @@ mod tests {
       let invalid_durations = durations
         .iter()
         .filter(|(_, duration)| !(duration.is_finite() && **duration > 0.0))
-        .map(|(edge, _)| *edge)
+        .map(|(edge, _)| edge)
         .collect_vec();
       prop_assert_eq!((tau_differences, vec![]), (durations, invalid_durations));
     }

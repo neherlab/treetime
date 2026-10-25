@@ -6,7 +6,8 @@ mod tests {
   use crate::substitution_model::{NUCLEOTIDES, SubstitutionModel};
   use helpers::{f81_transition, state_counts};
   use itertools::{Itertools, iproduct, izip};
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use ndarray::{Array1, array};
   use rstest::rstest;
   use statrs::distribution::{Discrete, Poisson};
@@ -116,7 +117,7 @@ mod tests {
   #[test]
   fn test_stat_evolve_sequences_tip_patterns_and_edge_transitions_match_jc69() {
     let tree = three_tip_tree();
-    let durations = btreemap! { tree.root_inner => 0.2, tree.root_c => 0.6, tree.inner_a => 0.1, tree.inner_b => 0.9 };
+    let durations = keymap! { tree.root_inner => 0.2, tree.root_c => 0.6, tree.inner_a => 0.1, tree.inner_b => 0.9 };
     let model = SubstitutionModel::jc69(1.0).unwrap();
     let simulated = evolve_sequences(
       &tree.graph,

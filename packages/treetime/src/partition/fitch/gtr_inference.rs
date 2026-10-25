@@ -5,15 +5,14 @@ use crate::progress::LogSink;
 use crate::seq::mutation::Sub;
 use eyre::Report;
 use ndarray::{Array1, Array2};
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn infer_gtr_fitch(
   partition: &PartitionFitch,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<GTR, Report> {
   let counts = get_mutation_counts_fitch(graph, partition, branch_lengths)?;
@@ -26,7 +25,7 @@ pub(crate) fn infer_gtr_fitch(
 pub(crate) fn get_mutation_counts_fitch(
   graph: &Graph,
   partition: &PartitionFitch,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<MutationCounts, Report> {
   let alphabet = &partition.alphabet;
 
@@ -58,7 +57,7 @@ pub(crate) fn get_mutation_counts_fitch(
     }
 
     let empty: &[Sub] = &[];
-    let subs = partition.edges.get(&edge_key).map_or(empty, |e| e.fitch_subs());
+    let subs = partition.edges.get(edge_key).map_or(empty, |e| e.fitch_subs());
     for m in subs {
       m.check_canonical(alphabet)?;
       let i = alphabet.index(m.qry())?;

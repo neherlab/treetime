@@ -1,18 +1,20 @@
 #[cfg(test)]
 mod tests {
   use self::helpers::{names_by_key, tree};
+  use crate::key_map::NodeMap;
+  use crate::keymap;
   use crate::node::GraphNodeKey;
   use crate::node_names::{InputNodeNames, NodeNames};
   use eyre::Report;
-  use maplit::{btreemap, btreeset};
+  use maplit::btreeset;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_utils::{o, vec_of_owned};
 
   #[test]
   fn test_node_names_from_input_names_unnamed_nodes_in_preorder() -> Result<(), Report> {
     let graph = tree()?;
-    let input = btreemap! {
+    let input = keymap! {
       GraphNodeKey(2) => Some(o!("A")),
       GraphNodeKey(3) => Some(o!("B")),
       GraphNodeKey(4) => Some(o!("X")),
@@ -37,7 +39,7 @@ mod tests {
   #[test]
   fn test_node_names_from_input_skips_generated_names_taken_by_the_input() -> Result<(), Report> {
     let graph = tree()?;
-    let input = btreemap! {
+    let input = keymap! {
       GraphNodeKey(1) => Some(o!("")),
       GraphNodeKey(2) => Some(o!("NODE_0000000")),
       GraphNodeKey(3) => Some(o!("B")),
@@ -64,7 +66,7 @@ mod tests {
   #[test]
   fn test_node_names_from_input_suffixes_repeated_input_names_by_occurrence() -> Result<(), Report> {
     let graph = tree()?;
-    let input: BTreeMap<_, _> = (0..6).map(|key| (GraphNodeKey(key), Some(o!("A")))).collect();
+    let input: NodeMap<_> = (0..6).map(|key| (GraphNodeKey(key), Some(o!("A")))).collect();
 
     let actual = NodeNames::from_input(input, &graph)?;
 
@@ -79,7 +81,7 @@ mod tests {
   #[test]
   fn test_node_names_from_input_skips_suffixed_names_taken_by_the_input() -> Result<(), Report> {
     let graph = tree()?;
-    let input = btreemap! {
+    let input = keymap! {
       GraphNodeKey(0) => Some(o!("A")),
       GraphNodeKey(1) => Some(o!("A")),
       GraphNodeKey(2) => Some(o!("A")),
@@ -101,7 +103,7 @@ mod tests {
   #[test]
   fn test_node_names_pairing_name_is_the_input_name_of_a_renamed_node() -> Result<(), Report> {
     let graph = tree()?;
-    let input = btreemap! {
+    let input = keymap! {
       GraphNodeKey(2) => Some(o!("A")),
       GraphNodeKey(3) => Some(o!("A")),
       GraphNodeKey(5) => Some(o!("C")),
@@ -123,7 +125,7 @@ mod tests {
   #[test]
   fn test_node_names_name_new_node_continues_after_every_name_in_use() -> Result<(), Report> {
     let graph = tree()?;
-    let input = btreemap! {
+    let input = keymap! {
       GraphNodeKey(2) => Some(o!("A")),
       GraphNodeKey(3) => Some(o!("NODE_0000002")),
       GraphNodeKey(4) => Some(o!("NODE_0000004")),

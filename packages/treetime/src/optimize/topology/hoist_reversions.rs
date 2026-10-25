@@ -11,6 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::AsciiChar;
@@ -25,16 +26,13 @@ pub(crate) fn count_child_reversions(
   sparse
     .iter()
     .map(|SparseReconstruction { partition, .. }| {
-      let parent_subs: &[Sub] = partition
-        .obs_edges
-        .get(&parent_edge_key)
-        .map_or(&[], |e| e.fitch_subs());
-      let child_subs: &[Sub] = partition.obs_edges.get(&child_edge_key).map_or(&[], |e| e.fitch_subs());
+      let parent_subs: &[Sub] = partition.obs_edges.get(parent_edge_key).map_or(&[], |e| e.fitch_subs());
+      let child_subs: &[Sub] = partition.obs_edges.get(child_edge_key).map_or(&[], |e| e.fitch_subs());
       match sibling_edge_key {
         Some(sibling_edge_key) => {
           let sibling_subs: &[Sub] = partition
             .obs_edges
-            .get(&sibling_edge_key)
+            .get(sibling_edge_key)
             .map_or(&[], |e| e.fitch_subs());
           let (augmented, _) = augment_parent_with_sibling(parent_subs, sibling_subs);
           count_reversions(&augmented, child_subs)
@@ -75,15 +73,15 @@ pub(crate) fn slide_bifurcating_root_for_child(
   {
     let parent_subs = partition
       .obs_edges
-      .get(&parent_edge_key)
+      .get(parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let sibling_subs = partition
       .obs_edges
-      .get(&sibling_edge_key)
+      .get(sibling_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let child_by_pos: BTreeMap<usize, (AsciiChar, AsciiChar)> = partition
       .obs_edges
-      .get(&child_edge_key)
+      .get(child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec())
       .iter()
       .map(|c| (c.pos(), (c.reff(), c.qry())))
@@ -100,7 +98,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
       if !parent_positions.contains(&sibling_sub.pos()) && reverted_by_child {
         let pos = sibling_sub.pos();
         partition.root_sequence[pos] = sibling_sub.qry();
-        if let Some(root_node) = node_states.get_mut(&root_key) {
+        if let Some(root_node) = node_states.get_mut(root_key) {
           if pos < root_node.sequence.len() {
             Arc::make_mut(&mut root_node.sequence)[pos] = sibling_sub.qry();
           }
@@ -119,7 +117,7 @@ pub(crate) fn slide_bifurcating_root_for_child(
     }
     hoisted_parent.sort_by_key(Sub::pos);
 
-    if let Some(sibling_edge) = partition.obs_edges.get_mut(&sibling_edge_key) {
+    if let Some(sibling_edge) = partition.obs_edges.get_mut(sibling_edge_key) {
       sibling_edge.set_fitch_subs(remaining_sibling);
     }
     partition
@@ -138,7 +136,7 @@ pub(crate) fn hoist_reverting_child(
   alignments: &[AlignmentGroup],
   parent_edge_key: GraphEdgeKey,
   child_edge_key: GraphEdgeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<GraphNodeKey, Report> {
   let u_key = graph.get_source_node_key(parent_edge_key)?;
 
@@ -148,10 +146,10 @@ pub(crate) fn hoist_reverting_child(
   for SparseReconstruction { partition, .. } in sparse.iter() {
     let obs_edges = &partition.obs_edges;
     let parent_subs = obs_edges
-      .get(&parent_edge_key)
+      .get(parent_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
     let child_subs = obs_edges
-      .get(&child_edge_key)
+      .get(child_edge_key)
       .map_or(Vec::new(), |e| e.fitch_subs().to_vec());
 
     let sub_split = split_subs(&parent_subs, &child_subs)?;

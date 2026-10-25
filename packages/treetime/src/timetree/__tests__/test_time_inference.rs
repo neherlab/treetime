@@ -7,7 +7,8 @@ mod tests {
   use crate::timetree::optimization::polytomy::resolve::{PolytomyResolution, resolve_polytomies};
   use eyre::Report;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use ndarray::array;
   use pretty_assertions::assert_eq;
 
@@ -91,7 +92,7 @@ mod tests {
       );
     }
 
-    let expected = btreemap! {
+    let expected = keymap! {
       key("A") => Some(2010.0),
       key("B") => Some(2011.0),
       key("I") => Some(2005.0),
@@ -124,7 +125,7 @@ mod tests {
 
     let actual = likely_times(&graph, &constraints, &inference)?;
 
-    let expected = btreemap! {
+    let expected = keymap! {
       key("A") => Some(2010.0),
       key("B") => Some(2010.0),
       key("I") => Some(2005.0),
@@ -141,7 +142,7 @@ mod tests {
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
     let [a, b, c, abc, root] = ["A", "B", "C", "ABC", "root"].map(key);
-    let times = btreemap! {
+    let times = keymap! {
       a => Some(2020.0),
       b => Some(2015.0),
       c => Some(2018.0),
@@ -164,7 +165,9 @@ mod tests {
       &times,
       &constraints,
     )?;
-    let merger = *merger_times.keys().exactly_one().expect("the seed resolves one merger");
+    let [merger] = merger_times.keys().collect_vec()[..] else {
+      panic!("the seed resolves one merger");
+    };
     let mut inference = empty_time_inference(&graph);
     inference.posterior.insert(
       merger,
@@ -176,7 +179,7 @@ mod tests {
 
     let actual = likely_times(&graph, &constraints, &inference)?;
 
-    let expected = btreemap! {
+    let expected = keymap! {
       a => Some(2020.0),
       b => Some(2015.0),
       c => Some(2018.0),

@@ -2,7 +2,8 @@
 mod tests {
   use crate::nwk::{NwkParse, NwkWriteOptions, nwk_read, nwk_write_str};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::schedule::GraphSchedule;
@@ -39,7 +40,7 @@ mod tests {
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &btreemap! {},
+      &keymap! {},
     )?;
 
     assert_eq!(expected, actual);

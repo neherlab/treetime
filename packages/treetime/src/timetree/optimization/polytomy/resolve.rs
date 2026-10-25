@@ -6,9 +6,9 @@ use crate::timetree::optimization::polytomy::apply::{ChildRef, apply_plan};
 use crate::timetree::optimization::polytomy::sweep::{Lineage, simulate_subtree};
 use eyre::{Report, WrapErr};
 use log::debug;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::{EdgeMergeInfo, record_merge, remove_node_if_trivial, trivial_node_branch_lengths};
@@ -24,7 +24,7 @@ use treetime_utils::make_error;
 pub(crate) fn resolve_polytomies(
   mut graph: Graph,
   names: &mut NodeNames,
-  mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  mut branch_lengths: EdgeMap<Option<f64>>,
   branch_model: &BranchModel,
   mutation_rate: f64,
   total_length: usize,
@@ -39,12 +39,12 @@ pub(crate) fn resolve_polytomies(
     return Ok(PolytomyResolution {
       graph,
       branch_lengths,
-      merger_times: BTreeMap::new(),
+      merger_times: NodeMap::new(),
       merges: vec![],
     });
   }
 
-  let mut merger_times = BTreeMap::new();
+  let mut merger_times = NodeMap::new();
   let mut topology_validated = false;
 
   for node_key in polytomy_keys {
@@ -87,8 +87,8 @@ pub(crate) fn resolve_polytomies(
 
 pub(crate) struct PolytomyResolution {
   pub graph: Graph,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub merger_times: BTreeMap<GraphNodeKey, f64>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
+  pub merger_times: NodeMap<f64>,
   pub merges: Vec<EdgeMergeInfo>,
 }
 
@@ -106,14 +106,14 @@ fn resolve_single_polytomy(
   merger_rate: &PiecewiseConstantFn,
   rng: &mut dyn rand::Rng,
   topology_validated: &mut bool,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   node_times: &NodeTimes,
-) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+) -> Result<NodeMap<f64>, Report> {
   let parent_time = inferred_time(node_times, node_key)?;
 
   let children = collect_children(graph, branch_model, node_key, total_length, branch_lengths, node_times)?;
   if children.len() < 3 {
-    return Ok(BTreeMap::new());
+    return Ok(NodeMap::new());
   }
 
   let lineages: Vec<Lineage> = children
@@ -130,7 +130,7 @@ fn resolve_single_polytomy(
       "Polytomy at node {node_key}: {} children, sampled history merged none",
       children.len()
     );
-    return Ok(BTreeMap::new());
+    return Ok(NodeMap::new());
   }
 
   if !*topology_validated {
@@ -163,7 +163,7 @@ fn collect_children(
   branch_model: &BranchModel,
   node_key: GraphNodeKey,
   total_length: usize,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   node_times: &NodeTimes,
 ) -> Result<Vec<ChildInfo>, Report> {
   let edge_keys = {
@@ -178,7 +178,7 @@ fn collect_children(
       let child_key = edge.target();
 
       let time = inferred_time(node_times, child_key)?;
-      let mutation_length = branch_lengths.get(&edge_key).copied().flatten();
+      let mutation_length = branch_lengths.get(edge_key).copied().flatten();
 
       Ok(ChildInfo {
         edge_key,
@@ -233,7 +233,7 @@ fn inferred_time(node_times: &NodeTimes, node_key: GraphNodeKey) -> Result<f64, 
 
 fn remove_undated_single_child_nodes(
   graph: &mut Graph,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   date_constraints: &DateConstraints,
 ) -> Result<Vec<EdgeMergeInfo>, Report> {
   let mut merges = vec![];

@@ -196,22 +196,17 @@ mod tests {
     use crate::seq::alignment::{NodeSeqInput, SequenceSource};
     use crate::test_utils::{TestDataset, leaf_seq_inputs};
     use eyre::Report;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
     use treetime_graph::clades::{TipIds, graph_clade_keys};
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkParse, nwk_read};
 
-    pub(super) type Loaded = (
-      Graph,
-      NodeNames,
-      Alphabet,
-      BTreeMap<GraphNodeKey, NodeSeqInput>,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
-    );
+    pub(super) type Loaded = (Graph, NodeNames, Alphabet, NodeMap<NodeSeqInput>, EdgeMap<Option<f64>>);
 
     pub(super) fn load() -> Result<Loaded, Report> {
       loaded(nwk_read(TestDataset::Flu20.tree().as_bytes())?)
@@ -243,7 +238,7 @@ mod tests {
       }
     }
 
-    pub(super) fn assert_branch_lengths_valid(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) {
+    pub(super) fn assert_branch_lengths_valid(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) {
       for edge in graph.get_edges() {
         let bl = branch_lengths[&edge.key()].expect("every edge has a branch length after optimization");
         assert!(bl.is_finite() && bl >= 0.0, "invalid branch length {bl}");

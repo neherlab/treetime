@@ -24,7 +24,8 @@ mod tests {
   mod helpers {
     use crate::test_utils::{kingman_neg_log_density, point_coalescent_prior_by_key, simulated_node_ages};
     use eyre::Report;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::NodeMap;
+
     use treetime_simulation::coalescent::{SampleBatch, simulate_coalescent};
     use treetime_simulation::tc_schedule::TcSchedule;
     use treetime_utils::sync::random::get_random_number_generator;
@@ -52,7 +53,7 @@ mod tests {
         &sampling,
         &mut get_random_number_generator(seed),
       )?;
-      let dates: BTreeMap<_, _> = tree
+      let dates: NodeMap<_> = tree
         .graph
         .get_nodes()
         .map(|node| (node.key(), tree.date(node.key())))

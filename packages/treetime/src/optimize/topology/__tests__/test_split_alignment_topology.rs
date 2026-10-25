@@ -333,9 +333,10 @@ mod tests {
     use itertools::Itertools;
     use std::collections::BTreeMap;
     use std::mem;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::nwk_read;
@@ -362,17 +363,12 @@ mod tests {
     pub(super) struct Side {
       pub(super) graph: Graph,
       pub(super) names: NodeNames,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(super) branch_lengths: EdgeMap<Option<f64>>,
       pub(super) partitions: PartitionSet,
     }
 
-    type SetBuilder = fn(
-      Representation,
-      &GtrModel,
-      &Graph,
-      Vec<SequenceSource>,
-      &BTreeMap<GraphEdgeKey, f64>,
-    ) -> Result<PartitionSet, Report>;
+    type SetBuilder =
+      fn(Representation, &GtrModel, &Graph, Vec<SequenceSource>, &EdgeMap<f64>) -> Result<PartitionSet, Report>;
 
     impl Side {
       fn new(newick: &str, records: &[(&str, &str)], build: SetBuilder) -> Result<Self, Report> {
@@ -454,7 +450,7 @@ mod tests {
         for reconstruction in self.partitions.sparse_mut() {
           let partition = &mut reconstruction.partition;
           let sequence = partition_parsimony_sequences(&self.graph, partition)?
-            .remove(&key)
+            .remove(key)
             .expect("the node exists");
           partition
             .obs_nodes
@@ -495,7 +491,7 @@ mod tests {
                 member
                   .partition
                   .obs_edges
-                  .get(&key)
+                  .get(key)
                   .map_or_else(Vec::new, |edge| edge.fitch_subs().to_vec())
               })
               .collect_vec();
@@ -605,9 +601,9 @@ mod tests {
     fn partition_parsimony_sequences(
       graph: &Graph,
       partition: &PartitionMarginalSparse,
-    ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    ) -> Result<NodeMap<Seq>, Report> {
       let schedule = GraphSchedule::new(graph)?;
-      let mut sequences = BTreeMap::new();
+      let mut sequences = NodeMap::new();
       for &key in schedule.preorder() {
         let sequence = match schedule.parents(key) {
           [] => partition.root_sequence.clone(),

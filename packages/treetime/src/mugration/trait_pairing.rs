@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 
@@ -26,7 +26,7 @@ pub fn pair_trait_rows(
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TraitPairing {
-  pub traits: BTreeMap<GraphNodeKey, String>,
+  pub traits: NodeMap<String>,
   pub observed_values: BTreeSet<String>,
   pub duplicate_names: Vec<String>,
   pub unmatched: Vec<(String, String)>,

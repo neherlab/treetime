@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use treetime::ancestral::mask::mask_to_string;
 use treetime::seq::mutation::{MutationEvent, PositionBase, mutation_event_strings};
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -48,15 +49,15 @@ pub fn build_augur_node_data_ancestral(
   let mut nodes = BTreeMap::new();
   for node in graph.graph.get_nodes() {
     let key = node.key();
-    let Some(mut sequence) = node_sequences.remove(&key) else {
-      return make_internal_error!("Augur node data: no sequence for node {}", key.0);
+    let Some(mut sequence) = node_sequences.remove(key) else {
+      return make_internal_error!("Augur node data: no sequence for node {key}");
     };
     let length = sequence.len();
     for &pos in masked_positions.iter().take_while(|&&pos| pos < length) {
       sequence[pos] = ambiguous_char;
     }
     let aa_muts = amino_acids
-      .and_then(|amino_acids| amino_acids.node_data.node_aa_mutations.get(&key))
+      .and_then(|amino_acids| amino_acids.node_data.node_aa_mutations.get(key))
       .map(aa_mutation_strings)
       .transpose()?;
     let aa_sequences = (key == tree.tree().root())
@@ -108,7 +109,7 @@ pub fn build_augur_node_data_ancestral(
 }
 
 pub struct AncestralNodeSequences<'a> {
-  pub node_sequences: BTreeMap<GraphNodeKey, Seq>,
+  pub node_sequences: NodeMap<Seq>,
   pub alignment_length: usize,
   pub ambiguous_char: AsciiChar,
   pub mask: &'a [bool],

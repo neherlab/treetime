@@ -9,6 +9,7 @@ mod tests {
   use std::collections::BTreeMap;
   use treetime::ancestral::aa::AaNodeData;
   use treetime::seq::mutation::{AlignedMutation, MutationEvent};
+  use treetime_graph::keymap;
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::{assert_error, o, vec_of_owned};
 
@@ -98,7 +99,7 @@ mod tests {
   fn test_mutation_filter_rejects_a_node_with_two_parents() -> Result<(), Report> {
     let (graph, shared_edge, _) = dag_with_shared_leaf()?;
     let edges =
-      btreemap! { shared_edge => helpers::events(&["C1N", "A4T"])?.into_iter().map(helpers::nucleotide).collect() };
+      keymap! { shared_edge => helpers::events(&["C1N", "A4T"])?.into_iter().map(helpers::nucleotide).collect() };
 
     let result =
       UnknownMutationFilter::hiding_unknown(AsciiChar::try_new(b'N')?).reported_edge_mutations(&graph, edges);
@@ -114,7 +115,7 @@ mod tests {
   fn test_mutation_filter_amino_acid_rejects_a_node_with_two_parents() -> Result<(), Report> {
     let (graph, _, shared_node) = dag_with_shared_leaf()?;
     let node_data = AaNodeData {
-      node_aa_mutations: btreemap! { shared_node => btreemap! { o!("S") => helpers::events(&["A1X"])? } },
+      node_aa_mutations: keymap! { shared_node => btreemap! { o!("S") => helpers::events(&["A1X"])? } },
       ..AaNodeData::default()
     };
 
@@ -171,6 +172,7 @@ mod tests {
     use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, Sub, mutation_event_strings};
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
     use treetime_io::nwk::nwk_read;
@@ -228,7 +230,7 @@ mod tests {
       graph: &Graph,
       names: &Names,
       mutations: &BTreeMap<&str, Vec<&str>>,
-    ) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
+    ) -> Result<EdgeMap<Vec<Mutation>>, Report> {
       mutations
         .iter()
         .map(|(name, strings)| {
@@ -242,7 +244,7 @@ mod tests {
       graph: &Graph,
       names: &Names,
       mutations: &BTreeMap<&str, BTreeMap<&str, Vec<&str>>>,
-    ) -> Result<BTreeMap<GraphNodeKey, BTreeMap<String, Vec<MutationEvent>>>, Report> {
+    ) -> Result<NodeMap<BTreeMap<String, Vec<MutationEvent>>>, Report> {
       mutations
         .iter()
         .map(|(name, cds_strings)| {
@@ -258,11 +260,11 @@ mod tests {
     pub(super) fn edge_strings(
       graph: &Graph,
       names: &Names,
-      edges: &BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+      edges: &EdgeMap<Vec<Mutation>>,
     ) -> Result<BTreeMap<String, Vec<String>>, Report> {
       edges
         .iter()
-        .map(|(&edge_key, mutations)| {
+        .map(|(edge_key, mutations)| {
           let child = graph.get_edge(edge_key).expect("edge must exist").target();
           let strings = mutations
             .iter()

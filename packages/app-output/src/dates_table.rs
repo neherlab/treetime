@@ -60,7 +60,7 @@ fn date_fields(dates: &TreeDates<'_>, key: GraphNodeKey, with_confidence: bool) 
   }
   let bounds = dates
     .confidence
-    .and_then(|confidence| confidence.get(&key).copied())
+    .and_then(|confidence| confidence.get(key).copied())
     .map_or_else(
       || [MISSING_DATE.to_owned(), MISSING_DATE.to_owned()],
       |[lower, upper]| [numeric_date(lower), numeric_date(upper)],

@@ -12,6 +12,8 @@ mod tests {
   use std::sync::Arc;
   use treetime_distribution::Distribution;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::NodeMap;
+  use treetime_graph::keymap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
@@ -88,7 +90,7 @@ mod tests {
     let (graph, names) = helpers::tree(TREE_NEWICK)?;
     let constraints = helpers::dated(&graph, &names, &["A", "B", "C"]);
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("fixture node must exist");
-    let leaf_bad_branches = btreemap! {
+    let leaf_bad_branches = keymap! {
       key("A") => true,
       key("B") => true,
       key("C") => false,
@@ -200,7 +202,7 @@ mod tests {
           .map(|name| (key(name), Some(Arc::new(Distribution::point(DATE, 0.0)))))
           .collect(),
       };
-      let leaf_bad_branches: BTreeMap<GraphNodeKey, bool> =
+      let leaf_bad_branches: NodeMap<bool> =
         case.bad_leaves.iter().map(|(name, bad)| (key(name), *bad)).collect();
       let has_evidence = |node_key: GraphNodeKey| {
         let node = graph.get_node(node_key).expect("node must exist");
@@ -213,7 +215,7 @@ mod tests {
 
       let actual = derive_bad_branches(&graph, &constraints, &leaf_bad_branches).unwrap();
 
-      let expected: BTreeMap<GraphNodeKey, bool> = graph
+      let expected: NodeMap<bool> = graph
         .get_nodes()
         .map(|node| {
           let key = node.key();
@@ -293,6 +295,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::NodeMap;
 
     pub(super) fn tree(newick: &str) -> Result<(Graph, NodeNames), Report> {
       let nwk_parsed = nwk_read(newick.as_bytes())?;
@@ -325,8 +328,8 @@ mod tests {
       Ok(by_name(&names, &bad_branches))
     }
 
-    pub(super) fn by_name(names: &NodeNames, flags: &BTreeMap<GraphNodeKey, bool>) -> BTreeMap<String, bool> {
-      flags.iter().map(|(key, bad)| (names[*key].to_owned(), *bad)).collect()
+    pub(super) fn by_name(names: &NodeNames, flags: &NodeMap<bool>) -> BTreeMap<String, bool> {
+      flags.iter().map(|(key, bad)| (names[key].to_owned(), *bad)).collect()
     }
 
     pub(super) fn subtree_keys(graph: &Graph, key: GraphNodeKey) -> Vec<GraphNodeKey> {

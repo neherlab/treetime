@@ -15,8 +15,7 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -92,10 +91,9 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
 
-    pub(super) fn setup_dense(
-      newick: &str,
-    ) -> Result<(Graph, PartitionSet, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn setup_dense(newick: &str) -> Result<(Graph, PartitionSet, EdgeMap<Option<f64>>), Report> {
       let alphabet = Alphabet::new(AlphabetName::Nuc)?;
       let aln: Vec<AlignmentRecord> = fasta_read(
         indoc! {r#"

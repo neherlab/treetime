@@ -210,7 +210,8 @@ mod tests {
     use crate::reroot::placement::{Placement, RootTarget};
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::Report;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
@@ -242,7 +243,7 @@ mod tests {
 
     pub(super) struct EdgeFixture {
       pub(super) graph: Graph,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(super) branch_lengths: EdgeMap<Option<f64>>,
       pub(super) edge_key: GraphEdgeKey,
       pub(super) source_key: GraphNodeKey,
       pub(super) target_key: GraphNodeKey,

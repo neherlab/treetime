@@ -33,7 +33,7 @@ where
   expected.map_len() == actual.map_len()
     && expected
       .map_iter()
-      .all(|(k, exp)| actual.map_get(k).is_some_and(|act| cmp(exp, act)))
+      .all(|(k, exp)| actual.map_get(&k).is_some_and(|act| cmp(exp, act)))
 }
 
 #[macro_export]

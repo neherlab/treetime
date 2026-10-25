@@ -27,6 +27,7 @@ pub(super) mod tests {
   use treetime::progress::NoopProgress;
   use treetime::seq::mutation::{Mutation, MutationTrack, PositionBase, Sub};
   use treetime_graph::graph::Graph;
+  use treetime_graph::keymap;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::auspice_types::AuspiceGenomeAnnotationNuc;
   use treetime_io::nwk::{NwkStyle, nwk_read};
@@ -103,7 +104,7 @@ pub(super) mod tests {
       .as_mut()
       .expect("AA fixture must have amino-acid data")
       .node_aa_mutations
-      .get_mut(&a_key)
+      .get_mut(a_key)
       .expect("AA fixture must have mutations on A")
       .insert(o!("E"), vec![]);
 
@@ -298,7 +299,7 @@ pub(super) mod tests {
     ];
     graph.build()?;
     let names = NodeNames::from_input(
-      btreemap! {
+      keymap! {
         root => Some(o!("root")),
         left => Some(o!("L")),
         right => Some(o!("R")),

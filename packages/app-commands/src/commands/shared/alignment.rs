@@ -5,12 +5,11 @@ use deser::{Deserialize, Serialize};
 use eyre::Report;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::progress::{LogSink, RunWarningKind};
 use treetime::seq::alignment::LeafSequences;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::fasta::FastaRecord;
@@ -78,7 +77,7 @@ pub(crate) fn pair_alignment(
     "TreeTime uses the first sequence of each name.",
     &pairing.duplicate_entry_names,
   );
-  let (seqs, descs): (BTreeMap<GraphNodeKey, Seq>, BTreeMap<GraphNodeKey, Option<String>>) = pairing
+  let (seqs, descs): (NodeMap<Seq>, NodeMap<Option<String>>) = pairing
     .by_node
     .into_iter()
     .map(|(key, (seq, desc))| ((key, seq), (key, desc)))
@@ -96,5 +95,5 @@ pub(crate) fn pair_alignment(
 
 pub(crate) struct PairedAlignment {
   pub(crate) sequences: LeafSequences,
-  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) descs: NodeMap<Option<String>>,
 }

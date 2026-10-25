@@ -5,11 +5,10 @@ use crate::commands::shared::tree_input::read_input_tree;
 use crate::commands::timetree::args::{TreetimeTimetreeArgs, check_branch_length_settings};
 use crate::commands::timetree::branch_length_mode::{ResolvedBranchLengthMode, resolve_branch_length_mode};
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
 use treetime::partition::resolve::PartitionPlan;
 use treetime::progress::LogSink;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::dates_csv::DateConstraint;
@@ -48,10 +47,10 @@ pub(crate) fn load_input_data(args: &TreetimeTimetreeArgs, log: &dyn LogSink) ->
 pub(crate) struct InputData {
   pub graph: Graph,
   pub names: NodeNames,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub branch_length_mode: ResolvedBranchLengthMode,
   pub input_leaf_order: Vec<GraphNodeKey>,
   pub sequences: Vec<AlignmentSource>,
   pub partitions: Vec<PartitionPlan>,
-  pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
+  pub dates: NodeMap<DateConstraint>,
 }

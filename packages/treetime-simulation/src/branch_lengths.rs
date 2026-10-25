@@ -5,21 +5,16 @@ use eyre::Report;
 use itertools::izip;
 use rand::Rng;
 use rand_distr::{Distribution, LogNormal};
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_primitives::Seq;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::{make_error, make_report};
 
-pub fn exact(
-  durations: &BTreeMap<GraphEdgeKey, f64>,
-  model: &SubstitutionModel,
-) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+pub fn exact(durations: &EdgeMap<f64>, model: &SubstitutionModel) -> Result<EdgeMap<f64>, Report> {
   durations
     .iter()
-    .map(|(&edge, &duration)| {
+    .map(|(edge, &duration)| {
       validate_edge_duration(edge, duration)?;
       let length = model.mu() * duration;
       if !length.is_finite() {
@@ -33,7 +28,7 @@ pub fn exact(
     .collect()
 }
 
-pub fn realized(graph: &Graph, sequences: &BTreeMap<GraphNodeKey, Seq>) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+pub fn realized(graph: &Graph, sequences: &NodeMap<Seq>) -> Result<EdgeMap<f64>, Report> {
   graph
     .get_edges()
     .map(|edge| {
@@ -59,11 +54,7 @@ pub fn realized(graph: &Graph, sequences: &BTreeMap<GraphNodeKey, Seq>) -> Resul
     .collect()
 }
 
-pub fn perturbed(
-  lengths: &BTreeMap<GraphEdgeKey, f64>,
-  sigma: f64,
-  rng: &mut impl Rng,
-) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+pub fn perturbed(lengths: &EdgeMap<f64>, sigma: f64, rng: &mut impl Rng) -> Result<EdgeMap<f64>, Report> {
   if !(sigma.is_finite() && sigma >= 0.0) {
     return make_error!("Perturbation sigma must be finite and non-negative, got {sigma}");
   }
@@ -72,7 +63,7 @@ pub fn perturbed(
   Ok(
     lengths
       .iter()
-      .map(|(&edge, &length)| (edge, length * noise.sample(rng)))
+      .map(|(edge, &length)| (edge, length * noise.sample(rng)))
       .collect(),
   )
 }

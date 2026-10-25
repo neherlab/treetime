@@ -9,11 +9,11 @@ use eyre::Report;
 use itertools::{Either, Itertools};
 use ndarray::aview1;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::BTreeMap;
 use std::iter;
 use std::sync::Arc;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{AsciiChar, Seq};
 
@@ -22,12 +22,12 @@ const COMPARED_BLOCK_LEN: usize = 64;
 pub(crate) fn sparse_edge_mutations(
   partition: &PartitionMarginalSparse,
   graph: &Graph,
-  node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-  forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+  node_states: &NodeMap<SparseNodeState>,
+  forward: &EdgeMap<SparseEdgeForward>,
   impute: bool,
   report_unknown: bool,
   track: &MutationTrack,
-) -> Result<BTreeMap<GraphEdgeKey, Vec<Mutation>>, Report> {
+) -> Result<EdgeMap<Vec<Mutation>>, Report> {
   let edges = graph
     .get_nodes()
     .map(|node| Ok(graph.node_parent(node.key())?.map(|parent| (node.key(), parent))))
@@ -127,8 +127,8 @@ impl<'a> EdgeChild<'a> {
   fn new(
     partition: &'a PartitionMarginalSparse,
     graph: &Graph,
-    node_states: &'a BTreeMap<GraphNodeKey, SparseNodeState>,
-    forward: &'a BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    node_states: &'a NodeMap<SparseNodeState>,
+    forward: &'a EdgeMap<SparseEdgeForward>,
     impute: bool,
     child_key: GraphNodeKey,
     parent_key: GraphNodeKey,

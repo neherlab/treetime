@@ -17,9 +17,9 @@ mod tests {
   use itertools::Itertools;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+
   use std::path::PathBuf;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_graph::schedule::GraphSchedule;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -85,13 +85,14 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::seq::sink::SeqStream;
+    use treetime_graph::key_map::NodeMap;
 
     pub(super) fn reconstruct(
       nwk: &str,
       fasta: &str,
       method: MethodAncestral,
       dense: Option<bool>,
-    ) -> Result<(AncestralOutput, BTreeMap<GraphNodeKey, Seq>), Report> {
+    ) -> Result<(AncestralOutput, NodeMap<Seq>), Report> {
       let alphabet = Alphabet::default();
       let parse = nwk_read(nwk.as_bytes())?;
       let names = parse.names.clone();
@@ -140,10 +141,10 @@ mod tests {
         .expect("ancestral reconstruction returns sequences")
     }
 
-    pub(super) fn rebuild_from_root(output: &AncestralOutput) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+    pub(super) fn rebuild_from_root(output: &AncestralOutput) -> Result<NodeMap<Seq>, Report> {
       let sequences = sequences(output);
       let schedule = GraphSchedule::new(&output.graph)?;
-      let mut rebuilt: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
+      let mut rebuilt: NodeMap<Seq> = NodeMap::new();
       for &key in schedule.preorder() {
         let parents = schedule.parents(key);
         let seq = if parents.is_empty() {

@@ -6,7 +6,8 @@ mod tests {
   use eyre::Report;
   use helpers::fitted_gtr;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
+
   use treetime_utils::{pretty_assert_abs_diff_eq, pretty_assert_eq, pretty_assert_ulps_eq};
 
   #[rustfmt::skip]
@@ -157,7 +158,7 @@ mod tests {
       let (gtr, nodes, _) = optimize_gtr_rate(
         &partition,
         input.start_gtr.clone(),
-        &BTreeMap::new(),
+        &NodeMap::new(),
         &input.graph,
         &input.branch_lengths,
         RateRangeEdge::LowerCostEnd,
@@ -200,7 +201,7 @@ mod tests {
       let (gtr, nodes, _) = optimize_gtr_rate(
         &partition,
         input.start_gtr.clone(),
-        &BTreeMap::new(),
+        &NodeMap::new(),
         &input.graph,
         &input.branch_lengths,
         RateRangeEdge::KeepStart,
@@ -245,10 +246,10 @@ mod tests {
     use crate::test_utils::leaf_seq_inputs;
     use eyre::Report;
     use indoc::indoc;
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
@@ -273,8 +274,8 @@ mod tests {
 
     pub(super) struct Input {
       pub(super) graph: Graph,
-      pub(super) node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+      pub(super) node_inputs: NodeMap<NodeSeqInput>,
+      pub(super) branch_lengths: EdgeMap<f64>,
       pub(super) start_gtr: GTR,
     }
 
@@ -320,9 +321,7 @@ mod tests {
         })
       }
 
-      pub(super) fn sparse(
-        &self,
-      ) -> Result<(PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>), Report> {
+      pub(super) fn sparse(&self) -> Result<(PartitionMarginalSparse, NodeMap<SparseNodeState>), Report> {
         create_fitch_partition(&self.graph, Alphabet::new(AlphabetName::Nuc)?, self.node_inputs.clone())?
           .into_marginal_sparse(&self.graph)
       }

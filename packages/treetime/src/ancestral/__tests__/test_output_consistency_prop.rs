@@ -14,9 +14,10 @@ mod tests {
   use crate::test_utils::{RecordingSeqSink, ancestral_input_for_tree};
   use proptest::prelude::*;
   use proptest::test_runner::TestCaseError;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
+
   use std::path::PathBuf;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
 
@@ -59,7 +60,7 @@ mod tests {
       };
       let sequences = result.sequences.as_ref().ok_or_else(|| TestCaseError::fail("no sequences"))?;
       let alphabet = Alphabet::default();
-      let streamed: BTreeMap<GraphNodeKey, Seq> =
+      let streamed: NodeMap<Seq> =
         sink.items.iter().map(|(key, _, seq)| (*key, seq.clone())).collect();
       let root_key = graph.root_key().map_err(|error| TestCaseError::fail(format!("{error:?}")))?;
 

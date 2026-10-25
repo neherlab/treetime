@@ -50,9 +50,10 @@ mod tests {
     use eyre::Report;
     use proptest::arbitrary::any;
     use proptest::strategy::Strategy;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
     use treetime_graph::clades::{TipIds, graph_clade_keys};
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node_names::NodeNames;
     use treetime_simulation::branch_lengths::{exact, perturbed};
@@ -91,7 +92,7 @@ mod tests {
 
       let records = case.sequences.leaf_records(&tree.graph, &tree.names);
       let gtr = gtr_from_model(&case.model, 1.0)?;
-      let log_lh = |graph: &Graph, lengths: &BTreeMap<GraphEdgeKey, Option<f64>>, names: &NodeNames| {
+      let log_lh = |graph: &Graph, lengths: &EdgeMap<Option<f64>>, names: &NodeNames| {
         run_dense_marginal(graph, lengths, names, &records, gtr.clone())
       };
       let (start_log_lh, _) = log_lh(&tree.graph, &start_input_lengths, &tree.names)?;

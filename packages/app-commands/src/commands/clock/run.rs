@@ -12,15 +12,15 @@ use app_output::output_plan::{OutputSelection, ResolvedOutputs};
 use app_output::table_output::table_write_file;
 use app_output::tree_output::{tree_view_for_outputs, write_graph_outputs, write_tree_outputs};
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime::cancel::Cancel;
 use treetime::clock::clock_model::ClockModel;
 use treetime::clock::clock_state::ClockInputs;
 use treetime::clock::pipeline::{self, ClockInput, ClockParams};
 use treetime::clock::rtt::ClockRegressionResult;
 use treetime::progress::{LogSink, StageSink};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::io::json::{JsonPretty, json_write_file};
@@ -145,8 +145,8 @@ fn write_clock_chart(
 fn write_clock_trees(
   graph: &Graph,
   names: &NodeNames,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  divergences: &BTreeMap<GraphNodeKey, f64>,
+  branch_lengths: &EdgeMap<Option<f64>>,
+  divergences: &NodeMap<f64>,
   dates: &ClockDates,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,
@@ -174,7 +174,7 @@ fn write_clock_trees(
 }
 
 struct ClockDates {
-  num_date: BTreeMap<GraphNodeKey, Option<f64>>,
+  num_date: NodeMap<Option<f64>>,
   excluded: BTreeSet<GraphNodeKey>,
 }
 

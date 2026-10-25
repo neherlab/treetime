@@ -6,7 +6,8 @@ pub(crate) mod tests {
   use ndarray::{Array1, Array2, array};
   use parking_lot::Mutex;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
   use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
@@ -14,7 +15,7 @@ pub(crate) mod tests {
   use treetime::gtr::gtr::GTR;
   use treetime::progress::{LogLevel, LogSink, RunWarning};
   use treetime::seq::mutation::{AlignedMutation, Mutation, MutationEvent, MutationTrack, Sub};
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::{FastaWriter, fasta_read_file};
   use treetime_primitives::{AsciiChar, Seq};
@@ -59,7 +60,7 @@ pub(crate) mod tests {
     graph: &Graph,
     edge_subs: &[(usize, Vec<Sub>)],
     edge_deletions: &[(usize, Vec<AlignedMutation>)],
-  ) -> BTreeMap<GraphEdgeKey, Vec<Mutation>> {
+  ) -> EdgeMap<Vec<Mutation>> {
     graph
       .get_edges()
       .enumerate()

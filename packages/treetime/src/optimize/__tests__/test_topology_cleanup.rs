@@ -27,10 +27,11 @@ pub(super) mod tests {
   use eyre::Report;
   use helpers::{empty_sparse_recon, populate_test_nodes};
   use indoc::indoc;
-  use maplit::btreemap;
+  use treetime_graph::key_map::EdgeMap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
@@ -42,7 +43,7 @@ pub(super) mod tests {
   fn test_optimize_find_zero_optimal_internal_edges_empty_graph() -> Result<(), Report> {
     let graph = Graph::new();
     let reconstruction = PartitionSet::Sparse(vec![empty_sparse_recon()?]);
-    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &BTreeMap::new());
+    let edges = find_zero_optimal_internal_edges(&graph, &reconstruction, &EdgeMap::new());
     assert_eq!(edges.len(), 0);
     Ok(())
   }
@@ -173,7 +174,7 @@ pub(super) mod tests {
     );
 
     for edge in graph.get_edges() {
-      let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
+      let bl = branch_lengths.get(edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
 
@@ -420,7 +421,7 @@ pub(super) mod tests {
     );
 
     for edge in graph.get_edges() {
-      let bl = branch_lengths.get(&edge.key()).copied().flatten().unwrap_or(0.0);
+      let bl = branch_lengths.get(edge.key()).copied().flatten().unwrap_or(0.0);
       assert!(bl >= 0.0, "Negative branch length after optimization: {bl}");
     }
 
@@ -567,7 +568,7 @@ pub(super) mod tests {
       "expected a collapse (topology change) with collapse enabled"
     );
 
-    let map_keys: Vec<_> = result.branch_lengths.keys().copied().collect();
+    let map_keys: Vec<_> = result.branch_lengths.keys().collect();
     let mut edge_keys: Vec<_> = graph.get_edges().map(|edge| edge.key()).collect();
     edge_keys.sort_unstable();
     assert_eq!(map_keys, edge_keys);
@@ -583,6 +584,7 @@ pub(super) mod tests {
 
   pub(crate) mod helpers {
     use super::*;
+    use treetime_graph::keymap;
 
     fn c(b: u8) -> AsciiChar {
       AsciiChar::from_byte_unchecked(b)
@@ -599,11 +601,11 @@ pub(super) mod tests {
           length: 100,
           total_length: 100,
           root_sequence: seq![],
-          obs_nodes: btreemap! {},
-          obs_edges: btreemap! {},
+          obs_nodes: keymap! {},
+          obs_edges: keymap! {},
         },
         gtr: jc69(JC69Params::default())?,
-        node_states: btreemap! {},
+        node_states: keymap! {},
         edges: MarginalEdges::default(),
         layout: None,
       })

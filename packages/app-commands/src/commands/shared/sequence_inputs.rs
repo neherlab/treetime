@@ -5,7 +5,6 @@ use deser::{Deserialize, Serialize};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use schemars::JsonSchema;
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::alphabet::alphabet::{Alphabet, AlphabetName};
 use treetime::ancestral::attach::{MissingLeafLimit, complete_alignment_for_leaves};
@@ -16,9 +15,8 @@ use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::seq::alignment::{AncestralInput, EdgeSeqInput, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::fasta_read_file;
 use treetime_io::nwk::{NewickDialect, NwkParse};
@@ -46,7 +44,7 @@ pub(crate) fn read_tree_and_sources(
 
 pub(crate) fn ancestral_input(
   graph: Graph,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   sequences: SequenceInput,
 ) -> AncestralInput {
   let edges = branch_lengths
@@ -193,6 +191,6 @@ pub(crate) struct SourceSettings<'a> {
 
 pub(crate) struct AlignmentSource {
   pub(crate) source: SequenceSource,
-  pub(crate) descs: BTreeMap<GraphNodeKey, Option<String>>,
+  pub(crate) descs: NodeMap<Option<String>>,
   pub(crate) n_records: usize,
 }

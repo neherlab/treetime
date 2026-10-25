@@ -19,7 +19,8 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_io::fasta::{fasta_read, fasta_read_file};
   use treetime_io::nwk::{nwk_read, nwk_read_file};
@@ -158,7 +159,7 @@ mod tests {
   fn setup_dense_partition(
     tree_nwk: &str,
     aln: &[AlignmentRecord],
-  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, EdgeMap<Option<f64>>), Report> {
     let nwk_parsed = nwk_read(tree_nwk.as_bytes())?;
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
@@ -179,7 +180,7 @@ mod tests {
   fn setup_dense_partition_from_files(
     tree_path: impl AsRef<Path>,
     alignment_path: impl AsRef<Path>,
-  ) -> Result<(Graph, DenseReconstruction, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+  ) -> Result<(Graph, DenseReconstruction, EdgeMap<Option<f64>>), Report> {
     let tree_path = PROJECT_ROOT.join(tree_path);
     let alignment_path = PROJECT_ROOT.join(alignment_path);
 

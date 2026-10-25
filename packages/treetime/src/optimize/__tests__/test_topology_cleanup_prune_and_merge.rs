@@ -145,14 +145,14 @@ mod tests {
     let p = sparse_reconstruction(&reconstruction);
     let total_subs: usize = graph
       .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
+      .filter_map(|e| p.partition.obs_edges.get(e.key()))
       .map(|e| e.fitch_subs().len())
       .sum();
     assert_eq!(total_subs, 2, "reaches the parsimony optimum");
 
     let reversion_remains = graph
       .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
+      .filter_map(|e| p.partition.obs_edges.get(e.key()))
       .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
     assert!(!reversion_remains, "reversion must be removed");
 
@@ -335,7 +335,7 @@ mod tests {
     let p = sparse_reconstruction(&reconstruction);
     let reversion_remains = graph
       .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
+      .filter_map(|e| p.partition.obs_edges.get(e.key()))
       .any(|e| e.fitch_subs().contains(&sub(b'T', 0, b'A')));
     assert!(
       reversion_remains,
@@ -398,7 +398,7 @@ mod tests {
     let p = sparse_reconstruction(&reconstruction);
     let total_subs: usize = graph
       .get_edges()
-      .filter_map(|e| p.partition.obs_edges.get(&e.key()))
+      .filter_map(|e| p.partition.obs_edges.get(e.key()))
       .map(|e| e.fitch_subs().len())
       .sum();
     assert_eq!(total_subs, 4, "mutation content is unchanged");

@@ -88,6 +88,7 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::LazyLock;
     use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::NodeMap;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
     use treetime_io::csv::default_name_candidates;
@@ -142,7 +143,7 @@ mod tests {
 
     pub(super) fn run_gm_mugration_case(
       fixture: &GmMugrationInput,
-    ) -> Result<(MugrationOutput, BTreeMap<GraphNodeKey, String>), Report> {
+    ) -> Result<(MugrationOutput, NodeMap<String>), Report> {
       let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
 
       let tree_path = project_root.join(&fixture.tree_path);
@@ -206,7 +207,7 @@ mod tests {
 
     pub(super) fn trait_assignments_by_name(
       output: &MugrationOutput,
-      names: &BTreeMap<GraphNodeKey, String>,
+      names: &NodeMap<String>,
     ) -> BTreeMap<String, String> {
       names
         .iter()
@@ -219,7 +220,7 @@ mod tests {
 
     pub(super) fn confidence_by_name(
       output: &MugrationOutput,
-      names: &BTreeMap<GraphNodeKey, String>,
+      names: &NodeMap<String>,
     ) -> BTreeMap<String, Array1<f64>> {
       names
         .iter()
@@ -227,8 +228,8 @@ mod tests {
         .collect()
     }
 
-    fn v0_node_names(graph: &Graph, names: &NodeNames) -> Result<BTreeMap<GraphNodeKey, String>, Report> {
-      let mut v0_names = BTreeMap::new();
+    fn v0_node_names(graph: &Graph, names: &NodeNames) -> Result<NodeMap<String>, Report> {
+      let mut v0_names = NodeMap::new();
       for node in graph.get_nodes().filter(|node| node.is_leaf()) {
         v0_names.insert(node.key(), names[node.key()].to_owned());
       }

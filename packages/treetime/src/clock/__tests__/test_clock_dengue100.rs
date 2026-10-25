@@ -108,8 +108,9 @@ mod tests {
     use crate::test_utils::{dates_by_node, reroot_and_fit_clock};
     use eyre::Report;
     use itertools::Itertools;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
     use std::path::Path;
+    use treetime_graph::key_map::NodeMap;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
     use treetime_io::dates_csv::metadata_read_file;
@@ -175,7 +176,7 @@ mod tests {
       sorted_names(&output.names, &output.outliers)
     }
 
-    fn load() -> Result<(NwkParse, BTreeMap<GraphNodeKey, DateConstraint>), Report> {
+    fn load() -> Result<(NwkParse, NodeMap<DateConstraint>), Report> {
       let data_dir = Path::new(DATA_DIR);
       let nwk_parsed = nwk_read_file(data_dir.join("tree.nwk"))?;
       let dates = metadata_read_file(

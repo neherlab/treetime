@@ -3,9 +3,8 @@ use eyre::Report;
 use itertools::Itertools;
 use rand::{Rng, RngExt};
 use rand_distr::{Distribution, Exp1};
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
@@ -21,7 +20,7 @@ pub fn simulate_coalescent(
   let batches = sorted_batches(sampling)?;
   let mut pending = batches.iter().peekable();
   let mut graph = Graph::new();
-  let mut tau = BTreeMap::new();
+  let mut tau = NodeMap::new();
   let mut tips = vec![];
   let mut mergers = vec![];
   let mut active: Vec<GraphNodeKey> = vec![];
@@ -89,7 +88,7 @@ pub struct SampleBatch {
 pub struct SimulatedTree {
   pub graph: Graph,
   pub names: NodeNames,
-  pub tau: BTreeMap<GraphNodeKey, f64>,
+  pub tau: NodeMap<f64>,
 }
 
 impl SimulatedTree {
@@ -97,7 +96,7 @@ impl SimulatedTree {
     PRESENT - self.tau[&node]
   }
 
-  pub fn edge_durations(&self) -> BTreeMap<GraphEdgeKey, f64> {
+  pub fn edge_durations(&self) -> EdgeMap<f64> {
     self
       .graph
       .get_edges()
@@ -137,7 +136,7 @@ fn sorted_batches(sampling: &[SampleBatch]) -> Result<Vec<SampleBatch>, Report> 
 fn add_batch(
   batch: &SampleBatch,
   graph: &mut Graph,
-  tau: &mut BTreeMap<GraphNodeKey, f64>,
+  tau: &mut NodeMap<f64>,
   tips: &mut Vec<GraphNodeKey>,
   active: &mut Vec<GraphNodeKey>,
 ) {
@@ -149,7 +148,7 @@ fn add_batch(
   }
 }
 
-fn node_names(tips: &[GraphNodeKey], mergers: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, Option<String>> {
+fn node_names(tips: &[GraphNodeKey], mergers: &[GraphNodeKey]) -> NodeMap<Option<String>> {
   let tip_names = tips.iter().enumerate().map(|(index, &tip)| {
     let number = index + 1;
     (tip, format!("tip_{number:04}"))

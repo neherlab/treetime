@@ -24,7 +24,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::fasta_read;
@@ -130,8 +130,9 @@ mod tests {
     use crate::partition::alignment_sequences::PartitionSequences;
     use crate::seq::sink::SeqStream;
     use pretty_assertions::assert_eq;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
 
-    type EdgeSubs = BTreeMap<GraphEdgeKey, Vec<Sub>>;
+    type EdgeSubs = EdgeMap<Vec<Sub>>;
 
     pub(super) struct EngineAndDerivedSubs {
       pub expected: EdgeSubs,
@@ -171,9 +172,9 @@ mod tests {
         })
         .collect();
       let node_inputs = complete_leaf_sequences(&parse.graph, &names, sequences, &alphabet)?.nodes;
-      let observed: BTreeMap<GraphNodeKey, Seq> = node_inputs
+      let observed: NodeMap<Seq> = node_inputs
         .iter()
-        .filter_map(|(&key, input)| input.seq.clone().map(|seq| (key, seq)))
+        .filter_map(|(key, input)| input.seq.clone().map(|seq| (key, seq)))
         .collect();
       let options = ReconstructionOptions::new(impute, SampleMode::Argmax);
       let partition = reconstruct_partition(
@@ -216,7 +217,7 @@ mod tests {
         .into_iter()
         .map(|(edge_key, mutations)| (edge_key, substitutions(mutations)))
         .collect();
-      let streamed: BTreeMap<GraphNodeKey, Seq> = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
+      let streamed: NodeMap<Seq> = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       let alphabet = partition.alphabet();
       if !impute {
         assert_observed_leaf_states(graph, alphabet, &observed, &streamed, &expected, &actual)?;
@@ -225,7 +226,7 @@ mod tests {
       let outside = |subs: &EdgeSubs| -> EdgeSubs {
         subs
           .iter()
-          .map(|(&edge_key, subs)| {
+          .map(|(edge_key, subs)| {
             let kept = subs
               .iter()
               .filter(|sub| !columns.contains(&sub.pos()))
@@ -241,7 +242,7 @@ mod tests {
       })
     }
 
-    fn ambiguous_columns(observed: &BTreeMap<GraphNodeKey, Seq>, alphabet: &Alphabet) -> BTreeSet<usize> {
+    fn ambiguous_columns(observed: &NodeMap<Seq>, alphabet: &Alphabet) -> BTreeSet<usize> {
       observed
         .values()
         .flat_map(|seq| {
@@ -257,13 +258,13 @@ mod tests {
     fn assert_observed_leaf_states(
       graph: &Graph,
       alphabet: &Alphabet,
-      observed: &BTreeMap<GraphNodeKey, Seq>,
-      streamed: &BTreeMap<GraphNodeKey, Seq>,
+      observed: &NodeMap<Seq>,
+      streamed: &NodeMap<Seq>,
       expected: &EdgeSubs,
       actual: &EdgeSubs,
     ) -> Result<(), Report> {
       for edge in graph.get_edges() {
-        let Some(leaf) = observed.get(&edge.target()) else {
+        let Some(leaf) = observed.get(edge.target()) else {
           continue;
         };
         let parent = &streamed[&edge.source()];
@@ -326,8 +327,7 @@ mod tests {
         true,
         Some(SeqStream::new(&mut sink, &names)),
       )?;
-      let node_sequences: BTreeMap<GraphNodeKey, Seq> =
-        sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
+      let node_sequences: NodeMap<Seq> = sink.items.into_iter().map(|(key, _, seq)| (key, seq)).collect();
       let name = |key: GraphNodeKey| names[key].to_owned();
       let mut mutations = BTreeMap::new();
       for edge in graph.get_edges() {
@@ -346,7 +346,7 @@ mod tests {
       }
       let sequences = node_sequences
         .iter()
-        .map(|(&key, seq)| (name(key), seq.as_str().to_owned()))
+        .map(|(key, seq)| (name(key), seq.as_str().to_owned()))
         .collect();
       Ok((mutations, sequences))
     }

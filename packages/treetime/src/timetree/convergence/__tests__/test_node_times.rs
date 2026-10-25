@@ -3,7 +3,8 @@ mod tests {
   use crate::test_utils::{empty_time_inference, find_node_key_by_name};
   use crate::timetree::convergence::node_times::capture_node_times;
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use treetime_io::nwk::nwk_read;
 
@@ -23,14 +24,14 @@ mod tests {
     ] {
       inference
         .posterior
-        .get_mut(&key(name))
+        .get_mut(key(name))
         .expect("every fixture node has a posterior")
         .time = time;
     }
 
     let actual = capture_node_times(&graph, &inference);
 
-    let expected = btreemap! {
+    let expected = keymap! {
       key("A") => 2010.0,
       key("root") => 2000.0,
     };

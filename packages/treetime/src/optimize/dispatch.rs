@@ -14,10 +14,11 @@ use crate::partition::optimize::contribution::OptimizationContribution;
 use crate::{make_error, make_report};
 use eyre::{Report, WrapErr};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::mem::take;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn optimize_edge_lengths(
@@ -26,7 +27,7 @@ pub(crate) fn optimize_edge_lengths(
   contributions: &impl EdgeContributions,
   indels: &EdgeIndels,
   method: BranchOptMethod,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<UnconvergedEdges, Report> {
   if total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot optimize branch lengths");
@@ -37,7 +38,7 @@ pub(crate) fn optimize_edge_lengths(
 
   let chains = SeriesChain::capture_all(graph, &lengths);
   let held: BTreeSet<GraphEdgeKey> = chains.iter().flat_map(SeriesChain::held).collect();
-  let chain_indels: BTreeMap<GraphEdgeKey, IndelTerm> = chains
+  let chain_indels: EdgeMap<IndelTerm> = chains
     .iter()
     .map(|chain| (chain.optimized, chain.indel_term(indels, &lengths)))
     .collect();
@@ -51,7 +52,7 @@ pub(crate) fn optimize_edge_lengths(
     .map(|edge_ref| -> Result<(GraphEdgeKey, EdgeSolution), Report> {
       let edge_key = edge_ref.key();
       let edge_indels = chain_indels
-        .get(&edge_key)
+        .get(edge_key)
         .copied()
         .unwrap_or_else(|| indels.term(edge_key));
       let edge = EdgeOptimization {
@@ -82,10 +83,7 @@ pub(crate) fn optimize_edge_lengths(
   Ok(unconverged)
 }
 
-fn parse_optimizable_lengths(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+fn parse_optimizable_lengths(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Result<EdgeMap<f64>, Report> {
   graph
     .get_edges()
     .map(|edge_ref| {
@@ -105,15 +103,15 @@ struct SeriesChain {
 }
 
 impl SeriesChain {
-  fn capture_all(graph: &Graph, lengths: &BTreeMap<GraphEdgeKey, f64>) -> Vec<Self> {
-    let mut chain_of: BTreeMap<GraphEdgeKey, usize> = BTreeMap::new();
+  fn capture_all(graph: &Graph, lengths: &EdgeMap<f64>) -> Vec<Self> {
+    let mut chain_of: EdgeMap<usize> = EdgeMap::new();
     let mut groups: Vec<Vec<GraphEdgeKey>> = vec![];
     for node in graph.get_nodes() {
       let incident = [node.inbound(), node.outbound()].concat();
       if node.is_leaf() || incident.len() != 2 {
         continue;
       }
-      match (chain_of.get(&incident[0]).copied(), chain_of.get(&incident[1]).copied()) {
+      match (chain_of.get(incident[0]).copied(), chain_of.get(incident[1]).copied()) {
         (None, None) => {
           incident.iter().for_each(|&e| _ = chain_of.insert(e, groups.len()));
           groups.push(incident);
@@ -158,12 +156,12 @@ impl SeriesChain {
     self.edges.iter().copied().filter(|&e| e != self.optimized)
   }
 
-  fn indel_term(&self, indels: &EdgeIndels, lengths: &BTreeMap<GraphEdgeKey, f64>) -> IndelTerm {
+  fn indel_term(&self, indels: &EdgeIndels, lengths: &EdgeMap<f64>) -> IndelTerm {
     let held_length = self.held().map(|e| lengths[&e]).sum();
     indels.chain_term(&self.edges, held_length)
   }
 
-  fn restore(self, indels: IndelTerm, lengths: &mut BTreeMap<GraphEdgeKey, f64>) {
+  fn restore(self, indels: IndelTerm, lengths: &mut EdgeMap<f64>) {
     let total = if lengths[&self.optimized] == 0.0 && indels.count == 0 {
       0.0
     } else {
@@ -180,7 +178,7 @@ pub(crate) fn guess_initial_branch_lengths(
   indels: &EdgeIndels,
   evidence: &InitialGuessEvidence,
   existing: ExistingBranchLengths,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   if evidence.total_length == 0 {
     return make_error!("Total sequence length across all partitions is zero; cannot compute initial guess");
@@ -194,7 +192,7 @@ pub(crate) fn guess_initial_branch_lengths(
     let edge_indels = indels.term(edge_key);
 
     if existing == ExistingBranchLengths::Keep {
-      if let Some(bl) = branch_lengths.get(&edge_key).copied().flatten() {
+      if let Some(bl) = branch_lengths.get(edge_key).copied().flatten() {
         if is_valid_branch_length_value(bl) && (bl > 0.0 || !edge_indels.requires_positive_length()) {
           continue;
         }

@@ -1,4 +1,5 @@
 use crate::graph::Graph;
+use crate::key_map::NodeMap;
 use crate::node::GraphNodeKey;
 use crate::schedule::GraphSchedule;
 use eyre::Report;
@@ -7,28 +8,25 @@ use std::ops::Index;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NodeNames {
-  by_node: BTreeMap<GraphNodeKey, String>,
+  by_node: NodeMap<String>,
   repeated_input_names: BTreeMap<GraphNodeKey, String>,
   in_use: BTreeSet<String>,
   next_number: usize,
 }
 
 impl NodeNames {
-  pub fn from_input(
-    mut input: BTreeMap<GraphNodeKey, Option<String>>,
-    graph: &Graph,
-  ) -> Result<InputNodeNames, Report> {
+  pub fn from_input(mut input: NodeMap<Option<String>>, graph: &Graph) -> Result<InputNodeNames, Report> {
     let named: Vec<(GraphNodeKey, String)> = graph
       .get_nodes()
       .filter_map(|node| {
         let key = node.key();
-        let name = input.remove(&key).flatten().filter(|name| !name.is_empty())?;
+        let name = input.remove(key).flatten().filter(|name| !name.is_empty())?;
         Some((key, name))
       })
       .collect();
 
     let mut names = Self {
-      by_node: BTreeMap::new(),
+      by_node: NodeMap::new(),
       repeated_input_names: BTreeMap::new(),
       in_use: named.iter().map(|(_, name)| name.clone()).collect(),
       next_number: 0,

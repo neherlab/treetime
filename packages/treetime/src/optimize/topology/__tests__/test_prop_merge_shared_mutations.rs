@@ -17,9 +17,9 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
-  use std::collections::BTreeMap;
+
   use std::collections::BTreeSet;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -60,7 +60,7 @@ mod tests {
       let p = &partitions[0].partition;
       let total_after: usize = graph
         .get_edges()
-        .filter_map(|e| p.obs_edges.get(&e.key()))
+        .filter_map(|e| p.obs_edges.get(e.key()))
         .map(|e| e.fitch_subs().len())
         .sum();
 
@@ -342,8 +342,8 @@ mod tests {
       let p = &mut partition;
       let edge_c = find_edge_key(&graph, &names, "root", "C").expect("edge root->C");
       let edge_d = find_edge_key(&graph, &names, "root", "D").expect("edge root->D");
-      p.obs_edges.get_mut(&edge_c).expect("partition edge C").indels = vec![shared_indel.clone()];
-      p.obs_edges.get_mut(&edge_d).expect("partition edge D").indels = vec![shared_indel];
+      p.obs_edges.get_mut(edge_c).expect("partition edge C").indels = vec![shared_indel.clone()];
+      p.obs_edges.get_mut(edge_d).expect("partition edge D").indels = vec![shared_indel];
     }
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
@@ -398,13 +398,15 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::keymap;
 
     type PolytomySetup = (
       Graph,
       NodeNames,
       Vec<(String, String, Vec<Sub>)>,
       usize,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
+      EdgeMap<Option<f64>>,
     );
 
     pub(super) fn build_polytomy(
@@ -471,7 +473,7 @@ mod tests {
         }
       }
 
-      let mut obs_nodes = btreemap! {};
+      let mut obs_nodes = keymap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.key();
@@ -479,7 +481,7 @@ mod tests {
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
-      let mut obs_edges = btreemap! {};
+      let mut obs_edges = keymap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} not found"));

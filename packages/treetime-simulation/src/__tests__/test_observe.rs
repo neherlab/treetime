@@ -4,7 +4,8 @@ mod tests {
   use crate::observe::{TipObservation, UNKNOWN, codes_containing, observe_tips};
   use helpers::leaves_with;
   use itertools::{Itertools, izip};
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use proptest::prelude::{ProptestConfig, any, prop_assert, proptest};
   use rstest::rstest;
@@ -16,7 +17,7 @@ mod tests {
   #[test]
   fn test_observe_tips_without_coarsening_returns_the_leaf_sequences() {
     let tree = three_tip_tree();
-    let sequences = btreemap! {
+    let sequences = keymap! {
       tree.root  => Seq::try_from_str("ACGT-ACGT").unwrap(),
       tree.inner => Seq::try_from_str("ACGT-ACGT").unwrap(),
       tree.tip_c => Seq::try_from_str("ACGT-ACGA").unwrap(),
@@ -37,7 +38,7 @@ mod tests {
     )
     .unwrap();
 
-    let expected = btreemap! {
+    let expected = keymap! {
       tree.tip_a => sequences[&tree.tip_a].clone(),
       tree.tip_b => sequences[&tree.tip_b].clone(),
       tree.tip_c => sequences[&tree.tip_c].clone(),
@@ -134,11 +135,11 @@ mod tests {
 
   mod helpers {
     use crate::__tests__::test_support::tests::helpers::three_tip_tree;
-    use std::collections::BTreeMap;
-    use treetime_graph::node::GraphNodeKey;
+    use treetime_graph::key_map::NodeMap;
+
     use treetime_primitives::Seq;
 
-    pub(super) fn leaves_with(seq: &str) -> BTreeMap<GraphNodeKey, Seq> {
+    pub(super) fn leaves_with(seq: &str) -> NodeMap<Seq> {
       let tree = three_tip_tree();
       [tree.tip_a, tree.tip_b, tree.tip_c]
         .into_iter()

@@ -19,9 +19,9 @@ use crate::seq::sink::AmbiguousSites;
 use crate::{make_internal_report, make_report};
 use eyre::Report;
 use itertools::{Itertools, izip};
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{Seq, seq};
 use treetime_utils::cast::ToF64Exact;
@@ -33,15 +33,11 @@ pub struct PartitionMarginalDense {
   pub(crate) inputs: DenseInputs,
   pub(crate) alphabet: Alphabet,
   pub(crate) length: usize,
-  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, DenseLeafObs>,
+  pub(crate) obs_leaves: NodeMap<DenseLeafObs>,
 }
 
 impl PartitionMarginalDense {
-  pub(crate) fn new(
-    alphabet: Alphabet,
-    graph: &Graph,
-    node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-  ) -> Result<Self, Report> {
+  pub(crate) fn new(alphabet: Alphabet, graph: &Graph, node_inputs: &NodeMap<NodeSeqInput>) -> Result<Self, Report> {
     let length = get_common_length_of_node_inputs(node_inputs)?;
     let obs_leaves = graph
       .get_leaves()
@@ -54,7 +50,7 @@ impl PartitionMarginalDense {
           .ok_or_else(|| make_report!("Leaf sequence not found: '{}'", node.name))?;
         Ok((leaf_key, DenseLeafObs::new(seq, &alphabet)))
       })
-      .collect::<Result<BTreeMap<_, _>, Report>>()?;
+      .collect::<Result<NodeMap<_>, Report>>()?;
     let min_branch_length = MIN_BRANCH_LENGTH_FRACTION / length.to_f64_exact();
     Ok(Self {
       inputs: DenseInputs {
@@ -80,7 +76,7 @@ impl PartitionMarginalDense {
 
   pub(crate) fn edge_subs(
     &self,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: &NodeMap<DenseNodeState>,
     graph: &Graph,
     edge_key: GraphEdgeKey,
   ) -> Result<Vec<Sub>, Report> {
@@ -111,25 +107,17 @@ impl PartitionMarginalDense {
     Ok(subs)
   }
 
-  pub(crate) fn edge_indels(
-    &self,
-    estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
-    edge_key: GraphEdgeKey,
-  ) -> Vec<InDel> {
+  pub(crate) fn edge_indels(&self, estimates: &EdgeMap<DenseEdgeEstimate>, edge_key: GraphEdgeKey) -> Vec<InDel> {
     estimates[&edge_key].indels.clone()
   }
 
-  pub(crate) fn root_sequence(
-    &self,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-    graph: &Graph,
-  ) -> Result<Seq, Report> {
+  pub(crate) fn root_sequence(&self, node_states: &NodeMap<DenseNodeState>, graph: &Graph) -> Result<Seq, Report> {
     Ok(assign_sequence(&node_states[&graph.root_key()?], &self.alphabet))
   }
 
   pub(crate) fn edge_effective_length(
     &self,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: &NodeMap<DenseNodeState>,
     graph: &Graph,
     edge_key: GraphEdgeKey,
   ) -> Result<usize, Report> {
@@ -148,29 +136,25 @@ impl PartitionMarginalDense {
   pub(crate) fn create_edge_contribution(
     &self,
     gtr: &GTR,
-    backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
-    forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+    backward: &EdgeMap<DenseEdgeBackward>,
+    forward: &EdgeMap<DenseEdgeForward>,
     edge_key: GraphEdgeKey,
   ) -> Result<OptimizationContribution, Report> {
     OptimizationContribution::from_dense(gtr, &backward[&edge_key], &forward[&edge_key])
   }
 
-  pub(crate) fn edge_indel_count(
-    &self,
-    estimates: &BTreeMap<GraphEdgeKey, DenseEdgeEstimate>,
-    edge_key: GraphEdgeKey,
-  ) -> usize {
+  pub(crate) fn edge_indel_count(&self, estimates: &EdgeMap<DenseEdgeEstimate>, edge_key: GraphEdgeKey) -> usize {
     estimates[&edge_key].indels.len()
   }
 
   pub(crate) fn extract_ancestral_sequence(
     &self,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: &NodeMap<DenseNodeState>,
     node_key: GraphNodeKey,
   ) -> SeqOverlay {
     SeqOverlay::from(
       node_states
-        .get(&node_key)
+        .get(node_key)
         .map_or_else(|| seq! {}, |seq_info| assign_sequence(seq_info, &self.alphabet)),
     )
   }
@@ -178,7 +162,7 @@ impl PartitionMarginalDense {
   pub(crate) fn node_sequence(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: &NodeMap<DenseNodeState>,
     impute: bool,
     node_key: GraphNodeKey,
   ) -> Result<Seq, Report> {
@@ -197,10 +181,10 @@ impl PartitionMarginalDense {
   pub(crate) fn sample_sequences(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: &NodeMap<DenseNodeState>,
     sample_mode: SampleMode,
     rng: &mut dyn rand::Rng,
-  ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+  ) -> Result<NodeMap<Seq>, Report> {
     sample_internal_sequences(graph, sample_mode, |key| {
       assign_sequence_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))
     })
@@ -209,7 +193,7 @@ impl PartitionMarginalDense {
   pub(crate) fn node_ambiguity(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+    node_states: &NodeMap<DenseNodeState>,
     impute: bool,
     node_key: GraphNodeKey,
     threshold: AmbiguityThreshold,

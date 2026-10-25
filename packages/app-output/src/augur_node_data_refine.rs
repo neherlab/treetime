@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use treetime::clock::clock_model::ClockModel;
 use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::dates_csv::DateConstraint;
 use treetime_utils::cast::ToF64Exact;
@@ -67,13 +68,11 @@ pub fn build_augur_node_data_refine(tree: &AnnotatedTreeView<'_>, run: &RefineRu
   }
 }
 
-pub fn total_mutation_counts<'a>(
-  counts: impl IntoIterator<Item = &'a BTreeMap<GraphEdgeKey, usize>>,
-) -> BTreeMap<GraphEdgeKey, usize> {
+pub fn total_mutation_counts<'a>(counts: impl IntoIterator<Item = &'a EdgeMap<usize>>) -> EdgeMap<usize> {
   counts
     .into_iter()
     .flatten()
-    .fold(BTreeMap::new(), |mut total, (&edge, &count)| {
+    .fold(EdgeMap::new(), |mut total, (edge, &count)| {
       *total.entry(edge).or_default() += count;
       total
     })
@@ -108,25 +107,25 @@ fn refine_lengths(tree: &AnnotatedTreeView<'_>, run: &RefineRun<'_>, key: GraphN
 
 fn mutation_length(tree: &AnnotatedTreeView<'_>, run: &RefineRun<'_>, edge_key: GraphEdgeKey) -> Option<f64> {
   match run.mutation_counts {
-    Some(counts) => Some(counts.get(&edge_key).copied().unwrap_or_default().to_f64_exact()),
+    Some(counts) => Some(counts.get(edge_key).copied().unwrap_or_default().to_f64_exact()),
     None => tree.graph().divergence_branch_lengths[&edge_key],
   }
 }
 
 pub struct RefineRun<'a> {
   pub alignments: &'a [PathBuf],
-  pub mutation_counts: Option<&'a BTreeMap<GraphEdgeKey, usize>>,
+  pub mutation_counts: Option<&'a EdgeMap<usize>>,
   pub input_tree: Option<&'a Path>,
   pub clock_model: Option<&'a ClockModel>,
 }
 
 fn refine_dates(dates: &TreeDates<'_>, key: GraphNodeKey, is_leaf: bool) -> RefineDates {
-  let constraint = dates.input_dates.and_then(|input_dates| input_dates.get(&key));
+  let constraint = dates.input_dates.and_then(|input_dates| input_dates.get(key));
   let numdate = dates.num_date[&key];
   RefineDates {
     numdate,
     date: numdate.map(year_fraction_to_datestring),
-    num_date_confidence: dates.confidence.and_then(|confidence| confidence.get(&key).copied()),
+    num_date_confidence: dates.confidence.and_then(|confidence| confidence.get(key).copied()),
     date_inferred: Some(!constraint.is_some_and(DateConstraint::is_exact)),
     raw_date: constraint.filter(|_| is_leaf).map(|constraint| constraint.raw.clone()),
   }

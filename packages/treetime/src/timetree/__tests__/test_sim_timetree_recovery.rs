@@ -150,7 +150,7 @@ mod tests {
         .collect::<BTreeMap<_, _>>();
       let covered = matched
         .iter()
-        .map(|(&true_node, node)| -> Result<bool, Report> {
+        .map(|(true_node, node)| -> Result<bool, Report> {
           let name = &output.names[*node];
           let interval = intervals
             .get(node)

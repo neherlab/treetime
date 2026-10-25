@@ -9,12 +9,12 @@ mod tests {
   use indoc::indoc;
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeSet;
   use tempfile::TempDir;
   use treetime::progress::NoopProgress;
   use treetime::seq::mutation::{PositionBase, Sub};
-  use treetime_graph::edge::GraphEdgeKey;
-  use treetime_graph::node::GraphNodeKey;
+  use treetime_graph::key_map::{EdgeMap, NodeMap};
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
   use treetime_utils::io::fs::read_file_to_string;
@@ -32,12 +32,12 @@ mod tests {
       ],
     )];
     let edge_mutations = edge_mutation_map(&graph, edge_subs, &[]);
-    let num_date: BTreeMap<GraphNodeKey, Option<f64>> = graph
+    let num_date: NodeMap<Option<f64>> = graph
       .get_nodes()
       .map(|node| (node.key(), node.is_leaf().then_some(2003.84)))
       .collect();
-    let divergences: BTreeMap<GraphNodeKey, f64> = graph.get_nodes().map(|node| (node.key(), 0.0)).collect();
-    let time_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = graph.get_edges().map(|edge| (edge.key(), None)).collect();
+    let divergences: NodeMap<f64> = graph.get_nodes().map(|node| (node.key(), 0.0)).collect();
+    let time_lengths: EdgeMap<Option<f64>> = graph.get_edges().map(|edge| (edge.key(), None)).collect();
     let root_sequence = Seq::try_from_str("A")?;
     let excluded = BTreeSet::new();
     let annotated = AnnotatedGraph {

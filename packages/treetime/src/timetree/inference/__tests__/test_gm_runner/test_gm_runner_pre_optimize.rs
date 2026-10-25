@@ -14,6 +14,7 @@ mod tests {
   use eyre::Report;
   use rstest::rstest;
   use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -61,13 +62,13 @@ mod tests {
       "Expected at least one branch length to change after ML optimization, but none did"
     );
 
-    let times: BTreeMap<GraphNodeKey, f64> = output
+    let times: NodeMap<f64> = output
       .node_dates
       .iter()
-      .filter_map(|(&key, &time)| time.map(|time| (key, time)))
+      .filter_map(|(key, &time)| time.map(|time| (key, time)))
       .collect();
     assert_eq!(output.graph.num_nodes(), times.len(), "every node must be dated");
-    let non_finite: BTreeMap<&GraphNodeKey, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
+    let non_finite: BTreeMap<GraphNodeKey, &f64> = times.iter().filter(|(_, time)| !time.is_finite()).collect();
     assert_eq!(BTreeMap::new(), non_finite, "every node time must be finite");
     Ok(())
   }

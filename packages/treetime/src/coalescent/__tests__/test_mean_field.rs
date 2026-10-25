@@ -8,11 +8,12 @@ mod tests {
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
+
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_graph::node_names::NodeNames;
   use treetime_grid::{Side, SoftTailLaw};
   use treetime_io::nwk::nwk_read;
@@ -346,13 +347,13 @@ mod tests {
     let names = parsed.names.clone();
     let graph = parsed.graph;
     let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
-    let marginals = BTreeMap::from([
+    let marginals = NodeMap::from([
       (key("root"), NodeTimeGaussian { mean: 2000.0, std: 0.5 }),
       (key("B"), NodeTimeGaussian { mean: 2006.0, std: 0.2 }),
     ]);
-    let tip_times = BTreeMap::from([(key("A"), Some(2010.0)), (key("B"), None), (key("root"), None)]);
+    let tip_times = NodeMap::from([(key("A"), Some(2010.0)), (key("B"), None), (key("root"), None)]);
 
-    let expectation = LineageExpectation::from_gaussian(&graph, &marginals, &tip_times, &BTreeMap::new())?;
+    let expectation = LineageExpectation::from_gaussian(&graph, &marginals, &tip_times, &NodeMap::new())?;
 
     let SegmentStatistics { pair_integral, .. } =
       expectation.segment_statistics(&[1990.0, 2002.0, 2005.0, 2008.0, 2010.0]);
@@ -403,13 +404,13 @@ mod tests {
       time: Some(time),
       ..NodePosterior::default()
     };
-    let full: BTreeMap<GraphNodeKey, NodePosterior> = times.iter().map(|(n, t)| (key(n), point(*t))).collect();
+    let full: NodeMap<NodePosterior> = times.iter().map(|(n, t)| (key(n), point(*t))).collect();
     let mut without_n = full.clone();
-    without_n.remove(&key("N"));
+    without_n.remove(key("N"));
     let tc = Distribution::constant(3.0);
 
     let extended = LineageExpectation::from_posterior(&graph, &without_n)?
-      .with_topology(&graph, &BTreeMap::from([(key("N"), 2005.0)]))?;
+      .with_topology(&graph, &NodeMap::from([(key("N"), 2005.0)]))?;
     let fresh = LineageExpectation::from_posterior(&graph, &full)?;
     let (extended, fresh) = (
       CoalescentPrior::new(&extended, &tc)?,
@@ -446,14 +447,14 @@ mod tests {
       })
     };
     let inference = TimeInference {
-      bad_branches: BTreeMap::from([
+      bad_branches: NodeMap::from([
         (key("A"), false),
         (key("B"), false),
         (key("C"), true),
         (key("D"), true),
         (key("root"), false),
       ]),
-      posterior: BTreeMap::from([
+      posterior: NodeMap::from([
         (key("A"), dated.clone()),
         (key("B"), dated),
         (key("C"), flat(2006.0, 2008.0)?),
@@ -542,8 +543,8 @@ mod tests {
       let names = parsed.names.clone();
       let graph = parsed.graph;
       let key = |name| find_node_key_by_name(&graph, &names, name).expect("node must exist");
-      let marginals = BTreeMap::from([(key("root"), NodeTimeGaussian { mean, std })]);
-      let tip_times = BTreeMap::from([
+      let marginals = NodeMap::from([(key("root"), NodeTimeGaussian { mean, std })]);
+      let tip_times = NodeMap::from([
         (key("A"), Some(dates[0])),
         (key("B"), Some(dates[1])),
         (key("root"), None),

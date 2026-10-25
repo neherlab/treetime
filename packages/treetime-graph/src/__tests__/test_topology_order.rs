@@ -5,12 +5,13 @@ mod tests {
     fixture_deep_tree, fixture_shape_tree, fixture_tree, make_names, target_positions,
   };
   use crate::graph::Graph;
+  use crate::key_map::NodeMap;
   use crate::node_names::NodeNames;
   use crate::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
   use eyre::Report;
 
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_utils::{assert_error, o};
 
   #[test]
@@ -302,7 +303,7 @@ mod tests {
     let (mut graph, names) = fixture_tree().unwrap();
     let spec = TopologyOrderSpec {
       preset: TopologyOrderPreset::TargetOrder,
-      target_order: BTreeMap::new(),
+      target_order: NodeMap::new(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     };
     let branch_lengths = edge_branch_lengths(&graph);
@@ -392,16 +393,17 @@ mod tests {
   mod helpers {
     use crate::edge::GraphEdgeKey;
     use crate::graph::Graph;
+    use crate::key_map::{EdgeMap, NodeMap};
     use crate::node::GraphNodeKey;
     use crate::node_names::NodeNames;
     use crate::pair_by_name::pair_by_name;
     use crate::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
     use eyre::Report;
     use itertools::Itertools;
-    use std::collections::BTreeMap;
+
     use treetime_utils::make_report;
 
-    pub(super) fn target_positions(graph: &Graph, names: &NodeNames, labels: &[&str]) -> BTreeMap<GraphNodeKey, usize> {
+    pub(super) fn target_positions(graph: &Graph, names: &NodeNames, labels: &[&str]) -> NodeMap<usize> {
       let positions = labels
         .iter()
         .enumerate()
@@ -511,8 +513,7 @@ mod tests {
       Ok((graph, names))
     }
 
-    pub(super) fn fixture_branch_length_tree() -> Result<(Graph, NodeNames, BTreeMap<GraphEdgeKey, Option<f64>>), Report>
-    {
+    pub(super) fn fixture_branch_length_tree() -> Result<(Graph, NodeNames, EdgeMap<Option<f64>>), Report> {
       let mut graph = Graph::new();
       let root = graph.add_node();
       let short = graph.add_node();
@@ -619,11 +620,11 @@ mod tests {
       Ok(NodeNames::from_input(input, graph)?.names)
     }
 
-    fn make_branch_lengths(pairs: Vec<(GraphEdgeKey, f64)>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    fn make_branch_lengths(pairs: Vec<(GraphEdgeKey, f64)>) -> EdgeMap<Option<f64>> {
       pairs.into_iter().map(|(key, len)| (key, Some(len))).collect()
     }
 
-    pub(super) fn edge_branch_lengths(graph: &Graph) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    pub(super) fn edge_branch_lengths(graph: &Graph) -> EdgeMap<Option<f64>> {
       graph.get_edges().map(|edge| (edge.key(), None)).collect()
     }
   }

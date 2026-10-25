@@ -86,6 +86,8 @@ mod tests {
     use crate::test_utils::find_node_key_by_name;
     use eyre::Report;
     use std::collections::{BTreeMap, BTreeSet};
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::key_map::NodeMap;
     use treetime_graph::schedule::GraphSchedule;
     use treetime_io::nwk::{NwkNodeComments, NwkWriteOptions, nwk_read, nwk_write_str};
 
@@ -113,7 +115,7 @@ mod tests {
         ),
         Target::Spec(spec) => spec,
       };
-      let dates: BTreeMap<_, _> = [
+      let dates: NodeMap<_> = [
         ("M", 2000.0),
         ("A", 2010.0),
         ("B", 2011.0),
@@ -123,7 +125,7 @@ mod tests {
       .into_iter()
       .filter_map(|(name, date)| Some((find_node_key_by_name(&graph, &names, name)?, Some(date))))
       .collect();
-      let mut inputs = ClockInputs::from_times(&graph, &dates, &BTreeMap::new());
+      let mut inputs = ClockInputs::from_times(&graph, &dates, &EdgeMap::new());
       for _ in 0..count {
         reroot_at_best_root(
           &mut graph,

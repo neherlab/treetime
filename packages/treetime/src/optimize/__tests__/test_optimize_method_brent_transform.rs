@@ -31,7 +31,7 @@ mod tests {
     let edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     let mut contributions_by_edge = gather_edge_contributions(&graph, &reconstruction)?;
     let contributions = contributions_by_edge
-      .remove(&edge_key)
+      .remove(edge_key)
       .expect("first edge present in gathered contributions");
 
     let total_length = reconstruction.total_length();

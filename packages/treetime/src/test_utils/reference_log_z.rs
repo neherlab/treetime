@@ -5,11 +5,10 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use ndarray::Array1;
 use ordered_float::OrderedFloat;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{BoundaryBehavior, Distribution, NegLog};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_utils::cast::ToF64Exact;
@@ -64,8 +63,8 @@ pub(crate) fn reference_log_z(input: &ReferenceInput<'_>) -> Result<ReferenceLog
 
 pub(crate) struct ReferenceInput<'a> {
   pub graph: &'a Graph,
-  pub tip_dates: &'a BTreeMap<GraphNodeKey, f64>,
-  pub branches: &'a BTreeMap<GraphEdgeKey, BranchTime>,
+  pub tip_dates: &'a NodeMap<f64>,
+  pub branches: &'a EdgeMap<BranchTime>,
   pub factors: NodeFactors<'a>,
   pub spacing: f64,
 }
@@ -108,12 +107,10 @@ pub(crate) enum BranchTime {
 }
 
 impl BranchTime {
-  pub(crate) fn from_likelihoods(
-    branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
-  ) -> Result<BTreeMap<GraphEdgeKey, Self>, Report> {
+  pub(crate) fn from_likelihoods(branches: &EdgeMap<BranchLikelihood>) -> Result<EdgeMap<Self>, Report> {
     branches
       .iter()
-      .map(|(&edge, branch)| {
+      .map(|(edge, branch)| {
         let distribution = branch
           .distribution
           .clone()
@@ -268,24 +265,24 @@ fn reference_level(input: &ReferenceInput<'_>, spacing: f64, fraction: f64) -> R
   let reference = input.tip_dates.values().copied().fold(f64::NEG_INFINITY, f64::max);
   let time = |index: f64| reference - index * spacing;
   let factor_breaks = sorted(input.factors.kinks().iter().map(|&kink| (reference - kink) / spacing));
-  let mut subtrees: BTreeMap<GraphNodeKey, Subtree> = BTreeMap::new();
+  let mut subtrees: NodeMap<Subtree> = NodeMap::new();
   for &key in schedule.postorder() {
     let children = schedule.children(key);
     let subtree = if children.is_empty() {
       leaf_subtree(input, key, reference, spacing)?
     } else {
-      if input.tip_dates.contains_key(&key) {
+      if input.tip_dates.contains_key(key) {
         return make_error!("Internal node {key} has a date; the reference dates only tips");
       }
       let messages: Vec<ChildMessage<'_>> = children
         .iter()
         .map(|&(child, edge)| {
           let subtree = subtrees
-            .remove(&child)
+            .remove(child)
             .ok_or_else(|| make_report!("Node {child} has no subtree when its parent {key} needs it"))?;
           let branch = input
             .branches
-            .get(&edge)
+            .get(edge)
             .ok_or_else(|| make_report!("Edge {edge} has no branch-time function"))?;
           child_message(subtree, branch, spacing, fraction)
             .wrap_err_with(|| format!("When sending the message along edge {edge}"))
@@ -297,7 +294,7 @@ fn reference_level(input: &ReferenceInput<'_>, spacing: f64, fraction: f64) -> R
     subtrees.insert(key, subtree);
   }
   let root = input.graph.root_key()?;
-  let Some(Subtree::Grid(root_window)) = subtrees.remove(&root) else {
+  let Some(Subtree::Grid(root_window)) = subtrees.remove(root) else {
     return make_error!("The reference needs a root with children");
   };
   root_level(&root_window, spacing, time)
@@ -311,7 +308,7 @@ fn leaf_subtree(
 ) -> Result<Subtree, Report> {
   let date = *input
     .tip_dates
-    .get(&key)
+    .get(key)
     .ok_or_else(|| make_report!("Tip {key} has no date"))?;
   let position = (reference - date) / spacing;
   let index = position.round();

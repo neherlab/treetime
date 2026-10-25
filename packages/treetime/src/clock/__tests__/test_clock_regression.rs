@@ -282,7 +282,7 @@ mod tests {
       let times = leaf_times(&names, &graph, dates);
       let edge_inputs = branch_lengths
         .iter()
-        .map(|(&key, length)| (key, (length.map(|length| length * 100.0), 3.0)))
+        .map(|(key, length)| (key, (length.map(|length| length * 100.0), 3.0)))
         .collect();
       let inputs = ClockInputs::from_times(&graph, &times, &edge_inputs);
       let outliers: BTreeSet<GraphNodeKey> = graph

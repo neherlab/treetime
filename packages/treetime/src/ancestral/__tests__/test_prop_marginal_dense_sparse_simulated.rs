@@ -51,8 +51,8 @@ mod tests {
     use ndarray::{ArrayView1, aview1};
     use ordered_float::OrderedFloat;
     use std::cmp::Reverse;
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_simulation::branch_lengths::exact;
     use treetime_utils::collections::container::get_exactly_one;
     use treetime_utils::{make_error, make_report};
@@ -62,7 +62,7 @@ mod tests {
     pub(super) fn compare_dense_sparse(case: &SimulatedCase) -> Result<Comparison, Report> {
       let graph = &case.tree.graph;
       let names = &case.tree.names;
-      let lengths: BTreeMap<GraphEdgeKey, Option<f64>> = exact(&case.tree.edge_durations(), &case.model)?
+      let lengths: EdgeMap<Option<f64>> = exact(&case.tree.edge_durations(), &case.model)?
         .into_iter()
         .map(|(edge, length)| (edge, Some(length)))
         .collect();

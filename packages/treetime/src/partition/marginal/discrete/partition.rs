@@ -6,22 +6,21 @@ use crate::partition::storage::dense::DenseNodeState;
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
 use ndarray::Array2;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 
 #[derive(Clone, Debug)]
 pub struct PartitionMarginalDiscrete {
   pub(crate) inputs: DenseInputs,
   pub(crate) states: StateAlphabet,
-  pub(crate) obs_leaves: BTreeMap<GraphNodeKey, Array2<f64>>,
+  pub(crate) obs_leaves: NodeMap<Array2<f64>>,
 }
 
 impl PartitionMarginalDiscrete {
   pub(crate) fn new(
     states: StateAlphabet,
     graph: &Graph,
-    observations: &BTreeMap<GraphNodeKey, StateObservation>,
+    observations: &NodeMap<StateObservation>,
     min_branch_length: f64,
     filter_uninformative_root: bool,
   ) -> Result<Self, Report> {
@@ -30,7 +29,7 @@ impl PartitionMarginalDiscrete {
       .map(|leaf| {
         let leaf_key = leaf.key();
         let observation = observations
-          .get(&leaf_key)
+          .get(leaf_key)
           .ok_or_else(|| make_internal_report!("Leaf {leaf_key} has no state observation"))?;
         Ok((leaf_key, leaf_profile(*observation, states.len())?))
       })
@@ -48,8 +47,8 @@ impl PartitionMarginalDiscrete {
   pub(crate) fn state_posteriors(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
-  ) -> Result<BTreeMap<GraphNodeKey, StatePosterior>, Report> {
+    node_states: &NodeMap<DenseNodeState>,
+  ) -> Result<NodeMap<StatePosterior>, Report> {
     graph
       .get_nodes()
       .map(|node| {

@@ -5,6 +5,7 @@ use eyre::Report;
 use schemars::JsonSchema;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_io::fasta::FastaWriter;
 use treetime_primitives::Seq;
@@ -35,7 +36,7 @@ pub(crate) struct NucFastaWriters {
 impl NucFastaWriters {
   pub(crate) fn create(
     paths: BTreeMap<usize, PathBuf>,
-    mut descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
+    mut descs: BTreeMap<usize, NodeMap<Option<String>>>,
   ) -> Result<Self, Report> {
     let alignments = paths
       .into_iter()
@@ -55,7 +56,7 @@ impl NucFastaWriters {
     let Some(fasta) = self.alignments.get_mut(&alignment) else {
       return make_internal_error!("No reconstructed nucleotide FASTA was planned for alignment {alignment}");
     };
-    let desc = fasta.descs.get(&key).and_then(Option::as_deref);
+    let desc = fasta.descs.get(key).and_then(Option::as_deref);
     fasta.writer.write(name, desc, seq)
   }
 
@@ -74,5 +75,5 @@ impl NucFastaWriters {
 struct NucFasta {
   path: PathBuf,
   writer: FastaWriter,
-  descs: BTreeMap<GraphNodeKey, Option<String>>,
+  descs: NodeMap<Option<String>>,
 }

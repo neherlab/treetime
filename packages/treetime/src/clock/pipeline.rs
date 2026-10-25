@@ -14,9 +14,9 @@ use crate::reroot::date_free::{LengthsAdvice, reroot_date_free};
 use crate::reroot::driver::{reroot_at_best_root, update_clock_inputs};
 use crate::reroot::params::{RerootParams, RerootSpec};
 use eyre::{Report, WrapErr};
-use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::DateConstraint;
@@ -74,20 +74,20 @@ pub fn run(
 pub struct ClockInput {
   pub graph: Graph,
   pub names: NodeNames,
-  pub dates: BTreeMap<GraphNodeKey, DateConstraint>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub dates: NodeMap<DateConstraint>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 #[derive(Debug)]
 pub struct ClockOutput {
   pub graph: Graph,
   pub inputs: ClockInputs,
-  pub divergences: BTreeMap<GraphNodeKey, f64>,
+  pub divergences: NodeMap<f64>,
   pub outliers: BTreeSet<GraphNodeKey>,
   pub clock_model: ClockModel,
   pub regression_results: Vec<ClockRegressionResult>,
   pub names: NodeNames,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 fn estimate_clock_model_with_prefilter(

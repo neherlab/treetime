@@ -15,9 +15,10 @@ mod tests {
   use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
@@ -136,8 +137,11 @@ mod tests {
 
     let mut partitions = vec![];
 
-    let bogus = GraphEdgeKey(usize::MAX);
-    let mut branch_lengths = btreemap! { e_root_a => Some(0.1) };
+    let mut other = Graph::new();
+    let [x, y, z] = [(); 3].map(|()| other.add_node());
+    other.add_edge(x, y)?;
+    let bogus = other.add_edge(y, z)?;
+    let mut branch_lengths = keymap! { e_root_a => Some(0.1) };
     let groups = sparse_alignment_groups(&partitions)?;
     let res =
       collapse_sparse_edges_from_leaf_recursive(&mut graph, &mut partitions, &groups, bogus, &mut branch_lengths);
@@ -178,8 +182,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
 
     partition.obs_edges.insert(
@@ -224,7 +228,7 @@ mod tests {
       let target_key = edge.target();
       let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
 
-      if let Some(edge_partition) = partition.obs_edges.get(&edge_key) {
+      if let Some(edge_partition) = partition.obs_edges.get(edge_key) {
         if target_name.as_deref() == Some("A") {
           a_muts_count = edge_partition.fitch_subs().len();
         } else if target_name.as_deref() == Some("B") {
@@ -256,8 +260,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
 
     partition.obs_edges.insert(
@@ -317,8 +321,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
 
     partition.obs_edges.insert(
@@ -376,8 +380,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
     partition1.obs_edges.insert(
       root_internal_edge_key,
@@ -396,8 +400,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
     partition2.obs_edges.insert(
       root_internal_edge_key,
@@ -468,7 +472,7 @@ mod tests {
     for edge in graph.get_edges() {
       let target_key = edge.target();
       let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
-      let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
+      let branch_length = branch_lengths.get(edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
         pretty_assert_relative_eq!(branch_length.unwrap(), 0.5, epsilon = 1e-6);
@@ -502,7 +506,7 @@ mod tests {
     for edge in graph.get_edges() {
       let target_key = edge.target();
       let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
-      let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
+      let branch_length = branch_lengths.get(edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
         pretty_assert_ulps_eq!(branch_length.unwrap(), 3e-10, max_ulps = 4);
@@ -523,7 +527,7 @@ mod tests {
     let a = graph.add_node();
     let b = graph.add_node();
     let names = NodeNames::from_input(
-      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
+      keymap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
       &graph,
     )?
     .names;
@@ -535,7 +539,7 @@ mod tests {
     graph.build()?;
 
     let mut partitions = vec![];
-    let mut branch_lengths = btreemap! {
+    let mut branch_lengths = keymap! {
       e_root_internal => Some(0.5),
       e_internal_a => None,
       e_internal_b => Some(0.2),
@@ -553,7 +557,7 @@ mod tests {
     for edge in graph.get_edges() {
       let target_key = edge.target();
       let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
-      let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
+      let branch_length = branch_lengths.get(edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
         assert!(branch_length.is_none());
@@ -574,7 +578,7 @@ mod tests {
     let a = graph.add_node();
     let b = graph.add_node();
     let names = NodeNames::from_input(
-      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
+      keymap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
       &graph,
     )?
     .names;
@@ -586,7 +590,7 @@ mod tests {
     graph.build()?;
 
     let mut partitions = vec![];
-    let mut branch_lengths = btreemap! {
+    let mut branch_lengths = keymap! {
       e_root_internal => None,
       e_internal_a => Some(0.3),
       e_internal_b => Some(0.2),
@@ -604,7 +608,7 @@ mod tests {
     for edge in graph.get_edges() {
       let target_key = edge.target();
       let target_name = graph.get_node(target_key).map(|n| names[n.key()].to_owned());
-      let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
+      let branch_length = branch_lengths.get(edge.key()).copied().flatten();
 
       if target_name.as_deref() == Some("A") {
         pretty_assert_ulps_eq!(branch_length.unwrap(), 0.3, max_ulps = 4);
@@ -625,7 +629,7 @@ mod tests {
     let a = graph.add_node();
     let b = graph.add_node();
     let names = NodeNames::from_input(
-      btreemap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
+      keymap! { root => Some(o!("root")), internal => Some(o!("internal")), a => Some(o!("A")), b => Some(o!("B")) },
       &graph,
     )?
     .names;
@@ -637,7 +641,7 @@ mod tests {
     graph.build()?;
 
     let mut partitions = vec![];
-    let mut branch_lengths = btreemap! {
+    let mut branch_lengths = keymap! {
       e_root_internal => None,
       e_internal_a => None,
       e_internal_b => None,
@@ -653,7 +657,7 @@ mod tests {
     )?;
 
     for edge in graph.get_edges() {
-      let branch_length = branch_lengths.get(&edge.key()).copied().flatten();
+      let branch_length = branch_lengths.get(edge.key()).copied().flatten();
       assert!(branch_length.is_none());
     }
 
@@ -673,8 +677,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
 
     populate_test_nodes(&mut partition, &graph);
@@ -750,8 +754,8 @@ mod tests {
       length: 100,
       total_length: 100,
       root_sequence: seq![],
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
     };
 
     let parent_indel = deletion((10, 15), [c(b'A'), c(b'C'), c(b'G'), c(b'T'), c(b'A')].as_slice());

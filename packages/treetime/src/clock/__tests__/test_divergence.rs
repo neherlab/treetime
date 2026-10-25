@@ -6,6 +6,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::BTreeMap;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::NodeMap;
   use treetime_graph::schedule::GraphSchedule;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -95,7 +96,7 @@ mod tests {
       parsed.branch_lengths[&edge_key].unwrap_or_default()
     })?;
 
-    let expected: BTreeMap<_, f64> = parsed
+    let expected: NodeMap<f64> = parsed
       .graph
       .get_nodes()
       .map(|node| {

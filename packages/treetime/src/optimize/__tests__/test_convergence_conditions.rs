@@ -14,8 +14,8 @@ mod tests {
   use eyre::Report;
   use num_traits::pow::pow;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -35,7 +35,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let old_bls = branch_lengths;
 
-    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
+    let mut bls: EdgeMap<Option<f64>> = old_bls.keys().map(|key| (key, Some(0.0))).collect();
 
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
@@ -59,7 +59,7 @@ mod tests {
 
     let old_bls = branch_lengths;
 
-    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
+    let mut bls: EdgeMap<Option<f64>> = old_bls.keys().map(|key| (key, Some(0.0))).collect();
 
     apply_damping(&mut bls, &old_bls, damping, iteration);
 

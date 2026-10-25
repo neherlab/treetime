@@ -5,7 +5,6 @@ use crate::timetree::inference::result::{BranchLikelihood, NodeBackward, TimeDis
 use crate::timetree::inference::runner::{EPS, GRID_POINTS};
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::NegLog;
@@ -14,6 +13,7 @@ use treetime_distribution::distribution_multiplication;
 use treetime_distribution::distribution_product;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::PerEdge;
@@ -23,10 +23,10 @@ pub(crate) fn propagate_distributions_backward(
   graph: &Graph,
   constraints: &DateConstraints,
   coalescent_model: Option<&CoalescentPrior>,
-  bad_branches: &BTreeMap<GraphNodeKey, bool>,
-  branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  bad_branches: &NodeMap<bool>,
+  branches: &EdgeMap<BranchLikelihood>,
   max_points: MaxGridPoints,
-) -> Result<BTreeMap<GraphNodeKey, NodeBackward>, Report> {
+) -> Result<NodeMap<NodeBackward>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let pass = BackwardPass {
@@ -37,7 +37,7 @@ pub(crate) fn propagate_distributions_backward(
     max_points,
   };
   let outputs = schedule.scan_up(
-    bad_branches.iter().map(|(&key, &bad_branch)| (key, bad_branch)),
+    bad_branches.iter().map(|(key, &bad_branch)| (key, bad_branch)),
     |key, bad_branch, messages| pass.node(key, bad_branch, messages),
   )?;
   Ok(outputs.into_map())
@@ -47,7 +47,7 @@ struct BackwardPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   constraints: &'a DateConstraints,
   coalescent_model: Option<&'a CoalescentPrior>,
-  branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  branches: &'a EdgeMap<BranchLikelihood>,
   max_points: MaxGridPoints,
 }
 

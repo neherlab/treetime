@@ -7,6 +7,8 @@ mod tests {
   use super::super::test_graph_support::tests::helpers::{NamedGraph, graph_from_dag, graph_from_parents};
   use crate::edge::GraphEdgeKey;
   use crate::graph::Graph;
+  use crate::key_map::NodeMap;
+  use crate::keymap;
   use crate::node::GraphNodeKey;
   use crate::schedule::GraphSchedule;
   use crate::schedule_scan::{NodeEdgeMaps, PerEdge, ScanOutputs};
@@ -39,7 +41,7 @@ mod tests {
       })?
       .into_map();
 
-    let expected = btreemap! {
+    let expected = keymap! {
       tree.key("root") => 116, tree.key("AB") => 13, tree.key("A") => 1, tree.key("B") => 2, tree.key("C") => 3,
     };
     assert_eq!(expected, sums);
@@ -61,7 +63,7 @@ mod tests {
       )?
       .into_map();
 
-    let expected = btreemap! {
+    let expected = keymap! {
       tree.key("root") => vec!["C", "AB"], tree.key("AB") => vec!["B", "A"],
       tree.key("A") => vec![], tree.key("B") => vec![], tree.key("C") => vec![],
     };
@@ -87,7 +89,7 @@ mod tests {
       })?
       .into_map();
 
-    let expected = btreemap! {
+    let expected = keymap! {
       tree.key("root") => 100, tree.key("AB") => 110, tree.key("A") => 111, tree.key("B") => 112, tree.key("C") => 103,
     };
     assert_eq!(expected, sums);
@@ -105,7 +107,7 @@ mod tests {
       })?
       .into_map();
 
-    assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
+    assert_eq!(keymap! { tree.key("root") => vec![] }, received);
     Ok(())
   }
 
@@ -120,7 +122,7 @@ mod tests {
       })?
       .into_map();
 
-    assert_eq!(btreemap! { tree.key("root") => vec![] }, received);
+    assert_eq!(keymap! { tree.key("root") => vec![] }, received);
     Ok(())
   }
 
@@ -170,7 +172,7 @@ mod tests {
     let expected = graph
       .get_nodes()
       .map(|node| (node.key(), if node.key() == root { vec![] } else { vec![root] }))
-      .collect::<BTreeMap<_, _>>();
+      .collect::<NodeMap<_>>();
     assert_eq!(expected, received);
     Ok(())
   }
@@ -257,7 +259,7 @@ mod tests {
     let expected = braid_levels()
       .into_iter()
       .map(|(key, level)| (key, BRAID_LEVELS - 1 - level))
-      .collect::<BTreeMap<_, _>>();
+      .collect::<NodeMap<_>>();
     assert_eq!((expected.clone(), expected), (heights(1)?, heights(16)?));
     Ok(())
   }
@@ -313,7 +315,7 @@ mod tests {
       )?
       .into_map();
 
-    assert_eq!(btreemap! { root => 101, child => 1 }, sums);
+    assert_eq!(keymap! { root => 101, child => 1 }, sums);
     Ok(())
   }
 
@@ -489,7 +491,7 @@ mod tests {
       })?
       .into_map();
 
-    let expected = btreemap! {
+    let expected = keymap! {
       tree.key("root") => 5, tree.key("AB") => 3, tree.key("A") => 1, tree.key("B") => 1, tree.key("C") => 1,
     };
     assert_eq!(expected, sizes);
@@ -502,8 +504,8 @@ mod tests {
     let schedule = GraphSchedule::new(&tree.graph)?;
     let (root, a, b) = (tree.key("root"), tree.key("A"), tree.key("B"));
     let (root_a, root_b) = (tree.edge("root", "A")?, tree.edge("root", "B")?);
-    let nodes = btreemap! { root => "root", a => "A", b => "B" };
-    let edges = btreemap! { root_a => "root-A", root_b => "root-B" };
+    let nodes = keymap! { root => "root", a => "A", b => "B" };
+    let edges = keymap! { root_a => "root-A", root_b => "root-B" };
 
     let joined = schedule
       .join_parent_edges(nodes.clone(), edges.clone())?
@@ -525,7 +527,7 @@ mod tests {
     let tree = NamedGraph::new(&["root", "A", "B"], &[("root", "A"), ("root", "B")])?;
     let schedule = GraphSchedule::new(&tree.graph)?;
     let nodes = inputs_of(&tree.graph, ());
-    let edges = btreemap! { tree.edge("root", "A")? => () };
+    let edges = keymap! { tree.edge("root", "A")? => () };
 
     let result = schedule.join_parent_edges(nodes, edges);
 
@@ -545,7 +547,7 @@ mod tests {
     let tree = NamedGraph::new(&["root", "A"], &[("root", "A")])?;
     let schedule = GraphSchedule::new(&tree.graph)?;
     let nodes = inputs_of(&tree.graph, ());
-    let edges = btreemap! { tree.edge("root", "A")? => (), GraphEdgeKey(7) => () };
+    let edges = keymap! { tree.edge("root", "A")? => (), GraphEdgeKey(7) => () };
 
     let result = schedule.join_parent_edges(nodes, edges);
 
@@ -632,7 +634,7 @@ mod tests {
         .map(ScanOutputs::into_map)
     })?;
 
-    let expected = btreemap! {
+    let expected = keymap! {
       dag.key("p") => vec![], dag.key("q") => vec![], dag.key("x") => vec!["p"], dag.key("s") => vec!["q", "p", "x"],
     };
     assert_eq!(expected, received);
@@ -657,7 +659,7 @@ mod tests {
         .map(ScanOutputs::into_map)
     })?;
 
-    let expected = btreemap! {
+    let expected = keymap! {
       dag.key("p") => vec!["s", "x"], dag.key("q") => vec!["s"], dag.key("x") => vec!["s"], dag.key("s") => vec![],
     };
     assert_eq!(expected, received);
@@ -670,8 +672,8 @@ mod tests {
     let schedule = GraphSchedule::new(&dag.graph)?;
     let (p, q, s) = (dag.key("p"), dag.key("q"), dag.key("s"));
     let (q_s, p_s) = (dag.edge("q", "s")?, dag.edge("p", "s")?);
-    let nodes = btreemap! { p => "p", q => "q", s => "s" };
-    let edges = btreemap! { q_s => "q-s", p_s => "p-s" };
+    let nodes = keymap! { p => "p", q => "q", s => "s" };
+    let edges = keymap! { q_s => "q-s", p_s => "p-s" };
 
     let joined = schedule
       .join_parent_edges(nodes.clone(), edges.clone())?
@@ -691,7 +693,7 @@ mod tests {
   fn test_schedule_scan_join_parent_edges_rejects_missing_edge_of_a_second_parent() -> Result<(), Report> {
     let dag = NamedGraph::new(&["p", "q", "s"], &[("q", "s"), ("p", "s")])?;
     let schedule = GraphSchedule::new(&dag.graph)?;
-    let edges = btreemap! { dag.edge("q", "s")? => () };
+    let edges = keymap! { dag.edge("q", "s")? => () };
 
     let result = schedule.join_parent_edges(inputs_of(&dag.graph, ()), edges);
 
@@ -709,17 +711,17 @@ mod tests {
   mod helpers {
     use super::super::super::test_graph_support::tests::helpers::DagSpec;
     use crate::graph::Graph;
+    use crate::key_map::NodeMap;
     use crate::node::GraphNodeKey;
     use crate::schedule::GraphSchedule;
     use eyre::Report;
     use rayon::ThreadPoolBuilder;
-    use std::collections::BTreeMap;
 
     const SMALL_WORKER_STACK_BYTES: usize = 32 * 1024;
     pub(super) const BRAID_WIDTH: usize = 8;
     pub(super) const BRAID_LEVELS: usize = 12_500;
 
-    pub(super) fn inputs_of<N: Clone>(graph: &Graph, value: N) -> BTreeMap<GraphNodeKey, N> {
+    pub(super) fn inputs_of<N: Clone>(graph: &Graph, value: N) -> NodeMap<N> {
       graph.get_nodes().map(|node| (node.key(), value.clone())).collect()
     }
 
@@ -769,14 +771,14 @@ mod tests {
       }
     }
 
-    pub(super) fn braid_levels() -> BTreeMap<GraphNodeKey, usize> {
+    pub(super) fn braid_levels() -> NodeMap<usize> {
       (0..BRAID_LEVELS)
         .flat_map(|level| (0..BRAID_WIDTH).map(move |column| (GraphNodeKey(level * BRAID_WIDTH + column), level)))
         .collect()
     }
 
-    pub(super) fn subtree_sizes(schedule: &GraphSchedule<'_>) -> BTreeMap<GraphNodeKey, usize> {
-      let mut sizes = BTreeMap::new();
+    pub(super) fn subtree_sizes(schedule: &GraphSchedule<'_>) -> NodeMap<usize> {
+      let mut sizes = NodeMap::new();
       for &key in schedule.preorder().iter().rev() {
         let size = 1
           + schedule

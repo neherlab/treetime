@@ -1,7 +1,8 @@
 use crate::clock::date_constraints::DateConstraints;
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 
@@ -9,7 +10,7 @@ pub(crate) fn bad_leaves(
   graph: &Graph,
   constraints: &DateConstraints,
   outliers: &BTreeSet<GraphNodeKey>,
-) -> BTreeMap<GraphNodeKey, bool> {
+) -> NodeMap<bool> {
   graph
     .get_leaves()
     .map(|leaf| {
@@ -25,10 +26,10 @@ pub(crate) fn bad_leaves(
 pub(crate) fn derive_bad_branches(
   graph: &Graph,
   constraints: &DateConstraints,
-  leaf_bad_branches: &BTreeMap<GraphNodeKey, bool>,
-) -> Result<BTreeMap<GraphNodeKey, bool>, Report> {
+  leaf_bad_branches: &NodeMap<bool>,
+) -> Result<NodeMap<bool>, Report> {
   let schedule = GraphSchedule::new(graph)?;
-  let mut bad_branches = BTreeMap::new();
+  let mut bad_branches = NodeMap::new();
   for &key in schedule.postorder() {
     let children = schedule.children(key);
     let bad = if children.is_empty() {

@@ -14,6 +14,7 @@ use log::debug;
 use std::collections::{BTreeMap, BTreeSet};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::cast::ToF64Exact;
@@ -23,7 +24,7 @@ pub(crate) fn merge_shared_mutation_branches(
   graph: &mut Graph,
   names: &mut NodeNames,
   partitions: &mut [SparseReconstruction],
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<usize, Report> {
   let alignments = sparse_alignment_groups(partitions)?;
   let mut total_merged = 0;
@@ -50,7 +51,7 @@ pub(crate) fn merge_single_polytomy(
   partitions: &mut [SparseReconstruction],
   alignments: &[AlignmentGroup],
   node_key: GraphNodeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<usize, Report> {
   let mut nodes_created = 0;
 
@@ -99,7 +100,7 @@ fn build_mutation_index(
   for &edge_key in child_edges {
     for (pi, SparseReconstruction { partition, .. }) in partitions.iter().enumerate() {
       let empty_subs: &[Sub] = &[];
-      let edge = partition.obs_edges.get(&edge_key);
+      let edge = partition.obs_edges.get(edge_key);
       for sub in edge.map_or(empty_subs, |e| e.fitch_subs()) {
         index
           .entry(MutationKey::Sub(pi, sub.clone()))
@@ -198,7 +199,7 @@ fn merge_sibling_group(
   alignments: &[AlignmentGroup],
   parent_key: GraphNodeKey,
   group: &MergeGroup,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   let child_keys: Vec<GraphNodeKey> = group
     .edges
@@ -232,7 +233,7 @@ fn merge_sibling_group(
 
   for &ek in &group.edges {
     graph.remove_edge(ek)?;
-    branch_lengths.remove(&ek);
+    branch_lengths.remove(ek);
   }
 
   let new_node_key = graph.add_node();
@@ -254,7 +255,7 @@ fn merge_sibling_group(
     partition.obs_nodes.entry(new_node_key).or_insert(new_node);
 
     for &ek in &group.edges {
-      partition.obs_edges.remove(&ek);
+      partition.obs_edges.remove(ek);
     }
 
     let parent_edge = partition.obs_edges.entry(new_parent_edge_key).or_default();
@@ -289,7 +290,7 @@ fn remaining_mutations(
         .edges
         .iter()
         .map(|&ek| {
-          let all_subs = partition.obs_edges.get(&ek).map_or(empty_subs, |e| e.fitch_subs());
+          let all_subs = partition.obs_edges.get(ek).map_or(empty_subs, |e| e.fitch_subs());
           iterator_difference(all_subs, &group.shared_subs[pi])
             .cloned()
             .collect_vec()

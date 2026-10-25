@@ -23,7 +23,8 @@ pub(super) mod tests {
   use maplit::btreemap;
   use ndarray::array;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
@@ -43,10 +44,10 @@ pub(super) mod tests {
     let first_edge_key = graph.get_edges().collect::<Vec<_>>()[0].key();
     match reconstruction.single_mut() {
       ReconstructionMut::Dense(dense) => {
-        dense.edges.estimates.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
+        dense.edges.estimates.get_mut(first_edge_key).unwrap().indels = indels.to_vec();
       },
       ReconstructionMut::Sparse(sparse) => {
-        sparse.partition.obs_edges.get_mut(&first_edge_key).unwrap().indels = indels.to_vec();
+        sparse.partition.obs_edges.get_mut(first_edge_key).unwrap().indels = indels.to_vec();
       },
     }
     first_edge_key
@@ -63,7 +64,7 @@ pub(super) mod tests {
   pub(crate) fn setup_identical_reconstruction(
     graph: &Graph,
     names: &NodeNames,
-    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &mut EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let aln: Vec<AlignmentRecord> = identical_alignment()?.into_iter().map(AlignmentRecord::from).collect();
     setup_reconstruction(graph, names, &aln, branch_lengths)
@@ -103,7 +104,7 @@ pub(super) mod tests {
 
     let total_bl: f64 = graph
       .get_edges()
-      .map(|e| branch_lengths.get(&e.key()).copied().flatten().unwrap_or(0.0))
+      .map(|e| branch_lengths.get(e.key()).copied().flatten().unwrap_or(0.0))
       .sum();
     let expected_rate = 1.0 / total_bl;
     pretty_assert_abs_diff_eq!(rate, expected_rate, epsilon = 1e-10);
@@ -134,7 +135,7 @@ pub(super) mod tests {
       .get_edges()
       .map(|edge_ref| {
         let edge_key = edge_ref.key();
-        let branch_length = branch_lengths.get(&edge_key).copied().flatten().unwrap_or(0.0);
+        let branch_length = branch_lengths.get(edge_key).copied().flatten().unwrap_or(0.0);
         let indel_count = if edge_key == first_edge_key { 1 } else { 0 };
         poisson_indel_log_lh(indel_count, indel_rate, branch_length)
           .expect("valid Poisson parameters")
@@ -401,7 +402,7 @@ pub(super) mod tests {
     sparse_reconstruction_mut(&mut reconstruction)
       .partition
       .obs_edges
-      .get_mut(&first_edge_key)
+      .get_mut(first_edge_key)
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 

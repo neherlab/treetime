@@ -4,10 +4,9 @@ use crate::partition::resolve::{PartitionLayout, PartitionPlan, ResolvedPartitio
 use crate::seq::alignment::{NodeSeqInput, SequenceSource};
 use eyre::Report;
 use itertools::{Itertools, izip};
-use std::collections::BTreeMap;
 use std::iter::repeat_with;
 use std::path::PathBuf;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_utils::fmt::string::counted;
 use treetime_utils::{make_internal_error, make_internal_report};
 
@@ -133,7 +132,7 @@ pub(crate) struct AlignmentInfo {
 fn split_alignment(
   alphabet: &Alphabet,
   length: usize,
-  nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  nodes: NodeMap<NodeSeqInput>,
   mut group: Vec<(usize, PartitionLayout)>,
 ) -> Result<Vec<(usize, PartitionData)>, Report> {
   if let Some(layout) = group
@@ -163,7 +162,7 @@ fn split_alignment(
   }
   let mut parts = group
     .into_iter()
-    .map(|(index, layout)| (index, layout, BTreeMap::new()))
+    .map(|(index, layout)| (index, layout, NodeMap::new()))
     .collect_vec();
   for (key, NodeSeqInput { name, seq }) in nodes {
     if let Some(seq) = &seq
@@ -209,5 +208,5 @@ fn split_alignment(
 pub(crate) struct PartitionData {
   pub(crate) layout: PartitionLayout,
   pub(crate) alphabet: Alphabet,
-  pub(crate) nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub(crate) nodes: NodeMap<NodeSeqInput>,
 }

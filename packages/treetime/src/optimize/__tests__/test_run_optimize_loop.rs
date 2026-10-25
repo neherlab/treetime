@@ -16,8 +16,8 @@ mod tests {
   use helpers::{chain_alignment, chain_alignment_jc69_distance, manual_total_indel_log_lh};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::Seq;
   use treetime_utils::pretty_assert_abs_diff_eq;
@@ -69,7 +69,7 @@ mod tests {
     sparse_reconstruction_mut(&mut reconstruction)
       .partition
       .obs_edges
-      .get_mut(&first_edge_key)
+      .get_mut(first_edge_key)
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
@@ -259,7 +259,7 @@ mod tests {
     sparse_reconstruction_mut(&mut reconstruction)
       .partition
       .obs_edges
-      .get_mut(&first_edge_key)
+      .get_mut(first_edge_key)
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
@@ -315,9 +315,9 @@ mod tests {
     reconstruction.gtr_mut().set_mu(1.0)?;
     let distance_above_optimum = 0.003;
     let start_branch_length = (chain_alignment_jc69_distance() + distance_above_optimum) / 4.0;
-    let start_branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = branch_lengths
+    let start_branch_lengths: EdgeMap<Option<f64>> = branch_lengths
       .keys()
-      .map(|&edge_key| (edge_key, Some(start_branch_length)))
+      .map(|edge_key| (edge_key, Some(start_branch_length)))
       .collect();
 
     let max_iter = 4;
@@ -358,7 +358,8 @@ mod tests {
     use eyre::Report;
     use indoc::indoc;
     use statrs::function::factorial::ln_factorial;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use std::sync::LazyLock;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
@@ -399,7 +400,7 @@ mod tests {
       sparse_reconstruction(reconstruction)
         .partition
         .obs_edges
-        .get(&edge_key)
+        .get(edge_key)
         .map_or(0, |edge| edge.indels.len())
     }
 
@@ -421,7 +422,7 @@ mod tests {
     pub(super) fn manual_total_indel_log_lh(
       graph: &Graph,
       reconstruction: &PartitionSet,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &EdgeMap<Option<f64>>,
     ) -> f64 {
       let total_indels: usize = graph
         .get_edges()
@@ -429,7 +430,7 @@ mod tests {
         .sum();
       let total_branch_length: f64 = graph
         .get_edges()
-        .map(|edge_ref| branch_lengths.get(&edge_ref.key()).copied().flatten().unwrap_or(0.0))
+        .map(|edge_ref| branch_lengths.get(edge_ref.key()).copied().flatten().unwrap_or(0.0))
         .sum();
       let indel_rate = if total_indels > 0 && total_branch_length > 0.0 {
         total_indels.to_f64_exact() / total_branch_length
@@ -441,7 +442,7 @@ mod tests {
         .get_edges()
         .map(|edge_ref| {
           let edge_key = edge_ref.key();
-          let branch_length = branch_lengths.get(&edge_key).copied().flatten().unwrap_or(0.0);
+          let branch_length = branch_lengths.get(edge_key).copied().flatten().unwrap_or(0.0);
           let indel_count = manual_indel_count_on_edge(reconstruction, edge_key);
           manual_poisson_indel_log_lh(indel_count, indel_rate, branch_length)
         })

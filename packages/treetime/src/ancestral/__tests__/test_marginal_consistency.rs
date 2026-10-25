@@ -24,6 +24,7 @@ mod tests {
   use std::sync::LazyLock;
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
+  use treetime_graph::key_map::EdgeMap;
   use treetime_graph::node_names::NodeNames;
 
   use treetime_io::fasta::fasta_read;
@@ -82,7 +83,7 @@ mod tests {
 
   fn run_dense_marginal_reconstruction(
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
@@ -93,7 +94,7 @@ mod tests {
 
   fn run_sparse_marginal_reconstruction(
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
     gtr: GTR,
@@ -560,7 +561,7 @@ mod tests {
 
   type MarginalRunner = fn(
     &Graph,
-    &BTreeMap<GraphEdgeKey, Option<f64>>,
+    &EdgeMap<Option<f64>>,
     &NodeNames,
     &[AlignmentRecord],
     GTR,

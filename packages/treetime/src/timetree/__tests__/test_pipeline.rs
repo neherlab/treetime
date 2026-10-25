@@ -26,6 +26,7 @@ mod tests {
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
   use treetime_graph::graph::Graph;
+  use treetime_graph::keymap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::dates_csv::DateConstraint;
@@ -359,7 +360,7 @@ mod tests {
     let names = parsed.names.clone();
     let graph = parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("node must exist");
-    let node_dates = btreemap! {
+    let node_dates = keymap! {
       key("root") => Some(2000.0),
       key("X") => Some(2001.5),
       key("A") => Some(2004.0),

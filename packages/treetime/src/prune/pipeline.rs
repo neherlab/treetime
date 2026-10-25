@@ -21,10 +21,10 @@ use crate::seq::alignment::SequenceSource;
 use crate::seq::mutation::{MutationTrack, SequenceMutations};
 use eyre::Report;
 use itertools::{Itertools, izip};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::mem::take;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::make_report;
@@ -112,7 +112,7 @@ pub struct PruneInput {
   pub names: NodeNames,
   pub alignments: Vec<SequenceSource>,
   pub layouts: Vec<PartitionLayout>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 #[derive(Debug)]
@@ -121,7 +121,7 @@ pub struct PruneOutput {
   pub alignments: Vec<AlignmentResult>,
   pub partitions: Vec<PartitionResult>,
   pub names: NodeNames,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 fn prune_results(
@@ -173,7 +173,7 @@ fn fitch_mutations(
       let edge_key = edge.key();
       Ok((edge_key, partition.edge_fitch_mutations(edge_key, track)?))
     })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+    .collect::<Result<EdgeMap<_>, Report>>()?;
   Ok(SequenceMutations {
     root_sequence: partition.fitch_root_sequence(),
     edge_mutations,

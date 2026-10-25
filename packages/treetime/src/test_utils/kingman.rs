@@ -1,9 +1,8 @@
 use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_simulation::coalescent::SimulatedTree;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_error;
@@ -33,7 +32,7 @@ pub(crate) fn pair_exposure(nodes: &[NodeAge]) -> Result<PairExposure, Report> {
   })
 }
 
-pub(crate) fn node_ages_from_dates(graph: &Graph, dates: &BTreeMap<GraphNodeKey, f64>) -> Vec<NodeAge> {
+pub(crate) fn node_ages_from_dates(graph: &Graph, dates: &NodeMap<f64>) -> Vec<NodeAge> {
   graph
     .get_nodes()
     .map(|node| NodeAge {

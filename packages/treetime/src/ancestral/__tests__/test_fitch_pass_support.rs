@@ -7,11 +7,13 @@ pub(super) mod tests {
     use crate::test_utils::{get_common_length, leaf_seq_inputs};
     use eyre::Report;
     use indoc::indoc;
-    use maplit::btreemap;
+    use treetime_graph::key_map::NodeMap;
+    use treetime_graph::keymap;
+
     use rayon::ThreadPoolBuilder;
-    use std::collections::BTreeMap;
+
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_graph::node_names::NodeNames;
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
@@ -21,7 +23,7 @@ pub(super) mod tests {
       pub graph: Graph,
       pub names: NodeNames,
       pub partition: PartitionFitch,
-      pub node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
+      pub node_inputs: NodeMap<NodeSeqInput>,
     }
 
     pub(crate) fn fitch_input() -> Result<FitchInput, Report> {
@@ -49,8 +51,8 @@ pub(super) mod tests {
       let partition = PartitionFitch {
         alphabet,
         length: get_common_length(&aln)?,
-        nodes: btreemap! {},
-        edges: btreemap! {},
+        nodes: keymap! {},
+        edges: keymap! {},
       };
       let node_inputs = leaf_seq_inputs(&graph, &names, aln);
       Ok(FitchInput {

@@ -31,6 +31,7 @@ mod tests {
   use indoc::indoc;
   use itertools::Itertools;
   use maplit::btreemap;
+  use treetime_graph::key_map::EdgeMap;
 
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -110,7 +111,7 @@ mod tests {
     state
       .time_inference
       .posterior
-      .get_mut(&root_key)
+      .get_mut(root_key)
       .expect("root must have a posterior")
       .time = None;
 
@@ -131,7 +132,7 @@ mod tests {
     state
       .time_inference
       .posterior
-      .get_mut(&root_key)
+      .get_mut(root_key)
       .expect("root must have a posterior")
       .time = Some(f64::NAN);
 
@@ -154,7 +155,7 @@ mod tests {
     state
       .time_inference
       .posterior
-      .get_mut(&root_key)
+      .get_mut(root_key)
       .expect("root must have a posterior")
       .time = None;
 
@@ -234,7 +235,7 @@ mod tests {
 
     assert!(outcome.topology.resolved_nodes() == 0 && outcome.topology.changed());
     let merged_edge = parent_edge_key(&state.graph, d_key);
-    let expected: BTreeMap<GraphEdgeKey, f64> = state
+    let expected: EdgeMap<f64> = state
       .graph
       .get_edges()
       .map(|edge| {
@@ -265,11 +266,11 @@ mod tests {
       panic!("the round must resolve the polytomy");
     };
     assert!(!merger_times.is_empty());
-    let expected: BTreeMap<GraphEdgeKey, f64> = state
+    let expected: EdgeMap<f64> = state
       .graph
       .get_edges()
       .map(|edge| {
-        let gamma = if merger_times.contains_key(&edge.target()) {
+        let gamma = if merger_times.contains_key(edge.target()) {
           1.0
         } else {
           fitted[&edge.key()]
@@ -333,11 +334,11 @@ mod tests {
     let TopologyOutcome::Changed { merger_times } = &outcome.topology else {
       panic!("the first round must resolve the polytomy");
     };
-    let expected: BTreeMap<GraphEdgeKey, f64> = state
+    let expected: EdgeMap<f64> = state
       .graph
       .get_edges()
       .map(|edge| {
-        let gamma = if merger_times.contains_key(&edge.target()) {
+        let gamma = if merger_times.contains_key(edge.target()) {
           1.0
         } else {
           first_fit[&edge.key()]
@@ -444,6 +445,8 @@ mod tests {
     use super::*;
     use crate::optimize::indel::IndelPolicy;
     use pretty_assertions::assert_eq;
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::key_map::NodeMap;
 
     pub(super) fn newick(state: &RoundState) -> Result<String, Report> {
       nwk_write_str(
@@ -524,10 +527,7 @@ mod tests {
       )
     }
 
-    pub(super) fn fitted_gammas(
-      context: &TimetreeContext,
-      state: &RoundState,
-    ) -> Result<BTreeMap<GraphEdgeKey, f64>, Report> {
+    pub(super) fn fitted_gammas(context: &TimetreeContext, state: &RoundState) -> Result<EdgeMap<f64>, Report> {
       apply_relaxed_clock(
         &state.graph,
         &state.branch_lengths,
@@ -538,7 +538,7 @@ mod tests {
       )
     }
 
-    fn node_date_durations(state: &RoundState) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    fn node_date_durations(state: &RoundState) -> EdgeMap<Option<f64>> {
       let times = state.time_inference.node_times();
       state
         .graph
@@ -621,7 +621,7 @@ mod tests {
       let (partition, _) = PartitionSet::Dense(vec![DenseReconstruction {
         partition: PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
-        node_states: BTreeMap::new(),
+        node_states: NodeMap::new(),
         edges: MarginalEdges::default(),
         layout: None,
       }])
@@ -635,7 +635,7 @@ mod tests {
       let constraints = load_date_constraints(&dates_by_node(dates.clone(), &graph, &names), &graph, &NoopProgress)?;
 
       let times = given_times(&graph, &constraints)?;
-      let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+      let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
       let tree = ClockTree {
         graph,
         branch_lengths,
@@ -688,7 +688,7 @@ mod tests {
         clock_model,
         clock_points,
         rate_window: RateWindow::initial(),
-        clock_branch_lengths: BTreeMap::new(),
+        clock_branch_lengths: EdgeMap::new(),
         gammas,
         time_inference,
       };
@@ -758,7 +758,7 @@ mod tests {
       state
         .time_inference
         .posterior
-        .get_mut(&polytomy)
+        .get_mut(polytomy)
         .expect("P must have a posterior")
         .time = Some(TIME_AFTER_EVERY_SAMPLE);
       state
@@ -775,12 +775,9 @@ mod tests {
       let edges: BTreeSet<GraphEdgeKey> = state.graph.get_edges().map(|edge| edge.key()).collect();
       let node_names: BTreeSet<&str> = nodes.iter().map(|&key| &state.names[key]).collect();
       assert_eq!(nodes.len(), node_names.len());
-      assert_eq!(
-        nodes,
-        state.time_inference.posterior.keys().copied().collect::<BTreeSet<_>>()
-      );
-      assert_eq!(edges, state.gammas.keys().copied().collect::<BTreeSet<_>>());
-      assert_eq!(edges, state.branch_lengths.keys().copied().collect::<BTreeSet<_>>());
+      assert_eq!(nodes, state.time_inference.posterior.keys().collect::<BTreeSet<_>>());
+      assert_eq!(edges, state.gammas.keys().collect::<BTreeSet<_>>());
+      assert_eq!(edges, state.branch_lengths.keys().collect::<BTreeSet<_>>());
       assert_eq!(
         internal,
         capture_ancestral_states(&state.graph, &state.branch_model)
@@ -788,7 +785,6 @@ mod tests {
           .exactly_one()
           .expect("one partition")
           .keys()
-          .copied()
           .collect::<BTreeSet<_>>()
       );
     }

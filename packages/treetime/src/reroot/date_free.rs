@@ -5,16 +5,16 @@ use crate::progress::LogSink;
 use crate::reroot::driver::reroot_at_best_root;
 use crate::reroot::params::{RerootParams, RerootSpec};
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::reroot::RerootResult;
 
 pub(crate) fn reroot_date_free(
   graph: &mut Graph,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   spec: &RerootSpec,
   is_dated: &dyn Fn(GraphNodeKey) -> bool,
   advice: LengthsAdvice,
@@ -29,7 +29,7 @@ pub(crate) fn reroot_date_free(
       (key, (graph.is_leaf(key) || is_dated(key)).then_some(0.0))
     })
     .collect();
-  let mut inputs = ClockInputs::from_times(graph, &times, &BTreeMap::new());
+  let mut inputs = ClockInputs::from_times(graph, &times, &EdgeMap::new());
   let reroot_params = RerootParams::new(spec.clone(), false);
   reroot_at_best_root(
     graph,
@@ -61,7 +61,7 @@ impl LengthsAdvice {
 
 fn require_valid_lengths(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   spec: &RerootSpec,
   advice: LengthsAdvice,
   names: &NodeNames,

@@ -20,9 +20,9 @@ use crate::timetree::optimization::outliers::report_outliers;
 use crate::timetree::optimization::reroot::{RerootFitParams, RerootedTree, reroot_tree};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use eyre::{Report, WrapErr};
-use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 
@@ -206,7 +206,7 @@ fn filter_clock_outliers(
 ) -> Result<PreLoopState, Report> {
   let graph = &state.graph;
   let given_dates = given_times(graph, &inputs.context.date_constraints)?;
-  let clock_inputs = ClockInputs::from_times(graph, &given_dates, &BTreeMap::new());
+  let clock_inputs = ClockInputs::from_times(graph, &given_dates, &EdgeMap::new());
   let ClockFilterResult {
     outliers,
     divergences,
@@ -241,7 +241,7 @@ pub(crate) struct PreLoopInputs<'a> {
 pub(crate) struct PreLoopState {
   pub graph: Graph,
   pub names: NodeNames,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub branch_model: BranchModel,
   pub clock_fit: ClockFit,
   pub outliers: BTreeSet<GraphNodeKey>,
@@ -251,7 +251,7 @@ impl PreLoopState {
   pub(crate) fn new(
     graph: Graph,
     names: NodeNames,
-    branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: EdgeMap<Option<f64>>,
     branch_model: BranchModel,
     clock_fit: ClockFit,
   ) -> Self {
@@ -269,11 +269,11 @@ impl PreLoopState {
 fn optimize_branch_lengths(
   graph: &Graph,
   partitions: &PartitionSet,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   indel_policy: IndelPolicy,
   names: &NodeNames,
   convergence: &mut ConvergenceSummary,
-) -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
+) -> Result<EdgeMap<Option<f64>>, Report> {
   let old_branch_lengths = branch_lengths;
   let mut branch_lengths = old_branch_lengths.clone();
 

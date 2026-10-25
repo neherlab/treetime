@@ -206,7 +206,8 @@ mod tests {
     use crate::test_utils::deletion;
     use eyre::Report;
     use ndarray::Array1;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
     use treetime_io::nwk::nwk_read;
@@ -221,7 +222,7 @@ mod tests {
     pub(super) struct Fixture {
       pub graph: Graph,
       pub reconstruction: PartitionSet,
-      pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub branch_lengths: EdgeMap<Option<f64>>,
     }
 
     impl Fixture {

@@ -3,9 +3,11 @@ mod tests {
   use crate::clock::clock_state::{ClockEdgeInput, ClockInputs, ClockNodeInput};
   use crate::test_utils::{find_edge_key, find_node_key_by_name};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_io::nwk::nwk_read;
 
   #[test]
@@ -18,11 +20,11 @@ mod tests {
     let root_a = find_edge_key(&graph, &names, "root", "A").unwrap();
     let root_b = find_edge_key(&graph, &names, "root", "B").unwrap();
 
-    let times = btreemap! {
+    let times = keymap! {
       a => Some(2000.0),
       b => None,
     };
-    let edge_inputs = btreemap! {
+    let edge_inputs = keymap! {
       root_a => (Some(1.5), 2.0),
     };
 
@@ -32,14 +34,14 @@ mod tests {
       time,
       bad_branch: false,
     };
-    let expected_nodes = btreemap! {
+    let expected_nodes = keymap! {
       a    => node(Some(2000.0)),
       b    => node(None),
       root => node(None),
     };
     assert_eq!(expected_nodes, inputs.nodes);
 
-    let expected_edges: BTreeMap<_, _> = btreemap! {
+    let expected_edges: EdgeMap<_> = keymap! {
       root_a => ClockEdgeInput { time_length: Some(1.5), gamma: 2.0 },
       root_b => ClockEdgeInput::default(),
     };

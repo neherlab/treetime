@@ -96,8 +96,8 @@ pub(crate) mod tests {
     use ndarray::{Array1, Array2, aview1};
     use statrs::stats_tests::ttest_onesample::ttest_onesample;
     use statrs::stats_tests::{Alternative, NaNPolicy};
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::node::GraphNodeKey;
     use treetime_primitives::{AlignmentRecord, Seq};
     use treetime_simulation::FALSE_FAIL_RATE;
@@ -158,7 +158,7 @@ pub(crate) mod tests {
 
     pub(super) struct Calibration {
       case: SimulatedCase,
-      lengths: BTreeMap<GraphEdgeKey, f64>,
+      lengths: EdgeMap<f64>,
       records: Vec<AlignmentRecord>,
       internal_nodes: Vec<GraphNodeKey>,
     }
@@ -282,7 +282,7 @@ pub(crate) mod tests {
           &NoopProgress,
           &NoopProgress,
         )?;
-        let sequences: BTreeMap<GraphNodeKey, Seq> = sink
+        let sequences: NodeMap<Seq> = sink
           .items
           .into_iter()
           .filter(|(_, emitted, _)| *emitted)
@@ -292,7 +292,7 @@ pub(crate) mod tests {
           .internal_nodes
           .iter()
           .try_fold(Array1::zeros(CALIBRATION_LENGTH), |mut wrong: Array1<f64>, &node| {
-            let reconstructed = sequences.get(&node).ok_or_else(|| {
+            let reconstructed = sequences.get(node).ok_or_else(|| {
               make_report!(
                 "Parsimony reconstruction has no sequence for node {}",
                 &self.case.tree.names[node]
@@ -346,18 +346,18 @@ pub(crate) mod tests {
         )
       }
 
-      fn optional_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+      fn optional_lengths(&self) -> EdgeMap<Option<f64>> {
         self
           .lengths
           .iter()
-          .map(|(&edge, &length)| (edge, Some(length)))
+          .map(|(edge, &length)| (edge, Some(length)))
           .collect()
       }
     }
 
     pub(super) struct Posteriors {
       alphabet: Alphabet,
-      nodes: BTreeMap<GraphNodeKey, Array2<f64>>,
+      nodes: NodeMap<Array2<f64>>,
     }
 
     pub(super) struct SiteErrors {

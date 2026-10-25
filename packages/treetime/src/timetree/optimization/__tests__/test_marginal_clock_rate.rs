@@ -10,11 +10,11 @@ mod tests {
   use eyre::Report;
   use ndarray::Array1;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_grid::MaxGridPoints;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
@@ -135,6 +135,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::key_map::NodeMap;
     use treetime_graph::node_names::NodeNames;
     use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
@@ -152,8 +154,8 @@ mod tests {
     pub(super) struct Cherry {
       pub graph: Graph,
       pub constraints: DateConstraints,
-      pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-      pub branches: BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
+      pub bad_branches: NodeMap<bool>,
+      pub branches: EdgeMap<BranchLikelihood>,
       pub names: NodeNames,
     }
 
@@ -164,7 +166,7 @@ mod tests {
 
       pub(super) fn inputs_at<'a>(
         &'a self,
-        branches: &'a BTreeMap<treetime_graph::edge::GraphEdgeKey, BranchLikelihood>,
+        branches: &'a EdgeMap<BranchLikelihood>,
         reference_rate: f64,
         window: RateWindow,
       ) -> MarginalRateInputs<'a> {

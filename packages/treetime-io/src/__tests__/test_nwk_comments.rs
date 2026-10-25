@@ -2,7 +2,8 @@
 mod tests {
   use crate::nwk::{NewickValue, NwkParse, NwkStyle, NwkWriteOptions, nwk_read, nwk_write_str};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::schedule::GraphSchedule;
@@ -55,7 +56,7 @@ mod tests {
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &btreemap! {},
+      &keymap! {},
     )?;
 
     assert_eq!("('node (1)':0.1,B:0.2)root;", actual);
@@ -65,7 +66,8 @@ mod tests {
   mod helpers {
     use crate::nwk::{NewickValue, NwkNodeComments, NwkParse, NwkStyle, NwkWriteOptions, nwk_read, nwk_write_str};
     use eyre::Report;
-    use maplit::btreemap;
+    use treetime_graph::keymap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
@@ -82,7 +84,7 @@ mod tests {
         branch_lengths,
         ..
       } = parse;
-      let comments: NwkNodeComments = btreemap! { find_node_key_by_name(&graph, &names, "A") => comments };
+      let comments: NwkNodeComments = keymap! { find_node_key_by_name(&graph, &names, "A") => comments };
       let options = NwkWriteOptions {
         style,
         ..NwkWriteOptions::default()

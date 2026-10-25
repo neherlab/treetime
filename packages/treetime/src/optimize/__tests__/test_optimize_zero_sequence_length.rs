@@ -9,7 +9,8 @@ mod tests {
   use crate::test_utils::dense_partition_with_constant_leaves;
   use eyre::Report;
   use maplit::btreemap;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
 
@@ -22,7 +23,7 @@ mod tests {
     let result = optimize_edge_lengths(
       &graph,
       total_length,
-      &BTreeMap::new(),
+      &EdgeMap::new(),
       &EdgeIndels::Excluded,
       BranchOptMethod::Newton,
       &mut branch_lengths,
@@ -42,8 +43,8 @@ mod tests {
     let total_length = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 0)?.length;
     let evidence = InitialGuessEvidence {
       total_length,
-      sub_counts: BTreeMap::new(),
-      effective_lengths: BTreeMap::new(),
+      sub_counts: EdgeMap::new(),
+      effective_lengths: EdgeMap::new(),
     };
     let result = guess_initial_branch_lengths(
       &graph,
@@ -68,9 +69,9 @@ mod tests {
     let result = optimize_edge_lengths(
       &graph,
       total_length,
-      &BTreeMap::new(),
+      &EdgeMap::new(),
       &EdgeIndels::Included {
-        counts: BTreeMap::new(),
+        counts: EdgeMap::new(),
         alignment_rates: btreemap! {1 => 1.0},
       },
       BranchOptMethod::Newton,

@@ -10,6 +10,7 @@ mod tests {
   use maplit::btreemap;
   use ndarray::{Array1, array};
   use pretty_assertions::assert_eq;
+  use treetime_graph::keymap;
   use treetime_primitives::Seq;
   use treetime_utils::{assert_error, pretty_assert_abs_diff_eq};
 
@@ -203,7 +204,7 @@ mod tests {
     ])?;
     let output = scenario.run(0)?;
 
-    let expected = btreemap! {
+    let expected = keymap! {
       scenario.node("C") => vec![sub("A10G")],
       scenario.node("D") => vec![sub("C20T")],
     };
@@ -217,7 +218,7 @@ mod tests {
     let output = scenario.run(0)?;
 
     assert_eq!(
-      btreemap! {scenario.node("A") => vec![sub("G10A")]},
+      keymap! {scenario.node("A") => vec![sub("G10A")]},
       output.substitutions.leaves
     );
     assert_eq!(btreemap! {1 => 2}, output.substitutions.all.histogram);
@@ -260,7 +261,7 @@ mod tests {
       output.ambiguous.sites
     );
     assert_eq!(
-      btreemap! {scenario.node("B") => 2, scenario.node("C") => 1},
+      keymap! {scenario.node("B") => 2, scenario.node("C") => 1},
       output.ambiguous.leaves
     );
     Ok(())
@@ -325,7 +326,7 @@ mod tests {
     );
     assert_eq!(btreemap! {1 => 1, 2 => 1}, output.indels.all.histogram);
     assert_eq!(2, output.indels.terminal.count);
-    assert_eq!(btreemap! {scenario.node("D") => 1}, output.indels.leaves);
+    assert_eq!(keymap! {scenario.node("D") => 1}, output.indels.leaves);
     assert_eq!(0, output.substitutions.all.count);
     Ok(())
   }
@@ -338,7 +339,8 @@ mod tests {
     use crate::test_utils::{find_edge_key, find_node_key_by_name};
     use eyre::{OptionExt, Report};
     use itertools::Itertools;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use std::str::FromStr;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::node::GraphNodeKey;
@@ -354,8 +356,8 @@ mod tests {
     pub(super) struct Scenario {
       parse: NwkParse,
       names: NodeNames,
-      raw: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-      bridged: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+      raw: EdgeMap<Vec<Mutation>>,
+      bridged: EdgeMap<Vec<Mutation>>,
       sequence_length: usize,
     }
 
@@ -367,8 +369,7 @@ mod tests {
       pub(super) fn with_length(sequence_length: usize) -> Result<Self, Report> {
         let parse = nwk_read(NEWICK.as_bytes())?;
         let names = parse.names.clone();
-        let empty: BTreeMap<GraphEdgeKey, Vec<Mutation>> =
-          parse.graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
+        let empty: EdgeMap<Vec<Mutation>> = parse.graph.get_edges().map(|edge| (edge.key(), vec![])).collect();
         Ok(Self {
           parse,
           names,
@@ -410,11 +411,11 @@ mod tests {
 
       pub(super) fn run(&self, constant_sites: usize) -> Result<HomoplasyOutput, Report> {
         let alphabet = Alphabet::new(AlphabetName::Nuc)?;
-        let branch_lengths: BTreeMap<GraphEdgeKey, f64> = self
+        let branch_lengths: EdgeMap<f64> = self
           .parse
           .branch_lengths
           .iter()
-          .map(|(&key, length)| (key, length.unwrap_or_default()))
+          .map(|(key, length)| (key, length.unwrap_or_default()))
           .collect();
         let input = HomoplasyInput {
           graph: &self.parse.graph,

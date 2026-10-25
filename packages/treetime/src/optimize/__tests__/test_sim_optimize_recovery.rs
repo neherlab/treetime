@@ -49,7 +49,8 @@ mod tests {
     use rand::RngExt;
     use std::collections::BTreeMap;
     use treetime_graph::clades::{TipIds, graph_clade_keys};
-    use treetime_graph::edge::{Edge, GraphEdgeKey};
+    use treetime_graph::edge::Edge;
+    use treetime_graph::key_map::EdgeMap;
     use treetime_simulation::branch_lengths::{exact, perturbed};
     use treetime_simulation::coalescent::SampleBatch;
     use treetime_simulation::tc_schedule::TcSchedule;
@@ -97,8 +98,8 @@ mod tests {
 
     struct Replicate {
       case: SimulatedCase,
-      exact: BTreeMap<GraphEdgeKey, f64>,
-      start: BTreeMap<GraphEdgeKey, f64>,
+      exact: EdgeMap<f64>,
+      start: EdgeMap<f64>,
     }
 
     impl Replicate {

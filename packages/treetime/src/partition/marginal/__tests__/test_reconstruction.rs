@@ -19,7 +19,8 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
@@ -59,7 +60,7 @@ mod tests {
 
     let actual = reconstruction.sample_sequences(&graph, SampleMode::Argmax, &mut get_random_number_generator(0))?;
 
-    assert_eq!(BTreeMap::new(), actual);
+    assert_eq!(NodeMap::new(), actual);
     for key in keys {
       assert_eq!("ACGT", reconstruction.node_sequence(&graph, false, key)?.to_string());
     }
@@ -126,7 +127,7 @@ mod tests {
 
     let mut expected_keys = helpers::keys(&graph, &names, expected_sampled);
     expected_keys.sort_unstable();
-    assert_eq!(expected_keys, actual.keys().copied().collect::<Vec<_>>());
+    assert_eq!(expected_keys, actual.keys().collect::<Vec<_>>());
     for seq in actual.values() {
       assert_eq!(4, seq.len());
       assert!(
@@ -145,7 +146,8 @@ mod tests {
     use crate::partition::create::build_marginal_partition;
     use crate::progress::NoopProgress;
     use crate::test_utils::find_node_key_by_name;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::node::GraphNodeKey;
 
     const TREE: &str = "((A:0.1,B:0.2)AB:0.1,(C:0.2,D:0.12)CD:0.05)root:0.01;";
@@ -178,7 +180,7 @@ mod tests {
       Ok((graph, SparseReconstruction::seeded(partition, gtr, node_states)))
     }
 
-    pub(super) fn branch_lengths() -> Result<BTreeMap<GraphEdgeKey, Option<f64>>, Report> {
+    pub(super) fn branch_lengths() -> Result<EdgeMap<Option<f64>>, Report> {
       Ok(nwk_read(TREE.as_bytes())?.branch_lengths)
     }
 

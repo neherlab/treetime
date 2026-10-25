@@ -225,7 +225,9 @@ mod tests {
     use treetime::cancel::NoopCancel;
     use treetime::progress::NoopProgress;
     use treetime::seq::mutation::{Mutation, MutationEvent, MutationTrack, PositionBase, Sub};
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+    use treetime_graph::keymap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
@@ -271,8 +273,8 @@ mod tests {
 
     pub(super) struct OutputMaps {
       root_sequence: Seq,
-      edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-      node_sequences: BTreeMap<GraphNodeKey, Seq>,
+      edge_mutations: EdgeMap<Vec<Mutation>>,
+      node_sequences: NodeMap<Seq>,
       length: usize,
     }
 
@@ -479,7 +481,7 @@ mod tests {
         AaCdsNodeData {
           reference: "AC".to_owned(),
           root_sequence: "AC".to_owned(),
-          node_mutations: btreemap! {
+          node_mutations: keymap! {
             name_to_key["A"] => vec![MutationEvent::Substitution(sub(b'C', 1, b'D'))],
             name_to_key["B"] => vec![],
             name_to_key["root"] => vec![],

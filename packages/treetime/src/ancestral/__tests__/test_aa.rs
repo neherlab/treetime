@@ -12,6 +12,7 @@ mod tests {
   use maplit::btreemap;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
+  use treetime_graph::keymap;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::{AsciiChar, Seq};
   use treetime_utils::{assert_error, o};
@@ -86,7 +87,7 @@ mod tests {
     let expected = AaCdsNodeData {
       reference: o!("AA"),
       root_sequence: o!("AC"),
-      node_mutations: btreemap! {
+      node_mutations: keymap! {
         name_to_key["A"] => vec![],
         name_to_key["B"] => vec![],
         name_to_key["root"] => vec![MutationEvent::Substitution(
@@ -140,7 +141,7 @@ mod tests {
         o!("N") => o!("KL"),
         o!("S") => o!("MC*"),
       },
-      node_aa_mutations: btreemap! {
+      node_aa_mutations: keymap! {
         name_to_key["root"] => btreemap! { o!("N") => vec![], o!("S") => vec![] },
         name_to_key["A"] => btreemap! { o!("N") => vec![], o!("S") => vec![] },
         name_to_key["B"] => btreemap! { o!("N") => vec![], o!("S") => vec![] },

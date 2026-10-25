@@ -9,9 +9,9 @@ use crate::seq::indel::InDel;
 use crate::seq::mutation::{SequenceMutations, stream_sequence_mutations};
 use crate::seq::sink::{AmbiguousSites, SeqStream, SeqTrack};
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::{LogLh, Seq};
 
@@ -23,7 +23,7 @@ pub(crate) enum AncestralPartition {
   Fitch(PartitionFitch),
   Marginal {
     reconstruction: MarginalReconstruction,
-    sampled: BTreeMap<GraphNodeKey, Seq>,
+    sampled: NodeMap<Seq>,
     impute: bool,
   },
 }
@@ -93,7 +93,7 @@ impl PartitionSequences for AncestralPartition {
         reconstruction,
         sampled,
         impute,
-      } if !sampled.contains_key(&node_key) => reconstruction.node_ambiguity(graph, *impute, node_key, threshold),
+      } if !sampled.contains_key(node_key) => reconstruction.node_ambiguity(graph, *impute, node_key, threshold),
       Self::Fitch(_) | Self::Marginal { .. } => Ok(AmbiguousSites::new()),
     }
   }
@@ -106,7 +106,7 @@ impl PartitionSequences for AncestralPartition {
         sampled,
         impute,
       } => sampled
-        .get(&node_key)
+        .get(node_key)
         .cloned()
         .map_or_else(|| reconstruction.node_sequence(graph, *impute, node_key), Ok),
     }

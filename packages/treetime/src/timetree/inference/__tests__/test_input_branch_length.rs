@@ -216,15 +216,16 @@ mod tests {
     use crate::alphabet::alphabet::Alphabet;
     use crate::seq::alignment::SequenceSource;
     use crate::test_utils::{leaf_seq_inputs, sequence_source};
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_distribution::DistributionFunction;
-    use treetime_graph::edge::GraphEdgeKey;
+
     use treetime_graph::graph::Graph;
     use treetime_io::fasta::fasta_read;
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::AlignmentRecord;
 
-    type Cherry = (Graph, BTreeMap<GraphEdgeKey, Option<f64>>, Option<SequenceSource>);
+    type Cherry = (Graph, EdgeMap<Option<f64>>, Option<SequenceSource>);
 
     pub(super) fn cherry(with_alignment: bool) -> Result<Cherry, Report> {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root;".as_slice())?;

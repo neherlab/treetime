@@ -132,13 +132,15 @@ mod tests {
     use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence, TreeDates};
     use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
     use indoc::indoc;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
     use std::path::{Path, PathBuf};
     use treetime::clock::clock_model::ClockModel;
     use treetime::timetree::confidence::NodeConfidenceInterval;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+    use treetime_graph::keymap;
+
     use treetime_graph::graph::Graph;
-    use treetime_graph::node::GraphNodeKey;
+
     use treetime_graph::node_names::NodeNames;
     use treetime_io::dates_csv::{DateConstraint, DateRange, DateValue};
     use treetime_utils::io::json::{JsonPretty, json_read_str, json_write_str};
@@ -147,11 +149,11 @@ mod tests {
     pub(super) struct SampleCase {
       graph: Graph,
       names: NodeNames,
-      times: BTreeMap<GraphNodeKey, Option<f64>>,
+      times: NodeMap<Option<f64>>,
       clock_model: ClockModel,
-      dates: BTreeMap<GraphNodeKey, DateConstraint>,
+      dates: NodeMap<DateConstraint>,
       intervals: Vec<NodeConfidenceInterval>,
-      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: EdgeMap<Option<f64>>,
     }
 
     impl SampleCase {
@@ -165,16 +167,16 @@ mod tests {
 
       pub(crate) fn write_and_read_with_mutations(&self, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
         let edges = self.graph.get_edges().collect::<Vec<_>>();
-        let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
+        let counts: EdgeMap<usize> = edge_counts
           .iter()
           .map(|&(idx, count)| (edges[idx].key(), count))
           .collect();
         json_read_str(json_write_str(&self.build(Some(&counts)), JsonPretty(true)).unwrap()).unwrap()
       }
 
-      fn build(&self, mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>) -> AugurNodeDataJsonRefine {
+      fn build(&self, mutation_counts: Option<&EdgeMap<usize>>) -> AugurNodeDataJsonRefine {
         let time_lengths = time_lengths(&self.graph, &self.times);
-        let confidence: BTreeMap<GraphNodeKey, [f64; 2]> = self
+        let confidence: NodeMap<[f64; 2]> = self
           .intervals
           .iter()
           .map(|interval| (interval.key, [interval.lower, interval.upper]))
@@ -208,8 +210,8 @@ mod tests {
 
     pub(super) fn sample_case() -> SampleCase {
       let mut graph = Graph::new();
-      let mut names = BTreeMap::new();
-      let mut times = BTreeMap::new();
+      let mut names = NodeMap::new();
+      let mut times = NodeMap::new();
       let root_key = graph.add_node();
       names.insert(root_key, Some("root".to_owned()));
       times.insert(root_key, Some(2000.0));
@@ -224,14 +226,14 @@ mod tests {
       graph.build().unwrap();
       let names = NodeNames::from_input(names, &graph).unwrap().names;
 
-      let branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = maplit::btreemap! {
+      let branch_lengths: EdgeMap<Option<f64>> = keymap! {
         edge_a_key => Some(0.005),
         edge_b_key => Some(0.010),
       };
 
       let clock_model = sample_clock_model();
 
-      let dates: BTreeMap<GraphNodeKey, DateConstraint> = maplit::btreemap! {
+      let dates: NodeMap<DateConstraint> = keymap! {
         leaf_a_key => DateConstraint::exact(2005.0),
         leaf_b_key => DateConstraint {
           raw: "2010-XX-XX".to_owned(),
@@ -282,12 +284,12 @@ mod tests {
       .unwrap()
     }
 
-    fn time_lengths(graph: &Graph, times: &BTreeMap<GraphNodeKey, Option<f64>>) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    fn time_lengths(graph: &Graph, times: &NodeMap<Option<f64>>) -> EdgeMap<Option<f64>> {
       graph
         .get_edges()
         .map(|edge| {
-          let parent = times.get(&edge.source()).copied().flatten();
-          let child = times.get(&edge.target()).copied().flatten();
+          let parent = times.get(edge.source()).copied().flatten();
+          let child = times.get(edge.target()).copied().flatten();
           (edge.key(), parent.zip(child).map(|(parent, child)| child - parent))
         })
         .collect()

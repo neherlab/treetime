@@ -6,11 +6,10 @@ use eyre::Report;
 use itertools::Itertools;
 use schemars::JsonSchema;
 use smart_default::SmartDefault;
-use std::collections::BTreeMap;
 use treetime::progress::LogSink;
 use treetime::progress_info;
 use treetime::timetree::params::BranchLengthMode;
-use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::key_map::EdgeMap;
 use treetime_utils::o;
 
 pub const AUTO_MARGINAL_MAX_BRANCH_LENGTH: f64 = 0.1;
@@ -18,7 +17,7 @@ pub const AUTO_MARGINAL_MAX_BRANCH_LENGTH: f64 = 0.1;
 pub fn resolve_branch_length_mode(
   mode: BranchLengthModeCli,
   has_alignment: bool,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   log: &dyn LogSink,
 ) -> ResolvedBranchLengthMode {
   let resolved = ResolvedBranchLengthMode::new(mode, has_alignment, longest_branch_length(branch_lengths));
@@ -45,7 +44,7 @@ pub fn settle_branch_length_outputs(
   resolved.require_marginal(&[&unmet.selection.setting_key()], unmet.selection.flag_name())
 }
 
-pub fn longest_branch_length(branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> Option<f64> {
+pub fn longest_branch_length(branch_lengths: &EdgeMap<Option<f64>>) -> Option<f64> {
   branch_lengths.values().flatten().copied().reduce(f64::max)
 }
 

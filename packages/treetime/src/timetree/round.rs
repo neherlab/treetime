@@ -24,10 +24,10 @@ use crate::timetree::optimization::relaxed_clock::{RelaxedClockPrior, apply_rela
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use eyre::{Report, WrapErr};
 use rand::Rng;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::mem;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::piecewise_constant_fn::PiecewiseConstantFn;
@@ -170,7 +170,7 @@ fn refine_topology(
   if resolved_nodes > 0 {
     progress_info!(log, "Resolved polytomies, introduced {resolved_nodes} new nodes");
   }
-  node_times.extend(merger_times.iter().map(|(&key, &time)| (key, Some(time))));
+  node_times.extend(merger_times.iter().map(|(key, &time)| (key, Some(time))));
   require_internal_node_times(&graph, &node_times)
     .wrap_err("Polytomy resolution left an internal node without an inferred time")?;
   let gammas = reconcile_gammas(&graph, state.gammas, &merges);
@@ -199,7 +199,7 @@ fn refine_topology(
 
 pub(crate) enum TopologyOutcome {
   Unchanged,
-  Changed { merger_times: BTreeMap<GraphNodeKey, f64> },
+  Changed { merger_times: NodeMap<f64> },
 }
 
 impl TopologyOutcome {
@@ -268,11 +268,11 @@ fn update_clock_model(
     },
     (fixed, _) => (fixed, state.rate_window),
   };
-  let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = state
+  let edge_inputs: EdgeMap<(Option<f64>, f64)> = state
     .time_inference
     .branches
     .iter()
-    .map(|(key, branch)| (*key, (branch.time_length, state.gammas[key])))
+    .map(|(key, branch)| (key, (branch.time_length, state.gammas[key])))
     .collect();
   let times = likely_times(&state.graph, &inputs.context.date_constraints, &state.time_inference)?;
   let clock_inputs = ClockInputs::from_times(&state.graph, &times, &edge_inputs);
@@ -354,12 +354,12 @@ pub(crate) struct RoundState {
   pub graph: Graph,
   pub names: NodeNames,
   pub branch_model: BranchModel,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub clock_model: ClockModel,
   pub clock_points: Vec<ClockRegressionPoint>,
   pub rate_window: RateWindow,
-  pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-  pub gammas: BTreeMap<GraphEdgeKey, f64>,
+  pub clock_branch_lengths: EdgeMap<f64>,
+  pub gammas: EdgeMap<f64>,
   pub time_inference: TimeInference,
 }
 
@@ -410,7 +410,7 @@ impl RoundState {
 pub(crate) struct RoundInputs<'a> {
   pub params: &'a TimetreeParams,
   pub context: &'a TimetreeContext,
-  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
+  pub leaf_bad_branches: &'a NodeMap<bool>,
   pub outliers: &'a BTreeSet<GraphNodeKey>,
 }
 

@@ -47,7 +47,7 @@ mod tests {
     sparse_reconstruction_mut(&mut reconstruction_with)
       .partition
       .obs_edges
-      .get_mut(&first_edge_key)
+      .get_mut(first_edge_key)
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
@@ -56,7 +56,7 @@ mod tests {
     sparse_reconstruction_mut(&mut reconstruction_without)
       .partition
       .obs_edges
-      .get_mut(&first_edge_key_without)
+      .get_mut(first_edge_key_without)
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 
@@ -119,7 +119,7 @@ mod tests {
     sparse_reconstruction_mut(&mut reconstruction)
       .partition
       .obs_edges
-      .get_mut(&first_edge_key)
+      .get_mut(first_edge_key)
       .unwrap()
       .indels = vec![deletion((0, 3), Seq::try_from_str("ACG")?)];
 

@@ -71,8 +71,9 @@ mod tests {
 
   mod helpers {
     use crate::graph::Graph;
+    use crate::key_map::NodeMap;
     use crate::node::GraphNodeKey;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
 
     pub(super) fn former_preorder(graph: &Graph) -> Vec<GraphNodeKey> {
       let mut order = vec![];
@@ -111,7 +112,7 @@ mod tests {
       root
     }
 
-    pub(super) fn positions(order: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
+    pub(super) fn positions(order: &[GraphNodeKey]) -> NodeMap<usize> {
       order
         .iter()
         .enumerate()

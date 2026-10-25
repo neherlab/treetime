@@ -2,9 +2,10 @@ use crate::branch_lengths::branch_length_or_zero;
 use crate::error::input_error;
 use crate::reroot::find_root::EdgePoint;
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::split_fraction::SplitFraction;
@@ -14,7 +15,7 @@ const EDGE_END_SNAP_FRACTION: f64 = 1e-5;
 
 pub(crate) fn root_moves(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   point: Option<EdgePoint>,
   placement: Placement,
   split_edge: bool,
@@ -61,7 +62,7 @@ pub(crate) enum RootTarget {
 impl RootTarget {
   pub(crate) fn on_edge(
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     point: EdgePoint,
     placement: Placement,
     split_edge: bool,

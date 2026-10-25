@@ -4,7 +4,8 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use crate::timetree::dates_outside_input::dates_outside_input_dates;
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_io::nwk::nwk_read;
@@ -33,13 +34,13 @@ mod tests {
       raw: o!("range"),
       value: DateValue::Range(DateRange { start, end }),
     };
-    let dates = btreemap! {
+    let dates = keymap! {
       key("A") => DateConstraint::exact(2010.0),
       key("B") => range(2011.0, 2011.5),
       key("C") => range(2012.0, 2013.0),
       key("D") => DateConstraint::exact(2012.0),
     };
-    let node_dates = btreemap! {
+    let node_dates = keymap! {
       key("A") => Some(a),
       key("B") => Some(b),
       key("C") => Some(c),
@@ -65,10 +66,10 @@ mod tests {
     let parsed = nwk_read(TREE.as_bytes())?;
     let names = parsed.names.clone();
     let key = |name: &str| find_node_key_by_name(&parsed.graph, &names, name).expect("node must exist");
-    let dates = btreemap! {
+    let dates = keymap! {
       key("A") => DateConstraint::exact(2010.0),
     };
-    let node_dates = btreemap! {
+    let node_dates = keymap! {
       key("A") => Some(2010.0),
       key("B") => Some(2009.0),
       key("C") => Some(2009.0),

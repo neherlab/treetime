@@ -92,7 +92,7 @@ mod tests {
       let matched = match_internal_nodes(&case.tree, &output.graph, &output.names)?;
       let squared_errors = matched
         .iter()
-        .map(|(&true_node, &node)| {
+        .map(|(true_node, &node)| {
           let date = output.node_dates[&node]
             .ok_or_else(|| make_report!("Internal node {} has no date", &output.names[node]))?;
           Ok((date - case.tree.date(true_node)).powi(2))

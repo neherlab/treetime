@@ -19,11 +19,10 @@ use crate::timetree::optimization::marginal_clock_rate::{
 };
 use crate::timetree::optimization::relaxed_clock::unit_gammas;
 use eyre::{Report, WrapErr};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
-use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_grid::MaxGridPoints;
 use treetime_simulation::branch_lengths::realized;
 use treetime_simulation::tc_schedule::TcSchedule;
@@ -33,11 +32,11 @@ pub(crate) struct FrozenRateState {
   pub spec: CaseSpec,
   pub case: SimulatedCase,
   pub tc: f64,
-  pub tip_dates: BTreeMap<GraphNodeKey, f64>,
-  pub node_dates: BTreeMap<GraphNodeKey, f64>,
+  pub tip_dates: NodeMap<f64>,
+  pub node_dates: NodeMap<f64>,
   pub constraints: DateConstraints,
-  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-  pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  pub bad_branches: NodeMap<bool>,
+  pub branches: EdgeMap<BranchLikelihood>,
   pub prior: CoalescentPrior,
 }
 
@@ -52,18 +51,18 @@ impl FrozenRateState {
     }
     let case = spec.simulate()?;
     let graph = &case.tree.graph;
-    let node_dates: BTreeMap<GraphNodeKey, f64> = graph
+    let node_dates: NodeMap<f64> = graph
       .get_nodes()
       .map(|node| (node.key(), case.tree.date(node.key())))
       .collect();
-    let tip_dates: BTreeMap<GraphNodeKey, f64> = graph
+    let tip_dates: NodeMap<f64> = graph
       .get_leaves()
       .map(|leaf| (leaf.key(), node_dates[&leaf.key()]))
       .collect();
     let constraints = DateConstraints {
       by_node: tip_dates
         .iter()
-        .map(|(&key, &date)| (key, Some(Arc::new(Distribution::point(date, 0.0)))))
+        .map(|(key, &date)| (key, Some(Arc::new(Distribution::point(date, 0.0)))))
         .collect(),
     };
     let (bad_branches, branches) = true_rate_branches(spec, &case, &constraints)?;
@@ -141,7 +140,7 @@ fn true_rate_branches(
   spec: &CaseSpec,
   case: &SimulatedCase,
   constraints: &DateConstraints,
-) -> Result<(BTreeMap<GraphNodeKey, bool>, BTreeMap<GraphEdgeKey, BranchLikelihood>), Report> {
+) -> Result<(NodeMap<bool>, EdgeMap<BranchLikelihood>), Report> {
   let graph = &case.tree.graph;
   let source = simulated_sequence_source(graph, &case.tree.names, &case.sequences.sequences)?;
   let partition = PartitionMarginalDense::new(source.alphabet, graph, &source.nodes)?;
@@ -149,7 +148,7 @@ fn true_rate_branches(
   let lengths = realized(graph, &case.sequences.sequences)?;
   let (partitions, _) =
     PartitionSet::Dense(vec![DenseReconstruction::seeded(partition, gtr)]).marginal_update(graph, &lengths)?;
-  let branch_lengths = lengths.iter().map(|(&edge, &length)| (edge, Some(length))).collect();
+  let branch_lengths = lengths.iter().map(|(edge, &length)| (edge, Some(length))).collect();
   let inference = run_timetree(
     &TimeInferenceInputs {
       graph,

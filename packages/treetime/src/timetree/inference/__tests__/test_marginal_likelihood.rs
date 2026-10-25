@@ -17,7 +17,7 @@ mod tests {
   use std::collections::BTreeMap;
   use std::sync::Arc;
   use treetime_distribution::{BoundaryBehavior, Distribution, DistributionFunction, NegLog};
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
@@ -128,6 +128,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
     use treetime_graph::node_names::NodeNames;
 
     pub(super) const REFERENCE_RATE: f64 = 1e-3;
@@ -153,8 +154,8 @@ mod tests {
     pub(super) struct Setup {
       pub graph: Graph,
       pub constraints: DateConstraints,
-      pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-      pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
+      pub bad_branches: NodeMap<bool>,
+      pub branches: EdgeMap<BranchLikelihood>,
       pub keys: BTreeMap<&'static str, GraphNodeKey>,
       pub names: NodeNames,
     }
@@ -214,7 +215,7 @@ mod tests {
       })
     }
 
-    pub(super) fn tip_dates(setup: &Setup) -> BTreeMap<GraphNodeKey, f64> {
+    pub(super) fn tip_dates(setup: &Setup) -> NodeMap<f64> {
       TIPS.iter().map(|&(name, date)| (setup.keys[name], date)).collect()
     }
 
@@ -224,7 +225,7 @@ mod tests {
 
     pub(super) fn piecewise_log_z(
       setup: &Setup,
-      branches: &BTreeMap<GraphEdgeKey, BranchLikelihood>,
+      branches: &EdgeMap<BranchLikelihood>,
       model: Option<&CoalescentPrior>,
     ) -> Result<f64, Report> {
       let branch = |name: &str| -> Result<NegLogPieces, Report> {

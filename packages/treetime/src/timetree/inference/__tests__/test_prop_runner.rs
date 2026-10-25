@@ -122,6 +122,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::optimize::indel::IndelPolicy;
+    use treetime_graph::key_map::NodeMap;
 
     pub(super) struct LeafOutcome {
       pub expected_bad: bool,
@@ -144,7 +145,7 @@ mod tests {
       let partition = PartitionSet::Dense(vec![DenseReconstruction {
         partition: PartitionMarginalDense::new(alphabet, &graph, &leaf_seq_inputs(&graph, &names, aln))?,
         gtr: jc69(JC69Params::default())?,
-        node_states: BTreeMap::new(),
+        node_states: NodeMap::new(),
         edges: MarginalEdges::default(),
         layout: None,
       }]);

@@ -1,4 +1,5 @@
 use crate::graph::Graph;
+use crate::key_map::NodeMap;
 use crate::node::GraphNodeKey;
 use crate::node_names::NodeNames;
 use crate::schedule::GraphSchedule;
@@ -35,8 +36,7 @@ pub fn graph_clade_keys<'a>(
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let preorder = schedule.preorder();
-  let positions: BTreeMap<GraphNodeKey, usize> =
-    preorder.iter().enumerate().map(|(index, &key)| (key, index)).collect();
+  let positions: NodeMap<usize> = preorder.iter().enumerate().map(|(index, &key)| (key, index)).collect();
   let nodes = preorder.iter().map(|&key| CladeNode {
     parent: schedule.parents(key).first().map(|(parent, _)| positions[parent]),
     tip: schedule.children(key).is_empty().then(|| &names[key]),

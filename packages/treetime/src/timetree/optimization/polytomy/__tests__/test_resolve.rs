@@ -14,8 +14,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rand::Rng;
-  use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::edge::GraphEdgeKey;
+  use std::collections::BTreeSet;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -315,6 +315,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
 
     pub(super) fn set_time(
       graph: &Graph,
@@ -332,8 +333,7 @@ mod tests {
       graph.get_nodes().map(|node| (node.key(), None)).collect()
     }
 
-    pub(super) fn polytomy_tree() -> Result<(Graph, NodeNames, NodeTimes, BTreeMap<GraphEdgeKey, Option<f64>>), Report>
-    {
+    pub(super) fn polytomy_tree() -> Result<(Graph, NodeNames, NodeTimes, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2,C:0.15)ABC:0.05)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -354,8 +354,7 @@ mod tests {
       Ok((graph, names, node_times, branch_lengths))
     }
 
-    pub(super) fn wide_polytomy_tree()
-    -> Result<(Graph, NodeNames, NodeTimes, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn wide_polytomy_tree() -> Result<(Graph, NodeNames, NodeTimes, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.1,C:0.1,D:0.1,E:0.1,F:0.1)P:0.05)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -379,7 +378,7 @@ mod tests {
       Ok((graph, names, node_times, branch_lengths))
     }
 
-    pub(super) fn binary_tree() -> Result<(Graph, NodeNames, NodeTimes, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn binary_tree() -> Result<(Graph, NodeNames, NodeTimes, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.05,(C:0.15,D:0.1)CD:0.08)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -402,7 +401,7 @@ mod tests {
     pub(super) fn resolve(
       graph: Graph,
       names: &mut NodeNames,
-      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: EdgeMap<Option<f64>>,
       times: &mut NodeTimes,
       rng: &mut dyn Rng,
     ) -> Result<(Graph, usize), Report> {
@@ -412,7 +411,7 @@ mod tests {
     pub(super) fn resolve_with_dates(
       graph: Graph,
       names: &mut NodeNames,
-      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: EdgeMap<Option<f64>>,
       times: &mut NodeTimes,
       dates: &DateConstraints,
       rng: &mut dyn Rng,

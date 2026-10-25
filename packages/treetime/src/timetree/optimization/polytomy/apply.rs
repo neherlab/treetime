@@ -1,8 +1,8 @@
 use crate::timetree::optimization::polytomy::sweep::SubtreePlan;
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::make_internal_error;
@@ -14,12 +14,12 @@ pub(crate) fn apply_plan(
   parent_time: f64,
   children: &[ChildRef],
   plan: &SubtreePlan,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> Result<BTreeMap<GraphNodeKey, f64>, Report> {
+  branch_lengths: &mut EdgeMap<Option<f64>>,
+) -> Result<NodeMap<f64>, Report> {
   validate_plan(parent_time, children, plan)?;
 
   let mut merger_nodes: Vec<GraphNodeKey> = Vec::with_capacity(plan.mergers.len());
-  let mut merger_times = BTreeMap::new();
+  let mut merger_times = NodeMap::new();
 
   for merger in &plan.mergers {
     let new_node_key = graph.add_node();
@@ -116,7 +116,7 @@ fn attach(
   merger_nodes: &[GraphNodeKey],
   lineage: usize,
   new_parent_key: GraphNodeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   if let Some(child) = children.get(lineage) {
     graph.reparent_edge(child.edge_key, new_parent_key)?;

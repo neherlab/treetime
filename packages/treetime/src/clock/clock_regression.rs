@@ -8,11 +8,12 @@ use crate::progress_info;
 use eyre::Report;
 use log::debug;
 use smallvec::smallvec;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 use std::mem;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -156,7 +157,7 @@ enum ClockEstimate {
 
 pub(crate) struct ClockTree {
   pub graph: Graph,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub inputs: ClockInputs,
 }
 
@@ -170,7 +171,7 @@ pub(crate) fn clock_regression(
   graph: &Graph,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
   let state = clock_regression_backward(graph, inputs, outliers, branch_lengths, prev_clock_rate)?;
@@ -181,7 +182,7 @@ fn clock_regression_backward(
   graph: &Graph,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
   let schedule = GraphSchedule::new(graph)?;
@@ -204,7 +205,7 @@ fn clock_regression_forward(
   graph: &Graph,
   inputs: &ClockInputs,
   state: ClockState,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<ClockState, Report> {
   let schedule = GraphSchedule::new(graph)?;
@@ -227,7 +228,7 @@ fn clock_regression_forward(
 struct ClockRegressionPass<'a> {
   schedule: &'a GraphSchedule<'a>,
   inputs: &'a ClockInputs,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &'a EdgeMap<Option<f64>>,
   prev_clock_rate: Option<f64>,
 }
 
@@ -292,7 +293,7 @@ fn clock_regression_points(
   graph: &Graph,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   prev_clock_rate: Option<f64>,
 ) -> Result<Vec<ClockRegressionPoint>, Report> {
   let divergences = root_to_node_divergences(graph, |edge_key| {
@@ -322,7 +323,7 @@ pub(crate) struct ClockRegressionPoint {
 
 pub(crate) fn edge_length(
   inputs: &ClockInputs,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   edge_key: GraphEdgeKey,
   prev_clock_rate: Option<f64>,
 ) -> f64 {

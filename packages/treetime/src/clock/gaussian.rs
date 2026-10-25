@@ -2,9 +2,8 @@ use crate::branch_lengths::branch_length_or_zero;
 use crate::timetree::inference::result::NodeTimes;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
@@ -17,9 +16,9 @@ pub(crate) struct GaussianTree<'g> {
   schedule: GraphSchedule<'g>,
   nodes_without_tip_date: Vec<GraphNodeKey>,
   sequence_length: f64,
-  nu: BTreeMap<GraphEdgeKey, f64>,
-  below: BTreeMap<GraphNodeKey, Below>,
-  up: BTreeMap<GraphEdgeKey, Option<Message>>,
+  nu: EdgeMap<f64>,
+  below: NodeMap<Below>,
+  up: EdgeMap<Option<Message>>,
   root: Message,
   substitutions: f64,
   events: f64,
@@ -31,10 +30,10 @@ pub(crate) struct GaussianTree<'g> {
 impl<'g> GaussianTree<'g> {
   pub(crate) fn new(
     graph: &'g Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     sequence_length: usize,
     tip_dates: &NodeTimes,
-    excluded: &BTreeMap<GraphNodeKey, bool>,
+    excluded: &NodeMap<bool>,
   ) -> Result<Self, Report> {
     if sequence_length == 0 {
       return make_error!("Gaussian clock needs a positive sequence length");
@@ -43,20 +42,20 @@ impl<'g> GaussianTree<'g> {
     let schedule = GraphSchedule::new(graph)?;
     schedule.require_tree()?;
     let root = schedule.roots()[0];
-    let tips: BTreeMap<GraphNodeKey, Option<Message>> = graph
+    let tips: NodeMap<Option<Message>> = graph
       .get_nodes()
       .map(|n| {
-        let included = n.is_leaf() && !excluded.get(&n.key()).copied().unwrap_or(false);
-        let date = tip_dates.get(&n.key()).copied().flatten().filter(|_| included);
+        let included = n.is_leaf() && !excluded.get(n.key()).copied().unwrap_or(false);
+        let date = tip_dates.get(n.key()).copied().flatten().filter(|_| included);
         (n.key(), date.map(|s| Message { s, r: 0.0, w: 0.0 }))
       })
       .collect();
     let nodes_without_tip_date = tips
       .iter()
       .filter(|(_, tip)| tip.is_none())
-      .map(|(&key, _)| key)
+      .map(|(key, _)| key)
       .collect();
-    let nu: BTreeMap<GraphEdgeKey, f64> = graph
+    let nu: EdgeMap<f64> = graph
       .get_edges()
       .map(|e| {
         (
@@ -74,7 +73,7 @@ impl<'g> GaussianTree<'g> {
     let mut internal_branches = 0_usize;
     let mut tip_branches = 0_usize;
     for edge in graph.get_edges() {
-      if up.get(&edge.key()).copied().flatten().is_none() {
+      if up.get(edge.key()).copied().flatten().is_none() {
         continue;
       }
       substitutions += nu[&edge.key()] - 1.0;
@@ -161,7 +160,7 @@ impl<'g> GaussianTree<'g> {
 pub(crate) struct GaussianClock {
   pub rate_std: Option<f64>,
   pub root_time_std: Option<f64>,
-  pub node_times: BTreeMap<GraphNodeKey, NodeTimeGaussian>,
+  pub node_times: NodeMap<NodeTimeGaussian>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -172,8 +171,8 @@ pub(crate) struct NodeTimeGaussian {
 
 fn backward(
   schedule: &GraphSchedule<'_>,
-  tips: BTreeMap<GraphNodeKey, Option<Message>>,
-  nu: &BTreeMap<GraphEdgeKey, f64>,
+  tips: NodeMap<Option<Message>>,
+  nu: &EdgeMap<f64>,
 ) -> Result<NodeEdgeMaps<Below, Option<Message>>, Report> {
   let outputs = schedule.scan_up(tips, |key, tip, from_children| {
     let (node, own) = if schedule.children(key).is_empty() {
@@ -208,16 +207,16 @@ fn combine(messages: &[Message]) -> Option<(Message, [f64; 2])> {
 
 fn forward(
   schedule: &GraphSchedule<'_>,
-  nu: &BTreeMap<GraphEdgeKey, f64>,
-  below: &BTreeMap<GraphNodeKey, Below>,
-  up: &BTreeMap<GraphEdgeKey, Option<Message>>,
-) -> Result<BTreeMap<GraphNodeKey, Natural>, Report> {
-  let down = below.iter().map(|(&key, node)| (key, node.down));
+  nu: &EdgeMap<f64>,
+  below: &NodeMap<Below>,
+  up: &EdgeMap<Option<Message>>,
+) -> Result<NodeMap<Natural>, Report> {
+  let down = below.iter().map(|(key, node)| (key, node.down));
   let totals = schedule.scan_down(down, |key, down, parent_totals: PerEdge<Natural>| {
     let outside = match (schedule.parents(key).first(), parent_totals.first()) {
       (Some(&(_, edge_key)), Some(&parent_total)) => {
         let own_up = up
-          .get(&edge_key)
+          .get(edge_key)
           .copied()
           .flatten()
           .map_or_else(Natural::default, Message::natural);

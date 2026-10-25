@@ -10,7 +10,7 @@ mod tests {
   };
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::cast::ToF64Exact;
@@ -349,6 +349,7 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
     use treetime_utils::cast::ToF64Exact;
 
     #[derive(Deserialize)]
@@ -373,14 +374,14 @@ mod tests {
       pub(crate) gammas: BTreeMap<String, f64>,
     }
 
-    pub(super) fn build_simple_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn build_simple_tree() -> Result<(Graph, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"(A:0.1,B:0.2)root:0.0;".as_slice())?;
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       Ok((graph, branch_lengths))
     }
 
-    pub(super) fn build_deep_tree() -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn build_deep_tree() -> Result<(Graph, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.1,B:0.2)AB:0.15,(C:0.05,D:0.1)CD:0.08)root:0.0;".as_slice())?;
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
@@ -389,16 +390,16 @@ mod tests {
 
     pub(super) fn scaled_durations(
       graph: &Graph,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &EdgeMap<Option<f64>>,
       factor: f64,
-    ) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    ) -> EdgeMap<Option<f64>> {
       graph
         .get_edges()
         .map(|edge| (edge.key(), Some(branch_lengths[&edge.key()].unwrap_or(0.0) * factor)))
         .collect()
     }
 
-    pub(super) fn unknown_durations(graph: &Graph) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+    pub(super) fn unknown_durations(graph: &Graph) -> EdgeMap<Option<f64>> {
       graph.get_edges().map(|edge| (edge.key(), None)).collect()
     }
 

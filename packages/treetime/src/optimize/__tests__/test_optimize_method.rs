@@ -16,8 +16,7 @@ pub(super) mod tests {
   use helpers::*;
   use proptest::prelude::*;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -163,11 +162,12 @@ pub(super) mod tests {
     use super::*;
     use crate::optimize::gather::gather_edge_indel_counts;
     use crate::optimize::indel::poisson_indel_log_lh;
+    use treetime_graph::key_map::EdgeMap;
 
     pub(crate) fn setup_with_indels(
       graph: &Graph,
       names: &NodeNames,
-      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &mut EdgeMap<Option<f64>>,
       n_indels: usize,
     ) -> Result<(PartitionSet, f64), Report> {
       let aln = simple_alignment()?;
@@ -181,7 +181,7 @@ pub(super) mod tests {
       sparse_reconstruction_mut(&mut reconstruction)
         .partition
         .obs_edges
-        .get_mut(&first_edge_key)
+        .get_mut(first_edge_key)
         .unwrap()
         .indels = indels;
 
@@ -273,7 +273,7 @@ pub(super) mod tests {
       Ok(metrics)
     }
 
-    pub(crate) fn first_edge_bl(graph: &Graph, branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>) -> f64 {
+    pub(crate) fn first_edge_bl(graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> f64 {
       branch_lengths[&graph.get_edges().collect::<Vec<_>>()[0].key()].unwrap()
     }
 

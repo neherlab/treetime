@@ -8,6 +8,7 @@ use statrs::function::factorial::ln_factorial;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_primitives::LogLh;
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::cast::usize_to_u64;
@@ -24,7 +25,7 @@ impl IndelPolicy {
     self,
     graph: &Graph,
     partitions: &PartitionSet,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<EdgeIndels, Report> {
     match self {
       Self::Include => {
@@ -46,7 +47,7 @@ impl IndelPolicy {
 #[derive(Clone, Debug)]
 pub(crate) enum EdgeIndels {
   Included {
-    counts: BTreeMap<GraphEdgeKey, usize>,
+    counts: EdgeMap<usize>,
     alignment_rates: BTreeMap<usize, f64>,
   },
   Excluded,
@@ -100,22 +101,14 @@ impl EdgeIndels {
     }
   }
 
-  pub(crate) fn total_log_lh(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> Result<LogLh, Report> {
+  pub(crate) fn total_log_lh(&self, graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> Result<LogLh, Report> {
     match self {
       Self::Included { counts, .. } => total_indel_log_lh(graph, counts, branch_lengths, self.rate()),
       Self::Excluded => Ok(LogLh::ZERO),
     }
   }
 
-  pub(crate) fn has_indel_edge_with_zero_length(
-    &self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  ) -> bool {
+  pub(crate) fn has_indel_edge_with_zero_length(&self, graph: &Graph, branch_lengths: &EdgeMap<Option<f64>>) -> bool {
     graph.get_edges().any(|edge_ref| {
       let edge_key = edge_ref.key();
       branch_lengths[&edge_key].unwrap_or(0.0) == 0.0 && self.term(edge_key).requires_positive_length()
@@ -152,11 +145,7 @@ impl IndelTerm {
   }
 }
 
-fn estimate_indel_rate(
-  graph: &Graph,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> f64 {
+fn estimate_indel_rate(graph: &Graph, indel_counts: &EdgeMap<usize>, branch_lengths: &EdgeMap<Option<f64>>) -> f64 {
   let per_edge = graph
     .get_edges()
     .collect::<Vec<_>>()
@@ -180,8 +169,8 @@ fn estimate_indel_rate(
 
 fn total_indel_log_lh(
   graph: &Graph,
-  indel_counts: &BTreeMap<GraphEdgeKey, usize>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  indel_counts: &EdgeMap<usize>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   indel_rate: f64,
 ) -> Result<LogLh, Report> {
   graph

@@ -4,11 +4,9 @@ use crate::error::input_error;
 use crate::partition::split::SequenceInput;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use std::path::PathBuf;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_primitives::{AlignmentRecord, Seq};
@@ -16,17 +14,13 @@ use treetime_primitives::{AlignmentRecord, Seq};
 #[derive(Debug)]
 pub struct AncestralInput {
   pub graph: Graph,
-  pub edges: BTreeMap<GraphEdgeKey, EdgeSeqInput>,
+  pub edges: EdgeMap<EdgeSeqInput>,
   pub sequences: SequenceInput,
 }
 
 impl AncestralInput {
-  pub fn branch_lengths(&self) -> BTreeMap<GraphEdgeKey, Option<f64>> {
-    self
-      .edges
-      .iter()
-      .map(|(key, edge)| (*key, edge.branch_length))
-      .collect()
+  pub fn branch_lengths(&self) -> EdgeMap<Option<f64>> {
+    self.edges.iter().map(|(key, edge)| (key, edge.branch_length)).collect()
   }
 }
 
@@ -35,7 +29,7 @@ pub struct SequenceSource {
   pub path: PathBuf,
   pub alphabet: Alphabet,
   pub length: usize,
-  pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub nodes: NodeMap<NodeSeqInput>,
   pub mask: Vec<bool>,
 }
 
@@ -63,24 +57,19 @@ pub struct LeafPairing {
 
 #[derive(Clone, Debug)]
 pub struct LeafSequences {
-  pub nodes: BTreeMap<GraphNodeKey, NodeSeqInput>,
+  pub nodes: NodeMap<NodeSeqInput>,
   pub unmatched: Vec<(String, Seq)>,
 }
 
 impl LeafSequences {
-  pub fn new(
-    graph: &Graph,
-    names: &NodeNames,
-    mut seqs: BTreeMap<GraphNodeKey, Seq>,
-    unmatched: Vec<(String, Seq)>,
-  ) -> Self {
+  pub fn new(graph: &Graph, names: &NodeNames, mut seqs: NodeMap<Seq>, unmatched: Vec<(String, Seq)>) -> Self {
     let nodes = graph
       .get_nodes()
       .map(|node| {
         let key = node.key();
         let input = NodeSeqInput {
           name: names[key].to_owned(),
-          seq: seqs.remove(&key),
+          seq: seqs.remove(key),
         };
         (key, input)
       })
@@ -109,9 +98,7 @@ impl LeafSequences {
   }
 }
 
-pub(crate) fn get_common_length_of_node_inputs(
-  node_inputs: &BTreeMap<GraphNodeKey, NodeSeqInput>,
-) -> Result<usize, Report> {
+pub(crate) fn get_common_length_of_node_inputs(node_inputs: &NodeMap<NodeSeqInput>) -> Result<usize, Report> {
   common_length(
     node_inputs
       .values()

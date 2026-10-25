@@ -4,9 +4,8 @@ use crate::progress::LogSink;
 use crate::progress_info;
 use crate::timetree::inference::input_branch_length::InputBranchModel;
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
 
 pub(crate) enum BranchModel {
@@ -19,11 +18,7 @@ impl BranchModel {
     matches!(self, Self::Marginal(_))
   }
 
-  pub(crate) fn marginal_update(
-    self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<Self, Report> {
+  pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<Self, Report> {
     Ok(match self {
       Self::Input(model) => Self::Input(model),
       Self::Marginal(partitions) => Self::Marginal(partitions.marginal_update(graph, branch_lengths)?.0),
@@ -40,7 +35,7 @@ impl BranchModel {
   pub(crate) fn apply_reroot(
     self,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     reroot: &RerootResult,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {

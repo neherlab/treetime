@@ -5,9 +5,10 @@ use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_group
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 
 pub(crate) fn prune_nodes(
@@ -16,7 +17,7 @@ pub(crate) fn prune_nodes(
   prune_short: Option<f64>,
   prune_empty: bool,
   node_keys: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   let groups = sparse_alignment_groups(partitions)?;
   prune_internal_nodes(
@@ -41,7 +42,7 @@ fn prune_internal_nodes(
   prune_short: Option<f64>,
   prune_empty: bool,
   node_keys: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   #[expect(
     clippy::needless_collect,
@@ -85,7 +86,7 @@ pub(crate) fn get_edge_num_muts(
   let mut found_any = false;
 
   for reconstruction in partitions {
-    if let Some(edge) = reconstruction.partition.obs_edges.get(&edge_key) {
+    if let Some(edge) = reconstruction.partition.obs_edges.get(edge_key) {
       total_muts += edge.fitch_subs().len();
       found_any = true;
     }
@@ -99,7 +100,7 @@ fn prune_leaves(
   partitions: &mut [SparseReconstruction],
   groups: &[AlignmentGroup],
   node_keys: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   let edges_to_collapse = graph
     .get_edges()
@@ -125,7 +126,7 @@ pub(crate) fn collapse_sparse_edges_from_leaf_recursive(
   partitions: &mut [SparseReconstruction],
   groups: &[AlignmentGroup],
   edge_key: GraphEdgeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   let mut current_edge_key = edge_key;
 

@@ -194,10 +194,11 @@ mod tests {
   mod helpers {
     use app_output::annotated_graph::{AnnotatedGraph, AnnotatedTreeView, Divergence};
     use app_output::augur_node_data_refine::{RefineRun, build_augur_node_data_refine};
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::EdgeMap;
+
     use std::path::{Path, PathBuf};
     use treetime::optimize::pipeline::OptimizeOutput;
-    use treetime_graph::edge::GraphEdgeKey;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node_names::NodeNames;
 
@@ -225,7 +226,7 @@ mod tests {
     pub(super) fn write_and_read_with_mutations(nwk: &str, edge_counts: &[(usize, usize)]) -> AugurNodeDataJsonRefine {
       let parse = nwk_read(nwk.as_bytes()).unwrap();
       let edges = parse.graph.get_edges().collect::<Vec<_>>();
-      let counts: BTreeMap<GraphEdgeKey, usize> = edge_counts
+      let counts: EdgeMap<usize> = edge_counts
         .iter()
         .map(|&(idx, count)| (edges[idx].key(), count))
         .collect();
@@ -259,8 +260,8 @@ mod tests {
     pub(super) fn build(
       graph: &Graph,
       names: &NodeNames,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-      mutation_counts: Option<&BTreeMap<GraphEdgeKey, usize>>,
+      branch_lengths: &EdgeMap<Option<f64>>,
+      mutation_counts: Option<&EdgeMap<usize>>,
       alignments: &[PathBuf],
       input_tree: Option<&Path>,
     ) -> AugurNodeDataJsonRefine {

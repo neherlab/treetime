@@ -3,11 +3,10 @@ use crate::coalescent::mean_field::{CoalescentPrior, NodeSurvival};
 use crate::timetree::confidence::CI_FRACTION;
 use crate::timetree::max_posterior_region::{MaxPosteriorRegion, max_posterior_region};
 use eyre::{Report, WrapErr};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::LogLh;
 
@@ -18,13 +17,13 @@ pub struct NodeBackward {
 }
 
 pub(crate) fn log_marginal_likelihood(
-  backward: &BTreeMap<GraphNodeKey, NodeBackward>,
+  backward: &NodeMap<NodeBackward>,
   root: GraphNodeKey,
   coalescent: Option<&CoalescentPrior>,
 ) -> Result<Option<f64>, Report> {
   let normalization = coalescent.map_or(0.0, CoalescentPrior::log_normalization);
   backward
-    .get(&root)
+    .get(root)
     .and_then(|node| node.subtree.as_deref())
     .map(|subtree| Ok(subtree.log_mass()? + normalization))
     .transpose()
@@ -62,9 +61,9 @@ pub(crate) fn likely_times(
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct TimeInference {
   pub log_lh_time: Option<LogLh>,
-  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-  pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
-  pub posterior: BTreeMap<GraphNodeKey, NodePosterior>,
+  pub bad_branches: NodeMap<bool>,
+  pub branches: EdgeMap<BranchLikelihood>,
+  pub posterior: NodeMap<NodePosterior>,
   pub posterior_summaries: PosteriorSummaries,
 }
 
@@ -74,7 +73,7 @@ impl TimeInference {
     self
       .posterior
       .iter()
-      .map(|(key, posterior)| (*key, posterior.time))
+      .map(|(key, posterior)| (key, posterior.time))
       .collect()
   }
 }
@@ -85,7 +84,7 @@ pub struct PosteriorSummaries {
   pub lineage_survival: bool,
 }
 
-pub(crate) type NodeTimes = BTreeMap<GraphNodeKey, Option<f64>>;
+pub(crate) type NodeTimes = NodeMap<Option<f64>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BranchLikelihood {
@@ -158,7 +157,7 @@ pub(crate) fn likely_time_of_node(
   })
 }
 
-pub(crate) fn date_branch_lengths(graph: &Graph, node_dates: &NodeTimes) -> BTreeMap<GraphEdgeKey, Option<f64>> {
+pub(crate) fn date_branch_lengths(graph: &Graph, node_dates: &NodeTimes) -> EdgeMap<Option<f64>> {
   graph
     .get_edges()
     .map(|edge| {

@@ -2,11 +2,10 @@ use crate::commands::shared::input_warnings::warn_duplicate_names;
 use crate::commands::shared::metadata::MetadataInput;
 use eyre::{Report, WrapErr};
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use treetime::progress::{LogSink, RunWarningKind};
 use treetime::progress_warn;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::pair_by_name::pair_by_name;
 use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
@@ -19,7 +18,7 @@ pub(crate) fn read_input_dates(
   graph: &Graph,
   names: &NodeNames,
   log: &dyn LogSink,
-) -> Result<BTreeMap<GraphNodeKey, DateConstraint>, Report> {
+) -> Result<NodeMap<DateConstraint>, Report> {
   let DatesInput {
     metadata,
     date_column,

@@ -35,9 +35,8 @@ use treetime::progress_warn;
 use treetime::seq::alignment::{LeafSequences, SequenceSource};
 use treetime::seq::gap_fill::{GapFill, apply_gap_fill};
 use treetime::seq::sink::{SeqItem, SeqSink, SeqStream, SeqTrack};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_io::fasta::{FastaWriter, fasta_read_file};
 use treetime_io::nwk::NwkParse;
@@ -227,14 +226,14 @@ fn planned_aa_fasta_paths(
 struct AncestralSeqSink {
   fasta: Option<NucFastaWriters>,
   fasta_ambiguity: Option<AmbiguityThreshold>,
-  node_sequences: BTreeMap<usize, BTreeMap<GraphNodeKey, Seq>>,
+  node_sequences: BTreeMap<usize, NodeMap<Seq>>,
   node_data_ambiguity: Option<AmbiguityThreshold>,
 }
 
 impl AncestralSeqSink {
   fn new(
     resolved: &ResolvedOutputs,
-    descs: BTreeMap<usize, BTreeMap<GraphNodeKey, Option<String>>>,
+    descs: BTreeMap<usize, NodeMap<Option<String>>>,
     ambiguity: &AmbiguityOutputs,
   ) -> Result<Self, Report> {
     let fasta_paths = resolved.alignment_paths(OutputSelection::Sequences);
@@ -244,7 +243,7 @@ impl AncestralSeqSink {
     let node_sequences: BTreeMap<_, _> = resolved
       .alignment_paths(OutputSelection::NodeData)
       .into_keys()
-      .map(|alignment| (alignment, BTreeMap::new()))
+      .map(|alignment| (alignment, NodeMap::new()))
       .collect();
     Ok(Self {
       fasta_ambiguity: fasta
@@ -408,14 +407,14 @@ fn read_cds_translations(
 struct AaRunInputs<'a> {
   graph: &'a Graph,
   names: &'a NodeNames,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &'a EdgeMap<Option<f64>>,
   seed: u64,
 }
 
 struct AaFastaSink {
   paths: BTreeMap<String, PathBuf>,
   ambiguity: Option<AmbiguityThreshold>,
-  pending: Option<(String, BTreeMap<GraphNodeKey, (String, Seq)>)>,
+  pending: Option<(String, NodeMap<(String, Seq)>)>,
 }
 
 impl AaFastaSink {
@@ -460,7 +459,7 @@ impl SeqSink for AaFastaSink {
     };
     self
       .pending
-      .get_or_insert_with(|| (cds.to_owned(), BTreeMap::new()))
+      .get_or_insert_with(|| (cds.to_owned(), NodeMap::new()))
       .1
       .insert(item.key, (item.name.to_owned(), seq));
     Ok(())

@@ -9,9 +9,9 @@ use eyre::Report;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::{BTreeMap, BTreeSet};
-use treetime_graph::edge::GraphEdgeKey;
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 
 #[expect(
@@ -23,7 +23,7 @@ pub(crate) fn clock_filter(
   graph: &Graph,
   inputs: &ClockInputs,
   clock_line: &(impl ClockLine + Sync),
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   threshold: f64,
   log: &dyn LogSink,
 ) -> Result<ClockFilterResult, Report> {
@@ -91,6 +91,6 @@ pub(crate) fn clock_filter(
 #[derive(Debug)]
 pub(crate) struct ClockFilterResult {
   pub(crate) outliers: BTreeSet<GraphNodeKey>,
-  pub(crate) divergences: BTreeMap<GraphNodeKey, f64>,
+  pub(crate) divergences: NodeMap<f64>,
   pub(crate) iqd: f64,
 }

@@ -3,16 +3,16 @@ use crate::clock::clock_state::ClockInputs;
 use crate::error::input_error;
 use crate::reroot::find_root::EdgePoint;
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::common_ancestor::common_ancestor;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::split_fraction::SplitFraction;
 
 pub(crate) fn named_node_point(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   node_key: GraphNodeKey,
 ) -> Result<Option<EdgePoint>, Report> {
   let Some((parent_key, edge)) = graph.node_parent(node_key)? else {

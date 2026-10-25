@@ -10,7 +10,6 @@ use crate::timetree::inference::runner::{EPS, GRID_POINTS, TRIM_EPS};
 use crate::timetree::max_posterior_region::posterior_median;
 use eyre::{Report, WrapErr};
 use log::{Level, debug, log_enabled};
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::Distribution;
 use treetime_distribution::ForwardPosterior;
@@ -19,8 +18,8 @@ use treetime_distribution::NegLog;
 use treetime_distribution::convolve_forward_across_edge;
 use treetime_distribution::distribution_division;
 use treetime_distribution::distribution_multiplication;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_graph::schedule::GraphSchedule;
@@ -30,10 +29,10 @@ use treetime_grid::MaxGridPoints;
 pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
   graph: &Graph,
   inputs: &ForwardPassInputs<'_>,
-  backward: BTreeMap<GraphNodeKey, NodeBackward>,
+  backward: NodeMap<NodeBackward>,
   summarize: impl Fn(GraphNodeKey, PosteriorView<'_>) -> Result<S, Report> + Sync,
   log: &dyn LogSink,
-) -> Result<BTreeMap<GraphNodeKey, S>, Report> {
+) -> Result<NodeMap<S>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let pass = ForwardPass {
@@ -47,7 +46,7 @@ pub(crate) fn propagate_distributions_forward<S: Send + Sync>(
     })?
     .into_map();
 
-  for &key in schedule.preorder().iter().filter(|key| outputs[key].undated) {
+  for &key in schedule.preorder().iter().filter(|&&key| outputs[key].undated) {
     let name = &inputs.names[key];
     progress_warn!(
       log,
@@ -158,7 +157,7 @@ pub(crate) struct ForwardPassInputs<'a> {
   pub constraints: &'a DateConstraints,
   pub coalescent: Option<&'a CoalescentPrior>,
   pub names: &'a NodeNames,
-  pub branches: &'a BTreeMap<GraphEdgeKey, BranchLikelihood>,
+  pub branches: &'a EdgeMap<BranchLikelihood>,
   pub max_points: MaxGridPoints,
 }
 

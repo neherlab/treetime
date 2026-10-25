@@ -27,9 +27,10 @@ pub(super) mod support {
   use std::fs;
   use std::path::{Path, PathBuf};
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::{EdgeMap, NodeMap};
+
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_graph::node_names::NodeNames;
   use treetime_grid::MaxGridPoints;
   use treetime_io::dates_csv::{DateConstraint, metadata_read_file};
@@ -99,7 +100,7 @@ pub(super) mod support {
     pub(crate) branch_model: BranchModel,
     pub(crate) clock_model: ClockModel,
     pub(crate) constraints: DateConstraints,
-    pub(crate) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+    pub(crate) branch_lengths: EdgeMap<Option<f64>>,
   }
 
   impl MarginalSetup {
@@ -189,7 +190,7 @@ pub(super) mod support {
     let (partition, _) = reconstruction.marginal_update(&graph, &branch_lengths_or_zero(&branch_lengths))?;
 
     let times = given_times(&graph, &constraints)?;
-    let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let clock_estimate_inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let tree = ClockTree {
       graph,
       branch_lengths,
@@ -222,7 +223,7 @@ pub(super) mod support {
   pub(crate) fn extract_node_times(
     graph: &Graph,
     names: &NodeNames,
-    posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
+    posterior: &NodeMap<NodePosterior>,
   ) -> BTreeMap<String, f64> {
     graph
       .get_nodes()

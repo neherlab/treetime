@@ -40,8 +40,8 @@ mod tests {
     use eyre::Report;
     use itertools::Itertools;
     use ndarray::{Array1, Array2, aview1};
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_simulation::branch_lengths::exact;
     use treetime_simulation::substitution_model::NUCLEOTIDES;
     use treetime_utils::array::ndarray::max_or;
@@ -72,11 +72,7 @@ mod tests {
       pub pi_max: f64,
     }
 
-    fn gtr_errors(
-      case: &SimulatedCase,
-      lengths: &BTreeMap<GraphEdgeKey, f64>,
-      sites: usize,
-    ) -> Result<GtrErrors, Report> {
+    fn gtr_errors(case: &SimulatedCase, lengths: &EdgeMap<f64>, sites: usize) -> Result<GtrErrors, Report> {
       let params = AncestralParams {
         method: MethodAncestral::Marginal,
         dense: Some(true),

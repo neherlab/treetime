@@ -240,7 +240,8 @@ mod tests {
     use maplit::btreemap;
     use ndarray::Array1;
     use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
@@ -285,7 +286,7 @@ mod tests {
         .collect()
     }
 
-    pub(super) fn make_fixture_graph() -> Result<(Graph, NodeNames, BTreeMap<GraphEdgeKey, Option<f64>>), Report> {
+    pub(super) fn make_fixture_graph() -> Result<(Graph, NodeNames, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(b"((A:0.01,B:0.01)inner:0.01,C:0.25)root;".as_slice())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -315,12 +316,12 @@ mod tests {
     pub(super) fn get_node_profile(
       graph: &Graph,
       names: &NodeNames,
-      node_states: &BTreeMap<GraphNodeKey, DenseNodeState>,
+      node_states: &NodeMap<DenseNodeState>,
       name: &str,
     ) -> Array1<f64> {
       let node_key = get_node_key(graph, names, name);
       let node = node_states
-        .get(&node_key)
+        .get(node_key)
         .unwrap_or_else(|| panic!("Missing discrete node data for '{name}'"));
       node.profile.dis.row(0).to_owned()
     }
@@ -328,14 +329,14 @@ mod tests {
     pub(super) fn get_edge_msg_from_child(
       graph: &Graph,
       names: &NodeNames,
-      backward: &BTreeMap<GraphEdgeKey, DenseEdgeBackward>,
+      backward: &EdgeMap<DenseEdgeBackward>,
       source_name: &str,
       target_name: &str,
     ) -> Array1<f64> {
       let edge_key = find_edge_key(graph, names, source_name, target_name)
         .unwrap_or_else(|| panic!("Missing test edge '{source_name}' -> '{target_name}'"));
       let edge = backward
-        .get(&edge_key)
+        .get(edge_key)
         .unwrap_or_else(|| panic!("Missing discrete edge data for '{source_name}' -> '{target_name}'"));
       edge.msg_from_child.dis.row(0).to_owned()
     }
@@ -343,14 +344,14 @@ mod tests {
     pub(super) fn get_edge_msg_to_child(
       graph: &Graph,
       names: &NodeNames,
-      forward: &BTreeMap<GraphEdgeKey, DenseEdgeForward>,
+      forward: &EdgeMap<DenseEdgeForward>,
       source_name: &str,
       target_name: &str,
     ) -> Array1<f64> {
       let edge_key = find_edge_key(graph, names, source_name, target_name)
         .unwrap_or_else(|| panic!("Missing test edge '{source_name}' -> '{target_name}'"));
       let edge = forward
-        .get(&edge_key)
+        .get(edge_key)
         .unwrap_or_else(|| panic!("Missing discrete edge data for '{source_name}' -> '{target_name}'"));
       edge.msg_to_child.dis.row(0).to_owned()
     }

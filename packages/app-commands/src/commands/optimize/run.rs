@@ -18,8 +18,8 @@ use treetime::partition::split::SequenceInput;
 use treetime::progress::{LogSink, StageSink};
 use treetime::progress_info;
 use treetime::seq::mutation::Mutation;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::Seq;
 use treetime_utils::make_internal_error;
@@ -151,7 +151,7 @@ fn write_optimize_trees(
 struct OptimizeTrees<'a> {
   graph: &'a Graph,
   names: &'a NodeNames,
-  branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &'a EdgeMap<Option<f64>>,
   sequences: &'a BTreeMap<usize, TreeSequences<'a>>,
   run: RefineRun<'a>,
 }
@@ -175,6 +175,6 @@ fn optimize_output_maps(
 
 struct OptimizeOutputMaps {
   root_sequence: Seq,
-  edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
+  edge_mutations: EdgeMap<Vec<Mutation>>,
+  edge_mutation_counts: EdgeMap<usize>,
 }

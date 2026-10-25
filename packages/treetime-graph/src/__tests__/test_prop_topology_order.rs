@@ -3,12 +3,13 @@ mod tests {
   use self::helpers::{former_postorder, spec_cases};
   use super::super::test_graph_support::tests::generators::gen_dag;
   use super::super::test_graph_support::tests::helpers::graph_from_dag;
+  use crate::key_map::EdgeMap;
+  use crate::key_map::NodeMap;
   use crate::node_names::NodeNames;
   use crate::schedule::GraphSchedule;
   use itertools::Itertools;
   use proptest::collection::vec;
   use proptest::prelude::*;
-  use std::collections::BTreeMap;
 
   proptest! {
     #[test]
@@ -20,11 +21,11 @@ mod tests {
       let graph = graph_from_dag(&dag).unwrap();
       let input = graph.node_keys().map(|key| (key, Some(format!("n{key}")))).collect();
       let names = NodeNames::from_input(input, &graph).unwrap().names;
-      let branch_lengths: BTreeMap<_, _> = graph
+      let branch_lengths: EdgeMap<_> = graph
         .get_edges()
         .map(|edge| (edge.key(), Some(lengths[edge.key().as_usize()])))
         .collect();
-      let target_order: BTreeMap<_, _> = graph.node_keys().map(|key| (key, positions[key.as_usize()])).collect();
+      let target_order: NodeMap<_> = graph.node_keys().map(|key| (key, positions[key.as_usize()])).collect();
       let schedule = GraphSchedule::new(&graph).unwrap();
       let former = former_postorder(&graph);
 
@@ -38,12 +39,13 @@ mod tests {
 
   mod helpers {
     use crate::graph::Graph;
+    use crate::key_map::NodeMap;
     use crate::node::GraphNodeKey;
     use crate::topology_order::{TopologyOrderPreset, TopologyOrderSpec, TopologyOrderTargetAggregate};
     use itertools::Itertools;
     use std::collections::{BTreeMap, VecDeque};
 
-    pub(super) fn spec_cases(target_order: &BTreeMap<GraphNodeKey, usize>) -> Vec<TopologyOrderSpec> {
+    pub(super) fn spec_cases(target_order: &NodeMap<usize>) -> Vec<TopologyOrderSpec> {
       let presets = [
         TopologyOrderPreset::Keep,
         TopologyOrderPreset::DescendantCount,

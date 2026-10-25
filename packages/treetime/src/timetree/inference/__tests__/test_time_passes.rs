@@ -12,10 +12,11 @@ mod tests {
   use crate::timetree::inference::forward_pass::{ForwardPassInputs, propagate_distributions_forward};
   use crate::timetree::inference::result::{BranchLikelihood, NodeBackward};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::key_map::NodeMap;
+
   use ndarray::Array1;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use std::collections::BTreeSet;
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
@@ -128,7 +129,7 @@ mod tests {
     let (_, with_backward, _) = fixture.run(&with_date_of_n, None)?;
     let (_, without_backward, _) = fixture.run(&without_date_of_n, None)?;
 
-    let peak_of = |backward: &BTreeMap<GraphNodeKey, NodeBackward>| -> Result<f64, Report> {
+    let peak_of = |backward: &NodeMap<NodeBackward>| -> Result<f64, Report> {
       let subtree = backward[&fixture.key("P")]
         .subtree
         .as_deref()
@@ -206,12 +207,14 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+    use treetime_graph::keymap;
     use treetime_graph::node_names::NodeNames;
 
     pub(super) struct Fixture {
       pub(super) graph: Graph,
       pub(super) names: NodeNames,
-      branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
+      branches: EdgeMap<BranchLikelihood>,
     }
 
     impl Fixture {
@@ -256,14 +259,7 @@ mod tests {
         &self,
         constraints: &DateConstraints,
         coalescent: Option<&CoalescentPrior>,
-      ) -> Result<
-        (
-          BTreeMap<GraphNodeKey, bool>,
-          BTreeMap<GraphNodeKey, NodeBackward>,
-          BTreeMap<GraphNodeKey, FullPosterior>,
-        ),
-        Report,
-      > {
+      ) -> Result<(NodeMap<bool>, NodeMap<NodeBackward>, NodeMap<FullPosterior>), Report> {
         let bad_branches = derive_bad_branches(
           &self.graph,
           constraints,
@@ -299,7 +295,7 @@ mod tests {
       graph: Graph,
       names: NodeNames,
       constraints: DateConstraints,
-      branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
+      branches: EdgeMap<BranchLikelihood>,
       prior: CoalescentPrior,
     }
 
@@ -315,7 +311,7 @@ mod tests {
         }
         let tip_t = Array1::linspace(0.0, 20.0, 2001);
         let tip_y = tip_t.mapv(|t| TIP_BRANCH_DECAY * t);
-        let branches = btreemap! {
+        let branches = keymap! {
           parent_edge_key(&graph, key("A")) => BranchLikelihood {
             distribution: Some(Arc::new(Distribution::function(tip_t, tip_y)?)),
             time_length: Some(9.0),
@@ -367,7 +363,7 @@ mod tests {
         };
         let mut posterior =
           propagate_distributions_forward(&self.graph, &forward_inputs, backward, full_posterior, &NoopProgress)?;
-        Ok(posterior.remove(&self.tip()).expect("A must have a posterior"))
+        Ok(posterior.remove(self.tip()).expect("A must have a posterior"))
       }
 
       pub(super) fn oracle_neglog_density(&self, time: f64) -> Result<f64, Report> {

@@ -14,10 +14,11 @@ mod tests {
   use eyre::Report;
   use ndarray::array;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use std::path::PathBuf;
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -28,7 +29,7 @@ mod tests {
 
   fn build_dense_recon(
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
     alphabet: Alphabet,

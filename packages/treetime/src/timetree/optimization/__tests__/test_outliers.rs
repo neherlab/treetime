@@ -5,8 +5,9 @@ mod tests {
   use crate::timetree::optimization::outliers::report_outliers;
   use eyre::Report;
   use helpers::{header, row};
-  use maplit::{btreemap, btreeset};
+  use maplit::btreeset;
   use pretty_assertions::assert_eq;
+  use treetime_graph::keymap;
   use treetime_io::nwk::nwk_read;
 
   #[test]
@@ -15,7 +16,7 @@ mod tests {
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");
-    let divergences = btreemap! {
+    let divergences = keymap! {
       key("root") => 0.0,
       key("A") => 1.0,
       key("B") => 2.0,
@@ -24,7 +25,7 @@ mod tests {
       key("E") => 5.0,
       key("F") => 6.0,
     };
-    let given_dates = btreemap! {
+    let given_dates = keymap! {
       key("A") => Some(2010.0),
       key("B") => Some(2000.0),
       key("C") => Some(2006.0),
@@ -68,10 +69,10 @@ mod tests {
     report_outliers(
       &graph,
       &btreeset! {},
-      &btreemap! {},
+      &keymap! {},
       &ClockModel::for_testing(0.5, -1000.0),
       2.0,
-      &btreemap! {},
+      &keymap! {},
       &names,
       &log,
     );

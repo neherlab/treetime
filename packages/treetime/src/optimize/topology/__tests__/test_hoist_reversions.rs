@@ -11,7 +11,7 @@ mod tests {
   use eyre::Report;
   use helpers::{Hoisted, c, edge_indels, edge_subs, make_partition, sub};
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
@@ -274,8 +274,8 @@ mod tests {
     let ins = insertion((20, 23), [c(b'A'), c(b'A'), c(b'A')].as_slice());
     {
       let p = &mut partition;
-      p.obs_edges.get_mut(&uv).unwrap().indels = vec![del.clone()];
-      p.obs_edges.get_mut(&va).unwrap().indels = vec![ins];
+      p.obs_edges.get_mut(uv).unwrap().indels = vec![del.clone()];
+      p.obs_edges.get_mut(va).unwrap().indels = vec![ins];
     }
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
@@ -321,8 +321,8 @@ mod tests {
     let child_del = deletion((22, 28), [c(b'A'); 6].as_slice());
     {
       let p = &mut partition;
-      p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
-      p.obs_edges.get_mut(&va).unwrap().indels = vec![child_del];
+      p.obs_edges.get_mut(uv).unwrap().indels = vec![parent_del.clone()];
+      p.obs_edges.get_mut(va).unwrap().indels = vec![child_del];
     }
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
@@ -372,8 +372,8 @@ mod tests {
     let child_del = deletion((50, 53), [c(b'A'); 3].as_slice());
     {
       let p = &mut partition;
-      p.obs_edges.get_mut(&uv).unwrap().indels = vec![parent_del.clone()];
-      p.obs_edges.get_mut(&va).unwrap().indels = vec![child_del.clone()];
+      p.obs_edges.get_mut(uv).unwrap().indels = vec![parent_del.clone()];
+      p.obs_edges.get_mut(va).unwrap().indels = vec![child_del.clone()];
     }
     let mut sparse = sparse_topology_partitions(vec![partition]);
 
@@ -479,7 +479,9 @@ mod tests {
     use super::*;
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
-    use maplit::btreemap;
+    use treetime_graph::key_map::NodeMap;
+    use treetime_graph::keymap;
+
     use treetime_primitives::{AsciiChar, Seq};
 
     pub(super) fn c(b: u8) -> AsciiChar {
@@ -528,7 +530,7 @@ mod tests {
     pub(super) fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
-        .filter_map(|e| recon.obs_edges.get(&e.key()))
+        .filter_map(|e| recon.obs_edges.get(e.key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -538,7 +540,7 @@ mod tests {
       names: &NodeNames,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
+    ) -> (PartitionMarginalSparse, NodeMap<SparseNodeState>) {
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -550,15 +552,15 @@ mod tests {
         }
       }
 
-      let mut obs_nodes = btreemap! {};
-      let mut node_states = btreemap! {};
+      let mut obs_nodes = keymap! {};
+      let mut node_states = keymap! {};
       for node in graph.get_nodes() {
         let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
-      let mut obs_edges = btreemap! {};
+      let mut obs_edges = keymap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));

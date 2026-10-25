@@ -2,17 +2,17 @@ use crate::error::input_error;
 use crate::progress::LogSink;
 use crate::{progress_info, progress_warn};
 use eyre::Report;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::date::{DateConstraint, DateValue};
 use treetime_utils::cast::ToF64Exact;
 
 pub fn load_date_constraints(
-  dates: &BTreeMap<GraphNodeKey, DateConstraint>,
+  dates: &NodeMap<DateConstraint>,
   graph: &Graph,
   log: &dyn LogSink,
 ) -> Result<DateConstraints, Report> {
@@ -20,13 +20,13 @@ pub fn load_date_constraints(
   let mut bad_leaf_count = 0;
   let mut internal_constraint_count = 0;
 
-  let mut date_constraints: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>> = BTreeMap::new();
+  let mut date_constraints: NodeMap<Option<Arc<Distribution<NegLog>>>> = NodeMap::new();
 
   let schedule = GraphSchedule::new(graph)?;
   for &key in schedule.postorder() {
     let is_leaf = schedule.children(key).is_empty();
 
-    if let Some(constraint) = dates.get(&key) {
+    if let Some(constraint) = dates.get(key) {
       let dist = Arc::new(date_constraint_to_distribution(constraint));
 
       date_constraints.insert(key, Some(dist));
@@ -69,13 +69,13 @@ pub fn load_date_constraints(
 
 #[derive(Debug, Clone, Default)]
 pub struct DateConstraints {
-  pub(crate) by_node: BTreeMap<GraphNodeKey, Option<Arc<Distribution<NegLog>>>>,
+  pub(crate) by_node: NodeMap<Option<Arc<Distribution<NegLog>>>>,
 }
 
 impl DateConstraints {
   #[must_use]
   pub(crate) fn date_constraint(&self, key: GraphNodeKey) -> Option<Arc<Distribution<NegLog>>> {
-    self.by_node.get(&key).cloned().flatten()
+    self.by_node.get(key).cloned().flatten()
   }
 }
 

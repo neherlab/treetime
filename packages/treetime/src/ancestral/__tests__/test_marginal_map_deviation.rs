@@ -13,7 +13,8 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::{EdgeMap, NodeMap};
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -121,7 +122,7 @@ mod tests {
 
   fn reconstruct_sparse(
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
@@ -143,7 +144,7 @@ mod tests {
 
   fn reconstruct_dense(
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
     names: &NodeNames,
     aln: &[AlignmentRecord],
   ) -> Result<BTreeMap<String, String>, Report> {
@@ -162,7 +163,7 @@ mod tests {
   fn named_strings(
     names: &NodeNames,
     emitted_nodes: &[GraphNodeKey],
-    sampled: &BTreeMap<GraphNodeKey, Seq>,
+    sampled: &NodeMap<Seq>,
     node_sequence: impl Fn(GraphNodeKey) -> Result<Seq, Report>,
   ) -> Result<BTreeMap<String, String>, Report> {
     Ok(

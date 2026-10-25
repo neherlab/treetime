@@ -1,5 +1,6 @@
 use crate::edge::GraphEdgeKey;
 use crate::graph::Graph;
+use crate::key_map::{EdgeMap, NodeMap};
 use crate::node::GraphNodeKey;
 use crate::node_names::NodeNames;
 use crate::schedule::GraphSchedule;
@@ -7,13 +8,12 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use treetime_utils::{make_error, make_report};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TopologyOrderSpec {
   pub preset: TopologyOrderPreset,
-  pub target_order: BTreeMap<GraphNodeKey, usize>,
+  pub target_order: NodeMap<usize>,
   pub target_aggregate: TopologyOrderTargetAggregate,
 }
 
@@ -21,7 +21,7 @@ impl Default for TopologyOrderSpec {
   fn default() -> Self {
     Self {
       preset: TopologyOrderPreset::DescendantCount,
-      target_order: BTreeMap::new(),
+      target_order: NodeMap::new(),
       target_aggregate: TopologyOrderTargetAggregate::Mean,
     }
   }
@@ -32,7 +32,7 @@ impl TopologyOrderSpec {
     &self,
     graph: &mut Graph,
     names: &NodeNames,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<(), Report> {
     let order = if self.preset == TopologyOrderPreset::Keep {
       build_order_unmodified(graph)
@@ -41,7 +41,7 @@ impl TopologyOrderSpec {
       self.sorted_order(graph, schedule.postorder(), names, branch_lengths)
     }?;
 
-    for &node_key in order.outbound_edges.keys() {
+    for node_key in order.outbound_edges.keys() {
       if graph.get_node(node_key).is_none() {
         return make_error!("Node {node_key} disappeared while applying topology order");
       }
@@ -59,7 +59,7 @@ impl TopologyOrderSpec {
     graph: &Graph,
     postorder: &[GraphNodeKey],
     names: &NodeNames,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<TopologyOrder, Report> {
     let reverse = self.preset.is_reverse();
     match self.preset {
@@ -132,11 +132,7 @@ fn build_order_unmodified(graph: &Graph) -> Result<TopologyOrder, Report> {
   })
 }
 
-fn build_order<K: Ord>(
-  graph: &Graph,
-  keys: &BTreeMap<GraphNodeKey, K>,
-  reverse: bool,
-) -> Result<TopologyOrder, Report> {
+fn build_order<K: Ord>(graph: &Graph, keys: &NodeMap<K>, reverse: bool) -> Result<TopologyOrder, Report> {
   let compare = |a: &GraphNodeKey, b: &GraphNodeKey| -> Ordering {
     let ord = keys[a].cmp(&keys[b]);
     if reverse { ord.reverse() } else { ord }
@@ -183,11 +179,11 @@ fn build_order<K: Ord>(
 pub(crate) struct TopologyOrder {
   roots: Vec<GraphNodeKey>,
   leaves: Vec<GraphNodeKey>,
-  outbound_edges: BTreeMap<GraphNodeKey, Vec<GraphEdgeKey>>,
+  outbound_edges: NodeMap<Vec<GraphEdgeKey>>,
 }
 
-fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
-  let mut counts = BTreeMap::new();
+fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> NodeMap<usize> {
+  let mut counts = NodeMap::new();
   for &node_key in postorder {
     let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
@@ -201,8 +197,8 @@ fn compute_descendant_counts(graph: &Graph, postorder: &[GraphNodeKey]) -> BTree
   counts
 }
 
-fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphNodeKey, usize> {
-  let mut heights = BTreeMap::new();
+fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> NodeMap<usize> {
+  let mut heights = NodeMap::new();
   for &node_key in postorder {
     let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
@@ -215,9 +211,9 @@ fn compute_heights(graph: &Graph, postorder: &[GraphNodeKey]) -> BTreeMap<GraphN
 fn compute_divergences(
   graph: &Graph,
   postorder: &[GraphNodeKey],
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-) -> BTreeMap<GraphNodeKey, OrderedFloat<f64>> {
-  let mut divergences: BTreeMap<GraphNodeKey, OrderedFloat<f64>> = BTreeMap::new();
+  branch_lengths: &EdgeMap<Option<f64>>,
+) -> NodeMap<OrderedFloat<f64>> {
+  let mut divergences: NodeMap<OrderedFloat<f64>> = NodeMap::new();
   for &node_key in postorder {
     let node = &graph[node_key];
     let divergence = graph
@@ -234,8 +230,8 @@ fn compute_divergences(
   divergences
 }
 
-fn compute_labels(graph: &Graph, postorder: &[GraphNodeKey], names: &NodeNames) -> BTreeMap<GraphNodeKey, String> {
-  let mut labels: BTreeMap<GraphNodeKey, String> = graph
+fn compute_labels(graph: &Graph, postorder: &[GraphNodeKey], names: &NodeNames) -> NodeMap<String> {
+  let mut labels: NodeMap<String> = graph
     .get_leaves()
     .map(|node| (node.key(), names[node.key()].to_owned()))
     .collect();
@@ -252,9 +248,9 @@ fn compute_target_scores(
   graph: &Graph,
   postorder: &[GraphNodeKey],
   names: &NodeNames,
-  target_order: &BTreeMap<GraphNodeKey, usize>,
+  target_order: &NodeMap<usize>,
   aggregate: TopologyOrderTargetAggregate,
-) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
+) -> Result<NodeMap<TargetScore>, Report> {
   if target_order.is_empty() {
     return make_error!("When ordering topology: target-order mode requires a non-empty target order");
   }
@@ -277,9 +273,9 @@ pub enum TopologyOrderTargetAggregate {
 fn compute_target_scores_mean(
   graph: &Graph,
   postorder: &[GraphNodeKey],
-  target_order: &BTreeMap<GraphNodeKey, usize>,
-) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
-  let mut scores: BTreeMap<GraphNodeKey, TargetScore> = BTreeMap::new();
+  target_order: &NodeMap<usize>,
+) -> Result<NodeMap<TargetScore>, Report> {
+  let mut scores: NodeMap<TargetScore> = NodeMap::new();
   for &node_key in postorder {
     let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
@@ -303,10 +299,10 @@ fn compute_target_scores_mean(
 fn compute_target_scores_median(
   graph: &Graph,
   postorder: &[GraphNodeKey],
-  target_order: &BTreeMap<GraphNodeKey, usize>,
-) -> Result<BTreeMap<GraphNodeKey, TargetScore>, Report> {
-  let mut positions: BTreeMap<GraphNodeKey, Vec<usize>> = BTreeMap::new();
-  let mut scores = BTreeMap::new();
+  target_order: &NodeMap<usize>,
+) -> Result<NodeMap<TargetScore>, Report> {
+  let mut positions: NodeMap<Vec<usize>> = NodeMap::new();
+  let mut scores = NodeMap::new();
   for &node_key in postorder {
     let node = &graph[node_key];
     let child_keys = graph.children_keys_of(node).map(|(key, _)| key).collect_vec();
@@ -366,11 +362,7 @@ impl PartialOrd for TargetScore {
   }
 }
 
-fn validate_target_order(
-  graph: &Graph,
-  names: &NodeNames,
-  target_order: &BTreeMap<GraphNodeKey, usize>,
-) -> Result<(), Report> {
+fn validate_target_order(graph: &Graph, names: &NodeNames, target_order: &NodeMap<usize>) -> Result<(), Report> {
   match graph
     .get_leaves()
     .map(|leaf| leaf.key())
@@ -384,9 +376,9 @@ fn validate_target_order(
   }
 }
 
-fn target_position(target_order: &BTreeMap<GraphNodeKey, usize>, key: GraphNodeKey) -> Result<usize, Report> {
+fn target_position(target_order: &NodeMap<usize>, key: GraphNodeKey) -> Result<usize, Report> {
   target_order
-    .get(&key)
+    .get(key)
     .copied()
     .ok_or_else(|| make_report!("When ordering topology by target order: leaf {key} is absent from target order"))
 }

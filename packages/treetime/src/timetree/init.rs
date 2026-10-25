@@ -15,10 +15,10 @@ use crate::timetree::round::{RoundInputs, RoundState};
 use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, MinMaxResult};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::sync::Arc;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_utils::cast::ToF64Exact;
 
@@ -52,7 +52,7 @@ pub(crate) fn initialize(
     clock_model,
     clock_points,
     rate_window: RateWindow::initial(),
-    clock_branch_lengths: BTreeMap::new(),
+    clock_branch_lengths: EdgeMap::new(),
     time_inference: TimeInference::default(),
   };
   let inputs = RoundInputs {
@@ -93,7 +93,7 @@ pub(crate) fn initialize(
 
 pub(crate) struct InitialRound {
   pub state: RoundState,
-  pub leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
+  pub leaf_bad_branches: NodeMap<bool>,
   pub outliers: BTreeSet<GraphNodeKey>,
   pub coalescent: CoalescentSetup,
 }
@@ -246,7 +246,7 @@ impl StartRateFloor {
 
 pub(crate) struct GaussianRateTree<'a> {
   pub graph: &'a Graph,
-  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: &'a EdgeMap<Option<f64>>,
   pub context: &'a TimetreeContext,
   pub outliers: &'a BTreeSet<GraphNodeKey>,
 }
@@ -271,9 +271,9 @@ fn gaussian_start_rate(
 
 fn gaussian_tree<'g>(
   graph: &'g Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   context: &TimetreeContext,
-  excluded: &BTreeMap<GraphNodeKey, bool>,
+  excluded: &NodeMap<bool>,
 ) -> Result<GaussianTree<'g>, Report> {
   let tip_dates = given_times(graph, &context.date_constraints)?;
   GaussianTree::new(graph, branch_lengths, context.sequence_length, &tip_dates, excluded)

@@ -11,9 +11,10 @@ use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::sparse_alignment_groups;
 use eyre::Report;
 use log::debug;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 
@@ -22,7 +23,7 @@ pub(crate) fn resolve_polytomies(
   names: &mut NodeNames,
   sparse: &mut [SparseReconstruction],
   topology_ops: TopologyOps,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<usize, Report> {
   if sparse.is_empty() || !(topology_ops.merge_siblings || topology_ops.flip_parent_child) {
     return Ok(0);
@@ -58,7 +59,7 @@ fn resolve_one(
   groups: &[AlignmentGroup],
   node_key: GraphNodeKey,
   topology_ops: TopologyOps,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<bool, Report> {
   let preexisting: BTreeSet<GraphNodeKey> = graph.get_nodes().map(|node| node.key()).collect();
 
@@ -85,7 +86,7 @@ fn try_hoist_reverting_child(
   sparse: &mut [SparseReconstruction],
   groups: &[AlignmentGroup],
   node_key: GraphNodeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<bool, Report> {
   let Some(parent_edge_key) = single_inbound_edge(graph, node_key) else {
     return Ok(false);
@@ -167,7 +168,7 @@ fn retire_created_helpers(
   sparse: &mut [SparseReconstruction],
   groups: &[AlignmentGroup],
   preexisting: &BTreeSet<GraphNodeKey>,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<bool, Report> {
   let mut retired = false;
   loop {
@@ -182,7 +183,7 @@ fn retire_created_helpers(
       }
       let edge_key = edge.key();
       let mutation_free = sparse.iter().all(
-        |reconstruction| match reconstruction.partition.obs_edges.get(&edge_key) {
+        |reconstruction| match reconstruction.partition.obs_edges.get(edge_key) {
           Some(edge_data) => edge_data.fitch_subs().is_empty() && edge_data.indels.is_empty(),
           None => true,
         },

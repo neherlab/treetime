@@ -11,6 +11,7 @@ use std::iter::once;
 use std::sync::Arc;
 use treetime_distribution::{Distribution, NegLog};
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_graph::schedule::GraphSchedule;
 use treetime_grid::Side;
@@ -31,7 +32,7 @@ pub(crate) struct CoalescentPrior {
   cell_rate: Vec<f64>,
   inverse_tc_integral: Vec<f64>,
   expected_integral: Vec<f64>,
-  own_integral: BTreeMap<GraphNodeKey, OwnIntegral>,
+  own_integral: NodeMap<OwnIntegral>,
   rate_before: f64,
   rate_after: f64,
   log_normalization: f64,
@@ -76,7 +77,7 @@ impl CoalescentPrior {
     let own_integral = expectation
       .nodes
       .iter()
-      .map(|(key, node)| (*key, OwnIntegral::new(&node.survival, &rates)))
+      .map(|(key, node)| (key, OwnIntegral::new(&node.survival, &rates)))
       .collect();
     let prior = Self {
       expectation: Arc::clone(expectation),
@@ -104,11 +105,7 @@ impl CoalescentPrior {
     self.log_normalization
   }
 
-  pub(crate) fn with_topology(
-    &self,
-    graph: &Graph,
-    merger_times: &BTreeMap<GraphNodeKey, f64>,
-  ) -> Result<Self, Report> {
+  pub(crate) fn with_topology(&self, graph: &Graph, merger_times: &NodeMap<f64>) -> Result<Self, Report> {
     Self::new(&self.expectation.with_topology(graph, merger_times)?, &self.tc)
   }
 
@@ -120,7 +117,7 @@ impl CoalescentPrior {
     let weight = 1.0 - n_children.to_f64_exact();
     let n_mergers = n_children.saturating_sub(1).to_f64_exact();
     let own = self.own_integral_at(key, x);
-    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |node| node.weight);
+    let own_weight = self.expectation.nodes.get(key).map_or(0.0, |node| node.weight);
     let merger = if n_mergers > 0.0 {
       let tc = self
         .tc
@@ -145,7 +142,7 @@ impl CoalescentPrior {
     edge: f64,
   ) -> f64 {
     let weight = 1.0 - n_children.to_f64_exact();
-    let own_weight = self.expectation.nodes.get(&key).map_or(0.0, |node| node.weight);
+    let own_weight = self.expectation.nodes.get(key).map_or(0.0, |node| node.weight);
     let pairs = 0.5 * weight * (weight - 1.0);
     let grid = &self.expectation.grid;
     let last = grid.len() - 1;
@@ -159,7 +156,7 @@ impl CoalescentPrior {
       Piece::Inside(slope) => slope,
       Piece::After => self.rate_after * self.expectation.expected[last],
     };
-    let own = match self.expectation.nodes.get(&key) {
+    let own = match self.expectation.nodes.get(key) {
       Some(node) => match node.survival.piece_at(side, edge) {
         Piece::Before => inverse_tc,
         Piece::Inside(i) => {
@@ -201,7 +198,7 @@ impl CoalescentPrior {
   }
 
   pub(crate) fn own_integral_at(&self, key: GraphNodeKey, x: f64) -> f64 {
-    let (Some(node), Some(integral)) = (self.expectation.nodes.get(&key), self.own_integral.get(&key)) else {
+    let (Some(node), Some(integral)) = (self.expectation.nodes.get(key), self.own_integral.get(key)) else {
       return 0.0;
     };
     let survival = &node.survival;
@@ -282,7 +279,7 @@ pub(crate) struct LineageExpectation {
   variance: Vec<f64>,
   expected_before: f64,
   step: f64,
-  nodes: BTreeMap<GraphNodeKey, WeightedSurvival>,
+  nodes: NodeMap<WeightedSurvival>,
 }
 
 impl LineageExpectation {
@@ -296,12 +293,9 @@ impl LineageExpectation {
       .wrap_err("Failed to compute the expected coalescent lineage counts")
   }
 
-  pub(crate) fn from_posterior(
-    graph: &Graph,
-    posterior: &BTreeMap<GraphNodeKey, NodePosterior>,
-  ) -> Result<Arc<Self>, Report> {
+  pub(crate) fn from_posterior(graph: &Graph, posterior: &NodeMap<NodePosterior>) -> Result<Arc<Self>, Report> {
     Self::from_survivals(graph, |key| {
-      let entry = posterior.get(&key);
+      let entry = posterior.get(key);
       Ok(
         match (entry.and_then(|p| p.survival.as_ref()), entry.and_then(|p| p.time)) {
           (Some(survival), _) => Some(Arc::clone(survival)),
@@ -314,16 +308,16 @@ impl LineageExpectation {
 
   pub(crate) fn from_gaussian(
     graph: &Graph,
-    marginals: &BTreeMap<GraphNodeKey, NodeTimeGaussian>,
+    marginals: &NodeMap<NodeTimeGaussian>,
     tip_times: &NodeTimes,
-    excluded: &BTreeMap<GraphNodeKey, bool>,
+    excluded: &NodeMap<bool>,
   ) -> Result<Arc<Self>, Report> {
     let tip_time = |key: GraphNodeKey| {
       tip_times
-        .get(&key)
+        .get(key)
         .copied()
         .flatten()
-        .filter(|_| !excluded.get(&key).copied().unwrap_or(false))
+        .filter(|_| !excluded.get(key).copied().unwrap_or(false))
     };
     let schedule = GraphSchedule::new(graph)?;
     let mut earliest_tip = BTreeMap::new();
@@ -343,7 +337,7 @@ impl LineageExpectation {
       let is_leaf = graph.get_node(key).is_some_and(Node::is_leaf);
       let survival = tip_time(key).filter(|_| is_leaf).map(NodeSurvival::point).or_else(|| {
         marginals
-          .get(&key)
+          .get(key)
           .map(|marginal| NodeSurvival::truncated_normal(marginal.mean, marginal.std, earliest_tip[&key]))
       });
       Ok(survival.map(Arc::new))
@@ -355,7 +349,7 @@ impl LineageExpectation {
     survival: impl Fn(GraphNodeKey) -> Result<Option<Arc<NodeSurvival>>, Report>,
   ) -> Result<Arc<Self>, Report> {
     let mut always_surviving = 0.0;
-    let mut nodes = BTreeMap::new();
+    let mut nodes = NodeMap::new();
     for node in graph.get_nodes() {
       let weight = 1.0 - node.outbound().len().to_f64_exact();
       match survival(node.key())? {
@@ -368,13 +362,9 @@ impl LineageExpectation {
     Self::aggregate(nodes, always_surviving)
   }
 
-  pub(crate) fn with_topology(
-    &self,
-    graph: &Graph,
-    merger_times: &BTreeMap<GraphNodeKey, f64>,
-  ) -> Result<Arc<Self>, Report> {
+  pub(crate) fn with_topology(&self, graph: &Graph, merger_times: &NodeMap<f64>) -> Result<Arc<Self>, Report> {
     Self::from_survivals(graph, |key| {
-      Ok(match (self.nodes.get(&key), merger_times.get(&key)) {
+      Ok(match (self.nodes.get(key), merger_times.get(key)) {
         (Some(node), _) => Some(Arc::clone(&node.survival)),
         (None, Some(&time)) => Some(Arc::new(NodeSurvival::point(time))),
         (None, None) => None,
@@ -382,7 +372,7 @@ impl LineageExpectation {
     })
   }
 
-  fn aggregate(nodes: BTreeMap<GraphNodeKey, WeightedSurvival>, always_surviving: f64) -> Result<Arc<Self>, Report> {
+  fn aggregate(nodes: NodeMap<WeightedSurvival>, always_surviving: f64) -> Result<Arc<Self>, Report> {
     let weighted: Vec<(f64, &NodeSurvival)> = nodes
       .values()
       .map(|node| (node.weight, node.survival.as_ref()))

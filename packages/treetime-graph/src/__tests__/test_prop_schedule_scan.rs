@@ -3,11 +3,11 @@ mod tests {
   use self::helpers::{inputs_after_receiver, record_scan_down, record_scan_up, sorted_keys};
   use super::super::test_graph_support::tests::generators::gen_dag;
   use super::super::test_graph_support::tests::helpers::graph_from_dag;
+  use crate::key_map::NodeMap;
   use crate::node::GraphNodeKey;
   use crate::schedule::GraphSchedule;
   use itertools::Itertools;
   use proptest::{prop_assert_eq, proptest};
-  use std::collections::BTreeMap;
 
   proptest! {
     #[test]
@@ -22,7 +22,7 @@ mod tests {
         .preorder()
         .iter()
         .map(|&key| (key, schedule.children(key).iter().map(|&(child, _)| child).collect_vec()))
-        .collect::<BTreeMap<_, _>>();
+        .collect::<NodeMap<_>>();
       prop_assert_eq!(&expected, &single.received);
       prop_assert_eq!(&single.received, &multi.received);
       prop_assert_eq!(sorted_keys(&schedule), multi.visits.iter().copied().sorted().collect_vec());
@@ -42,7 +42,7 @@ mod tests {
         .preorder()
         .iter()
         .map(|&key| (key, schedule.parents(key).iter().map(|&(parent, _)| parent).collect_vec()))
-        .collect::<BTreeMap<_, _>>();
+        .collect::<NodeMap<_>>();
       prop_assert_eq!(&expected, &single.received);
       prop_assert_eq!(&single.received, &multi.received);
       prop_assert_eq!(sorted_keys(&schedule), multi.visits.iter().copied().sorted().collect_vec());
@@ -52,6 +52,7 @@ mod tests {
   }
 
   mod helpers {
+    use crate::key_map::NodeMap;
     use crate::node::GraphNodeKey;
     use crate::schedule::GraphSchedule;
     use crate::schedule_scan::PerEdge;
@@ -63,7 +64,7 @@ mod tests {
     use std::sync::Arc;
 
     pub(super) struct ScanRecord {
-      pub(super) received: BTreeMap<GraphNodeKey, Vec<GraphNodeKey>>,
+      pub(super) received: NodeMap<Vec<GraphNodeKey>>,
       pub(super) visits: Vec<GraphNodeKey>,
       pub(super) live_messages: usize,
     }
@@ -118,8 +119,8 @@ mod tests {
       record
         .received
         .iter()
-        .filter(|(key, senders)| senders.iter().any(|sender| order[sender] > order[*key]))
-        .map(|(&key, _)| key)
+        .filter(|(key, senders)| senders.iter().any(|sender| order[sender] > order[key]))
+        .map(|(key, _)| key)
         .collect_vec()
     }
 

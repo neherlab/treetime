@@ -74,7 +74,7 @@ impl Node {
 }
 
 #[derive(Copy, Clone, Debug, Display, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize)]
-pub struct GraphNodeKey(pub usize);
+pub struct GraphNodeKey(pub(crate) usize);
 
 impl GraphNodeKey {
   #[inline]

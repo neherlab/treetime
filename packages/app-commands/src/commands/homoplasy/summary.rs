@@ -113,7 +113,6 @@ fn taxa(output: &HomoplasyOutput, context: &ResultContext<'_>) -> Vec<TaxonResul
     .keys()
     .chain(output.ambiguous.leaves.keys())
     .chain(output.indels.leaves.keys())
-    .copied()
     .collect();
   leaves
     .into_iter()
@@ -121,7 +120,7 @@ fn taxa(output: &HomoplasyOutput, context: &ResultContext<'_>) -> Vec<TaxonResul
       let homoplasic = output
         .substitutions
         .leaves
-        .get(&key)
+        .get(key)
         .map(Vec::as_slice)
         .unwrap_or_default();
       TaxonResult {
@@ -133,8 +132,8 @@ fn taxa(output: &HomoplasyOutput, context: &ResultContext<'_>) -> Vec<TaxonResul
         drm_mutations: context
           .drms
           .map(|drms| homoplasic.iter().filter(|sub| drms.contains(sub.pos())).count()),
-        ambiguous_changes: output.ambiguous.leaves.get(&key).copied().unwrap_or_default(),
-        recurrent_indels: output.indels.leaves.get(&key).copied().unwrap_or_default(),
+        ambiguous_changes: output.ambiguous.leaves.get(key).copied().unwrap_or_default(),
+        recurrent_indels: output.indels.leaves.get(key).copied().unwrap_or_default(),
       }
     })
     .sorted_by(|a, b| {

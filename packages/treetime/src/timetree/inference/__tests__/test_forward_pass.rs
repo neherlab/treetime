@@ -29,7 +29,9 @@ mod tests {
     Distribution, DistributionFunction, MassProfile, NegLog, TailMass, convolve_across_edge,
     distribution_multiplication,
   };
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::NodeMap;
+  use treetime_graph::keymap;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -462,13 +464,13 @@ mod tests {
       ..TimeInference::default()
     };
     let date = inference.posterior[&child_key].time.expect("C is dated");
-    let rate_dates = btreemap! { child_key => [date - 50.0, date, date + 50.0] };
+    let rate_dates = keymap! { child_key => [date - 50.0, date, date + 50.0] };
     let intervals = extract_confidence_intervals(&graph, &inference, &rate_dates, &names)?;
     let unclipped = {
       let mut inference = inference;
       inference
         .posterior
-        .get_mut(&child_key)
+        .get_mut(child_key)
         .expect("C has a posterior")
         .subtree_support = None;
       extract_confidence_intervals(&graph, &inference, &rate_dates, &names)?
@@ -593,7 +595,7 @@ mod tests {
     let leaf_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut inputs = ForwardInputs::new(&graph);
-    inputs.backward.remove(&leaf_key);
+    inputs.backward.remove(leaf_key);
 
     assert_error!(
       run_forward_pass(&graph, &inputs, &names),
@@ -736,7 +738,7 @@ mod tests {
     for name in ["A", "B", "C", "I"] {
       set_branch_length_distribution(&graph, &mut inputs, key(name), 1.0);
     }
-    let grids: Mutex<BTreeMap<GraphNodeKey, Weak<Distribution<NegLog>>>> = Mutex::new(BTreeMap::new());
+    let grids: Mutex<NodeMap<Weak<Distribution<NegLog>>>> = Mutex::new(NodeMap::new());
 
     let live_before_each_node = ThreadPoolBuilder::new().num_threads(1).build()?.install(|| {
       propagate_distributions_forward(
@@ -747,7 +749,7 @@ mod tests {
           let mut grids = grids.lock();
           let live = grids
             .iter()
-            .map(|(&key, grid)| (key, grid.strong_count()))
+            .map(|(key, grid)| (key, grid.strong_count()))
             .collect::<BTreeMap<_, _>>();
           if let Some(distribution) = view.distribution {
             grids.insert(key, Arc::downgrade(distribution));
@@ -765,11 +767,12 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
 
     pub(super) struct ForwardInputs {
       pub constraints: DateConstraints,
-      pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
-      pub backward: BTreeMap<GraphNodeKey, NodeBackward>,
+      pub branches: EdgeMap<BranchLikelihood>,
+      pub backward: NodeMap<NodeBackward>,
     }
 
     impl ForwardInputs {
@@ -789,7 +792,7 @@ mod tests {
       graph: &Graph,
       inputs: &ForwardInputs,
       names: &NodeNames,
-    ) -> Result<BTreeMap<GraphNodeKey, FullPosterior>, Report> {
+    ) -> Result<NodeMap<FullPosterior>, Report> {
       run_forward_pass_with_log(graph, inputs, names, &NoopProgress)
     }
 
@@ -798,7 +801,7 @@ mod tests {
       inputs: &ForwardInputs,
       names: &NodeNames,
       log: &dyn LogSink,
-    ) -> Result<BTreeMap<GraphNodeKey, FullPosterior>, Report> {
+    ) -> Result<NodeMap<FullPosterior>, Report> {
       propagate_distributions_forward(
         graph,
         &forward_inputs(inputs, names),
@@ -813,7 +816,7 @@ mod tests {
       inputs: &ForwardInputs,
       names: &NodeNames,
       summaries: PosteriorSummaries,
-    ) -> Result<BTreeMap<GraphNodeKey, NodePosterior>, Report> {
+    ) -> Result<NodeMap<NodePosterior>, Report> {
       propagate_distributions_forward(
         graph,
         &forward_inputs(inputs, names),
@@ -901,7 +904,7 @@ mod tests {
       Ok(Distribution::Function(f))
     }
 
-    pub(super) fn node_time(posterior: &BTreeMap<GraphNodeKey, FullPosterior>, key: GraphNodeKey) -> Option<f64> {
+    pub(super) fn node_time(posterior: &NodeMap<FullPosterior>, key: GraphNodeKey) -> Option<f64> {
       posterior[&key].time
     }
 
@@ -928,7 +931,7 @@ mod tests {
     }
 
     pub(super) fn leaf_time_distribution(
-      posterior: &BTreeMap<GraphNodeKey, FullPosterior>,
+      posterior: &NodeMap<FullPosterior>,
       key: GraphNodeKey,
     ) -> Option<Distribution<NegLog>> {
       posterior[&key].distribution.as_deref().cloned()

@@ -9,6 +9,7 @@ use smallvec::SmallVec;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 
 pub(crate) trait EdgeContributions: Sync {
   fn with_edge<R>(
@@ -33,7 +34,7 @@ impl EdgeContributions for PartitionSet {
 }
 
 #[cfg(test)]
-impl EdgeContributions for BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>> {
+impl EdgeContributions for EdgeMap<Vec<OptimizationContribution>> {
   fn with_edge<R>(
     &self,
     edge_key: GraphEdgeKey,
@@ -47,7 +48,7 @@ impl EdgeContributions for BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>
 pub(crate) fn gather_edge_contributions(
   graph: &Graph,
   partitions: &PartitionSet,
-) -> Result<BTreeMap<GraphEdgeKey, Vec<OptimizationContribution>>, Report> {
+) -> Result<EdgeMap<Vec<OptimizationContribution>>, Report> {
   graph
     .get_edges()
     .collect::<Vec<_>>()
@@ -67,8 +68,8 @@ pub(crate) fn gather_edge_contributions(
 
 pub(crate) struct InitialGuessEvidence {
   pub total_length: usize,
-  pub sub_counts: BTreeMap<GraphEdgeKey, usize>,
-  pub effective_lengths: BTreeMap<GraphEdgeKey, usize>,
+  pub sub_counts: EdgeMap<usize>,
+  pub effective_lengths: EdgeMap<usize>,
 }
 
 impl InitialGuessEvidence {
@@ -85,10 +86,7 @@ impl InitialGuessEvidence {
   }
 }
 
-pub(crate) fn gather_edge_indel_counts(
-  graph: &Graph,
-  partitions: &PartitionSet,
-) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
+pub(crate) fn gather_edge_indel_counts(graph: &Graph, partitions: &PartitionSet) -> Result<EdgeMap<usize>, Report> {
   Ok(sum_alignment_counts(
     graph,
     &gather_alignment_edge_indel_counts(graph, partitions)?,
@@ -98,7 +96,7 @@ pub(crate) fn gather_edge_indel_counts(
 pub(crate) fn gather_alignment_edge_indel_counts(
   graph: &Graph,
   partitions: &PartitionSet,
-) -> Result<BTreeMap<usize, BTreeMap<GraphEdgeKey, usize>>, Report> {
+) -> Result<BTreeMap<usize, EdgeMap<usize>>, Report> {
   let reconstructions = partitions.iter().collect_vec();
   partitions
     .alignment_groups()?
@@ -119,10 +117,7 @@ pub(crate) fn gather_alignment_edge_indel_counts(
     .collect()
 }
 
-pub(crate) fn sum_alignment_counts(
-  graph: &Graph,
-  counts: &BTreeMap<usize, BTreeMap<GraphEdgeKey, usize>>,
-) -> BTreeMap<GraphEdgeKey, usize> {
+pub(crate) fn sum_alignment_counts(graph: &Graph, counts: &BTreeMap<usize, EdgeMap<usize>>) -> EdgeMap<usize> {
   graph
     .get_edges()
     .map(|edge_ref| {
@@ -136,7 +131,7 @@ fn gather_edge_sums(
   graph: &Graph,
   partitions: &PartitionSet,
   value: impl Fn(ReconstructionRef<'_>, GraphEdgeKey) -> Result<usize, Report> + Sync,
-) -> Result<BTreeMap<GraphEdgeKey, usize>, Report> {
+) -> Result<EdgeMap<usize>, Report> {
   graph
     .get_edges()
     .collect::<Vec<_>>()

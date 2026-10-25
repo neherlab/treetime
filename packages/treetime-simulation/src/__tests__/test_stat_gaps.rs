@@ -4,7 +4,8 @@ mod tests {
   use crate::FALSE_FAIL_RATE;
   use crate::gaps::disjoint_gap_events;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use std::iter::repeat_with;
   use treetime_utils::sync::random::get_random_number_generator;
 
@@ -14,7 +15,7 @@ mod tests {
   #[test]
   fn test_stat_gaps_disjoint_events_choose_edges_in_proportion_to_their_duration() {
     let tree = three_tip_tree();
-    let durations = btreemap! { tree.root_inner => 0.5, tree.root_c => 1.0, tree.inner_a => 2.0, tree.inner_b => 0.5 };
+    let durations = keymap! { tree.root_inner => 0.5, tree.root_c => 1.0, tree.inner_a => 2.0, tree.inner_b => 0.5 };
     let mut rng = get_random_number_generator(51);
 
     let edges = repeat_with(|| disjoint_gap_events(&durations, EVENTS_PER_ROUND, 3, 100, &mut rng).unwrap())
@@ -25,7 +26,7 @@ mod tests {
 
     let observed = durations
       .keys()
-      .map(|edge| edges.get(edge).copied().unwrap_or(0))
+      .map(|edge| edges.get(&edge).copied().unwrap_or(0))
       .collect_vec();
     let probabilities = durations.values().map(|duration| duration / 4.0).collect_vec();
     let p_value = chisquare_p_value(&observed, &probabilities);

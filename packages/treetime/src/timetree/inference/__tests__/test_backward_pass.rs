@@ -10,7 +10,7 @@ mod tests {
   use ndarray::Array1;
   use ordered_float::OrderedFloat;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use std::sync::Arc;
   use treetime_distribution::{Distribution, NegLog};
   use treetime_graph::node::GraphNodeKey;
@@ -512,7 +512,7 @@ mod tests {
     let leaf_a_key = find_node_key_by_name(&graph, &names, "A").expect("leaf A not found");
 
     let mut inputs = BackwardInputs::new(&graph);
-    inputs.bad_branches.remove(&leaf_a_key);
+    inputs.bad_branches.remove(leaf_a_key);
 
     assert_error!(
       run_backward_pass(&graph, &inputs, None),
@@ -581,14 +581,15 @@ mod tests {
 
   mod helpers {
     use super::*;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use treetime_graph::graph::Graph;
     use treetime_utils::cast::{ToF64Exact, f64_to_usize_saturating};
 
     pub(super) struct BackwardInputs {
       pub constraints: DateConstraints,
-      pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-      pub branches: BTreeMap<GraphEdgeKey, BranchLikelihood>,
+      pub bad_branches: NodeMap<bool>,
+      pub branches: EdgeMap<BranchLikelihood>,
     }
 
     impl BackwardInputs {
@@ -606,7 +607,7 @@ mod tests {
       graph: &Graph,
       inputs: &BackwardInputs,
       coalescent_model: Option<&CoalescentPrior>,
-    ) -> Result<BTreeMap<GraphNodeKey, NodeBackward>, Report> {
+    ) -> Result<NodeMap<NodeBackward>, Report> {
       propagate_distributions_backward(
         graph,
         &inputs.constraints,
@@ -618,7 +619,7 @@ mod tests {
     }
 
     pub(super) fn node_time_distribution(
-      backward: &BTreeMap<GraphNodeKey, NodeBackward>,
+      backward: &NodeMap<NodeBackward>,
       key: GraphNodeKey,
     ) -> Option<Arc<Distribution<NegLog>>> {
       backward[&key].subtree.clone()

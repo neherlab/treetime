@@ -19,7 +19,8 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::keymap;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -52,7 +53,7 @@ mod tests {
       }
     }
 
-    let mut obs_nodes = btreemap! {};
+    let mut obs_nodes = keymap! {};
     let mut node_states = btreemap! {};
     for node in graph.get_nodes() {
       let key = node.key();
@@ -60,7 +61,7 @@ mod tests {
       node_states.insert(key, SparseNodeState::leaf(&ref_seq));
     }
 
-    let mut obs_edges = btreemap! {};
+    let mut obs_edges = keymap! {};
     for (source, target, subs) in edge_mutations {
       let edge_key = find_edge_key(graph, names, source, target)
         .unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));
@@ -176,7 +177,7 @@ mod tests {
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = input_name(&names, target.key());
-      if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
+      if let Some(edge_data) = p.obs_edges.get(edge.key()) {
         match target_name {
           Some("A" | "B") => assert_eq!(
             edge_data.fitch_subs().len(),
@@ -229,7 +230,7 @@ mod tests {
     for edge in graph.get_edges() {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = input_name(&names, target.key());
-      if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
+      if let Some(edge_data) = p.obs_edges.get(edge.key()) {
         match target_name {
           Some("A") => assert_eq!(edge_data.fitch_subs().len(), 0),
           Some("B") => {
@@ -289,7 +290,7 @@ mod tests {
       let target = graph.get_node(edge.target()).unwrap();
       let target_name = input_name(&names, target.key());
       if target_name.is_none() {
-        if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
+        if let Some(edge_data) = p.obs_edges.get(edge.key()) {
           assert_eq!(edge_data.fitch_subs().len(), 3);
         }
       }
@@ -397,7 +398,7 @@ mod tests {
     let mut p2_ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(200).collect();
     p2_ref_seq[50] = c(b'C');
 
-    let mut p2_obs_nodes = btreemap! {};
+    let mut p2_obs_nodes = keymap! {};
     let mut p2_node_states = btreemap! {};
     for node in graph.get_nodes() {
       let key = node.key();
@@ -408,7 +409,7 @@ mod tests {
     let edge_a = find_edge_key(&graph, &names, "root", "A").unwrap();
     let edge_b = find_edge_key(&graph, &names, "root", "B").unwrap();
     let edge_c = find_edge_key(&graph, &names, "root", "C").unwrap();
-    let mut p2_obs_edges = btreemap! {};
+    let mut p2_obs_edges = keymap! {};
     p2_obs_edges.insert(edge_a, fitch_edge_obs(vec![sub(b'C', 50, b'G')]));
     p2_obs_edges.insert(edge_b, fitch_edge_obs(vec![sub(b'C', 50, b'G')]));
     p2_obs_edges.insert(edge_c, SparseEdgeObs::default());
@@ -668,7 +669,7 @@ mod tests {
     {
       let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
-      p.obs_edges.get_mut(&edge_a).expect("partition edge A").indels =
+      p.obs_edges.get_mut(edge_a).expect("partition edge A").indels =
         vec![deletion((10, 13), Seq::try_from_str("GTA").unwrap())];
     }
 
@@ -787,8 +788,8 @@ mod tests {
       let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
       let edge_b = find_edge_key(&graph, &names, "root", "B").expect("edge root->B");
-      p.obs_edges.get_mut(&edge_a).expect("partition edge A").indels = vec![shared_indel.clone()];
-      p.obs_edges.get_mut(&edge_b).expect("partition edge B").indels = vec![shared_indel];
+      p.obs_edges.get_mut(edge_a).expect("partition edge A").indels = vec![shared_indel.clone()];
+      p.obs_edges.get_mut(edge_b).expect("partition edge B").indels = vec![shared_indel];
     }
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
@@ -821,8 +822,8 @@ mod tests {
       let p = &mut partition;
       let edge_a = find_edge_key(&graph, &names, "root", "A").expect("edge root->A");
       let edge_b = find_edge_key(&graph, &names, "root", "B").expect("edge root->B");
-      p.obs_edges.get_mut(&edge_a).expect("partition edge A").indels = vec![shared_indel.clone()];
-      p.obs_edges.get_mut(&edge_b).expect("partition edge B").indels = vec![shared_indel];
+      p.obs_edges.get_mut(edge_a).expect("partition edge A").indels = vec![shared_indel.clone()];
+      p.obs_edges.get_mut(edge_b).expect("partition edge B").indels = vec![shared_indel];
     }
 
     let mut partitions = sparse_topology_partitions(vec![partition]);
@@ -840,6 +841,8 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::keymap;
     use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn expected_jc_bl(count: usize, length: usize) -> f64 {
@@ -852,7 +855,7 @@ mod tests {
     pub(super) fn extract_branch_lengths(
       names: &NodeNames,
       graph: &Graph,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &EdgeMap<Option<f64>>,
     ) -> BTreeMap<String, f64> {
       graph
         .get_edges()
@@ -875,7 +878,7 @@ mod tests {
       for edge in graph.get_edges() {
         let target = graph.get_node(edge.target()).expect("target node");
         let target_name = input_name(names, target.key());
-        if let Some(edge_data) = p.obs_edges.get(&edge.key()) {
+        if let Some(edge_data) = p.obs_edges.get(edge.key()) {
           let key: Option<&'a str> = match target_name {
             Some("A") => Some("A"),
             Some("B") => Some("B"),
@@ -937,7 +940,7 @@ mod tests {
         }
       }
 
-      let mut obs_nodes = btreemap! {};
+      let mut obs_nodes = keymap! {};
       let mut node_states = btreemap! {};
       for node in graph.get_nodes() {
         let key = node.key();
@@ -945,7 +948,7 @@ mod tests {
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
-      let mut obs_edges = btreemap! {};
+      let mut obs_edges = keymap! {};
       for ((source, target), subs) in edge_subs {
         let edge_key = find_edge_key(graph, names, source, target)
           .unwrap_or_else(|| panic!("edge {source}->{target} not found in graph"));

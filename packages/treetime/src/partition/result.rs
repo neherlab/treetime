@@ -7,7 +7,7 @@ use crate::seq::mutation::{Mutation, SequenceMutations, edge_state_change_counts
 use eyre::Report;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use treetime_graph::edge::GraphEdgeKey;
+use treetime_graph::key_map::EdgeMap;
 use treetime_primitives::{LogLh, Seq};
 use treetime_utils::make_internal_error;
 
@@ -101,8 +101,8 @@ pub(crate) struct AlignmentOutcome {
 #[derive(Clone, Debug)]
 pub struct AlignmentSequences {
   pub root_sequence: Seq,
-  pub edge_mutations: BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub edge_mutation_counts: BTreeMap<GraphEdgeKey, usize>,
+  pub edge_mutations: EdgeMap<Vec<Mutation>>,
+  pub edge_mutation_counts: EdgeMap<usize>,
 }
 
 impl AlignmentSequences {

@@ -11,10 +11,8 @@ use crate::partition::marginal::reconstruction::{DenseReconstruction, MarginalRe
 use crate::progress::LogSink;
 use crate::seq::alignment::NodeSeqInput;
 use eyre::Report;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 
 #[expect(
   clippy::too_many_arguments,
@@ -26,8 +24,8 @@ pub(crate) fn build_marginal_partition(
   rate: InferredRate,
   graph: &Graph,
   alphabet: Alphabet,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  node_inputs: NodeMap<NodeSeqInput>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<MarginalReconstruction, Report> {
   Ok(match representation {
@@ -76,8 +74,8 @@ pub(crate) fn build_sparse_reconstruction(
   rate: InferredRate,
   graph: &Graph,
   alphabet: Alphabet,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  node_inputs: NodeMap<NodeSeqInput>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<SparseReconstruction, Report> {
   let fitch = create_fitch_partition(graph, alphabet, node_inputs)?;
@@ -91,8 +89,8 @@ pub(crate) fn source_gtr(
   rate: InferredRate,
   graph: &Graph,
   alphabet: Alphabet,
-  node_inputs: BTreeMap<GraphNodeKey, NodeSeqInput>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  node_inputs: NodeMap<NodeSeqInput>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<GTR, Report> {
   if !model.is_infer() {
@@ -107,7 +105,7 @@ fn fitch_gtr(
   rate: InferredRate,
   fitch: &PartitionFitch,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<GTR, Report> {
   if !model.is_infer() {

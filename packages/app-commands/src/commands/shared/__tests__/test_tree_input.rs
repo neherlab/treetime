@@ -121,7 +121,7 @@ mod tests {
     let actual: BTreeMap<&str, usize> = spec
       .target_order
       .iter()
-      .map(|(key, &position)| (&names[*key], position))
+      .map(|(key, &position)| (&names[key], position))
       .collect();
     assert_eq!(expected, actual);
   }
@@ -146,7 +146,7 @@ mod tests {
     let actual: BTreeMap<&str, usize> = spec
       .target_order
       .iter()
-      .map(|(key, &position)| (&names[*key], position))
+      .map(|(key, &position)| (&names[key], position))
       .collect();
     assert_eq!(btreemap! { "A" => 1, "B" => 0 }, actual);
   }

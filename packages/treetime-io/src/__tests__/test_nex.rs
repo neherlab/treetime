@@ -4,7 +4,8 @@ mod tests {
   use crate::nwk::{NwkParse, NwkWriteOptions, nwk_read};
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use treetime_graph::schedule::GraphSchedule;
@@ -115,7 +116,7 @@ mod tests {
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &btreemap! {},
+      &keymap! {},
     )?;
     assert_eq!(expected, String::from_utf8(actual)?);
     Ok(())
@@ -137,7 +138,7 @@ mod tests {
       &names,
       &branch_lengths,
       &NwkWriteOptions::default(),
-      &btreemap! {},
+      &keymap! {},
     )?;
 
     let expected = indoc! {r#"

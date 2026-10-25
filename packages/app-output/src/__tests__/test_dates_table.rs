@@ -157,7 +157,8 @@ mod tests {
     use crate::dates_table::write_dates_table;
     use eyre::Report;
     use maplit::btreemap;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
+    use treetime_graph::key_map::NodeMap;
     use treetime_graph::node::GraphNodeKey;
     use treetime_io::csv::TableFormat;
 
@@ -173,7 +174,7 @@ mod tests {
     pub(super) fn dates_table(case: &DatesCase) -> Result<String, Report> {
       let topology = topology_from(TREE)?;
       let key = |name: &str| node_key(&topology, name);
-      let num_date: BTreeMap<GraphNodeKey, Option<f64>> = btreemap! {
+      let num_date: NodeMap<Option<f64>> = btreemap! {
         key("root") => 2010.00137,
         key("C") => 2012.5,
         key("A") => 2016.45,
@@ -188,7 +189,7 @@ mod tests {
         )
       })
       .collect();
-      let confidence: BTreeMap<GraphNodeKey, [f64; 2]> = btreemap! {
+      let confidence: NodeMap<[f64; 2]> = btreemap! {
         key("root") => [2008.5, 2011.25],
         key("C") => [2012.0, 2013.0],
         key("A") => [2016.45, 2016.45],
@@ -215,8 +216,8 @@ mod tests {
 
     fn write_table(
       topology: &Topology,
-      num_date: &BTreeMap<GraphNodeKey, Option<f64>>,
-      confidence: Option<&BTreeMap<GraphNodeKey, [f64; 2]>>,
+      num_date: &NodeMap<Option<f64>>,
+      confidence: Option<&NodeMap<[f64; 2]>>,
       excluded: &BTreeSet<GraphNodeKey>,
       format: TableFormat,
     ) -> Result<String, Report> {

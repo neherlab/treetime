@@ -6,10 +6,10 @@ mod tests {
   use crate::seq::mutation::Sub;
   use crate::test_utils::sparse_topology_partition;
   use proptest::prelude::*;
-  use std::collections::BTreeMap;
+
   use std::collections::BTreeSet;
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_graph::node_names::NodeNames;
 
   proptest! {
@@ -90,8 +90,9 @@ mod tests {
     use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
     use crate::test_utils::{find_edge_key, fitch_edge_obs};
     use itertools::Itertools;
-    use maplit::btreemap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+    use treetime_graph::keymap;
+
     use treetime_io::nwk::nwk_read;
     use treetime_primitives::{AsciiChar, Seq};
 
@@ -110,7 +111,7 @@ mod tests {
     pub(super) fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
-        .filter_map(|e| recon.obs_edges.get(&e.key()))
+        .filter_map(|e| recon.obs_edges.get(e.key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -124,9 +125,9 @@ mod tests {
       Graph,
       NodeNames,
       PartitionMarginalSparse,
-      BTreeMap<GraphNodeKey, SparseNodeState>,
+      NodeMap<SparseNodeState>,
       usize,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
+      EdgeMap<Option<f64>>,
     ) {
       let n_children = n_children.min(revert_masks.len()).min(own_counts.len()).max(3);
       let length = 200_usize;
@@ -173,10 +174,10 @@ mod tests {
       Graph,
       NodeNames,
       PartitionMarginalSparse,
-      BTreeMap<GraphNodeKey, SparseNodeState>,
+      NodeMap<SparseNodeState>,
       usize,
       usize,
-      BTreeMap<GraphEdgeKey, Option<f64>>,
+      EdgeMap<Option<f64>>,
     ) {
       let length = 200_usize;
       let g_names: Vec<String> = (0..g).map(|i| format!("G{i}")).collect();
@@ -233,20 +234,20 @@ mod tests {
       names: &NodeNames,
       length: usize,
       edge_mutations: &[(String, String, Vec<Sub>)],
-    ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
+    ) -> (PartitionMarginalSparse, NodeMap<SparseNodeState>) {
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
 
-      let mut obs_nodes = btreemap! {};
-      let mut node_states = btreemap! {};
+      let mut obs_nodes = keymap! {};
+      let mut node_states = keymap! {};
       for node in graph.get_nodes() {
         let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
-      let mut obs_edges = btreemap! {};
+      let mut obs_edges = keymap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));

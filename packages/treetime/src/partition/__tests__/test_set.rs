@@ -95,7 +95,8 @@ mod tests {
     use itertools::Itertools;
     use std::collections::BTreeMap;
     use treetime_graph::clades::{TipIds, graph_clade_keys};
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
@@ -128,7 +129,7 @@ mod tests {
     pub(super) struct PolytomySet {
       pub(super) graph: Graph,
       pub(super) names: NodeNames,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+      pub(super) branch_lengths: EdgeMap<f64>,
       pub(super) set: PartitionSet,
     }
 
@@ -199,7 +200,7 @@ mod tests {
           vec![merged]
         },
       };
-      branch_lengths.retain(|key, _| graph.get_edge(*key).is_some());
+      branch_lengths.retain(|key, _| graph.get_edge(key).is_some());
       let (set, _) = set
         .reconcile_topology(&graph, &merges)?
         .marginal_update(&graph, &branch_lengths)?;

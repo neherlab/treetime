@@ -10,7 +10,8 @@ mod tests {
   use crate::trait_tables::{write_trait_confidence_rows, write_traits_rows};
   use deser_value::Value;
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -34,7 +35,7 @@ mod tests {
     let mut topology = topology_from("A;")?;
     let leaf = node_key(&topology, "A");
     rename_node(&mut topology, leaf, node)?;
-    let setup = mugration_setup_from(topology, &[value, "other"], &btreemap! { leaf => value })?;
+    let setup = mugration_setup_from(topology, &[value, "other"], &keymap! { leaf => value })?;
     let graph = mugration_graph(&setup, attribute);
 
     let mut buf = Vec::new();
@@ -51,7 +52,7 @@ mod tests {
     let mut topology = topology_from("(A:0.1)B;")?;
     let (a, b) = (node_key(&topology, "A"), node_key(&topology, "B"));
     rename_node(&mut topology, b, "A")?;
-    let setup = mugration_setup_from(topology, &["uk", "usa"], &btreemap! { a => "usa", b => "uk" })?;
+    let setup = mugration_setup_from(topology, &["uk", "usa"], &keymap! { a => "usa", b => "uk" })?;
     let graph = mugration_graph(&setup, "country");
 
     let mut buf = Vec::new();
@@ -71,9 +72,9 @@ mod tests {
     let mut setup = mugration_setup_from(
       topology,
       &["Congo, DR", "usa"],
-      &btreemap! { a => "usa", b => "Congo, DR" },
+      &keymap! { a => "usa", b => "Congo, DR" },
     )?;
-    setup.posteriors = btreemap! {
+    setup.posteriors = keymap! {
       a => StatePosterior::new(array![0.25, 0.75])?,
       b => StatePosterior::new(array![1.0, 0.0])?,
     };
@@ -154,7 +155,8 @@ mod tests {
   mod helpers {
     use crate::__tests__::test_support::tests::{MugrationSetup, mugration_setup_from, node_key, topology_from};
     use eyre::Report;
-    use maplit::btreemap;
+    use treetime_graph::keymap;
+
     use ndarray::{Array1, array};
     use treetime::gtr::gtr::{GTR, Mu};
     use treetime::partition::marginal::discrete::state_posterior::StatePosterior;
@@ -166,9 +168,9 @@ mod tests {
       let mut setup = mugration_setup_from(
         topology,
         &["American Samoa", "Samoa", "Tonga"],
-        &btreemap! { a => "Samoa", b => "Samoa" },
+        &keymap! { a => "Samoa", b => "Samoa" },
       )?;
-      setup.posteriors = btreemap! {
+      setup.posteriors = keymap! {
         a => StatePosterior::new(array![0.0, 1.0, 0.0])?,
         b => StatePosterior::new(array![0.4, 0.45, 0.15])?,
       };

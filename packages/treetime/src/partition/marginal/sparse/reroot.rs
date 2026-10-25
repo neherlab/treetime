@@ -8,9 +8,8 @@ use crate::partition::marginal::sparse::partition::PartitionMarginalSparse;
 use crate::partition::storage::sparse::{SparseEdgeObs, SparseNodeObs, SparseNodeState};
 use crate::{make_internal_error, make_internal_report};
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootResult, StemRemovalInfo};
 use treetime_primitives::Seq;
 
@@ -71,7 +70,7 @@ fn split_reroot_edge(partition: &mut PartitionMarginalSparse, changes: &RerootRe
   if let Some(info) = &changes.edge_split {
     let old_edge_data = partition
       .obs_edges
-      .remove(&info.old_edge_key)
+      .remove(info.old_edge_key)
       .ok_or_else(|| make_internal_report!("Old edge {:?} must exist for split", info.old_edge_key))?;
     partition.obs_edges.insert(info.child_side_edge_key, old_edge_data);
     partition
@@ -89,7 +88,7 @@ fn invert_edge(
   for SparseReconstruction { partition, .. } in partitions.iter_mut() {
     partition
       .obs_edges
-      .get_mut(&edge_key)
+      .get_mut(edge_key)
       .ok_or_else(|| make_internal_report!("Edge {edge_key:?} must exist on reroot path"))?
       .invert_fitch_subs();
   }
@@ -105,20 +104,20 @@ fn invert_edge(
 
 fn remove_stem_root(
   partition: &mut PartitionMarginalSparse,
-  node_states: &mut BTreeMap<GraphNodeKey, SparseNodeState>,
+  node_states: &mut NodeMap<SparseNodeState>,
   info: &StemRemovalInfo,
 ) -> Result<(), Report> {
   let mut stem_edge = partition
     .obs_edges
-    .remove(&info.removed_edge_key)
+    .remove(info.removed_edge_key)
     .ok_or_else(|| make_internal_report!("Stem edge {:?} must exist for removal", info.removed_edge_key))?;
   stem_edge.invert_fitch_subs();
   for indel in &mut stem_edge.indels {
     indel.invert();
   }
   apply_edge_to_sequence(&mut partition.root_sequence, &stem_edge, &partition.alphabet);
-  partition.obs_nodes.remove(&info.removed_node_key);
-  node_states.remove(&info.removed_node_key);
+  partition.obs_nodes.remove(info.removed_node_key);
+  node_states.remove(info.removed_node_key);
   Ok(())
 }
 
@@ -132,12 +131,12 @@ fn remove_trivial_root(
   } in partitions.iter_mut()
   {
     for (edge_key, role) in [(info.parent_edge_key, "Parent"), (info.child_edge_key, "Child")] {
-      if !partition.obs_edges.contains_key(&edge_key) {
+      if !partition.obs_edges.contains_key(edge_key) {
         return make_internal_error!("{role} edge {edge_key:?} must exist for merge");
       }
     }
-    partition.obs_nodes.remove(&info.removed_node_key);
-    node_states.remove(&info.removed_node_key);
+    partition.obs_nodes.remove(info.removed_node_key);
+    node_states.remove(info.removed_node_key);
   }
   merge_edge_pair(partitions, groups, info)
 }
@@ -171,10 +170,10 @@ fn apply_edge_to_sequence(seq: &mut Seq, edge: &SparseEdgeObs, alphabet: &Alphab
 
 fn reconcile_node_states(
   partition: &PartitionMarginalSparse,
-  node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
-) -> BTreeMap<GraphNodeKey, SparseNodeState> {
+  node_states: NodeMap<SparseNodeState>,
+) -> NodeMap<SparseNodeState> {
   let mut node_states = node_states;
-  for key in partition.obs_nodes.keys().copied() {
+  for key in partition.obs_nodes.keys() {
     node_states.entry(key).or_insert_with(SparseNodeState::empty);
   }
   node_states.retain(|key, _| partition.obs_nodes.contains_key(key));

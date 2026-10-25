@@ -1,12 +1,11 @@
 use crate::nwk::{NwkWriteOptions, format_weight};
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, iproduct};
-use std::collections::BTreeMap;
 use std::fmt::Write;
 use std::io;
 use std::path::Path;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::{GraphNodeKey, Node};
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::io::file::write_file_with;
@@ -19,7 +18,7 @@ pub fn graphviz_write_file(
   filepath: impl AsRef<Path>,
   graph: &Graph,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   write_file_with(filepath, |writer| graphviz_write(writer, graph, names, weights))
 }
@@ -28,7 +27,7 @@ pub fn graphviz_write(
   mut writer: impl io::Write,
   graph: &Graph,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   let mut text = String::new();
   write_graphviz_text(&mut text, graph, names, weights)?;
@@ -39,7 +38,7 @@ fn write_graphviz_text(
   mut writer: impl Write,
   graph: &Graph,
   names: &NodeNames,
-  weights: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  weights: &EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   write!(
     writer,
@@ -93,7 +92,7 @@ where
   Ok(())
 }
 
-fn print_edges<W>(graph: &Graph, weights: &BTreeMap<GraphEdgeKey, Option<f64>>, mut writer: W) -> Result<(), Report>
+fn print_edges<W>(graph: &Graph, weights: &EdgeMap<Option<f64>>, mut writer: W) -> Result<(), Report>
 where
   W: Write,
 {

@@ -24,8 +24,8 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::{BTreeMap, BTreeSet};
-  use treetime_graph::edge::GraphEdgeKey;
+  use std::collections::BTreeSet;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_grid::MaxGridPoints;
@@ -119,9 +119,9 @@ mod tests {
     let dated_nodes: BTreeSet<GraphNodeKey> = central
       .posterior
       .iter()
-      .filter_map(|(key, posterior)| posterior.time.map(|_| *key))
+      .filter_map(|(key, posterior)| posterior.time.map(|_| key))
       .collect();
-    assert_eq!(dated_nodes, dates.keys().copied().collect::<BTreeSet<_>>());
+    assert_eq!(dated_nodes, dates.keys().collect::<BTreeSet<_>>());
     for (key, triple) in &dates {
       assert!(
         triple[0] <= triple[1] && triple[1] <= triple[2],
@@ -151,16 +151,17 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::optimize::indel::IndelPolicy;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
     use treetime_graph::node_names::NodeNames;
 
     pub(super) struct SusceptibilityFixture {
       graph: Graph,
       names: NodeNames,
       constraints: DateConstraints,
-      leaf_bad_branches: BTreeMap<GraphNodeKey, bool>,
-      gammas: BTreeMap<GraphEdgeKey, f64>,
+      leaf_bad_branches: NodeMap<bool>,
+      gammas: EdgeMap<f64>,
       branch_model: BranchModel,
-      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: EdgeMap<Option<f64>>,
       clock_model: ClockModel,
     }
 

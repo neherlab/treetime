@@ -9,9 +9,9 @@ mod tests {
   use eyre::Report;
   use helpers::{reversion_present, sub, total_subs};
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+
   use treetime_graph::graph::Graph;
-  use treetime_graph::node::GraphNodeKey;
+
   use treetime_graph::node_names::NodeNames;
   use treetime_io::nwk::nwk_read;
 
@@ -261,7 +261,9 @@ mod tests {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use crate::partition::storage::sparse::{SparseNodeObs, SparseNodeState};
     use crate::test_utils::find_edge_key;
-    use maplit::btreemap;
+    use treetime_graph::key_map::NodeMap;
+    use treetime_graph::keymap;
+
     use treetime_primitives::{AsciiChar, Seq};
 
     fn c(b: u8) -> AsciiChar {
@@ -275,7 +277,7 @@ mod tests {
     pub(super) fn total_subs(graph: &Graph, recon: &PartitionMarginalSparse) -> usize {
       graph
         .get_edges()
-        .filter_map(|e| recon.obs_edges.get(&e.key()))
+        .filter_map(|e| recon.obs_edges.get(e.key()))
         .map(|e| e.fitch_subs().len())
         .sum()
     }
@@ -283,7 +285,7 @@ mod tests {
     pub(super) fn reversion_present(graph: &Graph, recon: &PartitionMarginalSparse, needle: &Sub) -> bool {
       graph
         .get_edges()
-        .filter_map(|e| recon.obs_edges.get(&e.key()))
+        .filter_map(|e| recon.obs_edges.get(e.key()))
         .any(|e| e.fitch_subs().contains(needle))
     }
 
@@ -292,7 +294,7 @@ mod tests {
       names: &NodeNames,
       length: usize,
       edge_mutations: &[(&str, &str, Vec<Sub>)],
-    ) -> (PartitionMarginalSparse, BTreeMap<GraphNodeKey, SparseNodeState>) {
+    ) -> (PartitionMarginalSparse, NodeMap<SparseNodeState>) {
       let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
 
       let mut ref_seq: Seq = std::iter::repeat_with(|| c(b'A')).take(length).collect();
@@ -304,15 +306,15 @@ mod tests {
         }
       }
 
-      let mut obs_nodes = btreemap! {};
-      let mut node_states = btreemap! {};
+      let mut obs_nodes = keymap! {};
+      let mut node_states = keymap! {};
       for node in graph.get_nodes() {
         let key = node.key();
         obs_nodes.insert(key, SparseNodeObs::empty(&alphabet));
         node_states.insert(key, SparseNodeState::leaf(&ref_seq));
       }
 
-      let mut obs_edges = btreemap! {};
+      let mut obs_edges = keymap! {};
       for (source, target, subs) in edge_mutations {
         let edge_key =
           find_edge_key(graph, names, source, target).unwrap_or_else(|| panic!("edge {source}->{target} missing"));

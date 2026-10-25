@@ -1,11 +1,12 @@
 #[cfg(test)]
 mod tests {
   use crate::__tests__::test_graph_support::tests::helpers::names_on_star;
+  use crate::key_map::NodeMap;
   use crate::node::GraphNodeKey;
   use crate::pair_by_name::pair_by_name;
   use itertools::Itertools;
   use proptest::prelude::*;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeSet;
 
   proptest! {
     #[test]
@@ -14,19 +15,19 @@ mod tests {
       candidate_mask in prop::collection::vec(any::<bool>(), 12),
       entry_names in prop::collection::vec("[a-e]", 0..16),
     ) {
-      let input: BTreeMap<GraphNodeKey, Option<String>> = node_names
+      let input: NodeMap<Option<String>> = node_names
         .iter()
         .enumerate()
         .map(|(index, name)| (GraphNodeKey(index), name.clone()))
         .collect();
-      let candidates = input.keys().copied().filter(|key| candidate_mask[key.as_usize()]).collect_vec();
+      let candidates = input.keys().filter(|key| candidate_mask[key.as_usize()]).collect_vec();
       let names = names_on_star(input).expect("a star graph has a root");
       let entries = entry_names.iter().cloned().enumerate().map(|(index, name)| (name, index)).collect_vec();
 
       let actual = pair_by_name(candidates.iter().copied(), &names, entries);
 
       let first_index = |name: &str| entry_names.iter().position(|entry| entry == name);
-      let expected_by_node: BTreeMap<GraphNodeKey, usize> = candidates
+      let expected_by_node: NodeMap<usize> = candidates
         .iter()
         .filter_map(|key| Some((*key, first_index(names.pairing_name(*key))?)))
         .collect();

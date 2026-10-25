@@ -55,8 +55,8 @@ pub(crate) fn merge_edge_pair(
     .map(|group| composed_edge_pieces(group, partitions, merge.parent_edge_key, merge.child_edge_key))
     .try_collect()?;
   for SparseReconstruction { partition, .. } in partitions.iter_mut() {
-    let parent_edge = partition.obs_edges.remove(&merge.parent_edge_key).unwrap_or_default();
-    let child_edge = partition.obs_edges.remove(&merge.child_edge_key).unwrap_or_default();
+    let parent_edge = partition.obs_edges.remove(merge.parent_edge_key).unwrap_or_default();
+    let child_edge = partition.obs_edges.remove(merge.child_edge_key).unwrap_or_default();
     let mut merged_edge = SparseEdgeObs::default();
     merged_edge.set_fitch_subs(parent_edge.chain_fitch_subs(child_edge.fitch_subs())?);
     partition.obs_edges.insert(merge.merged_edge_key, merged_edge);
@@ -103,7 +103,7 @@ fn edge_pieces(group: &AlignmentGroup, partitions: &[SparseReconstruction], edge
       partition
         .partition
         .obs_edges
-        .get(&edge_key)
+        .get(edge_key)
         .map_or_else(Vec::new, |edge| edge.indels.clone())
     })
     .collect()

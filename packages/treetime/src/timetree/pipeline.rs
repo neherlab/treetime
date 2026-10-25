@@ -45,10 +45,10 @@ use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use itertools::{Itertools, izip};
 use log::debug;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::mem;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_primitives::date::DateConstraint;
@@ -130,7 +130,7 @@ fn assemble_output(
   inputs: FinalInputs<'_>,
   seq_sink: Option<&mut dyn SeqSink>,
   outliers: BTreeSet<GraphNodeKey>,
-  dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
+  dates: Option<NodeMap<DateConstraint>>,
   results: FinalResults,
   log: &dyn LogSink,
 ) -> Result<TimetreeOutput, OperationError> {
@@ -184,26 +184,26 @@ pub struct TimetreeInput {
   pub graph: Graph,
   pub names: NodeNames,
   pub sequences: TimetreeSequences,
-  pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub dates: Option<NodeMap<DateConstraint>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 pub struct TimetreeOutput {
   pub graph: Graph,
   pub names: NodeNames,
-  pub node_dates: BTreeMap<GraphNodeKey, Option<f64>>,
-  pub divergences: BTreeMap<GraphNodeKey, f64>,
+  pub node_dates: NodeMap<Option<f64>>,
+  pub divergences: NodeMap<f64>,
   pub outliers: BTreeSet<GraphNodeKey>,
-  pub bad_branches: BTreeMap<GraphNodeKey, bool>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
-  pub date_branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub bad_branches: NodeMap<bool>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
+  pub date_branch_lengths: EdgeMap<Option<f64>>,
   pub clock_model: ClockModel,
   pub clock_regression: Vec<ClockRegressionResult>,
   pub confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
   pub alignments: Vec<AlignmentResult>,
   pub partitions: Vec<PartitionResult>,
   pub coalescent: Option<CoalescentOutput>,
-  pub dates: Option<BTreeMap<GraphNodeKey, DateConstraint>>,
+  pub dates: Option<NodeMap<DateConstraint>>,
 }
 
 fn validate_params(params: &TimetreeParams, has_seq_sink: bool) -> Result<(), OperationError> {
@@ -225,7 +225,7 @@ fn prepare_inputs(
   params: &TimetreeParams,
   graph: &Graph,
   sequences: &TimetreeSequences,
-  dates: Option<&BTreeMap<GraphNodeKey, DateConstraint>>,
+  dates: Option<&NodeMap<DateConstraint>>,
   log: &dyn LogSink,
 ) -> Result<TimetreeContext, OperationError> {
   debug!(
@@ -283,9 +283,9 @@ fn estimate_initial_clock(
   context: &TimetreeContext,
   graph: Graph,
   names: &mut NodeNames,
-  branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: EdgeMap<Option<f64>>,
   log: &dyn LogSink,
-) -> Result<(Graph, BTreeMap<GraphEdgeKey, Option<f64>>, ClockFit), Report> {
+) -> Result<(Graph, EdgeMap<Option<f64>>, ClockFit), Report> {
   let reroot_params = params
     .reroot_spec
     .as_ref()
@@ -331,7 +331,7 @@ fn initialize_branch_model(
   params: &TimetreeParams,
   context: &TimetreeContext,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   sequences: TimetreeSequences,
   log: &dyn LogSink,
 ) -> Result<(Vec<AlignmentInfo>, Vec<GtrModelName>, BranchModel), OperationError> {
@@ -451,7 +451,7 @@ fn refine_final_times(
         .wrap_err("Rate susceptibility analysis failed")?;
     (Some(central), dates)
   } else {
-    (None, BTreeMap::new())
+    (None, NodeMap::new())
   };
 
   if params.confidence {
@@ -535,14 +535,14 @@ fn gather_results(
 
 struct FinalTimes {
   state: RoundState,
-  rate_susceptibility_dates: BTreeMap<GraphNodeKey, [f64; 3]>,
+  rate_susceptibility_dates: NodeMap<[f64; 3]>,
 }
 
 struct FinalResults {
   state: RoundState,
   confidence_intervals: Option<Vec<NodeConfidenceInterval>>,
   coalescent_output: Option<CoalescentOutput>,
-  divergences: BTreeMap<GraphNodeKey, f64>,
+  divergences: NodeMap<f64>,
   clock_regression: Vec<ClockRegressionResult>,
 }
 
@@ -551,8 +551,8 @@ fn final_partition_results(
   mut seq_stream: Option<SeqStream<'_>>,
   graph: &Graph,
   branch_model: BranchModel,
-  divergence_branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  final_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  divergence_branch_lengths: &EdgeMap<Option<f64>>,
+  final_branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<(Vec<AlignmentResult>, Vec<PartitionResult>), OperationError> {
   let FinalInputs {

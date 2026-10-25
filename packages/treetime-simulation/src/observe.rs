@@ -2,11 +2,10 @@ use crate::substitution_model::NUCLEOTIDES;
 use eyre::Report;
 use itertools::Itertools;
 use rand::{Rng, RngExt};
-use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::sync::LazyLock;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::{make_error, make_report};
 
@@ -14,17 +13,17 @@ pub(crate) const UNKNOWN: AsciiChar = AsciiChar::from_byte_unchecked(b'N');
 
 pub fn observe_tips(
   graph: &Graph,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
+  sequences: &NodeMap<Seq>,
   observation: &TipObservation,
   rng: &mut impl Rng,
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+) -> Result<NodeMap<Seq>, Report> {
   observation.validate()?;
   graph
     .get_leaves()
     .map(|leaf| {
       let key = leaf.key();
       let seq = sequences
-        .get(&key)
+        .get(key)
         .ok_or_else(|| make_report!("Leaf {key} has no sequence"))?;
       Ok((key, observation.observe(seq, rng)?))
     })

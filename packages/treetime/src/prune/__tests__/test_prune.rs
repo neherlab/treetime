@@ -12,11 +12,13 @@ pub(super) mod tests {
   use eyre::Report;
   use helpers::*;
   use itertools::Itertools;
-  use maplit::{btreemap, btreeset};
+  use maplit::btreeset;
   use pretty_assertions::assert_eq;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::keymap;
+
   use std::collections::BTreeSet;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -97,9 +99,9 @@ pub(super) mod tests {
   #[test]
   fn test_prune_nodes_empty_graph() -> Result<(), Report> {
     let mut graph = Graph::new();
-    let names = NodeNames::from_input(btreemap! {}, &graph)?.names;
+    let names = NodeNames::from_input(keymap! {}, &graph)?.names;
     let mut partitions = vec![];
-    let mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>> = btreemap! {};
+    let mut branch_lengths: EdgeMap<Option<f64>> = keymap! {};
     prune_nodes(
       &mut graph,
       &mut partitions,
@@ -580,6 +582,8 @@ pub(super) mod tests {
 
   pub(crate) mod helpers {
     use super::*;
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::keymap;
     use treetime_graph::node_names::NodeNames;
 
     pub(crate) fn c(b: u8) -> AsciiChar {
@@ -604,15 +608,7 @@ pub(super) mod tests {
     pub(crate) fn create_test_graph_with_partitions(
       nwk: &str,
       edge_mutations: &[(usize, Option<usize>)],
-    ) -> Result<
-      (
-        Graph,
-        NodeNames,
-        Vec<SparseReconstruction>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    ) -> Result<(Graph, NodeNames, Vec<SparseReconstruction>, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(nwk.as_bytes())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -627,8 +623,8 @@ pub(super) mod tests {
           length: 100,
           total_length: 100,
           root_sequence: seq![],
-          obs_nodes: btreemap! {},
-          obs_edges: btreemap! {},
+          obs_nodes: keymap! {},
+          obs_edges: keymap! {},
         };
 
         populate_test_nodes(&mut partition, &graph);
@@ -658,15 +654,7 @@ pub(super) mod tests {
     pub(crate) fn create_test_graph_with_named_edge_mutations(
       nwk: &str,
       edge_mutations: &[(&str, &str, Option<usize>)],
-    ) -> Result<
-      (
-        Graph,
-        NodeNames,
-        Vec<SparseReconstruction>,
-        BTreeMap<GraphEdgeKey, Option<f64>>,
-      ),
-      Report,
-    > {
+    ) -> Result<(Graph, NodeNames, Vec<SparseReconstruction>, EdgeMap<Option<f64>>), Report> {
       let nwk_parsed = nwk_read(nwk.as_bytes())?;
       let names = nwk_parsed.names.clone();
       let graph = nwk_parsed.graph;
@@ -681,8 +669,8 @@ pub(super) mod tests {
           length: 100,
           total_length: 100,
           root_sequence: seq![],
-          obs_nodes: btreemap! {},
-          obs_edges: btreemap! {},
+          obs_nodes: keymap! {},
+          obs_edges: keymap! {},
         };
 
         populate_test_nodes(&mut partition, &graph);

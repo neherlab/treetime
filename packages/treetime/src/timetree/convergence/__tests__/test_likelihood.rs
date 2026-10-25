@@ -17,7 +17,7 @@ mod tests {
   use crate::timetree::convergence::optimizer::TimetreeOptimizer;
   use crate::timetree::inference::result::TimeInference;
   use eyre::Report;
-  use maplit::btreemap;
+
   use ndarray::array;
 
   use treetime_graph::graph::Graph;
@@ -89,6 +89,7 @@ mod tests {
   mod helpers {
     use super::*;
     use crate::timetree::convergence::metrics::IterationClock;
+    use treetime_graph::keymap;
     use treetime_graph::node_names::NodeNames;
 
     pub(super) const fn fixed_clock() -> IterationClock {
@@ -111,7 +112,7 @@ mod tests {
       log_lh: f64,
     ) -> Result<PartitionSet, Report> {
       let partition = dense_partition_with_constant_leaves(graph, Alphabet::default(), 1)?;
-      let node_states = btreemap! {
+      let node_states = keymap! {
         root_key => DenseNodeState {
           seq: DenseSeqInfo::default(),
           profile: DenseSeqDistribution::new(array![[1.0, 0.0, 0.0, 0.0]], LogLh::new(log_lh)),

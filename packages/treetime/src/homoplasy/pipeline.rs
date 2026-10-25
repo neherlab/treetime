@@ -10,6 +10,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
 
@@ -71,7 +72,7 @@ fn substitution_stats(
   for (sub, _) in events() {
     *hits_per_site.entry(sub.pos()).or_default() += 1;
   }
-  let mut leaves: BTreeMap<GraphNodeKey, Vec<Sub>> = BTreeMap::new();
+  let mut leaves: NodeMap<Vec<Sub>> = NodeMap::new();
   for (sub, branch) in events() {
     if branch.terminal && hits_per_site[&sub.pos()] > 1 {
       leaves.entry(branch.node).or_default().push(sub);
@@ -102,7 +103,7 @@ pub struct SubstitutionStats {
   pub all: RecurrenceTable<Sub>,
   pub terminal: RecurrenceTable<Sub>,
   pub sites: SiteHistogram,
-  pub leaves: BTreeMap<GraphNodeKey, Vec<Sub>>,
+  pub leaves: NodeMap<Vec<Sub>>,
 }
 
 fn odd_substitution_probability(branch_length: f64) -> f64 {
@@ -119,7 +120,7 @@ fn ambiguous_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> Ambiguous
   };
   let all = RecurrenceTable::new(events().map(|(sub, branch)| (sub, branch.node)), substitution_order);
 
-  let mut leaves: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
+  let mut leaves: NodeMap<usize> = NodeMap::new();
   for (_, branch) in events().filter(|(_, branch)| branch.terminal) {
     *leaves.entry(branch.node).or_default() += 1;
   }
@@ -138,12 +139,12 @@ fn ambiguous_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> Ambiguous
 pub struct AmbiguousStats {
   pub all: RecurrenceTable<Sub>,
   pub sites: Vec<SiteBranches>,
-  pub leaves: BTreeMap<GraphNodeKey, usize>,
+  pub leaves: NodeMap<usize>,
 }
 
 fn substitutions<'a>(
   input: &'a HomoplasyInput<'_>,
-  mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  mutations: &'a EdgeMap<Vec<Mutation>>,
   branch: &'a Branch,
   class: MutationClass,
 ) -> impl Iterator<Item = &'a Sub> + 'a {
@@ -175,7 +176,7 @@ fn indel_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> IndelStats {
   );
 
   let multiplicities = all.multiplicities();
-  let mut leaves: BTreeMap<GraphNodeKey, usize> = BTreeMap::new();
+  let mut leaves: NodeMap<usize> = NodeMap::new();
   for (key, branch) in events() {
     if branch.terminal && multiplicities[&key] > 1 {
       *leaves.entry(branch.node).or_default() += 1;
@@ -189,12 +190,12 @@ fn indel_stats(input: &HomoplasyInput<'_>, branches: &[Branch]) -> IndelStats {
 pub struct IndelStats {
   pub all: RecurrenceTable<IndelKey>,
   pub terminal: RecurrenceTable<IndelKey>,
-  pub leaves: BTreeMap<GraphNodeKey, usize>,
+  pub leaves: NodeMap<usize>,
 }
 
 fn events_of_class<'a>(
   input: &'a HomoplasyInput<'_>,
-  mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
+  mutations: &'a EdgeMap<Vec<Mutation>>,
   branch: &'a Branch,
   class: MutationClass,
 ) -> impl Iterator<Item = &'a MutationEvent> + 'a {
@@ -206,9 +207,9 @@ fn events_of_class<'a>(
 
 pub struct HomoplasyInput<'a> {
   pub graph: &'a Graph,
-  pub bridged_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub raw_mutations: &'a BTreeMap<GraphEdgeKey, Vec<Mutation>>,
-  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, f64>,
+  pub bridged_mutations: &'a EdgeMap<Vec<Mutation>>,
+  pub raw_mutations: &'a EdgeMap<Vec<Mutation>>,
+  pub branch_lengths: &'a EdgeMap<f64>,
   pub alphabet: &'a Alphabet,
   pub sequence_length: usize,
 }

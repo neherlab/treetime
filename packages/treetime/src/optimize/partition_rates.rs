@@ -6,16 +6,15 @@ use crate::progress::LogSink;
 use eyre::Report;
 use itertools::Itertools;
 use log::debug;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn update_partition_rates(
   graph: &Graph,
   partitions: PartitionSet,
   mode: PartitionRates,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   indels: Option<&mut EdgeIndels>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
@@ -35,7 +34,7 @@ pub(crate) fn fix_equal_rates(
   graph: &Graph,
   partitions: PartitionSet,
   mode: PartitionRates,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
 ) -> Result<PartitionSet, Report> {
   let equal_rates = vec![1.0; partitions.len()];
   if !mode.fixes_equal(&partitions) || partitions.rates() == equal_rates {
@@ -69,7 +68,7 @@ impl PartitionRates {
 
 pub(crate) fn normalize_partition_rates(
   partitions: &mut PartitionSet,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   indels: Option<&mut EdgeIndels>,
 ) -> Result<(), Report> {
   let mut partitions = partitions.lengths_and_gtrs_mut();

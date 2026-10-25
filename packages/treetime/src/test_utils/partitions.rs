@@ -8,10 +8,9 @@ use crate::progress::NoopProgress;
 use crate::seq::alignment::SequenceSource;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use std::str::FromStr;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_utils::make_internal_error;
 
 pub(crate) fn codon_positions_input(
@@ -48,7 +47,7 @@ pub(crate) fn codon_partition_set(
   model: &GtrModel,
   graph: &Graph,
   sources: Vec<SequenceSource>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<PartitionSet, Report> {
   let SplitInput { partitions, .. } = codon_positions_input(sources, model)?.split()?;
   build_partition_set(representation, graph, partitions, branch_lengths, &NoopProgress)

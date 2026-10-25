@@ -2,16 +2,16 @@ use crate::partition::assembly::AlignmentGroup;
 use crate::partition::marginal::reconstruction::SparseReconstruction;
 use crate::partition::marginal::sparse::alignment_indels::{composed_edge_pieces, store_edge_pieces};
 use eyre::Report;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 
 pub(crate) fn collapse_edge(
   graph: &mut Graph,
   sparse: &mut [SparseReconstruction],
   groups: &[AlignmentGroup],
   edge_key: GraphEdgeKey,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
 ) -> Result<(), Report> {
   let target_node_key = graph.get_target_node_key(edge_key)?;
 
@@ -39,11 +39,11 @@ pub(crate) fn collapse_edge(
   }
 
   for reconstruction in sparse.iter_mut() {
-    reconstruction.partition.obs_nodes.remove(&target_node_key);
-    reconstruction.partition.obs_edges.remove(&edge_key);
+    reconstruction.partition.obs_nodes.remove(target_node_key);
+    reconstruction.partition.obs_edges.remove(edge_key);
   }
 
-  branch_lengths.remove(&edge_key);
+  branch_lengths.remove(edge_key);
 
   Ok(())
 }

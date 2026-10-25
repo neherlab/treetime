@@ -6,11 +6,12 @@ mod tests {
     edge_state_change_counts, mutation_event_strings,
   };
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use proptest::prelude::*;
   use rstest::rstest;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::graph::Graph;
   use treetime_primitives::AsciiChar;
   use treetime_primitives::seq;
   use treetime_utils::assert_error;
@@ -217,24 +218,27 @@ mod tests {
       (4, 5),
       seq![helpers::c(b'A')],
     )?));
-    let edge_mutations = btreemap! {
-      GraphEdgeKey(0) => vec![
+    let mut graph = Graph::new();
+    let root = graph.add_node();
+    let [e0, e1, e2] = [(); 3].map(|()| {
+      let child = graph.add_node();
+      graph.add_edge(root, child).unwrap()
+    });
+    let edge_mutations = keymap! {
+      e0 => vec![
         substitution(b'C', 0, b'T'),
         substitution(b'G', 1, b'K'),
         substitution(b'C', 2, b'N'),
         substitution(b'N', 3, b'A'),
         deletion,
       ],
-      GraphEdgeKey(1) => vec![substitution(b'C', 0, b'K'), substitution(b'A', 1, b'T')],
-      GraphEdgeKey(2) => vec![],
+      e1 => vec![substitution(b'C', 0, b'K'), substitution(b'A', 1, b'T')],
+      e2 => vec![],
     };
 
     let actual = edge_state_change_counts(&edge_mutations, &Alphabet::default())?;
 
-    assert_eq!(
-      btreemap! { GraphEdgeKey(0) => 1, GraphEdgeKey(1) => 2, GraphEdgeKey(2) => 0 },
-      actual
-    );
+    assert_eq!(keymap! { e0 => 1, e1 => 2, e2 => 0 }, actual);
     Ok(())
   }
 

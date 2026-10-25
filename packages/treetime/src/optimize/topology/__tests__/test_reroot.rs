@@ -262,7 +262,7 @@ mod tests {
 
     let total_bl_before: f64 = graph
       .get_edges()
-      .filter_map(|e| branch_lengths.get(&e.key()).copied().flatten())
+      .filter_map(|e| branch_lengths.get(e.key()).copied().flatten())
       .sum();
 
     let root_key = find_node_key_by_name(&graph, &names, "root").unwrap();
@@ -276,7 +276,7 @@ mod tests {
 
     let total_bl_after: f64 = graph
       .get_edges()
-      .filter_map(|e| branch_lengths.get(&e.key()).copied().flatten())
+      .filter_map(|e| branch_lengths.get(e.key()).copied().flatten())
       .sum();
 
     pretty_assert_abs_diff_eq!(total_bl_before, total_bl_after, epsilon = 1e-7);

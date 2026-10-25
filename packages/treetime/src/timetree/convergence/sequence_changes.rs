@@ -2,9 +2,8 @@ use crate::seq::overlay::SeqOverlay;
 use crate::timetree::branch_model::BranchModel;
 use itertools::izip;
 use log::debug;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 
 pub(crate) fn count_sequence_changes(previous: &[AncestralStateSnapshot], current: &[AncestralStateSnapshot]) -> usize {
   izip!(previous, current)
@@ -41,4 +40,4 @@ fn count_partition_changes(previous: &AncestralStateSnapshot, current: &Ancestra
     .sum()
 }
 
-pub(crate) type AncestralStateSnapshot = BTreeMap<GraphNodeKey, SeqOverlay>;
+pub(crate) type AncestralStateSnapshot = NodeMap<SeqOverlay>;

@@ -10,7 +10,8 @@ mod tests {
   use crate::test_utils::sparse_topology_partitions;
   use crate::test_utils::{deletion, find_edge_key, find_node_key_by_name, fitch_edge_obs, insertion, sparse_edge_obs};
   use eyre::Report;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
@@ -46,8 +47,8 @@ mod tests {
       alphabet: Alphabet::new(AlphabetName::Nuc)?,
       length,
       total_length: length,
-      obs_nodes: btreemap! {},
-      obs_edges: btreemap! {},
+      obs_nodes: keymap! {},
+      obs_edges: keymap! {},
       root_sequence: seq![],
     };
     Ok(partition)
@@ -99,8 +100,8 @@ mod tests {
       }
     }
 
-    assert!(!p.obs_nodes.contains_key(&i_node_key));
-    assert!(!p.obs_edges.contains_key(&ri_key));
+    assert!(!p.obs_nodes.contains_key(i_node_key));
+    assert!(!p.obs_edges.contains_key(ri_key));
 
     Ok(())
   }

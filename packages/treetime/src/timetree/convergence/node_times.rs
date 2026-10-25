@@ -1,7 +1,6 @@
 use crate::timetree::inference::result::TimeInference;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_utils::cast::ToF64Exact;
 
 pub(crate) fn capture_node_times(graph: &Graph, inference: &TimeInference) -> NodeTimeSnapshot {
@@ -33,7 +32,7 @@ pub(crate) fn measure_node_time_change(previous: &NodeTimeSnapshot, current: &No
   }
 }
 
-pub(crate) type NodeTimeSnapshot = BTreeMap<GraphNodeKey, f64>;
+pub(crate) type NodeTimeSnapshot = NodeMap<f64>;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct NodeTimeChange {

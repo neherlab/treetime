@@ -229,7 +229,7 @@ mod tests {
     let stem = result.stem_removal.expect("the undated stem is removed");
     assert_eq!(stem_key, stem.removed_node_key);
     assert!(tree.graph.get_node(stem_key).is_none());
-    assert!(!tree.branch_lengths.contains_key(&stem.removed_edge_key));
+    assert!(!tree.branch_lengths.contains_key(stem.removed_edge_key));
     helpers::assert_inputs_match_graph(&tree);
     assert_eq!(
       vec![o!("A"), o!("B"), o!("C"), o!("D")],
@@ -337,6 +337,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::collections::{BTreeMap, BTreeSet};
     use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::EdgeMap;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::reroot::RerootResult;
@@ -488,9 +489,9 @@ mod tests {
     pub(super) fn assert_inputs_match_graph(tree: &ClockTree) {
       let node_keys: BTreeSet<_> = tree.graph.get_nodes().map(|node| node.key()).collect();
       let edge_keys: BTreeSet<_> = tree.graph.get_edges().map(|edge| edge.key()).collect();
-      assert_eq!(node_keys, tree.inputs.nodes.keys().copied().collect());
-      assert_eq!(edge_keys, tree.inputs.edges.keys().copied().collect());
-      assert_eq!(edge_keys, tree.branch_lengths.keys().copied().collect());
+      assert_eq!(node_keys, tree.inputs.nodes.keys().collect());
+      assert_eq!(edge_keys, tree.inputs.edges.keys().collect());
+      assert_eq!(edge_keys, tree.branch_lengths.keys().collect());
     }
 
     fn setup_graph(newick: &str, dates: &BTreeMap<String, f64>) -> Result<RerootFixture, Report> {
@@ -501,7 +502,7 @@ mod tests {
         .get_nodes()
         .map(|node| (node.key(), dates.get(&names[node.key()]).copied()))
         .collect();
-      let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+      let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
       Ok(RerootFixture {
         tree: ClockTree {
           graph,

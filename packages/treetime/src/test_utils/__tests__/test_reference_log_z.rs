@@ -101,9 +101,10 @@ mod tests {
       parent_edge_key, reference_log_z,
     };
     use eyre::Report;
-    use std::collections::BTreeMap;
+    use treetime_graph::key_map::{EdgeMap, NodeMap};
+
     use std::sync::Arc;
-    use treetime_graph::edge::GraphEdgeKey;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
@@ -117,8 +118,8 @@ mod tests {
       graph: Graph,
       names: NodeNames,
       cherry: PoissonCherry,
-      tip_dates: BTreeMap<GraphNodeKey, f64>,
-      branches: BTreeMap<GraphEdgeKey, BranchTime>,
+      tip_dates: NodeMap<f64>,
+      branches: EdgeMap<BranchTime>,
     }
 
     impl CherryInput {
@@ -156,8 +157,8 @@ mod tests {
       let parsed = nwk_read(b"(A:1,B:1)root;".as_slice())?;
       let (graph, names) = (parsed.graph, parsed.names);
       let tips = [("A", cherry.counts.0), ("B", cherry.counts.1)];
-      let mut tip_dates = BTreeMap::new();
-      let mut branches = BTreeMap::new();
+      let mut tip_dates = NodeMap::new();
+      let mut branches = EdgeMap::new();
       for (name, count) in tips {
         let key = find_node_key_by_name(&graph, &names, name).expect("tip must exist");
         tip_dates.insert(key, date_override(name).unwrap_or(TIP_DATE));

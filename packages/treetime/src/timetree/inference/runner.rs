@@ -20,10 +20,9 @@ use crate::{progress_info, progress_warn};
 use eyre::{Report, WrapErr};
 use log::debug;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node_names::NodeNames;
 use treetime_grid::{GridPointLimitExceeded, MaxGridPoints};
 use treetime_primitives::LogLh;
@@ -140,10 +139,10 @@ fn infer_times(
 pub(crate) struct TimeInferenceInputs<'a> {
   pub graph: &'a Graph,
   pub date_constraints: &'a DateConstraints,
-  pub leaf_bad_branches: &'a BTreeMap<GraphNodeKey, bool>,
-  pub gammas: &'a BTreeMap<GraphEdgeKey, f64>,
+  pub leaf_bad_branches: &'a NodeMap<bool>,
+  pub gammas: &'a EdgeMap<f64>,
   pub branch_model: &'a BranchModel,
-  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: &'a EdgeMap<Option<f64>>,
   pub names: &'a NodeNames,
   pub clock_model: &'a ClockModel,
   pub clock_rate_fixed: bool,
@@ -192,17 +191,17 @@ pub(crate) fn blended_clock_branch_lengths(
   graph: &Graph,
   clock_rate: f64,
   damping: f64,
-  previous_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  previous_lengths: &EdgeMap<f64>,
   node_times: &NodeTimes,
-  gammas: &BTreeMap<GraphEdgeKey, f64>,
+  gammas: &EdgeMap<f64>,
   log: &dyn LogSink,
-) -> BTreeMap<GraphEdgeKey, f64> {
+) -> EdgeMap<f64> {
   let committed: Vec<(GraphEdgeKey, f64, bool)> = date_branch_lengths(graph, node_times)
     .into_iter()
     .filter_map(|(key, duration)| {
       let duration = duration?;
       let fresh = clock_rate * gammas[&key] * duration.max(0.0);
-      let value = match previous_lengths.get(&key) {
+      let value = match previous_lengths.get(key) {
         Some(previous) => (1.0 - damping) * previous + damping * fresh,
         None => fresh,
       };
@@ -211,11 +210,11 @@ pub(crate) fn blended_clock_branch_lengths(
     })
     .collect();
 
-  let mut clock_branch_lengths: BTreeMap<GraphEdgeKey, f64> = graph
+  let mut clock_branch_lengths: EdgeMap<f64> = graph
     .get_edges()
     .filter_map(|edge| {
       let key = edge.key();
-      previous_lengths.get(&key).map(|length| (key, *length))
+      previous_lengths.get(key).map(|length| (key, *length))
     })
     .collect();
   let mut inverted = 0_usize;
@@ -243,13 +242,13 @@ pub(crate) fn blended_clock_branch_lengths(
 fn compute_branch_distributions_marginal_mode(
   graph: &Graph,
   partitions: &PartitionSet,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  gammas: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<Option<f64>>,
+  gammas: &EdgeMap<f64>,
   clock_rate: f64,
   indel_policy: IndelPolicy,
   max_grid_points: MaxGridPoints,
   log: &dyn LogSink,
-) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
+) -> Result<EdgeMap<BranchLikelihood>, Report> {
   let total_sites = partitions.total_length();
   let one_mutation = one_mutation(total_sites);
 
@@ -304,11 +303,11 @@ fn compute_branch_distributions_marginal_mode(
 pub(super) fn create_branch_distributions_input_mode(
   graph: &Graph,
   model: InputBranchModel,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  gammas: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<Option<f64>>,
+  gammas: &EdgeMap<f64>,
   clock_rate: f64,
   max_grid_points: MaxGridPoints,
-) -> Result<BTreeMap<GraphEdgeKey, BranchLikelihood>, Report> {
+) -> Result<EdgeMap<BranchLikelihood>, Report> {
   graph
     .get_edges()
     .collect::<Vec<_>>()
@@ -338,15 +337,15 @@ pub(super) fn create_branch_distributions_input_mode(
 
 pub(crate) fn timetree_branch_lengths(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  clock_branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-) -> BTreeMap<GraphEdgeKey, f64> {
+  branch_lengths: &EdgeMap<Option<f64>>,
+  clock_branch_lengths: &EdgeMap<f64>,
+) -> EdgeMap<f64> {
   graph
     .get_edges()
     .map(|edge| {
       let key = edge.key();
       let branch_length = clock_branch_lengths
-        .get(&key)
+        .get(key)
         .copied()
         .or_else(|| branch_lengths[&key])
         .unwrap_or(0.0);

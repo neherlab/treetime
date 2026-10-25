@@ -11,7 +11,8 @@ mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use maplit::btreemap;
+  use treetime_graph::keymap;
+
   use ndarray::array;
   use pretty_assertions::assert_eq;
   use std::collections::BTreeMap;
@@ -33,7 +34,7 @@ mod tests {
     let child_posterior = array![[0.0, 0.0, 1.0, 0.0]];
 
     let partition = dense_partition_with_constant_leaves(&graph, Alphabet::new(AlphabetName::Nuc)?, 1)?;
-    let node_states = btreemap! {
+    let node_states = keymap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
         profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
@@ -67,7 +68,7 @@ mod tests {
     let child_state = alphabet.char(1);
 
     let partition = dense_partition_with_constant_leaves(&graph, alphabet, 1)?;
-    let node_states = btreemap! {
+    let node_states = keymap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
         profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),
@@ -155,7 +156,7 @@ mod tests {
 
     let alphabet = Alphabet::new(AlphabetName::Nuc)?;
     let partition = dense_partition_with_constant_leaves(&graph, alphabet.clone(), 4)?;
-    let node_states = btreemap! {
+    let node_states = keymap! {
       parent_key => DenseNodeState {
         seq: DenseSeqInfo::default(),
         profile: DenseSeqDistribution::new(parent_posterior, LogLh::ZERO),

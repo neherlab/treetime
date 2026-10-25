@@ -23,8 +23,9 @@ mod tests {
   use indoc::indoc;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeSet;
   use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
   use treetime_primitives::AlignmentRecord;
@@ -85,7 +86,7 @@ mod tests {
       model: ClockModel::for_testing(0.001, 0.0),
       points: vec![],
     };
-    let input_edges: BTreeSet<GraphEdgeKey> = branch_lengths.keys().copied().collect();
+    let input_edges: BTreeSet<GraphEdgeKey> = branch_lengths.keys().collect();
     let state = PreLoopState::new(
       graph,
       names,
@@ -96,18 +97,15 @@ mod tests {
 
     let state = run_pre_loop(&inputs, state, &NoopCancel, &NoopProgress, &NoopProgress)?;
 
-    assert_eq!(
-      input_edges,
-      state.branch_lengths.keys().copied().collect::<BTreeSet<_>>()
-    );
-    let not_shortened: BTreeMap<GraphEdgeKey, Option<f64>> = state
+    assert_eq!(input_edges, state.branch_lengths.keys().collect::<BTreeSet<_>>());
+    let not_shortened: EdgeMap<Option<f64>> = state
       .branch_lengths
       .iter()
       .filter(|(_, length)| !length.is_some_and(|length| length < INPUT_BRANCH_LENGTH))
-      .map(|(key, length)| (*key, *length))
+      .map(|(key, length)| (key, *length))
       .collect();
     assert_eq!(
-      BTreeMap::new(),
+      EdgeMap::new(),
       not_shortened,
       "with at most 2 differences in {SEQUENCE_LENGTH} sites, no branch can stay at {INPUT_BRANCH_LENGTH}"
     );

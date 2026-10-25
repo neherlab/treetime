@@ -12,8 +12,8 @@ mod tests {
   use crate::progress::NoopProgress;
   use eyre::Report;
   use rstest::rstest;
-  use std::collections::BTreeMap;
-  use treetime_graph::edge::GraphEdgeKey;
+  use treetime_graph::key_map::EdgeMap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_abs_diff_eq;
 
@@ -28,7 +28,7 @@ mod tests {
     assert_eq!(saved.len(), edges.len());
     for edge_ref in &edges {
       let edge = edge_ref;
-      assert!(saved.contains_key(&edge.key()));
+      assert!(saved.contains_key(edge.key()));
     }
     Ok(())
   }
@@ -41,8 +41,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let original = branch_lengths;
 
-    let mut optimized: BTreeMap<GraphEdgeKey, Option<f64>> =
-      original.iter().map(|(&key, &bl)| (key, bl.map(|b| b * 2.0))).collect();
+    let mut optimized: EdgeMap<Option<f64>> = original.iter().map(|(key, &bl)| (key, bl.map(|b| b * 2.0))).collect();
     let after_optim = optimized.clone();
 
     apply_damping(&mut optimized, &original, 0.0, 0);
@@ -67,7 +66,7 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let old_bls = branch_lengths;
 
-    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(0.0))).collect();
+    let mut bls: EdgeMap<Option<f64>> = old_bls.keys().map(|key| (key, Some(0.0))).collect();
 
     apply_damping(&mut bls, &old_bls, damping, iteration);
 
@@ -85,12 +84,11 @@ mod tests {
     let branch_lengths = nwk_parsed.branch_lengths;
     let old_bls = branch_lengths;
 
-    let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> =
-      old_bls.iter().map(|(&key, &bl)| (key, bl.map(|b| b * 3.0))).collect();
+    let mut bls: EdgeMap<Option<f64>> = old_bls.iter().map(|(key, &bl)| (key, bl.map(|b| b * 3.0))).collect();
 
     apply_damping(&mut bls, &old_bls, 0.75, 0);
 
-    for (&key, &old) in &old_bls {
+    for (key, &old) in &old_bls {
       let damped = bls[&key].unwrap();
       let expected = if (old.unwrap() - 0.1).abs() < 1e-9 { 0.15 } else { 0.30 };
       pretty_assert_abs_diff_eq!(damped, expected, epsilon = 1e-8);
@@ -111,7 +109,7 @@ mod tests {
       let graph = nwk_parsed.graph;
       let branch_lengths = nwk_parsed.branch_lengths;
       let old_bls = branch_lengths;
-      let mut bls: BTreeMap<GraphEdgeKey, Option<f64>> = old_bls.keys().map(|&key| (key, Some(optimized_bl))).collect();
+      let mut bls: EdgeMap<Option<f64>> = old_bls.keys().map(|key| (key, Some(optimized_bl))).collect();
 
       apply_damping(&mut bls, &old_bls, damping, iteration);
 

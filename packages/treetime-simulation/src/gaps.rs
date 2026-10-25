@@ -5,10 +5,9 @@ use rand::Rng;
 use rand::distr::weighted::WeightedIndex;
 use rand::seq::index::sample;
 use rand_distr::Distribution;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::schedule::GraphSchedule;
 use treetime_primitives::{AsciiChar, Seq};
 use treetime_utils::{make_error, make_internal_error, make_report};
@@ -16,7 +15,7 @@ use treetime_utils::{make_error, make_internal_error, make_report};
 pub const GAP: AsciiChar = AsciiChar::from_byte_unchecked(b'-');
 
 pub fn disjoint_gap_events(
-  durations: &BTreeMap<GraphEdgeKey, f64>,
+  durations: &EdgeMap<f64>,
   count: usize,
   gap_length: usize,
   sequence_length: usize,
@@ -36,10 +35,10 @@ pub fn disjoint_gap_events(
       "A sequence of {sequence_length} sites holds at most {slot_count} gaps of {gap_length} sites with a site between them, got {count} gaps"
     );
   }
-  for (&edge, &duration) in durations {
+  for (edge, &duration) in durations {
     validate_edge_duration(edge, duration)?;
   }
-  let edges = durations.keys().copied().collect_vec();
+  let edges = durations.keys().collect_vec();
   let edge_choice = WeightedIndex::new(durations.values().copied())
     .map_err(|error| make_report!("Gap events need an edge with a positive duration: {error}"))?;
   let starts = sample(rng, slot_count, count)
@@ -72,11 +71,7 @@ impl GapEvent {
   }
 }
 
-pub fn apply_gap_events(
-  graph: &Graph,
-  sequences: &BTreeMap<GraphNodeKey, Seq>,
-  events: &[GapEvent],
-) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+pub fn apply_gap_events(graph: &Graph, sequences: &NodeMap<Seq>, events: &[GapEvent]) -> Result<NodeMap<Seq>, Report> {
   let schedule = GraphSchedule::new(graph)?;
   schedule.require_tree()?;
   let events_by_edge = events.iter().into_group_map_by(|event| event.edge);
@@ -89,7 +84,7 @@ pub fn apply_gap_events(
       );
     };
     let length = sequences
-      .get(&edge.target())
+      .get(edge.target())
       .ok_or_else(|| make_report!("Node {} has no sequence", edge.target()))?
       .len();
     if event.length == 0 || event.end() > length {
@@ -102,9 +97,9 @@ pub fn apply_gap_events(
     }
   }
 
-  let mut gapped: BTreeMap<GraphNodeKey, Seq> = BTreeMap::new();
+  let mut gapped: NodeMap<Seq> = NodeMap::new();
   for &node in schedule.preorder() {
-    let Some(seq) = sequences.get(&node) else {
+    let Some(seq) = sequences.get(node) else {
       return make_error!("Node {node} has no sequence");
     };
     let mut seq = seq.clone();

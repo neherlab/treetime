@@ -6,8 +6,10 @@ mod tests {
   use crate::test_utils::find_node_key_by_name;
   use eyre::Report;
   use helpers::{Kind, row};
-  use maplit::{btreemap, btreeset};
-  use std::collections::BTreeMap;
+  use maplit::btreeset;
+  use treetime_graph::key_map::EdgeMap;
+  use treetime_graph::keymap;
+
   use treetime_io::nwk::nwk_read;
   use treetime_utils::pretty_assert_eq;
 
@@ -17,15 +19,15 @@ mod tests {
     let names = nwk_parsed.names.clone();
     let graph = nwk_parsed.graph;
     let key = |name: &str| find_node_key_by_name(&graph, &names, name).expect("named node exists");
-    let divergences = btreemap! {
+    let divergences = keymap! {
       key("root") => 0.0,
       key("AB") => 1.0,
       key("A") => 2.0,
       key("B") => 3.0,
       key("C") => 4.0,
     };
-    let times = btreemap! { key("A") => Some(2005.0), key("B") => None, key("C") => Some(2007.0) };
-    let inputs = ClockInputs::from_times(&graph, &times, &BTreeMap::new());
+    let times = keymap! { key("A") => Some(2005.0), key("B") => None, key("C") => Some(2007.0) };
+    let inputs = ClockInputs::from_times(&graph, &times, &EdgeMap::new());
     let clock_model = ClockModel::for_testing(0.5, -1000.0);
 
     let mut actual = gather_clock_regression_results(

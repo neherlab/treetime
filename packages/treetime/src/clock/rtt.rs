@@ -3,8 +3,9 @@ use crate::clock::clock_regression::ClockRegressionPoint;
 use crate::clock::clock_state::ClockInputs;
 use deser::{Deserialize, Serialize};
 use schemars::JsonSchema;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::adapters::TrueOrNull;
@@ -12,7 +13,7 @@ use treetime_utils::adapters::TrueOrNull;
 pub(crate) fn gather_clock_regression_results(
   graph: &Graph,
   inputs: &ClockInputs,
-  divergences: &BTreeMap<GraphNodeKey, f64>,
+  divergences: &NodeMap<f64>,
   outliers: &BTreeSet<GraphNodeKey>,
   clock_model: &ClockModel,
   names: &NodeNames,

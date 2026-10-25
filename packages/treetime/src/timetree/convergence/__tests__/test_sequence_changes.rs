@@ -17,9 +17,11 @@ mod tests {
   use eyre::Report;
   use indoc::indoc;
   use itertools::Itertools;
-  use maplit::btreemap;
+  use treetime_graph::key_map::NodeMap;
+  use treetime_graph::keymap;
+
   use pretty_assertions::assert_eq;
-  use std::collections::{BTreeMap, BTreeSet};
+  use std::collections::BTreeSet;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::fasta::fasta_read;
@@ -30,15 +32,17 @@ mod tests {
 
   #[test]
   fn test_count_sequence_changes_counts_differing_and_extra_positions_of_shared_nodes() -> Result<(), Report> {
-    let previous: AncestralStateSnapshot = btreemap! {
-      GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?),
-      GraphNodeKey(1) => SeqOverlay::from(Seq::try_from_str("AAAA")?),
-      GraphNodeKey(2) => SeqOverlay::from(Seq::try_from_str("CC")?),
+    let mut graph = Graph::new();
+    let [n0, n1, n2, n3] = [(); 4].map(|()| graph.add_node());
+    let previous: AncestralStateSnapshot = keymap! {
+      n0 => SeqOverlay::from(Seq::try_from_str("ACGT")?),
+      n1 => SeqOverlay::from(Seq::try_from_str("AAAA")?),
+      n2 => SeqOverlay::from(Seq::try_from_str("CC")?),
     };
-    let current: AncestralStateSnapshot = btreemap! {
-      GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("TCGA")?),
-      GraphNodeKey(1) => SeqOverlay::from(Seq::try_from_str("AAAAAA")?),
-      GraphNodeKey(3) => SeqOverlay::from(Seq::try_from_str("GG")?),
+    let current: AncestralStateSnapshot = keymap! {
+      n0 => SeqOverlay::from(Seq::try_from_str("TCGA")?),
+      n1 => SeqOverlay::from(Seq::try_from_str("AAAAAA")?),
+      n3 => SeqOverlay::from(Seq::try_from_str("GG")?),
     };
 
     assert_eq!(4, count_sequence_changes(&[previous], &[current]));
@@ -47,13 +51,15 @@ mod tests {
 
   #[test]
   fn test_count_sequence_changes_sums_over_partitions() -> Result<(), Report> {
+    let mut graph = Graph::new();
+    let [n0] = [(); 1].map(|()| graph.add_node());
     let previous: Vec<AncestralStateSnapshot> = vec![
-      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?) },
-      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("AAA")?) },
+      keymap! { n0 => SeqOverlay::from(Seq::try_from_str("ACGT")?) },
+      keymap! { n0 => SeqOverlay::from(Seq::try_from_str("AAA")?) },
     ];
     let current: Vec<AncestralStateSnapshot> = vec![
-      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("TCGT")?) },
-      btreemap! { GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACC")?) },
+      keymap! { n0 => SeqOverlay::from(Seq::try_from_str("TCGT")?) },
+      keymap! { n0 => SeqOverlay::from(Seq::try_from_str("ACC")?) },
     ];
 
     assert_eq!(3, count_sequence_changes(&previous, &current));
@@ -62,8 +68,10 @@ mod tests {
 
   #[test]
   fn test_count_sequence_changes_of_equal_snapshots_is_zero() -> Result<(), Report> {
-    let snapshot: AncestralStateSnapshot = btreemap! {
-      GraphNodeKey(0) => SeqOverlay::from(Seq::try_from_str("ACGT")?),
+    let mut graph = Graph::new();
+    let [n0] = [(); 1].map(|()| graph.add_node());
+    let snapshot: AncestralStateSnapshot = keymap! {
+      n0 => SeqOverlay::from(Seq::try_from_str("ACGT")?),
     };
 
     assert_eq!(
@@ -104,9 +112,9 @@ mod tests {
       .filter(|node| !node.is_leaf())
       .map(|node| node.key())
       .collect();
-    assert_eq!(internal, actual.keys().copied().collect::<BTreeSet<_>>());
-    let lengths: BTreeMap<GraphNodeKey, usize> = actual.iter().map(|(key, seq)| (*key, seq.to_seq().len())).collect();
-    let expected_lengths: BTreeMap<GraphNodeKey, usize> = internal.iter().map(|key| (*key, 10)).collect();
+    assert_eq!(internal, actual.keys().collect::<BTreeSet<_>>());
+    let lengths: NodeMap<usize> = actual.iter().map(|(key, seq)| (key, seq.to_seq().len())).collect();
+    let expected_lengths: NodeMap<usize> = internal.iter().map(|key| (*key, 10)).collect();
     assert_eq!(expected_lengths, lengths);
     Ok(())
   }
@@ -127,7 +135,7 @@ mod tests {
     let actual = helpers::single_partition(capture_ancestral_states(&graph, &branch_model));
 
     let shared = Seq::try_from_str("ACGTACGTAC")?;
-    let expected: BTreeMap<GraphNodeKey, Seq> = graph
+    let expected: NodeMap<Seq> = graph
       .get_nodes()
       .filter(|node| !node.is_leaf())
       .map(|node| (node.key(), shared.clone()))
@@ -138,13 +146,14 @@ mod tests {
 
   mod helpers {
     use super::*;
+    use treetime_graph::key_map::NodeMap;
 
     pub(super) fn single_partition(snapshots: Vec<AncestralStateSnapshot>) -> AncestralStateSnapshot {
       snapshots.into_iter().exactly_one().expect("one partition")
     }
 
-    pub(super) fn materialize(snapshot: &AncestralStateSnapshot) -> BTreeMap<GraphNodeKey, Seq> {
-      snapshot.iter().map(|(key, seq)| (*key, seq.to_seq())).collect()
+    pub(super) fn materialize(snapshot: &AncestralStateSnapshot) -> NodeMap<Seq> {
+      snapshot.iter().map(|(key, seq)| (key, seq.to_seq())).collect()
     }
 
     pub(super) fn sparse_model(fasta: &str) -> Result<(Graph, BranchModel), Report> {

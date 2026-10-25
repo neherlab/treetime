@@ -14,9 +14,10 @@ pub(crate) mod tests {
   use crate::test_utils::leaf_seq_inputs;
   use eyre::Report;
   use indoc::indoc;
-  use std::collections::BTreeMap;
+  use treetime_graph::key_map::EdgeMap;
+
   use std::sync::LazyLock;
-  use treetime_graph::edge::GraphEdgeKey;
+
   use treetime_graph::graph::Graph;
   use treetime_graph::node_names::NodeNames;
 
@@ -53,7 +54,7 @@ pub(crate) mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &mut EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let fitch = create_fitch_partition(
       graph,
@@ -75,7 +76,7 @@ pub(crate) mod tests {
     graph: &Graph,
     names: &NodeNames,
     aln: &[AlignmentRecord],
-    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &mut EdgeMap<Option<f64>>,
   ) -> Result<PartitionSet, Report> {
     let partition = PartitionMarginalDense::new(
       Alphabet::new(AlphabetName::Nuc)?,
@@ -94,7 +95,7 @@ pub(crate) mod tests {
   pub(crate) fn compute_total_lh(
     graph: &Graph,
     reconstruction: PartitionSet,
-    branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &EdgeMap<Option<f64>>,
   ) -> Result<(PartitionSet, f64), Report> {
     let (reconstruction, log_lh) = reconstruction.marginal_update(graph, &branch_lengths_or_zero(branch_lengths))?;
     Ok((reconstruction, log_lh.value()))
@@ -103,7 +104,7 @@ pub(crate) mod tests {
   fn apply_initial_guess(
     graph: &Graph,
     reconstruction: &PartitionSet,
-    branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+    branch_lengths: &mut EdgeMap<Option<f64>>,
   ) -> Result<(), Report> {
     guess_initial_branch_lengths(
       graph,

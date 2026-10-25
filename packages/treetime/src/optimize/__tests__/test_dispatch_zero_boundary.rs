@@ -420,8 +420,8 @@ pub(super) mod tests {
     use eyre::Report;
     use indoc::indoc;
     use ndarray::{Array2, array};
-    use std::collections::BTreeMap;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node_names::NodeNames;
 
@@ -443,7 +443,7 @@ pub(super) mod tests {
       graph: &Graph,
       names: &NodeNames,
       model: GtrModelName,
-      branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &mut EdgeMap<Option<f64>>,
     ) -> Result<PartitionSet, Report> {
       let aln: Vec<AlignmentRecord> = fasta_read(IDENTICAL_ALIGNMENT.as_bytes(), &Alphabet::default())?
         .into_iter()

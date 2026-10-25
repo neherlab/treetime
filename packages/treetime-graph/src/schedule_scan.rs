@@ -1,4 +1,4 @@
-use crate::edge::GraphEdgeKey;
+use crate::key_map::{EdgeMap, NodeMap};
 use crate::node::GraphNodeKey;
 use crate::schedule::GraphSchedule;
 use eyre::Report;
@@ -6,7 +6,6 @@ use itertools::{Itertools, izip};
 use parking_lot::Mutex;
 use rayon::{Scope, current_num_threads, scope};
 use smallvec::{SmallVec, smallvec};
-use std::collections::BTreeMap;
 use std::iter::{repeat_n, repeat_with};
 use std::marker::PhantomData;
 use std::mem;
@@ -70,11 +69,11 @@ impl GraphSchedule<'_> {
 
   pub fn join_parent_edges<N, E>(
     &self,
-    nodes: BTreeMap<GraphNodeKey, N>,
-    mut edges: BTreeMap<GraphEdgeKey, E>,
+    nodes: NodeMap<N>,
+    mut edges: EdgeMap<E>,
   ) -> Result<impl Iterator<Item = (GraphNodeKey, (N, PerEdge<E>))>, Report> {
     for &key in self.preorder() {
-      if !nodes.contains_key(&key) {
+      if !nodes.contains_key(key) {
         return Err(make_internal_report!("Scan input is missing node {key}"));
       }
       if let Some((_, edge_key)) = self
@@ -87,13 +86,13 @@ impl GraphSchedule<'_> {
         ));
       }
     }
-    if let Some(key) = nodes.keys().find(|&&key| !self.contains(key)) {
+    if let Some(key) = nodes.keys().find(|&key| !self.contains(key)) {
       return Err(make_internal_report!(
         "Scan input names node {key}, which is not in the graph"
       ));
     }
     if edges.len() > self.edge_count()
-      && let Some(edge_key) = edges.keys().find(|&&edge_key| !self.contains_edge(edge_key))
+      && let Some(edge_key) = edges.keys().find(|&edge_key| !self.contains_edge(edge_key))
     {
       return Err(make_internal_report!(
         "Scan input names edge {edge_key}, which is not in the graph"
@@ -324,14 +323,14 @@ pub struct ScanOutputs<'s, Out> {
 }
 
 impl<Out> ScanOutputs<'_, Out> {
-  pub fn into_map(self) -> BTreeMap<GraphNodeKey, Out> {
-    bulk_map(self.schedule.preorder().len(), entries(self.outputs))
+  pub fn into_map(self) -> NodeMap<Out> {
+    NodeMap::from_slots(self.outputs)
   }
 }
 
 impl<N, E> ScanOutputs<'_, (N, PerEdge<E>)> {
   pub fn split_parent_edges(self) -> Result<NodeEdgeMaps<N, E>, Report> {
-    split_parent_edges(self.schedule, entries(self.outputs).map(Ok))
+    split_parent_edges(self.schedule, self.outputs.into_iter().map(Ok))
   }
 }
 
@@ -350,34 +349,42 @@ pub struct SharedOutputs<'s, T> {
 }
 
 impl<T> SharedOutputs<'_, T> {
-  pub fn into_map(self) -> Result<BTreeMap<GraphNodeKey, T>, Report> {
-    let len = self.schedule.preorder().len();
-    unwrapped_entries(self.outputs).process_results(|entries| bulk_map(len, entries))
+  pub fn into_map(self) -> Result<NodeMap<T>, Report> {
+    unwrapped_slots(self.outputs).try_collect().map(NodeMap::from_slots)
   }
 }
 
 impl<N, E> SharedOutputs<'_, (N, PerEdge<E>)> {
   pub fn split_parent_edges(self) -> Result<NodeEdgeMaps<N, E>, Report> {
-    split_parent_edges(self.schedule, unwrapped_entries(self.outputs))
+    split_parent_edges(self.schedule, unwrapped_slots(self.outputs))
   }
 }
 
-fn unwrapped_entries<T>(outputs: Vec<Option<Arc<T>>>) -> impl Iterator<Item = Result<(GraphNodeKey, T), Report>> {
-  entries(outputs).map(|(key, output)| {
-    Arc::into_inner(output)
-      .map(|output| (key, output))
-      .ok_or_else(|| make_internal_report!("Scan output of node {key} is still shared after the scan"))
+fn unwrapped_slots<T>(outputs: Vec<Option<Arc<T>>>) -> impl Iterator<Item = Result<Option<T>, Report>> {
+  outputs.into_iter().enumerate().map(|(index, output)| {
+    output
+      .map(|output| {
+        Arc::into_inner(output).ok_or_else(|| {
+          let key = GraphNodeKey(index);
+          make_internal_report!("Scan output of node {key} is still shared after the scan")
+        })
+      })
+      .transpose()
   })
 }
 
 fn split_parent_edges<N, E>(
   schedule: &GraphSchedule<'_>,
-  entries: impl Iterator<Item = Result<(GraphNodeKey, (N, PerEdge<E>)), Report>>,
+  slots: impl Iterator<Item = Result<Option<(N, PerEdge<E>)>, Report>>,
 ) -> Result<NodeEdgeMaps<N, E>, Report> {
-  let mut nodes = Vec::with_capacity(schedule.preorder().len());
-  let mut edges = Vec::with_capacity(schedule.edge_count());
-  for entry in entries {
-    let (key, (node, values)) = entry?;
+  let mut nodes = Vec::with_capacity(schedule.key_capacity());
+  let mut edges = EdgeMap::new();
+  for (index, slot) in slots.enumerate() {
+    let Some((node, values)) = slot? else {
+      nodes.push(None);
+      continue;
+    };
+    let key = GraphNodeKey(index);
     let parents = schedule.parents(key);
     if values.len() != parents.len() {
       return Err(make_internal_report!(
@@ -387,31 +394,18 @@ fn split_parent_edges<N, E>(
       ));
     }
     edges.extend(izip!(parents, values).map(|(&(_, edge_key), value)| (edge_key, value)));
-    nodes.push((key, node));
+    nodes.push(Some(node));
   }
   Ok(NodeEdgeMaps {
-    nodes: BTreeMap::from_iter(nodes),
-    edges: BTreeMap::from_iter(edges),
+    nodes: NodeMap::from_slots(nodes),
+    edges,
   })
-}
-
-fn bulk_map<V>(len: usize, entries: impl Iterator<Item = (GraphNodeKey, V)>) -> BTreeMap<GraphNodeKey, V> {
-  let mut sorted = Vec::with_capacity(len);
-  sorted.extend(entries);
-  BTreeMap::from_iter(sorted)
-}
-
-fn entries<Out>(outputs: Vec<Option<Out>>) -> impl Iterator<Item = (GraphNodeKey, Out)> {
-  outputs
-    .into_iter()
-    .enumerate()
-    .filter_map(|(index, output)| output.map(|output| (GraphNodeKey(index), output)))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NodeEdgeMaps<N, E> {
-  pub nodes: BTreeMap<GraphNodeKey, N>,
-  pub edges: BTreeMap<GraphEdgeKey, E>,
+  pub nodes: NodeMap<N>,
+  pub edges: EdgeMap<E>,
 }
 
 pub type PerEdge<T> = SmallVec<[T; 1]>;

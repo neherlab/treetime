@@ -118,7 +118,8 @@ mod tests {
     use eyre::Report;
     use std::collections::BTreeMap;
     use std::mem;
-    use treetime_graph::edge::GraphEdgeKey;
+    use treetime_graph::key_map::EdgeMap;
+
     use treetime_graph::graph::Graph;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::reroot::RerootResult;
@@ -130,7 +131,7 @@ mod tests {
     pub(super) struct Case {
       pub(super) graph: Graph,
       pub(super) names: NodeNames,
-      branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: EdgeMap<Option<f64>>,
       partitions: PartitionSet,
     }
 

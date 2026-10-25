@@ -13,9 +13,9 @@ use crate::progress::LogSink;
 use eyre::Report;
 use itertools::{Either, Itertools, izip};
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::reroot::{EdgeMergeInfo, RerootResult};
 use treetime_primitives::LogLh;
 use treetime_utils::{make_internal_error, make_internal_report};
@@ -24,7 +24,7 @@ pub(crate) fn build_partition_set(
   representation: Representation,
   graph: &Graph,
   partitions: Vec<SplitPartition>,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
   let rate = InferredRate::for_partition_count(partitions.len());
@@ -115,11 +115,7 @@ impl PartitionSet {
       .sum()
   }
 
-  pub(crate) fn marginal_update(
-    self,
-    graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-  ) -> Result<(Self, LogLh), Report> {
+  pub(crate) fn marginal_update(self, graph: &Graph, branch_lengths: &EdgeMap<f64>) -> Result<(Self, LogLh), Report> {
     Ok(match self {
       Self::Dense(partitions) => {
         let (partitions, log_lh) =
@@ -172,7 +168,7 @@ impl PartitionSet {
   pub(crate) fn estimate_rates(
     self,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    branch_lengths: &EdgeMap<f64>,
     log: &dyn LogSink,
   ) -> Result<Self, Report> {
     Ok(match self {

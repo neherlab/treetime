@@ -17,8 +17,8 @@ use treetime::mugration::pipeline::{self, MugrationInput, MugrationOutput, Mugra
 use treetime::mugration::trait_pairing::{TraitPairing, pair_trait_rows};
 use treetime::progress::{LogSink, RunWarning, RunWarningKind, StageSink};
 use treetime::{progress_info, progress_warn};
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_io::discrete_states_csv::discrete_attrs_read_file;
 use treetime_io::lat_longs_tsv::{Coordinates, LatLongs, lat_longs_read_file};
@@ -230,7 +230,7 @@ fn trait_demes(
 fn write_mugration_trees(
   output: &MugrationOutput,
   names: &NodeNames,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   traits: TreeTraits<'_>,
   resolved: &ResolvedOutputs,
   log: &dyn LogSink,

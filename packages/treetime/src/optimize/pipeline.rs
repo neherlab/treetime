@@ -23,8 +23,8 @@ use crate::{progress_info, progress_warn};
 use eyre::Report;
 use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node_names::NodeNames;
 use treetime_utils::make_report;
 
@@ -97,7 +97,7 @@ pub struct OptimizeInput {
   pub graph: Graph,
   pub names: NodeNames,
   pub sequences: SequenceInput,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
 }
 
 #[derive(Debug)]
@@ -105,7 +105,7 @@ pub struct OptimizeOutput {
   pub graph: Graph,
   pub alignments: Vec<AlignmentResult>,
   pub partitions: Vec<PartitionResult>,
-  pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub branch_lengths: EdgeMap<Option<f64>>,
   pub names: NodeNames,
 }
 
@@ -137,7 +137,7 @@ fn prepare_partitions(
   params: &OptimizeParams,
   graph: &Graph,
   sequences: SequenceInput,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   log: &dyn LogSink,
 ) -> Result<PreparedPartitions, Report> {
   let normalize_inferred = sequences.has_inferred_model();
@@ -194,7 +194,7 @@ fn apply_initial_guess(
   params: &OptimizeParams,
   graph: &Graph,
   partitions: &PartitionSet,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   names: &NodeNames,
   log: &dyn LogSink,
 ) -> Result<(), Report> {
@@ -276,7 +276,7 @@ fn partition_mutations(
       let edge_key = edge.key();
       Ok((edge_key, reconstruction.edge_mutations(graph, edge_key, track)?))
     })
-    .collect::<Result<BTreeMap<_, _>, Report>>()?;
+    .collect::<Result<EdgeMap<_>, Report>>()?;
   Ok(SequenceMutations {
     root_sequence: reconstruction.root_sequence(graph)?,
     edge_mutations,
@@ -288,7 +288,7 @@ fn reroot_optimize(
   names: &mut NodeNames,
   spec: &RerootSpec,
   partitions: PartitionSet,
-  branch_lengths: &mut BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &mut EdgeMap<Option<f64>>,
   log: &dyn LogSink,
 ) -> Result<PartitionSet, Report> {
   let reroot_result = reroot_date_free(

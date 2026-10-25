@@ -10,9 +10,10 @@ use eyre::{Report, WrapErr};
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use statrs::function::erf::erf_inv;
-use std::collections::BTreeMap;
 use std::f64::consts::SQRT_2;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::node_names::NodeNames;
 
@@ -37,8 +38,8 @@ pub(crate) fn compute_rate_susceptibility(
     let scaled_gammas = time_inputs
       .gammas
       .iter()
-      .map(|(key, gamma)| (*key, gamma * scale))
-      .collect::<BTreeMap<_, _>>();
+      .map(|(key, gamma)| (key, gamma * scale))
+      .collect::<EdgeMap<_>>();
     let scaled_inputs = TimeInferenceInputs {
       gammas: &scaled_gammas,
       posterior_summaries: PosteriorSummaries {
@@ -79,14 +80,14 @@ pub(crate) fn compute_rate_susceptibility(
 }
 
 pub(crate) struct RateSusceptibility {
-  pub dates: BTreeMap<GraphNodeKey, [f64; 3]>,
+  pub dates: NodeMap<[f64; 3]>,
   pub central: TimeInference,
 }
 
 pub fn extract_confidence_intervals(
   graph: &Graph,
   inference: &TimeInference,
-  rate_susceptibility_dates: &BTreeMap<GraphNodeKey, [f64; 3]>,
+  rate_susceptibility_dates: &NodeMap<[f64; 3]>,
   names: &NodeNames,
 ) -> Result<Vec<NodeConfidenceInterval>, Report> {
   if !inference.posterior_summaries.regions {
@@ -103,7 +104,7 @@ pub fn extract_confidence_intervals(
         key,
         name,
         &inference.posterior[&key],
-        rate_susceptibility_dates.get(&key),
+        rate_susceptibility_dates.get(key),
       )
     })
     .sorted_by_key(|ci| ci.key)

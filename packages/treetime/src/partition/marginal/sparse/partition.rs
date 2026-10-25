@@ -17,9 +17,10 @@ use crate::seq::overlay::SeqOverlay;
 use crate::seq::sink::AmbiguousSites;
 use crate::{make_error, make_internal_report};
 use eyre::{Report, WrapErr};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::reroot::EdgeMergeInfo;
 use treetime_primitives::{LogLh, Seq, seq};
@@ -31,8 +32,8 @@ pub struct PartitionMarginalSparse {
   pub length: usize,
   pub total_length: usize,
   pub root_sequence: Seq,
-  pub obs_nodes: BTreeMap<GraphNodeKey, SparseNodeObs>,
-  pub obs_edges: BTreeMap<GraphEdgeKey, SparseEdgeObs>,
+  pub obs_nodes: NodeMap<SparseNodeObs>,
+  pub obs_edges: EdgeMap<SparseEdgeObs>,
 }
 
 impl PartitionMarginalSparse {
@@ -41,12 +42,8 @@ impl PartitionMarginalSparse {
     Self { total_length, ..self }
   }
 
-  pub(crate) fn edge_subs(
-    &self,
-    estimates: &BTreeMap<GraphEdgeKey, Vec<Sub>>,
-    edge_key: GraphEdgeKey,
-  ) -> Result<Vec<Sub>, Report> {
-    match estimates.get(&edge_key) {
+  pub(crate) fn edge_subs(&self, estimates: &EdgeMap<Vec<Sub>>, edge_key: GraphEdgeKey) -> Result<Vec<Sub>, Report> {
+    match estimates.get(edge_key) {
       Some(subs) => Ok(subs.clone()),
       None => make_error!("edge_subs() called before marginal inference populated subs_ml for edge {edge_key:?}"),
     }
@@ -65,11 +62,7 @@ impl PartitionMarginalSparse {
     self.root_sequence.clone()
   }
 
-  pub(crate) fn root_sequence(
-    &self,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-    graph: &Graph,
-  ) -> Result<Seq, Report> {
+  pub(crate) fn root_sequence(&self, node_states: &NodeMap<SparseNodeState>, graph: &Graph) -> Result<Seq, Report> {
     Ok(map_seq(&node_states[&graph.root_key()?], &self.alphabet))
   }
 
@@ -89,8 +82,8 @@ impl PartitionMarginalSparse {
   pub(crate) fn create_edge_contribution(
     &self,
     gtr: &GTR,
-    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
-    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    backward: &EdgeMap<SparseEdgeBackward>,
+    forward: &EdgeMap<SparseEdgeForward>,
     edge_key: GraphEdgeKey,
   ) -> Result<OptimizationContribution, Report> {
     OptimizationContribution::from_sparse(
@@ -107,17 +100,17 @@ impl PartitionMarginalSparse {
 
   pub(crate) fn extract_ancestral_sequence(
     &self,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    node_states: &NodeMap<SparseNodeState>,
     node_key: GraphNodeKey,
   ) -> SeqOverlay {
-    node_states.get(&node_key).map_or_else(
+    node_states.get(node_key).map_or_else(
       || SeqOverlay::from(seq![]),
       |node| map_seq_overlay(node, &self.alphabet),
     )
   }
 
   pub(crate) fn reconcile_topology(&mut self, graph: &Graph, merges: &[EdgeMergeInfo]) -> Result<(), Report> {
-    let merged_from: BTreeMap<GraphEdgeKey, GraphNodeKey> = merges
+    let merged_from: EdgeMap<GraphNodeKey> = merges
       .iter()
       .map(|merge| (merge.merged_edge_key, merge.removed_node_key))
       .collect();
@@ -137,23 +130,23 @@ impl PartitionMarginalSparse {
     for &key in &graph_edge_keys {
       self.obs_edges.entry(key).or_default();
     }
-    self.obs_nodes.retain(|k, _| graph_node_keys.contains(k));
-    self.obs_edges.retain(|k, _| graph_edge_keys.contains(k));
+    self.obs_nodes.retain(|k, _| graph_node_keys.contains(&k));
+    self.obs_edges.retain(|k, _| graph_edge_keys.contains(&k));
     Ok(())
   }
 
   fn sequence_source(
     &self,
     graph: &Graph,
-    merged_from: &BTreeMap<GraphEdgeKey, GraphNodeKey>,
+    merged_from: &EdgeMap<GraphNodeKey>,
     node_key: GraphNodeKey,
   ) -> Result<GraphNodeKey, Report> {
     let mut key = node_key;
     while let Some((parent_key, edge_key)) = graph.node_parent(key)? {
-      if let Some(&removed_key) = merged_from.get(&edge_key) {
+      if let Some(&removed_key) = merged_from.get(edge_key) {
         return Ok(removed_key);
       }
-      if self.obs_nodes.contains_key(&parent_key) {
+      if self.obs_nodes.contains_key(parent_key) {
         return Ok(parent_key);
       }
       key = parent_key;
@@ -166,8 +159,8 @@ impl PartitionMarginalSparse {
   pub(crate) fn node_sequence(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    node_states: &NodeMap<SparseNodeState>,
+    forward: &EdgeMap<SparseEdgeForward>,
     impute: bool,
     node_key: GraphNodeKey,
   ) -> Result<Seq, Report> {
@@ -202,8 +195,8 @@ impl PartitionMarginalSparse {
   pub(crate) fn node_ambiguity(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
-    forward: &BTreeMap<GraphEdgeKey, SparseEdgeForward>,
+    node_states: &NodeMap<SparseNodeState>,
+    forward: &EdgeMap<SparseEdgeForward>,
     impute: bool,
     node_key: GraphNodeKey,
     threshold: AmbiguityThreshold,
@@ -235,10 +228,10 @@ impl PartitionMarginalSparse {
   pub(crate) fn sample_sequences(
     &self,
     graph: &Graph,
-    node_states: &BTreeMap<GraphNodeKey, SparseNodeState>,
+    node_states: &NodeMap<SparseNodeState>,
     sample_mode: SampleMode,
     rng: &mut dyn rand::Rng,
-  ) -> Result<BTreeMap<GraphNodeKey, Seq>, Report> {
+  ) -> Result<NodeMap<Seq>, Report> {
     sample_internal_sequences(graph, sample_mode, |key| {
       map_seq_sampled(&node_states[&key], &self.alphabet, &mut Resolve::Sample(&mut *rng))
     })
@@ -247,16 +240,16 @@ impl PartitionMarginalSparse {
 
 impl MarginalPasses for PartitionMarginalSparse {
   type Node = SparseNodeState;
-  type BackwardInput = BTreeMap<GraphNodeKey, SparseNodeState>;
+  type BackwardInput = NodeMap<SparseNodeState>;
   type Backward = SparseEdgeBackward;
   type Forward = SparseEdgeForward;
   type Estimate = Vec<Sub>;
 
-  fn backward_input(node_states: &BTreeMap<GraphNodeKey, SparseNodeState>) -> &Self::BackwardInput {
+  fn backward_input(node_states: &NodeMap<SparseNodeState>) -> &Self::BackwardInput {
     node_states
   }
 
-  fn fresh_backward_input(node_states: &BTreeMap<GraphNodeKey, SparseNodeState>) -> Self::BackwardInput {
+  fn fresh_backward_input(node_states: &NodeMap<SparseNodeState>) -> Self::BackwardInput {
     let mut input = node_states.clone();
     for node in input.values_mut() {
       node.profile.log_lh = LogLh::ZERO;
@@ -268,7 +261,7 @@ impl MarginalPasses for PartitionMarginalSparse {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+    branch_lengths: &EdgeMap<f64>,
     input: &Self::BackwardInput,
   ) -> Result<MarginalBackward<SparseNodeState, SparseEdgeBackward>, Report> {
     gtr.check_site_count(self.length)?;
@@ -279,9 +272,9 @@ impl MarginalPasses for PartitionMarginalSparse {
     &self,
     gtr: &GTR,
     graph: &Graph,
-    branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
-    node_states: BTreeMap<GraphNodeKey, SparseNodeState>,
-    backward: &BTreeMap<GraphEdgeKey, SparseEdgeBackward>,
+    branch_lengths: &EdgeMap<f64>,
+    node_states: NodeMap<SparseNodeState>,
+    backward: &EdgeMap<SparseEdgeBackward>,
   ) -> Result<MarginalForward<SparseNodeState, SparseEdgeForward, Vec<Sub>>, Report> {
     gtr.check_site_count(self.length)?;
     forward::process_forward_indexed(self, gtr, graph, branch_lengths, node_states, backward)

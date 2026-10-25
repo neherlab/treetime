@@ -53,6 +53,8 @@ mod tests {
     use eyre::Report;
     use std::collections::BTreeMap;
     use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::EdgeMap;
+    use treetime_graph::key_map::NodeMap;
     use treetime_graph::node::GraphNodeKey;
     use treetime_graph::node_names::NodeNames;
     use treetime_graph::schedule::GraphSchedule;
@@ -62,8 +64,8 @@ mod tests {
 
     pub(super) fn build_graph(tree: &GenTree) -> Result<(NameParentLength, String), Report> {
       let mut graph = Graph::new();
-      let mut names = BTreeMap::new();
-      let mut weights = BTreeMap::new();
+      let mut names = NodeMap::new();
+      let mut weights = EdgeMap::new();
       let mut expected = BTreeMap::new();
       let mut stack: Vec<(&GenTree, Option<(GraphNodeKey, &str)>, Option<f64>)> = vec![(tree, None, None)];
       while let Some((node, parent, length)) = stack.pop() {

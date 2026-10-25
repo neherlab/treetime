@@ -5,31 +5,30 @@ use crate::partition::marginal::discrete::partition::StateObservation;
 use crate::progress::LogSink;
 use eyre::Report;
 use itertools::Itertools;
-use std::collections::BTreeMap;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::NodeMap;
 use treetime_graph::node_names::NodeNames;
 
 pub(crate) fn leaf_observations(
   graph: &Graph,
-  traits: &BTreeMap<GraphNodeKey, String>,
+  traits: &NodeMap<String>,
   names: &NodeNames,
   states: &StateAlphabet,
   missing_data: &str,
   source: &str,
   log: &dyn LogSink,
-) -> Result<BTreeMap<GraphNodeKey, StateObservation>, Report> {
+) -> Result<NodeMap<StateObservation>, Report> {
   let leaves = graph.get_leaves().map(|leaf| leaf.key()).collect_vec();
   let without_value = leaves
     .iter()
-    .filter(|key| !traits.contains_key(key))
+    .filter(|&&key| !traits.contains_key(key))
     .map(|key| names[*key].to_owned())
     .collect_vec();
   warn_leaves_without_data(&without_value, leaves.len(), LeafData::TraitValue, source, log);
 
   leaves
     .into_iter()
-    .map(|key| match traits.get(&key) {
+    .map(|key| match traits.get(key) {
       Some(value) if value != missing_data => {
         let index = states.index_of(value).ok_or_else(|| {
           let name = &names[key];

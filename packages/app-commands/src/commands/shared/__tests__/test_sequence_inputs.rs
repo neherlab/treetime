@@ -98,6 +98,7 @@ mod tests {
     use std::collections::BTreeMap;
     use treetime::alphabet::alphabet::Alphabet;
     use treetime::progress::{LogSink, NoopProgress};
+    use treetime_graph::node::GraphNodeKey;
     use treetime_io::nwk::nwk_read;
 
     #[derive(Debug, PartialEq)]
@@ -135,7 +136,7 @@ mod tests {
         .iter()
         .map(|aligned| {
           let source = &aligned.source;
-          let name = |key| source.nodes[key].name.clone();
+          let name = |key: GraphNodeKey| source.nodes[key].name.clone();
           SourceFacts {
             path: source.path.clone(),
             length: source.length,

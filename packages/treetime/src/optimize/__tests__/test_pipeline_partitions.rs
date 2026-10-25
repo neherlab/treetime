@@ -272,10 +272,11 @@ mod tests {
       split_at_gap_free_column, whole_alignment_set,
     };
     use eyre::Report;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
     use std::path::PathBuf;
     use treetime_graph::edge::GraphEdgeKey;
     use treetime_graph::graph::Graph;
+    use treetime_graph::key_map::EdgeMap;
     use treetime_graph::node_names::NodeNames;
 
     use treetime_io::nwk::{NwkParse, nwk_read};
@@ -355,8 +356,8 @@ mod tests {
 
     pub(super) struct Optimized {
       pub(super) edges: BTreeSet<(String, String)>,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
-      pub(super) sequences: Vec<(Seq, BTreeMap<GraphEdgeKey, Vec<Mutation>>)>,
+      pub(super) branch_lengths: EdgeMap<f64>,
+      pub(super) sequences: Vec<(Seq, EdgeMap<Vec<Mutation>>)>,
       pub(super) indel_rates: Vec<Option<f64>>,
       pub(super) paths: Vec<PathBuf>,
     }
@@ -442,7 +443,7 @@ mod tests {
     pub(super) struct SmallSet {
       pub(super) graph: Graph,
       pub(super) names: NodeNames,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+      pub(super) branch_lengths: EdgeMap<Option<f64>>,
       pub(super) partitions: PartitionSet,
     }
 
@@ -485,7 +486,7 @@ mod tests {
     pub(super) fn objective(
       graph: &Graph,
       partitions: &PartitionSet,
-      branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+      branch_lengths: &EdgeMap<Option<f64>>,
       indels: &EdgeIndels,
     ) -> Result<f64, Report> {
       let (partitions, log_lh) = partitions
@@ -499,7 +500,7 @@ mod tests {
 
     pub(super) struct RateStep {
       pub(super) rates: Vec<f64>,
-      pub(super) branch_lengths: BTreeMap<GraphEdgeKey, f64>,
+      pub(super) branch_lengths: EdgeMap<f64>,
     }
 
     pub(super) fn rate_step_from_rates(

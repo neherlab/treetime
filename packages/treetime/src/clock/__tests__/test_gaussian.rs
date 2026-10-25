@@ -5,6 +5,7 @@ mod tests {
   use crate::timetree::inference::result::NodeTimes;
   use eyre::Report;
   use std::collections::BTreeMap;
+  use treetime_graph::key_map::NodeMap;
   use treetime_graph::node::GraphNodeKey;
   use treetime_io::nwk::nwk_read;
   use treetime_utils::assert_error;
@@ -42,7 +43,7 @@ mod tests {
     let times = clock
       .node_times
       .iter()
-      .map(|(key, t)| (names[*key].to_owned(), (t.mean, t.std)))
+      .map(|(key, t)| (names[key].to_owned(), (t.mean, t.std)))
       .collect();
     Ok((clock, times))
   }
@@ -155,7 +156,7 @@ mod tests {
       &parsed.branch_lengths,
       SEQUENCE_LENGTH,
       &tip_dates,
-      &BTreeMap::new(),
+      &NodeMap::new(),
     )?
     .rate()?;
 

@@ -6,15 +6,16 @@ use crate::reroot::midpoint::midpoint_root;
 use crate::reroot::named_node::{named_node_point, oldest_tip, tip_group_mrca};
 use crate::reroot::params::{RerootMethod, RerootParams, RerootSpec, RootObjective};
 use eyre::Report;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
+use treetime_graph::key_map::EdgeMap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::split_fraction::SplitFraction;
 
 pub(crate) fn find_root(
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
+  branch_lengths: &EdgeMap<Option<f64>>,
   inputs: &ClockInputs,
   outliers: &BTreeSet<GraphNodeKey>,
   reroot_params: &RerootParams,

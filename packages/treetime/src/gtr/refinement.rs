@@ -8,10 +8,8 @@ use crate::{progress_info, progress_warn};
 use argmin::core::{CostFunction, Error, Executor};
 use eyre::Report;
 use log::debug;
-use std::collections::BTreeMap;
-use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
-use treetime_graph::node::GraphNodeKey;
+use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_primitives::LogLh;
 
 pub(crate) fn refine_gtr<P: TransitionCounts>(
@@ -20,7 +18,7 @@ pub(crate) fn refine_gtr<P: TransitionCounts>(
   input: &P::BackwardInput,
   refinement: &GtrRefinement,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   log: &dyn LogSink,
 ) -> Result<(GTR, MarginalUpdate<P::Node, P::Backward, P::Forward, P::Estimate>), Report>
 where
@@ -90,8 +88,8 @@ pub(crate) struct GtrRefinement {
 }
 
 struct RatedMessages<P: MarginalPasses> {
-  nodes: BTreeMap<GraphNodeKey, P::Node>,
-  backward: BTreeMap<GraphEdgeKey, P::Backward>,
+  nodes: NodeMap<P::Node>,
+  backward: EdgeMap<P::Backward>,
 }
 
 fn infer_gtr(
@@ -126,9 +124,9 @@ fn log_final(gtr: &GTR, log_lh: LogLh, log: &dyn LogSink) {
 pub(crate) fn optimize_gtr_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
-  nodes: &BTreeMap<GraphNodeKey, P::Node>,
+  nodes: &NodeMap<P::Node>,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
   range_edge: RateRangeEdge,
   log: &dyn LogSink,
 ) -> Result<RateStepResult<P>, Report>
@@ -243,9 +241,9 @@ fn keep_start_rate<P: MarginalPasses>(
   partition: &P,
   gtr: GTR,
   at_start: Option<GtrRateCandidate<P>>,
-  nodes: &BTreeMap<GraphNodeKey, P::Node>,
+  nodes: &NodeMap<P::Node>,
   graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, f64>,
+  branch_lengths: &EdgeMap<f64>,
 ) -> Result<RateStepResult<P>, Report> {
   let old_mu = gtr.mu();
   let (mut restored_gtr, restored_nodes, restored_backward) =
@@ -263,14 +261,14 @@ fn keep_start_rate<P: MarginalPasses>(
 
 type RateStepResult<P> = (
   GTR,
-  BTreeMap<GraphNodeKey, <P as MarginalPasses>::Node>,
-  BTreeMap<GraphEdgeKey, <P as MarginalPasses>::Backward>,
+  NodeMap<<P as MarginalPasses>::Node>,
+  EdgeMap<<P as MarginalPasses>::Backward>,
 );
 
 struct GtrRateCandidate<P: MarginalPasses> {
   gtr: GTR,
-  nodes: BTreeMap<GraphNodeKey, P::Node>,
-  backward: BTreeMap<GraphEdgeKey, P::Backward>,
+  nodes: NodeMap<P::Node>,
+  backward: EdgeMap<P::Backward>,
 }
 
 impl<F> CostFunction for &GtrRateCostFn<'_, F>
