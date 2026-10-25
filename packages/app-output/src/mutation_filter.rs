@@ -129,6 +129,9 @@ impl UnknownBridge {
     child_count: usize,
     mutations: Vec<Mutation>,
   ) -> Result<Vec<Mutation>, Report> {
+    if child_count == 0 {
+      return self.bridge_leaf_edge(parent_key, mutations);
+    }
     let mut hidden = self.inherit(parent_key);
     let mut reported = Vec::with_capacity(mutations.len());
     for mutation in mutations {
@@ -140,12 +143,7 @@ impl UnknownBridge {
       if sub.qry() == self.unknown {
         hidden.insert(lane, sub.reff());
       } else if sub.reff() == self.unknown {
-        if let Some(state) = hidden.remove(&lane).filter(|&state| state != sub.qry()) {
-          reported.push(Mutation::substitution(
-            mutation.track,
-            Sub::new(state, sub.pos(), sub.qry())?,
-          ));
-        }
+        reported.extend(bridged_substitution(mutation.track, hidden.remove(&lane), sub)?);
       } else {
         reported.push(mutation);
       }
@@ -159,6 +157,29 @@ impl UnknownBridge {
         },
       );
     }
+    Ok(reported)
+  }
+
+  fn bridge_leaf_edge(&mut self, parent_key: GraphNodeKey, mutations: Vec<Mutation>) -> Result<Vec<Mutation>, Report> {
+    let parent_states = self.hidden.get(&parent_key).map(|parent| &parent.states);
+    let mut reported = Vec::with_capacity(mutations.len());
+    for mutation in mutations {
+      let MutationEvent::Substitution(sub) = &mutation.event else {
+        reported.push(mutation);
+        continue;
+      };
+      if sub.qry() == self.unknown {
+        continue;
+      }
+      if sub.reff() == self.unknown {
+        let lane = (mutation.track.clone(), sub.pos());
+        let state = parent_states.and_then(|states| states.get(&lane)).copied();
+        reported.extend(bridged_substitution(mutation.track, state, sub)?);
+      } else {
+        reported.push(mutation);
+      }
+    }
+    self.release(parent_key);
     Ok(reported)
   }
 
@@ -177,9 +198,29 @@ impl UnknownBridge {
       parent.states.clone()
     }
   }
+
+  fn release(&mut self, parent_key: GraphNodeKey) {
+    if let Some(parent) = self.hidden.get_mut(&parent_key) {
+      parent.pending_children -= 1;
+      if parent.pending_children == 0 {
+        self.hidden.remove(&parent_key);
+      }
+    }
+  }
 }
 
 struct HiddenStates {
   states: BTreeMap<(MutationTrack, usize), AsciiChar>,
   pending_children: usize,
+}
+
+fn bridged_substitution(
+  track: MutationTrack,
+  hidden: Option<AsciiChar>,
+  sub: &Sub,
+) -> Result<Option<Mutation>, Report> {
+  hidden
+    .filter(|&state| state != sub.qry())
+    .map(|state| Ok(Mutation::substitution(track, Sub::new(state, sub.pos(), sub.qry())?)))
+    .transpose()
 }
