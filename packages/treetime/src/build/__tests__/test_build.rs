@@ -2,6 +2,7 @@
 mod tests {
   use crate::alphabet::alphabet::Alphabet;
   use crate::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts, missed_splits};
+  use crate::build::likelihood::{LikelihoodParams, refine_likelihood};
   use crate::build::mat::Mat;
   use crate::build::pipeline::{
     AnnealParams, BuildParams, BuiltMat, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat, mat_to_tree,
@@ -353,6 +354,63 @@ mod tests {
         fitch <= final_parsimony,
         "seed {seed}: Fitch {fitch} > MAT {final_parsimony}"
       );
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::one_partition(false)]
+  #[case::rate_classes(true)]
+  fn test_likelihood_spr_reattach_reproduces_the_tree_and_never_lowers_it(
+    #[case] rate_classes: bool,
+  ) -> Result<(), Report> {
+    // A subtree put back at its old place by the search must score the log-likelihood of the tree itself
+    let alphabet = Alphabet::default();
+    for seed in 0..2 {
+      let spec = CaseSpec {
+        seed,
+        sampling: (0..6)
+          .map(|i| SampleBatch {
+            tau: f64::from(i) * 0.25,
+            count: 10,
+          })
+          .collect(),
+        schedule: TcSchedule::constant(2.0)?,
+        model: ModelFamily::Jc69,
+        mu: 2e-2,
+        length: 600,
+      };
+      let case = spec.simulate()?;
+      let mut rng = get_random_number_generator(seed);
+      let observation = TipObservation {
+        ambiguity_rate: 0.01,
+        unknown_run_rate: 0.3,
+        unknown_run_lengths: 10..=80,
+      };
+      let observed = observe_tips(&case.tree.graph, &case.sequences.sequences, &observation, &mut rng)?;
+      let (sample_names, seqs): (Vec<String>, Vec<Seq>) = case
+        .tree
+        .graph
+        .get_leaves()
+        .map(|leaf| (case.tree.names[leaf.key()].to_owned(), observed[&leaf.key()].clone()))
+        .unzip();
+      let built = build_mat(&seqs, &alphabet, &exhaustive_params(4))?;
+      let tree = mat_to_tree(built.mat, &sample_names)?;
+      let params = LikelihoodParams {
+        rounds: 3,
+        max_depth: 6,
+        drop: 10.0,
+        min_gain: 0.01,
+        rate_classes,
+        optimize_iterations: 5,
+      };
+      let (refined, stats) = refine_likelihood(tree, &seqs, &sample_names, &alphabet, &params)?;
+      let first = stats.rounds.first().ok_or_else(|| eyre::eyre!("no round"))?;
+      for round in &stats.rounds {
+        assert!(round.max_reattach_error < 1e-2, "seed {seed}: {round:?}");
+      }
+      assert!(stats.final_log_lh >= first.log_lh, "seed {seed}: {stats:?}");
+      assert_eq!(refined.graph.num_leaves(), sample_names.len());
     }
     Ok(())
   }
