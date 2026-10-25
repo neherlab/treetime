@@ -316,6 +316,20 @@ With `anneal=<rounds> t0=<T0> cooling=<c>`, SPR re-places each pruned subtree at
 - **The annealed tree is also more likely.** With GTR inferred and branch lengths optimized (`treetime optimize`, topology kept, without indels), the log-likelihood on `sc2/4500` is −300,111 for the reference tree, −300,595 for the greedy tree, and −300,346 for the annealed tree (seed 1). Random tie-breaking closes half of the likelihood gap
 - Cost: 30 to 60% more time for 8 cold rounds (`sc2/4500`: 141 to 173 s against 116 to 165 s)
 
+## Likelihood of the built trees with rate partitions
+
+Sites of `lassa/L/500` are split into five partitions by their Fitch changes on the rough neighbor-joining tree: 0, 1 to 2, 3 to 9, 10 to 29, and 30 or more changes (5416, 847, 923, 2519, 697 sites). `treetime optimize` runs with one `--partition` entry per category, `--partition-rates estimate`, GTR inferred per partition, topology kept, and no indels. The estimated relative rates are 0.003, 0.18, 0.67, 2.5, and 4.9.
+
+| Tree | Log-likelihood, 1 partition | Log-likelihood, 5 partitions |
+| --- | --- | --- |
+| Reference | −398,067 | −342,972 |
+| Best built tree (ratchet, Fitch 75,790) | −399,916 | −344,023 |
+| Rough neighbor joining | −420,549 | −360,330 |
+
+- The rate partitions raise the log-likelihood by 55,000, so the existing partition logic captures most of the rate variation without a gamma model
+- The likelihood separates the built tree from the reference by 1,051 units with partitions (1,849 without), while their Fitch scores differ by 0.7%. A likelihood objective has a clear signal where parsimony stalls
+- The categories come from a tree that is neither of the compared trees. Assigning sites by their changes on the tree being scored would favor that tree
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
