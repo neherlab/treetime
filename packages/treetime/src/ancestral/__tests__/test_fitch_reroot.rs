@@ -24,7 +24,7 @@ mod tests {
   use treetime_graph::split_fraction::SplitFraction;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar};
+  use treetime_primitives::{AlignmentRecord, AsciiChar};
   use treetime_utils::vec_of_owned;
 
   #[test]
@@ -174,7 +174,7 @@ mod tests {
     assert_eq!(vec_of_owned!["11--13: TT -> --"], orig_root_ab_indels);
 
     let root_node = &recon.partition.obs_nodes[&new_root_key];
-    let mut expected_comp = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut expected_comp = Composition::new(&NUC_ALPHABET);
     for (c, count) in [(b'-', 4), (b'A', 3), (b'C', 4), (b'G', 2), (b'T', 3)] {
       expected_comp.adjust_count(AsciiChar::from_byte_unchecked(c), count);
     }

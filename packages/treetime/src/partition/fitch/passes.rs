@@ -22,7 +22,7 @@ use treetime_graph::keymap;
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
-use treetime_primitives::{AlphabetLike, seq};
+use treetime_primitives::seq;
 use treetime_utils::interval::range_union::range_union;
 
 pub fn create_fitch_partition(
@@ -183,7 +183,7 @@ fn fitch_backward_internal_node(
         chosen_state: btreemap! {},
       },
       sequence,
-      composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      composition: Composition::new(alphabet),
     },
   }
 }

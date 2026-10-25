@@ -6,7 +6,7 @@ mod tests {
   use crate::seq::find_char_ranges::find_letter_ranges;
   use proptest::prelude::*;
   use std::collections::BTreeMap;
-  use treetime_primitives::{AlphabetLike, Seq, StateSet};
+  use treetime_primitives::{Seq, StateSet};
   use treetime_utils::interval::range_union::range_union;
 
   proptest! {
@@ -52,7 +52,7 @@ mod tests {
       let unknown = find_letter_ranges(seq, alphabet.unknown());
       let gaps = find_letter_ranges(seq, alphabet.gap());
       let non_char = range_union(&[unknown.clone(), gaps.clone()]);
-      let composition = Composition::with_seq(seq, alphabet.chars(), alphabet.gap());
+      let composition = Composition::with_seq(seq, alphabet);
       let variable = seq
         .iter()
         .enumerate()

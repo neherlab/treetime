@@ -5,7 +5,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
-use treetime_primitives::{AlphabetLike, AsciiChar, AsciiTable, Seq, StateSet, StateSetStatus};
+use treetime_primitives::{AsciiChar, AsciiTable, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
 
 const COMPARED_BLOCK_LEN: usize = 64;
@@ -198,7 +198,7 @@ pub(crate) fn finalize_sequence_forward(
     sequence[r.0..r.1].fill(alphabet.unknown());
   }
   if is_root {
-    *composition = Composition::with_seq(sequence.as_slice(), alphabet.chars(), alphabet.gap());
+    *composition = Composition::with_seq(sequence.as_slice(), alphabet);
   }
 }
 

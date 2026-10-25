@@ -1,44 +1,45 @@
+use crate::alphabet::alphabet::Alphabet;
+use crate::alphabet::char_slots::CharSlots;
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use std::collections::BTreeMap;
+use std::sync::Arc;
 use treetime_primitives::{AsciiChar, AsciiTable};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Composition {
-  counts: BTreeMap<AsciiChar, usize>,
+  counts: Box<[usize]>,
+  slots: Arc<CharSlots>,
   gap: AsciiChar,
 }
 
 impl Composition {
-  pub(crate) fn new<I>(alphabet_chars: I, gap: AsciiChar) -> Self
-  where
-    I: IntoIterator<Item = AsciiChar>,
-  {
-    let counts = alphabet_chars.into_iter().map(|c| (c, 0)).collect();
-    Self { counts, gap }
+  pub(crate) fn new(alphabet: &Alphabet) -> Self {
+    let slots = Arc::clone(alphabet.char_slots());
+    Self {
+      counts: vec![0; slots.len()].into_boxed_slice(),
+      slots,
+      gap: alphabet.gap(),
+    }
   }
 
-  pub(crate) fn get(&self, c: AsciiChar) -> Option<usize> {
-    self.counts.get(&c).copied()
-  }
-
-  pub(crate) fn with_seq(
-    sequence: impl AsRef<[AsciiChar]>,
-    alphabet_chars: impl IntoIterator<Item = AsciiChar>,
-    gap: AsciiChar,
-  ) -> Self {
-    let mut this = Self::new(alphabet_chars, gap);
+  pub(crate) fn with_seq(sequence: impl AsRef<[AsciiChar]>, alphabet: &Alphabet) -> Self {
+    let mut this = Self::new(alphabet);
     this.add_seq(sequence);
     this
   }
 
-  pub(crate) fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
-    self.add_histogram(&char_histogram(sequence.as_ref()));
+  pub(crate) fn get(&self, c: AsciiChar) -> Option<usize> {
+    self.slots.slot(c).map(|slot| self.counts[slot])
   }
 
-  fn add_histogram(&mut self, additions: &AsciiTable<usize>) {
-    for (c, &count) in additions.iter().filter(|(_, count)| **count > 0) {
-      *self.counts.entry(c).or_default() += count;
+  pub(crate) fn add_seq(&mut self, sequence: impl AsRef<[AsciiChar]>) {
+    for (c, &count) in char_histogram(sequence.as_ref())
+      .iter()
+      .filter(|(_, count)| **count > 0)
+    {
+      if let Some(slot) = self.slot(c) {
+        self.counts[slot] += count;
+      }
     }
   }
 
@@ -56,8 +57,19 @@ impl Composition {
   }
 
   pub(crate) fn adjust_count(&mut self, nuc: AsciiChar, change: isize) {
-    let count = self.counts.entry(nuc).or_default();
-    *count = count.saturating_add_signed(change);
+    if let Some(slot) = self.slot(nuc) {
+      let count = &mut self.counts[slot];
+      *count = count.saturating_add_signed(change);
+    }
+  }
+
+  fn slot(&self, c: AsciiChar) -> Option<usize> {
+    let slot = self.slots.slot(c);
+    debug_assert!(
+      slot.is_some(),
+      "Composition counts only characters of its alphabet, got '{c}'"
+    );
+    slot
   }
 }
 

@@ -10,7 +10,6 @@ use smallvec::SmallVec;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Index;
 use std::sync::Arc;
-use treetime_primitives::AlphabetLike;
 use treetime_primitives::{AsciiChar, AsciiTable, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
@@ -35,7 +34,7 @@ impl SparseNodeObs {
       unknown: vec![],
       gaps: vec![],
       non_char: vec![],
-      composition: Composition::new(alphabet.chars(), alphabet.gap()),
+      composition: Composition::new(alphabet),
       fitch: FitchSeqDistribution {
         variable: btreemap! {},
         variable_indel: BTreeSet::new(),
@@ -281,7 +280,7 @@ fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
     unknown,
     gaps,
     non_char,
-    composition: Composition::with_seq(seq, alphabet.chars(), alphabet.gap()),
+    composition: Composition::with_seq(seq, alphabet),
     fitch: FitchSeqDistribution {
       variable: variable.into_iter().collect(),
       variable_indel: BTreeSet::new(),

@@ -31,7 +31,7 @@ mod tests {
   use treetime_graph::node_names::NodeNames;
   use treetime_io::fasta::fasta_read;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::{AlignmentRecord, AlphabetLike, Seq};
+  use treetime_primitives::{AlignmentRecord, Seq};
   use treetime_utils::sync::random::get_random_number_generator;
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
@@ -161,11 +161,7 @@ mod tests {
     for name in expected.keys() {
       let node_key = find_node_key_by_name(&graph, &names, name).expect("expected internal node must exist");
       let sequence = &recon.node_states[&node_key].sequence;
-      let stored_composition = Composition::with_seq(
-        &**sequence,
-        recon.partition.alphabet.chars(),
-        recon.partition.alphabet.gap(),
-      );
+      let stored_composition = Composition::with_seq(&**sequence, &recon.partition.alphabet);
       assert_eq!(stored_composition, recon.partition.obs_nodes[&node_key].composition);
     }
 

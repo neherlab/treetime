@@ -12,7 +12,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use std::collections::{BTreeMap, BTreeSet};
   use std::sync::LazyLock;
-  use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, Seq, seq, stateset};
+  use treetime_primitives::{AsciiChar, BitSet128, Seq, seq, stateset};
 
   static NUC_ALPHABET: LazyLock<Alphabet> = LazyLock::new(Alphabet::default);
 
@@ -22,7 +22,7 @@ mod tests {
       unknown: vec![],
       gaps: vec![],
       non_char: vec![],
-      composition: Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap()),
+      composition: Composition::new(&NUC_ALPHABET),
       sequence: seq,
       fitch: FitchSeqDistribution {
         variable: btreemap! {},
@@ -414,7 +414,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
     let mut variable = btreemap! { 0_usize => stateset! {b'A', b'G'} };
     let mut chosen_state = BTreeMap::new();
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     let parent = make_seq_info("ACGT");
 
@@ -439,7 +439,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("~CGT").unwrap();
     let mut variable = btreemap! { 0_usize => stateset! {b'C', b'G'} };
     let mut chosen_state = BTreeMap::new();
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     let parent = make_seq_info("ACGT");
 
@@ -464,7 +464,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("GCGT").unwrap();
     let mut variable = BTreeMap::new();
     let mut chosen_state = BTreeMap::new();
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     let mut parent = make_seq_info("ACGT");
     parent.fitch.variable.insert(0, stateset! {b'A', b'G'});
@@ -489,7 +489,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("GCGA").unwrap();
     let mut variable = btreemap! { 3_usize => stateset! {b'A'} };
     let mut chosen_state = BTreeMap::new();
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     let mut parent = make_seq_info("ACGT");
     parent.fitch.variable.insert(0, stateset! {b'A', b'G'});
@@ -515,7 +515,7 @@ mod tests {
     let mut sequence = Seq::try_from_str("ACGTACGT").unwrap();
     let gaps = vec![(1, 3)];
     let unknown = vec![(5, 7)];
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     finalize_sequence_forward(&mut sequence, &gaps, &unknown, &mut composition, &NUC_ALPHABET, false);
 
@@ -533,11 +533,11 @@ mod tests {
   #[test]
   fn test_fitch_sub_finalize_root_recomputes_composition() {
     let mut sequence = Seq::try_from_str("AACG").unwrap();
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     finalize_sequence_forward(&mut sequence, &[], &[], &mut composition, &NUC_ALPHABET, true);
 
-    let mut expected = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut expected = Composition::new(&NUC_ALPHABET);
     for (c, count) in [(b'A', 2), (b'C', 1), (b'G', 1)] {
       expected.adjust_count(AsciiChar::from_byte_unchecked(c), count);
     }
@@ -547,11 +547,11 @@ mod tests {
   #[test]
   fn test_fitch_sub_finalize_nonroot_preserves_composition() {
     let mut sequence = Seq::try_from_str("AACG").unwrap();
-    let mut composition = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let mut composition = Composition::new(&NUC_ALPHABET);
 
     finalize_sequence_forward(&mut sequence, &[], &[], &mut composition, &NUC_ALPHABET, false);
 
-    let expected = Composition::new(NUC_ALPHABET.chars(), NUC_ALPHABET.gap());
+    let expected = Composition::new(&NUC_ALPHABET);
     assert_eq!(expected, composition, "Non-root does not recompute composition");
   }
 }

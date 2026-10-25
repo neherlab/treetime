@@ -1,4 +1,5 @@
 use crate::alphabet::alphabet_config::AlphabetConfig;
+use crate::alphabet::char_slots::CharSlots;
 use crate::{make_report, vec_u8};
 use eyre::Report;
 use indexmap::{IndexMap, indexmap};
@@ -7,6 +8,7 @@ use ndarray::{Array1, Array2, Axis, stack};
 use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
+use std::sync::Arc;
 use strum_macros::Display;
 use treetime_primitives::{AlphabetLike, AsciiChar, AsciiTable, BitSet128, StateSet, stateset};
 
@@ -28,6 +30,7 @@ pub struct Alphabet {
   set_to_char: IndexMap<StateSet, AsciiChar>,
   char_to_index: AsciiTable<Option<usize>>,
   index_to_char: Vec<AsciiChar>,
+  char_slots: Arc<CharSlots>,
 }
 
 impl Default for Alphabet {
@@ -159,6 +162,7 @@ impl Alphabet {
       set_to_char,
       char_to_index,
       index_to_char,
+      char_slots: Arc::new(CharSlots::new(all.iter())),
     })
   }
 
@@ -221,6 +225,10 @@ impl Alphabet {
         c.inner()
       )
     })
+  }
+
+  pub(crate) fn char_slots(&self) -> &Arc<CharSlots> {
+    &self.char_slots
   }
 
   pub(crate) fn canonical(&self) -> impl Iterator<Item = AsciiChar> + '_ {

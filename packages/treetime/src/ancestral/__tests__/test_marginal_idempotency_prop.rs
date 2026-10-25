@@ -9,7 +9,7 @@ mod tests {
   use proptest::prelude::*;
   use treetime_graph::graph::Graph;
   use treetime_io::nwk::nwk_read;
-  use treetime_primitives::AlphabetLike;
+
   use treetime_utils::prop_assert_abs_diff_eq;
 
   proptest! {
@@ -52,11 +52,7 @@ mod tests {
       let (_, recon) = run_sparse_marginal_for_input(&input).unwrap();
 
       let compositions_match = recon.node_states.iter().all(|(key, node)| {
-        let expected = Composition::with_seq(
-          &**node.sequence,
-          recon.partition.alphabet.chars(),
-          recon.partition.alphabet.gap(),
-        );
+        let expected = Composition::with_seq(&**node.sequence, &recon.partition.alphabet);
         expected == recon.partition.obs_nodes[key].composition
       });
       prop_assert!(compositions_match);
