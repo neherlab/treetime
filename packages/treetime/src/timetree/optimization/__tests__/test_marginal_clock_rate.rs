@@ -43,28 +43,27 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::first_step(           2.7, 1.0,   true,  0.5  )]
-  #[case::later_step(           2.7, 0.5,   false, 0.25 )]
-  #[case::at_an_eighth_of_start(2.8, 0.125, false, 0.125)]
+  #[case::first_step(           (2.7, 1.0,   true ), 0.5,   (helpers::BRANCH_GRID_DX, 1e-14))]
+  #[case::later_step(           (2.7, 0.5,   false), 0.25,  (0.0005,                  1e-6 ))]
+  #[case::at_an_eighth_of_start((2.8, 0.125, false), 0.125, (helpers::BRANCH_GRID_DX, 1e-6 ))]
   #[trace]
   fn test_marginal_clock_rate_steps_the_step_fraction_toward_a_maximum_between_the_probes_and_halves_the_window(
-    #[case] reference: f64,
-    #[case] scale: f64,
-    #[case] follow_slope: bool,
+    #[case] (reference, scale, follow_slope): (f64, f64, bool),
     #[case] next_scale: f64,
+    #[case] (branch_grid_dx, tolerance): (f64, f64),
   ) -> Result<(), Report> {
-    let setup = helpers::cherry()?;
+    let setup = helpers::cherry_on(branch_grid_dx)?;
     let window = helpers::window(scale, follow_slope);
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
 
     let target = parabola_maximum(reference, window.half_width);
     assert!(target.abs() <= window.half_width);
-    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = tolerance);
     pretty_assert_abs_diff_eq!(
       reference * (STEP_FRACTION * target).exp(),
       step.clock_rate,
-      epsilon = 1e-5
+      epsilon = tolerance
     );
     assert_eq!(helpers::window(next_scale, false), step.window);
     Ok(())
@@ -78,6 +77,7 @@ mod tests {
     let window = helpers::window(0.5, false);
     let branches = branches_at_rate(&setup.branches, 1.0, reference)?;
     let step = step_marginal_clock_rate(&setup.inputs_at(&branches, reference, window))?;
+    pretty_assert_ulps_eq!(reference, step.target_rate, max_ulps = 0);
     pretty_assert_ulps_eq!(reference, step.clock_rate, max_ulps = 0);
     assert_eq!(window, step.window);
     Ok(())
@@ -85,12 +85,12 @@ mod tests {
 
   #[rustfmt::skip]
   #[rstest]
-  #[case::convex_to_the_bound(    1.0, false)]
-  #[case::maximum_past_the_probes(2.0, true )]
+  #[case::convex_to_the_bound(    (1.0, false), 1e-15)]
+  #[case::maximum_past_the_probes((2.0, true ), 1e-12)]
   #[trace]
   fn test_marginal_clock_rate_first_step_follows_the_slope_out_of_the_window_and_keeps_its_width(
-    #[case] reference: f64,
-    #[case] concave: bool,
+    #[case] (reference, concave): (f64, bool),
+    #[case] tolerance: f64,
   ) -> Result<(), Report> {
     let setup = helpers::cherry()?;
     let window = RateWindow::initial();
@@ -103,11 +103,11 @@ mod tests {
       2.0_f64.ln()
     };
     assert!(target > window.half_width && target <= 2.0_f64.ln());
-    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = 1e-5);
+    pretty_assert_abs_diff_eq!(reference * target.exp(), step.target_rate, epsilon = tolerance);
     pretty_assert_abs_diff_eq!(
       reference * (STEP_FRACTION * target).exp(),
       step.clock_rate,
-      epsilon = 1e-5
+      epsilon = tolerance
     );
     assert_eq!(helpers::window(1.0, false), step.window);
     Ok(())
@@ -140,7 +140,7 @@ mod tests {
 
     const PRECISION: f64 = 4.0;
 
-    const BRANCH_GRID_DX: f64 = 0.001;
+    pub(super) const BRANCH_GRID_DX: f64 = 0.001;
 
     pub(super) fn window(scale: f64, follow_slope: bool) -> RateWindow {
       RateWindow {
@@ -182,6 +182,10 @@ mod tests {
     }
 
     pub(super) fn cherry() -> Result<Cherry, Report> {
+      cherry_on(BRANCH_GRID_DX)
+    }
+
+    pub(super) fn cherry_on(branch_grid_dx: f64) -> Result<Cherry, Report> {
       let parsed = nwk_read(b"(A:8.0,B:5.0)root;".as_slice())?;
       let names = parsed.names.clone();
       let graph = parsed.graph;
@@ -192,8 +196,8 @@ mod tests {
         constraints
           .by_node
           .insert(key, Some(Arc::new(Distribution::<NegLog>::point(date, 0.0))));
-        let n = f64_to_usize_saturating((2.0 * mean / BRANCH_GRID_DX).round()) + 1;
-        let t = Array1::from_shape_fn(n, |i| BRANCH_GRID_DX * i.to_f64_exact());
+        let n = f64_to_usize_saturating((2.0 * mean / branch_grid_dx).round()) + 1;
+        let t = Array1::from_shape_fn(n, |i| branch_grid_dx * i.to_f64_exact());
         let y = t.mapv(|t| 0.5 * PRECISION * (t - mean).powi(2));
         let branch = BranchLikelihood {
           distribution: Some(Arc::new(Distribution::function(t, y)?)),
