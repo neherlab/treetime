@@ -15,7 +15,7 @@ const MIN_PRECISION: f64 = 1e-300;
 
 pub(crate) struct GaussianTree<'g> {
   schedule: GraphSchedule<'g>,
-  undated_nodes: Vec<GraphNodeKey>,
+  nodes_without_tip_date: Vec<GraphNodeKey>,
   sequence_length: f64,
   nu: BTreeMap<GraphEdgeKey, f64>,
   below: BTreeMap<GraphNodeKey, Below>,
@@ -51,7 +51,7 @@ impl<'g> GaussianTree<'g> {
         (n.key(), date.map(|s| Message { s, r: 0.0, w: 0.0 }))
       })
       .collect();
-    let undated_nodes = tips
+    let nodes_without_tip_date = tips
       .iter()
       .filter(|(_, tip)| tip.is_none())
       .map(|(&key, _)| key)
@@ -95,7 +95,7 @@ impl<'g> GaussianTree<'g> {
       .fold([0.0; 2], |acc, node| [acc[0] + node.ab[0], acc[1] + node.ab[1]]);
     Ok(Self {
       schedule,
-      undated_nodes,
+      nodes_without_tip_date,
       sequence_length,
       nu,
       below,
@@ -118,7 +118,7 @@ impl<'g> GaussianTree<'g> {
     let stds = rate_and_root_std(self.a, self.kappa, self.root, eta);
 
     let node_times = self
-      .undated_nodes
+      .nodes_without_tip_date
       .iter()
       .filter_map(|key| {
         let m = total[key].message()?;

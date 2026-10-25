@@ -2,7 +2,7 @@ use crate::clock::date_constraints::DateConstraints;
 use crate::coalescent::mean_field::CoalescentPrior;
 use crate::progress::LogSink;
 use crate::progress_warn;
-use crate::timetree::inference::backward_pass::apply_leaf_coalescent_factor;
+use crate::timetree::inference::coalescent_factor::apply_leaf_coalescent_factor;
 use crate::timetree::inference::result::{
   BranchLikelihood, NodeBackward, PosteriorView, TimeDistribution, likely_time_of_node,
 };
@@ -102,19 +102,16 @@ where
     });
 
     let is_leaf = self.schedule.children(key).is_empty();
-    let leaf_factor = |distribution: Distribution<NegLog>| {
-      apply_leaf_coalescent_factor(coalescent.filter(|_| is_leaf), key, distribution)
-    };
-    let refinement = refine_distribution_from_parent(
+    let refinement = refine_distribution_from_parent(ForwardStep {
       names,
       key,
-      leaf_factor,
-      date_constraint.as_ref(),
+      leaf_prior: coalescent.filter(|_| is_leaf),
+      date_constraint: date_constraint.as_ref(),
       parent,
-      parent_edge,
-      subtree.as_deref(),
+      edge: parent_edge,
+      subtree: subtree.as_deref(),
       max_points,
-    )?;
+    })?;
     let normalized_subtree = || -> Result<_, Report> {
       subtree
         .as_deref()
@@ -171,20 +168,17 @@ struct ForwardOutput<S> {
   contradicted: bool,
 }
 
-#[expect(
-  clippy::too_many_arguments,
-  reason = "the node, its coalescent leaf factor, its date, the parent posterior, the edge, the subtree and the grid limit are independent inputs of one forward step"
-)]
-fn refine_distribution_from_parent(
-  names: &NodeNames,
-  key: GraphNodeKey,
-  leaf_factor: impl Fn(Distribution<NegLog>) -> Result<Distribution<NegLog>, Report>,
-  date_constraint: Option<&Arc<Distribution<NegLog>>>,
-  parent: Option<&Posterior>,
-  edge: Option<ParentEdge<'_>>,
-  subtree: Option<&Distribution<NegLog>>,
-  max_points: MaxGridPoints,
-) -> Result<ForwardRefinement, Report> {
+fn refine_distribution_from_parent(step: ForwardStep<'_>) -> Result<ForwardRefinement, Report> {
+  let ForwardStep {
+    names,
+    key,
+    leaf_prior,
+    date_constraint,
+    parent,
+    edge,
+    subtree,
+    max_points,
+  } = step;
   let (Some(parent), Some(edge)) = (parent, edge) else {
     return Ok(ForwardRefinement::Unrefined);
   };
@@ -200,7 +194,7 @@ fn refine_distribution_from_parent(
     let forward = convolve_forward_across_edge(parent_time_dist, branch_dist, EPS, GRID_POINTS, max_points)?;
     let ForwardPosterior { posterior, spacing, .. } = forward
       .resolve_posterior(TRIM_EPS, |message| {
-        leaf_factor(message.clone())?
+        apply_leaf_coalescent_factor(leaf_prior, key, message.clone())?
           .normalize()
           .wrap_err_with(|| format!("When normalizing the time distribution of node {key}"))
       })?
@@ -231,6 +225,18 @@ fn refine_distribution_from_parent(
     return Ok(ForwardRefinement::ContradictedGivenDate);
   }
   Ok(ForwardRefinement::Refined(combined))
+}
+
+#[derive(Clone, Copy)]
+struct ForwardStep<'a> {
+  names: &'a NodeNames,
+  key: GraphNodeKey,
+  leaf_prior: Option<&'a CoalescentPrior>,
+  date_constraint: Option<&'a Arc<Distribution<NegLog>>>,
+  parent: Option<&'a Posterior>,
+  edge: Option<ParentEdge<'a>>,
+  subtree: Option<&'a Distribution<NegLog>>,
+  max_points: MaxGridPoints,
 }
 
 fn normalized_product(
