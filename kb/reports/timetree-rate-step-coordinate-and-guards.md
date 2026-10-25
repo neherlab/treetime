@@ -11,7 +11,7 @@ With a coalescent prior and an estimated rate, each refinement round moves the c
 - Dropping the interior window (following the parabola maximum in every round, within the 2-fold cap) changes no run at high signal and lowers the median rate error at low signal ($L=10^3$, $\mu=3\cdot10^{-4}$) from 0.30 to 0.25
 - A cube-root parabola with the full step gives the lowest rate error overall (median $\lvert\ln\rvert$ error 0.026 against 0.033 on 400 tips, 0.022 against 0.029 on 1200 tips). At the lowest signal on 400 tips more runs end beyond 2-fold of the true rate (15% against 11%); on 1200 tips fewer do (12.5% against 28%)
 - At low signal $\log Z$ jumps by several nats between neighboring rates, which limits every three-probe step whatever its coordinate
-- No variant of the step recovers a start rate that is far off: on the case of [kb/issues/M-timetree-start-rate-accepts-near-zero-regression-slope.md](../issues/M-timetree-start-rate-accepts-near-zero-regression-slope.md) the coalescent timescale fits the stretched tree, and $\log Z$ under that prior peaks near the wrong rate
+- No variant of the step recovers a start rate that is far off: on the case of [kb/issues/M-timetree-start-rate-too-high-on-deep-trees-with-a-short-sampling-window.md](../issues/M-timetree-start-rate-too-high-on-deep-trees-with-a-short-sampling-window.md#before-the-divergence-floor) the coalescent timescale fits the stretched tree, and $\log Z$ under that prior peaks near the wrong rate
 
 ## Fixed point of the three-probe step
 
@@ -106,7 +106,7 @@ The high-signal bias and its removal repeat. At the lowest signal, dropping the 
 
 ## Far-off start
 
-On messy data, `keep-opt-est` on `const/rep03` at $L=10^3$, $\mu=3\cdot10^{-3}$ starts at $2.29\cdot10^{-5}$ ([kb/issues/M-timetree-start-rate-accepts-near-zero-regression-slope.md](../issues/M-timetree-start-rate-accepts-near-zero-regression-slope.md)). Every variant above, also with the cap raised to 10-fold and the full step, ends between $4.1\cdot10^{-5}$ and $4.6\cdot10^{-5}$ and panics in the date output. With the cube root, full step and 10-fold cap, the two rounds move the rate by factors 1.30 and 1.53, each to the parabola maximum: the coalescent timescale fitted to the stretched tree is $T_c \approx 5500$ years (true: 10), and $\log Z$ under that prior peaks near the current rate. The loop sits at a self-consistent wrong state, which no step rule leaves; the start rate has to be right.
+On messy data, `keep-opt-est` on `const/rep03` at $L=10^3$, $\mu=3\cdot10^{-3}$ starts at $2.29\cdot10^{-5}$ ([kb/issues/M-timetree-start-rate-too-high-on-deep-trees-with-a-short-sampling-window.md](../issues/M-timetree-start-rate-too-high-on-deep-trees-with-a-short-sampling-window.md#before-the-divergence-floor)). Every variant above, also with the cap raised to 10-fold and the full step, ends between $4.1\cdot10^{-5}$ and $4.6\cdot10^{-5}$ and panics in the date output. With the cube root, full step and 10-fold cap, the two rounds move the rate by factors 1.30 and 1.53, each to the parabola maximum: the coalescent timescale fitted to the stretched tree is $T_c \approx 5500$ years (true: 10), and $\log Z$ under that prior peaks near the current rate. The loop sits at a self-consistent wrong state, which no step rule leaves; the start rate has to be right.
 
 ## Options
 

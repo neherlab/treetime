@@ -1,7 +1,7 @@
 # The timetree start rate falls back to the Gaussian rate below a divergence floor
 
-With an estimated clock rate, `timetree` starts from the slope of the root-to-tip regression. It falls back to the
-substitution rate of the Gaussian timetree when that slope is at most
+With an estimated clock rate, `timetree` starts from the slope of the root-to-tip regression. Before the refinement
+loop, it falls back to the substitution rate of the Gaussian timetree when that slope is at most
 
 $$
 \mu_\text{floor} = 0.1\,\frac{\bar d}{t_\text{max} - t_\text{min}}
@@ -9,20 +9,17 @@ $$
 
 where $\bar d$ is the mean root-to-tip divergence of the dated tips that are not clock-filter outliers, for the root
 the fit uses, and $t_\text{max} - t_\text{min}$ their date span. A slope at or below it would have the divergence
-accumulate over at least ten sampling windows. The floor is 0 when the dates do not vary, which keeps the earlier
-rule of falling back only for a slope at or below zero.
+accumulate over at least ten sampling windows. The floor is 0 when the dates do not vary or the mean divergence is 0,
+which keeps the earlier rule of falling back only for a slope at or below zero. The fits that the floor applies to are
+listed under [Scope](#scope).
 
 **Type**: Scientific default, new in v1. v0 starts from the regression slope.
 
-**v1 location**: `fn ClockRerootResult::signal_rate_floor()`
-[packages/treetime/src/clock/clock_regression.rs#L176](../../packages/treetime/src/clock/clock_regression.rs#L176)
-(fraction `SIGNAL_RATE_FLOOR_FRACTION` [#L28](../../packages/treetime/src/clock/clock_regression.rs#L28)),
-`fn ClockRerootResult::into_clock_fit_or()`
-[#L157](../../packages/treetime/src/clock/clock_regression.rs#L157), called with the floor by
-`fn estimate_initial_clock()`
-[packages/treetime/src/timetree/pipeline.rs#L278-L305](../../packages/treetime/src/timetree/pipeline.rs#L278-L305);
-the fallback rate is `fn gaussian_start_rate()`
-[packages/treetime/src/timetree/init.rs#L186-L210](../../packages/treetime/src/timetree/init.rs#L186-L210).
+**v1 location**: `fn StartRateFloor::of_fit()` (fraction `SIGNAL_RATE_FLOOR_FRACTION`) and
+`fn clock_fit_or_gaussian_rate()` in `packages/treetime/src/timetree/init.rs`, with the threshold of
+`fn ClockFitResult::into_clock_fit_or()` in `packages/treetime/src/clock/clock_regression.rs`; called with the floor by
+`fn estimate_initial_clock()` in `packages/treetime/src/timetree/pipeline.rs` and by `fn reroot()` in
+`packages/treetime/src/timetree/pre_loop.rs`.
 
 ## Why
 
@@ -39,8 +36,28 @@ floor there is $2.57\cdot10^{-3}$, the Gaussian rate $3.95\cdot10^{-3}$, and the
 The start is only a start: the refinement loop optimizes the rate further, so the floor needs to catch a hopeless
 start, not to be exact.
 
-The floor applies only to the start. Inside the refinement loop the regression runs on clock lengths (time times the
-current rate), so the floor would follow the current rate; the in-loop refits keep the threshold of zero.
+## Scope
+
+The floor applies to the clock fits before the refinement loop, which run on substitution lengths, where no search for
+a root with a positive slope chose the root:
+
+- the first clock fit, for every root method (`fn estimate_initial_clock()`)
+- the two pre-loop refits, before and after the clock filter (`fn reroot()` of `pre_loop.rs`), of the date-free root
+  methods (`min-dev`, `midpoint`, `--outgroup`) and of `oldest`. These refits replace the first fit before any step
+  reads it, so the floor of the first fit alone decides nothing for these methods. Their roots come from the shape of
+  the tree or from the oldest tip, as with `--keep-root`, where the floor fires in the validation below. On these
+  refits a slope at or below zero also falls back to the Gaussian rate; `oldest` stopped the run there before. The
+  validation below covers `--keep-root` and `least-squares` only (`validation/run.py`); on these root methods the floor
+  is not validated against a known truth
+
+The `least-squares` refits keep the regression rate and stop the run on a slope at or below zero: their root search
+keeps only roots with a positive slope, unless `--allow-negative-rate`, and the floor fired in no `--reroot` run of the
+validation below. Inside the refinement loop the regression runs on clock lengths (time times the current rate), so the
+floor would follow the current rate; the in-loop refits keep the threshold of zero.
+
+The warning of a fallback and the error when the Gaussian timetree gives no rate either name the fit: `Clock
+regression`, the pre-loop step as the run log names it (for example `Clock refit on the root of the date-free method
+(post-ancestral)`), or `Clock model update` in a refinement round.
 
 ## Validation
 
@@ -72,4 +89,5 @@ rate): its conversion $\mu = \eta D/(D+M+N)$ assumes one hazard for the branchin
 and a dense recent sample has a much higher sampling hazard on terminal branches than the deep internal branches have
 (Section 15.4 of the maintainers' derivation of the Gaussian timetree). Without a coalescent prior the final rates were
 unchanged; with `opt` the median $\lvert\ln\rvert$ final rate error rose from 0.115 to 0.285, with no failures. A
-two-class hazard in that conversion is the documented remedy and is not implemented.
+two-class hazard in that conversion is the documented remedy and is not implemented
+([kb/issues/M-timetree-start-rate-too-high-on-deep-trees-with-a-short-sampling-window.md](../issues/M-timetree-start-rate-too-high-on-deep-trees-with-a-short-sampling-window.md)).
