@@ -232,12 +232,52 @@ Real data, Fitch score relative to the reference tree, all with state sets and r
 | `rsv/a/2000` | −0.01% (80) | +0.14% (130) | +0.14% (130) |
 | `dengue/2000` | +0.05% (92) | +0.12% (88) | +0.08% (91) |
 | `mpox/clade-ii/2000` | +0.16% (82) | +0.31% (98) | |
-| `sc2/4500` | +0.29% (291) | not run: $O(n^3)$ | |
+| `sc2/4500` | +0.29% (291) | +0.16%, top hits (see below) | |
 | `lassa/L/500` | +3.09% (128) | +0.96% (93) | +0.58% (84) |
 
 - On `lassa/L/500`, scaffolds of 30 to 120 samples brought placement only to +2.2%. Neighbor joining sees all pairwise distances at once and gets the deep structure that sequential placement misses. The excess of the placement trees is spread evenly along the genome (100 to 200 extra substitutions per 500 sites), which argues against recombination as its cause
-- On the other datasets, placement in random order is as good as or better than neighbor joining; the built trees of `flu/h3n2/500` and `rsv/a/2000` score slightly below the reference trees
+- On `rsv/a/2000`, `dengue/2000`, and `mpox/clade-ii/2000`, placement in random order is as good as or better than neighbor joining; the built trees of `flu/h3n2/500` and `rsv/a/2000` score slightly below the reference trees
 - State sets made the rebuilds 2 to 4 times slower (the plurality sets of every pseudo-leaf), for example 85 s on `sc2/4500`
+
+## Fast and local neighbor joining
+
+**Top hits.** `fn neighbor_joining()` takes an optional number $m$ of top hits, as in FastTree:
+
+- Each node keeps the $m$ partners that are best by the joining criterion when its list is made, and caches its best partner among them.
+- A joined node inherits the lists of its two children and enters the lists of its own partners.
+- All lists are rebuilt in parallel every $m$ joins.
+
+The pair search then costs $O(n^3/m)$ instead of $O(n^3)$. The distance matrix still takes $O(n^2)$ time and memory. With $m \approx \sqrt n$ the trees are identical to exact neighbor joining on `lassa/L/500` ($m = 20$) and `dengue/2000` ($m = 44$): the same Fitch score before and after refinement. Lists ranked by raw distance instead of the joining criterion, or without the reciprocal entries and the rebuilds, gave starting trees 1.6 to 2.4% worse on `lassa/L/500`.
+
+Neighbor-joining start, without refinement (`spr=0`):
+
+| Dataset | $m$ | Time (s) | Exact neighbor joining |
+| --- | --- | --- | --- |
+| `lassa/L/500` | 20 | 1.2 | same tree |
+| `dengue/2000` | 44 | 7.1 | same tree |
+| `sc2/4500` | 72 | 16.6 | not run |
+
+**Local neighbor joining.** `rebuild_nj` adds a neighbor-joining tree of the pseudo-leaves to the candidates of every local rebuild. The tree is fitted by Fitch on the variable columns of the ball and attached below the ball's top node. Fitch score relative to the reference tree, rebuilds of radius 3 unless stated:
+
+| Dataset | Placement | Placement, local NJ | NJ start | NJ start, local NJ |
+| --- | --- | --- | --- | --- |
+| `flu/h3n2/500` | −0.07% | −0.07% | −0.07% | −0.07% |
+| `rsv/a/2000` | −0.01% | −0.01% | +0.14% | +0.13% |
+| `dengue/2000` | +0.05% | +0.05% | +0.12% | +0.09% |
+| `mpox/clade-ii/2000` | +0.16% | +0.16% | +0.31% | +0.23% |
+| `sc2/4500` | +0.29% | +0.31% | +0.16% | +0.13% |
+| `lassa/L/500` | +3.09% | +2.19% | +0.96% | |
+| `lassa/L/500`, radius 5, up to 64 pseudo-leaves | +3.20% | +1.28% (seeds 0 to 2: +1.28, +2.49, +1.53%) | | +0.55% |
+| `lassa/L/500`, radius 8, up to 128 pseudo-leaves | | +2.77% | | |
+
+Observations:
+
+- On low-divergence data, local NJ changes nothing. Exhaustive placement in 4 orders already finds the best tree of a ball with at most 24 pseudo-leaves
+- On `lassa/L/500`, local NJ removes a third to a half of the excess, but even the best placement build stays above the global NJ start. Balls of radius 8 improve less, because a rebuild is kept only if it beats the current ball, and NJ followed by SPR on 128 pseudo-leaves rarely does. The errors of the placement trees on Lassa are not local at the scale that a ball can hold
+- The global NJ start with local NJ rebuilds of radius 5 is the best build of `lassa/L/500` so far: +0.55%, without batch re-placement
+- With top hits, the NJ start is also the better start on `sc2/4500` (+0.16% against +0.29%). Which start wins differs between datasets, by at most 0.15% except on Lassa
+
+**Fitch refresh on variable columns.** The refresh now encodes the leaves from their sparse queries and runs Fitch only on the columns where some sample differs from the reference. The other columns keep the reference state. Scores are identical to the refresh on full sequences, and the build of `mpox/clade-ii/2000` takes 13 s instead of 24 s. Its peak memory (0.9 GB) comes from reading the alignment, not from the refresh. The same function fits the local neighbor-joining trees.
 
 ## Dating with built trees
 
@@ -268,7 +308,7 @@ Consequences:
 - **Exact placement first, heuristics later.** Branch-and-bound makes exact placement affordable at 10^3 to 10^4 samples. Centroid starts belong to a later stage for 10^5 samples and more, as a seed of the bound and with a fallback, not as a replacement of the exact search
 - **Fitch refresh as a pipeline step.** The existing Fitch pass improves the builder's internal states and should run between rearrangement rounds; its full-sequence memory cost makes the mutation-first representation a prerequisite for large genomes
 - **Local rebuilds.** Rebuilding balls of radius 3 reaches the score of the true tree on simulated data and closes most of the gap to the reference trees on real data
-- **Random insertion order, and neighbor joining for divergent data.** Sorted insertion orders build poor backbones. For data as divergent as Lassa, a neighbor-joining start followed by the same refinement beats every placement-based start; for low-divergence data, placement in random order is as good or better and scales to large $n$
+- **Random insertion order, and neighbor joining for divergent data.** Sorted insertion orders build poor backbones. For data as divergent as Lassa, a neighbor-joining start followed by the same refinement beats every placement-based start, and local neighbor joining in the rebuilds does not replace it. For low-divergence data the two starts differ by at most 0.15%. Neighbor joining with top hits removes the cubic search, but its $O(n^2)$ distance matrix limits it to about $10^4$ samples
 - **Dating in the acceptance criteria.** Parsimony and split agreement do not detect the backbone differences that change the clock estimates
 - **Graph operations.** `fn Graph.remove_edge()` and `fn Graph.remove_node()` scanned all nodes or edges and now take time proportional to the degree. `fn Graph.add_edge()` still checks all children of the source for a duplicate edge, which is linear in the size of a polytomy
 

@@ -41,11 +41,12 @@ The recommended design follows these findings:
 - Fixed refinement defaults.
 - A dating check in the acceptance criteria.
 
-Production use needs three engineering steps first:
+Production use needs two engineering steps first:
 
-- a mutation-first Fitch refresh, so that memory does not grow with the genome length;
-- a sub-cubic distance-tree start;
-- faster local rebuilds.
+- faster local rebuilds;
+- a distance start whose memory does not grow with $n^2$, for more than about $10^4$ samples.
+
+Two others are done on the branch since the first version of this proposal. The Fitch refresh runs on variable columns only, and neighbor joining uses FastTree's top hits, which removes its cubic search.
 
 ## What the prototype established
 
@@ -59,7 +60,7 @@ Fitch score of the built tree relative to the reference tree in `data/`, all wit
 | `rsv/a/2000` | 0.014 | −0.01% (80) | +0.14% (130) | +0.14% (130) |
 | `dengue/2000` | 0.049 | +0.05% (92) | +0.12% (88) | +0.08% (91) |
 | `mpox/clade-ii/2000` | 0.0001 | +0.16% (82) | +0.31% (98) | |
-| `sc2/4500` | 0.002 | +0.29% (291) | not run, $O(n^3)$ | |
+| `sc2/4500` | 0.002 | +0.29% (291) | +0.16%, top hits | |
 | `lassa/L/500` | 0.121 | +3.09% (128) | +0.96% (93) | +0.58% (84) |
 
 On simulations with a known tree, the residual conflicting splits fall into two groups:
@@ -164,7 +165,17 @@ The default order is random, seeded per run under the rule of [kb/decisions/cli-
 
 The distance start runs neighbor joining on Jukes-Cantor distances. Each distance uses the sites observed in both samples, and ambiguity sets count as matches when they intersect. The NJ topology is converted to a MAT by one Fitch pass and then refined like a placement tree.
 
-Neighbor joining wins only on Lassa, where it is decisive (+3.1% → +0.96%). It costs $O(n^2)$ memory and $O(n^3)$ time in the prototype, so it must be confined to data that needs it and made faster (see [Design axes, B2](#b2-starting-tree-and-divergence-rule)).
+Neighbor joining is decisive on Lassa (+3.1% → +0.96%). It is also slightly better on `sc2/4500` (+0.16% against +0.29%), and slightly worse on `rsv/a/2000`, `dengue/2000`, and `mpox/clade-ii/2000` (by 0.07 to 0.15%).
+
+The pair search uses FastTree's top hits. Each node keeps the $m \approx \sqrt n$ partners that are best by the joining criterion, and caches its best partner among them. A joined node inherits its children's lists and enters its partners' lists, and every list is rebuilt every $m$ joins. This gives trees identical to exact neighbor joining on `lassa/L/500` and `dengue/2000`, at $O(n^3/m)$ time; `sc2/4500` takes 17 s. The full distance matrix still costs $O(n^2)$ memory, about 0.8 GB at $10^4$ samples.
+
+**Local neighbor joining does not replace the global start.** Adding a neighbor-joining candidate to every local rebuild:
+
+- changes nothing on low-divergence data;
+- on Lassa, removes a third to a half of the excess of the placement trees (+3.09% → +1.28 to +2.49% at radius 5), but stays above the global NJ start;
+- combined with the global NJ start, gives the best Lassa tree so far (+0.55%).
+
+The errors that sequential placement makes on Lassa are not local at the scale that a ball of up to 64 pseudo-leaves holds. See [kb/reports/feat-tree-infer-prototype.md](../reports/feat-tree-infer-prototype.md#fast-and-local-neighbor-joining).
 
 ### Refinement
 
@@ -198,12 +209,12 @@ Recommendations are marked; each is open until the team approves a decision file
 
 - **B2a. Placement always.** Simple. Leaves Lassa-like data 3% above the reference tree.
 - **B2b. [recommended] Threshold on the mean p-distance to the consensus.** Placement below the threshold, distance start above it. In `data/`, placement is as good or better up to 0.049 (dengue) and the distance start is better at 0.121 (Lassa). A threshold between these needs more divergent test sets, simulated with gamma rates, to place it.
-- **B2c. Both starts, keep the better.** Robust, but doubles the cost, and the distance start is cubic in $n$. Reasonable only below a size limit.
+- **B2c. Both starts, keep the better.** Robust, and with top hits affordable up to about $10^4$ samples. It roughly doubles the cost, and gains at most 0.15% outside Lassa.
 - **B2d. Refuse divergent data.** As [feat-tree-infer.md](../reports/feat-tree-infer.md) recommended. The prototype shows the native builder within 0.6% on Lassa, so this is no longer necessary.
 
-The distance start needs a faster method before it can be the default above any threshold:
+Above about $10^4$ samples the distance matrix no longer fits in memory. Options:
 
-- **Rapid NJ** with bounds on the Q-criterion: same tree, typically much faster.
+- **Profiles instead of the matrix,** as FastTree does: $O(n \sqrt n)$ memory and $O(n \sqrt n \log n)$ time for the joins.
 - **NJ on a subsample, then placement of the rest.** The scaffold experiments suggest that the deep structure from NJ on a few hundred samples may suffice. Untested.
 - **Placement onto a distance-built backbone of the most divergent clades.**
 
@@ -221,10 +232,9 @@ The distance start needs a faster method before it can be the default above any 
 
 ### B5. Representation for the Fitch refresh
 
-The refresh reconstructs full sequences for every node, which costs 1.2 GB on mpox (197 kb genomes). The MAT itself is small.
+**Done on the branch.** The refresh encodes each leaf from its sparse query and runs `fn create_fitch_partition()` only on the columns where some sample differs from the reference. Every other column keeps the reference state. Scores are identical to the full refresh, and the build of `mpox/clade-ii/2000` takes 13 s instead of 24 s.
 
-- **B5a. Keep full sequences.** Acceptable up to about 30 kb × 5000 samples.
-- **B5b. [recommended] Fitch on the MAT.** Run Fitch only at sites with a substitution somewhere in the tree. The other sites are constant by construction. This is the representation in [kb/proposals/mutation-first-sequence-representation.md](mutation-first-sequence-representation.md), and the builder needs only the parsimony part of it.
+The remaining memory peak (0.9 GB on mpox) comes from holding the alignment. The builder needs only the queries, so a streaming reader that encodes each sequence as it is read would remove it. This is the parsimony part of [kb/proposals/mutation-first-sequence-representation.md](mutation-first-sequence-representation.md).
 
 ### B6. Polytomies and binary output
 
@@ -303,7 +313,7 @@ Measured on 12 cores, `sc2/4500` (5100 samples, 29,903 sites):
 Where the cost lies:
 
 - **Rebuilds.** They are 2 to 4 times slower with state sets, because the plurality sets of every pseudo-leaf are recomputed for every ball. Caching the sets per node between balls, and rebuilding only balls whose members changed since the last round, should recover most of this.
-- **Fitch refresh.** It reconstructs full sequences (see B5).
+- **Input.** The alignment is held in full while the queries are encoded (see B5).
 - **Placement bound.** $d(v)$ counts every substitution below $v$, although the query can gain only at sites where it differs from $v$. A bound restricted to the sites of the query would prune more. This matters at 10^5 samples, where the exact search visits a growing share of the tree.
 - **Polytomies.** `fn Graph.add_edge()` checks all children of the source for a duplicate edge, which is linear in the size of a polytomy. Large polytomies are common in SARS-CoV-2 trees.
 - **SPR.** It runs on one thread.
@@ -325,8 +335,8 @@ The prototype code is the starting point. Each stage lands with tests and a kb u
 | Stage | Content | Prototype status |
 | --- | --- | --- |
 | 1. Core | `Query`, `Mat`, exact placement, SPR, Fitch refresh, rebuilds, random order; `build_mat()` with fixed defaults | Implemented; remove the experiments that did not pay off (greedy walk, reference search, scaffolds, cells) or move them behind a feature for research |
-| 2. Representation | Fitch refresh on variable sites only (B5b) | Not started |
-| 3. Distance start | Sub-cubic NJ or NJ on a subsample, divergence rule (B2) | Cubic NJ implemented |
+| 2. Representation | Fitch refresh on variable sites only (B5); streaming encoding of the input | Refresh done |
+| 3. Distance start | Top-hits NJ, divergence rule or both starts (B2); a matrix-free method above $10^4$ samples | Top-hits NJ done |
 | 4. Command | `treetime build` with `--seed`, Newick and MAT output, a log of the stage scores; `--tree` fallback (B1) | Example program only |
 | 5. Downstream | Fix the polytomy-resolution error; run `optimize` and `timetree` on built trees in the comparison harness | Error reproduced |
 | 6. Support and update | Placement counts (B7a), incremental placement (B8a) | Not started |
@@ -359,9 +369,8 @@ These are general improvements and can merge independently.
 
 Actionable items from this proposal:
 
-- [M-build-neighbor-joining-cubic-time.md](../issues/M-build-neighbor-joining-cubic-time.md)
+- [M-build-neighbor-joining-quadratic-memory.md](../issues/M-build-neighbor-joining-quadratic-memory.md)
 - [M-build-no-rule-to-choose-distance-or-placement-start.md](../issues/M-build-no-rule-to-choose-distance-or-placement-start.md)
-- [M-build-fitch-refresh-materializes-full-sequences.md](../issues/M-build-fitch-refresh-materializes-full-sequences.md)
 - [M-build-rebuild-radius-in-branches-misses-ladder-errors.md](../issues/M-build-rebuild-radius-in-branches-misses-ladder-errors.md)
 - [M-build-least-squares-root-differs-on-built-sc2-tree.md](../issues/M-build-least-squares-root-differs-on-built-sc2-tree.md)
 - [N-build-local-rebuild-slow-with-state-sets.md](../issues/N-build-local-rebuild-slow-with-state-sets.md)
