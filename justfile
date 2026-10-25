@@ -163,10 +163,10 @@ check-all: _js
 check-group group: _js
     recipes="$(just --evaluate "checks_$1")"; JS_READY=1 dev/run-checks --serial ${recipes}
 
-# Lints and tests of the lint libraries and oxlint plugins in dev/lints, keep-going; outside check and check-all
+# Lints and tests of the lint libraries and oxlint plugins in dev/lints and tests of the shell libraries in dev/lib, keep-going; outside check and check-all
 [group("check")]
 check-dev: _js
-    JS_READY=1 dev/run-checks --serial lint-dev-rs test-dev-rs lint-dev-ts test-dev-ts
+    JS_READY=1 dev/run-checks --serial lint-dev-rs test-dev-rs lint-dev-ts test-dev-ts test-dev-sh
 
 # Apply the fast automatic lint fixes (clippy, oxlint), then format; stage your changes first
 [group("check")]
@@ -338,6 +338,11 @@ test-dev-rs *args:
 [group("test")]
 test-dev-ts: _js
     node --test 'dev/lints/oxlint/__tests__/test_*.ts' 'dev/lints/oxlint-anti-slop/**/*.test.ts'
+
+# Tests of the shell libraries in dev/lib
+[group("test")]
+test-dev-sh:
+    dev/lib/__tests__/test_ports
 
 # Smoke-test the fast cases (datasets of at most 100 sequences) against the rust branch (host only, needs Docker): just smoke [--only REGEX] [--against REF]
 [group("test")]

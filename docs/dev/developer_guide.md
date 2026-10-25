@@ -84,7 +84,7 @@ Optional settings go into the gitignored `.env` in the checkout; `.env.example` 
 | Smoke test of the threaded WebAssembly back end  | `just test-wasm-mt`                  |
 | TypeScript lints                                 | `just lint-ts`                       |
 | Format one toolchain                             | `just fmt-rs`, `fmt-ts`, `fmt-other` |
-| Lints and tests of the tools in `dev/lints`      | `just check-dev`                     |
+| Lints and tests of the tools in `dev/`           | `just check-dev`                     |
 
 In the container, prefix each command with `./dev/docker/run`.
 
@@ -96,7 +96,7 @@ Recipe names follow one scheme:
 
 While working on one toolchain, run its leaves (`just fmt-rs`, `just l`, `just t`) and leave the slow tools to `check-all`.
 
-The lint libraries and oxlint plugins in `dev/lints` have their own recipes, which `check` and `check-all` leave out: `just check-dev` runs `lint-dev-rs` and `test-dev-rs` for the dylint libraries, each in its own workspace with its pinned nightly, and `lint-dev-ts` and `test-dev-ts` for the oxlint plugins. Run them after a change in `dev/lints`.
+The lint libraries and oxlint plugins in `dev/lints` have their own recipes, which `check` and `check-all` leave out: `just check-dev` runs `lint-dev-rs` and `test-dev-rs` for the dylint libraries, each in its own workspace with its pinned nightly, `lint-dev-ts` and `test-dev-ts` for the oxlint plugins, and `test-dev-sh` for the shell libraries in `dev/lib` (the port slots of `dev/lib/ports.sh`). Run them after a change in `dev/lints` or `dev/lib`.
 
 `check` and `check-all` run their checks in parallel through `dev/run-checks`, keep going past failures, and list the failed checks at the end. Each check writes its output to `tmp/checks/<check>.log`. Warnings fail the checks, and a missing tool is a failure, not a skipped check. The full gate consists of groups, one CI job each; `just check-group <group>` runs one group serially, as its CI job does.
 

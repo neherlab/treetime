@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+#
+# Usage: $0
+#
+# Tests of the port slots of dev/lib/ports.sh. Each test builds its own
+# repository with linked worktrees in a temporary directory. The tests that do
+# not test listeners replace the listener probe, so ports in use on the machine
+# cannot change their result. Prints one line per test and exits 1 when a test
+# fails.
+#
+set -euo pipefail
+shopt -s inherit_errexit
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
+
+# Git of the test repositories reads no configuration of the machine.
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.org
+export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.org
+
+test_ports_main_checkout_holds_slot_0_without_a_claim() {
+  without_listeners
+  make_repo
+  assert_eq 0 "$(port_slot main)"
+  assert_eq "" "$(claims)"
+}
+
+test_ports_worktrees_get_distinct_slots() {
+  without_listeners
+  make_repo wt-a wt-b
+  assert_eq "1 2" "$(port_slot wt-a) $(port_slot wt-b)"
+}
+
+test_ports_worktree_keeps_its_slot() {
+  without_listeners
+  make_repo wt-a wt-b
+  local first
+  first="$(port_slot wt-a)"
+  port_slot wt-b >/dev/null
+  mkdir -p wt-a/sub/dir
+  assert_eq "${first}" "$(port_slot wt-a/sub/dir)"
+  assert_eq "${first}" "$(port_slot wt-a)"
+}
+
+test_ports_concurrent_claims_get_distinct_slots() {
+  without_listeners
+  make_repo wt-a wt-b wt-c wt-d
+  local pids=() name
+  for name in wt-a wt-b wt-c wt-d; do
+    port_slot "${name}" >"${name}.slot" &
+    pids+=("$!")
+  done
+  local pid
+  for pid in "${pids[@]}"; do
+    wait "${pid}"
+  done
+  assert_eq "1 2 3 4" "$(cat wt-?.slot | sort -n | tr '\n' ' ' | sed 's/ $//')"
+}
+
+test_ports_removed_worktree_frees_its_slot() {
+  without_listeners
+  make_repo wt-a wt-b wt-c
+  assert_eq "1 2" "$(port_slot wt-a) $(port_slot wt-b)"
+  git -C main worktree remove wt-a
+  assert_eq 1 "$(port_slot wt-c)"
+  assert_eq "1 2" "$(claims)"
+}
+
+test_ports_deleted_worktree_directory_frees_its_slot() {
+  without_listeners
+  make_repo wt-a wt-b
+  assert_eq 1 "$(port_slot wt-a)"
+  rm -rf wt-a
+  assert_eq 1 "$(port_slot wt-b)"
+}
+
+test_ports_slot_with_a_listener_is_skipped() {
+  make_repo wt-a
+  start_listener
+  # Slot 1 starts at the listening port.
+  port_block_start=$((listener_port - port_slot_size))
+  local slot
+  slot="$(port_slot wt-a)"
+  if ((slot < 2)); then
+    fail "expected a slot after slot 1, whose port ${listener_port} listens; got ${slot}"
+  fi
+}
+
+test_ports_port_of_slot_lays_out_the_block() {
+  assert_eq "14000 14007 14010 14997" \
+    "$(port_of_slot 0 0) $(port_of_slot 0 7) $(port_of_slot 1 0) $(port_of_slot 99 7)"
+}
+
+without_listeners() {
+  # shellcheck disable=SC2329 # replaces the probe that port_slot of dev/lib/ports.sh calls
+  port_slot_listening() { return 1; }
+}
+
+# Create the repository `main` with one linked worktree per name.
+make_repo() {
+  git init -q main
+  git -C main commit -q --allow-empty -m init
+  local name
+  for name in "$@"; do
+    git -C main worktree add -q "../${name}" -b "${name}"
+  done
+}
+
+claims() {
+  find main/.git/port-slots -type f 2>/dev/null | sed 's|.*/||' | sort -n | tr '\n' ' ' | sed 's/ $//'
+}
+
+# Start a TCP listener on 127.0.0.1 on a port that the system chooses, set
+# listener_port, and stop the listener when the test ends. It runs in the shell
+# of the test, because a command substitution would stop it on return.
+start_listener() {
+  bun -e '
+    const server = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+    console.log(server.port);
+  ' >listener.port &
+  listener_pid="$!"
+  trap 'kill "${listener_pid}" 2>/dev/null || true' EXIT
+  local tries
+  for ((tries = 0; tries < 100; tries++)); do
+    if [[ -s listener.port ]] && (: <>"/dev/tcp/127.0.0.1/$(cat listener.port)") 2>/dev/null; then
+      listener_port="$(cat listener.port)"
+      return 0
+    fi
+    kill -0 "${listener_pid}" 2>/dev/null || fail "the listener exited before it listened"
+    sleep 0.1
+  done
+  fail "the listener did not listen within 10 s"
+}
+
+assert_eq() {
+  [[ "${1}" == "${2}" ]] || fail "expected '${1}', got '${2}'"
+}
+
+fail() {
+  printf '  %s\n' "${1}" >&2
+  exit 1
+}
+
+run_test() {
+  local work_dir
+  work_dir="$(mktemp -d)"
+  (
+    cd "${work_dir}"
+    # shellcheck source=../ports.sh
+    source "${root}/dev/lib/ports.sh"
+    "${1}"
+  )
+  local status=$?
+  rm -rf "${work_dir}"
+  return "${status}"
+}
+
+main() {
+  local name status=0
+  for name in $(compgen -A function test_ports_); do
+    if run_test "${name}"; then
+      printf 'ok    %s\n' "${name}"
+    else
+      printf 'FAIL  %s\n' "${name}"
+      status=1
+    fi
+  done
+  return "${status}"
+}
+
+main "$@"
