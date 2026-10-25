@@ -167,6 +167,7 @@ fn best_local_tree(
     order: SampleOrder::Input,
     spr_rounds: 0,
     spr_slack: None,
+    anneal: None,
     fitch_refresh: false,
     compare_exhaustive: false,
     rebuild: None,
@@ -192,7 +193,7 @@ fn best_local_tree(
   for mut local in starts {
     loop {
       let before = local.parsimony();
-      spr_round(&mut local, &queries, None)?;
+      spr_round(&mut local, &queries, None, None)?;
       if local.parsimony() >= before {
         break;
       }
@@ -209,7 +210,12 @@ fn neighbor_joining_tree(queries: &[Query], frame: &Seq, alphabet: &Alphabet) ->
   let distances = jc_distances(queries, frame, alphabet.n_canonical());
   let (graph, samples) = neighbor_joining(&distances, queries.len(), None)?;
   let center = graph.root_key()?;
-  let fitted = fitch_refresh(Mat::from_parts(graph, center, frame.clone(), vec![], samples), queries, frame, alphabet)?;
+  let fitted = fitch_refresh(
+    Mat::from_parts(graph, center, frame.clone(), vec![], samples),
+    queries,
+    frame,
+    alphabet,
+  )?;
   let center_state = fitted.reference().clone();
   let (mut graph, mut subs, samples) = fitted.into_parts();
   let root = graph.add_node();

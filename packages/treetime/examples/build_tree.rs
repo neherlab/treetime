@@ -7,8 +7,8 @@ use treetime::build::evaluate::{
   MissedSplit, TreeWithCounts, compare_splits, fitch_edge_counts, fitch_edge_subs, missed_splits,
 };
 use treetime::build::pipeline::{
-  BuildParams, BuildStats, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat, mat_from_tree, mat_to_tree,
-  refine_mat,
+  AnnealParams, BuildParams, BuildStats, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat,
+  mat_from_tree, mat_to_tree, refine_mat,
 };
 use treetime::build::rebuild::RebuildParams;
 use treetime::build::references::ReferenceSelection;
@@ -43,7 +43,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [start=<nwk to refine>] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [start=<nwk to refine>] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1] [anneal=<rounds>] [t0=1.0] [cooling=0.8]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -109,6 +109,17 @@ fn parse_args() -> Result<Args, Report> {
         },
         other => return make_error!("Unknown initial tree '{other}'"),
       },
+      anneal: options
+        .get("anneal")
+        .map(|rounds| -> Result<AnnealParams, Report> {
+          Ok(AnnealParams {
+            start_temperature: get("t0", "1.0").parse()?,
+            cooling: get("cooling", "0.8").parse()?,
+            rounds: rounds.parse()?,
+            seed: get("seed", "0").parse()?,
+          })
+        })
+        .transpose()?,
       scaffold: options
         .get("scaffold")
         .map(|size| -> Result<ScaffoldParams, Report> {
@@ -362,6 +373,12 @@ fn main() -> Result<(), Report> {
     println!(
       "spr_round={round} tried={} moves={} gain={} visited={} parsimony_before={} parsimony_after={}",
       spr.tried, spr.moves, spr.gain, spr.visited, spr.parsimony_before, spr.parsimony_after
+    );
+  }
+  for (round, spr) in stats.anneal.iter().enumerate() {
+    println!(
+      "anneal_round={round} moves={} uphill={} parsimony_after={}",
+      spr.moves, spr.uphill, spr.parsimony_after
     );
   }
   for (round, rebuild) in stats.rebuild.iter().enumerate() {

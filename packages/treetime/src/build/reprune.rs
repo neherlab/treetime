@@ -56,7 +56,7 @@ pub(crate) fn reprune(
         .sorted_by_key(|(sample, query)| (query.n_missing(), *sample))
         .collect_vec();
       for (sample, query) in &queries {
-        let placement = place_exhaustive(&mat, query, None, None, true)?;
+        let placement = place_exhaustive(&mat, query, None, None, true, None)?;
         insert(&mut mat, query, placement.target, Insertee::Sample(*sample))?;
       }
       mat = fitch_refresh(mat, &encoded, &frame, alphabet)?;

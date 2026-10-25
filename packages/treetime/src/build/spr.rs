@@ -1,6 +1,6 @@
 use crate::build::insert::{Insertee, insert};
 use crate::build::mat::Mat;
-use crate::build::placement::{Target, place_exhaustive, place_greedy};
+use crate::build::placement::{Heat, Target, place_exhaustive, place_greedy};
 use crate::build::query::Query;
 use eyre::Report;
 use std::borrow::Cow;
@@ -10,12 +10,21 @@ pub struct SprStats {
   pub tried: usize,
   pub moves: usize,
   pub gain: usize,
+  pub uphill: usize,
   pub visited: usize,
   pub parsimony_before: usize,
   pub parsimony_after: usize,
 }
 
-pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) -> Result<SprStats, Report> {
+/// Prunes and re-places every subtree once. Without a temperature each subtree goes to its best
+/// placement and the score never rises; with one, the placement is drawn from the Boltzmann
+/// distribution of the placement costs (simulated annealing), and `seed` varies the draws between rounds.
+pub(crate) fn spr_round(
+  mat: &mut Mat,
+  queries: &[Query],
+  slack: Option<usize>,
+  temperature: Option<(f64, u64)>,
+) -> Result<SprStats, Report> {
   let mut stats = SprStats::default();
   let reference = mat.reference().clone();
   let allows = |sample: usize, pos: usize, state| {
@@ -49,12 +58,19 @@ pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) 
       [Some(parent), None] => Some(Target::Node(parent)),
       _ => None,
     };
+    let heat = temperature.map(|(temperature, seed)| Heat {
+      temperature,
+      salt: seed
+        ^ u64::try_from(node.as_usize())
+          .unwrap_or_default()
+          .wrapping_mul(0xD6E8_FEB8_6659_FD93),
+    });
     let placement = match slack {
       Some(slack) => {
         let starts = detached.reattach_hint.iter().flatten().copied().collect::<Vec<_>>();
-        place_greedy(mat, &query, &starts, slack, prefer)?
+        place_greedy(mat, &query, &starts, slack, prefer, heat)?
       },
-      None => place_exhaustive(mat, &query, prefer, None, true)?,
+      None => place_exhaustive(mat, &query, prefer, None, true, heat)?,
     };
     let inserted = insert(mat, &query, placement.target, Insertee::Subtree(node))?;
     if mat.sample_of(node).is_none() {
@@ -74,6 +90,8 @@ pub(crate) fn spr_round(mat: &mut Mat, queries: &[Query], slack: Option<usize>) 
     if after < before {
       stats.moves += 1;
       stats.gain += before - after;
+    } else if after > before && temperature.is_some() {
+      stats.uphill += 1;
     } else if after > before {
       return Err(crate::make_internal_report!(
         "SPR of node {node} raised the parsimony score from {before} to {after}"

@@ -3,11 +3,13 @@ use crate::build::query::Query;
 use crate::build::references::Reaches;
 use crate::seq::mutation::Sub;
 use eyre::Report;
+use num_traits::ToPrimitive;
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BinaryHeap};
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::node::GraphNodeKey;
 use treetime_primitives::Seq;
+use treetime_utils::cast::{F64_EXACT_INTEGER_LIMIT, ToF64Exact};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Target {
@@ -59,24 +61,86 @@ pub(crate) fn shared_positions(subs: &[Sub], query: &Query, reference: &Seq) -> 
     .collect()
 }
 
+/// Boltzmann choice among placements: a target of cost $c$ is chosen with probability proportional to
+/// $e^{-c/T}$, by the Gumbel-max trick. Only targets within `WINDOW` temperatures of the cheapest are
+/// considered, so the branch-and-bound still prunes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Heat {
+  pub temperature: f64,
+  pub salt: u64,
+}
+
+impl Heat {
+  const WINDOW: f64 = 6.0;
+
+  fn window(self) -> isize {
+    (Self::WINDOW * self.temperature)
+      .ceil()
+      .to_isize()
+      .unwrap_or(isize::MAX)
+  }
+
+  /// Cost minus $T$ times a standard Gumbel variate, drawn from a hash of the salt and the target
+  pub(crate) fn key(self, target: Target, cost: isize) -> f64 {
+    let id = match target {
+      Target::Node(node) => node.as_usize() * 2,
+      Target::Edge(edge) => edge.as_usize() * 2 + 1,
+    };
+    let mut x = self.salt
+      ^ u64::try_from(id)
+        .unwrap_or_default()
+        .wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    x ^= x >> 31;
+    let uniform = ((x >> 11).to_f64_exact() + 0.5) / F64_EXACT_INTEGER_LIMIT.to_f64_exact();
+    cost.to_f64_exact() + self.temperature * (-uniform.ln()).ln()
+  }
+}
+
 struct Best {
   target: Option<Target>,
   cost: isize,
   n_best: usize,
   prefer: Option<Target>,
+  heat: Option<Heat>,
+  key: f64,
+  min_cost: isize,
 }
 
 impl Best {
-  fn new(prefer: Option<Target>) -> Self {
+  fn new(prefer: Option<Target>, heat: Option<Heat>) -> Self {
     Self {
       target: None,
       cost: isize::MAX,
       n_best: 0,
       prefer,
+      heat,
+      key: f64::INFINITY,
+      min_cost: isize::MAX,
+    }
+  }
+
+  /// Highest cost that can still be chosen
+  fn limit(&self) -> isize {
+    match self.heat {
+      Some(heat) => self.min_cost.saturating_add(heat.window()),
+      None => self.cost,
     }
   }
 
   fn offer(&mut self, target: Target, cost: isize) {
+    if let Some(heat) = self.heat {
+      self.min_cost = self.min_cost.min(cost);
+      let key = heat.key(target, cost);
+      if key < self.key {
+        self.key = key;
+        self.cost = cost;
+        self.target = Some(target);
+        self.n_best = 1;
+      }
+      return;
+    }
     let rank = |t: Target| (Some(t) != self.prefer, matches!(t, Target::Edge(_)), t);
     if cost < self.cost {
       self.cost = cost;
@@ -130,9 +194,10 @@ pub fn place_exhaustive(
   prefer: Option<Target>,
   seed: Option<Placement>,
   prune: bool,
+  heat: Option<Heat>,
 ) -> Result<Placement, Report> {
   let reference = mat.reference();
-  let mut best = Best::new(prefer);
+  let mut best = Best::new(prefer, heat);
   if let Some(seed) = seed {
     best.offer(seed.target, signed(seed.cost));
     best.n_best = 0;
@@ -142,7 +207,7 @@ pub fn place_exhaustive(
   let mut children = vec![];
   let mut visited = 0;
   while let Some((node, cost)) = stack.pop() {
-    if prune && bound(node, cost) > best.cost {
+    if prune && bound(node, cost) > best.limit() {
       continue;
     }
     visited += 1;
@@ -152,7 +217,7 @@ pub fn place_exhaustive(
       let score = score_edge(mat.edge_subs(edge), query, reference);
       offer_edge(mat, &mut best, edge, cost, score);
       let child_cost = cost + score.delta;
-      if !prune || bound(child, child_cost) <= best.cost {
+      if !prune || bound(child, child_cost) <= best.limit() {
         children.push((bound(child, child_cost), child, child_cost));
       }
     }
@@ -168,10 +233,11 @@ pub fn place_greedy(
   starts: &[GraphNodeKey],
   slack: usize,
   prefer: Option<Target>,
+  heat: Option<Heat>,
 ) -> Result<Placement, Report> {
   let reference = mat.reference();
   let slack = signed(slack);
-  let mut best = Best::new(prefer);
+  let mut best = Best::new(prefer, heat);
   let mut costs: BTreeMap<GraphNodeKey, isize> = BTreeMap::new();
   let mut heap = BinaryHeap::new();
   for &start in starts {
@@ -184,7 +250,7 @@ pub fn place_greedy(
   }
   let mut visited = 0;
   while let Some(Reverse((cost, node))) = heap.pop() {
-    if best.target.is_some() && cost > best.cost + slack {
+    if best.target.is_some() && cost > best.limit() + slack {
       break;
     }
     visited += 1;
@@ -193,7 +259,7 @@ pub fn place_greedy(
       let score = score_edge(mat.edge_subs(edge), query, reference);
       offer_edge(mat, &mut best, edge, cost, score);
       let child_cost = cost + score.delta;
-      if !costs.contains_key(&child) && child_cost <= best.cost.saturating_add(slack) {
+      if !costs.contains_key(&child) && child_cost <= best.limit().saturating_add(slack) {
         costs.insert(child, child_cost);
         heap.push(Reverse((child_cost, child)));
       }
@@ -202,7 +268,7 @@ pub fn place_greedy(
       let score = score_edge(mat.edge_subs(edge), query, reference);
       let parent_cost = cost - score.delta;
       offer_edge(mat, &mut best, edge, parent_cost, score);
-      if !costs.contains_key(&parent) && parent_cost <= best.cost.saturating_add(slack) {
+      if !costs.contains_key(&parent) && parent_cost <= best.limit().saturating_add(slack) {
         costs.insert(parent, parent_cost);
         heap.push(Reverse((parent_cost, parent)));
       }
@@ -213,7 +279,7 @@ pub fn place_greedy(
 
 pub fn place_from(mat: &Mat, query: &Query, start: GraphNodeKey, reaches: &Reaches) -> Result<Placement, Report> {
   let reference = mat.reference();
-  let mut best = Best::new(None);
+  let mut best = Best::new(None, None);
   let reach = |value: Option<usize>| signed(value.unwrap_or(usize::MAX));
   let start_cost = signed(query.cost_against(&mat.node_state(start), reference));
   let mut heap = BinaryHeap::from([Reverse((isize::MIN, start, start_cost, None))]);

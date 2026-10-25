@@ -58,13 +58,25 @@ pub struct BuildParams {
   pub reprune: Option<RepruneParams>,
   pub scaffold: Option<ScaffoldParams>,
   pub initial: InitialTree,
+  pub anneal: Option<AnnealParams>,
+}
+
+/// SPR rounds at temperatures $T_0 c^k$ before the greedy refinement, which starts from the best tree seen
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AnnealParams {
+  pub start_temperature: f64,
+  pub cooling: f64,
+  pub rounds: usize,
+  pub seed: u64,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum InitialTree {
   #[default]
   Placement,
-  NeighborJoining { top_hits: Option<usize> },
+  NeighborJoining {
+    top_hits: Option<usize>,
+  },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -93,6 +105,7 @@ pub struct BuildStats {
   pub references: usize,
   pub comparison: Option<ExhaustiveComparison>,
   pub spr: Vec<SprStats>,
+  pub anneal: Vec<SprStats>,
   pub rebuild: Vec<RebuildStats>,
   pub reprune: Option<RepruneStats>,
   pub collapsed_edges: usize,
@@ -198,7 +211,7 @@ pub(crate) fn place_samples(
     if params.compare_exhaustive {
       let exhaustive = batch
         .par_iter()
-        .map(|&sample| place_exhaustive(mat, &queries[sample], None, None, false))
+        .map(|&sample| place_exhaustive(mat, &queries[sample], None, None, false, None))
         .collect::<Result<Vec<_>, Report>>()?;
       let comparison = stats.comparison.get_or_insert_default();
       for (search, oracle) in izip!(&placements, &exhaustive) {
@@ -262,20 +275,42 @@ pub fn refine_mat(
   if stats.placement_parsimony == 0 {
     stats.placement_parsimony = mat.parsimony();
   }
+  if let Some(anneal) = &params.anneal {
+    let mut best = mat.clone();
+    for (round, seed) in (0..anneal.rounds).zip(0_u64..) {
+      if params.fitch_refresh {
+        let frame = mat.reference().clone();
+        mat = fitch_refresh(mat, &queries, &frame, alphabet)?;
+        queries = encode_queries(seqs, mat.reference(), alphabet);
+      }
+      let temperature = anneal.start_temperature * anneal.cooling.powi(i32::try_from(round)?);
+      let salt = anneal.seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ seed;
+      let mut stats_round = spr_round(&mut mat, &queries, params.spr_slack, Some((temperature, salt)))?;
+      stats_round.parsimony_before = stats
+        .anneal
+        .last()
+        .map_or(stats.placement_parsimony, |last| last.parsimony_after);
+      stats_round.parsimony_after = mat.parsimony();
+      stats.anneal.push(stats_round);
+      if mat.parsimony() < best.parsimony() {
+        best = mat.clone();
+      }
+    }
+    mat = best;
+    queries = encode_queries(seqs, mat.reference(), alphabet);
+  }
+  let start = mat.parsimony();
   for _ in 0..params.spr_rounds {
     if params.fitch_refresh {
       let frame = mat.reference().clone();
       mat = fitch_refresh(mat, &queries, &frame, alphabet)?;
       queries = encode_queries(seqs, mat.reference(), alphabet);
     }
-    let mut round = spr_round(&mut mat, &queries, params.spr_slack)?;
+    let mut round = spr_round(&mut mat, &queries, params.spr_slack, None)?;
     if let Some(rebuild) = &params.rebuild {
       stats.rebuild.push(rebuild_round(&mut mat, seqs, alphabet, rebuild)?);
     }
-    round.parsimony_before = stats
-      .spr
-      .last()
-      .map_or(stats.placement_parsimony, |last| last.parsimony_after);
+    round.parsimony_before = stats.spr.last().map_or(start, |last| last.parsimony_after);
     round.parsimony_after = mat.parsimony();
     stats.spr.push(round);
     if round.parsimony_after >= round.parsimony_before {
@@ -357,7 +392,7 @@ impl BatchSearch {
 
   fn place(&self, mat: &Mat, query: &Query) -> Result<Placement, Report> {
     match self {
-      Self::Exhaustive => place_exhaustive(mat, query, None, None, true),
+      Self::Exhaustive => place_exhaustive(mat, query, None, None, true, None),
       Self::Walk { starts, slack, exact } => walk(mat, query, starts, *slack, *exact),
       Self::FromReferences { starts, reaches } => {
         let start = starts
@@ -375,17 +410,17 @@ impl BatchSearch {
         let starts = local.into_iter().chain(starts.iter().copied()).collect_vec();
         walk(mat, query, &starts, *slack, *exact)
       },
-      Self::Exhaustive | Self::FromReferences { .. } => place_exhaustive(mat, query, None, None, true),
+      Self::Exhaustive | Self::FromReferences { .. } => place_exhaustive(mat, query, None, None, true, None),
     }
   }
 }
 
 fn walk(mat: &Mat, query: &Query, starts: &[GraphNodeKey], slack: usize, exact: bool) -> Result<Placement, Report> {
-  let greedy = place_greedy(mat, query, starts, slack, None)?;
+  let greedy = place_greedy(mat, query, starts, slack, None, None)?;
   if !exact {
     return Ok(greedy);
   }
-  let exact = place_exhaustive(mat, query, None, Some(greedy), true)?;
+  let exact = place_exhaustive(mat, query, None, Some(greedy), true, None)?;
   Ok(Placement {
     visited: greedy.visited + exact.visited,
     ..exact
