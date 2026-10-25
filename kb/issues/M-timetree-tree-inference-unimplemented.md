@@ -26,6 +26,8 @@ Users who invoke `treetime timetree` without `--tree`, expecting tree inference 
 
 Implement tree inference from the alignment (a large feature tracked in [kb/algo/unimplemented.md](../algo/unimplemented.md)), then accept a missing `--tree` in the commands that can use an inferred tree.
 
+A research prototype of a native parsimony builder exists on the branch `tree-builder` ([kb/reports/feat-tree-infer-prototype.md](../reports/feat-tree-infer-prototype.md)), and [kb/proposals/native-parsimony-tree-builder.md](../proposals/native-parsimony-tree-builder.md) proposes a design based on it.
+
 [kb/reports/feat-tree-infer.md](../reports/feat-tree-infer.md) surveys the methods and lists the open design decisions: the entry point, initial topology, topology improvement, divergent data, branch support, update mode, and recombination. An internal builder diverges from v0, which only calls external programs, so each adopted option needs an approved entry in `kb/decisions/` before implementation.
 
 > [!IMPORTANT]
