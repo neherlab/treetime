@@ -2,6 +2,7 @@ use crate::edge::{Edge, GraphEdgeKey};
 use crate::graph::Graph;
 use crate::node::{GraphNodeKey, Node};
 use eyre::Report;
+use itertools::{Itertools, chain};
 use treetime_utils::{make_error, make_internal_report, make_report};
 
 #[expect(
@@ -10,11 +11,19 @@ use treetime_utils::{make_error, make_internal_report, make_report};
 )]
 impl Graph {
   pub(crate) fn remove_node(&mut self, node_key: GraphNodeKey) -> Result<(Node, Vec<Edge>), Report> {
-    let edges_to_remove: Vec<GraphEdgeKey> = self
-      .get_edges()
-      .filter(|edge| edge.source() == node_key || edge.target() == node_key)
-      .map(Edge::key)
-      .collect();
+    let node = self
+      .get_node(node_key)
+      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent node: {node_key}"))?;
+    let edges_to_remove = chain(node.inbound(), node.outbound())
+      .copied()
+      .filter(|&edge_key| {
+        self
+          .get_edge(edge_key)
+          .is_some_and(|edge| edge.source() == node_key || edge.target() == node_key)
+      })
+      .sorted_unstable()
+      .dedup()
+      .collect_vec();
 
     let removed_edges = edges_to_remove
       .into_iter()
@@ -105,14 +114,16 @@ impl Graph {
   }
 
   pub fn remove_edge(&mut self, edge_key: GraphEdgeKey) -> Result<Edge, Report> {
-    for node in self.nodes_mut() {
-      node.outbound_mut().retain(|&e| e != edge_key);
-      node.inbound_mut().retain(|&e| e != edge_key);
-    }
-
-    self
+    let edge = self
       .take_edge(edge_key)
-      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent edge: {edge_key}"))
+      .ok_or_else(|| make_internal_report!("Attempted to remove non-existent edge: {edge_key}"))?;
+    for node_key in [edge.source(), edge.target()] {
+      if let Some(node) = self.get_node_mut(node_key) {
+        node.outbound_mut().retain(|&e| e != edge_key);
+        node.inbound_mut().retain(|&e| e != edge_key);
+      }
+    }
+    Ok(edge)
   }
 
   pub fn build(&mut self) -> Result<(), Report> {
