@@ -187,24 +187,14 @@ pub(crate) fn timetree_gaussian_clock(
   }
 }
 
-pub(crate) fn gaussian_start_rate(
-  graph: &Graph,
-  branch_lengths: &BTreeMap<GraphEdgeKey, Option<f64>>,
-  context: &TimetreeContext,
-  outliers: &BTreeSet<GraphNodeKey>,
+pub(crate) fn clock_fit_or_gaussian_rate(
+  fit: ClockFitResult,
   floor: StartRateFloor,
+  fit_name: &str,
+  tree: &GaussianRateTree<'_>,
   log: &dyn LogSink,
-) -> Result<f64, Report> {
-  let regression = floor.regression_text();
-  let excluded = bad_leaves(graph, &context.date_constraints, outliers);
-  let rate = gaussian_tree(graph, branch_lengths, context, &excluded)
-    .and_then(|tree| tree.rate())
-    .wrap_err_with(|| format!("{regression}, and the Gaussian timetree gives no positive rate either"))?;
-  progress_warn!(
-    log,
-    "{regression}; starting from the rate of the Gaussian timetree, {rate:.6e}"
-  );
-  Ok(rate)
+) -> Result<ClockFit, Report> {
+  fit.into_clock_fit_or(floor.threshold(), || gaussian_start_rate(tree, floor, fit_name, log))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -235,7 +225,7 @@ impl StartRateFloor {
     }
   }
 
-  pub(crate) fn threshold(self) -> f64 {
+  fn threshold(self) -> f64 {
     match self {
       Self::Positive => 0.0,
       Self::Signal(floor) => floor,
@@ -244,12 +234,37 @@ impl StartRateFloor {
 
   fn regression_text(self) -> String {
     match self {
-      Self::Positive => "The root-to-tip regression gives no positive clock rate".to_owned(),
+      Self::Positive => "the root-to-tip regression gives no positive clock rate".to_owned(),
       Self::Signal(floor) => format!(
-        "The root-to-tip regression gives a clock rate of at most {floor:.6e}, a tenth of the mean root-to-tip divergence per year of sampling"
+        "the root-to-tip regression gives a clock rate of at most {floor:.6e}, a tenth of the mean root-to-tip divergence per year of sampling"
       ),
     }
   }
+}
+
+pub(crate) struct GaussianRateTree<'a> {
+  pub graph: &'a Graph,
+  pub branch_lengths: &'a BTreeMap<GraphEdgeKey, Option<f64>>,
+  pub context: &'a TimetreeContext,
+  pub outliers: &'a BTreeSet<GraphNodeKey>,
+}
+
+fn gaussian_start_rate(
+  tree: &GaussianRateTree<'_>,
+  floor: StartRateFloor,
+  fit_name: &str,
+  log: &dyn LogSink,
+) -> Result<f64, Report> {
+  let regression = floor.regression_text();
+  let excluded = bad_leaves(tree.graph, &tree.context.date_constraints, tree.outliers);
+  let rate = gaussian_tree(tree.graph, tree.branch_lengths, tree.context, &excluded)
+    .and_then(|gaussian| gaussian.rate())
+    .wrap_err_with(|| format!("{fit_name}: {regression}, and the Gaussian timetree gives no positive rate either"))?;
+  progress_warn!(
+    log,
+    "{fit_name}: {regression}; using the rate of the Gaussian timetree, {rate:.6e}"
+  );
+  Ok(rate)
 }
 
 fn gaussian_tree<'g>(

@@ -15,7 +15,7 @@ use crate::progress_info;
 use crate::reroot::params::{RerootParams, RerootSpec};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
-use crate::timetree::init::{StartRateFloor, gaussian_start_rate};
+use crate::timetree::init::{GaussianRateTree, StartRateFloor, clock_fit_or_gaussian_rate};
 use crate::timetree::optimization::outliers::report_outliers;
 use crate::timetree::optimization::reroot::{RerootFitParams, RerootedTree, reroot_tree};
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
@@ -45,8 +45,10 @@ pub(crate) fn run_pre_loop(
   let state = match &params.reroot_spec {
     None => state,
     Some(spec) => {
-      progress_info!(log, "{} (pre-ancestral)", step_label(spec, "First reroot"));
-      reroot(inputs, spec, state, RerootOutliers::None, log).wrap_err("Failed to reroot tree (pre-ancestral)")?
+      let label = format!("{} (pre-ancestral)", step_label(spec, "First reroot"));
+      progress_info!(log, "{label}");
+      reroot(inputs, spec, &label, state, RerootOutliers::None, log)
+        .wrap_err("Failed to reroot tree (pre-ancestral)")?
     },
   };
   let state = if params.clock_filter > 0.0 {
@@ -68,8 +70,9 @@ pub(crate) fn run_pre_loop(
   let Some(spec) = &params.reroot_spec else {
     return Ok(state);
   };
-  progress_info!(log, "{} (post-ancestral)", step_label(spec, "Reroot"));
-  reroot(inputs, spec, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
+  let label = format!("{} (post-ancestral)", step_label(spec, "Reroot"));
+  progress_info!(log, "{label}");
+  reroot(inputs, spec, &label, state, RerootOutliers::Filtered, log).wrap_err("Failed to reroot tree (post-ancestral)")
 }
 
 fn ml_optimize(
@@ -113,6 +116,7 @@ fn ml_optimize(
 fn reroot(
   inputs: &PreLoopInputs<'_>,
   spec: &RerootSpec,
+  label: &str,
   state: PreLoopState,
   outliers: RerootOutliers,
   log: &dyn LogSink,
@@ -156,16 +160,18 @@ fn reroot(
   let clock_fit = if reroot_params.is_some() {
     fit.into_clock_fit()?
   } else {
-    fit.into_clock_fit_or(StartRateFloor::Positive.threshold(), || {
-      gaussian_start_rate(
-        &graph,
-        &branch_lengths,
-        inputs.context,
+    clock_fit_or_gaussian_rate(
+      fit,
+      StartRateFloor::Positive,
+      label,
+      &GaussianRateTree {
+        graph: &graph,
+        branch_lengths: &branch_lengths,
+        context: inputs.context,
         outliers,
-        StartRateFloor::Positive,
-        log,
-      )
-    })?
+      },
+      log,
+    )?
   };
   Ok(PreLoopState {
     graph,
