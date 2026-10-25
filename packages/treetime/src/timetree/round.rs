@@ -38,7 +38,6 @@ pub(crate) fn refinement_round(
   inputs: &RoundInputs<'_>,
   merger_rate: Option<&PiecewiseConstantFn>,
   prior: Option<&CoalescentPrior>,
-  rate_window: RateWindow,
   state: RoundState,
   rng: &mut dyn Rng,
   log: &dyn LogSink,
@@ -62,10 +61,9 @@ pub(crate) fn refinement_round(
     sequence_changes: count_sequence_changes(&previous_states, &current_states),
     time_change: measure_node_time_change(&previous_times, &current_times),
     topology,
-    rate_window,
   };
-  let (state, rate_window) = update_clock_model(inputs, prior, rate_window, state, log)?;
-  Ok((state, RoundOutcome { rate_window, ..outcome }))
+  let state = update_clock_model(inputs, prior, state, log)?;
+  Ok((state, outcome))
 }
 
 pub(crate) fn infer_final_times(
@@ -101,7 +99,6 @@ pub(crate) struct RoundOutcome {
   pub sequence_changes: usize,
   pub time_change: NodeTimeChange,
   pub topology: TopologyOutcome,
-  pub rate_window: RateWindow,
 }
 
 fn relax_clock(relax: &[f64], state: RoundState, total_length: usize, log: &dyn LogSink) -> Result<RoundState, Report> {
@@ -261,16 +258,15 @@ fn infer_times(
 fn update_clock_model(
   inputs: &RoundInputs<'_>,
   prior: Option<&CoalescentPrior>,
-  rate_window: RateWindow,
   state: RoundState,
   log: &dyn LogSink,
-) -> Result<(RoundState, RateWindow), Report> {
+) -> Result<RoundState, Report> {
   let (clock_rate, rate_window) = match (inputs.params.clock_rate, prior) {
     (None, Some(prior)) => {
-      let (rate, window) = marginal_clock_rate(inputs, prior, rate_window, &state, log)?;
-      (Some(rate), window)
+      let step = marginal_clock_rate(inputs, prior, &state, log)?;
+      (Some(step.clock_rate), step.window)
     },
-    (fixed, _) => (fixed, rate_window),
+    (fixed, _) => (fixed, state.rate_window),
   };
   let edge_inputs: BTreeMap<GraphEdgeKey, (Option<f64>, f64)> = state
     .time_inference
@@ -311,32 +307,25 @@ fn update_clock_model(
     },
     log,
   )?;
-  Ok((
-    RoundState {
-      graph,
-      branch_lengths,
-      clock_model: model,
-      clock_points: points,
-      ..state
-    },
+  Ok(RoundState {
+    graph,
+    branch_lengths,
+    clock_model: model,
+    clock_points: points,
     rate_window,
-  ))
+    ..state
+  })
 }
 
 fn marginal_clock_rate(
   inputs: &RoundInputs<'_>,
   prior: &CoalescentPrior,
-  window: RateWindow,
   state: &RoundState,
   log: &dyn LogSink,
-) -> Result<(f64, RateWindow), Report> {
+) -> Result<MarginalRateStep, Report> {
   let reference_rate = state.clock_model.clock_rate();
-  let MarginalRateStep {
-    clock_rate,
-    target_rate,
-    log_lh,
-    window: next_window,
-  } = step_marginal_clock_rate(&MarginalRateInputs {
+  let window = state.rate_window;
+  let step = step_marginal_clock_rate(&MarginalRateInputs {
     graph: &state.graph,
     date_constraints: &inputs.context.date_constraints,
     coalescent: Some(prior),
@@ -347,12 +336,18 @@ fn marginal_clock_rate(
     max_points: inputs.params.max_grid_points,
   })
   .wrap_err("Failed to estimate the clock rate from the marginal likelihood of the node times")?;
+  let MarginalRateStep {
+    clock_rate,
+    target_rate,
+    log_lh,
+    ..
+  } = step;
   progress_info!(
     log,
     "Clock rate stepped toward the maximum of the marginal likelihood of the node times: {clock_rate:.6e} (was {reference_rate:.6e}, target {target_rate:.6e}, probe half-width {:.4} in log rate), log_lh_time={log_lh:.2}",
     window.half_width
   );
-  Ok((clock_rate, next_window))
+  Ok(step)
 }
 
 pub(crate) struct RoundState {
@@ -362,6 +357,7 @@ pub(crate) struct RoundState {
   pub branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
   pub clock_model: ClockModel,
   pub clock_points: Vec<ClockRegressionPoint>,
+  pub rate_window: RateWindow,
   pub clock_branch_lengths: BTreeMap<GraphEdgeKey, f64>,
   pub gammas: BTreeMap<GraphEdgeKey, f64>,
   pub time_inference: TimeInference,

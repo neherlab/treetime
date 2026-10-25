@@ -7,6 +7,7 @@ use crate::timetree::coalescent_timescale::{CoalescentMode, CoalescentSetup, Lin
 use crate::timetree::inference::bad_branches::bad_leaves;
 use crate::timetree::inference::result::{TimeInference, given_times};
 use crate::timetree::inference::runner::{CLOCK_BRANCH_LENGTH_UNDAMPED, run_timetree};
+use crate::timetree::optimization::marginal_clock_rate::RateWindow;
 use crate::timetree::optimization::relaxed_clock::unit_gammas;
 use crate::timetree::params::{TimetreeContext, TimetreeParams};
 use crate::timetree::pre_loop::PreLoopState;
@@ -50,6 +51,7 @@ pub(crate) fn initialize(
     branch_lengths,
     clock_model,
     clock_points,
+    rate_window: RateWindow::initial(),
     clock_branch_lengths: BTreeMap::new(),
     time_inference: TimeInference::default(),
   };

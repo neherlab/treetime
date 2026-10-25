@@ -12,7 +12,7 @@ use treetime_graph::node::GraphNodeKey;
 use treetime_grid::MaxGridPoints;
 
 const PROBE_FACTOR: f64 = 1.25;
-const MIN_PROBE_SHRINK: f64 = 8.0;
+const MAX_HALF_WIDTH_DIVISOR: f64 = 8.0;
 const MAX_TARGET_FACTOR: f64 = 2.0;
 pub(crate) const STEP_FRACTION: f64 = 2.0 / 3.0;
 
@@ -138,7 +138,7 @@ impl RateWindow {
 
   fn shrunk(self) -> Self {
     Self {
-      half_width: (self.half_width / 2.0).max(PROBE_FACTOR.ln() / MIN_PROBE_SHRINK),
+      half_width: (self.half_width / 2.0).max(PROBE_FACTOR.ln() / MAX_HALF_WIDTH_DIVISOR),
       ..self
     }
   }

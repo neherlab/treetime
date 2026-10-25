@@ -5,7 +5,6 @@ use crate::progress_info;
 use crate::timetree::coalescent_timescale::{CoalescentSetup, coalescent_timescale};
 use crate::timetree::convergence::metrics::IterationClock;
 use crate::timetree::convergence::optimizer::{IterationContext, TimetreeOptimizer, TraceSink};
-use crate::timetree::optimization::marginal_clock_rate::RateWindow;
 use crate::timetree::round::{RoundInputs, RoundState, refinement_round};
 use eyre::{Report, WrapErr};
 use std::sync::Arc;
@@ -34,7 +33,6 @@ pub(crate) fn run_refinement_loop(
 
   let mut rng = get_random_number_generator(params.seed);
   let mut current = current_expectation(&coalescent, &state)?;
-  let mut rate_window = RateWindow::initial();
 
   while let Some(IterationContext { i }) = optimizer.next_iter(log) {
     cancel.check()?;
@@ -46,18 +44,9 @@ pub(crate) fn run_refinement_loop(
       round_models(&mut coalescent, previous, state.clock_model.clock_rate(), log)?;
 
     let iteration_clock = IterationClock::of(&state.clock_model);
-    let (next_state, outcome) = refinement_round(
-      inputs,
-      merger_rate.as_ref(),
-      prior.as_ref(),
-      rate_window,
-      state,
-      &mut rng,
-      log,
-    )
-    .wrap_err_with(|| format!("When running round {i}"))?;
+    let (next_state, outcome) = refinement_round(inputs, merger_rate.as_ref(), prior.as_ref(), state, &mut rng, log)
+      .wrap_err_with(|| format!("When running round {i}"))?;
     state = next_state;
-    rate_window = outcome.rate_window;
     current = current_expectation(&coalescent, &state)?;
     if let (Some(lineages), Some(current), true) = (&mut coalescent.lineages, &current, outcome.topology.changed()) {
       lineages.expectation = Arc::clone(current);
