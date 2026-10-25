@@ -312,6 +312,8 @@ With `anneal=<rounds> t0=<T0> cooling=<c>`, SPR re-places each pruned subtree at
 - **Hot annealing dissolves the tree.** At $T_0 = 2$, the first round on `sc2/4500` makes 3495 uphill moves and raises the score from 27,033 to 40,400. On many large plateaus, entropy wins over the score. The cooled tree ends worse than greedy
 - **Lassa does not respond.** $T_0$ = 1, 2, 5, 10 end between +0.89% and +1.05%. The gap there is not crossed by single-subtree moves at any temperature
 - **Split agreement does not follow the score on `sc2/4500`.** The annealed trees miss 478 to 513 reference splits, against 482 and 494 for greedy. Many of the missed splits are short branches among equally parsimonious resolutions
+- **Ties are frequent where annealing gains.** Placements with more than one target of equal cost: 18% on `sc2/4500` (2.6 targets on average), 13% on `mpox/clade-ii/2000`, 10% on `rsv/a/2000`, 7% on `dengue/2000`. Among SPR re-placements, 18 to 22%, 20 to 24%, 7 to 11%, and 4 to 8%
+- **The annealed tree is also more likely.** With GTR inferred and branch lengths optimized (`treetime optimize`, topology kept, without indels), the log-likelihood on `sc2/4500` is −300,111 for the reference tree, −300,595 for the greedy tree, and −300,346 for the annealed tree (seed 1). Random tie-breaking closes half of the likelihood gap
 - Cost: 30 to 60% more time for 8 cold rounds (`sc2/4500`: 141 to 173 s against 116 to 165 s)
 
 ## Dating with built trees
