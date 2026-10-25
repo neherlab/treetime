@@ -330,6 +330,41 @@ Sites of `lassa/L/500` are split into five partitions by their Fitch changes on 
 - The likelihood separates the built tree from the reference by 1,051 units with partitions (1,849 without), while their Fitch scores differ by 0.7%. A likelihood objective has a clear signal where parsimony stalls
 - The categories come from a tree that is neither of the compared trees. Assigning sites by their changes on the tree being scored would favor that tree
 
+## Sparse-likelihood SPR on the parsimony tree
+
+`build/likelihood.rs` refines a parsimony tree by likelihood SPR, following the sparse-likelihood refinement design in [kb/proposals/native-parsimony-tree-builder.md](../proposals/native-parsimony-tree-builder.md). Each round has four steps:
+
+1. Fit branch lengths, GTR, and relative rates with the sparse optimize loop (5 iterations), for five rate partitions assigned by Fitch changes on the input tree (0, 1–2, 3–8, 9–26, and 27 or more).
+2. Prune each subtree and walk the edge messages outward from its old position, MAPLE style. The walk scores attachment at nodes and at edge midpoints, and stops 10 log units below the best place or at depth 8.
+3. Apply the best non-overlapping moves.
+4. Revert the round if the refitted log-likelihood drops.
+
+The messages are keyed by Fitch states, so the cost of a query scales with the differences between nodes and not with the genome length. The parsimony build runs as `spr=10 spr_slack=all refresh rebuild=3`, plus `initial=nj` on Lassa, and the ML run adds `ml=5` to it. All trees are scored with `treetime optimize` under one common GTR (one partition, topology kept, no indels). Lassa is also scored under the five partitions of the previous section.
+
+| Dataset | Reference | Parsimony | + ML SPR | ML gain | Fitch, pars → ML | Splits only in reference, pars → ML | ML time |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `flu/h3n2/500` | −13,101.2 | −13,102.8 | −13,098.3 | +4.5 | 1506 → 1506 | 24 → 24 | 13 s |
+| `rsv/a/2000` | −354,733 | −354,758 | −354,806 | −48 | 42,262 → 42,285 | 166 → 193 | 80 s |
+| `dengue/2000` | −400,343 | −400,369 | −400,519 | −150 | 55,046 → 55,074 | 138 → 163 | 97 s |
+| `mpox/clade-ii/2000` | −323,586 | −323,331 | −323,331 | 0 | 5571 → 5571 | 196 → 196 | 2434 s* |
+| `sc2/4500` | −300,111 | −300,595 | −300,280 | +315 | 26,250 → 26,207 | 494 → 469 | 574 s* |
+| `lassa/L/500` | −398,067 | −400,730 | −399,624 | +1,106 | 75,989 → 76,051 | 95 → 97 | 151 s |
+| `lassa/L/500`, 5 partitions | −342,972 | −344,610 | −343,484 | +1,126 | | | |
+
+\* These runs shared the machine with a leftover process that used about 9 cores and 8 GB, so their times are too high.
+
+- On sc2 the ML SPR beats cold annealing: −300,280 against −300,346, with 26,207 against 26,238 Fitch. It removes 25 of the 494 splits found only in the reference, and its gain had not leveled off after 5 rounds
+- On Lassa the refined tree scores 539 units above the best ratchet tree under the five partitions (−343,484 against −344,023), although its Fitch score is higher. The likelihood finds better trees where parsimony is the wrong objective
+- On rsv and dengue the rounds raise the likelihood under the fitted model (+283 and +357) but lower it under the common GTR, and they add splits not in the reference. These datasets have many gaps and unknown stretches, and there the sparse forward messages disagree with the root likelihood by up to 50 and 583 log units ([kb/issues/M-sparse-forward-messages-disagree-with-root-likelihood-on-gapped-data.md](../issues/M-sparse-forward-messages-disagree-with-root-likelihood-on-gapped-data.md)). The search corrects this with one shift per edge and per node. The remaining reattachment error (6 to 8 units) exceeds the average predicted gain per move (about 4), so the ranking of moves is unreliable. Lassa has a larger error (27 to 32), but its predicted gains per move are 22 to 44. The difference between the fitted five-partition model and the common GTR may also contribute
+- On mpox, 192,536 of 197,209 sites fall in the zero-change class. The single round finds 22 moves with a predicted gain of 87 but the refitted likelihood does not rise, so the round is reverted. The built tree already scores 255 units above the reference
+- Time is dominated by the per-round refit of branch lengths and rates over the whole alignment; the profile of that split is pending. The move search takes 5 to 6 s per round on rsv and dengue
+
+Recommendations, in order:
+
+1. Fix the forward messages on gapped data.
+2. Refit only the branches next to applied moves, and the rates once.
+3. Measure the time spent in refits against the move search.
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -379,4 +414,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts; `start=<nwk>` refines a given tree on the alignment; `anneal=8 t0=0.3 cooling=0.7` adds annealed SPR rounds before the greedy ones. `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts; `start=<nwk>` refines a given tree on the alignment; `anneal=8 t0=0.3 cooling=0.7` adds annealed SPR rounds before the greedy ones; `ml=5` adds sparse-likelihood SPR rounds after the parsimony build (`ml_depth=8 ml_drop=10 ml_min_gain=0.01 ml_classes=true ml_opt_iter=5`). `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.

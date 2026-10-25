@@ -33,6 +33,11 @@ Sequential placement alone is 0.5 to 4.3% worse than the reference trees. Four e
    - Local rebuilds of every 3-branch neighbourhood.
 4. **A neighbor-joining start for divergent data.** On Lassa it brings the excess over the reference tree from +3.1% to +0.6%. Sequential placement does not find the deep structure there.
 
+Two later additions go beyond the greedy parsimony optimum:
+
+- **Cold annealing.** Random tie-breaking among equally parsimonious placements lowers the gap on `sc2/4500` from +0.26% to +0.11%. 18% of the sc2 placements are tied.
+- **Sparse-likelihood SPR on the parsimony tree.** This step uses the stored sparse marginal messages and five rate partitions assigned by Fitch changes. Under a common GTR it raises the log-likelihood of the sc2 tree by 315, beating annealing. On Lassa it gains 1,126 under five partitions, which puts it 539 above the best ratchet tree. It loses on rsv and dengue (−48, −150), where the sparse forward messages disagree with the root likelihood on gapped data. It stays optional until that is fixed.
+
 The recommended design follows these findings:
 
 - A `build` step in the core library. It returns a multifurcating tree with substitutions on its edges.
@@ -45,6 +50,11 @@ Production use needs two engineering steps first:
 
 - faster local rebuilds;
 - a distance start whose memory does not grow with $n^2$, for more than about $10^4$ samples.
+
+The likelihood refinement needs two more:
+
+- correct sparse forward messages on gapped data;
+- a refit of branch lengths and rates that is local to the applied moves. The full refit dominates its 13 to 150 s per dataset.
 
 Two others are done on the branch since the first version of this proposal. The Fitch refresh runs on variable columns only, and neighbor joining uses FastTree's top hits, which removes its cubic search.
 
@@ -191,6 +201,28 @@ Batch re-placement and larger radii stay optional. Neither changed the result af
 
 **Cold annealing before the greedy rounds.** Eight SPR rounds draw each placement from $e^{-\Delta/T}$, with $T_0 = 0.3$ and $T$ multiplied by 0.7 each round. The greedy rounds then continue from the best tree seen. This lowers the gap on `sc2/4500` from +0.26% to +0.11% (mean of the seeds), and on `mpox/clade-ii/2000` from +0.16% to +0.07%. It costs 30 to 60% more time. A constant $T = 0.1$ does as well, so the gain comes from random choices among equally parsimonious placements, not from uphill moves. Hotter schedules ($T_0 \ge 1$) dissolve the low-divergence trees and do not help on Lassa.
 
+**Optional likelihood SPR after parsimony** (`build/likelihood.rs`). Each round runs four steps:
+
+1. Fit branch lengths, GTR, and relative rates for five rate partitions with the sparse optimize loop.
+2. Prune every subtree and walk the edge messages outward from its old place, MAPLE style, scoring node and mid-edge attachment.
+3. Apply the best non-overlapping moves.
+4. Revert the round if the refitted likelihood drops.
+
+The messages are keyed by Fitch states, so a query costs the number of differences, not the genome length.
+
+Log-likelihood under a common GTR, before and after:
+
+| Dataset | Reference | Parsimony | + likelihood SPR |
+| --- | --- | --- | --- |
+| `flu/h3n2/500` | −13,101 | −13,103 | −13,098 |
+| `rsv/a/2000` | −354,733 | −354,758 | −354,806 |
+| `dengue/2000` | −400,343 | −400,369 | −400,519 |
+| `mpox/clade-ii/2000` | −323,586 | −323,331 | −323,331 |
+| `sc2/4500` | −300,111 | −300,595 | −300,280 |
+| `lassa/L/500`, 5 partitions | −342,972 | −344,610 | −343,484 |
+
+The losses on rsv and dengue trace to [kb/issues/M-sparse-forward-messages-disagree-with-root-likelihood-on-gapped-data.md](../issues/M-sparse-forward-messages-disagree-with-root-likelihood-on-gapped-data.md): after a constant correction per edge, the reattachment error (6 to 8 log units) still exceeds the gain of a typical move.
+
 ### Output
 
 The builder returns the MAT. Edges without substitutions are collapsed, so the tree is multifurcating where the data do not resolve it.
@@ -225,6 +257,7 @@ Above about $10^4$ samples the distance matrix no longer fits in memory. Options
 - **B3a. [recommended] Fixed default.** Refresh, SPR, and radius-3 rebuilds until no gain, then stop. Batch re-placement and radius are expert options.
 - **B3b. Time budget.** Continue with batch re-placement or random restarts until a time limit. Not reproducible across machines.
 - **B3d. Cold annealing first.** Random tie-breaking among equally parsimonious placements ($T \approx 0.1$ to 0.3) for a few rounds, then B3a. Best result on `sc2/4500` and `mpox/clade-ii/2000` so far; to be checked on the simulations before it becomes the default.
+- **B3e. Likelihood SPR after B3a.** Best result on `sc2/4500` and Lassa; it makes rsv and dengue worse until the sparse forward messages are fixed. Optional, behind a flag, until then.
 - **B3c. Multiple random orders, keep the best.** On Lassa, five orders ended 2.0 to 3.4% above the reference tree. Restarts reduce variance but do not replace a better start.
 
 ### B4. Neighbourhood of a local rebuild
@@ -328,7 +361,11 @@ For 10^5 samples and more, a seed of the branch-and-bound may become worthwhile 
 - **Least-squares root on built trees.** Why does least-squares rerooting of the built `sc2/4500` tree give a 20% lower clock rate, when the outgroup-rooted estimates agree? The candidates are the 1364 tips whose root-to-tip distance differs by more than 5 substitutions, and substitution-reversion pairs on the backbone. A simulation with known dates decides which tree gives the better estimate.
 - **Moves that change a subtree's root state.** State sets cover sites where the children disagree. A move that needs a state that none of the children has is still not found. matOptimize searches the full Fitch set.
 - **Time-aware refinement.** Among equally parsimonious placements, choose the one that is most consistent with the sampling dates, for example by the root-to-tip residual. This would address the dating sensitivity at no parsimony cost.
-- **Sparse-likelihood refinement.** After a parsimony tree, run the sparse marginal passes once and use the stored edge messages for SPR, as MAPLE does. Each edge keeps the message from its subtree (`msg_from_child`) and from the rest of the tree (`msg_to_child`). Attaching a pruned subtree on an edge combines three messages with `combine_messages()`, on the union of their explicit positions and the Fitch differences between them, like the parsimony placement query. Exact parsimony branch-and-bound supplies the candidate targets within a few substitutions of the best; the likelihood decides among them and breaks the ties (18% of placements on `sc2/4500`). Moves are applied in batches with stale messages, and the passes are recomputed after each batch (0.15 s on `sc2/4500`). Site rates come from a few rate partitions assigned by Fitch changes on the rough tree; on `lassa/L/500` they raise the log-likelihood by 55,000 and separate the best built tree from the reference by 1,051 units. Prerequisite: the sparse-dense agreement of [kb/issues/H-timetree-sparse-dense-node-times-differ.md](../issues/H-timetree-sparse-dense-node-times-differ.md) for dating, not for the topology.
+- **Sparse-likelihood refinement.** After a parsimony tree, run the sparse marginal passes once and use the stored edge messages for SPR, as MAPLE does. Each edge keeps the message from its subtree (`msg_from_child`) and from the rest of the tree (`msg_to_child`). Attaching a pruned subtree on an edge combines three messages with `combine_messages()`, on the union of their explicit positions and the Fitch differences between them, like the parsimony placement query. Exact parsimony branch-and-bound supplies the candidate targets within a few substitutions of the best; the likelihood decides among them and breaks the ties (18% of placements on `sc2/4500`). Moves are applied in batches with stale messages, and the passes are recomputed after each batch (0.15 s on `sc2/4500`). Site rates come from a few rate partitions assigned by Fitch changes on the rough tree; on `lassa/L/500` they raise the log-likelihood by 55,000 and separate the best built tree from the reference by 1,051 units. Prerequisite: the sparse-dense agreement of [kb/issues/H-timetree-sparse-dense-node-times-differ.md](../issues/H-timetree-sparse-dense-node-times-differ.md) for dating, not for the topology. Status: prototyped, see [Refinement](#refinement). The prototype walks the messages from the old place instead of using parsimony candidates, and refits every round instead of using stale messages. Open:
+  - the fix of the forward messages;
+  - a local refit;
+  - whether the rate partitions should be reassigned on the refined tree;
+  - whether the fit improves the conflicting splits on rsv and dengue once the messages are exact.
 - **Escaping local optima on divergent data.** On `lassa/L/500` the reference tree, refined by the builder, scores 0.8% below every built tree. Partitioning the sites by their number of changes and building from slow sites does not help, because slow sites are mostly rare alleles. Down-weighting the fastest sites helps marginally. Eight ratchet iterations close 0.1 points. Open: a stronger perturbation (fraction and weight of reweighted sites), ratchet moves restricted to deep subtrees, or several neighbor-joining starts on resampled sites. See [kb/issues/M-build-search-stuck-above-reference-on-divergent-data.md](../issues/M-build-search-stuck-above-reference-on-divergent-data.md).
 - **Divergence threshold.** Where between p = 0.05 and 0.12 does the distance start become better? Answering this needs simulations at $\mu$ = 0.02 to 0.03 with gamma rates, and further divergent real datasets.
 
@@ -344,6 +381,7 @@ The prototype code is the starting point. Each stage lands with tests and a kb u
 | 4. Command | `treetime build` with `--seed`, Newick and MAT output, a log of the stage scores; `--tree` fallback (B1) | Example program only |
 | 5. Downstream | Fix the polytomy-resolution error; run `optimize` and `timetree` on built trees in the comparison harness | Error reproduced |
 | 6. Support and update | Placement counts (B7a), incremental placement (B8a) | Not started |
+| 6b. Likelihood refinement | Sparse-likelihood SPR with rate partitions (B3e), after the forward-message fix | Prototype in `build/likelihood.rs`, `ml=` option of the example |
 | 7. Benchmarks | The suite of [Validation](#validation), stored as reports | Partly run by hand |
 
 What can be reused or generalized instead of duplicated:
