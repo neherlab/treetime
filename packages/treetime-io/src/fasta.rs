@@ -3,7 +3,7 @@ use itertools::Itertools;
 use log::warn;
 use std::io::{self, BufRead, Write};
 use std::path::Path;
-use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar, Seq};
+use treetime_primitives::{AlignmentRecord, AlphabetLike, AsciiChar, AsciiTable, Seq};
 use treetime_utils::fmt::string::quote_single;
 use treetime_utils::io::file::{FileWriter, create_file_or_stdout, read_file_with};
 use treetime_utils::make_error;
@@ -43,7 +43,7 @@ impl FastaWriter {
 struct FastaRecords<'a, R: BufRead, A: AlphabetLike> {
   reader: R,
   alphabet: &'a A,
-  accepted: [bool; 128],
+  accepted: AsciiTable<bool>,
   line: String,
   n_lines: usize,
   n_chars: usize,
@@ -132,7 +132,11 @@ impl<'a, R: BufRead, A: AlphabetLike> FastaRecords<'a, R, A> {
   fn append_sequence_line(&self, record: &mut FastaRecord) -> Result<(), Report> {
     let trimmed = self.line.trim();
     record.seq.reserve(trimmed.len());
-    if trimmed.is_ascii() && trimmed.bytes().all(|byte| self.accepted[usize::from(byte)]) {
+    if trimmed.is_ascii()
+      && trimmed
+        .bytes()
+        .all(|byte| self.accepted[AsciiChar::from_byte_unchecked(byte)])
+    {
       record.seq.extend(
         trimmed
           .bytes()
@@ -190,8 +194,8 @@ impl FastaRecord {
   }
 }
 
-fn accepted_bytes<A: AlphabetLike>(alphabet: &A) -> [bool; 128] {
-  AsciiChar::table(|c| alphabet.contains(AsciiChar::from_byte_unchecked(c.inner().to_ascii_uppercase())))
+fn accepted_bytes<A: AlphabetLike>(alphabet: &A) -> AsciiTable<bool> {
+  AsciiTable::from_fn(|c| alphabet.contains(AsciiChar::from_byte_unchecked(c.inner().to_ascii_uppercase())))
 }
 
 pub(crate) fn fasta_write_record(

@@ -124,13 +124,16 @@ mod tests {
   mod helpers {
     use crate::alphabet::alphabet::{Alphabet, AlphabetName};
     use ndarray::Array1;
+    use treetime_primitives::AsciiChar;
     use treetime_utils::cast::ToF64Exact;
 
     pub(super) fn aa_tie(states: &[u8]) -> Array1<f64> {
       let alphabet = Alphabet::new(AlphabetName::Aa).expect("the amino-acid alphabet is valid");
       let mut posterior = Array1::zeros(alphabet.n_canonical());
       for &state in states {
-        let index = alphabet.index(state).expect("the state is canonical");
+        let index = alphabet
+          .index(AsciiChar::from_byte_unchecked(state))
+          .expect("the state is canonical");
         posterior[index] = 1.0 / states.len().to_f64_exact();
       }
       posterior

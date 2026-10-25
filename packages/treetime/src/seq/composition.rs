@@ -1,8 +1,7 @@
 use crate::seq::indel::InDel;
 use crate::seq::mutation::Sub;
-use itertools::izip;
 use std::collections::BTreeMap;
-use treetime_primitives::AsciiChar;
+use treetime_primitives::{AsciiChar, AsciiTable};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Composition {
@@ -37,8 +36,8 @@ impl Composition {
     self.add_histogram(&char_histogram(sequence.as_ref()));
   }
 
-  fn add_histogram(&mut self, additions: &[usize; 128]) {
-    for (c, &count) in izip!(AsciiChar::table(|c| c), additions).filter(|(_, count)| **count > 0) {
+  fn add_histogram(&mut self, additions: &AsciiTable<usize>) {
+    for (c, &count) in additions.iter().filter(|(_, count)| **count > 0) {
       *self.counts.entry(c).or_default() += count;
     }
   }
@@ -62,16 +61,16 @@ impl Composition {
   }
 }
 
-fn char_histogram(sequence: &[AsciiChar]) -> [usize; 128] {
-  let mut lanes = [[0_usize; 128]; 4];
+fn char_histogram(sequence: &[AsciiChar]) -> AsciiTable<usize> {
+  let mut lanes: [AsciiTable<usize>; 4] = Default::default();
   let (chunks, remainder) = sequence.as_chunks::<4>();
   for chunk in chunks {
     for (lane, &c) in lanes.iter_mut().zip(chunk) {
-      lane[usize::from(c)] += 1;
+      lane[c] += 1;
     }
   }
   for &c in remainder {
-    lanes[0][usize::from(c)] += 1;
+    lanes[0][c] += 1;
   }
-  std::array::from_fn(|index| lanes.iter().map(|lane| lane[index]).sum())
+  AsciiTable::from_fn(|c| lanes.iter().map(|lane| lane[c]).sum())
 }

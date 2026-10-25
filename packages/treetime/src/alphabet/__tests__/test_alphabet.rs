@@ -169,7 +169,7 @@ mod tests {
   #[trace]
   fn test_alphabet_nuc_index(#[case] c: u8, #[case] expected: usize) {
     let alphabet = Alphabet::new(AlphabetName::Nuc).unwrap();
-    assert_eq!(expected, alphabet.index(c).unwrap());
+    assert_eq!(expected, alphabet.index(AsciiChar::from_byte_unchecked(c)).unwrap());
   }
 
   #[rstest]

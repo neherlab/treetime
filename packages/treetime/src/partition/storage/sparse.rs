@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Index;
 use std::sync::Arc;
 use treetime_primitives::AlphabetLike;
-use treetime_primitives::{AsciiChar, LogLh, Seq, StateSet, seq};
+use treetime_primitives::{AsciiChar, AsciiTable, LogLh, Seq, StateSet, seq};
 use treetime_utils::interval::range_union::range_union;
 
 pub(crate) const INLINE_STATES: usize = 4;
@@ -264,7 +264,7 @@ fn observe_seq(seq: &Seq, alphabet: &Alphabet) -> SeqObservation {
   let mut gaps = RangeRuns::default();
   let mut previous = 0_u8;
   for (pos, &c) in seq.iter().enumerate() {
-    let current = flags[usize::from(c)];
+    let current = flags[c];
     if current & AMBIGUOUS != 0 {
       variable.push((pos, alphabet.char_to_set(c)));
     }
@@ -307,8 +307,8 @@ pub struct FitchSeqDistribution {
   pub(crate) chosen_state: BTreeMap<usize, AsciiChar>,
 }
 
-fn char_flags(alphabet: &Alphabet) -> [u8; 128] {
-  AsciiChar::table(|c| {
+fn char_flags(alphabet: &Alphabet) -> AsciiTable<u8> {
+  AsciiTable::from_fn(|c| {
     let mut flags = 0;
     if alphabet.is_ambiguous(c) {
       flags |= AMBIGUOUS;

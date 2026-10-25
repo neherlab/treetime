@@ -25,7 +25,7 @@ use treetime_graph::key_map::{EdgeMap, NodeMap};
 use treetime_graph::node::GraphNodeKey;
 use treetime_graph::schedule::GraphSchedule;
 use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
-use treetime_primitives::LogLh;
+use treetime_primitives::{AsciiTable, LogLh};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::interval::range::range_contains;
 use treetime_utils::make_internal_report;
@@ -233,7 +233,7 @@ fn compute_msg_to_child(
     log_lh: forward_log_lh_remove_child(parent.profile.log_lh, backward.msg_from_child.log_lh),
   };
   let mut delta_ll = LogLh::ZERO;
-  let mut removed = [0_usize; 128];
+  let mut removed = AsciiTable::<usize>::default();
   for (pos, parent_state, child_state) in sites.iter() {
     let child_state = child_state[0].ok_or_else(|| make_internal_report!("Position {pos} has no child state"))?;
     let divisor = child_dis.variable.get(pos).map_or_else(
@@ -248,7 +248,7 @@ fn compute_msg_to_child(
     let normalization = normalize_1d_inplace(aview_mut1(&mut dis), 1.0);
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
     seq_dis.variable.insert(pos, parent_state, &dis);
-    removed[usize::from(parent_state)] += 1;
+    removed[parent_state] += 1;
   }
   for fixed in parent.profile.fixed.iter() {
     let state = fixed.state;
@@ -257,7 +257,7 @@ fn compute_msg_to_child(
       .composition
       .get(state)
       .ok_or_else(|| make_internal_report!("Fixed state {state} has no count"))?
-      .saturating_sub(removed[usize::from(state)]);
+      .saturating_sub(removed[state]);
     let normalization = normalize_1d_inplace(aview_mut1(&mut dis), count.to_f64_exact());
     delta_ll = forward_log_lh_add_normalization(delta_ll, normalization);
     seq_dis.fixed.insert(state, count, dis);

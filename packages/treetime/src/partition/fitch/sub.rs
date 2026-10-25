@@ -5,7 +5,7 @@ use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::{Itertools, izip};
 use std::collections::BTreeMap;
-use treetime_primitives::{AlphabetLike, AsciiChar, Seq, StateSet, StateSetStatus};
+use treetime_primitives::{AlphabetLike, AsciiChar, AsciiTable, Seq, StateSet, StateSetStatus};
 use treetime_utils::interval::range::range_contains;
 
 const COMPARED_BLOCK_LEN: usize = 64;
@@ -99,7 +99,7 @@ pub(crate) fn discover_fixed_disagreements_backward(
         if *parent_state == child_state || *parent_state == NON_CHAR || *parent_state == VARIABLE_CHAR {
           continue;
         }
-        if canonical[usize::from(child_state)] {
+        if canonical[child_state] {
           if *parent_state == FILL_CHAR {
             *parent_state = child_state;
           } else {
@@ -202,6 +202,6 @@ pub(crate) fn finalize_sequence_forward(
   }
 }
 
-fn canonical_table(alphabet: &Alphabet) -> [bool; 128] {
-  AsciiChar::table(|c| alphabet.is_canonical(c))
+fn canonical_table(alphabet: &Alphabet) -> AsciiTable<bool> {
+  AsciiTable::from_fn(|c| alphabet.is_canonical(c))
 }

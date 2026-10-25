@@ -8,7 +8,7 @@ use smart_default::SmartDefault;
 use std::borrow::Borrow;
 use std::fmt::Display;
 use strum_macros::Display;
-use treetime_primitives::{AlphabetLike, AsciiChar, BitSet128, StateSet, stateset};
+use treetime_primitives::{AlphabetLike, AsciiChar, AsciiTable, BitSet128, StateSet, stateset};
 
 pub(crate) const NON_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'.');
 pub(crate) const VARIABLE_CHAR: AsciiChar = AsciiChar::from_byte_unchecked(b'~');
@@ -26,7 +26,7 @@ pub struct Alphabet {
   profile_map: ProfileMap,
   char_to_set: IndexMap<AsciiChar, StateSet>,
   set_to_char: IndexMap<StateSet, AsciiChar>,
-  char_to_index: Vec<Option<usize>>,
+  char_to_index: AsciiTable<Option<usize>>,
   index_to_char: Vec<AsciiChar>,
 }
 
@@ -138,11 +138,11 @@ impl Alphabet {
 
     let set_to_char: SetToChar = char_to_set.iter().map(|(&c, &s)| (s, c)).collect();
 
-    let mut char_to_index = vec![None; 128];
+    let mut char_to_index = AsciiTable::default();
     let mut index_to_char = Vec::with_capacity(canonical.len());
     for (i, &b) in config.canonical.iter().enumerate() {
       let c = AsciiChar::try_new(b)?;
-      char_to_index[usize::from(c)] = Some(i);
+      char_to_index[c] = Some(i);
       index_to_char.push(c);
     }
 
@@ -214,14 +214,12 @@ impl Alphabet {
     self.index_to_char[index]
   }
 
-  pub(crate) fn index(&self, c: impl Into<usize>) -> Result<usize, Report> {
-    let idx = c.into();
-    self.char_to_index.get(idx).copied().flatten().ok_or_else(|| {
-      let c = u8::try_from(idx)
-        .map_err(Report::from)
-        .and_then(AsciiChar::try_new)
-        .map_or_else(|_| '?'.to_string(), |c| c.to_string());
-      make_report!("When accessing alphabet index: Unknown character: '{c}' (code {idx})")
+  pub(crate) fn index(&self, c: AsciiChar) -> Result<usize, Report> {
+    self.char_to_index[c].ok_or_else(|| {
+      make_report!(
+        "When accessing alphabet index: Unknown character: '{c}' (code {})",
+        c.inner()
+      )
     })
   }
 

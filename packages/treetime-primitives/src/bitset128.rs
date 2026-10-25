@@ -28,7 +28,11 @@ impl BitSet128 {
 
   pub fn from_char<T: Into<u32>>(c: T) -> Self {
     let c = c.into();
-    debug_assert!(c < 128, "BitSet128::from_char requires c < 128, got {c}");
+    debug_assert!(
+      c < u128::BITS,
+      "BitSet128::from_char requires c < {}, got {c}",
+      u128::BITS
+    );
     Self { bits: 1 << c }
   }
 
@@ -47,7 +51,11 @@ impl BitSet128 {
   )]
   pub fn contains<T: Into<u32>>(&self, c: T) -> bool {
     let c = c.into();
-    debug_assert!(c < 128, "BitSet128::contains requires c < 128, got {c}");
+    debug_assert!(
+      c < u128::BITS,
+      "BitSet128::contains requires c < {}, got {c}",
+      u128::BITS
+    );
     let half = if c < 64 {
       self.bits as u64
     } else {
@@ -58,7 +66,7 @@ impl BitSet128 {
 
   pub(crate) fn insert<T: Into<u32>>(&mut self, c: T) {
     let c = c.into();
-    debug_assert!(c < 128, "BitSet128::insert requires c < 128, got {c}");
+    debug_assert!(c < u128::BITS, "BitSet128::insert requires c < {}, got {c}", u128::BITS);
     self.bits |= 1 << c;
   }
 

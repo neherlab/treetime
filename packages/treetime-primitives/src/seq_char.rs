@@ -43,9 +43,11 @@ impl From<AsciiChar> for char {
 pub struct AsciiChar(u8);
 
 impl AsciiChar {
+  pub const COUNT: usize = 128;
+
   pub fn try_new(value: u8) -> Result<Self, Report> {
-    if value >= 128 {
-      return make_error!("AsciiChar: value {value} is not ASCII (>= 128)");
+    if !value.is_ascii() {
+      return make_error!("AsciiChar: value {value} is not ASCII (>= {})", Self::COUNT);
     }
     Ok(Self(value))
   }
@@ -58,21 +60,12 @@ impl AsciiChar {
   }
 
   pub const fn from_byte_unchecked(value: u8) -> Self {
-    debug_assert!(value < 128, "AsciiChar::from_byte_unchecked: value >= 128");
+    debug_assert!(value.is_ascii(), "AsciiChar::from_byte_unchecked: value is not ASCII");
     Self(value)
   }
 
   pub const fn inner(&self) -> u8 {
     self.0
-  }
-
-  pub fn table<T>(mut entry: impl FnMut(AsciiChar) -> T) -> [T; 128] {
-    let mut byte = 0_u8;
-    [(); 128].map(|()| {
-      let c = Self(byte);
-      byte += 1;
-      entry(c)
-    })
   }
 }
 
