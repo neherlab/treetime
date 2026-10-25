@@ -256,7 +256,7 @@ impl Graph {
   }
 
   pub fn is_leaf(&self, node_key: GraphNodeKey) -> bool {
-    self.leaves.contains(&node_key)
+    self.get_node(node_key).is_some_and(Node::is_leaf)
   }
 
   pub fn has_at_most_one_child(&self, node_key: GraphNodeKey) -> bool {
