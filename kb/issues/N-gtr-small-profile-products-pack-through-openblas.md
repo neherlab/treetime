@@ -19,7 +19,7 @@ Profiling build of `rust` `abad3947e`, on the build host (i9-10900K, OpenBLAS Ha
 ## Location
 
 - `const GEMM_BLAS_CUTOFF: usize = 7` in ndarray 0.17.2 (`src/linalg/impl_linalg.rs`): a product with any dimension above 7 goes to `cblas_dgemm`
-- The products: `fn GTR.evolve()` [packages/treetime/src/gtr/gtr.rs#L154](../../packages/treetime/src/gtr/gtr.rs#L154), `fn GTR.propagate_profile()` [packages/treetime/src/gtr/gtr.rs#L174](../../packages/treetime/src/gtr/gtr.rs#L174), `fn in_eigenbasis()` [packages/treetime/src/gtr/gtr.rs#L259-L267](../../packages/treetime/src/gtr/gtr.rs#L259-L267), and `fn get_coefficients()` [packages/treetime/src/partition/optimize/dense.rs#L5-L12](../../packages/treetime/src/partition/optimize/dense.rs#L5-L12)
+- The products: `fn GTR.evolve()` [packages/treetime/src/gtr/gtr.rs#L154](../../packages/treetime/src/gtr/gtr.rs#L154), `fn GTR.propagate_profile()` [packages/treetime/src/gtr/gtr.rs#L174](../../packages/treetime/src/gtr/gtr.rs#L174), `fn in_eigenbasis()` for profiles of several rows [packages/treetime/src/gtr/gtr.rs#L268-L271](../../packages/treetime/src/gtr/gtr.rs#L268-L271), and `fn get_coefficients()` [packages/treetime/src/partition/optimize/dense.rs#L5-L12](../../packages/treetime/src/partition/optimize/dense.rs#L5-L12)
 - OpenBLAS (commit `de5d4914`) has a path without packing and without the buffer pool for small products (`M * N * K <= 1e6`), but only the SkylakeX-class AVX-512 kernels and the ARM SVE kernels enable it. The Haswell and Zen kernels use `kernel/generic/gemm_small_matrix_permit.c`, which always returns 0. The gain of a change therefore differs by CPU
 
 ## Fix direction

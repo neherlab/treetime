@@ -32,7 +32,7 @@ Huge pages remove up to 98 percent of the faults, but the runs take 16 to 90 per
 
 - `struct DenseNodeState` [packages/treetime/src/partition/storage/dense.rs#L11-L14](../../packages/treetime/src/partition/storage/dense.rs#L11-L14) holds the node profile, `struct DenseEdgeBackward` [packages/treetime/src/partition/storage/dense.rs#L68-L71](../../packages/treetime/src/partition/storage/dense.rs#L68-L71) holds `msg_to_parent` and `msg_from_child`, and `struct DenseEdgeForward` [packages/treetime/src/partition/storage/dense.rs#L74-L76](../../packages/treetime/src/partition/storage/dense.rs#L74-L76) holds `msg_to_child`. Each is an L-by-s `Array2<f64>` in a `DenseSeqDistribution`
 - For `rsv/a/2000` (3996 nodes, 3995 edges, L = 15225, s = 4), the 15981 arrays hold 7.79 GB, which accounts for almost all of the 8.02 GB peak RSS
-- The products that create these arrays return a new `Array2` from `.dot()`: `fn GTR.evolve()` [packages/treetime/src/gtr/gtr.rs#L154](../../packages/treetime/src/gtr/gtr.rs#L154), `fn GTR.propagate_profile()` [packages/treetime/src/gtr/gtr.rs#L174](../../packages/treetime/src/gtr/gtr.rs#L174), and `fn in_eigenbasis()` [packages/treetime/src/gtr/gtr.rs#L259-L267](../../packages/treetime/src/gtr/gtr.rs#L259-L267)
+- The products that create these arrays return a new `Array2` from `.dot()`: `fn GTR.evolve()` [packages/treetime/src/gtr/gtr.rs#L154](../../packages/treetime/src/gtr/gtr.rs#L154), `fn GTR.propagate_profile()` [packages/treetime/src/gtr/gtr.rs#L174](../../packages/treetime/src/gtr/gtr.rs#L174), and `fn in_eigenbasis()` [packages/treetime/src/gtr/gtr.rs#L259-L273](../../packages/treetime/src/gtr/gtr.rs#L259-L273)
 
 ## Memory of the large example datasets
 

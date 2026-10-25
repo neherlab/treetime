@@ -35,30 +35,32 @@ mod tests {
     use std::cmp::Ordering;
 
     pub(super) fn arb_gtr_with_profile() -> impl Strategy<Value = (GTR, Array2<f64>)> {
-      (2_usize..=120).prop_flat_map(|n| {
-        let pi = prop::collection::vec(0.01_f64..10.0, n);
-        let exchangeabilities = prop::collection::vec(0.01_f64..10.0, n * n);
-        let profile = prop::collection::vec(0.0_f64..1.0, n);
-        let mu = 0.1_f64..5.0;
-        (pi, exchangeabilities, profile, mu).prop_map(move |(pi, exchangeabilities, profile, mu)| {
-          let total: f64 = pi.iter().sum();
-          let pi = pi.into_iter().map(|weight| weight / total).collect();
-          let w = Array2::from_shape_fn((n, n), |(i, j)| match i.cmp(&j) {
-            Ordering::Less => exchangeabilities[i * n + j],
-            Ordering::Greater => exchangeabilities[j * n + i],
-            Ordering::Equal => 0.0,
-          });
-          let gtr = GTR::builder()
-            .n_states(n)
-            .mu(Mu::FromMatrix(mu))
-            .W(w)
-            .pi(pi)
-            .build()
-            .expect("a GTR with positive frequencies and exchangeabilities is valid");
-          let profile = Array2::from_shape_vec((1, n), profile).expect("one row of n values");
-          (gtr, profile)
+      (2_usize..=120)
+        .prop_flat_map(|n| (Just(n), prop_oneof![Just(1_usize), 1..n]))
+        .prop_flat_map(|(n, rows)| {
+          let pi = prop::collection::vec(0.01_f64..10.0, n);
+          let exchangeabilities = prop::collection::vec(0.01_f64..10.0, n * n);
+          let profile = prop::collection::vec(0.0_f64..1.0, rows * n);
+          let mu = 0.1_f64..5.0;
+          (pi, exchangeabilities, profile, mu).prop_map(move |(pi, exchangeabilities, profile, mu)| {
+            let total: f64 = pi.iter().sum();
+            let pi = pi.into_iter().map(|weight| weight / total).collect();
+            let w = Array2::from_shape_fn((n, n), |(i, j)| match i.cmp(&j) {
+              Ordering::Less => exchangeabilities[i * n + j],
+              Ordering::Greater => exchangeabilities[j * n + i],
+              Ordering::Equal => 0.0,
+            });
+            let gtr = GTR::builder()
+              .n_states(n)
+              .mu(Mu::FromMatrix(mu))
+              .W(w)
+              .pi(pi)
+              .build()
+              .expect("a GTR with positive frequencies and exchangeabilities is valid");
+            let profile = Array2::from_shape_vec((rows, n), profile).expect("rows of n values");
+            (gtr, profile)
+          })
         })
-      })
     }
 
     pub(super) fn arb_time() -> impl Strategy<Value = f64> {

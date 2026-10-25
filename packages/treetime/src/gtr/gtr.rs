@@ -262,8 +262,14 @@ fn in_eigenbasis(
   exp_lt: &ArrayView2<'_, f64>,
   out_of_eigenbasis: &ArrayView2<'_, f64>,
 ) -> Array2<f64> {
-  let scaled = profile.dot(into_eigenbasis) * exp_lt;
-  clamp_min(&scaled.dot(out_of_eigenbasis), 0.0)
+  let propagated = if profile.nrows() == 1 {
+    let scaled = profile.row(0).dot(into_eigenbasis) * exp_lt.row(0);
+    scaled.dot(out_of_eigenbasis).insert_axis(Axis(0))
+  } else {
+    let scaled = profile.dot(into_eigenbasis) * exp_lt;
+    scaled.dot(out_of_eigenbasis)
+  };
+  clamp_min(&propagated, 0.0)
 }
 
 #[expect(
