@@ -64,7 +64,7 @@ pub struct BuildParams {
 pub enum InitialTree {
   #[default]
   Placement,
-  NeighborJoining,
+  NeighborJoining { top_hits: Option<usize> },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -112,9 +112,9 @@ pub fn build_mat(seqs: &[Seq], alphabet: &Alphabet, params: &BuildParams) -> Res
   let queries = encode_queries(seqs, &reference, alphabet);
   let order = sample_order(&queries, &reference, params.order);
   let mut stats = BuildStats::default();
-  if params.initial == InitialTree::NeighborJoining {
+  if let InitialTree::NeighborJoining { top_hits } = params.initial {
     let distances = jc_distances(&queries, &reference, alphabet.n_canonical());
-    let (graph, samples) = neighbor_joining(&distances, seqs.len())?;
+    let (graph, samples) = neighbor_joining(&distances, seqs.len(), top_hits)?;
     let mat = mat_from_tree(graph, samples, seqs, alphabet)?;
     return refine_mat(mat, seqs, alphabet, params, stats);
   }
@@ -242,7 +242,13 @@ pub fn mat_from_tree(
 ) -> Result<Mat, Report> {
   let root = graph.root_key()?;
   let reference = consensus(seqs, alphabet)?;
-  fitch_refresh(Mat::from_parts(graph, root, reference, vec![], samples), seqs, alphabet)
+  let queries = encode_queries(seqs, &reference, alphabet);
+  fitch_refresh(
+    Mat::from_parts(graph, root, reference.clone(), vec![], samples),
+    &queries,
+    &reference,
+    alphabet,
+  )
 }
 
 pub fn refine_mat(
@@ -258,7 +264,8 @@ pub fn refine_mat(
   }
   for _ in 0..params.spr_rounds {
     if params.fitch_refresh {
-      mat = fitch_refresh(mat, seqs, alphabet)?;
+      let frame = mat.reference().clone();
+      mat = fitch_refresh(mat, &queries, &frame, alphabet)?;
       queries = encode_queries(seqs, mat.reference(), alphabet);
     }
     let mut round = spr_round(&mut mat, &queries, params.spr_slack)?;
@@ -276,7 +283,8 @@ pub fn refine_mat(
     }
   }
   if params.fitch_refresh {
-    mat = fitch_refresh(mat, seqs, alphabet)?;
+    let frame = mat.reference().clone();
+    mat = fitch_refresh(mat, &encode_queries(seqs, &frame, alphabet), &frame, alphabet)?;
   }
   if let Some(reprune_params) = &params.reprune {
     let (repruned, reprune_stats) = reprune(mat, seqs, alphabet, reprune_params)?;
@@ -288,7 +296,7 @@ pub fn refine_mat(
   Ok(BuiltMat { mat, stats })
 }
 
-fn encode_queries(seqs: &[Seq], reference: &Seq, alphabet: &Alphabet) -> Vec<Query> {
+pub(crate) fn encode_queries(seqs: &[Seq], reference: &Seq, alphabet: &Alphabet) -> Vec<Query> {
   seqs
     .par_iter()
     .map(|seq| Query::from_seq(seq, reference, alphabet))

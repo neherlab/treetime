@@ -1,6 +1,7 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::build::insert::{Insertee, insert};
 use crate::build::mat::Mat;
+use crate::build::pipeline::encode_queries;
 use crate::build::placement::place_exhaustive;
 use crate::build::query::Query;
 use crate::build::refresh::fitch_refresh;
@@ -33,7 +34,9 @@ pub(crate) fn reprune(
 ) -> Result<(Mat, RepruneStats), Report> {
   let mut rng = get_random_number_generator(params.seed);
   let mut stats = RepruneStats::default();
-  let mut mat = fitch_refresh(mat, seqs, alphabet)?;
+  let frame = mat.reference().clone();
+  let encoded = encode_queries(seqs, &frame, alphabet);
+  let mut mat = fitch_refresh(mat, &encoded, &frame, alphabet)?;
   for _ in 0..params.rounds {
     let mut samples = mat.samples().values().copied().collect_vec();
     samples.shuffle(&mut rng);
@@ -46,7 +49,7 @@ pub(crate) fn reprune(
       for sample in batch {
         mat.remove_sample(leaves[sample])?;
       }
-      mat = fitch_refresh(mat, seqs, alphabet)?;
+      mat = fitch_refresh(mat, &encoded, &frame, alphabet)?;
       let queries = batch
         .iter()
         .map(|&sample| (sample, Query::from_seq(&seqs[sample], mat.reference(), alphabet)))
@@ -56,7 +59,7 @@ pub(crate) fn reprune(
         let placement = place_exhaustive(&mat, query, None, None, true)?;
         insert(&mut mat, query, placement.target, Insertee::Sample(*sample))?;
       }
-      mat = fitch_refresh(mat, seqs, alphabet)?;
+      mat = fitch_refresh(mat, &encoded, &frame, alphabet)?;
       if mat.parsimony() < before {
         stats.accepted += 1;
         stats.gain += before - mat.parsimony();

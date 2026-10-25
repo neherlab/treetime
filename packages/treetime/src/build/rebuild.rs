@@ -1,8 +1,11 @@
 use crate::alphabet::alphabet::Alphabet;
 use crate::build::mat::Mat;
+use crate::build::nj::{jc_distances, neighbor_joining};
 use crate::build::pipeline::{BuildParams, BuildStats, InitialTree, SampleOrder, SearchMode, place_samples};
 use crate::build::query::Query;
+use crate::build::refresh::fitch_refresh;
 use crate::build::spr::spr_round;
+use crate::seq::mutation::Sub;
 use eyre::Report;
 use itertools::Itertools;
 use rand::seq::SliceRandom;
@@ -17,6 +20,7 @@ pub struct RebuildParams {
   pub radius: usize,
   pub max_leaves: usize,
   pub orders: usize,
+  pub neighbor_joining: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -100,7 +104,7 @@ pub(crate) fn rebuild_round(
     }
     stats.tried += 1;
     let before = ball.cost(mat);
-    let local = best_local_tree(mat, &ball, seqs, alphabet, params.orders, center)?;
+    let local = best_local_tree(mat, &ball, seqs, alphabet, params, center)?;
     if local.parsimony() < before {
       stats.improved += 1;
       stats.gain += before - local.parsimony();
@@ -132,7 +136,7 @@ fn best_local_tree(
   ball: &Ball,
   seqs: &[Seq],
   alphabet: &Alphabet,
-  orders: usize,
+  rebuild: &RebuildParams,
   center: GraphNodeKey,
 ) -> Result<Mat, Report> {
   let top_state = mat.node_state(ball.top);
@@ -172,13 +176,20 @@ fn best_local_tree(
   };
   let mut rng = get_random_number_generator(usize_to_u64(center.as_usize()));
   let mut order = (0..queries.len()).collect_vec();
-  let mut best: Option<Mat> = None;
-  for attempt in 0..orders.max(1) {
+  let mut starts = vec![];
+  for attempt in 0..rebuild.orders.max(1) {
     if attempt > 0 {
       order.shuffle(&mut rng);
     }
     let mut local = Mat::new(frame.clone());
     place_samples(&mut local, &queries, &order, &params, &mut BuildStats::default())?;
+    starts.push(local);
+  }
+  if rebuild.neighbor_joining {
+    starts.push(neighbor_joining_tree(&queries, &frame, alphabet)?);
+  }
+  let mut best: Option<Mat> = None;
+  for mut local in starts {
     loop {
       let before = local.parsimony();
       spr_round(&mut local, &queries, None)?;
@@ -191,4 +202,29 @@ fn best_local_tree(
     }
   }
   best.ok_or_else(|| crate::make_internal_report!("Local rebuild produced no tree"))
+}
+
+/// Neighbor-joining tree of the queries whose root has the state of `frame`, as a local rebuild needs for its splice.
+fn neighbor_joining_tree(queries: &[Query], frame: &Seq, alphabet: &Alphabet) -> Result<Mat, Report> {
+  let distances = jc_distances(queries, frame, alphabet.n_canonical());
+  let (graph, samples) = neighbor_joining(&distances, queries.len(), None)?;
+  let center = graph.root_key()?;
+  let fitted = fitch_refresh(Mat::from_parts(graph, center, frame.clone(), vec![], samples), queries, frame, alphabet)?;
+  let center_state = fitted.reference().clone();
+  let (mut graph, mut subs, samples) = fitted.into_parts();
+  let root = graph.add_node();
+  let stem = graph.add_edge(root, center)?.as_usize();
+  graph.build()?;
+  if subs.len() <= stem {
+    subs.resize(stem + 1, vec![]);
+  }
+  subs[stem] = queries
+    .iter()
+    .flat_map(|query| query.entries().iter().map(|&(pos, _)| pos))
+    .sorted_unstable()
+    .dedup()
+    .filter(|&pos| center_state[pos] != frame[pos])
+    .map(|pos| Sub::new(frame[pos], pos, center_state[pos]))
+    .collect::<Result<_, Report>>()?;
+  Ok(Mat::from_parts(graph, root, frame.clone(), subs, samples))
 }

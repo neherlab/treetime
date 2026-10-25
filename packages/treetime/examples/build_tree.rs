@@ -42,7 +42,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [initial=placement|nj] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -102,7 +102,9 @@ fn parse_args() -> Result<Args, Report> {
       compare_exhaustive: options.contains_key("compare"),
       initial: match get("initial", "placement").as_str() {
         "placement" => InitialTree::Placement,
-        "nj" => InitialTree::NeighborJoining,
+        "nj" => InitialTree::NeighborJoining {
+          top_hits: options.get("top_hits").map(|m| m.parse()).transpose()?,
+        },
         other => return make_error!("Unknown initial tree '{other}'"),
       },
       scaffold: options
@@ -132,6 +134,7 @@ fn parse_args() -> Result<Args, Report> {
             radius: radius.parse()?,
             max_leaves: get("rebuild_leaves", "24").parse()?,
             orders: get("rebuild_orders", "4").parse()?,
+            neighbor_joining: options.contains_key("rebuild_nj"),
           })
         })
         .transpose()?,
