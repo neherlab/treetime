@@ -1,5 +1,6 @@
 pub mod evaluate;
 pub(crate) mod insert;
+pub mod likelihood;
 pub mod mat;
 pub(crate) mod nj;
 pub mod pipeline;

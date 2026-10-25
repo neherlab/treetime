@@ -95,6 +95,18 @@ impl CandidateSites {
       .map(move |(index, &(pos, state))| (pos, state, &self.references[index * n..(index + 1) * n]))
   }
 
+  /// Replaces every reference state, for example to mask the positions a message's node has no data at
+  pub(crate) fn map_references(&mut self, map: impl Fn(usize, usize, AsciiChar) -> AsciiChar) {
+    let n = self.n_messages;
+    for (index, &(pos, _)) in self.sites.iter().enumerate() {
+      for (message, reference) in self.references[index * n..(index + 1) * n].iter_mut().enumerate() {
+        if let Some(value) = reference {
+          *value = map(message, pos, *value);
+        }
+      }
+    }
+  }
+
   pub(crate) fn fill_missing_references(&mut self, fill: impl Fn(usize, usize, AsciiChar) -> AsciiChar) {
     let n = self.n_messages;
     for (index, &(pos, state)) in self.sites.iter().enumerate() {

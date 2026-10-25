@@ -6,6 +6,7 @@ use treetime::alphabet::alphabet::Alphabet;
 use treetime::build::evaluate::{
   MissedSplit, TreeWithCounts, compare_splits, fitch_edge_counts, fitch_edge_subs, missed_splits,
 };
+use treetime::build::likelihood::{LikelihoodParams, refine_likelihood};
 use treetime::build::pipeline::{
   AnnealParams, BuildParams, BuildStats, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat,
   mat_from_tree, mat_to_tree, refine_mat,
@@ -25,6 +26,7 @@ struct Args {
   aln: String,
   sites_out: Option<String>,
   flags: BTreeSet<String>,
+  options: BTreeMap<String, String>,
   order_file: Option<String>,
   tree: Option<String>,
   start: Option<String>,
@@ -43,7 +45,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [start=<nwk to refine>] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1] [anneal=<rounds>] [t0=1.0] [cooling=0.8]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [start=<nwk to refine>] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1] [anneal=<rounds>] [t0=1.0] [cooling=0.8] [ml=<rounds>] [ml_depth=8] [ml_drop=10] [ml_min_gain=0.01] [ml_classes=true] [ml_opt_iter=5]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -85,6 +87,7 @@ fn parse_args() -> Result<Args, Report> {
     start: options.get("start").cloned(),
     order_file: options.get("order_file").cloned(),
     sites_out: options.get("sites_out").cloned(),
+    options: options.clone(),
     flags: options
       .iter()
       .filter(|(_, value)| value.as_str() == "true")
@@ -297,6 +300,24 @@ fn report_sites(
   Ok(())
 }
 
+fn options_likelihood(args: &Args) -> Result<Option<LikelihoodParams>, Report> {
+  let get = |key: &str, default: &str| args.options.get(key).cloned().unwrap_or_else(|| default.to_owned());
+  args
+    .options
+    .get("ml")
+    .map(|rounds| -> Result<LikelihoodParams, Report> {
+      Ok(LikelihoodParams {
+        rounds: rounds.parse()?,
+        max_depth: get("ml_depth", "8").parse()?,
+        drop: get("ml_drop", "10").parse()?,
+        min_gain: get("ml_min_gain", "0.01").parse()?,
+        rate_classes: get("ml_classes", "true").parse()?,
+        optimize_iterations: get("ml_opt_iter", "5").parse()?,
+      })
+    })
+    .transpose()
+}
+
 fn options_order(args: &Args) -> Result<Option<Vec<String>>, Report> {
   args
     .order_file
@@ -417,6 +438,26 @@ fn main() -> Result<(), Report> {
   }
 
   let tree = mat_to_tree(built.mat, &names)?;
+  let tree = match options_likelihood(&args)? {
+    Some(params) => {
+      let start = Instant::now();
+      let (tree, stats) = refine_likelihood(tree, &seqs, &names, &alphabet, &params)?;
+      println!(
+        "ml_seconds={:.2} partition_sites={:?} final_log_lh={:.1}",
+        start.elapsed().as_secs_f64(),
+        stats.partition_sites,
+        stats.final_log_lh
+      );
+      for (round, ml) in stats.rounds.iter().enumerate() {
+        println!(
+          "ml_round={round} log_lh={:.1} tried={} improving={} moves={} predicted_gain={:.1} max_reattach_error={:.2e}",
+          ml.log_lh, ml.tried, ml.improving, ml.moves, ml.predicted_gain, ml.max_reattach_error
+        );
+      }
+      tree
+    },
+    None => tree,
+  };
   if let Some(out) = &args.out {
     nwk_write_file(
       out,

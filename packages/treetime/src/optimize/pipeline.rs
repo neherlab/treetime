@@ -30,6 +30,7 @@ use std::collections::BTreeMap;
 use treetime_graph::edge::GraphEdgeKey;
 use treetime_graph::graph::Graph;
 use treetime_graph::node_names::NodeNames;
+use treetime_primitives::LogLh;
 use treetime_utils::{make_internal_error, make_report};
 
 const PRE_REROOT_DAMPING: f64 = 0.75;
@@ -109,6 +110,25 @@ pub fn run(
     branch_lengths,
     names: loop_result.names,
   })
+}
+
+/// Builds the partitions of a tree, optimizes its branch lengths and partition rates without changing the
+/// topology, and returns the partitions with the marginal messages on the optimized branch lengths
+pub(crate) fn optimized_partitions(
+  params: &OptimizeParams,
+  graph: &mut Graph,
+  names: NodeNames,
+  sequences: SequenceInput,
+  mut branch_lengths: BTreeMap<GraphEdgeKey, Option<f64>>,
+  log: &dyn LogSink,
+) -> Result<(PartitionSet, BTreeMap<GraphEdgeKey, Option<f64>>, LogLh), Report> {
+  let PreparedPartitions { partitions, .. } = prepare_partitions(params, graph, sequences, &mut branch_lengths, log)?;
+  apply_initial_guess(params, graph, &partitions, &mut branch_lengths, &names, log)?;
+  let result = run_optimize_loop(graph, partitions, &params.loop_settings, branch_lengths, names, log)?;
+  let (partitions, log_lh) = result
+    .partitions
+    .marginal_update(graph, &branch_lengths_or_zero(&result.branch_lengths))?;
+  Ok((partitions, result.branch_lengths, log_lh))
 }
 
 pub struct OptimizeInput {
