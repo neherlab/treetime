@@ -4,7 +4,7 @@ Phase 4 of [timetree-coalescent-prior-and-clock-rate-streamlining.md](../proposa
 
 ## Curvature-scaled probe window
 
-The rate step first probes $\log Z$ at $\mu/1.25$ and $1.25\mu$, with the target capped at a factor 2, and halves the probe half-width after each interior maximum (`PROBE_FACTOR`, `MIN_PROBE_SHRINK` and `MAX_TARGET_FACTOR`, [packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L14-L16](../../packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L14-L16)). Under the mean-field prior the curvature of $\log Z$ can scale the probe half-width: $h = \min(\ln 1.25, c/\sqrt{-\partial^2 \log Z})$. Test whether this also gives a usable rate uncertainty.
+The rate step first probes $\log Z$ at $\mu/1.25$ and $1.25\mu$, with the target capped at a factor 2, and halves the probe half-width after each interior maximum (`PROBE_FACTOR`, `MAX_HALF_WIDTH_DIVISOR` and `MAX_TARGET_FACTOR`, [packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L14-L16](../../packages/treetime/src/timetree/optimization/marginal_clock_rate.rs#L14-L16)). Under the mean-field prior the curvature of $\log Z$ can scale the probe half-width: $h = \min(\ln 1.25, c/\sqrt{-\partial^2 \log Z})$. Test whether this also gives a usable rate uncertainty.
 
 ## One source for `rate_std`
 

@@ -32,7 +32,7 @@ Before this decision v1 counted a bad branch as surviving at every time.
 - `fn NodePosterior::summarize()` [packages/treetime/src/timetree/inference/result.rs#L111](../../packages/treetime/src/timetree/inference/result.rs#L111) stores the survival function of every posterior, bad branches included
 - `fn LineageExpectation::from_posterior()` [packages/treetime/src/coalescent/mean_field.rs#L299](../../packages/treetime/src/coalescent/mean_field.rs#L299) reads it for every node; only a node without a posterior counts as surviving at all times
 - The init seed: `fn GaussianClock::clock()` [packages/treetime/src/clock/gaussian.rs#L112](../../packages/treetime/src/clock/gaussian.rs#L112) reports the Gaussian marginal of every node without an included tip date. For an undated leaf it is the parent marginal carried down the branch, mean $t_p + \nu/\eta$ and variance $\sigma_p^2 + \nu/\eta^2$. `fn LineageExpectation::from_gaussian()` [packages/treetime/src/coalescent/mean_field.rs#L315](../../packages/treetime/src/coalescent/mean_field.rs#L315) uses it, untruncated. The Gaussian model itself is unchanged; it leaves excluded tips out
-- The leaf factor: `fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs) multiplies the posterior of a leaf without subtree distribution by `fn apply_leaf_coalescent_factor()` [packages/treetime/src/timetree/inference/backward_pass.rs](../../packages/treetime/src/timetree/inference/backward_pass.rs) and normalizes it
+- The leaf factor: `fn refine_distribution_from_parent()` [packages/treetime/src/timetree/inference/forward_pass.rs](../../packages/treetime/src/timetree/inference/forward_pass.rs) multiplies the posterior of a leaf without subtree distribution by `fn apply_leaf_coalescent_factor()` [packages/treetime/src/timetree/inference/coalescent_factor.rs](../../packages/treetime/src/timetree/inference/coalescent_factor.rs) and normalizes it
 
 ## Why
 
@@ -68,7 +68,18 @@ cell, no failed runs. Median over runs; "clean" is `data_n100` on the same trees
 | date RMSE of undated tips (years), `opt-est` | $10^4$, $10^{-3}$ | | $0.108$ | $0.106$ | $0.077$ |
 | internal-node date RMSE (years), `opt-est` | $10^4$, $10^{-3}$ | $0.038$ | $0.055$ | $0.040$ | $0.040$ |
 
-The skyline variants agree. Output on data where every leaf is dated is byte-identical. Applying the internal factor
+The skyline variants agree. The validation runs use `--clock-filter 0` (`validation/run.py`), so they contain undated
+tips but no clock-filter outliers.
+
+Output on data where every leaf is dated and the clock filter flags no tip is byte-identical: the 13 `timetree` smoke
+cases with a coalescent prior on `ebola/20`, `flu/h3n2/20` and `zika/20`. A clock-filter outlier is a bad branch too,
+so a run with flagged outliers changes: on `ebola/362` with `--coalescent=skyline`, where the clock filter flags 18
+tips, the clock rate moves from $8.04 \cdot 10^{-4}$ to $7.93 \cdot 10^{-4}$ ($-1.4\%$), the skyline changes shape
+(segment boundaries move, $T_c$ rises up to 27-fold in the oldest segments and falls to 0.02 of before in the
+youngest), and node dates move by up to 0.10 years. This effect is not validated against a known
+truth ([kb/issues/M-timetree-undated-leaf-coalescent-counts-unvalidated-with-clock-filter-outliers.md](../issues/M-timetree-undated-leaf-coalescent-counts-unvalidated-with-clock-filter-outliers.md)).
+
+Applying the internal factor
 to internal nodes with only undated children, tried first, moved two such nodes of `exp/rep00`, $L=10^3$,
 $\mu=3\cdot10^{-3}$ from $+0.04$ and $+0.33$ to about $+1.45$ years, and failed two trees whose right tails no longer
 decayed.

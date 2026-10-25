@@ -24,9 +24,9 @@ following an unpublished derivation and reference scripts of the maintainers (`r
   [packages/treetime/src/reroot/driver.rs](../../packages/treetime/src/reroot/driver.rs), `fn reroot_date_free()`
   [packages/treetime/src/reroot/date_free.rs](../../packages/treetime/src/reroot/date_free.rs)
 - Gaussian timetree: `struct GaussianTree` [packages/treetime/src/clock/gaussian.rs#L16-L29](../../packages/treetime/src/clock/gaussian.rs#L16-L29), built by `fn GaussianTree::new()`
-  [packages/treetime/src/clock/gaussian.rs#L32-L103](../../packages/treetime/src/clock/gaussian.rs#L32-L103); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L105-L133](../../packages/treetime/src/clock/gaussian.rs#L105-L133);
-  closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L135-L142](../../packages/treetime/src/clock/gaussian.rs#L135-L142); callers `fn timetree_gaussian_clock()`
-  [packages/treetime/src/timetree/init.rs#L156-L184](../../packages/treetime/src/timetree/init.rs#L156-L184) and `fn gaussian_start_rate()` [packages/treetime/src/timetree/init.rs#L186-L210](../../packages/treetime/src/timetree/init.rs#L186-L210)
+  [packages/treetime/src/clock/gaussian.rs#L32-L110](../../packages/treetime/src/clock/gaussian.rs#L32-L110); node marginals and rate uncertainty `fn GaussianTree::clock()` [packages/treetime/src/clock/gaussian.rs#L112-L140](../../packages/treetime/src/clock/gaussian.rs#L112-L140);
+  closed-form rate `fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L142-L149](../../packages/treetime/src/clock/gaussian.rs#L142-L149); callers `fn timetree_gaussian_clock()`
+  [packages/treetime/src/timetree/init.rs#L162-L190](../../packages/treetime/src/timetree/init.rs#L162-L190) and `fn clock_fit_or_gaussian_rate()` [packages/treetime/src/timetree/init.rs#L192-L200](../../packages/treetime/src/timetree/init.rs#L192-L200)
 
 ## Decision
 
@@ -95,7 +95,7 @@ where:
 - $M$, $N$ -- number of internal and terminal branches that carry a message
 
 A branch carries a message when a dated tip that is not a clock-filter outlier lies below it
-(`fn GaussianTree::eta()` and `fn GaussianTree::mu()` [packages/treetime/src/clock/gaussian.rs#L144-L150](../../packages/treetime/src/clock/gaussian.rs#L144-L150)).
+(`fn GaussianTree::eta()` and `fn GaussianTree::mu()` [packages/treetime/src/clock/gaussian.rs#L151-L157](../../packages/treetime/src/clock/gaussian.rs#L151-L157)).
 
 **Messages.** A message about the time $t$ of a node is a triple $(S, R, W)$ that does not depend on $\eta$, with
 
@@ -112,7 +112,7 @@ $$\frac{1}{W} = \sum_k \frac{1}{W_k}, \qquad S = W \sum_k \frac{S_k}{W_k}, \qqua
 
 One pass toward the root and one toward the tips give every internal node $v$ the combination $(S_v, R_v, W_v)$ of
 all its messages, and its marginal time $\mathcal N(S_v - R_v/\eta,\ W_v/\eta^2)$ (`struct Natural`,
-`fn combine()` [packages/treetime/src/clock/gaussian.rs#L191-L197](../../packages/treetime/src/clock/gaussian.rs#L191-L197); `fn backward()`, `fn forward()` [packages/treetime/src/clock/gaussian.rs#L166-L228](../../packages/treetime/src/clock/gaussian.rs#L166-L228)).
+`fn combine()` [packages/treetime/src/clock/gaussian.rs#L201-L207](../../packages/treetime/src/clock/gaussian.rs#L201-L207); `fn backward()`, `fn forward()` [packages/treetime/src/clock/gaussian.rs#L166-L228](../../packages/treetime/src/clock/gaussian.rs#L166-L228)).
 
 **Likelihood of the rate.** Each combination at a node leaves $-\tfrac12 (a\eta^2 - 2b\eta + c)$ in the
 log-likelihood, with
@@ -137,7 +137,7 @@ $$\eta^* = \frac{B + \sqrt{B^2 + 4 A \kappa}}{2A}$$
 
 It exists whenever $A > 0$, that is, whenever the tip dates vary along the tree, so it is positive where the
 root-to-tip regression may give a negative slope. $\mu^*$ follows from $\eta^*$ by the conversion above
-(`fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L135-L142](../../packages/treetime/src/clock/gaussian.rs#L135-L142)).
+(`fn GaussianTree::rate()` [packages/treetime/src/clock/gaussian.rs#L142-L149](../../packages/treetime/src/clock/gaussian.rs#L142-L149)).
 
 **Rate and root uncertainty.** With the root time $t_r$ fixed, the log-likelihood is
 $\kappa \ln \eta - \tfrac12 A' \eta^2 + B' \eta - \tfrac12 C'$ with $A' = A + (t_r - S_r)^2/W_r$, where

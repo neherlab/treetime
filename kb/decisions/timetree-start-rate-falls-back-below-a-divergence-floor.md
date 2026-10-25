@@ -29,7 +29,7 @@ first round moves the rate at most 2-fold ([timetree-clock-rate-by-marginal-like
 On messy validation data (`validation/degrade.py`; `data_messy/const/rep03`, $L=10^3$, true rate $3\cdot10^{-3}$,
 `--keep-root --clock-filter 0`) the slope was $2.29\cdot10^{-5}$: without a coalescent prior the run stopped at the
 grid limit, and with `--coalescent opt` or `skyline` it panicked in the date output after dating nodes before year 0
-([H-timetree-negative-numdate-panics-in-date-string-conversion.md](../issues/H-timetree-negative-numdate-panics-in-date-string-conversion.md)). The
+([kb/issues/H-io-negative-numdate-panics-in-date-string-conversion.md](../issues/H-io-negative-numdate-panics-in-date-string-conversion.md)). The
 floor there is $2.57\cdot10^{-3}$, the Gaussian rate $3.95\cdot10^{-3}$, and the runs end at 0.96 (no prior), 0.98
 (`opt`) and 1.01 (`skyline`) of the true rate.
 
