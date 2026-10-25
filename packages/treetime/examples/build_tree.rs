@@ -27,6 +27,7 @@ struct Args {
   flags: BTreeSet<String>,
   order_file: Option<String>,
   tree: Option<String>,
+  start: Option<String>,
   out: Option<String>,
   params: BuildParams,
 }
@@ -42,7 +43,7 @@ fn parse_args() -> Result<Args, Report> {
   let get = |key: &str, default: &str| options.get(key).cloned().unwrap_or_else(|| default.to_owned());
   let Some(aln) = options.get("aln").cloned() else {
     return make_error!(
-      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1]"
+      "usage: build_tree aln=<fasta> [tree=<reference nwk>] [out=<nwk>] [search=exhaustive|walk|references] [refs=lbi|branches] [max_refs=32] [tau=<radius/ln n>] [pseudo=0.5] [cuts=16] [slack=1] [exact] [batch=64] [order=input|missing|random|scaffold] [anchors=50] [seed=0] [order_file=<names, one per line, placed first in this order>] [spr=5] [spr_slack=2|all] [refresh] [compare] [start_from_reference] [start=<nwk to refine>] [sites] [sites_out=<tsv>] [locality] [rebuild=<radius>] [rebuild_leaves=24] [rebuild_orders=4] [rebuild_nj] [initial=placement|nj] [top_hits=<m, e.g. sqrt n>] [scaffold=<size>] [scaffold_restarts=5] [reprune=<batches>] [reprune_rounds=1]"
     );
   };
   let references = match get("refs", "lbi").as_str() {
@@ -81,6 +82,7 @@ fn parse_args() -> Result<Args, Report> {
   Ok(Args {
     aln,
     tree: options.get("tree").cloned(),
+    start: options.get("start").cloned(),
     order_file: options.get("order_file").cloned(),
     sites_out: options.get("sites_out").cloned(),
     flags: options
@@ -327,8 +329,12 @@ fn main() -> Result<(), Report> {
   println!("samples={} length={}", seqs.len(), seqs.first().map_or(0, Seq::len));
 
   let start = Instant::now();
-  let built = match (&args.tree, options_flag(&args, "start_from_reference")) {
-    (Some(path), true) => {
+  let start_tree = match (&args.tree, options_flag(&args, "start_from_reference")) {
+    (_, false) => args.start.as_ref(),
+    (tree, true) => tree.as_ref(),
+  };
+  let built = match start_tree {
+    Some(path) => {
       let parse = nwk_read_file(path)?;
       let index: BTreeMap<&str, usize> = names.iter().map(String::as_str).zip(0..).collect();
       let samples = parse
@@ -339,7 +345,7 @@ fn main() -> Result<(), Report> {
       let mat = mat_from_tree(parse.graph, samples, &seqs, &alphabet)?;
       refine_mat(mat, &seqs, &alphabet, &args.params, BuildStats::default())?
     },
-    _ => build_mat(&seqs, &alphabet, &args.params)?,
+    None => build_mat(&seqs, &alphabet, &args.params)?,
   };
   let elapsed = start.elapsed().as_secs_f64();
   let stats = &built.stats;
