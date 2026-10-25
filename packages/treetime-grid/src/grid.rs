@@ -78,17 +78,24 @@ impl<T: InterpElem> Grid<T> {
     Ok(Self { x_min, dx, n_points })
   }
 
-  pub(crate) fn anchored(self, side: Side, x: T) -> Self
+  pub(crate) fn from_range_dx_anchored(
+    x_min: T,
+    x_max: T,
+    dx: T,
+    anchor: Side,
+    max_points: MaxGridPoints,
+  ) -> Result<Self, Report>
   where
     T: Float,
   {
-    match side {
-      Side::Left => Self { x_min: x, ..self },
+    let grid = Self::from_range_dx(x_min, x_max, dx, max_points)?;
+    Ok(match anchor {
+      Side::Left => grid,
       Side::Right => Self {
-        x_min: x - self.dx * from_count::<T>(self.n_points - 1),
-        ..self
+        x_min: x_max - dx * from_count::<T>(grid.n_points - 1),
+        ..grid
       },
-    }
+    })
   }
 
   pub(crate) fn from_array(x: &Array1<T>) -> Result<Self, Report>

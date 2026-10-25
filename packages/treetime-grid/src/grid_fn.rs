@@ -456,11 +456,7 @@ impl<T: InterpElem> GridFn<T> {
   where
     T: Float,
   {
-    let anchor_x = match anchor {
-      Side::Left => x_range.0,
-      Side::Right => x_range.1,
-    };
-    let grid = Grid::from_range_dx(x_range.0, x_range.1, dx, max_points)?.anchored(anchor, anchor_x);
+    let grid = Grid::from_range_dx_anchored(x_range.0, x_range.1, dx, anchor, max_points)?;
     let x_min = self.grid.x_min();
     let x_max = self.grid.x_max();
     let y_new = (0..grid.n_points())
