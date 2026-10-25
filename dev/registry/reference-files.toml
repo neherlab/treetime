@@ -55,8 +55,8 @@ name = "gm_timetree_coalescent_years"
 kind = "golden-master"
 test = "packages/app-commands/src/commands/timetree/__tests__/test_pipeline.rs"
 origin = "TreeTime v1 timetree node dates with a fixed coalescent time scale of 2.56 years on data/flu/h3n2/20"
-revision = "0869153f3, where a bare --coalescent value was a time scale in years"
-capture = "treetime timetree --tree data/flu/h3n2/20/tree.nwk --alignment data/flu/h3n2/20/aln.fasta.xz --metadata data/flu/h3n2/20/metadata.tsv --max-iter 2 --coalescent 2.56 --output-all <dir>, then the numdate of each node in <dir>/timetree.node-data.json"
+revision = "the code with the shrinking probe window of the clock-rate step and the denser-end anchor of resampled functions, which have no revision where a bare --coalescent value is a time scale in years; the captures before them came from such revisions"
+capture = "treetime timetree --tree data/flu/h3n2/20/tree.nwk --alignment data/flu/h3n2/20/aln.fasta.xz --metadata data/flu/h3n2/20/metadata.tsv --max-iter 2 --coalescent 2.56y --seed 7 --output-all <dir>, then the numdate of each node in <dir>/timetree.node-data.json"
 normalization = "only the listed internal nodes are compared, for exact equality"
 files = ["packages/app-commands/src/commands/timetree/__tests__/__fixtures__/coalescent_years_node_dates.json"]
 
