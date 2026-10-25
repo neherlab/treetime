@@ -294,14 +294,18 @@ impl<T: InterpElem, Y: YAxisPolicy> DistributionFunction<T, Y> {
     T: Float,
   {
     let y = self.y();
-    let (first, last) = (y[0], y[y.len() - 1]);
+    let (first, last): (f64, f64) = (y[0].into(), y[y.len() - 1].into());
     let right_end_denser = if Y::likely_is_maximum() {
       last > first
     } else {
       last < first
     };
-    let denser_end = if right_end_denser { Side::Right } else { Side::Left };
-    self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, denser_end, max_points)
+    let anchor = if right_end_denser && !Y::same_value(first, last) {
+      Side::Right
+    } else {
+      Side::Left
+    };
+    self.resample_range_dx_clamped((self.x_min(), self.x_max()), dx, anchor, max_points)
   }
 
   pub(crate) fn len(&self) -> usize {

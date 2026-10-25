@@ -5,6 +5,7 @@ mod tests {
   use crate::policy::{NegLog, Plain};
   use eyre::Report;
   use ndarray::array;
+  use rstest::rstest;
   use treetime_grid::MaxGridPoints;
   use treetime_grid::{HardApproachLaw, Side, SoftTailLaw};
   use treetime_utils::{assert_error, pretty_assert_ulps_eq};
@@ -141,6 +142,33 @@ mod tests {
       f.likely_time(),
       "Cannot find the most likely time of a distribution function: its values contain NaN"
     );
+    Ok(())
+  }
+
+  #[rustfmt::skip]
+  #[rstest]
+  #[case::equal_ends(          0.0)]
+  #[case::ends_within_rounding(-4.0 * f64::EPSILON)]
+  #[trace]
+  fn test_distribution_function_resample_dx_keeps_the_left_end_on_a_grid_point_when_the_ends_agree(
+    #[case] right_end_offset: f64,
+  ) -> Result<(), Report> {
+    let f: DistFnNegLog =
+      DistributionFunction::from_range_values((0.0, 1.0), array![3.0, 2.0, 3.0 + right_end_offset])?;
+
+    let resampled = f.resample_dx(0.3, MaxGridPoints::default())?;
+
+    pretty_assert_ulps_eq!(f.x_min(), resampled.x_min(), max_ulps = 0);
+    Ok(())
+  }
+
+  #[test]
+  fn test_distribution_function_resample_dx_keeps_a_denser_right_end_on_a_grid_point() -> Result<(), Report> {
+    let f: DistFnNegLog = DistributionFunction::from_range_values((0.0, 1.0), array![3.0, 2.0, 1.0])?;
+
+    let resampled = f.resample_dx(0.3, MaxGridPoints::default())?;
+
+    pretty_assert_ulps_eq!(f.x_max(), resampled.x_max(), max_ulps = 4);
     Ok(())
   }
 }
