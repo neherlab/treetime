@@ -111,7 +111,7 @@ Today one `NodeTimetree` type spans all passes with `Option` fields populated at
 
 ### Partition storage layout
 
-`BTreeMap<GraphNodeKey, _>` has $O(\log n)$ lookup. A `Vec` indexed by `GraphNodeKey.as_usize()` has $O(1)$ lookup, with empty slots for absent nodes, matching the graph's `Vec<Option<>>`. Its memory use depends on the largest allocated key, including removed nodes. A per-field <a id="gloss-use-2"></a>structure-of-arrays <sup>[2](#gloss-2)</sup> layout stores each field contiguously. Compare lookup cost, memory use, and numerical-kernel access patterns before choosing a layout.
+Node and edge data live in `NodeMap` and `EdgeMap` (`KeyMap` in `packages/treetime-graph/src/key_map.rs`): a `Vec<Option<_>>` indexed by key, with $O(1)$ lookup and empty slots for absent nodes, matching the graph's `Vec<Option<>>`. Its memory use depends on the largest allocated key, including removed nodes. A per-field <a id="gloss-use-2"></a>structure-of-arrays <sup>[2](#gloss-2)</sup> layout would store each field contiguously; compare numerical-kernel access patterns before choosing it over one map per field.
 
 ### Parallel passes without payload locks
 
