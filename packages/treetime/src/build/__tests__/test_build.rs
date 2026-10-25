@@ -4,8 +4,9 @@ mod tests {
   use crate::build::evaluate::{TreeWithCounts, compare_splits, fitch_edge_counts, missed_splits};
   use crate::build::mat::Mat;
   use crate::build::pipeline::{
-    BuildParams, BuiltMat, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat, mat_to_tree,
+    AnnealParams, BuildParams, BuiltMat, InitialTree, SampleOrder, ScaffoldParams, SearchMode, build_mat, mat_to_tree,
   };
+  use crate::build::placement::{Heat, Target};
   use crate::build::query::Query;
   use crate::build::rebuild::RebuildParams;
   use crate::build::references::{ReferenceSelection, eccentricities, local_branching_index};
@@ -18,6 +19,7 @@ mod tests {
   use rand::RngExt;
   use rstest::rstest;
   use std::collections::{BTreeMap, BTreeSet};
+  use treetime_graph::edge::GraphEdgeKey;
   use treetime_graph::graph::Graph;
   use treetime_graph::node::GraphNodeKey;
   use treetime_graph::node_names::NodeNames;
@@ -127,6 +129,7 @@ mod tests {
       reprune: None,
       scaffold: None,
       initial: InitialTree::Placement,
+      anneal: None,
     }
   }
 
@@ -185,6 +188,18 @@ mod tests {
     }
   }
 
+  fn annealing_params(batch_size: usize) -> BuildParams {
+    BuildParams {
+      anneal: Some(AnnealParams {
+        start_temperature: 2.0,
+        cooling: 0.7,
+        rounds: 5,
+        seed: 1,
+      }),
+      ..refreshing_params(batch_size)
+    }
+  }
+
   fn nj_params(top_hits: Option<usize>) -> BuildParams {
     BuildParams {
       initial: InitialTree::NeighborJoining { top_hits },
@@ -234,6 +249,7 @@ mod tests {
   #[case::random_order(ordered_params(SampleOrder::Random { seed: 3 }))]
   #[case::scaffold_order(ordered_params(SampleOrder::Scaffold { anchors: 10, seed: 3 }))]
   #[case::scaffold(scaffold_params())]
+  #[case::annealing(annealing_params(8))]
   #[case::neighbor_joining(nj_params(None))]
   #[case::neighbor_joining_full_top_hits(nj_params(Some(1000)))]
   fn test_build_recovers_perfect_phylogeny(#[case] params: BuildParams) -> Result<(), Report> {
@@ -282,6 +298,7 @@ mod tests {
   #[case::refreshing(refreshing_params(4))]
   #[case::rebuilding(rebuilding_params(4))]
   #[case::repruning(repruning_params(4))]
+  #[case::annealing(annealing_params(4))]
   fn test_build_keeps_mat_consistent_with_homoplasy_and_missing_data(
     #[case] params: BuildParams,
   ) -> Result<(), Report> {
@@ -336,6 +353,36 @@ mod tests {
         fitch <= final_parsimony,
         "seed {seed}: Fitch {fitch} > MAT {final_parsimony}"
       );
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::cold(0.5)]
+  #[case::warm(1.0)]
+  #[case::hot(3.0)]
+  fn test_heat_chooses_placements_with_boltzmann_probabilities(#[case] temperature: f64) -> Result<(), Report> {
+    // Three targets with costs 0, 1, 2 are chosen with probabilities proportional to exp(-cost / T)
+    let targets = [
+      (Target::Node(GraphNodeKey(0)), 0),
+      (Target::Edge(GraphEdgeKey(1)), 1),
+      (Target::Node(GraphNodeKey(5)), 2),
+    ];
+    let draws = 200_000_u32;
+    let mut chosen = [0_u32; 3];
+    for salt in 0..u64::from(draws) {
+      let heat = Heat { temperature, salt };
+      let (index, _) = targets
+        .iter()
+        .enumerate()
+        .min_by(|(_, (a, ca)), (_, (b, cb))| heat.key(*a, *ca).total_cmp(&heat.key(*b, *cb)))
+        .ok_or_else(|| eyre::eyre!("no target"))?;
+      chosen[index] += 1;
+    }
+    let weights = [0.0, 1.0, 2.0].map(|cost: f64| (-cost / temperature).exp());
+    let total: f64 = weights.iter().sum();
+    for (count, weight) in chosen.iter().zip(weights) {
+      pretty_assert_abs_diff_eq!(f64::from(*count) / f64::from(draws), weight / total, epsilon = 0.005);
     }
     Ok(())
   }
