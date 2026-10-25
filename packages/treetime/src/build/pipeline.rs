@@ -109,6 +109,8 @@ pub struct BuildStats {
   pub rebuild: Vec<RebuildStats>,
   pub reprune: Option<RepruneStats>,
   pub collapsed_edges: usize,
+  pub tied_placements: usize,
+  pub tied_targets: usize,
 }
 
 #[derive(Debug)]
@@ -237,6 +239,10 @@ pub(crate) fn place_samples(
         },
       };
       stats.visited += placement.visited;
+      if placement.n_best > 1 {
+        stats.tied_placements += 1;
+        stats.tied_targets += placement.n_best;
+      }
       let inserted = insert(mat, query, placement.target, Insertee::Sample(sample))?;
       touched.extend(inserted.touched);
       if let (Target::Edge(edge), Some(node)) = (placement.target, inserted.created) {

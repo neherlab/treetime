@@ -369,10 +369,21 @@ fn main() -> Result<(), Report> {
     stats.references,
     stats.collapsed_edges
   );
+  println!(
+    "tied_placements={} tied_targets={}",
+    stats.tied_placements, stats.tied_targets
+  );
   for (round, spr) in stats.spr.iter().enumerate() {
     println!(
-      "spr_round={round} tried={} moves={} gain={} visited={} parsimony_before={} parsimony_after={}",
-      spr.tried, spr.moves, spr.gain, spr.visited, spr.parsimony_before, spr.parsimony_after
+      "spr_round={round} tried={} moves={} gain={} visited={} parsimony_before={} parsimony_after={} tied={} tied_targets={}",
+      spr.tried,
+      spr.moves,
+      spr.gain,
+      spr.visited,
+      spr.parsimony_before,
+      spr.parsimony_after,
+      spr.tied,
+      spr.tied_targets
     );
   }
   for (round, spr) in stats.anneal.iter().enumerate() {

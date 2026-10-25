@@ -50,7 +50,10 @@ pub(crate) fn neighbor_joining(
   let mut dist = distances.to_vec();
   let mut active = (0..n_tips).collect_vec();
   let mut alive = vec![true; n_tips];
-  let mut sums = dist.chunks(n_tips.max(1)).map(|row| row.iter().sum::<f64>()).collect_vec();
+  let mut sums = dist
+    .chunks(n_tips.max(1))
+    .map(|row| row.iter().sum::<f64>())
+    .collect_vec();
   let mut hits = top_hits.map(|m| {
     (0..n_tips)
       .map(|row| best_partners(row, &active, active.len(), m, &dist, &sums))
@@ -148,7 +151,14 @@ pub(crate) fn neighbor_joining(
   Ok((graph, samples))
 }
 
-fn best_partners(own: usize, candidates: &[usize], n_active: usize, m: usize, dist: &[f64], sums: &[f64]) -> Vec<usize> {
+fn best_partners(
+  own: usize,
+  candidates: &[usize],
+  n_active: usize,
+  m: usize,
+  dist: &[f64],
+  sums: &[f64],
+) -> Vec<usize> {
   let n = sums.len();
   let scale = n_active.saturating_sub(2).to_f64_exact();
   let key = |other: usize| scale * dist[own * n + other] - sums[other];

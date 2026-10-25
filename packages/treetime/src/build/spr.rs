@@ -11,6 +11,8 @@ pub struct SprStats {
   pub moves: usize,
   pub gain: usize,
   pub uphill: usize,
+  pub tied: usize,
+  pub tied_targets: usize,
   pub visited: usize,
   pub parsimony_before: usize,
   pub parsimony_after: usize,
@@ -85,6 +87,10 @@ pub(crate) fn spr_round(
       ));
     }
     stats.tried += 1;
+    if placement.n_best > 1 {
+      stats.tied += 1;
+      stats.tied_targets += placement.n_best;
+    }
     stats.visited += placement.visited;
     let after = mat.parsimony();
     if after < before {
