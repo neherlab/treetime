@@ -9,6 +9,7 @@ use crate::policy::NegLog;
 use eyre::Report;
 use itertools::Itertools;
 use ndarray::{Array1, s};
+use std::borrow::Cow;
 use treetime_grid::{BoundaryBehavior, HardApproachLaw, MaxGridPoints, Side};
 use treetime_ops::convolve_fft;
 use treetime_utils::array::ndarray::{max_or, min_or};
@@ -279,8 +280,8 @@ fn convolution_function_function_fine(
     return make_error!("Invalid grid spacing detected during convolution: {dx}");
   }
 
-  let a = a.resample_dx(dx, max_points)?;
-  let b = b.resample_dx(dx, max_points)?;
+  let a = on_common_spacing(a, dx_b, max_points)?;
+  let b = on_common_spacing(b, dx_a, max_points)?;
   if a.is_empty() || b.is_empty() {
     let a_domain = conv_operand_domain(!a.is_empty());
     let b_domain = conv_operand_domain(!b.is_empty());
@@ -318,6 +319,18 @@ fn convolution_function_function_fine(
 
   let conv_distr = DistributionFunction::from_start_dx_values(x_min, dx, y)?.with_amplitude(amplitude);
   Ok(Distribution::Function(conv_distr))
+}
+
+pub(crate) fn on_common_spacing(
+  operand: &DistributionFunction<f64, NegLog>,
+  other_dx: f64,
+  max_points: MaxGridPoints,
+) -> Result<Cow<'_, DistributionFunction<f64, NegLog>>, Report> {
+  if operand.dx() <= other_dx {
+    Ok(Cow::Borrowed(operand))
+  } else {
+    operand.resample_dx(other_dx, max_points).map(Cow::Owned)
+  }
 }
 
 fn conv_operand_domain(has_mass: bool) -> Option<HardDomain> {

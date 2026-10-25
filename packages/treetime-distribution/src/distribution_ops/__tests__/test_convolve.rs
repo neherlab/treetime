@@ -6,7 +6,7 @@ mod tests {
   use crate::__tests__::aliases::DistributionNegLog;
   use crate::distribution_core::function::DistributionFunction;
   use crate::distribution_ops::__tests__::test_mass_profile_convergence::tests::helpers::assert_second_order;
-  use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution};
+  use crate::distribution_ops::convolve::{coarsen_convolution, distribution_convolution, on_common_spacing};
   use eyre::Report;
   use itertools::Itertools;
   use ndarray::{Array1, array, s};
@@ -717,6 +717,26 @@ mod tests {
 
     assert_eq!(expected_points, actual.len());
     pretty_assert_abs_diff_eq!(1.0, actual.dx(), epsilon = 1e-15);
+    Ok(())
+  }
+
+  #[test]
+  fn test_convolution_operand_with_the_common_spacing_keeps_its_grid() -> Result<(), Report> {
+    let operand = DistributionFunction::from_start_dx_values(0.1, 0.1, array![3.0, 2.0, 1.0, 0.0])?;
+
+    let on_spacing = on_common_spacing(&operand, 0.25, MaxGridPoints::default())?;
+
+    assert_eq!(operand, *on_spacing);
+    Ok(())
+  }
+
+  #[test]
+  fn test_convolution_coarser_operand_is_resampled_to_the_common_spacing() -> Result<(), Report> {
+    let operand = DistributionFunction::from_start_dx_values(0.0, 0.25, array![3.0, 2.0, 1.0, 0.0, 0.5])?;
+
+    let on_spacing = on_common_spacing(&operand, 0.1, MaxGridPoints::default())?;
+
+    pretty_assert_ulps_eq!(0.1, on_spacing.dx(), max_ulps = 4);
     Ok(())
   }
 
