@@ -122,10 +122,6 @@ fn log_rate_target(below: f64, at: f64, above: f64, window: RateWindow) -> (f64,
   }
 }
 
-/// Probe window of the rate step in log rate. The first step follows the slope of log Z out of the window, up to the
-/// 2-fold bound, to correct a poor start rate; later steps move only to a maximum between the probes, and otherwise
-/// keep the rate. The half-width halves after each step to a maximum between the probes, down to 1/8 of the start:
-/// a parabola in log rate through probes at distance h stops h^2/6 below the maximum of a Poisson-shaped log Z.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct RateWindow {
   pub half_width: f64,

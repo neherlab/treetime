@@ -19,8 +19,6 @@ use treetime_graph::schedule_scan::{NodeEdgeMaps, PerEdge};
 use treetime_utils::cast::ToF64Exact;
 use treetime_utils::make_internal_report;
 
-/// A start rate below this fraction of the mean root-to-tip divergence per year of sampling leaves the time inference
-/// little to recover from: the divergence would have to span ten times the sampling window.
 const SIGNAL_RATE_FLOOR_FRACTION: f64 = 0.1;
 
 pub(crate) fn fit_clock_model(
@@ -110,7 +108,6 @@ impl ClockFitResult {
     })
   }
 
-  /// Clock fit of the regression, or of the rate from `fallback` when the estimated rate is not above `min_rate`.
   pub(crate) fn into_clock_fit_or(
     self,
     min_rate: f64,
@@ -128,8 +125,6 @@ impl ClockFitResult {
     }
   }
 
-  /// A tenth of the mean root-to-tip divergence of the dated tips per year of their date span, or 0 when the dates do
-  /// not vary. Meaningful when the divergences are substitution lengths, as in the fit before the refinement loop.
   pub(crate) fn signal_rate_floor(&self) -> f64 {
     let dated: Vec<(f64, f64)> = self
       .points
