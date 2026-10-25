@@ -297,6 +297,23 @@ On `lassa/L/500` many sites are saturated. On the neighbor-joining start, 1994 o
 - **The gap is in the search, not the objective.** Refined by the builder's moves, the reference tree scores 75,258. That is 0.8% below every built tree, and it keeps 406 of its 411 splits. Of the 92 reference splits the best built tree misses, 66 sit on branches longer than 10 substitutions. The parsimony optimum lies next to the ML tree, and the built trees are stuck in other local optima
 - **The parsimony ratchet makes slow progress.** Each iteration doubles the weight of a random 25% of sites, refines from the current tree, then refines on equal weights, and keeps the tree if its score does not rise. Eight iterations (6 min) lower the score from 75,877 to 75,790 and the missing splits from 89 to 82. The tree stays 0.7% above the reference
 
+## Simulated annealing of SPR
+
+With `anneal=<rounds> t0=<T0> cooling=<c>`, SPR re-places each pruned subtree at a target drawn with probability proportional to $e^{-\mathrm{cost}/T}$, instead of the best target. The draw uses the Gumbel-max trick: each target's cost minus $T$ times a Gumbel variate, from a hash of a salt and the target. Branch-and-bound keeps every target within $6T$ of the cheapest. Round $k$ runs at $T_0 c^k$. Then the greedy rounds with rebuilds of radius 3 continue from the best tree seen. All runs use `spr=10 spr_slack=all refresh rebuild=3`, and Lassa starts from neighbor joining. Fitch score relative to the reference tree:
+
+| Dataset | Greedy | $T_0 = 0.3$, $c = 0.7$, 8 rounds | $T_0 = 1$, $c = 0.75$, 10 rounds | $T_0 = 2$, $c = 0.8$, 20 rounds |
+| --- | --- | --- | --- | --- |
+| `dengue/2000` | +0.05% | +0.04% | +0.05% | +0.04% |
+| `mpox/clade-ii/2000` | +0.16% | +0.07% | +0.18% | +0.18% |
+| `sc2/4500`, seeds 0 to 3 | +0.29%, +0.23% | +0.08%, +0.09%, +0.17% (seeds 1 to 3) | +0.24% | +0.42% |
+| `lassa/L/500` | +0.96% | | +0.94% | +0.89% |
+
+- **Cold annealing gains, and the gain is tie-breaking.** On `sc2/4500` the mean gap falls from +0.26% to +0.11%. A constant $T = 0.1$ (seed 1) ends at +0.10%, and at that temperature an uphill move of one substitution has probability $e^{-10}$. So the gain comes from walking among equally parsimonious placements. SPR without temperature keeps the old place on ties, and the tree never leaves its plateau
+- **Hot annealing dissolves the tree.** At $T_0 = 2$, the first round on `sc2/4500` makes 3495 uphill moves and raises the score from 27,033 to 40,400. On many large plateaus, entropy wins over the score. The cooled tree ends worse than greedy
+- **Lassa does not respond.** $T_0$ = 1, 2, 5, 10 end between +0.89% and +1.05%. The gap there is not crossed by single-subtree moves at any temperature
+- **Split agreement does not follow the score on `sc2/4500`.** The annealed trees miss 478 to 513 reference splits, against 482 and 494 for greedy. Many of the missed splits are short branches among equally parsimonious resolutions
+- Cost: 30 to 60% more time for 8 cold rounds (`sc2/4500`: 141 to 173 s against 116 to 165 s)
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -346,4 +363,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts; `start=<nwk>` refines a given tree on the alignment. `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts; `start=<nwk>` refines a given tree on the alignment; `anneal=8 t0=0.3 cooling=0.7` adds annealed SPR rounds before the greedy ones. `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.

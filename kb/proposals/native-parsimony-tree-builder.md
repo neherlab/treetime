@@ -189,6 +189,8 @@ A rebuild changes several subtrees and their internal states at once, which sing
 
 Batch re-placement and larger radii stay optional. Neither changed the result after rebuilds except on Lassa.
 
+**Cold annealing before the greedy rounds.** Eight SPR rounds draw each placement from $e^{-\Delta/T}$, with $T_0 = 0.3$ and $T$ multiplied by 0.7 each round. The greedy rounds then continue from the best tree seen. This lowers the gap on `sc2/4500` from +0.26% to +0.11% (mean of the seeds), and on `mpox/clade-ii/2000` from +0.16% to +0.07%. It costs 30 to 60% more time. A constant $T = 0.1$ does as well, so the gain comes from random choices among equally parsimonious placements, not from uphill moves. Hotter schedules ($T_0 \ge 1$) dissolve the low-divergence trees and do not help on Lassa.
+
 ### Output
 
 The builder returns the MAT. Edges without substitutions are collapsed, so the tree is multifurcating where the data do not resolve it.
@@ -222,6 +224,7 @@ Above about $10^4$ samples the distance matrix no longer fits in memory. Options
 
 - **B3a. [recommended] Fixed default.** Refresh, SPR, and radius-3 rebuilds until no gain, then stop. Batch re-placement and radius are expert options.
 - **B3b. Time budget.** Continue with batch re-placement or random restarts until a time limit. Not reproducible across machines.
+- **B3d. Cold annealing first.** Random tie-breaking among equally parsimonious placements ($T \approx 0.1$ to 0.3) for a few rounds, then B3a. Best result on `sc2/4500` and `mpox/clade-ii/2000` so far; to be checked on the simulations before it becomes the default.
 - **B3c. Multiple random orders, keep the best.** On Lassa, five orders ended 2.0 to 3.4% above the reference tree. Restarts reduce variance but do not replace a better start.
 
 ### B4. Neighbourhood of a local rebuild
