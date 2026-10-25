@@ -279,6 +279,24 @@ Observations:
 
 **Fitch refresh on variable columns.** The refresh now encodes the leaves from their sparse queries and runs Fitch only on the columns where some sample differs from the reference. The other columns keep the reference state. Scores are identical to the refresh on full sequences, and the build of `mpox/clade-ii/2000` takes 13 s instead of 24 s. Its peak memory (0.9 GB) comes from reading the alignment, not from the refresh. The same function fits the local neighbor-joining trees.
 
+## Site partitions and reweighting on divergent data
+
+On `lassa/L/500` many sites are saturated. On the neighbor-joining start, 1994 of the 10,402 sites change 20 times or more. They carry 70% of the substitutions. The idea tested here: partition the sites by their number of changes on a rough tree, build the global clustering from the slow sites, then refine with all sites. The experiments use the `build_tree` example on modified alignments. Masked sites are written as `N`, and integer weights are emulated by duplicating columns. `start=<nwk>` then refines the result on the full alignment. The rough tree is neighbor joining without refinement. Both stages use `initial=nj spr=10 spr_slack=all refresh rebuild=3`. The table counts reference splits missing from the built tree (95 for the unmodified build).
+
+| Sites | Weighted stage | After refining on all sites |
+| --- | --- | --- |
+| Only sites with at most 2, 5, 10, 20 changes | 78 to 194 of 128 to 385 splits; precision 42 to 52% | 142 to 165; Fitch 79,846 to 82,141 |
+| Weight 4, 3, 2, 1 for at most 3, 8, 16, more changes | 122 | 117; Fitch 76,631 |
+| Weight $\mathrm{round}(16/c)$ | 127 | 123; Fitch 77,799 |
+| Drop sites with more than 25, 30, 40, 60 changes | 127, 98, 91, 92 | 109, 90, 88, 88 |
+| Half weight for sites with more than 40 changes | 87 | 87; Fitch 75,839 |
+
+- **Slow sites alone do not give the global clustering.** Few changes mostly means a rare allele: 583 of the 847 sites with at most 2 changes change once and are uninformative. The splits from slow sites are less precise (42 to 52%) than the rough tree on all sites (58%). The masked trees are poorly resolved, and their polytomies leave the full-alignment refinement at 80 to 82k against 76.0k
+- **Up-weighting slow sites hurts.** Every scheme that gives slow sites more weight ends 20 to 30 splits further from the reference. The fast sites carry most of the topological signal
+- **Down-weighting the fastest sites helps marginally.** Over three input orders, half weight for sites with more than 40 changes ends with 89, 92, 90 missing splits, against 93, 92, 90 without. The Fitch score is 75,898 against 75,969 on average. Dropping only 13 sites (more than 60 changes) moves the result as much as dropping 131, so most of the difference is a perturbation of the search
+- **The gap is in the search, not the objective.** Refined by the builder's moves, the reference tree scores 75,258. That is 0.8% below every built tree, and it keeps 406 of its 411 splits. Of the 92 reference splits the best built tree misses, 66 sit on branches longer than 10 substitutions. The parsimony optimum lies next to the ML tree, and the built trees are stuck in other local optima
+- **The parsimony ratchet makes slow progress.** Each iteration doubles the weight of a random 25% of sites, refines from the current tree, then refines on equal weights, and keeps the tree if its score does not rise. Eight iterations (6 min) lower the score from 75,877 to 75,790 and the missing splits from 89 to 82. The tree stays 0.7% above the reference
+
 ## Dating with built trees
 
 The built Newick trees run through `treetime clock` and `treetime timetree` unchanged. On `sc2/4500` the clock estimates differ from those of the reference tree:
@@ -328,4 +346,4 @@ target/release/examples/build_tree aln=data/sc2/4500/aln.fasta.xz tree=data/sc2/
   search=exhaustive spr=10 spr_slack=all refresh out=tmp/sc2_4500_built.nwk
 ```
 
-`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts. `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.
+`compare` adds the comparison of every placement with the full scan; `search=walk refs=lbi max_refs=32 slack=6` selects the greedy walk, and `exact` seeds the branch-and-bound with it; `search=references refs=lbi` or `search=references refs=branches cuts=64` starts the exact search at the nearest reference; `order_file=<file>` places the listed names first, in the listed order; `rebuild=3` adds local rebuilds of radius 3; `start_from_reference` refines the reference tree instead of building one; `sites` compares the built and the reference tree site by site; `locality` reports the missed splits in both directions; `reprune=10 reprune_rounds=3` adds batch re-placement; `order=random|scaffold`, `scaffold=60`, and `initial=nj` choose the insertion order and the starting tree; `sites_out=<tsv>` writes per-site Fitch counts; `start=<nwk>` refines a given tree on the alignment. `examples/simulate_dataset.rs out=<dir> mu=0.01 alpha=0.3 messy` writes a simulated dataset with its true tree.

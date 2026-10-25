@@ -326,6 +326,7 @@ For 10^5 samples and more, a seed of the branch-and-bound may become worthwhile 
 - **Moves that change a subtree's root state.** State sets cover sites where the children disagree. A move that needs a state that none of the children has is still not found. matOptimize searches the full Fitch set.
 - **Time-aware refinement.** Among equally parsimonious placements, choose the one that is most consistent with the sampling dates, for example by the root-to-tip residual. This would address the dating sensitivity at no parsimony cost.
 - **Sparse-likelihood refinement.** After the parsimony tree, a MAPLE-style likelihood SPR on the sparse partition would rank the equally parsimonious trees. It needs the dense-sparse agreement of [kb/issues/H-timetree-sparse-dense-node-times-differ.md](../issues/H-timetree-sparse-dense-node-times-differ.md).
+- **Escaping local optima on divergent data.** On `lassa/L/500` the reference tree, refined by the builder, scores 0.8% below every built tree. Partitioning the sites by their number of changes and building from slow sites does not help, because slow sites are mostly rare alleles. Down-weighting the fastest sites helps marginally. Eight ratchet iterations close 0.1 points. Open: a stronger perturbation (fraction and weight of reweighted sites), ratchet moves restricted to deep subtrees, or several neighbor-joining starts on resampled sites. See [kb/issues/M-build-search-stuck-above-reference-on-divergent-data.md](../issues/M-build-search-stuck-above-reference-on-divergent-data.md).
 - **Divergence threshold.** Where between p = 0.05 and 0.12 does the distance start become better? Answering this needs simulations at $\mu$ = 0.02 to 0.03 with gamma rates, and further divergent real datasets.
 
 ## Implementation plan
@@ -372,6 +373,7 @@ Actionable items from this proposal:
 - [M-build-neighbor-joining-quadratic-memory.md](../issues/M-build-neighbor-joining-quadratic-memory.md)
 - [M-build-no-rule-to-choose-distance-or-placement-start.md](../issues/M-build-no-rule-to-choose-distance-or-placement-start.md)
 - [M-build-rebuild-radius-in-branches-misses-ladder-errors.md](../issues/M-build-rebuild-radius-in-branches-misses-ladder-errors.md)
+- [M-build-search-stuck-above-reference-on-divergent-data.md](../issues/M-build-search-stuck-above-reference-on-divergent-data.md)
 - [M-build-least-squares-root-differs-on-built-sc2-tree.md](../issues/M-build-least-squares-root-differs-on-built-sc2-tree.md)
 - [N-build-local-rebuild-slow-with-state-sets.md](../issues/N-build-local-rebuild-slow-with-state-sets.md)
 - [N-build-placement-bound-counts-all-substitutions-below.md](../issues/N-build-placement-bound-counts-all-substitutions-below.md)
