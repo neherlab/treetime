@@ -12,7 +12,7 @@ use crate::optimize::solver_outcome::ConvergenceSummary;
 use crate::partition::set::PartitionSet;
 use crate::progress::{LogSink, StageSink};
 use crate::progress_info;
-use crate::reroot::params::{RerootParams, RerootSpec};
+use crate::reroot::params::{RerootMethod, RerootParams, RerootSpec};
 use crate::timetree::branch_model::BranchModel;
 use crate::timetree::inference::result::given_times;
 use crate::timetree::init::{GaussianRateTree, StartRateFloor, clock_fit_or_gaussian_rate};
@@ -157,21 +157,23 @@ fn reroot(
     &mut names,
     log,
   )?;
-  let clock_fit = if reroot_params.is_some() {
-    fit.into_clock_fit()?
-  } else {
-    clock_fit_or_gaussian_rate(
-      fit,
-      StartRateFloor::Positive,
-      label,
-      &GaussianRateTree {
-        graph: &graph,
-        branch_lengths: &branch_lengths,
-        context: inputs.context,
-        outliers,
-      },
-      log,
-    )?
+  let clock_fit = match spec {
+    RerootSpec::Method(RerootMethod::LeastSquares) => fit.into_clock_fit()?,
+    RerootSpec::Method(RerootMethod::MinDev | RerootMethod::Midpoint | RerootMethod::Oldest) | RerootSpec::Tips(_) => {
+      let floor = StartRateFloor::of_fit(&fit);
+      clock_fit_or_gaussian_rate(
+        fit,
+        floor,
+        label,
+        &GaussianRateTree {
+          graph: &graph,
+          branch_lengths: &branch_lengths,
+          context: inputs.context,
+          outliers,
+        },
+        log,
+      )?
+    },
   };
   Ok(PreLoopState {
     graph,
