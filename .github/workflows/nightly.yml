@@ -2,8 +2,9 @@ name: "Nightly release"
 
 # Runs on every push to rust, and when the daily scheduler of
 # schedule-nightly.yml on master or dev/trigger-nightly calls it. Each run builds
-# the CLI once and deploys every binary that builds. The compatibility tests run
-# on the same binaries and report problems without holding back a deployment.
+# the CLI once and deploys every binary that builds: the release, then the Docker
+# images. The compatibility tests run on the same binaries and report problems
+# without holding back a deployment.
 on:
   push:
     branches:
@@ -149,14 +150,14 @@ jobs:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
     secrets: inherit
 
-  # The images copy the Linux CLI binaries of this run without a new compilation,
-  # and each image runs before the push. The job runs after the release is
-  # published; a missing Linux binary fails it and publishes no images, without
-  # affecting the release.
+  # The images copy the Linux CLI binaries of this run without a new compilation.
+  # Each image is pushed for every platform whose binary built, and then runs its
+  # tests, so a failed binary or test reports a problem but never holds back the
+  # other images.
   docker:
     name: "Publish to Docker Hub"
-    needs: [prepare, publish]
-    if: ${{ !cancelled() && needs.publish.result == 'success' }}
+    needs: [prepare, build]
+    if: ${{ !cancelled() && needs.prepare.outputs.should_build == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -184,7 +185,7 @@ jobs:
           merge-multiple: true
           path: ".out"
 
-      - name: "Build, run, and push the images"
+      - name: "Build and push the images, then run them"
         env:
           VERSION_SUFFIX: ${{ needs.prepare.outputs.version_suffix }}
-        run: dev/docker/prod-images --version-suffix "${VERSION_SUFFIX}" --run --push
+        run: dev/docker/prod-images --version-suffix "${VERSION_SUFFIX}" --push --run

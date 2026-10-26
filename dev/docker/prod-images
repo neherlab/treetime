@@ -10,8 +10,13 @@
 #   alpine    the static musl build on the Alpine base of prod-bases.json
 #             (prod-alpine)
 #   scratch   the static musl build alone (prod-scratch)
-# Without --run or --push, the images are built for both platforms and kept in
-# the build cache only.
+# Without --run or --push, the images are built and kept in the build cache
+# only.
+#
+# Each image is built for every platform whose binary is in .out/, so a missing
+# binary removes only its platform from the images that need it. A missing
+# binary, a failed build, and a failed test are reported at the end and make the
+# script exit with status 1, after every other image is pushed and tested.
 #
 # The version of the images is the workspace version of Cargo.toml and the
 # suffix, as in the binaries (TREETIME_VERSION_SUFFIX). A Docker tag cannot
@@ -22,10 +27,10 @@
 #   nightly-<image> 1.0.0-nightly.20261026T040000Z_abc1234-<image>
 #                                      each image: debian, alpine, scratch
 #
-# Every build uses one docker-container builder, treetime-prod, so a push after
-# --run reuses the layers of the tested builds. The binaries are staged with
-# mode 0755 under .out/docker/<amd64|arm64>/<gnu|musl>/. The log of each build
-# and the outputs of each image test go to tmp/docker-prod/.
+# Every build uses one docker-container builder, treetime-prod, so the test
+# builds after a push reuse the layers of the pushed builds. The binaries are
+# staged with mode 0755 under .out/docker/<amd64|arm64>/<gnu|musl>/. The log of
+# each build and the outputs of each image test go to tmp/docker-prod/.
 #
 # Runs on the host and needs Docker with buildx, QEMU user emulation for the
 # platform that the host does not run (binfmt_misc), yq, jq, and the binaries
@@ -35,17 +40,15 @@
 #   -h, --help                  Show this help
 #   --version-suffix <suffix>   Nightly version suffix of the binaries, such as
 #                               nightly.20261026T040000Z+abc1234 (required)
+#   --push                      Push the images to Docker Hub (log in first)
 #   --run                       Load each platform into Docker and run, in every
 #                               image, `treetime --version`, which must report the
 #                               version, and an ancestral reconstruction of
-#                               data/zika/20
-#   --push                      Push the images of both platforms to Docker Hub
-#                               (log in first); with --run, only after every image
-#                               ran
+#                               data/zika/20; with --push, after the push
 #
 # Examples:
 #   $0 --version-suffix nightly.20261026T040000Z+abc1234 --run
-#   $0 --version-suffix nightly.20261026T040000Z+abc1234 --run --push
+#   $0 --version-suffix nightly.20261026T040000Z+abc1234 --push --run
 #
 set -euo pipefail
 trap "exit" INT
@@ -53,16 +56,29 @@ trap "exit" INT
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 
 IMAGE="neherlab/treetime"
-PLATFORMS="linux/amd64,linux/arm64"
+PLATFORMS=(linux/amd64 linux/arm64)
 BUILDER="treetime-prod"
 DISTROS=(debian alpine scratch)
 LOG_DIR="tmp/docker-prod"
 TEST_DATASET="data/zika/20"
 
-# Build one image with an output option of buildx: --load for one platform,
-# --push or --output=type=cacheonly for both.
+# Platforms with a staged binary, by C library: "linux/amd64,linux/arm64".
+declare -A libc_platforms=([gnu]="" [musl]="")
+problems=0
+
+# Print the C library of the binary in an image.
+distro_libc() {
+  if [[ "${1}" == debian ]]; then
+    printf 'gnu'
+  else
+    printf 'musl'
+  fi
+}
+
+# Build one image for a comma-separated list of platforms with an output option
+# of buildx: --load for one platform, --push or --output=type=cacheonly.
 build_one() {
-  local output="${1}" platform="${2}" distro="${3}"
+  local output="${1}" platforms="${2}" distro="${3}"
 
   local args=(
     --tag="${IMAGE}:nightly-${distro}"
@@ -79,7 +95,7 @@ build_one() {
 
   docker buildx build \
     --builder="${BUILDER}" \
-    --platform="${platform}" \
+    --platform="${platforms}" \
     "${output}" \
     --file="dev/docker/prod-${distro}.dockerfile" \
     --progress=plain \
@@ -87,61 +103,64 @@ build_one() {
     .
 }
 
-# Build every image in parallel; fail when any build fails.
+# Build every image in parallel, for one platform or, without a platform, for
+# every platform with a binary. Images without a binary for the platform are
+# left out; each failed build counts as a problem.
 build_all() {
-  local output="${1}" platform="${2}"
-  local pids=() logs=() distro
+  local output="${1}" platform="${2:-}"
+  local pids=() logs=() built=() distro platforms label
 
   mkdir -p "${LOG_DIR}"
   for distro in "${DISTROS[@]}"; do
-    logs+=("${LOG_DIR}/${distro}-${platform//\//-}.log")
-    build_one "${output}" "${platform}" "${distro}" >"${logs[${#logs[@]} - 1]}" 2>&1 &
+    platforms="${libc_platforms[$(distro_libc "${distro}")]}"
+    if [[ -n "${platform}" ]]; then
+      [[ ",${platforms}," == *",${platform},"* ]] || continue
+      platforms="${platform}"
+    fi
+    [[ -n "${platforms}" ]] || continue
+    label="${distro}-${platforms//[\/,]/-}"
+    built+=("${distro} (${platforms})")
+    logs+=("${LOG_DIR}/${label}.log")
+    build_one "${output}" "${platforms}" "${distro}" >"${logs[${#logs[@]} - 1]}" 2>&1 &
     pids+=("$!")
   done
-  printf 'Building %s images for %s (%s); logs in %s/\n' "${#pids[@]}" "${platform}" "${output}" "${LOG_DIR}" >&2
+  printf 'Building %s images (%s); logs in %s/\n' "${#pids[@]}" "${output}" "${LOG_DIR}" >&2
 
-  local failed=0 i
+  local i
   for i in "${!pids[@]}"; do
     if wait "${pids[${i}]}"; then
-      printf 'Built %s\n' "${DISTROS[${i}]}" >&2
+      printf 'Built %s\n' "${built[${i}]}" >&2
     else
-      printf 'FAIL %s (%s)\n' "${DISTROS[${i}]}" "${logs[${i}]}" >&2
-      failed=$((failed + 1))
+      printf 'FAIL build of %s (%s)\n' "${built[${i}]}" "${logs[${i}]}" >&2
+      problems=$((problems + 1))
     fi
   done
-  if ((failed > 0)); then
-    printf '%s builds failed\n' "${failed}" >&2
-    exit 1
-  fi
 }
 
-# Run every loaded image of a platform: `treetime --version` must report the
+# Run every image loaded for a platform: `treetime --version` must report the
 # version, and the ancestral reconstruction of the test dataset must succeed,
 # because a binary can print its version and still crash in its numeric
-# libraries (BLAS, LAPACK).
+# libraries (BLAS, LAPACK). Each failed image counts as a problem.
 run_all() {
-  local platform="${1}" distro name label output failed=0
+  local platform="${1}" distro name label output
 
   for distro in "${DISTROS[@]}"; do
+    [[ ",${libc_platforms[$(distro_libc "${distro}")]}," == *",${platform},"* ]] || continue
     name="${IMAGE}:nightly-${distro}"
     label="${distro}-${platform//\//-}"
     if ! output="$(run_version "${platform}" "${name}" "${label}" 2>&1)"; then
       printf 'FAIL %s (%s): %s\n' "${name}" "${platform}" "${output}" >&2
-      failed=$((failed + 1))
+      problems=$((problems + 1))
     elif [[ "${output}" != "treetime ${version}" ]]; then
       printf 'FAIL %s (%s): reports "%s", expected "treetime %s"\n' "${name}" "${platform}" "${output}" "${version}" >&2
-      failed=$((failed + 1))
+      problems=$((problems + 1))
     elif ! output="$(run_analysis "${platform}" "${name}" "${label}" 2>&1)"; then
       printf 'FAIL %s (%s): ancestral reconstruction of %s:\n%s\n' "${name}" "${platform}" "${TEST_DATASET}" "${output}" >&2
-      failed=$((failed + 1))
+      problems=$((problems + 1))
     else
       printf 'PASS %s (%s)\n' "${name}" "${platform}" >&2
     fi
   done
-  if ((failed > 0)); then
-    printf '%s images failed to run\n' "${failed}" >&2
-    exit 1
-  fi
 }
 
 # Print the output of `treetime --version` in an image.
@@ -184,20 +203,24 @@ run_analysis() {
     treetime ancestral --tree=/data/tree.nwk --alignment=/data/aln.fasta.xz --output-all=/out
 }
 
-# Copy the binaries to the paths that TARGETARCH selects in the Dockerfiles.
+# Copy each binary in .out/ to the path that TARGETARCH selects in the
+# Dockerfiles and record its platform; each missing binary counts as a problem.
 stage_binaries() {
-  local arch target libc source
-  for arch in amd64 arm64; do
+  local platform arch target libc source
+  for platform in "${PLATFORMS[@]}"; do
+    arch="${platform#linux/}"
     target="x86_64"
     [[ "${arch}" == amd64 ]] || target="aarch64"
     for libc in gnu musl; do
       source=".out/treetime-${target}-unknown-linux-${libc}"
       if [[ ! -f "${source}" ]]; then
-        printf 'Missing %s; build it with dev/cross/build or download it from the nightly release\n' "${source}" >&2
-        exit 1
+        printf 'FAIL missing %s: the images leave out %s for the %s build\n' "${source}" "${platform}" "${libc}" >&2
+        problems=$((problems + 1))
+        continue
       fi
       mkdir -p ".out/docker/${arch}/${libc}"
       install -m 0755 "${source}" ".out/docker/${arch}/${libc}/treetime"
+      libc_platforms[${libc}]+="${libc_platforms[${libc}]:+,}${platform}"
     done
   done
 }
@@ -248,18 +271,23 @@ main() {
   stage_binaries
   docker buildx inspect "${BUILDER}" >/dev/null 2>&1 || docker buildx create --name="${BUILDER}" --driver=docker-container >/dev/null
 
+  if [[ -n "${push}" ]]; then
+    build_all --push
+  elif [[ -z "${run}" ]]; then
+    build_all --output=type=cacheonly
+  fi
   # A docker-container builder loads one platform at a time.
   if [[ -n "${run}" ]]; then
     local platform
-    for platform in ${PLATFORMS//,/ }; do
+    for platform in "${PLATFORMS[@]}"; do
       build_all --load "${platform}"
       run_all "${platform}"
     done
   fi
-  if [[ -n "${push}" ]]; then
-    build_all --push "${PLATFORMS}"
-  elif [[ -z "${run}" ]]; then
-    build_all --output=type=cacheonly "${PLATFORMS}"
+
+  if ((problems > 0)); then
+    printf '%s problems; every other image and platform is done\n' "${problems}" >&2
+    exit 1
   fi
 }
 
