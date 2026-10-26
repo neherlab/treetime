@@ -535,14 +535,14 @@ The release binaries run on these CPUs; on an older x86_64 CPU they stop with a 
 
 Prerelease builds are published in [neherlab/treetime-nightly](https://github.com/neherlab/treetime-nightly/releases). A nightly publishes every CLI binary and desktop package that builds, without the linkage checks and start tests of the CI workflow.
 
-1. `.github/workflows/schedule-nightly.yml` on `master` runs daily at 04:00 UTC and calls `.github/workflows/nightly.yml` on `rust`, which skips when `rust` has no new commits
+1. `.github/workflows/nightly.yml` on `rust` runs on every push to `rust` and releases its tip. Runs do not overlap: a push during a running nightly waits, and only the newest waiting run starts, so one release can cover several commits. `.github/workflows/schedule-nightly.yml` on `master` also calls `nightly.yml` daily at 04:00 UTC, which skips when the latest nightly already has the tip of `rust`, so it releases only a commit whose push run failed
 2. `nightly.yml` builds the cross-compilation matrix of `.github/workflows/cli-build.yml`, and the desktop apps with `.github/workflows/desktop-build.yml`: the addon of each target in its cross image, the bundles, and the packages. A failed target does not block the others
 3. `nightly.yml` writes `SHA256SUMS` over every asset of the release and attests these checksums with `actions/attest`, which signs with the identity of the workflow run. The attestation needs the `id-token: write` and `attestations: write` permissions. A called workflow can only lower the permissions of its caller, so the `nightly` job of `schedule-nightly.yml` grants them too
 4. `dev/publish-nightly` creates the prerelease with the built binaries, the desktop packages, `examples.zip`, which holds the files that `data/index.json` lists and the index itself, and `SHA256SUMS`. Its notes list the changelog since the previous nightly, followed by a downloads table that links every asset, one row per platform, and the command that verifies a download: `gh attestation verify <file> --repo neherlab/treetime`
 
 `./dev/trigger-nightly` starts a nightly by hand. The version format is `<cargo-version>-nightly.<YYYYMMDD>T<HHMMSS>Z+<short-sha>`.
 
-`./dev/trigger-nightly --only cli` runs only the CLI release, `--only desktop` only the desktop release; the scheduled run does both. A desktop-only release has no CLI binaries, so the scheduled run still builds the CLI for the same commit, and a desktop-only run also runs when `rust` is unchanged.
+`./dev/trigger-nightly --only cli` runs only the CLI release, `--only desktop` only the desktop release; push runs and the scheduled run do both. A desktop-only release has no CLI binaries, so the next scheduled run still builds the CLI for the same commit, and a desktop-only run also runs when `rust` is unchanged.
 
 ### Web app deploys
 

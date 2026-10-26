@@ -73,8 +73,8 @@ jobs:
       build_mode: dev
     secrets: inherit
 
-  # Desktop apps build only on manual runs here and in the nightly, which keeps
-  # the addon cross builds and the macOS and Windows runner jobs out of every push.
+  # Desktop apps build here only on manual runs, because the nightly of every
+  # push to rust already builds and publishes them; pull requests skip them.
   build-desktop:
     name: "Build desktop app"
     if: github.event_name == 'workflow_dispatch'

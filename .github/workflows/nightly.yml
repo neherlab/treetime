@@ -1,6 +1,13 @@
 name: "Nightly release"
 
+# Runs on every push to rust, and when the daily scheduler of
+# schedule-nightly.yml on master or dev/trigger-nightly calls it. A push run
+# has no inputs and releases the CLI and the desktop apps.
 on:
+  push:
+    branches:
+      - rust
+
   workflow_call:
     inputs:
       force:
@@ -33,6 +40,7 @@ jobs:
     name: "Resolve rust revision"
     runs-on: ubuntu-24.04
     outputs:
+      only: ${{ steps.prepare.outputs.only }}
       should_build: ${{ steps.prepare.outputs.should_build }}
       source_sha: ${{ steps.prepare.outputs.source_sha }}
       version_suffix: ${{ steps.prepare.outputs.version_suffix }}
@@ -41,7 +49,7 @@ jobs:
         id: prepare
         env:
           GH_TOKEN: ${{ secrets.NEHERLAB_BOT_GITHUB_TOKEN }}
-          ONLY: ${{ inputs.only }}
+          ONLY: ${{ inputs.only || 'all' }}
         run: |
           case "${ONLY}" in
           cli | desktop | all) ;;
@@ -65,14 +73,14 @@ jobs:
           timestamp=$(date -u "+%Y%m%dT%H%M%SZ")
           version_suffix="nightly.${timestamp}+${short_sha}"
 
-          printf "Source: %s\nVersion suffix: %s\nBuild: %s\n" "${source_sha}" "${version_suffix}" "${should_build}"
-          printf "should_build=%s\nsource_sha=%s\nversion_suffix=%s\n" \
-            "${should_build}" "${source_sha}" "${version_suffix}" >> "${GITHUB_OUTPUT}"
+          printf "Source: %s\nVersion suffix: %s\nOnly: %s\nBuild: %s\n" "${source_sha}" "${version_suffix}" "${ONLY}" "${should_build}"
+          printf "only=%s\nshould_build=%s\nsource_sha=%s\nversion_suffix=%s\n" \
+            "${ONLY}" "${should_build}" "${source_sha}" "${version_suffix}" >> "${GITHUB_OUTPUT}"
 
   build:
     name: "Build"
     needs: prepare
-    if: needs.prepare.outputs.should_build == 'true' && (inputs.only == 'cli' || inputs.only == 'all')
+    if: needs.prepare.outputs.should_build == 'true' && (needs.prepare.outputs.only == 'cli' || needs.prepare.outputs.only == 'all')
     uses: neherlab/treetime/.github/workflows/cli-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
@@ -86,7 +94,7 @@ jobs:
   build-desktop:
     name: "Build desktop app"
     needs: prepare
-    if: needs.prepare.outputs.should_build == 'true' && (inputs.only == 'desktop' || inputs.only == 'all')
+    if: needs.prepare.outputs.should_build == 'true' && (needs.prepare.outputs.only == 'desktop' || needs.prepare.outputs.only == 'all')
     uses: neherlab/treetime/.github/workflows/desktop-build.yml@rust
     with:
       source_ref: ${{ needs.prepare.outputs.source_sha }}
