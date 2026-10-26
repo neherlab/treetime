@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """Update dev/docker/prod-bases.json, the base images of dev/docker/prod-images.
 
-The production images neherlab/treetime build on the 6 newest Alpine
-releases, the 3 newest Debian releases, and scratch. Each base is pinned to
-the digest of its Docker Hub tag, so the images of one release and a later
-re-run use the same base. The release lines come from endoflife.date, and the
-digests from the tags of the official images on Docker Hub.
+The production images neherlab/treetime build on the newest Debian release,
+the newest Alpine release, and scratch, which has no base. Each base is
+pinned to the digest of its Docker Hub tag, so the images of one nightly and
+a later re-run use the same base. The release lines come from endoflife.date,
+and the digests from the tags of the official images on Docker Hub.
 
 A release line or a digest is used only when it is at least 7 days old, the
 quarantine of the project for base images:
-  - a release line released less than 7 days ago is skipped
-  - when the tag of a line was pushed less than 7 days ago, the line takes
+  - a release line released less than 7 days ago is skipped, so the newest
+    line released at least 7 days ago is used
+  - when the tag of the line was pushed less than 7 days ago, the line takes
     the newest dated tag of the same line that is at least 7 days old (Debian
     keeps every build as <codename>-YYYYMMDD; Alpine has no dated tags), or
-    else keeps the digest that the file already has
+    else keeps the digest that the file already has for the line
   - a line without such a digest fails the run, with the date from which a
     re-run succeeds
 
@@ -42,10 +43,9 @@ QUARANTINE = timedelta(days=7)
 
 @dataclass(frozen=True)
 class Distro:
-    """Release lines of a base on endoflife.date, and the number of newest lines to build on."""
+    """Release lines of a base on endoflife.date."""
 
     lines_url: str
-    count: int
     # The official image also tags each build as <codename>-YYYYMMDD.
     dated_tags: bool
 
@@ -60,8 +60,8 @@ class Line:
 
 # Docker Hub repository of each base.
 DISTROS = {
-    "alpine": Distro("https://endoflife.date/api/alpine-linux.json", 6, dated_tags=False),
-    "debian": Distro("https://endoflife.date/api/debian.json", 3, dated_tags=True),
+    "debian": Distro("https://endoflife.date/api/debian.json", dated_tags=True),
+    "alpine": Distro("https://endoflife.date/api/alpine-linux.json", dated_tags=False),
 }
 DOCKER_HUB_TAGS = "https://hub.docker.com/v2/namespaces/library/repositories/{repository}/tags"
 
@@ -75,44 +75,44 @@ def main() -> None:
 
     now = datetime.now(UTC)
     pinned = read_pinned()
-    bases: dict[str, list[dict[str, str]]] = {}
+    bases: dict[str, dict[str, str]] = {}
     errors = []
     for repository, distro in DISTROS.items():
-        bases[repository] = []
-        for line in release_lines(distro, now.date()):
-            tag_url = f"{DOCKER_HUB_TAGS.format(repository=repository)}/{line.tag}"
-            tag_info = fetch_json(tag_url)
-            pushed = datetime.fromisoformat(tag_info["tag_last_pushed"])
-            digest = None
-            if now - pushed >= QUARANTINE:
-                digest = tag_info["digest"]
-            elif distro.dated_tags:
-                digest = newest_dated_digest(repository, line.codename, now)
-            if digest is None:
-                digest = pinned.get(repository, {}).get(line.tag)
-            if digest is None:
-                errors.append(
-                    f"{repository}:{line.tag} has no pinned digest, and its current digest {tag_info['digest']} was "
-                    f"pushed at {pushed:%Y-%m-%d %H:%M} UTC, less than 7 days ago; re-run from "
-                    f"{pushed + QUARANTINE:%Y-%m-%d %H:%M} UTC"
-                )
-                continue
-            bases[repository].append({"tag": line.tag, "digest": digest})
+        line = newest_line(distro, now.date())
+        tag_url = f"{DOCKER_HUB_TAGS.format(repository=repository)}/{line.tag}"
+        tag_info = fetch_json(tag_url)
+        pushed = datetime.fromisoformat(tag_info["tag_last_pushed"])
+        digest = None
+        if now - pushed >= QUARANTINE:
+            digest = tag_info["digest"]
+        elif distro.dated_tags:
+            digest = newest_dated_digest(repository, line.codename, now)
+        if digest is None:
+            digest = pinned.get(repository, {}).get(line.tag)
+        if digest is None:
+            errors.append(
+                f"{repository}:{line.tag} has no pinned digest, and its current digest {tag_info['digest']} was "
+                f"pushed at {pushed:%Y-%m-%d %H:%M} UTC, less than 7 days ago; re-run from "
+                f"{pushed + QUARANTINE:%Y-%m-%d %H:%M} UTC"
+            )
+            continue
+        bases[repository] = {"tag": line.tag, "digest": digest}
     if errors:
         fail("\n".join(errors))
-    bases["scratch"] = []
     BASES_FILE.write_text(json.dumps({"bases": bases}, indent=2) + "\n")
 
 
-def release_lines(distro: Distro, today: date) -> list[Line]:
-    """Return the newest release lines that were released at least 7 days ago, newest first."""
+def newest_line(distro: Distro, today: date) -> Line:
+    """Return the newest release line that was released at least 7 days ago."""
     released = [
         line
         for line in fetch_json(distro.lines_url)
         if line.get("releaseDate") and date.fromisoformat(line["releaseDate"]) <= today - QUARANTINE
     ]
-    released.sort(key=lambda line: line["releaseDate"], reverse=True)
-    return [Line(str(line["cycle"]), str(line.get("codename") or "").lower()) for line in released[: distro.count]]
+    if not released:
+        fail(f"{distro.lines_url} lists no release line released at least 7 days ago")
+    line = max(released, key=lambda line: line["releaseDate"])
+    return Line(str(line["cycle"]), str(line.get("codename") or "").lower())
 
 
 def newest_dated_digest(repository: str, codename: str, now: datetime) -> str | None:
@@ -136,7 +136,7 @@ def read_pinned() -> dict[str, dict[str, str]]:
     if not BASES_FILE.exists():
         return {}
     bases = json.loads(BASES_FILE.read_text())["bases"]
-    return {repository: {base["tag"]: base["digest"] for base in entries} for repository, entries in bases.items()}
+    return {repository: {base["tag"]: base["digest"]} for repository, base in bases.items()}
 
 
 def fetch_json(url: str):

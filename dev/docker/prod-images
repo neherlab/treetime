@@ -3,24 +3,24 @@
 # Usage: $0 [options] --version-suffix <suffix>
 #
 # Build the production images neherlab/treetime of a nightly for linux/amd64
-# and linux/arm64 from the Linux CLI binaries of the nightly in .out/: Debian
-# with the glibc build (dev/docker/prod-debian.dockerfile), Alpine and scratch
-# with the static musl build (prod-alpine, prod-scratch), on every base of
-# dev/docker/prod-bases.json, each pinned to its digest. Without --run or
-# --push, the images are built for both platforms and kept in the build cache
-# only.
+# and linux/arm64 from the Linux CLI binaries of the nightly in .out/, which
+# are copied into the images without a new compilation:
+#   debian    the glibc build on the Debian base of dev/docker/prod-bases.json
+#             (dev/docker/prod-debian.dockerfile)
+#   alpine    the static musl build on the Alpine base of prod-bases.json
+#             (prod-alpine)
+#   scratch   the static musl build alone (prod-scratch)
+# Without --run or --push, the images are built for both platforms and kept in
+# the build cache only.
 #
 # The version of the images is the workspace version of Cargo.toml and the
 # suffix, as in the binaries (TREETIME_VERSION_SUFFIX). A Docker tag cannot
 # hold the `+` of the build metadata, so the version tags have `_` in its
-# place. Tags, for version 1.0.0-nightly.20261026T040000Z+abc1234 with Debian
-# 13 and Alpine 3.24 as the newest bases:
-#   nightly-debian13 1.0.0-nightly.20261026T040000Z_abc1234-debian13
-#                                      each base, here Debian 13
-#   nightly-debian 1.0.0-nightly.20261026T040000Z_abc1234-debian
-#                                      the newest base of each distribution
+# place. Tags, for version 1.0.0-nightly.20261026T040000Z+abc1234:
 #   nightly 1.0.0-nightly.20261026T040000Z_abc1234
-#                                      the newest Debian
+#                                      the Debian image
+#   nightly-<image> 1.0.0-nightly.20261026T040000Z_abc1234-<image>
+#                                      each image: debian, alpine, scratch
 #
 # Every build uses one docker-container builder, treetime-prod, so a push after
 # --run reuses the layers of the tested builds. The binaries are staged with
@@ -59,51 +59,23 @@ DISTROS=(debian alpine scratch)
 LOG_DIR="tmp/docker-prod"
 TEST_DATASET="data/zika/20"
 
-# Print the tags of an image variant for a suffix such as debian13 or alpine.
-# Reads IMAGE and docker_version.
-generate_tags() {
-  local suffix="${1}"
-  printf "%s" "${IMAGE}:nightly-${suffix} ${IMAGE}:${docker_version}-${suffix}"
-}
-
-# Print the tags without a base suffix, of the default image.
-# Reads IMAGE and docker_version.
-generate_bare_tags() {
-  printf "%s" "${IMAGE}:nightly ${IMAGE}:${docker_version}"
-}
-
-# Print one line per image variant: distribution, base tag (empty for
-# scratch), base image reference with digest (empty for scratch), and whether
-# it is the newest base of its distribution, separated by '|'. A tab would not
-# work: read merges consecutive tabs, so an empty field would vanish.
-variants() {
-  local distro
-  for distro in "${DISTROS[@]}"; do
-    if [[ "${distro}" == scratch ]]; then
-      printf 'scratch|||true\n'
-      continue
-    fi
-    jq -r --arg distro "${distro}" \
-      '.bases[$distro] | to_entries[] | [$distro, .value.tag, "\($distro):\(.value.tag)@\(.value.digest)", (.key == 0 | tostring)] | join("|")' \
-      dev/docker/prod-bases.json
-  done
-}
-
-# Build one image variant with an output option of buildx: --load for one
-# platform, --push or --output=type=cacheonly for both.
+# Build one image with an output option of buildx: --load for one platform,
+# --push or --output=type=cacheonly for both.
 build_one() {
-  local output="${1}" platform="${2}" distro="${3}" tag="${4}" base="${5}" newest="${6}"
+  local output="${1}" platform="${2}" distro="${3}"
 
-  local tags=""
-  [[ -z "${tag}" ]] || tags="$(generate_tags "${distro}${tag}")"
-  [[ "${newest}" != "true" ]] || tags="${tags} $(generate_tags "${distro}")"
-  [[ "${newest}" != "true" || "${distro}" != debian ]] || tags="${tags} $(generate_bare_tags)"
-
-  local args=() name
-  for name in ${tags}; do
-    args+=(--tag="${name}")
-  done
-  [[ -z "${base}" ]] || args+=(--build-arg="BASE_IMAGE=${base}")
+  local args=(
+    --tag="${IMAGE}:nightly-${distro}"
+    --tag="${IMAGE}:${docker_version}-${distro}"
+  )
+  if [[ "${distro}" == debian ]]; then
+    args+=(--tag="${IMAGE}:nightly" --tag="${IMAGE}:${docker_version}")
+  fi
+  if [[ "${distro}" != scratch ]]; then
+    local base
+    base="$(jq -r --arg distro "${distro}" '.bases[$distro] | "\($distro):\(.tag)@\(.digest)"' dev/docker/prod-bases.json)"
+    args+=(--build-arg="BASE_IMAGE=${base}")
+  fi
 
   docker buildx build \
     --builder="${BUILDER}" \
@@ -115,28 +87,25 @@ build_one() {
     .
 }
 
-# Build every image variant in parallel; fail when any build fails.
+# Build every image in parallel; fail when any build fails.
 build_all() {
   local output="${1}" platform="${2}"
-  local pids=() labels=() logs=() distro tag base newest label list
+  local pids=() logs=() distro
 
-  list="$(variants)"
   mkdir -p "${LOG_DIR}"
-  while IFS='|' read -r distro tag base newest; do
-    label="${distro}${tag}"
-    labels+=("${label}")
-    logs+=("${LOG_DIR}/${label}-${platform//\//-}.log")
-    build_one "${output}" "${platform}" "${distro}" "${tag}" "${base}" "${newest}" >"${logs[${#logs[@]} - 1]}" 2>&1 &
+  for distro in "${DISTROS[@]}"; do
+    logs+=("${LOG_DIR}/${distro}-${platform//\//-}.log")
+    build_one "${output}" "${platform}" "${distro}" >"${logs[${#logs[@]} - 1]}" 2>&1 &
     pids+=("$!")
-  done <<<"${list}"
-  printf 'Building %s image variants for %s (%s); logs in %s/\n' "${#pids[@]}" "${platform}" "${output}" "${LOG_DIR}" >&2
+  done
+  printf 'Building %s images for %s (%s); logs in %s/\n' "${#pids[@]}" "${platform}" "${output}" "${LOG_DIR}" >&2
 
   local failed=0 i
   for i in "${!pids[@]}"; do
     if wait "${pids[${i}]}"; then
-      printf 'Built %s\n' "${labels[${i}]}" >&2
+      printf 'Built %s\n' "${DISTROS[${i}]}" >&2
     else
-      printf 'FAIL %s (%s)\n' "${labels[${i}]}" "${logs[${i}]}" >&2
+      printf 'FAIL %s (%s)\n' "${DISTROS[${i}]}" "${logs[${i}]}" >&2
       failed=$((failed + 1))
     fi
   done
@@ -146,17 +115,16 @@ build_all() {
   fi
 }
 
-# Run every loaded image variant of a platform: `treetime --version` must
-# report the version, and the ancestral reconstruction of the test dataset
-# must succeed, because a binary can print its version and still crash in its
-# numeric libraries (BLAS, LAPACK).
+# Run every loaded image of a platform: `treetime --version` must report the
+# version, and the ancestral reconstruction of the test dataset must succeed,
+# because a binary can print its version and still crash in its numeric
+# libraries (BLAS, LAPACK).
 run_all() {
-  local platform="${1}" distro tag base newest name label output list failed=0
+  local platform="${1}" distro name label output failed=0
 
-  list="$(variants)"
-  while IFS='|' read -r distro tag base newest; do
-    name="${IMAGE}:nightly-${distro}${tag}"
-    label="$(printf '%s' "${distro}${tag}-${platform}" | tr '/:@' '---')"
+  for distro in "${DISTROS[@]}"; do
+    name="${IMAGE}:nightly-${distro}"
+    label="${distro}-${platform//\//-}"
     if ! output="$(run_version "${platform}" "${name}" "${label}" 2>&1)"; then
       printf 'FAIL %s (%s): %s\n' "${name}" "${platform}" "${output}" >&2
       failed=$((failed + 1))
@@ -169,7 +137,7 @@ run_all() {
     else
       printf 'PASS %s (%s)\n' "${name}" "${platform}" >&2
     fi
-  done <<<"${list}"
+  done
   if ((failed > 0)); then
     printf '%s images failed to run\n' "${failed}" >&2
     exit 1

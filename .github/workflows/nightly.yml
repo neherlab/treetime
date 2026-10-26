@@ -131,29 +131,21 @@ jobs:
             --git_sha "${{ needs.prepare.outputs.source_sha }}" \
             --version_suffix "${{ needs.prepare.outputs.version_suffix }}"
 
-  # The images copy the Linux CLI binaries of the release, so they run after the
-  # release is published. A missing Linux binary fails this job and publishes no
-  # images, without affecting the release.
+  # The images copy the Linux CLI binaries of this run without a new compilation,
+  # and each image runs before the push. The job runs after the release is
+  # published; a missing Linux binary fails it and publishes no images, without
+  # affecting the release.
   docker:
     name: "Publish to Docker Hub"
     needs: [prepare, publish]
     if: ${{ !cancelled() && needs.publish.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     steps:
       - name: "Checkout rust revision"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.source_sha }}
-
-      - name: "Resolve version"
-        id: version
-        env:
-          VERSION_SUFFIX: ${{ needs.prepare.outputs.version_suffix }}
-        run: |
-          printf "version=%s-%s\n" "$(yq -p toml -o yaml '.workspace.package.version' Cargo.toml)" "${VERSION_SUFFIX}" >> "${GITHUB_OUTPUT}"
 
       - name: "Log in to Docker Hub"
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -178,37 +170,3 @@ jobs:
         env:
           VERSION_SUFFIX: ${{ needs.prepare.outputs.version_suffix }}
         run: dev/docker/prod-images --version-suffix "${VERSION_SUFFIX}" --run --push
-
-  verify-docker:
-    name: "Run from Docker Hub (${{ matrix.platform }})"
-    needs: docker
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: "ubuntu-24.04"
-            platform: "linux/amd64"
-          - runner: "ubuntu-24.04-arm"
-            platform: "linux/arm64"
-    steps:
-      - name: "Pull and run"
-        env:
-          VERSION: ${{ needs.docker.outputs.version }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          image="neherlab/treetime:${VERSION//+/_}"
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            if docker pull --quiet --platform="${PLATFORM}" "${image}"; then
-              break
-            fi
-            if ((attempt == 10)); then
-              printf '%s is not pullable from Docker Hub\n' "${image}" >&2
-              exit 1
-            fi
-            sleep 30
-          done
-          version="$(docker run --rm --platform="${PLATFORM}" "${image}" treetime --version)"
-          printf '%s\n' "${version}"
-          [[ "${version}" == "treetime ${VERSION}" ]] || { printf 'Expected "treetime %s"\n' "${VERSION}" >&2; exit 1; }

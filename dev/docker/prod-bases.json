@@ -1,45 +1,12 @@
 {
   "bases": {
-    "alpine": [
-      {
-        "tag": "3.24",
-        "digest": "sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6"
-      },
-      {
-        "tag": "3.23",
-        "digest": "sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0"
-      },
-      {
-        "tag": "3.22",
-        "digest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
-      },
-      {
-        "tag": "3.21",
-        "digest": "sha256:ce64758a109eb420d874a118f87920e625e12d3634e03b4a5573fd9f6e5d3507"
-      },
-      {
-        "tag": "3.20",
-        "digest": "sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc"
-      },
-      {
-        "tag": "3.19",
-        "digest": "sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1"
-      }
-    ],
-    "debian": [
-      {
-        "tag": "13",
-        "digest": "sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5"
-      },
-      {
-        "tag": "12",
-        "digest": "sha256:2c037a04925515fdd6ea85ea14a682d0e79931f5e9f5d07b6dbfc6ba12f9e858"
-      },
-      {
-        "tag": "11",
-        "digest": "sha256:6f519a81440354a85eb592c5f32109ab80605f6b892455983a6f618bf87fabe9"
-      }
-    ],
-    "scratch": []
+    "debian": {
+      "tag": "13",
+      "digest": "sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5"
+    },
+    "alpine": {
+      "tag": "3.24",
+      "digest": "sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6"
+    }
   }
 }
